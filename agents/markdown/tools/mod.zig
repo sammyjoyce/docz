@@ -39,4 +39,3 @@ pub const ExtendedToolRegistry = struct {
 
 // Default registry
 pub const DefaultRegistry = ToolRegistry;
-

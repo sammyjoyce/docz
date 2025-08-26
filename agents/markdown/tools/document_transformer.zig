@@ -347,4 +347,3 @@ fn convertMarkdownToHtml(allocator: std.mem.Allocator, markdown: []const u8) ![]
 
     return html.toOwnedSlice();
 }
-

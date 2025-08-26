@@ -12,7 +12,9 @@ inline fn skipAnsiAt(s: []const u8, i: usize) usize {
     return wmod.skipAnsiAt(s, i);
 }
 
-inline fn cpWidth(cp: u32, method: WidthMethod) u2 { return wmod.cpWidth(cp, method); }
+inline fn cpWidth(cp: u32, method: WidthMethod) u2 {
+    return wmod.cpWidth(cp, method);
+}
 
 fn runeInBreakpoints(cp: u32, breakpoints: []const u8) bool {
     // Only matches ASCII single-byte breakpoints.

@@ -45,4 +45,3 @@ pub fn setPointerShape(writer: anytype, caps: TermCaps, shape: []const u8) !void
     try buf.appendSlice(st);
     try passthrough.writeWithPassthrough(writer, caps, buf.items);
 }
-

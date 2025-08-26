@@ -3,8 +3,8 @@
 
 const std = @import("std");
 const print = std.debug.print;
-const tui = @import("../tui.zig");
-const caps_mod = @import("../term/caps.zig");
+const tui = @import("../../tui/mod.zig");
+const caps_mod = @import("../../term/caps.zig");
 
 /// Enhanced CLI formatter with terminal capability awareness
 pub const CliFormatter = struct {

@@ -2,6 +2,7 @@
 //! This keeps existing imports (`@import("agent.zig")`) working while allowing
 //! different agents to be selected at build time.
 
+const std = @import("std");
 const engine = @import("core_engine");
 const selected_spec = @import("agent_spec");
 

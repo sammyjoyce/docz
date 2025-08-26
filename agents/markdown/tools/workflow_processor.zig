@@ -314,4 +314,3 @@ fn buildWorkflowResponse(allocator: std.mem.Allocator, mode: []const u8, workflo
 
     return json.Value{ .object = result };
 }
-

@@ -1,17 +1,36 @@
 # AGENTS Guide
 
 ## Project Structure (multi-agent)
-- `agents/`: individual terminal agents (built independently)
-  - `agents/<name>/main.zig`: agent entry (CLI parsing + engine call)
-  - `agents/<name>/spec.zig`: agent spec (system prompt + tools registration)
-  - `agents/<name>/*`: agent-specific implementation, config (.zon), prompts, tools
-- `src/core/`: shared engine (`engine.zig`) and runtime used by all agents
-- `src/`: shared modules (HTTP/Anthropic client, tools registry, CLI, TUI)
 
-Notes:
-- The root binary delegates to the selected agent at build time (default: `markdown`).
-- New agents register a spec with the core engine and get their own `agents/<name>/main.zig`.
-- Agents are built individually by choosing `-Dagent=<name>`; only the selected agent is compiled into the binary.
+This project houses multiple independent terminal-based AI agent implementations. Each agent is built separately and shares common infrastructure through the core engine.
+
+### Directory Structure
+
+- **`agents/`** - Individual terminal agents (built independently)
+  - **`agents/<name>/main.zig`** - Agent CLI entry point (required)
+  - **`agents/<name>/spec.zig`** - Agent specification (required)
+  - **`agents/<name>/agent.zig`** - Main agent implementation (required, standardized name)
+  - **`agents/<name>/config.zon`** - Agent configuration (optional)
+  - **`agents/<name>/system_prompt.txt`** - System prompt template (optional)
+  - **`agents/<name>/tools.zon`** - Tool definitions (optional)
+  - **`agents/<name>/README.md`** - Agent documentation (recommended)
+  - **`agents/<name>/tools/`** - Agent-specific tools (optional)
+    - `tools/mod.zig` - Tools module export (if tools/ exists)
+    - `tools/*.zig` - Individual tool implementations
+  - **`agents/<name>/common/`** - Agent-specific shared utilities (optional)
+  - **`agents/<name>/examples/`** - Usage examples (optional)
+- **`src/core/`** - Shared engine and configuration utilities
+  - `src/core/engine.zig` - Main engine used by all agents
+  - `src/core/config.zig` - Standardized configuration management
+- **`src/`** - Shared modules (HTTP/Anthropic client, tools registry, CLI, TUI)
+
+### Key Architecture Principles
+
+- **Independence**: Agents are built individually, only the selected agent is compiled
+- **Shared Infrastructure**: Common functionality is provided by the engine
+- **Standardized Structure**: All agents follow the same directory conventions
+- **Flexible Tools**: Each agent can register its own tools while inheriting built-ins
+- **Configuration-Driven**: Agents use `.zon` files for structured configuration
 
 ## Build / Run
 • Build default agent: `zig build`
@@ -43,13 +62,85 @@ Notes:
 • Load `.zon` data at comptime with `@embedFile` + `std.zig.parseFromSlice`.
 
 ## Creating a New Agent
-1. Create `agents/<name>/` with the following files:
-   - `main.zig`: parses CLI and calls `engine.runWithOptions` with your `SPEC`.
-   - `spec.zig`: returns `engine.AgentSpec` with `buildSystemPrompt` + `registerTools`.
-   - `system_prompt.txt`: your system prompt template (optional; can be computed).
-   - `config.zon`, `tools.zon`, and any other agent-local data/modules.
-2. Build and run it: `zig build -Dagent=<name> run -- "..."`
-3. The engine exposes shared CLI, Anthropic client, auth, streaming, and a basic tool registry; your agent provides prompts and registers any extra tools.
+
+### Quick Start
+
+1. **Copy the template**: 
+   ```bash
+   cp -r agents/_template agents/my-agent
+   ```
+
+2. **Customize the agent implementation** (`agents/my-agent/agent.zig`):
+   - Define your agent's configuration structure
+   - Implement the `loadSystemPrompt()` method
+   - Add any agent-specific logic
+
+3. **Update the spec** (`agents/my-agent/spec.zig`):
+   - Register your agent-specific tools
+   - The template already wires everything up correctly
+
+4. **Configure your agent** (`agents/my-agent/config.zon`):
+   - Set default values for your agent's configuration
+   - Add any agent-specific settings
+
+5. **Build and test**:
+   ```bash
+   zig build -Dagent=my-agent run -- "Hello from my new agent!"
+   ```
+
+### Standardized Agent Structure
+
+Each agent **must** have these files:
+- **`main.zig`** - CLI entry point (parses arguments, calls engine)
+- **`spec.zig`** - Agent specification (system prompt + tools registration) 
+- **`agent.zig`** - Main implementation (standardized name, replaces `<name>_agent.zig`)
+
+Each agent **may** have these files/directories:
+- **`config.zon`** - Structured configuration in ZON format
+- **`system_prompt.txt`** - System prompt template with variable substitution
+- **`tools.zon`** - Tool definitions and metadata  
+- **`README.md`** - Agent-specific documentation
+- **`tools/`** - Agent-specific tool implementations
+- **`common/`** - Agent-specific shared utilities
+- **`examples/`** - Usage examples and test cases
+
+### Tool Registration
+
+Agents can register custom tools in two ways:
+
+**Option 1: Tools Module** (recommended for multiple tools)
+```zig
+// In spec.zig
+fn registerToolsImpl(registry: *tools_mod.Registry) !void {
+    const tools = @import("tools/mod.zig");
+    try tools.registerAll(registry);
+}
+```
+
+**Option 2: Direct Registration** (simple cases)
+```zig
+// In spec.zig
+fn registerToolsImpl(registry: *tools_mod.Registry) !void {
+    try registry.register("my_tool", myToolFunction);
+}
+```
+
+### Configuration Management
+
+Use the standardized configuration system:
+
+```zig
+// In agent.zig
+pub const Config = struct {
+    max_operations: u32 = 100,
+    enable_feature: bool = true,
+    
+    pub fn loadFromFile(allocator: std.mem.Allocator, path: []const u8) Config {
+        const config_utils = @import("../../src/core/config.zig");
+        return config_utils.loadWithDefaults(Config, allocator, path, Config{});
+    }
+};
+```
 
 ## Zig 0.15.1 Migration Checklist (contributors)
 

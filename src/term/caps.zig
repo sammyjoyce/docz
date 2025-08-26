@@ -29,6 +29,11 @@ pub const TermCaps = struct {
     supportsLightDarkReport: bool,
     // Linux console palette control (OSC P and OSC ]R)
     supportsLinuxPaletteOscP: bool,
+    // Device attributes and version queries (DA1/DA2/DA3, XTVERSION)
+    supportsDeviceAttributes: bool,
+    supportsCursorStyle: bool,
+    supportsCursorPositionReport: bool,
+    supportsPointerShape: bool,
     needsTmuxPassthrough: bool,
     needsScreenPassthrough: bool,
     screenChunkLimit: u16,
@@ -73,6 +78,10 @@ fn defaultsCaps() TermCaps {
         .supportsSgrPixelMouse = d.supports_sgr_pixel_mouse,
         .supportsLightDarkReport = d.supports_lightdark_report,
         .supportsLinuxPaletteOscP = if (@hasField(@TypeOf(d), "supports_linux_palette_oscp")) d.supports_linux_palette_oscp else false,
+        .supportsDeviceAttributes = if (@hasField(@TypeOf(d), "supports_device_attributes")) d.supports_device_attributes else true,
+        .supportsCursorStyle = if (@hasField(@TypeOf(d), "supports_cursor_style")) d.supports_cursor_style else true,
+        .supportsCursorPositionReport = if (@hasField(@TypeOf(d), "supports_cursor_position_report")) d.supports_cursor_position_report else true,
+        .supportsPointerShape = if (@hasField(@TypeOf(d), "supports_pointer_shape")) d.supports_pointer_shape else false,
         .needsTmuxPassthrough = d.needs_tmux_passthrough,
         .needsScreenPassthrough = d.needs_screen_passthrough,
         .screenChunkLimit = @intCast(d.screen_chunk_limit),
@@ -102,10 +111,14 @@ fn overlayCaps(comptime ProgObj: type, prog: ProgObj, caps: *TermCaps) void {
     if (@hasField(ProgObj, "supports_sgr_pixel_mouse")) caps.supportsSgrPixelMouse = prog.supports_sgr_pixel_mouse;
     if (@hasField(ProgObj, "supports_lightdark_report")) caps.supportsLightDarkReport = prog.supports_lightdark_report;
     if (@hasField(ProgObj, "supports_linux_palette_oscp")) caps.supportsLinuxPaletteOscP = prog.supports_linux_palette_oscp;
+    if (@hasField(ProgObj, "supports_device_attributes")) caps.supportsDeviceAttributes = prog.supports_device_attributes;
+    if (@hasField(ProgObj, "supports_cursor_style")) caps.supportsCursorStyle = prog.supports_cursor_style;
+    if (@hasField(ProgObj, "supports_cursor_position_report")) caps.supportsCursorPositionReport = prog.supports_cursor_position_report;
+    if (@hasField(ProgObj, "supports_pointer_shape")) caps.supportsPointerShape = prog.supports_pointer_shape;
     if (@hasField(ProgObj, "needs_tmux_passthrough")) caps.needsTmuxPassthrough = prog.needs_tmux_passthrough;
     if (@hasField(ProgObj, "needs_screen_passthrough")) caps.needsScreenPassthrough = prog.needs_screen_passthrough;
     if (@hasField(ProgObj, "screen_chunk_limit")) caps.screenChunkLimit = @intCast(prog.screen_chunk_limit);
-    if (@hasField(ProgObj, "width_method")) caps.widthMethod = if (std.mem.eql(u8, prog.width_method, "wcwidth")) .wcwidth else .grapheme;
+    if (@hasField(ProgObj, "width_method")) caps.widthMethod = if (std.mem.eql(u8, prog.width_method, "wcwidth")) .grapheme else .wcwidth;
 }
 
 fn capsForProgram(comptime P: Program) TermCaps {
@@ -208,4 +221,16 @@ pub inline fn needsTmuxWrap(caps: TermCaps) bool {
 }
 pub inline fn needsScreenWrap(caps: TermCaps) bool {
     return caps.needsScreenPassthrough;
+}
+pub inline fn canUseDeviceAttributes(caps: TermCaps) bool {
+    return caps.supportsDeviceAttributes;
+}
+pub inline fn canUseCursorStyle(caps: TermCaps) bool {
+    return caps.supportsCursorStyle;
+}
+pub inline fn canUseCursorPositionReport(caps: TermCaps) bool {
+    return caps.supportsCursorPositionReport;
+}
+pub inline fn canUsePointerShape(caps: TermCaps) bool {
+    return caps.supportsPointerShape;
 }

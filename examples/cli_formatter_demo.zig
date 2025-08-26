@@ -3,7 +3,7 @@
 
 const std = @import("std");
 const print = std.debug.print;
-const tui = @import("../tui.zig");
+const tui = @import("../src/tui/mod.zig");
 
 /// Demo of enhanced CLI formatter capabilities
 pub const CliFormatterDemo = struct {

@@ -11,6 +11,10 @@ pub const screen = @import("core/screen.zig");
 pub const progress = @import("widgets/progress.zig");
 pub const text_input = @import("widgets/text_input.zig");
 pub const tabs = @import("widgets/tabs.zig");
+pub const menu = @import("widgets/menu.zig");
+pub const section = @import("widgets/section.zig");
+pub const graphics = @import("widgets/graphics.zig");
+pub const notification = @import("widgets/notification.zig");
 
 // Themes
 pub const themes = @import("themes/default.zig");
@@ -40,6 +44,12 @@ pub const clearLines = screen.clearLines;
 pub const ProgressBar = progress.ProgressBar;
 pub const TextInput = text_input.TextInput;
 pub const TabContainer = tabs.TabContainer;
+pub const Menu = menu.Menu;
+pub const MenuItem = menu.MenuItem;
+pub const Section = section.Section;
+pub const GraphicsWidget = graphics.GraphicsWidget;
+pub const Notification = notification.Notification;
+pub const NotificationManager = notification.NotificationManager;
 
 pub const Color = themes.Color;
 pub const Box = themes.Box;

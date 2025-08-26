@@ -3,14 +3,14 @@
 
 const std = @import("std");
 const print = std.debug.print;
-const tui = @import("tui.zig");
-const caps_mod = @import("term/caps.zig");
-const color_mod = @import("term/ansi/color.zig");
-const sgr_mod = @import("term/ansi/sgr.zig");
-const hyperlink_mod = @import("term/ansi/hyperlink.zig");
-const clipboard_mod = @import("term/ansi/clipboard.zig");
-const notification_mod = @import("term/ansi/notification.zig");
-const title_mod = @import("term/ansi/title.zig");
+const tui = @import("../../tui/mod.zig");
+const caps_mod = @import("../../term/caps.zig");
+const color_mod = @import("../../term/ansi/color.zig");
+const sgr_mod = @import("../../term/ansi/sgr.zig");
+const hyperlink_mod = @import("../../term/ansi/hyperlink.zig");
+const clipboard_mod = @import("../../term/ansi/clipboard.zig");
+const notification_mod = @import("../../term/ansi/notification.zig");
+const title_mod = @import("../../term/ansi/title.zig");
 
 /// Enhanced CLI formatter with terminal capability awareness
 pub const CliFormatter = struct {
@@ -233,7 +233,7 @@ pub const CliFormatter = struct {
 
     // Private helper methods
 
-    fn printOptionsSection(self: *CliFormatter, cli_config: anytype, width: u32) !void {
+    fn printOptionsSection(_: *CliFormatter, cli_config: anytype, _: u32) !void {
         const OptsT = @TypeOf(cli_config.options);
         const OptsInfo = @typeInfo(OptsT).@"struct";
 

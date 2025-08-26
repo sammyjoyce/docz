@@ -2,10 +2,11 @@
 //! Provides command palette and enhanced user experience
 
 const std = @import("std");
-const tui = @import("tui.zig");
+const tui = @import("tui/mod.zig");
 const agent = @import("agent.zig");
 const anthropic = @import("anthropic_shared");
-const enhanced_demo = @import("enhanced_tui_demo.zig");
+const auth = @import("auth/mod.zig");
+
 const print = std.debug.print;
 
 /// Available commands in the interactive interface
@@ -15,7 +16,6 @@ const Command = enum {
     help,
     status,
     refresh,
-    demo,
     quit,
 
     pub fn fromString(str: []const u8) ?Command {
@@ -24,7 +24,7 @@ const Command = enum {
         if (std.mem.eql(u8, str, "help")) return .help;
         if (std.mem.eql(u8, str, "status")) return .status;
         if (std.mem.eql(u8, str, "refresh")) return .refresh;
-        if (std.mem.eql(u8, str, "demo")) return .demo;
+
         if (std.mem.eql(u8, str, "quit") or std.mem.eql(u8, str, "exit")) return .quit;
         return null;
     }
@@ -37,9 +37,7 @@ const COMMAND_NAMES = [_][]const u8{
     "help",
     "status",
     "refresh",
-    "demo",
     "quit",
-    "exit",
 };
 
 /// Cached authentication status to avoid repeated file I/O operations
@@ -64,32 +62,34 @@ const AuthStatusCache = struct {
     }
 
     fn update(self: *AuthStatusCache, allocator: std.mem.Allocator) void {
-        // Check authentication status
-        const oauth_path = "claude_oauth_creds.json";
-        var auth_status: []const u8 = "🔑 API Key";
-        var auth_detail: []const u8 = "Using ANTHROPIC_API_KEY environment variable";
+        // Check authentication status using the new auth system
+        var auth_status: []const u8 = "❌ No Auth";
+        var auth_detail: []const u8 = "No authentication configured - setup required";
 
-        if (anthropic.loadOAuthCredentials(allocator, oauth_path)) |maybe_creds| {
-            if (maybe_creds) |creds| {
-                if (creds.isExpired()) {
-                    auth_status = "⚠️  OAuth (Expired)";
-                    auth_detail = "OAuth credentials found but expired - refresh needed";
-                } else {
-                    auth_status = "🔐 OAuth (Active)";
-                    auth_detail = "Using Claude Pro/Max OAuth authentication";
-                }
+        if (auth.createClient(allocator)) |client| {
+            defer client.deinit();
 
-                // Clean up credentials
-                allocator.free(creds.type);
-                allocator.free(creds.access_token);
-                allocator.free(creds.refresh_token);
+            switch (client.credentials) {
+                .oauth => |creds| {
+                    if (creds.isExpired()) {
+                        auth_status = "⚠️  OAuth (Expired)";
+                        auth_detail = "OAuth credentials found but expired - refresh needed";
+                    } else {
+                        auth_status = "🔐 OAuth (Active)";
+                        auth_detail = "Using Claude Pro/Max OAuth authentication";
+                    }
+                },
+                .api_key => {
+                    auth_status = "🔑 API Key";
+                    auth_detail = "Using ANTHROPIC_API_KEY environment variable";
+                },
+                .none => {
+                    auth_status = "❌ No Auth";
+                    auth_detail = "No authentication configured - setup required";
+                },
             }
         } else |_| {
-            const api_key = std.posix.getenv("ANTHROPIC_API_KEY") orelse "";
-            if (api_key.len == 0) {
-                auth_status = "❌ No Auth";
-                auth_detail = "No authentication configured - setup required";
-            }
+            // Keep default values set above
         }
 
         self.auth_status = auth_status;
@@ -104,7 +104,6 @@ const COMMANDS = [_]tui.Menu.MenuItem{
     .{ .key = "oauth", .description = "Setup Claude Pro/Max OAuth authentication", .action = "Configure OAuth credentials" },
     .{ .key = "status", .description = "Show authentication and system status", .action = "Display current status" },
     .{ .key = "refresh", .description = "Refresh authentication status cache", .action = "Update cached auth status" },
-    .{ .key = "demo", .description = "Show enhanced TUI framework demonstration", .action = "Display layout system and advanced widgets" },
     .{ .key = "help", .description = "Show detailed help information", .action = "Display help documentation" },
     .{ .key = "quit", .description = "Exit the interactive interface", .action = "Terminate the program" },
 };
@@ -177,7 +176,7 @@ fn displayHelp() void {
         "• Use 'oauth' to setup Claude Pro/Max authentication",
         "• Use 'status' to check your current authentication",
         "• Use 'refresh' to update authentication status cache",
-        "• Use 'demo' to explore the enhanced TUI framework",
+
         "• Use 'quit' or 'exit' to leave the interface",
         "",
         "⚡ QUICK START:",
@@ -341,18 +340,7 @@ pub fn runInteractiveMode(allocator: std.mem.Allocator) !void {
                 var buffer: [1]u8 = undefined;
                 _ = std.fs.File.stdin().read(&buffer) catch {};
             },
-            .demo => {
-                print("🎨 Starting Enhanced TUI Framework Demo...\n", .{});
-                print("This will showcase the new layout system and advanced widgets.\n\n", .{});
 
-                enhanced_demo.runEnhancedTUIDemo(allocator) catch |err| {
-                    print("Demo failed: {}\n", .{err});
-                };
-
-                print("\nReturning to main interface...", .{});
-                var buffer: [1]u8 = undefined;
-                _ = std.fs.File.stdin().read(&buffer) catch {};
-            },
             .quit => {
                 print("👋 Thank you for using DocZ!\n", .{});
                 return;

@@ -367,4 +367,3 @@ pub fn extractVariables(allocator: std.mem.Allocator, content: []const u8) Error
 
     return variables.toOwnedSlice();
 }
-

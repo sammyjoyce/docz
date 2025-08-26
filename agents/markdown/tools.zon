@@ -69,7 +69,7 @@
             .type = "object",
             .properties = .{
                 .action = .{ .type = "string", .@"enum" = .{ "insert", "replace", "delete", "move", "batch_replace", "add_section", "generate_toc", "table_op", "set_metadata", "format" }, .description = "Editing operation" },
-                .path = .{ .type = "string", .pattern = "^/.+\\\.(md|markdown)$", .description = "Target markdown file" },
+                .path = .{ .type = "string", .pattern = "^/.+\\.(md|markdown)$", .description = "Target markdown file" },
                 .content = .{ .type = "string", .description = "Content payload for insert/replace", .minLength = 1 },
                 .location = .{ .type = "string", .description = "Insert/move anchor (start|end|line:<n>|after:<heading>|before:<heading>)" },
                 .search = .{ .type = "string", .description = "Search term or regex for replace/delete" },

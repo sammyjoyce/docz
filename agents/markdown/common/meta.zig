@@ -171,7 +171,7 @@ fn parseYamlValue(allocator: std.mem.Allocator, value_str: []const u8) Error!Met
     // Quoted string
     if (value_str.len >= 2 and
         ((value_str[0] == '"' and value_str[value_str.len - 1] == '"') or
-            (value_str[0] == '\'' and value_str[value_str.len - 1] == '\')))
+            (value_str[0] == '\'' and value_str[value_str.len - 1] == '\'')))
     {
         const unquoted = value_str[1 .. value_str.len - 1];
         return MetadataValue{ .string = try allocator.dupe(u8, unquoted) };
@@ -341,4 +341,3 @@ fn freeMetadataValue(value: MetadataValue, allocator: std.mem.Allocator) void {
         .integer, .float, .boolean => {}, // No cleanup needed
     }
 }
-

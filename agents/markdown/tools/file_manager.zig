@@ -336,4 +336,3 @@ fn isValidPath(path: []const u8) bool {
 
     return true;
 }
-

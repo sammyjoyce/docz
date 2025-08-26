@@ -513,4 +513,3 @@ fn buildDirectoryTree(allocator: std.mem.Allocator, path: []const u8, current_de
 
     return json.Value{ .object = tree };
 }
-

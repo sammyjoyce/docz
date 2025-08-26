@@ -462,4 +462,3 @@ pub fn repairTable(allocator: std.mem.Allocator, tbl: *Table, config: RepairConf
 
     return repairs_made;
 }
-

@@ -117,4 +117,3 @@ pub fn cut(alloc: std.mem.Allocator, s: []const u8, left: usize, right: usize, m
     defer alloc.free(tmp);
     return try truncateLeft(alloc, tmp, left, "", method);
 }
-

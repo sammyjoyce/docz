@@ -1,0 +1,118 @@
+.{
+    .name = "docz",
+    .description = "Elegant terminal AI assistant using Claude",
+    .version = "0.1.0",
+
+    .options = .{
+        .model = .{
+            .long = "model",
+            .short = 'm',
+            .type = "string",
+            .description = "Claude model to use for generation",
+            .default = "claude-3-5-sonnet-20241022",
+        },
+        .output = .{
+            .long = "output",
+            .short = 'o',
+            .type = "string",
+            .description = "Output file path for saving responses",
+        },
+        .input = .{
+            .long = "input",
+            .short = 'i',
+            .type = "string",
+            .description = "Input file path to read prompt from",
+        },
+        .system = .{
+            .long = "system",
+            .short = 's',
+            .type = "string",
+            .description = "System prompt to use for context",
+        },
+        .config = .{
+            .long = "config",
+            .short = 'c',
+            .type = "string",
+            .description = "Configuration file path",
+        },
+        .max_tokens = .{
+            .long = "max-tokens",
+            .type = "u32",
+            .description = "Maximum number of tokens to generate",
+            .default = 4096,
+        },
+        .temperature = .{
+            .long = "temperature",
+            .short = 't',
+            .type = "f32",
+            .description = "Temperature for response randomness (0.0-1.0)",
+            .default = 0.7,
+        },
+    },
+
+    .flags = .{
+        .verbose = .{
+            .long = "verbose",
+            .short = 'v',
+            .description = "Enable verbose output with detailed information",
+        },
+        .help = .{
+            .long = "help",
+            .short = 'h',
+            .description = "Show help information and usage examples",
+        },
+        .version = .{
+            .long = "version",
+            .description = "Show version information",
+        },
+        .stream = .{
+            .long = "stream",
+            .description = "Enable streaming responses in real-time",
+            .default = true,
+        },
+        .no_stream = .{
+            .long = "no-stream",
+            .description = "Disable streaming responses",
+        },
+        .pretty = .{
+            .long = "pretty",
+            .short = 'p',
+            .description = "Enable pretty-printed JSON output",
+        },
+        .debug = .{
+            .long = "debug",
+            .short = 'd',
+            .description = "Enable debug mode with detailed logging",
+        },
+        .interactive = .{
+            .long = "interactive",
+            .description = "Launch interactive command palette mode",
+        },
+        .oauth = .{
+            .long = "oauth",
+            .description = "Setup OAuth authentication for Claude Pro/Max",
+        },
+    },
+
+    .commands = .{
+        .auth = .{
+            .description = "Authentication management commands",
+            .subcommands = .{
+                .login = "Setup OAuth authentication with Claude",
+                .status = "Check current authentication status",
+                .refresh = "Refresh OAuth access token",
+            },
+        },
+        .chat = .{
+            .description = "Start interactive chat session (default command)",
+        },
+    },
+
+    .examples = .{
+        .basic = "docz \"Explain how async/await works in Zig\"",
+        .advanced = "docz --model claude-3-haiku --temperature 0.3 --input prompt.txt",
+        .oauth = "docz --oauth",
+        .auth_status = "docz auth status",
+        .interactive = "docz --interactive",
+    },
+}

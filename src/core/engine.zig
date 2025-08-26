@@ -6,6 +6,7 @@ const std = @import("std");
 // These are wired by build.zig via named imports
 const anthropic = @import("anthropic_shared");
 const tools_mod = @import("tools_shared");
+const auth = @import("auth_shared");
 
 pub const Message = anthropic.Message;
 
@@ -43,156 +44,55 @@ pub const AgentSpec = struct {
     registerTools: *const fn (registry: *tools_mod.Registry) anyerror!void,
 };
 
-/// Initialize Anthropic client, preferring OAuth over API key
-fn initAnthropicClient(allocator: std.mem.Allocator) !anthropic.AnthropicClient {
-    const oauth_path = "claude_oauth_creds.json";
-    if (anthropic.loadOAuthCredentials(allocator, oauth_path)) |maybe_creds| {
-        if (maybe_creds) |creds| {
-            std.log.info("Using OAuth authentication", .{});
-            return try anthropic.AnthropicClient.initWithOAuth(allocator, creds, oauth_path);
-        }
-    } else |_| {}
-
-    const api_key = std.posix.getenv("ANTHROPIC_API_KEY") orelse "";
-    if (api_key.len > 0) {
-        std.log.info("Using API key authentication", .{});
-        return try anthropic.AnthropicClient.init(allocator, api_key);
-    }
-
-    std.log.err("No authentication method available. Either provide ANTHROPIC_API_KEY environment variable or run OAuth setup.", .{});
-    return anthropic.Error.MissingAPIKey;
+/// Map auth errors to anthropic errors
+fn mapAuthError(err: auth.core.AuthError) anthropic.Error {
+    return switch (err) {
+        auth.core.AuthError.MissingAPIKey => anthropic.Error.MissingAPIKey,
+        auth.core.AuthError.TokenExpired => anthropic.Error.TokenExpired,
+        auth.core.AuthError.NetworkError => anthropic.Error.NetworkError,
+        else => anthropic.Error.AuthError,
+    };
 }
 
-/// Start OAuth flow and save credentials
+/// Initialize Anthropic client using the new auth system
+fn initAnthropicClient(allocator: std.mem.Allocator) !anthropic.AnthropicClient {
+    var auth_client = auth.createClient(allocator) catch |err| {
+        std.log.err("No authentication method available. Either provide ANTHROPIC_API_KEY environment variable or run OAuth setup.", .{});
+        return mapAuthError(err);
+    };
+    defer auth_client.deinit();
+
+    // Convert auth client to anthropic client
+    switch (auth_client.credentials) {
+        .oauth => |creds| {
+            std.log.info("Using OAuth authentication", .{});
+            return try anthropic.AnthropicClient.initWithOAuth(allocator, creds, auth_client.credentials_path orelse "claude_oauth_creds.json");
+        },
+        .api_key => |key| {
+            std.log.info("Using API key authentication", .{});
+            return try anthropic.AnthropicClient.init(allocator, key);
+        },
+        .none => {
+            std.log.err("No authentication method available.", .{});
+            return anthropic.Error.MissingAPIKey;
+        },
+    }
+}
+
+/// Start OAuth flow using the new auth TUI system
 pub fn setupOAuth(allocator: std.mem.Allocator) !void {
     std.log.info("Starting Claude Pro/Max OAuth setup...", .{});
-
-    const pkce_params = try anthropic.generatePkceParams(allocator);
-    defer {
-        allocator.free(pkce_params.code_verifier);
-        allocator.free(pkce_params.code_challenge);
-        allocator.free(pkce_params.state);
-    }
-
-    const auth_url = try anthropic.buildAuthorizationUrl(allocator, pkce_params);
-    defer allocator.free(auth_url);
-
-    std.log.info("Opening authorization URL in your browser...", .{});
-    std.log.info("Authorization URL: {s}", .{auth_url});
-    try anthropic.launchBrowser(auth_url);
-
-    const auth_code = anthropic.waitForOAuthCallback(allocator, 8080) catch |err| {
-        std.log.err("Failed to get authorization code: {}", .{err});
-        return err;
-    };
-    defer allocator.free(auth_code);
-
-    std.log.info("Received authorization code, exchanging for tokens...", .{});
-    const credentials = anthropic.exchangeCodeForTokens(allocator, auth_code, pkce_params) catch |err| {
-        std.log.err("Failed to exchange authorization code for tokens: {}", .{err});
-        return err;
-    };
-
-    const creds_path = "claude_oauth_creds.json";
-    std.log.info("Saving OAuth credentials to {s}...", .{creds_path});
-    try anthropic.saveOAuthCredentials(allocator, creds_path, credentials);
-
-    if (std.fs.cwd().openFile(creds_path, .{})) |file| {
-        defer file.close();
-        file.chmod(0o600) catch |err| {
-            std.log.warn("Failed to set secure file permissions on {s}: {}", .{ creds_path, err });
-        };
-    } else |_| {}
-
-    std.log.info("✅ OAuth setup completed successfully!", .{});
-
-    allocator.free(credentials.type);
-    allocator.free(credentials.access_token);
-    allocator.free(credentials.refresh_token);
+    try auth.runAuthTUI(allocator, .oauth_setup);
 }
 
-/// Display current authentication status
+/// Display current authentication status using the new auth system
 pub fn showAuthStatus(allocator: std.mem.Allocator) !void {
-    const print = std.debug.print;
-    print("🔑 Authentication Status\n", .{});
-    print("========================\n\n", .{});
-
-    const oauth_path = "claude_oauth_creds.json";
-    if (anthropic.loadOAuthCredentials(allocator, oauth_path)) |maybe_creds| {
-        if (maybe_creds) |creds| {
-            defer {
-                allocator.free(creds.type);
-                allocator.free(creds.access_token);
-                allocator.free(creds.refresh_token);
-            }
-
-            if (creds.isExpired()) {
-                print("🔐 OAuth Authentication: EXPIRED\n", .{});
-                print("   Status: Credentials found but expired\n", .{});
-                print("   Action: Run 'docz auth refresh' to renew tokens\n", .{});
-            } else {
-                print("✅ OAuth Authentication: ACTIVE\n", .{});
-                print("   Status: Using Claude Pro/Max OAuth authentication\n", .{});
-                print("   Type: Subscription-based (no pay-per-use costs)\n", .{});
-            }
-        } else {
-            print("❌ OAuth Authentication: NOT FOUND\n", .{});
-        }
-    } else |_| {
-        print("❌ OAuth Authentication: ERROR\n", .{});
-        print("   Status: Cannot read OAuth credentials file\n", .{});
-    }
-
-    print("\n", .{});
-
-    const api_key = std.posix.getenv("ANTHROPIC_API_KEY") orelse "";
-    if (api_key.len > 0) {
-        print("🔑 API Key Authentication: AVAILABLE\n", .{});
-        print("   Status: ANTHROPIC_API_KEY environment variable set\n", .{});
-        print("   Type: Pay-per-use billing\n", .{});
-    } else {
-        print("❌ API Key Authentication: NOT SET\n", .{});
-        print("   Status: ANTHROPIC_API_KEY environment variable not found\n", .{});
-    }
+    try auth.runAuthTUI(allocator, .status);
 }
 
-/// Refresh OAuth tokens if available
+/// Refresh authentication tokens using the new auth system
 pub fn refreshAuth(allocator: std.mem.Allocator) !void {
-    const print = std.debug.print;
-    print("🔄 Refreshing authentication...\n", .{});
-
-    const oauth_path = "claude_oauth_creds.json";
-    if (anthropic.loadOAuthCredentials(allocator, oauth_path)) |maybe_creds| {
-        if (maybe_creds) |creds| {
-            defer {
-                allocator.free(creds.type);
-                allocator.free(creds.access_token);
-                allocator.free(creds.refresh_token);
-            }
-
-            print("Found OAuth credentials, attempting to refresh...\n", .{});
-            var client = anthropic.AnthropicClient.initWithOAuth(allocator, creds, oauth_path) catch |err| {
-                print("❌ Failed to initialize OAuth client: {}\n", .{err});
-                return err;
-            };
-            defer client.deinit();
-
-            client.refreshOAuthIfNeeded() catch |err| {
-                print("❌ Failed to refresh OAuth tokens: {}\n", .{err});
-                print("   You may need to run 'docz auth login' to re-authenticate\n", .{});
-                return err;
-            };
-
-            print("✅ OAuth tokens refreshed successfully!\n", .{});
-        } else {
-            print("❌ No OAuth credentials found\n", .{});
-            print("   Run 'docz auth login' to setup OAuth authentication\n", .{});
-        }
-    } else |err| {
-        print("❌ Failed to load OAuth credentials: {}\n", .{err});
-        print("   Run 'docz auth login' to setup OAuth authentication\n", .{});
-        return err;
-    }
+    try auth.runAuthTUI(allocator, .refresh);
 }
 
 /// Global stdout writer with buffer for streaming output

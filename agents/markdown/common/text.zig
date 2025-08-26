@@ -250,4 +250,3 @@ fn indexOfIgnoreCase(text: []const u8, pattern: []const u8) ?usize {
 
     return null;
 }
-

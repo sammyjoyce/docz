@@ -232,4 +232,3 @@ pub fn createLink(allocator: std.mem.Allocator, text: []const u8, url: []const u
 
     return result.toOwnedSlice();
 }
-
