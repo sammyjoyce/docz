@@ -3,8 +3,31 @@
 
 const std = @import("std");
 const print = std.debug.print;
-const tui = @import("../../tui/mod.zig");
+// const tui = @import("tui_shared"); // Disabled to avoid module conflicts
 const caps_mod = @import("../../term/caps.zig");
+
+// Minimal TUI replacements
+const SimpleTui = struct {
+    const Color = struct {
+        const BRIGHT_BLUE = "";
+        const BRIGHT_GREEN = "";
+        const BRIGHT_RED = "";
+        const BRIGHT_YELLOW = "";
+        const BRIGHT_CYAN = "";
+        const BRIGHT_MAGENTA = "";
+        const DIM = "";
+        const BOLD = "";
+        const RESET = "";
+    };
+    
+    fn getTerminalSize() struct { width: u16, height: u16 } {
+        return .{ .width = 80, .height = 24 };
+    }
+    
+    const TerminalSize = struct { width: u16, height: u16 };
+};
+
+const tui = SimpleTui;
 const color_mod = @import("../../term/ansi/color.zig");
 const sgr_mod = @import("../../term/ansi/sgr.zig");
 const hyperlink_mod = @import("../../term/ansi/hyperlink.zig");
@@ -35,7 +58,10 @@ pub const CliFormatter = struct {
     };
 
     pub fn init(allocator: std.mem.Allocator) CliFormatter {
-        const caps = caps_mod.detectCaps();
+        const caps = caps_mod.detectCaps(allocator) catch |err| {
+            std.log.warn("Failed to detect terminal capabilities: {any}", .{err});
+            return caps_mod.TermCaps.basic();
+        };
         const terminal_size = tui.getTerminalSize();
 
         // Adaptive color scheme based on terminal capabilities

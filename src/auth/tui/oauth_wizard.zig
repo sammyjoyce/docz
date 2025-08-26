@@ -4,7 +4,7 @@
 
 const std = @import("std");
 const print = std.debug.print;
-const tui = @import("../../tui/mod.zig");
+const tui = @import("tui_shared");
 const oauth = @import("../oauth/mod.zig");
 
 /// OAuth setup states for progress tracking
@@ -71,9 +71,10 @@ const OAuthProgress = struct {
     }
 };
 
-/// Run the OAuth setup wizard
+/// Run the OAuth setup wizard - simplified version without TUI
 pub fn run(allocator: std.mem.Allocator) !void {
-    try setupOAuth(allocator);
+    const oauth_mod = @import("../oauth/mod.zig");
+    _ = try oauth_mod.setupOAuth(allocator);
 }
 
 /// Enhanced OAuth setup with polished TUI

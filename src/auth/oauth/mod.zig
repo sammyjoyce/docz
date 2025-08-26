@@ -143,7 +143,7 @@ pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorization_code: [
 }
 
 pub fn refreshTokens(allocator: std.mem.Allocator, refresh_token: []const u8) !OAuthCredentials {
-    const anthropic = @import("../../anthropic.zig");
+    const anthropic = @import("anthropic_shared");
 
     const anthropic_creds = try anthropic.refreshTokens(allocator, refresh_token);
 
@@ -209,11 +209,46 @@ pub fn launchBrowser(url: []const u8) !void {
     }
 }
 
-/// High-level OAuth setup function - this is handled by the TUI wizard
-/// This function exists for API compatibility but the actual OAuth setup
-/// is orchestrated by the oauth_wizard.zig TUI component
+/// High-level OAuth setup function - simplified implementation without TUI
 pub fn setupOAuth(allocator: std.mem.Allocator) !OAuthCredentials {
-    _ = allocator;
-    std.log.warn("setupOAuth should not be called directly - use oauth_wizard for full setup flow", .{});
-    return OAuthError.AuthError;
+    std.log.info("🔐 Starting OAuth setup...", .{});
+    
+    // Generate PKCE parameters
+    const pkce_params = try generatePkceParams(allocator);
+    defer pkce_params.deinit(allocator);
+    
+    // Build authorization URL
+    const auth_url = try buildAuthorizationUrl(allocator, pkce_params);
+    defer allocator.free(auth_url);
+    
+    std.log.info("Please visit this URL to authorize the application:", .{});
+    std.log.info("{s}", .{auth_url});
+    
+    // Try to launch browser
+    launchBrowser(auth_url) catch {
+        std.log.warn("Could not launch browser automatically. Please copy and paste the URL above.", .{});
+    };
+    
+    std.log.info("After authorization, you'll be redirected to a URL containing the authorization code.", .{});
+    std.log.info("Enter the authorization code from the redirect URL:");
+    
+    // Read authorization code from stdin
+    const stdin = std.fs.File.stdin();
+    var buffer: [1024]u8 = undefined;
+    const bytes_read = try stdin.readAll(buffer[0..]);
+    if (bytes_read == 0) {
+        return OAuthError.AuthError;
+    }
+    
+    const auth_code = std.mem.trim(u8, buffer[0..bytes_read], " \t\r\n");
+    
+    // Exchange code for tokens
+    const credentials = try exchangeCodeForTokens(allocator, auth_code, pkce_params);
+    
+    // Save credentials
+    try saveCredentials(allocator, "claude_oauth_creds.json", credentials);
+    
+    std.log.info("✅ OAuth setup completed successfully!", .{});
+    
+    return credentials;
 }

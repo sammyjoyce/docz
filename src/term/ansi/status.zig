@@ -38,7 +38,7 @@ pub const RequestLightDarkReport: []const u8 = "\x1b[?996n";
 pub fn cursorPositionReport(writer: anytype, caps: TermCaps, row: u32, col: u32) !void {
     var tmp: [32]u8 = undefined;
     var fbs = std.io.fixedBufferStream(&tmp);
-    var w = fbs.writer();
+    const w = fbs.writer();
     const rr = if (row == 0) 1 else row;
     const cc = if (col == 0) 1 else col;
     _ = std.fmt.format(w, "\x1b[{d};{d}R", .{ rr, cc }) catch unreachable;

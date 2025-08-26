@@ -16,17 +16,19 @@ pub const ParseResult = struct { event: PasteEvent, len: usize };
 
 /// Enhanced paste buffer for accumulating pasted content
 pub const PasteBuffer = struct {
-    data: std.ArrayList(u8),
+    data: std.ArrayListUnmanaged(u8),
     is_pasting: bool = false,
+    allocator: std.mem.Allocator,
 
     pub fn init(allocator: std.mem.Allocator) PasteBuffer {
         return PasteBuffer{
-            .data = std.ArrayList(u8).init(allocator),
+            .data = std.ArrayListUnmanaged(u8){},
+            .allocator = allocator,
         };
     }
 
     pub fn deinit(self: *PasteBuffer) void {
-        self.data.deinit();
+        self.data.deinit(self.allocator);
     }
 
     /// Process input data and handle paste events
@@ -44,23 +46,23 @@ pub const PasteBuffer = struct {
         // We're currently pasting - look for end marker
         if (std.mem.indexOf(u8, input, BracketedPasteEnd)) |end_pos| {
             // Add content before the end marker
-            try self.data.appendSlice(input[0..end_pos]);
+            try self.data.appendSlice(self.allocator, input[0..end_pos]);
             self.is_pasting = false;
 
-            // Decode UTF-8 and create content event
-            const content = try self.data.toOwnedSlice();
+            // Create content event with owned slice
+            const content = try self.data.toOwnedSlice(self.allocator);
             return PasteEvent{ .content = content };
         } else {
             // Still in paste mode, accumulate data
-            try self.data.appendSlice(input);
+            try self.data.appendSlice(self.allocator, input);
             return null;
         }
     }
 
     /// Convert raw pasted bytes to UTF-8 runes
     pub fn decodeContent(self: *PasteBuffer, allocator: std.mem.Allocator) ![]u21 {
-        var runes = std.ArrayList(u21).init(allocator);
-        defer runes.deinit();
+        var runes = std.ArrayListUnmanaged(u21){};
+        defer runes.deinit(allocator);
 
         var i: usize = 0;
         while (i < self.data.items.len) {
@@ -72,11 +74,11 @@ pub const PasteBuffer = struct {
                 continue;
             };
 
-            try runes.append(codepoint);
+            try runes.append(allocator, codepoint);
             i += cp_len;
         }
 
-        return try runes.toOwnedSlice();
+        return try runes.toOwnedSlice(allocator);
     }
 
     /// Check if currently in paste mode

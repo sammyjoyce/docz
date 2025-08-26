@@ -18,8 +18,15 @@ pub fn main() !void {
     defer std.process.argsFree(gpa, args);
 
     const cli_args = if (args.len > 1) args[1..] else args[0..0];
+    
+    // Convert [][:0]u8 to [][]const u8
+    const cli_args_const = try gpa.alloc([]const u8, cli_args.len);
+    defer gpa.free(cli_args_const);
+    for (cli_args, 0..) |arg, i| {
+        cli_args_const[i] = std.mem.sliceTo(arg, 0);
+    }
 
-    var parsed_args = cli.parseArgs(gpa, cli_args) catch |err| {
+    var parsed_args = cli.parseArgs(gpa, cli_args_const) catch |err| {
         cli.printError(gpa, err, null) catch {};
         std.process.exit(1);
     };

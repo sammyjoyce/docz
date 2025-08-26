@@ -4,7 +4,7 @@
 //! authentication status display, and credential management.
 
 const std = @import("std");
-const tui = @import("../../tui/mod.zig");
+const tui = @import("tui_shared");
 const oauth = @import("../oauth/mod.zig");
 const core = @import("../core/mod.zig");
 

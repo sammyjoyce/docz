@@ -2,7 +2,7 @@
 
 const std = @import("std");
 const print = std.debug.print;
-const tui = @import("../../tui/mod.zig");
+const tui = @import("tui_shared");
 const core = @import("../core/mod.zig");
 
 /// Run the authentication status display
@@ -23,7 +23,7 @@ pub fn display(allocator: std.mem.Allocator) !void {
     print("{s}╚{s}╝{s}\n\n", .{ tui.Color.BRIGHT_BLUE, "═" ** (width - 4), tui.Color.RESET });
 
     // Use anthropic module directly for now to get a working implementation
-    const anthropic = @import("../../anthropic.zig");
+    const anthropic = @import("anthropic_shared");
 
     // Check OAuth credentials first
     const oauth_path = "claude_oauth_creds.json";

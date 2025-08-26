@@ -18,7 +18,7 @@ pub const Color = struct {
         // Handle rgb:rrrr/gggg/bbbb format
         if (std.mem.startsWith(u8, response, "rgb:")) {
             const color_part = response[4..];
-            var parts = std.mem.split(u8, color_part, "/");
+            var parts = std.mem.splitSequence(u8, color_part, "/");
             
             const r_str = parts.next() orelse return null;
             const g_str = parts.next() orelse return null;
@@ -78,37 +78,35 @@ pub const Color = struct {
     }
 };
 
-/// Parse OSC response sequences for color queries
 /// Parse OSC 10/11/12 color response
 /// Format: ESC ] code ; color ST  or  ESC ] code ; color BEL
 pub fn parseOscResponse(seq: []const u8) ?ColorEvent {
-        if (seq.len < 8) return null; // Minimum: "\x1b]10;?\x07"
-        
-        if (!std.mem.startsWith(u8, seq, "\x1b]")) return null;
-        
-        // Find the terminator (ST or BEL)
-        const end_pos = blk: {
-            if (std.mem.indexOf(u8, seq, "\x1b\\")) |pos| break :blk pos; // ST
-            if (std.mem.indexOf(u8, seq, "\x07")) |pos| break :blk pos;   // BEL
-            return null;
-        };
-        
-        const content = seq[2..end_pos]; // Skip ESC ]
-        const semicolon_pos = std.mem.indexOf(u8, content, ";") orelse return null;
-        
-        const code_str = content[0..semicolon_pos];
-        const color_str = content[semicolon_pos + 1..];
-        
-        const code = std.fmt.parseInt(u8, code_str, 10) catch return null;
-        const color = Color.parseOscColor(color_str) orelse return null;
-        
-        return switch (code) {
-            10 => ColorEvent{ .foreground = color },
-            11 => ColorEvent{ .background = color },
-            12 => ColorEvent{ .cursor = color },
-            else => null,
-        };
-    }
+    if (seq.len < 8) return null; // Minimum: "\x1b]10;?\x07"
+    
+    if (!std.mem.startsWith(u8, seq, "\x1b]")) return null;
+    
+    // Find the terminator (ST or BEL)
+    const end_pos = blk: {
+        if (std.mem.indexOf(u8, seq, "\x1b\\")) |pos| break :blk pos; // ST
+        if (std.mem.indexOf(u8, seq, "\x07")) |pos| break :blk pos;   // BEL
+        return null;
+    };
+    
+    const content = seq[2..end_pos]; // Skip ESC ]
+    const semicolon_pos = std.mem.indexOf(u8, content, ";") orelse return null;
+    
+    const code_str = content[0..semicolon_pos];
+    const color_str = content[semicolon_pos + 1..];
+    
+    const code = std.fmt.parseInt(u8, code_str, 10) catch return null;
+    const color = Color.parseOscColor(color_str) orelse return null;
+    
+    return switch (code) {
+        10 => ColorEvent{ .foreground = color },
+        11 => ColorEvent{ .background = color },
+        12 => ColorEvent{ .cursor = color },
+        else => null,
+    };
 }
 
 test "parse OSC color response" {

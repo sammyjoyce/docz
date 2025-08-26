@@ -3,8 +3,27 @@
 
 const std = @import("std");
 const print = std.debug.print;
-const tui = @import("../../tui/mod.zig");
+// const tui = @import("tui_shared"); // Disabled to avoid module conflicts
 const caps_mod = @import("../../term/caps.zig");
+
+// Minimal TUI replacements
+const SimpleTui = struct {
+    const Color = struct {
+        const BRIGHT_BLUE = "";
+        const BRIGHT_GREEN = "";
+        const BRIGHT_RED = "";
+        const BRIGHT_YELLOW = "";
+        const RESET = "";
+    };
+    
+    fn getTerminalSize() struct { width: u16, height: u16 } {
+        return .{ .width = 80, .height = 24 };
+    }
+    
+    const TerminalSize = struct { width: u16, height: u16 };
+};
+
+const tui = SimpleTui;
 
 /// Enhanced CLI formatter with terminal capability awareness
 pub const CliFormatter = struct {

@@ -11,9 +11,6 @@ pub const core = @import("core/mod.zig");
 // OAuth-specific implementations
 pub const oauth = @import("oauth/mod.zig");
 
-// TUI components for authentication
-pub const tui = @import("tui/mod.zig");
-
 // CLI commands for authentication
 pub const cli = @import("cli/mod.zig");
 
@@ -33,9 +30,7 @@ pub const saveCredentials = core.saveCredentials;
 pub const setupOAuth = oauth.setupOAuth;
 pub const refreshTokens = oauth.refreshTokens;
 
-// Re-export TUI functions
-pub const runAuthTUI = tui.runAuthTUI;
-pub const setupOAuthWithTUI = tui.setupOAuthWithTUI;
+// TUI functions are available via the TUI module when building interactive flows.
 
 // Re-export CLI functions
 pub const runAuthCommand = cli.runAuthCommand;

@@ -2,7 +2,7 @@
 
 const std = @import("std");
 const print = std.debug.print;
-const tui = @import("../../tui/mod.zig");
+const tui = @import("tui_shared");
 
 /// Input authorization code with enhanced TUI interface
 pub fn input(allocator: std.mem.Allocator) ![]u8 {

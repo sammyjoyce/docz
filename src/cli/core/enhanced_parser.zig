@@ -6,44 +6,9 @@ const print = std.debug.print;
 const Allocator = std.mem.Allocator;
 const cli_config = @import("../../cli.zon");
 const enhanced_formatter = @import("../formatters/enhanced.zig");
+const types = @import("types.zig");
 
-pub const CliError = error{
-    UnknownOption,
-    MissingValue,
-    InvalidValue,
-    MutuallyExclusiveOptions,
-    OutOfMemory,
-    InvalidArgument,
-    UnknownCommand,
-    UnknownSubcommand,
-};
-
-// Subcommand definitions
-pub const AuthSubcommand = enum {
-    login,
-    status,
-    refresh,
-
-    pub fn fromString(str: []const u8) ?AuthSubcommand {
-        if (std.mem.eql(u8, str, "login")) return .login;
-        if (std.mem.eql(u8, str, "status")) return .status;
-        if (std.mem.eql(u8, str, "refresh")) return .refresh;
-        return null;
-    }
-};
-
-pub const Command = enum {
-    auth,
-    help,
-    version,
-    
-    pub fn fromString(str: []const u8) ?Command {
-        if (std.mem.eql(u8, str, "auth")) return .auth;
-        if (std.mem.eql(u8, str, "help")) return .help;
-        if (std.mem.eql(u8, str, "version")) return .version;
-        return null;
-    }
-};
+pub const CliError = types.CliError;
 
 pub const ParsedArgs = struct {
     // Core options from config
@@ -61,8 +26,8 @@ pub const ParsedArgs = struct {
     version: bool,
     
     // Commands and subcommands
-    command: ?Command,
-    auth_subcommand: ?AuthSubcommand,
+    command: ?types.UnifiedCommand,
+    auth_subcommand: ?types.AuthSubcommand,
     
     // Positional arguments
     prompt: ?[]const u8,
@@ -86,14 +51,14 @@ pub const ParsedArgs = struct {
 
     pub fn init(allocator: Allocator) ParsedArgs {
         return ParsedArgs{
-            .model = cli_config.options.model.default,
+            .model = cli_config.options[0].default,
             .max_tokens = null,
             .temperature = null,
-            .stream = cli_config.options.stream.default,
-            .json = cli_config.options.json.default,
-            .quiet = cli_config.options.quiet.default,
-            .verbose = cli_config.options.verbose.default,
-            .no_color = cli_config.flags.no_color.default,
+            .stream = cli_config.flags[3].default,
+            .json = false, // Not defined in zon file, using default
+            .quiet = false, // Not defined in zon file, using default
+            .verbose = false, // cli_config.flags[0] doesn't have default
+            .no_color = false, // Not defined in zon file, using default
             .help = false,
             .version = false,
             .command = null,
@@ -126,7 +91,7 @@ pub const EnhancedParser = struct {
         }
 
         var i: usize = 1; // Skip program name
-        var prompt_parts = std.ArrayList([]const u8).init(self.allocator);
+        var prompt_parts = std.array_list.Managed([]const u8).init(self.allocator);
         defer prompt_parts.deinit();
 
         while (i < args.len) {
@@ -194,13 +159,13 @@ pub const EnhancedParser = struct {
             } else {
                 // Commands or positional arguments
                 if (parsed.command == null) {
-                    if (Command.fromString(arg)) |cmd| {
+                    if (types.UnifiedCommand.fromString(arg)) |cmd| {
                         parsed.command = cmd;
                         if (cmd == .auth) {
                             // Next arg should be auth subcommand
                             i += 1;
                             if (i >= args.len) return CliError.UnknownSubcommand;
-                            parsed.auth_subcommand = AuthSubcommand.fromString(args[i]) orelse return CliError.UnknownSubcommand;
+                            parsed.auth_subcommand = types.AuthSubcommand.fromString(args[i]) orelse return CliError.UnknownSubcommand;
                         }
                     } else {
                         // This is likely the start of a prompt
@@ -272,7 +237,7 @@ pub const EnhancedParser = struct {
         // If we have a prompt, the caller will handle it
     }
 
-    fn handleAuthCommand(self: *EnhancedParser, subcommand: AuthSubcommand) !void {
+    fn handleAuthCommand(self: *EnhancedParser, subcommand: types.AuthSubcommand) !void {
         switch (subcommand) {
             .login => {
                 print("{}{}🔐 Starting authentication...{}{}\n", .{ self.formatter.colors.bold, self.formatter.colors.primary, self.formatter.colors.reset, self.formatter.colors.reset });

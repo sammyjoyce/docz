@@ -17,6 +17,7 @@ const BUILD_CONFIG = struct {
         const CONFIG_ZIG = "src/core/config.zig";
         const CLI_ZIG = "src/cli.zig";
         const AUTH_ZIG = "src/auth/mod.zig";
+        const TUI_ZIG = "src/tui/mod.zig";
         const MAIN_ZIG = "src/main.zig";
         const DOCZ_ZIG = "src/docz.zig";
     };
@@ -92,13 +93,24 @@ const ModuleBuilder = struct {
 
         const auth = self.createModule(BUILD_CONFIG.PATHS.AUTH_ZIG);
         auth.addImport("anthropic_shared", anthropic);
+        // Expose TUI as a shared module so feature UIs can import it without
+        // relative-path conflicts across modules.
+        const tui = self.createModule(BUILD_CONFIG.PATHS.TUI_ZIG);
+        
+        // Terminal capability module aggregator shared across CLI and TUI
+        const term = self.createModule("src/term/mod.zig");
+        
+        // Wire shared imports to consumers
+        tui.addImport("term_shared", term);
 
         const engine = self.createModule(BUILD_CONFIG.PATHS.ENGINE_ZIG);
         engine.addImport("anthropic_shared", anthropic);
         engine.addImport("tools_shared", tools);
         engine.addImport("auth_shared", auth);
-
+        
+        // CLI depends on terminal capabilities
         const cli = self.createModule(BUILD_CONFIG.PATHS.CLI_ZIG);
+        cli.addImport("term_shared", term);
 
         return .{
             .anthropic = anthropic,

@@ -25,7 +25,7 @@ pub fn truncate(alloc: std.mem.Allocator, s: []const u8, length: usize, tail: []
     }
 
     const tail_w = wmod.stringWidth(tail, method);
-    var budget: isize = @as(isize, @intCast(if (length > tail_w) length - tail_w else 0));
+    const budget: isize = @as(isize, @intCast(if (length > tail_w) length - tail_w else 0));
     if (budget <= 0) return alloc.alloc(u8, 0);
 
     var out = std.ArrayList(u8).init(alloc);
@@ -113,7 +113,7 @@ pub fn truncateLeft(alloc: std.mem.Allocator, s: []const u8, n: usize, prefix: [
 pub fn cut(alloc: std.mem.Allocator, s: []const u8, left: usize, right: usize, method: WidthMethod) ![]u8 {
     if (right <= left) return alloc.alloc(u8, 0);
     // First truncate to right, then truncateLeft by left.
-    var tmp = try truncate(alloc, s, right, "", method);
+    const tmp = try truncate(alloc, s, right, "", method);
     defer alloc.free(tmp);
     return try truncateLeft(alloc, tmp, left, "", method);
 }
