@@ -23,15 +23,11 @@ docz/
 │       ├── README.md             # Module documentation
 │       └── tools/                # Tool implementations
 │           ├── mod.zig               # Tools module
-│           ├── document_structure.zig
-│           ├── content_block.zig
-│           ├── markdown_formatter.zig
-│           ├── link_manager.zig
-│           ├── table_editor.zig
-│           ├── metadata_manager.zig
+│           ├── document_io.zig
+│           ├── content_editor.zig
 │           ├── document_validator.zig
-│           ├── document_templates.zig
-│           └── document_converter.zig
+│           ├── document_transformer.zig
+│           └── workflow_processor.zig
 ├── specs/                    # Specifications
 ├── build.zig                 # Build configuration
 ├── build.zig.zon            # Project metadata
@@ -71,17 +67,13 @@ rm -rf .zig-cache zig-out
 
 ## 🛠️ Markdown Agent Features
 
-### Core Tools (9 specialized tools)
+### Core Tools (5 specialized tools)
 
-1. **document_structure** - Hierarchical document organization
-2. **content_block** - Precise content manipulation 
-3. **markdown_formatter** - Consistent styling and formatting
-4. **link_manager** - Reference and link management
-5. **table_editor** - Markdown table operations
-6. **metadata_manager** - YAML front matter handling
-7. **document_validator** - Quality assurance and validation
-8. **document_templates** - Template-based document creation
-9. **document_converter** - Multi-format export capabilities
+1. **document_io** - Document I/O operations and workspace navigation
+2. **content_editor** - Content modification, structural changes, table operations, metadata management, and formatting
+3. **document_validator** - Quality assurance, link checking, and compliance validation
+4. **document_transformer** - Document creation, template operations, and format conversion
+5. **workflow_processor** - Complex workflows, batch operations, and automation
 
 ### Configuration System
 
@@ -98,7 +90,7 @@ const markdown_agent = @import("markdown_agent");
 
 const agent = markdown_agent.MarkdownAgent.init(allocator, config);
 const tools = try agent.getAvailableTools();
-const result = try agent.executeCommand("document_structure", params);
+const result = try agent.executeCommand("document_transformer", params);
 ```
 
 ## 🎯 Design Principles
@@ -161,7 +153,7 @@ Edit `src/markdown_agent/config.zon`:
 ### Phase 1: Core Implementation (Current)
 - [x] Basic tool framework
 - [x] ZON configuration system  
-- [x] 9 core tools (placeholder implementations)
+- [x] 5 core tools (placeholder implementations)
 - [x] Build system integration
 - [x] Project structure
 

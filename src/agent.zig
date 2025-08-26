@@ -206,8 +206,44 @@ pub fn runWithOptions(allocator: std.mem.Allocator, options: CliOptions) !void {
     var messages = std.array_list.Managed(Message).init(allocator);
     defer messages.deinit();
 
+    // Get current date for system prompt
+    const current_date = blk: {
+        const timestamp = std.time.timestamp();
+        const epoch_seconds: i64 = @intCast(timestamp);
+        const days_since_epoch: u47 = @intCast(@divFloor(epoch_seconds, std.time.s_per_day));
+        const epoch_day = std.time.epoch.EpochDay{ .day = days_since_epoch };
+        const year_day = epoch_day.calculateYearDay();
+        const month_day = year_day.calculateMonthDay();
+
+        break :blk try std.fmt.allocPrint(allocator, "{d}-{d:0>2}-{d:0>2}", .{
+            year_day.year, @intFromEnum(month_day.month), month_day.day_index,
+        });
+    };
+    defer allocator.free(current_date);
+
     // Add system prompt - prepend anthropic_spoof.txt to custom or default prompt
-    const base_system_prompt = options.options.system orelse "You are DocZ, a Zig coding agent specialized in writing and refining markdown documents.";
+    const base_system_prompt = options.options.system orelse try std.fmt.allocPrint(allocator,
+        \\# Role
+        \\You are DocZ, a Zig coding agent specialized in writing and refining markdown documents.
+        \\
+        \\# Identity
+        \\DocZ is a specialized AI assistant for markdown document management, built with Zig and focused on high-quality document creation and editing.
+        \\
+        \\# Today's Date
+        \\The current date is {s}.
+        \\
+        \\# IMPORTANT
+        \\- NEVER modify files without explicit user permission
+        \\- ALWAYS validate changes before finalizing
+        \\- NEVER break existing document structure or links
+        \\
+        \\# Output Formatting
+        \\- Be concise and direct in responses
+        \\- Report specific changes made to documents
+        \\- Use bullet points for clarity
+        \\- Provide file paths when referencing documents
+    , .{current_date});
+    defer if (options.options.system == null) allocator.free(base_system_prompt);
 
     // Read and prepend anthropic_spoof.txt
     const spoof_content = blk: {

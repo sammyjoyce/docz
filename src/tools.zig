@@ -29,10 +29,10 @@ pub const Registry = struct {
 };
 
 // ---------------- Built-in tools ----------------
-fn fs_read(_: std.mem.Allocator, input: []const u8) anyerror![]u8 {
+fn fs_read(allocator: std.mem.Allocator, input: []const u8) anyerror![]u8 {
     const req = try std.json.parseFromSlice(
         struct { path: []const u8 },
-        std.heap.page_allocator,
+        allocator,
         input,
         .{},
     );
@@ -41,21 +41,24 @@ fn fs_read(_: std.mem.Allocator, input: []const u8) anyerror![]u8 {
     const path = req.value.path;
     const file = try std.fs.cwd().openFile(path, .{});
     defer file.close();
-    const file_data = try file.readToEndAlloc(std.heap.page_allocator, 1 << 20);
-    defer std.heap.page_allocator.free(file_data);
+    const file_data = try file.readToEndAlloc(allocator, 1 << 20);
+    defer allocator.free(file_data);
     // For now, return file data directly without JSON escaping
-    return std.heap.page_allocator.dupe(u8, file_data);
+    return allocator.dupe(u8, file_data);
 }
 
-fn echo(_: std.mem.Allocator, input: []const u8) anyerror![]u8 {
+fn echo(allocator: std.mem.Allocator, input: []const u8) anyerror![]u8 {
     // Simply wraps input back.
-    return std.heap.page_allocator.dupe(u8, input);
+    return allocator.dupe(u8, input);
 }
 
 var g_list: ?*std.ArrayList(u8) = null;
+var g_allocator: ?std.mem.Allocator = null;
 fn tokenCbImpl(chunk: []const u8) void {
     if (g_list) |lst| {
-        lst.appendSlice(std.heap.page_allocator, chunk) catch unreachable;
+        if (g_allocator) |alloc| {
+            lst.appendSlice(alloc, chunk) catch unreachable;
+        }
     }
 }
 
@@ -73,7 +76,11 @@ fn oracle_tool(allocator: std.mem.Allocator, input: []const u8) anyerror![]u8 {
     defer acc.deinit(allocator);
 
     g_list = &acc;
-    defer g_list = null;
+    g_allocator = allocator;
+    defer {
+        g_list = null;
+        g_allocator = null;
+    }
     const tokenCb = &tokenCbImpl;
 
     // Read and prepend anthropic_spoof.txt to system prompt
@@ -86,10 +93,36 @@ fn oracle_tool(allocator: std.mem.Allocator, input: []const u8) anyerror![]u8 {
     };
     defer if (spoof_content.len > 0) allocator.free(spoof_content);
 
+    // Get current date for system prompt
+    const current_date = blk: {
+        const timestamp = std.time.timestamp();
+        const epoch_seconds: i64 = @intCast(timestamp);
+        const days_since_epoch: u47 = @intCast(@divFloor(epoch_seconds, std.time.s_per_day));
+        const epoch_day = std.time.epoch.EpochDay{ .day = days_since_epoch };
+        const year_day = epoch_day.calculateYearDay();
+        const month_day = year_day.calculateMonthDay();
+
+        break :blk try std.fmt.allocPrint(allocator, "{d}-{d:0>2}-{d:0>2}", .{
+            year_day.year, @intFromEnum(month_day.month), month_day.day_index,
+        });
+    };
+    defer allocator.free(current_date);
+
     const system_prompt = if (spoof_content.len > 0)
-        try std.fmt.allocPrint(allocator, "{s}\n\nYou are an expert AI assistant.", .{spoof_content})
+        try std.fmt.allocPrint(allocator, "{s}\n\n# Role\nYou are an expert AI assistant.\n\n# Today's Date\nThe current date is {s}.\n\n# IMPORTANT\n- ALWAYS provide accurate and helpful responses\n- NEVER make assumptions about user intent\n- BE concise and direct in communication", .{ spoof_content, current_date })
     else
-        try allocator.dupe(u8, "You are an expert AI assistant.");
+        try std.fmt.allocPrint(allocator,
+            \\# Role
+            \\You are an expert AI assistant.
+            \\
+            \\# Today's Date  
+            \\The current date is {s}.
+            \\
+            \\# IMPORTANT
+            \\- ALWAYS provide accurate and helpful responses
+            \\- NEVER make assumptions about user intent  
+            \\- BE concise and direct in communication
+        , .{current_date});
     defer allocator.free(system_prompt);
 
     try client.stream(.{

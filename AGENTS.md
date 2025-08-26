@@ -28,10 +28,122 @@ When editing Zig code, watch for these breaking changes introduced in 0.15.1:
 • `async`, `await`, and `@frameSize` removed – refactor coroutines to new std.Io async APIs.
 • Non-exhaustive `enum` switch rules changed – audit `switch` arms that mix `_` and `else`.
 
-### Standard Library (“Writergate”)
-• Old `std.io` readers/writers deprecated; use `std.Io.Reader` / `std.Io.Writer` with caller-owned buffers.
-• Deleted helpers: `BufferedWriter`, `CountingWriter`, `GenericReader/Writer`, `SeekableStream`, `LimitedReader`, `fifo`, etc.
-• Adapt legacy streams only via `.adaptToNewApi()` as a temporary bridge.
+### Standard Library ("Writergate")
+The 0.15.1 release completely overhauls I/O streams in what's being called "Writergate" - all existing std.io readers and writers are deprecated in favor of new **non-generic** `std.Io.Reader` and `std.Io.Writer` interfaces.
+
+#### Key Changes & Motivation:
+• **Buffer is now in the interface, not the implementation** - buffers are caller-owned ring buffers
+• **Concrete types instead of generics** - eliminates `anytype` poisoning throughout your codebase
+• **Defined error sets** - precise, actionable errors instead of `anyerror`
+• **High-level concepts** - supports vectors, splatting, direct file-to-file transfer
+• **Peek functionality** - buffer awareness for convenience and performance
+• **Optimizer friendly** - particularly for debug mode with buffer in interface
+
+#### New std.Io.Writer and std.Io.Reader API:
+These are **ring buffers** with new convenient APIs:
+
+```zig
+// Reading until delimiter
+while (reader.takeDelimiterExclusive('\n')) |line| {
+    // do something with line...
+} else |err| switch (err) {
+    error.EndOfStream,     // stream ended not on a line break
+    error.StreamTooLong,   // line could not fit in buffer
+    error.ReadFailed,      // caller can check reader implementation
+    => |e| return e,
+}
+```
+
+#### std.fs.File.Reader and std.fs.File.Writer:
+These concrete types memoize key file information:
+• File size from stat (or the error that occurred therein)
+• Current seek position and seek errors
+• Whether reading should be done positionally or streaming
+• Whether reading should be done via fd-to-fd syscalls (e.g. `sendfile`)
+
+This API is super handy - having a concrete type to pass around that memoizes file size is really convenient. Most code that previously called seek functions on a file handle should be updated to operate on this API instead, causing those seeks to become no-ops thanks to positional reads, while still supporting a fallback to streaming reading.
+
+#### Migration Examples:
+
+**Old stdout printing:**
+```zig
+const stdout_file = std.fs.File.stdout().writer();
+var bw = std.io.bufferedWriter(stdout_file);
+const stdout = bw.writer();
+try stdout.print("Hello\n", .{});
+try bw.flush(); // Don't forget to flush!
+```
+
+**New stdout printing:**
+```zig
+var stdout_buffer: [4096]u8 = undefined;
+var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+const stdout = &stdout_writer.interface;
+try stdout.print("Hello\n", .{});
+try stdout.flush(); // Don't forget to flush!
+```
+
+**Server/Client streams (HTTP example):**
+```zig
+// Old way with generics
+var server = std.http.Server.init(connection, &read_buffer);
+
+// New way with concrete streams
+var recv_buffer: [4000]u8 = undefined;
+var send_buffer: [4000]u8 = undefined;
+var conn_reader = connection.stream.reader(&recv_buffer);
+var conn_writer = connection.stream.writer(&send_buffer);
+var server = std.http.Server.init(conn_reader.interface(), &conn_writer.interface);
+```
+
+**Adapter for legacy code:**
+```zig
+fn foo(old_writer: anytype) !void {
+    var adapter = old_writer.adaptToNewApi(&.{});
+    const w: *std.Io.Writer = &adapter.new_interface;
+    try w.print("{s}", .{"example"});
+}
+```
+
+**Compression/Decompression:**
+```zig
+// Old way
+var decompress = try std.compress.flate.decompressStream(allocator, reader);
+
+// New way with ring buffer
+var decompress_buffer: [std.compress.flate.max_window_len]u8 = undefined;
+var decompress: std.compress.flate.Decompress = .init(reader, .zlib, &decompress_buffer);
+const decompress_reader: *std.Io.Reader = &decompress.reader;
+
+// Or if piping entirely to a writer, use empty buffer:
+var decompress: std.compress.flate.Decompress = .init(reader, .zlib, &.{});
+const n = try decompress.streamRemaining(writer);
+```
+
+#### New Stream Concepts:
+• **Discarding** when reading - allows efficiently ignoring data. A decompression stream, when asked to discard a large amount of data, can skip decompression of entire frames
+• **Splatting** when writing - logical "memset" operation passes through I/O pipelines without memory copying, turning O(M*N) into O(M) operation. Can be even more efficient (e.g., splatting zero to file becomes seek forward)
+• **File sending** when writing - allows I/O pipeline to do direct fd-to-fd copying when OS supports it (e.g., sendfile)
+• **User-provided buffers** - stream user provides the buffer, but stream implementation decides minimum buffer size. Moves state from stream implementation into user's buffer
+
+#### Deleted APIs & Replacements:
+• `BufferedWriter` - replaced by caller-owned buffers in new interface
+• `CountingWriter` - use `std.Io.Writer.Discarding` (has count) or `std.Io.Writer.fixed` (check end position) 
+• `GenericReader/Writer`, `AnyReader/Writer` - replaced by concrete `std.Io.Reader/Writer`
+• `SeekableStream` - use `*std.fs.File.Reader/*std.fs.File.Writer` or `std.ArrayListUnmanaged` concrete types
+• `LimitedReader`, `BitReader/Writer` - deleted (bit reading should not be abstracted at this layer)
+• `std.fifo.LinearFifo`, `std.RingBuffer` - removed (most use cases subsumed by new ring buffer streams)
+• `BoundedArray` - migrate to `ArrayListUnmanaged.initBuffer` or fixed-slice buffers
+• `std.fs.File.reader()/.writer()` → `.deprecatedReader/.deprecatedWriter`
+
+#### Usage Notes:
+• **Use buffering and don't forget to flush!** - crucial for performance
+• Consider making your stdout buffer global for reuse
+• Most code should migrate from file handles to `std.fs.File.Reader/Writer` APIs
+• For servers/clients: HTTP Server/Client no longer depend on `std.net` - operate only on streams
+• Legacy streams can use `.adaptToNewApi()` as temporary bridge
+• New interface supports high-level concepts like vectors that reduce syscall overhead
+• Ring buffers are more optimizer-friendly, particularly in debug mode
 
 ### Printing / Formatting
 • `{}` no longer calls `format` implicitly. Use `{f}` to invoke `format`, `{any}` to bypass.
@@ -44,7 +156,7 @@ When editing Zig code, watch for these breaking changes introduced in 0.15.1:
 
 ### Files & FS
 • `fs.File.reader()` / `writer()` renamed to `.deprecatedReader` / `.deprecatedWriter`; use `File.Reader`/`File.Writer`.
-• `fs.Dir.copyFile` can’t fail with `error.OutOfMemory`; `Dir.atomicFile` now needs `write_buffer`.
+• `fs.Dir.copyFile` can't fail with `error.OutOfMemory`; `Dir.atomicFile` now needs `write_buffer`.
 
 ### Build System
 • `root_source_file` et al. removed; use `root_module` in `build.zig`.

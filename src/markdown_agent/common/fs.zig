@@ -86,3 +86,87 @@ pub fn listDir(allocator: std.mem.Allocator, path: []const u8, max_entries: ?usi
 
     return entries.toOwnedSlice();
 }
+
+/// Create directory with optional recursive creation
+pub fn createDir(path: []const u8, recursive: bool) Error!void {
+    if (recursive) {
+        std.fs.cwd().makePath(path) catch |err| switch (err) {
+            error.AccessDenied => return Error.AccessDenied,
+            error.OutOfMemory => return Error.OutOfMemory,
+            error.NoSpaceLeft => return Error.IoError,
+            error.PathAlreadyExists => return, // Success if already exists
+            else => return Error.IoError,
+        };
+    } else {
+        std.fs.cwd().makeDir(path) catch |err| switch (err) {
+            error.AccessDenied => return Error.AccessDenied,
+            error.OutOfMemory => return Error.OutOfMemory,
+            error.FileNotFound => return Error.InvalidPath, // Parent directory doesn't exist
+            error.PathAlreadyExists => return, // Success if already exists
+            error.NoSpaceLeft => return Error.IoError,
+            else => return Error.IoError,
+        };
+    }
+}
+
+/// Copy file from source to destination
+pub fn copyFile(allocator: std.mem.Allocator, src_path: []const u8, dest_path: []const u8) Error!void {
+    // Validate source file exists
+    _ = getFileInfo(src_path) catch |err| return err;
+
+    // Read source file content
+    const content = readFileAlloc(allocator, src_path, null) catch |err| return err;
+    defer allocator.free(content);
+
+    // Write to destination
+    writeFile(dest_path, content) catch |err| return err;
+}
+
+/// Move/rename file from source to destination
+pub fn moveFile(src_path: []const u8, dest_path: []const u8) Error!void {
+    std.fs.cwd().rename(src_path, dest_path) catch |err| switch (err) {
+        error.FileNotFound => return Error.FileNotFound,
+        error.AccessDenied => return Error.AccessDenied,
+        error.OutOfMemory => return Error.OutOfMemory,
+        error.InvalidName => return Error.InvalidPath,
+        error.NoSpaceLeft => return Error.IoError,
+        error.NotSameFileSystem => {
+            // Try copy and delete as fallback for cross-filesystem moves
+            // This requires an allocator, so we return an error for now
+            return Error.IoError;
+        },
+        else => return Error.IoError,
+    };
+}
+
+/// Delete a file
+pub fn deleteFile(path: []const u8) Error!void {
+    std.fs.cwd().deleteFile(path) catch |err| switch (err) {
+        error.FileNotFound => return Error.FileNotFound,
+        error.AccessDenied => return Error.AccessDenied,
+        error.FileBusy => return Error.IoError,
+        error.IsDir => return Error.InvalidPath, // Use deleteDir for directories
+        else => return Error.IoError,
+    };
+}
+
+/// Delete directory with optional recursive deletion
+pub fn deleteDir(path: []const u8, recursive: bool) Error!void {
+    if (recursive) {
+        std.fs.cwd().deleteTree(path) catch |err| switch (err) {
+            error.FileNotFound => return Error.FileNotFound,
+            error.AccessDenied => return Error.AccessDenied,
+            error.OutOfMemory => return Error.OutOfMemory,
+            error.FileBusy => return Error.IoError,
+            else => return Error.IoError,
+        };
+    } else {
+        std.fs.cwd().deleteDir(path) catch |err| switch (err) {
+            error.FileNotFound => return Error.FileNotFound,
+            error.AccessDenied => return Error.AccessDenied,
+            error.DirNotEmpty => return Error.IoError, // Directory not empty
+            error.FileBusy => return Error.IoError,
+            else => return Error.IoError,
+        };
+    }
+}

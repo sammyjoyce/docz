@@ -24,50 +24,30 @@ markdown-agent/
 
 ## 🛠️ Core Tools
 
-### 1. Document Structure Management (`document_structure`)
-- **Purpose**: Manage document hierarchy and organization
-- **Key Features**: Section management, TOC generation, outline analysis
-- **Use Cases**: Reorganizing large documents, maintaining heading consistency
+### 1. Document I/O Operations (`document_io`)
+- **Purpose**: Unified tool for all document I/O operations
+- **Key Features**: File reading, content search, workspace browsing, document discovery
+- **Use Cases**: Reading files, searching content, browsing structure, finding references
 
-### 2. Content Block Operations (`content_block`)
-- **Purpose**: Precise content manipulation at block level
-- **Key Features**: Insert, replace, move, delete content with surgical precision
-- **Use Cases**: Updating specific sections, batch content changes
+### 2. Content Editor (`content_editor`)
+- **Purpose**: Unified tool for all content modification operations
+- **Key Features**: Text editing, structural changes, table operations, metadata management, formatting, atomic transactions
+- **Use Cases**: Precise content editing, structure edits, table operations, metadata management, formatting
 
-### 3. Markdown Formatting (`markdown_formatter`)
-- **Purpose**: Ensure consistent markdown syntax and styling
-- **Key Features**: Style application, normalization, text wrapping
-- **Use Cases**: Formatting cleanup, style consistency enforcement
+### 3. Document Validator (`document_validator`)
+- **Purpose**: Comprehensive quality assurance tool
+- **Key Features**: Structure validation, link checking, spell checking, style guidelines, compliance validation
+- **Use Cases**: Quality assurance, link validation, structure checking, compliance
 
-### 4. Link Management (`link_manager`)
-- **Purpose**: Handle internal and external references
-- **Key Features**: Link validation, reference updates, broken link detection
-- **Use Cases**: Maintaining link integrity in large document sets
+### 4. Document Transformer (`document_transformer`)
+- **Purpose**: Unified tool for document creation, conversion, and transformation
+- **Key Features**: Template operations, format conversions, document generation with comprehensive formatting options
+- **Use Cases**: Document creation, format conversion, template generation, publishing
 
-### 5. Table Editor (`table_editor`)
-- **Purpose**: Create and manipulate markdown tables
-- **Key Features**: Table creation, cell editing, row/column operations
-- **Use Cases**: API documentation, data presentation, structured information
-
-### 6. Metadata Manager (`metadata_manager`)
-- **Purpose**: Manage YAML front matter and document properties
-- **Key Features**: Metadata CRUD, schema validation, bulk updates
-- **Use Cases**: SEO optimization, categorization, publishing workflows
-
-### 7. Document Validator (`document_validator`)
-- **Purpose**: Quality assurance and error detection
-- **Key Features**: Structure validation, spell checking, link verification
-- **Use Cases**: Pre-publication checks, maintaining document quality
-
-### 8. Document Templates (`document_templates`)
-- **Purpose**: Create documents from predefined structures
-- **Key Features**: Multiple template types, variable substitution
-- **Use Cases**: Consistent document creation, standardization
-
-### 9. Document Converter (`document_converter`)
-- **Purpose**: Export markdown to various formats
-- **Key Features**: HTML, PDF, DOCX export with styling options
-- **Use Cases**: Publication, distribution, format migration
+### 5. Workflow Processor (`workflow_processor`)
+- **Purpose**: Unified orchestration tool for executing workflows and batch operations
+- **Key Features**: Sequential workflows, parallel batch operations, error handling, progress tracking, rollback support
+- **Use Cases**: Complex workflows, batch operations, multi-step processing, automation
 
 ## 🚀 Getting Started
 
@@ -87,28 +67,25 @@ markdown-agent/
 
 ```bash
 # Create from template
-agent-cli exec document_templates create_from_template \
+agent-cli exec document_transformer create_from_template \
   --template_name "tutorial" \
   --output_path "./my-guide.md" \
   --template_variables '{"title": "Advanced Git Workflows"}'
 
 # Add sections  
-agent-cli exec document_structure add_section \
+agent-cli exec content_editor add_section \
   --file_path "./my-guide.md" \
   --heading_text "Branching Strategies" \
-  --level 2 \
-  --target_location "after:Prerequisites"
+  --heading_level 2 \
+  --location "after_section:prerequisites"
 
 # Generate table of contents
-agent-cli exec document_structure generate_toc \
-  --file_path "./my-guide.md" \
-  --toc_style "github" \
-  --max_depth 3
+agent-cli exec content_editor generate_toc \
+  --file_path "./my-guide.md"
 
 # Validate final document
-agent-cli exec document_validator full_check \
-  --file_paths '["./my-guide.md"]' \
-  --ruleset "technical"
+agent-cli exec document_validator full_validation \
+  --file_paths '["./my-guide.md"]'
 ```
 
 ## 🎛️ Configuration Options
@@ -140,9 +117,9 @@ Use batch operations and metadata synchronization for managing related document 
 
 ```json
 {
-  "tool": "content_block",
+  "tool": "content_editor",
   "command": "batch_replace", 
-  "file_paths": ["./docs/*.md"],
+  "file_path": "./docs/api-guide.md",
   "batch_operations": [
     {"search": "v1.0", "replace": "v2.0"}
   ]
@@ -155,10 +132,8 @@ Integrate validation checks into your publishing workflow:
 ```json
 {
   "tool": "document_validator",
-  "command": "full_check",
-  "file_paths": ["./content/**/*.md"],
-  "ruleset": "strict",
-  "check_external_links": true
+  "command": "full_validation",
+  "file_paths": ["./content/**/*.md"]
 }
 ```
 
@@ -167,13 +142,15 @@ Standardize document creation across teams:
 
 ```json
 {
-  "tool": "document_templates", 
+  "tool": "document_transformer", 
   "command": "create_from_template",
-  "template_name": "specification",
-  "template_variables": {
-    "title": "User Authentication API",
-    "version": "1.2.0",
-    "authors": ["Technical Team"]
+  "template_options": {
+    "template_name": "specification",
+    "template_variables": {
+      "title": "User Authentication API",
+      "version": "1.2.0",
+      "authors": ["Technical Team"]
+    }
   }
 }
 ```
