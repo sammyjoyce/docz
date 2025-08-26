@@ -1,0 +1,16 @@
+.{
+    // Agent configuration template
+    // Customize these settings for your specific agent
+    
+    .max_concurrent_operations = 10,
+    .default_timeout_ms = 30000,
+    .enable_debug_logging = false,
+    
+    // Add your agent-specific configuration here
+    // Example:
+    // .custom_setting = "value",
+    // .feature_flags = .{
+    //     .enable_feature_x = true,
+    //     .enable_feature_y = false,
+    // },
+}

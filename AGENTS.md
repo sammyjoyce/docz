@@ -1,8 +1,25 @@
 # AGENTS Guide
 
+## Project Structure (multi-agent)
+- `agents/`: individual terminal agents (built independently)
+  - `agents/<name>/main.zig`: agent entry (CLI parsing + engine call)
+  - `agents/<name>/spec.zig`: agent spec (system prompt + tools registration)
+  - `agents/<name>/*`: agent-specific implementation, config (.zon), prompts, tools
+- `src/core/`: shared engine (`engine.zig`) and runtime used by all agents
+- `src/`: shared modules (HTTP/Anthropic client, tools registry, CLI, TUI)
+
+Notes:
+- The root binary delegates to the selected agent at build time (default: `markdown`).
+- New agents register a spec with the core engine and get their own `agents/<name>/main.zig`.
+- Agents are built individually by choosing `-Dagent=<name>`; only the selected agent is compiled into the binary.
+
 ## Build / Run
-• Build: `zig build`
-• Run: `zig build run -- <args>`
+• Build default agent: `zig build`
+• Run default agent: `zig build run -- <args>`
+• Choose agent: `zig build -Dagent=markdown run -- <args>`
+• Install only agent binary: `zig build -Dagent=markdown install-agent`
+• Direct agent run (bypasses root shim): `zig build -Dagent=markdown run-agent -- <args>`
+• Agent entry (markdown): `agents/markdown/main.zig` (wired via `-Dagent`)
 
 ## Tests
 • All: `zig build test --summary all`
@@ -18,6 +35,21 @@
 • camelCase fn/vars, PascalCase types, ALL_CAPS consts.
 • Return `!Error`; wrap calls with `try`; avoid panics.
 • 4-space indent; run `zig fmt` before commit.
+
+## Data Organization
+• Keep data separated in `.zon` files (use like JSON files in Node ecosystem).
+• Use `.zon` files for configuration, static data, templates, and environment-specific settings.
+• Co-locate `.zon` files with relevant modules (e.g., `config.zon`, `tools.zon`).
+• Load `.zon` data at comptime with `@embedFile` + `std.zig.parseFromSlice`.
+
+## Creating a New Agent
+1. Create `agents/<name>/` with the following files:
+   - `main.zig`: parses CLI and calls `engine.runWithOptions` with your `SPEC`.
+   - `spec.zig`: returns `engine.AgentSpec` with `buildSystemPrompt` + `registerTools`.
+   - `system_prompt.txt`: your system prompt template (optional; can be computed).
+   - `config.zon`, `tools.zon`, and any other agent-local data/modules.
+2. Build and run it: `zig build -Dagent=<name> run -- "..."`
+3. The engine exposes shared CLI, Anthropic client, auth, streaming, and a basic tool registry; your agent provides prompts and registers any extra tools.
 
 ## Zig 0.15.1 Migration Checklist (contributors)
 

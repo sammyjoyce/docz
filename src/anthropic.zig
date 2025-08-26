@@ -3,6 +3,7 @@
 
 const std = @import("std");
 const sse = @import("sse.zig");
+const curl = @import("curl.zig");
 
 pub const MessageRole = enum { system, user, assistant, tool };
 
@@ -346,68 +347,108 @@ pub const AnthropicClient = struct {
             try self.refreshOAuthIfNeeded();
         }
 
-        // 1) Build request body and send streaming request via std.http.Client
+        // Build request body
         const body_json = try buildBodyJson(self.allocator, params);
         defer self.allocator.free(body_json);
 
-        var client = std.http.Client{ .allocator = self.allocator };
+        // Initialize libcurl client
+        var client = curl.HttpClient.init(self.allocator) catch |err| {
+            std.log.err("Failed to initialize HTTP client for streaming: {}", .{err});
+            return Error.NetworkError;
+        };
         defer client.deinit();
 
-        // Prepare auth header
+        // Prepare headers with auth
         var auth_header_buffer: [512]u8 = undefined;
-        var auth_header: std.http.Header = undefined;
+        var auth_header_value: []const u8 = undefined;
 
-        switch (self.auth) {
-            .api_key => |key| {
-                auth_header = .{ .name = "x-api-key", .value = key };
+        const headers = switch (self.auth) {
+            .api_key => |key| blk: {
+                break :blk [_]curl.Header{
+                    .{ .name = "x-api-key", .value = key },
+                    .{ .name = "accept", .value = "text/event-stream" },
+                    .{ .name = "content-type", .value = "application/json" },
+                    .{ .name = "anthropic-version", .value = "2023-06-01" },
+                    .{ .name = "user-agent", .value = "docz/1.0 (libcurl)" },
+                };
             },
-            .oauth => |creds| {
-                const bearer = try std.fmt.bufPrint(&auth_header_buffer, "Bearer {s}", .{creds.access_token});
-                auth_header = .{ .name = "authorization", .value = bearer };
+            .oauth => |creds| blk: {
+                auth_header_value = try std.fmt.bufPrint(&auth_header_buffer, "Bearer {s}", .{creds.access_token});
+                break :blk [_]curl.Header{
+                    .{ .name = "authorization", .value = auth_header_value },
+                    .{ .name = "accept", .value = "text/event-stream" },
+                    .{ .name = "content-type", .value = "application/json" },
+                    .{ .name = "anthropic-version", .value = "2023-06-01" },
+                    .{ .name = "user-agent", .value = "docz/1.0 (libcurl)" },
+                };
             },
-        }
-
-        const extra_headers = [_]std.http.Header{
-            auth_header,
-            .{ .name = "accept", .value = "text/event-stream" },
-            .{ .name = "content-type", .value = "application/json" },
-            .{ .name = "anthropic-version", .value = "2023-06-01" },
         };
 
-        const uri = try std.Uri.parse("https://api.anthropic.com/v1/messages");
-        var req = try client.request(.POST, uri, .{
-            .extra_headers = &extra_headers,
-            .keep_alive = false,
-            .redirect_behavior = .not_allowed,
-        });
+        // Create streaming context
+        const StreamingContext = struct {
+            allocator: std.mem.Allocator,
+            callback: *const fn ([]const u8) void,
+            buffer: std.ArrayListUnmanaged(u8),
 
-        req.transfer_encoding = .{ .content_length = body_json.len };
+            pub fn init(alloc: std.mem.Allocator, cb: *const fn ([]const u8) void) @This() {
+                return @This(){
+                    .allocator = alloc,
+                    .callback = cb,
+                    .buffer = std.ArrayListUnmanaged(u8){},
+                };
+            }
 
-        var bw = try req.sendBody(&.{});
-        try bw.writer.writeAll(body_json);
-        try bw.end();
+            pub fn deinit(ctx: *@This()) void {
+                ctx.buffer.deinit(ctx.allocator);
+            }
+        };
 
-        // Receive the response using Zig 0.15.1 API
-        var resp = try req.receiveHead(&.{});
+        var stream_context = StreamingContext.init(self.allocator, params.on_token);
+        defer stream_context.deinit();
+
+        const req = curl.HttpRequest{
+            .method = .POST,
+            .url = "https://api.anthropic.com/v1/messages",
+            .headers = &headers,
+            .body = body_json,
+            .timeout_ms = 120000, // 2 minute timeout for streaming
+            .verify_ssl = true,
+            .follow_redirects = false,
+            .verbose = false,
+        };
+
+        // Perform streaming request
+        const status_code = client.streamRequest(
+            req,
+            processStreamChunk,
+            &stream_context,
+        ) catch |err| {
+            std.log.err("Streaming request failed: {}", .{err});
+            switch (err) {
+                curl.HttpError.NetworkError => return Error.NetworkError,
+                curl.HttpError.TlsError => return Error.NetworkError,
+                curl.HttpError.Timeout => return Error.NetworkError,
+                else => return Error.ApiError,
+            }
+        };
 
         // Check for 401 Unauthorized and retry if needed
-        if (resp.head.status == .unauthorized and !is_retry) {
+        if (status_code == 401 and !is_retry) {
             std.log.warn("Received 401 Unauthorized, attempting token refresh...", .{});
             return self.streamWithRetry(params, true); // Retry once after refresh
         }
 
-        if (resp.head.status != .ok) {
-            std.log.err("HTTP error: {}", .{resp.head.status});
+        if (status_code != 200) {
+            std.log.err("HTTP error: {}", .{status_code});
             return Error.ApiError;
         }
 
-        // Enhanced HTTP streaming response reading for Zig 0.15.1 with improved buffer management
-        // Use optimized streaming processing for large payloads (chunked encoding handled by std.http.Client)
-        var response_buffer: [65536]u8 = undefined; // 64KB buffer for enhanced processing
-        const response_reader = resp.reader(&response_buffer);
-
-        // Use enhanced streaming processing with larger buffer for better performance
-        try processStreamingResponse(self.allocator, response_reader, params.on_token);
+        // Process any remaining buffered data
+        if (stream_context.buffer.items.len > 0) {
+            processSSEChunk(&stream_context, &.{}) catch |err| {
+                std.log.warn("Error processing final streaming data: {}", .{err});
+            };
+        }
     }
 };
 
@@ -433,6 +474,63 @@ fn buildBodyJson(allocator: std.mem.Allocator, params: StreamParams) ![]u8 {
     try std.fmt.format(writer, "]}}", .{});
 
     return buffer.toOwnedSlice();
+}
+
+/// Callback function for processing streaming chunks from libcurl
+fn processStreamChunk(chunk: []const u8, context: *anyopaque) void {
+    const StreamingContext = struct {
+        allocator: std.mem.Allocator,
+        callback: *const fn ([]const u8) void,
+        buffer: std.ArrayListUnmanaged(u8),
+
+        pub fn init(alloc: std.mem.Allocator, cb: *const fn ([]const u8) void) @This() {
+            return @This(){
+                .allocator = alloc,
+                .callback = cb,
+                .buffer = std.ArrayListUnmanaged(u8){},
+            };
+        }
+
+        pub fn deinit(ctx: *@This()) void {
+            ctx.buffer.deinit(ctx.allocator);
+        }
+    };
+
+    const stream_context: *StreamingContext = @ptrCast(@alignCast(context));
+
+    // Process chunk for SSE events
+    processSSEChunk(stream_context, chunk) catch |err| {
+        std.log.warn("Error processing stream chunk: {}", .{err});
+    };
+}
+
+/// Process individual SSE chunk and extract events
+fn processSSEChunk(stream_context: anytype, chunk: []const u8) !void {
+    // Add chunk to buffer
+    try stream_context.buffer.appendSlice(stream_context.allocator, chunk);
+
+    // Process complete SSE events (separated by double newlines)
+    while (std.mem.indexOf(u8, stream_context.buffer.items, "\n\n")) |end_pos| {
+        const event_data = stream_context.buffer.items[0..end_pos];
+
+        // Extract SSE data field content
+        var lines = std.mem.splitSequence(u8, event_data, "\n");
+        while (lines.next()) |line| {
+            const trimmed_line = std.mem.trim(u8, line, " \t\r");
+            if (std.mem.startsWith(u8, trimmed_line, "data: ")) {
+                const data_content = trimmed_line[6..]; // Skip "data: "
+                if (data_content.len > 0 and !std.mem.eql(u8, data_content, "[DONE]")) {
+                    // Call the user callback with the SSE data
+                    stream_context.callback(data_content);
+                }
+            }
+        }
+
+        // Remove processed event from buffer
+        const remaining = stream_context.buffer.items[end_pos + 2 ..];
+        std.mem.copyForwards(u8, stream_context.buffer.items[0..remaining.len], remaining);
+        stream_context.buffer.shrinkRetainingCapacity(remaining.len);
+    }
 }
 
 /// Check if response uses chunked transfer encoding
@@ -1039,70 +1137,94 @@ pub fn buildAuthorizationUrl(allocator: std.mem.Allocator, pkce_params: PkcePara
 
 /// Exchange authorization code for tokens
 pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorization_code: []const u8, pkce_params: PkceParams) !OAuthCredentials {
-    var client = std.http.Client{ .allocator = allocator };
+    std.log.info("🔄 Exchanging authorization code for OAuth tokens...", .{});
+
+    var client = curl.HttpClient.init(allocator) catch |err| {
+        std.log.err("Failed to initialize HTTP client: {}", .{err});
+        return Error.NetworkError;
+    };
     defer client.deinit();
 
-    // Build the request body
-    const body = try std.fmt.allocPrint(allocator, "grant_type=authorization_code&code={s}&redirect_uri={s}&client_id={s}&code_verifier={s}", .{ authorization_code, OAUTH_REDIRECT_URI, OAUTH_CLIENT_ID, pkce_params.code_verifier });
+    // Split the authorization code if it contains a fragment (like OpenCode does)
+    var code_parts = std.mem.splitSequence(u8, authorization_code, "#");
+    const code = code_parts.next() orelse authorization_code;
+    const state = code_parts.next() orelse "";
+
+    // Build the JSON request body (matching OpenCode's format)
+    const body = try std.fmt.allocPrint(allocator,
+        \\{{
+        \\  "code": "{s}",
+        \\  "state": "{s}",
+        \\  "grant_type": "authorization_code",
+        \\  "client_id": "{s}",
+        \\  "redirect_uri": "{s}",
+        \\  "code_verifier": "{s}"
+        \\}}
+    , .{ code, state, OAUTH_CLIENT_ID, OAUTH_REDIRECT_URI, pkce_params.code_verifier });
     defer allocator.free(body);
 
-    const headers = [_]std.http.Header{
-        .{ .name = "content-type", .value = "application/x-www-form-urlencoded" },
+    std.log.debug("Sending OAuth token request with JSON body: {s}", .{body});
+
+    const headers = [_]curl.Header{
+        .{ .name = "content-type", .value = "application/json" },
         .{ .name = "accept", .value = "application/json" },
+        .{ .name = "user-agent", .value = "docz/1.0 (libcurl)" },
     };
 
-    const uri = try std.Uri.parse(OAUTH_TOKEN_ENDPOINT);
-    var req = try client.request(.POST, uri, .{
-        .extra_headers = &headers,
-        .keep_alive = false,
-        .redirect_behavior = .not_allowed,
-    });
+    const req = curl.HttpRequest{
+        .method = .POST,
+        .url = OAUTH_TOKEN_ENDPOINT,
+        .headers = &headers,
+        .body = body,
+        .timeout_ms = 30000, // 30 second timeout
+        .verify_ssl = true,
+        .follow_redirects = false,
+        .verbose = false,
+    };
 
-    req.transfer_encoding = .{ .content_length = body.len };
+    var resp = client.request(req) catch |err| {
+        std.log.err("❌ Token exchange request failed: {}", .{err});
+        switch (err) {
+            curl.HttpError.NetworkError => {
+                std.log.err("   Network connection failed", .{});
+                std.log.err("   • Check your internet connection", .{});
+                std.log.err("   • Check if corporate firewall blocks HTTPS", .{});
+            },
+            curl.HttpError.TlsError => {
+                std.log.err("   TLS/SSL connection failed", .{});
+                std.log.err("   • Certificate validation or security settings issue", .{});
+            },
+            curl.HttpError.Timeout => {
+                std.log.err("   Request timed out", .{});
+                std.log.err("   🔄 Try again - this is often temporary", .{});
+            },
+            else => {
+                std.log.err("   Unexpected error: {}", .{err});
+                std.log.err("   🔄 Please try again", .{});
+            },
+        }
+        return Error.NetworkError;
+    };
+    defer resp.deinit();
 
-    var bw = try req.sendBody(&.{});
-    try bw.writer.writeAll(body);
-    try bw.end();
-
-    // Receive the response using Zig 0.15.1 API
-    var resp = try req.receiveHead(&.{});
-
-    if (resp.head.status != .ok) {
-        std.log.err("OAuth token exchange failed with status: {}", .{resp.head.status});
+    if (resp.status_code != 200) {
+        std.log.err("OAuth token exchange failed with status: {}", .{resp.status_code});
+        if (resp.status_code >= 400 and resp.status_code < 500) {
+            std.log.err("Client error - check OAuth configuration", .{});
+        } else if (resp.status_code >= 500) {
+            std.log.err("Server error - Anthropic's OAuth service may be unavailable", .{});
+        }
         return Error.AuthError;
     }
-
-    // Read response body using Zig 0.15.1 allocRemaining pattern for OAuth token responses
-    var response_buffer: [4096]u8 = undefined; // 4KB ring buffer for OAuth JSON responses
-    const response_reader = resp.reader(&response_buffer);
-    
-    // Use allocRemaining for proper Zig 0.15.1 compatibility with 64KB size limit for OAuth responses  
-    const size_limit: std.Io.Limit = @enumFromInt(65536); // 64KB limit for OAuth JSON responses
-    const response_data = response_reader.allocRemaining(allocator, size_limit) catch |err| switch (err) {
-        error.StreamTooLong => {
-            std.log.err("OAuth token response exceeds 64KB limit", .{});
-            return Error.AuthError;
-        },
-        error.OutOfMemory => {
-            std.log.err("Out of memory reading OAuth token response", .{});
-            return Error.OutOfMemory;
-        },
-        error.ReadFailed => {
-            std.log.err("Network error reading OAuth token response", .{});
-            return Error.ReadFailed;
-        },
-        else => return err,
-    };
-    defer allocator.free(response_data);
-    const actual_body = response_data;
 
     // Parse JSON response to extract OAuth tokens
     const parsed = std.json.parseFromSlice(struct {
         access_token: []const u8,
         refresh_token: []const u8,
         expires_in: i64,
-    }, allocator, actual_body, .{}) catch |err| {
+    }, allocator, resp.body, .{}) catch |err| {
         std.log.err("Failed to parse OAuth token response: {}", .{err});
+        std.log.debug("Response body: {s}", .{resp.body});
         return Error.AuthError;
     };
     defer parsed.deinit();
@@ -1110,6 +1232,8 @@ pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorization_code: [
     // Convert expires_in (seconds) to expires_at (Unix timestamp)
     const now = std.time.timestamp();
     const expires_at = now + parsed.value.expires_in;
+
+    std.log.info("✅ OAuth tokens received successfully!", .{});
 
     // Return OAuth credentials with owned strings
     return OAuthCredentials{
@@ -1122,69 +1246,75 @@ pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorization_code: [
 
 /// Refresh OAuth tokens
 pub fn refreshTokens(allocator: std.mem.Allocator, refresh_token: []const u8) !OAuthCredentials {
-    var client = std.http.Client{ .allocator = allocator };
+    std.log.info("🔄 Refreshing OAuth tokens...", .{});
+
+    var client = curl.HttpClient.init(allocator) catch |err| {
+        std.log.err("Failed to initialize HTTP client: {}", .{err});
+        return Error.NetworkError;
+    };
     defer client.deinit();
 
-    // Build the request body
-    const body = try std.fmt.allocPrint(allocator, "grant_type=refresh_token&refresh_token={s}&client_id={s}", .{ refresh_token, OAUTH_CLIENT_ID });
+    // Build the JSON request body (matching OpenCode's format)
+    const body = try std.fmt.allocPrint(allocator,
+        \\{{
+        \\  "grant_type": "refresh_token",
+        \\  "refresh_token": "{s}",
+        \\  "client_id": "{s}"
+        \\}}
+    , .{ refresh_token, OAUTH_CLIENT_ID });
     defer allocator.free(body);
 
-    const headers = [_]std.http.Header{
-        .{ .name = "content-type", .value = "application/x-www-form-urlencoded" },
+    const headers = [_]curl.Header{
+        .{ .name = "content-type", .value = "application/json" },
         .{ .name = "accept", .value = "application/json" },
+        .{ .name = "user-agent", .value = "docz/1.0 (libcurl)" },
     };
 
-    const uri = try std.Uri.parse(OAUTH_TOKEN_ENDPOINT);
-    var req = try client.request(.POST, uri, .{
-        .extra_headers = &headers,
-        .keep_alive = false,
-        .redirect_behavior = .not_allowed,
-    });
+    const req = curl.HttpRequest{
+        .method = .POST,
+        .url = OAUTH_TOKEN_ENDPOINT,
+        .headers = &headers,
+        .body = body,
+        .timeout_ms = 30000, // 30 second timeout
+        .verify_ssl = true,
+        .follow_redirects = false,
+        .verbose = false,
+    };
 
-    req.transfer_encoding = .{ .content_length = body.len };
+    var resp = client.request(req) catch |err| {
+        std.log.err("❌ Token refresh request failed: {}", .{err});
+        switch (err) {
+            curl.HttpError.NetworkError => {
+                std.log.err("Connection was reset by Anthropic's OAuth server during token refresh. This can happen due to network issues or server load.", .{});
+                std.log.err("Please try again in a few moments.", .{});
+            },
+            curl.HttpError.TlsError => {
+                std.log.err("TLS connection failed during token refresh.", .{});
+                std.log.err("Please check your network settings.", .{});
+            },
+            curl.HttpError.Timeout => {
+                std.log.err("Token refresh request timed out.", .{});
+                std.log.err("🔄 Try again - this is often temporary", .{});
+            },
+            else => {
+                std.log.err("Failed to refresh OAuth tokens: {}", .{err});
+            },
+        }
+        return Error.NetworkError;
+    };
+    defer resp.deinit();
 
-    var bw = try req.sendBody(&.{});
-    try bw.writer.writeAll(body);
-    try bw.end();
-
-    // Receive the response using Zig 0.15.1 API
-    var resp = try req.receiveHead(&.{});
-
-    if (resp.head.status != .ok) {
-        std.log.err("OAuth token refresh failed with status: {}", .{resp.head.status});
+    if (resp.status_code != 200) {
+        std.log.err("OAuth token refresh failed with status: {}", .{resp.status_code});
         return Error.AuthError;
     }
-
-    // Read response body using Zig 0.15.1 allocRemaining pattern for OAuth token refresh
-    var response_buffer: [4096]u8 = undefined; // 4KB ring buffer for OAuth JSON responses
-    const response_reader = resp.reader(&response_buffer);
-    
-    // Use allocRemaining for proper Zig 0.15.1 compatibility with 64KB size limit for OAuth responses
-    const size_limit: std.Io.Limit = @enumFromInt(65536); // 64KB limit for OAuth JSON responses
-    const response_data = response_reader.allocRemaining(allocator, size_limit) catch |err| switch (err) {
-        error.StreamTooLong => {
-            std.log.err("OAuth token refresh response exceeds 64KB limit", .{});
-            return Error.AuthError;
-        },
-        error.OutOfMemory => {
-            std.log.err("Out of memory reading OAuth token refresh response", .{});
-            return Error.OutOfMemory;
-        },
-        error.ReadFailed => {
-            std.log.err("Network error reading OAuth token refresh response", .{});
-            return Error.ReadFailed;
-        },
-        else => return err,
-    };
-    defer allocator.free(response_data);
-    const actual_body = response_data;
 
     // Parse JSON response to extract OAuth tokens
     const parsed = std.json.parseFromSlice(struct {
         access_token: []const u8,
         refresh_token: []const u8,
         expires_in: i64,
-    }, allocator, actual_body, .{}) catch |err| {
+    }, allocator, resp.body, .{}) catch |err| {
         std.log.err("Failed to parse OAuth token refresh response: {}", .{err});
         return Error.AuthError;
     };
@@ -1193,6 +1323,8 @@ pub fn refreshTokens(allocator: std.mem.Allocator, refresh_token: []const u8) !O
     // Convert expires_in (seconds) to expires_at (Unix timestamp)
     const now = std.time.timestamp();
     const expires_at = now + parsed.value.expires_in;
+
+    std.log.info("✅ OAuth tokens refreshed successfully!", .{});
 
     // Return OAuth credentials with owned strings
     return OAuthCredentials{

@@ -1,7 +1,7 @@
 //! Simple tools registry and built-in tools.
 
 const std = @import("std");
-const anthropic = @import("anthropic.zig");
+const anthropic = @import("anthropic_shared");
 
 /// Error set for tool operations.
 pub const ToolError = error{
@@ -109,7 +109,7 @@ fn oracle_tool(allocator: std.mem.Allocator, input: []const u8) ToolError![]u8 {
 
     const prompt_text = parsed.value.prompt;
     const api_key = std.posix.getenv("ANTHROPIC_API_KEY") orelse "";
-    var client = @import("anthropic.zig").AnthropicClient.init(allocator, api_key) catch |err| switch (err) {
+    var client = @import("anthropic_shared").AnthropicClient.init(allocator, api_key) catch |err| switch (err) {
         anthropic.Error.MissingAPIKey => return ToolError.AuthError,
         anthropic.Error.OutOfMemory => return ToolError.OutOfMemory,
         else => return ToolError.UnexpectedError,
@@ -170,7 +170,7 @@ fn oracle_tool(allocator: std.mem.Allocator, input: []const u8) ToolError![]u8 {
 
     client.stream(.{
         .model = "claude-3-sonnet-20240229",
-        .messages = &[_]@import("anthropic.zig").Message{
+        .messages = &[_]@import("anthropic_shared").Message{
             .{ .role = .system, .content = system_prompt },
             .{ .role = .user, .content = prompt_text },
         },

@@ -1,6 +1,6 @@
 # docz
 
-**Markdown-Focused CLI Agent** - A specialized AI assistant built in Zig for creating, editing, and managing complex markdown documents with sophisticated tooling.
+Terminal AI agents in Zig. The repo now supports multiple independent agents with shared core runtime. The existing Markdown agent is the first implementation.
 
 ## ✨ Features
 
@@ -13,19 +13,23 @@
 
 ## 🚀 Quick Start
 
-### Build and Run
+### Build and Run (multi-agent)
 
 ```bash
 # Clone and build
 git clone https://github.com/sammyjoyce/docz.git
 cd docz/
-zig build
-
-# Run the markdown agent
+zig build                         # builds default agent (markdown)
 zig build run -- "Create a technical guide about Git workflows"
 
-# Run with specific configuration
-zig build run -- --config src/markdown_agent/config.zon "Edit document structure"
+# Choose an agent explicitly (default is markdown)
+zig build -Dagent=markdown run -- "Generate a README"
+
+# Install only the selected agent binary
+zig build -Dagent=markdown install-agent
+
+# Run agent entry directly (bypasses root shim)
+zig build -Dagent=markdown run-agent -- "Explain usage"
 ```
 
 ### Download Release
@@ -53,19 +57,22 @@ The specialized markdown agent includes these tools:
 ## 📁 Project Structure
 
 ```
-src/markdown_agent/        # Specialized markdown agent
-├── markdown_agent.zig     # Core agent implementation  
-├── config.zon            # Configuration (validation rules, templates)
-├── tools.zon             # Tool definitions and schemas
-├── system_prompt.txt     # Agent system prompt
-├── examples.md           # Usage examples and workflows
-├── README.md             # Module documentation
-└── tools/                # Tool implementations (5 tools)
-    ├── document_io.zig
-    ├── content_editor.zig
-    ├── document_validator.zig
-    ├── document_transformer.zig
-    └── workflow_processor.zig
+agents/
+  markdown/               # Markdown agent (entry + spec + impl)
+    ├── main.zig          # Agent entry point (CLI + engine)
+    ├── spec.zig          # Agent-specific prompts/tools hook
+    ├── markdown_agent.zig# Agent implementation API
+    ├── config.zon, tools.zon, system_prompt.txt, ...
+
+src/
+  core/
+    └── engine.zig        # Shared engine (auth, loop, streaming)
+  markdown_agent/         # Compatibility bridge for imports (kept)
+    └── markdown_agent.zig
+  cli.zig                 # Shared CLI parsing
+  tools.zig               # Shared tools registry (generic)
+  anthropic.zig           # Anthropic HTTP client
+  main.zig                # Delegates to active agent selected via -Dagent
 ```
 
 ## 🎯 Use Cases
@@ -99,18 +106,22 @@ exe.root_module.addImport("docz", docz_mod);
 
 ```zig
 const docz = @import("docz");
-const markdown_agent = docz.markdown_agent;
-
-// Initialize the agent
-const agent = markdown_agent.MarkdownAgent.init(allocator, config);
-const result = try agent.executeCommand("document_transformer", params);
+// Use the shared engine and provide an AgentSpec
+const engine = @import("core_engine");
+const my_spec: engine.AgentSpec = .{
+    .buildSystemPrompt = (struct {
+        fn f(a: std.mem.Allocator, o: engine.CliOptions) ![]const u8 { _ = o; return a.dupe(u8, "My agent"); }
+    }).f,
+    .registerTools = (struct { fn f(reg: *@import("tools_shared").Registry) !void { _ = reg; } }).f,
+};
+try engine.runWithOptions(allocator, options, my_spec);
 ```
 
 ## 📖 Documentation
 
 - **[PROJECT.md](PROJECT.md)** - Complete project documentation and architecture
-- **[src/markdown_agent/README.md](src/markdown_agent/README.md)** - Markdown agent module guide
-- **[src/markdown_agent/examples.md](src/markdown_agent/examples.md)** - Usage examples and workflows
+- **[agents/markdown/README.md](agents/markdown/README.md)** - Markdown agent guide
+- **[agents/markdown/examples.md](agents/markdown/examples.md)** - Usage examples and workflows
 - **[AGENTS.md](AGENTS.md)** - General agent development guide
 
 ## 🏗️ Development

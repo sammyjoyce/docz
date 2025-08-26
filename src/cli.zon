@@ -1,6 +1,11 @@
 .{
     .name = "docz",
+    .version = "0.1.0",
     .description = "CLI agent for writing and refining markdown documents",
+    .usage_patterns = .{
+        "[OPTIONS] [FLAGS] [PROMPT]",
+        "auth <SUBCOMMAND>",
+    },
     .options = .{
         .{
             .short = 'm',
@@ -51,11 +56,6 @@
     },
     .flags = .{
         .{
-            .long = "oauth",
-            .description = "Setup OAuth authentication flow",
-            .short = 'O',
-        },
-        .{
             .short = 'v',
             .long = "verbose",
             .description = "Enable verbose logging output",
@@ -101,9 +101,27 @@
     },
     .positionals = .{
         .{
-            .meta = .PROMPT,
+            .meta = .COMMAND,
             .type = "string",
-            .description = "The prompt text to send (optional if using --input or stdin)",
+            .description = "Command to run (auth or chat prompt)",
         },
+    },
+    .subcommands = .{
+        .auth = .{
+            .description = "Authentication management commands",
+            .subcommands = .{
+                .login = "Setup OAuth authentication with Claude Pro/Max",
+                .status = "Show current authentication status",
+                .refresh = "Refresh OAuth tokens if available",
+            },
+        },
+    },
+    .examples = .{
+        .{ .command = "\"What is 2+2?\"", .description = "Chat with Claude" },
+        .{ .command = "auth login", .description = "Setup OAuth" },
+        .{ .command = "auth status", .description = "Check auth status" },
+        .{ .command = "--help", .description = "Show this help" },
+        .{ .command = "-m claude-3-5-sonnet-20241022 \"Explain quantum physics\"", .description = "Use specific model" },
+        .{ .command = "-i input.md -o output.md", .description = "Process file input/output" },
     },
 }
