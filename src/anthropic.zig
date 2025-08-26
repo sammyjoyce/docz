@@ -2,6 +2,7 @@
 //! Supports both API key and OAuth (Claude Pro/Max) authentication.
 
 const std = @import("std");
+const sse = @import("sse.zig");
 
 pub const MessageRole = enum { system, user, assistant, tool };
 
@@ -82,6 +83,48 @@ pub const RefreshState = struct {
 /// Global refresh state for single-flight protection
 var global_refresh_state = RefreshState.init();
 
+/// Global content collector for complete method (not thread-safe)
+var global_content_collector: std.ArrayList(u8) = undefined;
+var global_allocator: std.mem.Allocator = undefined;
+
+/// Model pricing information (rates per million tokens)
+pub const ModelPricing = struct {
+    input_rate: f64, // Rate per million input tokens
+    output_rate: f64, // Rate per million output tokens
+
+    pub fn getInputCostPerToken(self: ModelPricing) f64 {
+        return self.input_rate / 1_000_000.0;
+    }
+
+    pub fn getOutputCostPerToken(self: ModelPricing) f64 {
+        return self.output_rate / 1_000_000.0;
+    }
+};
+
+/// Anthropic API pricing table (updated as of August 2025)
+const MODEL_PRICING = std.StaticStringMap(ModelPricing).initComptime(.{
+    // Current Models
+    .{ "claude-opus-4-1-20250805", ModelPricing{ .input_rate = 15.0, .output_rate = 75.0 } },
+    .{ "claude-opus-4-1", ModelPricing{ .input_rate = 15.0, .output_rate = 75.0 } }, // alias
+    .{ "claude-opus-4-20250514", ModelPricing{ .input_rate = 15.0, .output_rate = 75.0 } },
+    .{ "claude-opus-4-0", ModelPricing{ .input_rate = 15.0, .output_rate = 75.0 } }, // alias
+    .{ "claude-sonnet-4-20250514", ModelPricing{ .input_rate = 3.0, .output_rate = 15.0 } },
+    .{ "claude-sonnet-4-0", ModelPricing{ .input_rate = 3.0, .output_rate = 15.0 } }, // alias
+    .{ "claude-3-7-sonnet-20250219", ModelPricing{ .input_rate = 3.0, .output_rate = 15.0 } },
+    .{ "claude-3-7-sonnet-latest", ModelPricing{ .input_rate = 3.0, .output_rate = 15.0 } }, // alias
+    .{ "claude-3-5-haiku-20241022", ModelPricing{ .input_rate = 0.80, .output_rate = 4.0 } },
+    .{ "claude-3-5-haiku-latest", ModelPricing{ .input_rate = 0.80, .output_rate = 4.0 } }, // alias
+    .{ "claude-3-haiku-20240307", ModelPricing{ .input_rate = 0.25, .output_rate = 1.25 } },
+
+    // Legacy/Deprecated Models
+    .{ "claude-3-5-sonnet-20241022", ModelPricing{ .input_rate = 3.0, .output_rate = 15.0 } }, // deprecated
+    .{ "claude-3-5-sonnet-20240620", ModelPricing{ .input_rate = 3.0, .output_rate = 15.0 } }, // deprecated
+    .{ "claude-3-opus-20240229", ModelPricing{ .input_rate = 15.0, .output_rate = 75.0 } }, // deprecated
+});
+
+/// Default pricing for unknown models (uses Sonnet 4 rates)
+const DEFAULT_PRICING = ModelPricing{ .input_rate = 3.0, .output_rate = 15.0 };
+
 /// Cost calculation structure with Pro/Max override support
 pub const CostCalculator = struct {
     is_oauth_session: bool,
@@ -90,34 +133,47 @@ pub const CostCalculator = struct {
         return CostCalculator{ .is_oauth_session = is_oauth };
     }
 
+    /// Get model pricing information
+    fn getModelPricing(model: []const u8) ModelPricing {
+        return MODEL_PRICING.get(model) orelse DEFAULT_PRICING;
+    }
+
     /// Calculate cost for input tokens (returns 0 for OAuth Pro/Max sessions)
     pub fn calculateInputCost(self: CostCalculator, tokens: u32, model: []const u8) f64 {
         if (self.is_oauth_session) return 0.0;
 
-        // API key pricing (example rates per 1k tokens)
-        _ = model; // TODO: Implement per-model pricing
-        const rate_per_1k = 0.003; // Example rate
-        return (@as(f64, @floatFromInt(tokens)) / 1000.0) * rate_per_1k;
+        const pricing = getModelPricing(model);
+        return @as(f64, @floatFromInt(tokens)) * pricing.getInputCostPerToken();
     }
 
     /// Calculate cost for output tokens (returns 0 for OAuth Pro/Max sessions)
     pub fn calculateOutputCost(self: CostCalculator, tokens: u32, model: []const u8) f64 {
         if (self.is_oauth_session) return 0.0;
 
-        // API key pricing (example rates per 1k tokens)
-        _ = model; // TODO: Implement per-model pricing
-        const rate_per_1k = 0.015; // Example rate
-        return (@as(f64, @floatFromInt(tokens)) / 1000.0) * rate_per_1k;
+        const pricing = getModelPricing(model);
+        return @as(f64, @floatFromInt(tokens)) * pricing.getOutputCostPerToken();
     }
 
     /// Get pricing display mode
     pub fn getPricingMode(self: CostCalculator) []const u8 {
         return if (self.is_oauth_session) "Subscription (Free)" else "Pay-per-use";
     }
+
+    /// Get model pricing information for display
+    pub fn getModelPricingInfo(self: CostCalculator, model: []const u8) ModelPricing {
+        _ = self; // Cost calculator itself doesn't affect pricing rates
+        return getModelPricing(model);
+    }
 };
 
 /// Error set for client operations.
-pub const Error = error{ MissingAPIKey, ApiError, AuthError, TokenExpired, OutOfMemory, InvalidFormat, InvalidPort, UnexpectedCharacter, InvalidGrant, NetworkError, RefreshInProgress, ChunkParseError, MalformedChunk, InvalidChunkSize };
+pub const Error = error{ MissingAPIKey, ApiError, AuthError, TokenExpired, OutOfMemory, InvalidFormat, InvalidPort, UnexpectedCharacter, InvalidGrant, NetworkError, RefreshInProgress, ChunkParseError, MalformedChunk, InvalidChunkSize, PayloadTooLarge, StreamingFailed, BufferOverflow, ChunkProcessingFailed,
+    // OAuth and network related errors
+    WriteFailed, ReadFailed, EndOfStream, ConnectionResetByPeer, ConnectionTimedOut, NetworkUnreachable, ConnectionRefused, TemporaryNameServerFailure, NameServerFailure, UnknownHostName, HostLacksNetworkAddresses, UnexpectedConnectFailure, TlsInitializationFailed, UnsupportedUriScheme, UriMissingHost, UriHostTooLong, CertificateBundleLoadFailure,
+    // HTTP protocol errors
+    HttpChunkInvalid, HttpChunkTruncated, HttpHeadersOversize, HttpRequestTruncated, HttpConnectionClosing, HttpHeadersInvalid, TooManyHttpRedirects, RedirectRequiresResend, HttpRedirectLocationMissing, HttpRedirectLocationOversize, HttpRedirectLocationInvalid, HttpContentEncodingUnsupported,
+    // Buffer errors
+    NoSpaceLeft, StreamTooLong };
 
 pub const StreamParams = struct {
     model: []const u8,
@@ -127,6 +183,32 @@ pub const StreamParams = struct {
     /// Callback invoked for every token / delta chunk.
     /// The slice is only valid until the next invocation.
     on_token: *const fn ([]const u8) void,
+};
+
+/// Response structure for non-streaming completion
+pub const CompletionResponse = struct {
+    content: []const u8,
+    usage: UsageInfo,
+    allocator: std.mem.Allocator,
+
+    pub fn deinit(self: *CompletionResponse, allocator: std.mem.Allocator) void {
+        _ = self;
+        _ = allocator;
+        // Content is owned by the collector, which will be freed separately
+    }
+};
+
+pub const UsageInfo = struct {
+    input_tokens: u32 = 0,
+    output_tokens: u32 = 0,
+};
+
+/// Parameters for non-streaming completion
+pub const CompleteParams = struct {
+    model: []const u8,
+    max_tokens: usize = 256,
+    temperature: f32 = 0.7,
+    messages: []const Message,
 };
 
 pub const AnthropicClient = struct {
@@ -175,7 +257,7 @@ pub const AnthropicClient = struct {
     }
 
     /// Refresh OAuth tokens if needed and update client auth with single-flight protection
-    pub fn refreshOAuthIfNeeded(self: *AnthropicClient) !void {
+    pub fn refreshOAuthIfNeeded(self: *AnthropicClient) Error!void {
         switch (self.auth) {
             .api_key => return, // No refresh needed for API key
             .oauth => |oauth_creds| {
@@ -221,12 +303,44 @@ pub const AnthropicClient = struct {
     }
 
     /// Streams completion via Server-Sent Events, invoking callback per data chunk.
-    pub fn stream(self: *AnthropicClient, params: StreamParams) anyerror!void {
+    pub fn stream(self: *AnthropicClient, params: StreamParams) Error!void {
         return self.streamWithRetry(params, false);
     }
 
+    /// Complete method for non-streaming requests (collects streaming response)
+    pub fn complete(self: *AnthropicClient, params: CompleteParams) !CompletionResponse {
+        // Set up global collector (not thread-safe, but ok for single-threaded use)
+        global_allocator = self.allocator;
+        global_content_collector = std.ArrayList(u8){};
+        defer global_content_collector.deinit(self.allocator);
+
+        // Create stream params with our collector callback
+        const stream_params = StreamParams{
+            .model = params.model,
+            .max_tokens = params.max_tokens,
+            .temperature = params.temperature,
+            .messages = params.messages,
+            .on_token = struct {
+                fn callback(token: []const u8) void {
+                    global_content_collector.appendSlice(global_allocator, token) catch return;
+                }
+            }.callback,
+        };
+
+        try self.stream(stream_params);
+
+        // Create owned content copy
+        const owned_content = try self.allocator.dupe(u8, global_content_collector.items);
+
+        return CompletionResponse{
+            .content = owned_content,
+            .usage = UsageInfo{ .input_tokens = 0, .output_tokens = 0 }, // TODO: Extract from response
+            .allocator = self.allocator,
+        };
+    }
+
     /// Internal method to handle streaming with automatic retry on 401
-    fn streamWithRetry(self: *AnthropicClient, params: StreamParams, is_retry: bool) anyerror!void {
+    fn streamWithRetry(self: *AnthropicClient, params: StreamParams, is_retry: bool) Error!void {
         // Refresh OAuth tokens if needed (unless this is already a retry)
         if (!is_retry) {
             try self.refreshOAuthIfNeeded();
@@ -348,7 +462,17 @@ const ChunkState = struct {
     }
 };
 
-/// Process chunked Server-Sent Events with enhanced memory optimization and graceful error recovery
+/// Enhanced configuration for large payload processing
+const LargePayloadConfig = struct {
+    large_chunk_threshold: usize = 1024 * 1024, // 1MB threshold for large chunk processing
+    streaming_buffer_size: usize = 64 * 1024, // 64KB buffer for streaming large chunks
+    max_accumulated_size: usize = 16 * 1024 * 1024, // 16MB max accumulated data before streaming
+    progress_reporting_interval: usize = 1024 * 1024, // Report progress every 1MB
+    adaptive_buffer_min: usize = 8 * 1024, // Minimum adaptive buffer size: 8KB
+    adaptive_buffer_max: usize = 512 * 1024, // Maximum adaptive buffer size: 512KB
+};
+
+/// Process chunked Server-Sent Events with enhanced large payload optimization and streaming processing
 fn processChunkedStreamingResponse(allocator: std.mem.Allocator, reader: *std.Io.Reader, callback: *const fn ([]const u8) void) !void {
     var event_data = std.array_list.Managed(u8).init(allocator);
     defer event_data.deinit();
@@ -357,23 +481,28 @@ fn processChunkedStreamingResponse(allocator: std.mem.Allocator, reader: *std.Io
     var chunk_buffer = std.array_list.Managed(u8).init(allocator);
     defer chunk_buffer.deinit();
 
-    // Use larger initial capacity for potentially large chunked events
-    try event_data.ensureTotalCapacity(8192);
-    try chunk_buffer.ensureTotalCapacity(4096);
+    const config = LargePayloadConfig{};
+
+    // Use adaptive initial capacity based on expected large payload handling
+    try event_data.ensureTotalCapacity(16384); // 16KB initial capacity
+    try chunk_buffer.ensureTotalCapacity(config.adaptive_buffer_min);
 
     var recovery_attempts: u8 = 0;
     const max_recovery_attempts = 3;
+    var total_bytes_processed: usize = 0;
+    var large_chunks_processed: u32 = 0;
 
     while (true) {
         if (chunk_state.reading_size) {
             // Read chunk size line (hex format with optional extensions)
-            const size_line_result = reader.takeDelimiterExclusive('\n') catch |err| switch (err) {
+            const size_line_result = reader.*.takeDelimiterExclusive('\n') catch |err| switch (err) {
                 error.EndOfStream => {
-                    // Send final event if any data remains in accumulated buffer
+                    // Send final event if any data remains
                     if (event_data.items.len > 0) {
                         callback(event_data.items);
                     }
-                    return; // Normal end of chunked stream
+                    std.log.debug("Chunked processing complete: {} bytes total, {} large chunks", .{ total_bytes_processed, large_chunks_processed });
+                    return; // Normal end of stream
                 },
                 error.StreamTooLong => {
                     std.log.warn("Chunked response contains size line too long for buffer, attempting graceful recovery", .{});
@@ -384,12 +513,12 @@ fn processChunkedStreamingResponse(allocator: std.mem.Allocator, reader: *std.Io
                         return processStreamingResponse(allocator, reader, callback) catch Error.MalformedChunk;
                     }
                     chunk_state.reset();
-                    continue;
+                    continue; // Try again
                 },
                 else => return err,
             };
 
-            const size_line = std.mem.trim(u8, size_line_result, " \t\r\n");
+            const size_line = if (size_line_result) |l| std.mem.trim(u8, l, " \t\r\n") else return; // Handle EOF
 
             // Skip empty lines that might occur in malformed streams
             if (size_line.len == 0) {
@@ -412,6 +541,14 @@ fn processChunkedStreamingResponse(allocator: std.mem.Allocator, reader: *std.Io
             chunk_state.extensions = chunk_info.extensions;
             recovery_attempts = 0; // Reset on successful parse
 
+            // Enhanced logging for large chunk detection
+            if (chunk_state.size >= config.large_chunk_threshold) {
+                std.log.info("Processing large chunk: {} bytes (using streaming mode)", .{chunk_state.size});
+                large_chunks_processed += 1;
+            } else if (chunk_state.size > 64 * 1024) {
+                std.log.debug("Processing medium chunk: {} bytes", .{chunk_state.size});
+            }
+
             if (chunk_state.size == 0) {
                 // Zero-sized chunk indicates end of chunked data
                 // Process any remaining trailers, then finish
@@ -421,14 +558,23 @@ fn processChunkedStreamingResponse(allocator: std.mem.Allocator, reader: *std.Io
                 if (event_data.items.len > 0) {
                     callback(event_data.items);
                 }
+                std.log.debug("Chunked processing complete: {} bytes total, {} large chunks", .{ total_bytes_processed, large_chunks_processed });
                 return;
             }
 
             chunk_state.reading_size = false;
             chunk_state.bytes_read = 0;
             chunk_buffer.clearRetainingCapacity();
+
+            // Adaptive buffer sizing based on chunk size for memory efficiency
+            const optimal_buffer_size = if (chunk_state.size >= config.large_chunk_threshold)
+                @min(config.adaptive_buffer_max, @max(config.adaptive_buffer_min, chunk_state.size / 8))
+            else
+                config.adaptive_buffer_min;
+
+            try chunk_buffer.ensureTotalCapacity(optimal_buffer_size);
         } else {
-            // Read chunk data incrementally with memory optimization
+            // Enhanced chunk data reading with streaming processing for large payloads
             const remaining = chunk_state.size - chunk_state.bytes_read;
             if (remaining == 0) {
                 // Chunk complete, process accumulated data as SSE lines
@@ -437,7 +583,9 @@ fn processChunkedStreamingResponse(allocator: std.mem.Allocator, reader: *std.Io
                 };
 
                 // Skip trailing CRLF after chunk data with graceful handling
-                _ = reader.takeDelimiterExclusive('\n') catch |err| switch (err) {
+                if (reader.*.takeDelimiterExclusive('\n')) |_| {
+                    // Successfully skipped CRLF
+                } else |err| switch (err) {
                     error.EndOfStream => return,
                     error.StreamTooLong => {
                         std.log.warn("Malformed chunk trailing CRLF, continuing gracefully", .{});
@@ -445,16 +593,30 @@ fn processChunkedStreamingResponse(allocator: std.mem.Allocator, reader: *std.Io
                     else => {
                         std.log.warn("Error reading chunk trailer CRLF: {}, continuing", .{err});
                     },
-                };
+                }
 
+                total_bytes_processed += chunk_state.size;
                 chunk_state.reset();
                 continue;
             }
 
-            // Read up to remaining bytes or available buffer space
-            const read_size = @min(remaining, 1024); // Read in 1KB increments for memory efficiency
-            var temp_buffer: [1024]u8 = undefined;
-            const bytes_read = reader.readUpTo(temp_buffer[0..read_size]) catch |err| switch (err) {
+            // Enhanced adaptive read sizing for large payloads
+            const is_large_chunk = chunk_state.size >= config.large_chunk_threshold;
+            const adaptive_read_size = if (is_large_chunk)
+                @min(remaining, config.streaming_buffer_size) // Use larger buffer for large chunks
+            else
+                @min(remaining, 4096); // Use smaller buffer for normal chunks
+
+            // Adaptive temporary buffer allocation for large chunk processing
+            var large_temp_buffer: [512 * 1024]u8 = undefined; // 512KB buffer for large chunks
+            var normal_temp_buffer: [4096]u8 = undefined; // 4KB buffer for normal chunks
+
+            const temp_buffer = if (is_large_chunk and adaptive_read_size > normal_temp_buffer.len)
+                large_temp_buffer[0..adaptive_read_size]
+            else
+                normal_temp_buffer[0..adaptive_read_size];
+
+            const bytes_read = reader.readUpTo(temp_buffer) catch |err| switch (err) {
                 error.EndOfStream => {
                     std.log.warn("Unexpected end of stream in chunk data, processing partial data", .{});
                     // Graceful degradation: process what we have so far
@@ -500,32 +662,95 @@ fn processChunkedStreamingResponse(allocator: std.mem.Allocator, reader: *std.Io
                 continue;
             }
 
-            // Accumulate chunk data with capacity management
+            // Enhanced memory management: streaming processing for very large chunks
+            if (is_large_chunk and chunk_buffer.items.len + bytes_read > config.max_accumulated_size) {
+                // Process accumulated data before adding more to prevent excessive memory usage
+                std.log.debug("Triggering streaming processing to prevent memory overflow (current: {}, adding: {})", .{ chunk_buffer.items.len, bytes_read });
+                if (chunk_buffer.items.len > 0) {
+                    processSSELines(chunk_buffer.items, &event_data, callback) catch |err| {
+                        std.log.warn("Error in streaming SSE processing: {}, continuing", .{err});
+                    };
+                    chunk_buffer.clearRetainingCapacity();
+                }
+            }
+
+            // Accumulate chunk data with enhanced capacity management
             try chunk_buffer.ensureUnusedCapacity(bytes_read);
             try chunk_buffer.appendSlice(temp_buffer[0..bytes_read]);
             chunk_state.bytes_read += bytes_read;
             recovery_attempts = 0; // Reset on successful read
+
+            // Enhanced progress reporting for large chunks
+            if (is_large_chunk and chunk_state.bytes_read > 0 and
+                chunk_state.bytes_read % config.progress_reporting_interval == 0)
+            {
+                const progress_percent = (@as(f64, @floatFromInt(chunk_state.bytes_read)) /
+                    @as(f64, @floatFromInt(chunk_state.size))) * 100.0;
+                std.log.info("Large chunk progress: {d:.1}% ({} / {} bytes)", .{ progress_percent, chunk_state.bytes_read, chunk_state.size });
+            }
         }
     }
 }
 
-/// Parse chunk size and extensions from chunk size line
+/// Enhanced chunk size validation thresholds for large payload processing
+const ChunkSizeValidation = struct {
+    max_chunk_size: usize = 512 * 1024 * 1024, // 512MB absolute maximum per chunk
+    large_chunk_threshold: usize = 1024 * 1024, // 1MB threshold for special handling
+    warning_threshold: usize = 64 * 1024 * 1024, // 64MB threshold for warnings
+    streaming_threshold: usize = 16 * 1024 * 1024, // 16MB threshold for mandatory streaming
+};
+
+/// Parse chunk size and extensions from chunk size line with enhanced large payload support
 fn parseChunkSize(size_line: []const u8) !struct { size: usize, extensions: ?[]const u8 } {
+    const validation = ChunkSizeValidation{};
+
     // Find semicolon separator for chunk extensions
     const semicolon_pos = std.mem.indexOf(u8, size_line, ";");
     const size_str = if (semicolon_pos) |pos| size_line[0..pos] else size_line;
     const extensions = if (semicolon_pos) |pos| size_line[pos + 1 ..] else null;
 
-    // Parse hex chunk size with error handling
+    // Enhanced size string validation before parsing
+    if (size_str.len == 0) {
+        std.log.warn("Empty chunk size string", .{});
+        return Error.ChunkParseError;
+    }
+
+    // Validate hex string format and reasonable length (prevent DoS)
+    if (size_str.len > 16) { // More than 16 hex digits would be > 64-bit integer
+        std.log.warn("Chunk size string too long: {} characters", .{size_str.len});
+        return Error.InvalidChunkSize;
+    }
+
+    // Parse hex chunk size with enhanced error handling
     const size = std.fmt.parseInt(usize, size_str, 16) catch |err| switch (err) {
-        error.Overflow => return Error.InvalidChunkSize,
-        error.InvalidCharacter => return Error.ChunkParseError,
+        error.Overflow => {
+            std.log.warn("Chunk size overflow when parsing: '{s}'", .{size_str});
+            return Error.InvalidChunkSize;
+        },
+        error.InvalidCharacter => {
+            std.log.warn("Invalid hex character in chunk size: '{s}'", .{size_str});
+            return Error.ChunkParseError;
+        },
     };
 
-    // Validate reasonable chunk size (prevent DoS)
-    if (size > 128 * 1024 * 1024) { // 128MB limit per chunk
-        std.log.warn("Chunk size {} exceeds maximum allowed size", .{size});
-        return Error.InvalidChunkSize;
+    // Enhanced chunk size validation with multiple thresholds
+    if (size > validation.max_chunk_size) {
+        std.log.err("Chunk size {} exceeds absolute maximum allowed size ({})", .{ size, validation.max_chunk_size });
+        return Error.PayloadTooLarge;
+    }
+
+    // Warning thresholds for large payload awareness
+    if (size >= validation.warning_threshold) {
+        std.log.warn("Very large chunk detected: {} bytes ({}MB) - enhanced processing enabled", .{ size, size / (1024 * 1024) });
+    } else if (size >= validation.streaming_threshold) {
+        std.log.info("Large chunk detected: {} bytes ({}MB) - streaming processing enabled", .{ size, size / (1024 * 1024) });
+    } else if (size >= validation.large_chunk_threshold) {
+        std.log.debug("Medium chunk detected: {} bytes ({}KB)", .{ size, size / 1024 });
+    }
+
+    // Log chunk extensions if present for debugging large payload scenarios
+    if (extensions) |ext| {
+        std.log.debug("Chunk extensions present: '{s}'", .{ext});
     }
 
     return .{ .size = size, .extensions = extensions };
@@ -534,7 +759,7 @@ fn parseChunkSize(size_line: []const u8) !struct { size: usize, extensions: ?[]c
 /// Process chunk trailers (headers after final chunk)
 fn processChunkTrailers(reader: *std.Io.Reader) !void {
     while (true) {
-        const trailer_line = reader.takeDelimiterExclusive('\n') catch |err| switch (err) {
+        const trailer_line = reader.*.takeDelimiterExclusive('\n') catch |err| switch (err) {
             error.EndOfStream => return,
             error.StreamTooLong => {
                 std.log.warn("Chunk trailer line too long, skipping", .{});
@@ -543,7 +768,7 @@ fn processChunkTrailers(reader: *std.Io.Reader) !void {
             else => return err,
         };
 
-        const line = std.mem.trim(u8, trailer_line, " \t\r\n");
+        const line = if (trailer_line) |l| std.mem.trim(u8, l, " \t\r\n") else return; // Handle EOF
         if (line.len == 0) {
             // Empty line indicates end of trailers
             return;
@@ -558,82 +783,208 @@ fn processChunkTrailers(reader: *std.Io.Reader) !void {
     }
 }
 
-/// Process accumulated chunk data as Server-Sent Event lines
+/// Process accumulated chunk data as Server-Sent Event lines with enhanced large payload handling
 fn processSSELines(chunk_data: []const u8, event_data: *std.array_list.Managed(u8), callback: *const fn ([]const u8) void) !void {
+    const sse_config = sse.SSEProcessingConfig{};
     var line_iter = std.mem.splitSequence(u8, chunk_data, "\n");
+    var lines_processed: usize = 0;
+    var total_data_processed: usize = 0;
 
     while (line_iter.next()) |line_data| {
         const line = std.mem.trim(u8, line_data, " \t\r\n");
+        lines_processed += 1;
 
         if (line.len == 0) {
             // Empty line indicates end of SSE event
             if (event_data.items.len > 0) {
-                callback(event_data.items);
+                // Enhanced event size validation for large payloads
+                if (event_data.items.len >= sse_config.large_event_threshold) {
+                    std.log.debug("Processing large SSE event: {} bytes", .{event_data.items.len});
+                }
+
+                if (event_data.items.len > sse_config.max_event_size) {
+                    std.log.warn("SSE event exceeds maximum size ({} > {}), truncating", .{ event_data.items.len, sse_config.max_event_size });
+                    // Truncate to maximum size to prevent memory issues
+                    const truncated_event = event_data.items[0..sse_config.max_event_size];
+                    callback(truncated_event);
+                } else {
+                    callback(event_data.items);
+                }
+
+                total_data_processed += event_data.items.len;
                 event_data.clearRetainingCapacity();
             }
         } else if (std.mem.startsWith(u8, line, "data: ")) {
-            // Parse SSE data field with enhanced capacity management
+            // Parse SSE data field with enhanced capacity management for large payloads
             const data_content = line[6..]; // Skip "data: "
+
+            // Enhanced validation for extremely large data lines
+            if (data_content.len > sse_config.max_event_size / 2) { // More than half max event size per line
+                std.log.warn("Very large SSE data line: {} bytes - consider streaming optimization", .{data_content.len});
+            }
+
             if (event_data.items.len > 0) {
                 try event_data.append('\n'); // Multi-line data separator
+            }
+
+            // Enhanced capacity management with overflow protection
+            const required_capacity = event_data.items.len + data_content.len;
+            if (required_capacity > sse_config.max_event_size) {
+                std.log.warn("SSE event would exceed maximum size, triggering early callback", .{});
+                // Trigger callback with current data before adding more
+                if (event_data.items.len > 0) {
+                    callback(event_data.items);
+                    event_data.clearRetainingCapacity();
+                }
             }
 
             // Ensure we have capacity for the new data to handle large payloads
             try event_data.ensureUnusedCapacity(data_content.len);
             try event_data.appendSlice(data_content);
+
+            // Enhanced streaming: trigger callback for very large events before completion
+            if (event_data.items.len >= sse_config.streaming_callback_threshold) {
+                std.log.debug("Large SSE event streaming: triggering early callback for {} bytes", .{event_data.items.len});
+                callback(event_data.items);
+                event_data.clearRetainingCapacity();
+            }
+        } else if (std.mem.startsWith(u8, line, "event: ") or
+            std.mem.startsWith(u8, line, "id: ") or
+            std.mem.startsWith(u8, line, "retry: "))
+        {
+            // Enhanced logging for other SSE fields in large payload scenarios
+            if (chunk_data.len >= sse_config.large_event_threshold) {
+                std.log.debug("SSE field in large payload: {s}", .{line[0..@min(line.len, 50)]});
+            }
         }
-        // Ignore other SSE fields (event, id, retry, etc.) in chunk processing
+
+        // Periodic progress reporting for very large chunk processing
+        if (lines_processed % sse_config.line_processing_batch_size == 0 and
+            chunk_data.len >= sse_config.large_event_threshold)
+        {
+            std.log.debug("SSE line processing progress: {} lines, {} bytes total", .{ lines_processed, total_data_processed });
+        }
+    }
+
+    // Final logging for large payload processing
+    if (chunk_data.len >= sse_config.large_event_threshold) {
+        std.log.debug("SSE processing complete: {} lines, {} bytes processed", .{ lines_processed, total_data_processed });
     }
 }
 
-/// Process Server-Sent Events using Io.Reader with enhanced streaming for large payloads
+/// Process Server-Sent Events using Io.Reader with comprehensive event field handling and enhanced error recovery
 fn processStreamingResponse(allocator: std.mem.Allocator, reader: *std.Io.Reader, callback: *const fn ([]const u8) void) !void {
-    var event_data = std.array_list.Managed(u8).init(allocator);
-    defer event_data.deinit();
+    const sse_config = sse.SSEProcessingConfig{};
+    var event_state = sse.SSEEventState.init(allocator);
+    defer event_state.deinit();
 
-    // Use larger initial capacity for potentially large events in chunked responses
-    try event_data.ensureTotalCapacity(4096);
+    var lines_processed: usize = 0;
+    var events_processed: usize = 0;
+    var bytes_processed: usize = 0;
+    var malformed_lines: usize = 0;
+    var partial_line_buffer = std.array_list.Managed(u8).init(allocator);
+    defer partial_line_buffer.deinit();
+
+    // Use larger initial capacity for potentially large events
+    try event_state.data_buffer.ensureTotalCapacity(4096);
+
+    std.log.debug("Enhanced SSE processing started with comprehensive field support", .{});
 
     while (true) {
-        // Read line by line using Io.Reader interface with enhanced error handling
-        const line_result = reader.takeDelimiterExclusive('\n') catch |err| switch (err) {
+        // Enhanced line reading with partial line accumulation for large events
+        const line_result = reader.*.takeDelimiterExclusive('\n') catch |err| switch (err) {
             error.EndOfStream => {
-                // Send final event if any data remains
-                if (event_data.items.len > 0) {
-                    callback(event_data.items);
+                // Process any remaining partial line
+                if (partial_line_buffer.items.len > 0) {
+                    std.log.debug("Processing final partial line: {} bytes", .{partial_line_buffer.items.len});
+                    processSSELine(partial_line_buffer.items, &event_state, &sse_config) catch |line_err| {
+                        std.log.warn("Error processing final partial line: {}", .{line_err});
+                        malformed_lines += 1;
+                    };
                 }
+
+                // Send final event if any data remains
+                if (event_state.has_data) {
+                    callback(event_state.data_buffer.items);
+                    events_processed += 1;
+                }
+
+                std.log.debug("Enhanced SSE processing complete: {} lines, {} events, {} bytes, {} malformed", .{ lines_processed, events_processed, bytes_processed, malformed_lines });
                 return; // Normal end of stream
             },
             error.StreamTooLong => {
-                // For large responses, handle lines that are too long gracefully
-                // Skip this line and continue processing to prevent blocking
-                std.log.warn("HTTP response contains line too long for buffer, skipping", .{});
-                continue;
+                std.log.warn("SSE line exceeds buffer capacity, attempting partial line handling", .{});
+                // For very large lines, we could implement partial line accumulation
+                // However, given current API constraints, we'll log and continue gracefully
+                if (partial_line_buffer.items.len > 0) {
+                    std.log.debug("Processing accumulated partial line due to StreamTooLong: {} bytes", .{partial_line_buffer.items.len});
+                    processSSELine(partial_line_buffer.items, &event_state, &sse_config) catch |line_err| {
+                        std.log.warn("Error processing partial line after StreamTooLong: {}", .{line_err});
+                        malformed_lines += 1;
+                    };
+                    partial_line_buffer.clearRetainingCapacity();
+                }
+                malformed_lines += 1;
+                continue; // Skip this oversized line and continue
             },
-            else => return err, // Other read errors
+            else => {
+                std.log.warn("Error reading SSE line: {}, attempting to continue", .{err});
+                return err;
+            },
         };
 
         const line = std.mem.trim(u8, line_result, " \t\r\n");
+        lines_processed += 1;
+        bytes_processed += line.len;
 
+        // Enhanced empty line handling with event dispatch
         if (line.len == 0) {
-            // Empty line indicates end of SSE event
-            if (event_data.items.len > 0) {
-                callback(event_data.items);
-                event_data.clearRetainingCapacity();
-            }
-        } else if (std.mem.startsWith(u8, line, "data: ")) {
-            // Parse SSE data field with enhanced capacity management
-            const data_content = line[6..]; // Skip "data: "
-            if (event_data.items.len > 0) {
-                try event_data.append('\n'); // Multi-line data separator
-            }
+            // Empty line indicates end of SSE event - dispatch complete event
+            if (event_state.has_data) {
+                // Enhanced event size validation
+                if (event_state.data_buffer.items.len >= sse_config.large_event_threshold) {
+                    std.log.debug("Dispatching large SSE event: {} bytes, type: {s}, id: {s}", .{ event_state.data_buffer.items.len, event_state.event_type orelse "default", event_state.event_id orelse "none" });
+                }
 
-            // Ensure we have capacity for the new data to handle large payloads
-            try event_data.ensureUnusedCapacity(data_content.len);
-            try event_data.appendSlice(data_content);
+                if (event_state.data_buffer.items.len > sse_config.max_event_size) {
+                    std.log.warn("SSE event exceeds maximum size ({} > {}), truncating for safety", .{ event_state.data_buffer.items.len, sse_config.max_event_size });
+                    // Truncate to maximum size to prevent memory issues
+                    const truncated_event = event_state.data_buffer.items[0..sse_config.max_event_size];
+                    callback(truncated_event);
+                } else {
+                    callback(event_state.data_buffer.items);
+                }
+
+                events_processed += 1;
+                event_state.reset(); // Prepare for next event
+            }
+        } else {
+            // Process SSE field line with comprehensive field support
+            processSSELine(line, &event_state, &sse_config) catch |line_err| {
+                std.log.warn("Error processing SSE line '{s}': {}, continuing", .{ line[0..@min(line.len, 50)], line_err });
+                malformed_lines += 1;
+                // Continue processing despite malformed line
+            };
+
+            // Enhanced early callback for very large events to prevent memory buildup
+            if (event_state.data_buffer.items.len >= sse_config.streaming_callback_threshold) {
+                std.log.debug("Triggering early callback for large SSE event: {} bytes", .{event_state.data_buffer.items.len});
+                callback(event_state.data_buffer.items);
+                events_processed += 1;
+                event_state.reset(); // Reset state after early dispatch
+            }
         }
-        // Ignore other SSE fields (event, id, retry, etc.)
+
+        // Periodic progress reporting for large event streams
+        if (lines_processed % 1000 == 0 and bytes_processed >= sse_config.large_event_threshold) {
+            std.log.debug("SSE processing progress: {} lines, {} events, {d:.1}MB processed", .{ lines_processed, events_processed, @as(f64, @floatFromInt(bytes_processed)) / (1024.0 * 1024.0) });
+        }
     }
+}
+
+/// Process individual SSE line with comprehensive field support and enhanced validation
+fn processSSELine(line: []const u8, event_state: *sse.SSEEventState, sse_config: *const sse.SSEProcessingConfig) !void {
+    _ = try sse.processSSELine(line, event_state, sse_config);
 }
 
 // ================== OAuth Implementation ==================
@@ -721,14 +1072,29 @@ pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorization_code: [
         return Error.AuthError;
     }
 
-    // Read response body using the new reader interface
-    var response_buffer: [128 * 1024]u8 = undefined; // 128KB buffer for OAuth JSON responses
+    // Read response body using Zig 0.15.1 allocRemaining pattern for OAuth token responses
+    var response_buffer: [4096]u8 = undefined; // 4KB ring buffer for OAuth JSON responses
     const response_reader = resp.reader(&response_buffer);
-
-    // Read the full response body directly into response buffer
-    var response_writer: std.Io.Writer = .fixed(&response_buffer);
-    const bytes_read = try response_reader.stream(&response_writer, .unlimited);
-    const actual_body = response_buffer[0..bytes_read];
+    
+    // Use allocRemaining for proper Zig 0.15.1 compatibility with 64KB size limit for OAuth responses  
+    const size_limit: std.Io.Limit = @enumFromInt(65536); // 64KB limit for OAuth JSON responses
+    const response_data = response_reader.allocRemaining(allocator, size_limit) catch |err| switch (err) {
+        error.StreamTooLong => {
+            std.log.err("OAuth token response exceeds 64KB limit", .{});
+            return Error.AuthError;
+        },
+        error.OutOfMemory => {
+            std.log.err("Out of memory reading OAuth token response", .{});
+            return Error.OutOfMemory;
+        },
+        error.ReadFailed => {
+            std.log.err("Network error reading OAuth token response", .{});
+            return Error.ReadFailed;
+        },
+        else => return err,
+    };
+    defer allocator.free(response_data);
+    const actual_body = response_data;
 
     // Parse JSON response to extract OAuth tokens
     const parsed = std.json.parseFromSlice(struct {
@@ -789,14 +1155,29 @@ pub fn refreshTokens(allocator: std.mem.Allocator, refresh_token: []const u8) !O
         return Error.AuthError;
     }
 
-    // Read response body using the new reader interface
-    var response_buffer: [128 * 1024]u8 = undefined; // 128KB buffer for OAuth JSON responses
+    // Read response body using Zig 0.15.1 allocRemaining pattern for OAuth token refresh
+    var response_buffer: [4096]u8 = undefined; // 4KB ring buffer for OAuth JSON responses
     const response_reader = resp.reader(&response_buffer);
-
-    // Read the full response body directly into response buffer
-    var response_writer: std.Io.Writer = .fixed(&response_buffer);
-    const bytes_read = try response_reader.stream(&response_writer, .unlimited);
-    const actual_body = response_buffer[0..bytes_read];
+    
+    // Use allocRemaining for proper Zig 0.15.1 compatibility with 64KB size limit for OAuth responses
+    const size_limit: std.Io.Limit = @enumFromInt(65536); // 64KB limit for OAuth JSON responses
+    const response_data = response_reader.allocRemaining(allocator, size_limit) catch |err| switch (err) {
+        error.StreamTooLong => {
+            std.log.err("OAuth token refresh response exceeds 64KB limit", .{});
+            return Error.AuthError;
+        },
+        error.OutOfMemory => {
+            std.log.err("Out of memory reading OAuth token refresh response", .{});
+            return Error.OutOfMemory;
+        },
+        error.ReadFailed => {
+            std.log.err("Network error reading OAuth token refresh response", .{});
+            return Error.ReadFailed;
+        },
+        else => return err,
+    };
+    defer allocator.free(response_data);
+    const actual_body = response_data;
 
     // Parse JSON response to extract OAuth tokens
     const parsed = std.json.parseFromSlice(struct {
@@ -924,54 +1305,58 @@ pub fn launchBrowser(url: []const u8) !void {
 /// Start HTTP callback server to handle OAuth authorization code automatically
 pub fn waitForOAuthCallback(allocator: std.mem.Allocator, port: u16) ![]const u8 {
     std.log.info("Starting OAuth callback server on port {}...", .{port});
-    
+
     // Create TCP server address
     const address = std.net.Address.parseIp4("127.0.0.1", port) catch |err| {
         std.log.err("Failed to parse callback server address: {}", .{err});
         return Error.InvalidPort;
     };
-    
+
     // Start listening for connections
     var server = address.listen(.{}) catch |err| {
         std.log.err("Failed to start callback server on port {}: {}", .{ port, err });
         return Error.NetworkError;
     };
     defer server.deinit();
-    
+
     std.log.info("✅ Callback server ready at http://127.0.0.1:{}", .{port});
     std.log.info("🔗 Complete the authorization in your browser...", .{});
-    
+
     while (true) {
         // Accept connection
-        const connection = server.accept() catch |err| {
+        var connection = server.accept() catch |err| {
             std.log.warn("Failed to accept connection: {}, continuing...", .{err});
             continue;
         };
         defer connection.stream.close();
-        
+
         // Read HTTP request with timeout handling
         var request_buffer: [4096]u8 = undefined;
-        var request_reader = connection.stream.reader(&request_buffer);
-        
-        // Read the HTTP request line
-        const request_line = request_reader.takeDelimiterExclusive('\n') catch |err| switch (err) {
-            error.EndOfStream => {
-                std.log.warn("Client closed connection before sending request", .{});
-                continue;
-            },
-            error.StreamTooLong => {
-                // Send 400 Bad Request for oversized request
-                sendHttpError(&connection.stream, 400, "Request too large") catch {};
-                continue;
-            },
+        const bytes_read = connection.stream.read(&request_buffer) catch |err| switch (err) {
+            error.WouldBlock => 0,
             else => {
                 std.log.warn("Error reading request: {}", .{err});
                 continue;
             },
         };
-        
+
+        if (bytes_read == 0) {
+            std.log.warn("Client closed connection before sending request", .{});
+            continue;
+        }
+
+        const request_data = request_buffer[0..bytes_read];
+        const request_line_end = std.mem.indexOf(u8, request_data, "\n") orelse {
+            sendHttpError(&connection.stream, 400, "Invalid request format - no line ending") catch {};
+            continue;
+        };
+
+        const request_line = std.mem.trim(u8, request_data[0..request_line_end], " \t\r\n");
+
+        // Continue with parsing the request line
+
         const request_line_trimmed = std.mem.trim(u8, request_line, " \t\r\n");
-        
+
         // Parse HTTP request: "GET /path?query HTTP/1.1"
         var request_parts = std.mem.splitSequence(u8, request_line_trimmed, " ");
         const method = request_parts.next() orelse {
@@ -982,45 +1367,45 @@ pub fn waitForOAuthCallback(allocator: std.mem.Allocator, port: u16) ![]const u8
             sendHttpError(&connection.stream, 400, "Invalid request format") catch {};
             continue;
         };
-        
+
         // Only handle GET requests for OAuth callback
         if (!std.mem.eql(u8, method, "GET")) {
             sendHttpError(&connection.stream, 405, "Method not allowed") catch {};
             continue;
         }
-        
+
         std.log.debug("Received OAuth callback request: GET {s}", .{path_and_query});
-        
+
         // Extract query parameters from the path
         const query_start = std.mem.indexOf(u8, path_and_query, "?");
         if (query_start == null) {
             sendHttpError(&connection.stream, 400, "No query parameters in OAuth callback") catch {};
             continue;
         }
-        
-        const query_string = path_and_query[query_start.? + 1..];
-        
+
+        const query_string = path_and_query[query_start.? + 1 ..];
+
         // Check for OAuth error parameters first
         if (std.mem.indexOf(u8, query_string, "error=")) |_| {
             const error_code = extractQueryParam(query_string, "error") orelse "unknown_error";
             const error_desc = extractQueryParam(query_string, "error_description");
-            
+
             // Send user-friendly error page to browser
             sendOAuthErrorResponse(&connection.stream, error_code, error_desc) catch {};
-            
+
             // Handle the error and return appropriate error
             return handleOAuthError(allocator, error_code, error_desc);
         }
-        
+
         // Extract authorization code from query parameters
         if (extractQueryParam(query_string, "code")) |auth_code| {
             // Send success response to browser
             sendOAuthSuccessResponse(&connection.stream) catch |err| {
                 std.log.warn("Failed to send success response to browser: {}", .{err});
             };
-            
-            std.log.info("✅ Authorization code received successfully!");
-            
+
+            std.log.info("✅ Authorization code received successfully!", .{});
+
             // Return the authorization code (caller owns the memory)
             return allocator.dupe(u8, auth_code);
         } else {
@@ -1035,30 +1420,29 @@ pub fn waitForOAuthCallback(allocator: std.mem.Allocator, port: u16) ![]const u8
 fn sendHttpError(stream: *std.net.Stream, status_code: u16, message: []const u8) !void {
     const status_text = switch (status_code) {
         400 => "Bad Request",
-        404 => "Not Found", 
+        404 => "Not Found",
         405 => "Method Not Allowed",
         500 => "Internal Server Error",
         else => "Error",
     };
-    
+
     var response_buffer: [1024]u8 = undefined;
-    
-    const response = try std.fmt.bufPrint(&response_buffer, 
-        "HTTP/1.1 {} {s}\r\n" ++
+    var writer_buffer: [1024]u8 = undefined;
+
+    const response = try std.fmt.bufPrint(&response_buffer, "HTTP/1.1 {} {s}\r\n" ++
         "Content-Type: text/plain\r\n" ++
         "Connection: close\r\n" ++
         "\r\n" ++
-        "{s}\r\n",
-        .{ status_code, status_text, message }
-    );
-    
-    var stream_writer = stream.writer(&response_buffer);
-    try stream_writer.writeAll(response);
+        "{s}\r\n", .{ status_code, status_text, message });
+
+    var stream_writer = stream.writer(&writer_buffer);
+    const writer_interface = &stream_writer.interface;
+    try writer_interface.writeAll(response);
 }
 
 /// Send OAuth success response with user-friendly page
 fn sendOAuthSuccessResponse(stream: *std.net.Stream) !void {
-    const html_content = 
+    const html_content =
         "<!DOCTYPE html>\n" ++
         "<html><head><title>Authorization Successful</title>" ++
         "<style>body{font-family:Arial,sans-serif;max-width:600px;margin:50px auto;text-align:center;background:#f5f5f5;padding:20px}" ++
@@ -1067,30 +1451,28 @@ fn sendOAuthSuccessResponse(stream: *std.net.Stream) !void {
         "<body><div class='success'>✅ Authorization Successful!</div>" ++
         "<div class='message'>You can now close this browser tab and return to your terminal.</div>" ++
         "<div class='message'>The OAuth setup will continue automatically.</div></body></html>";
-    
+
     var response_buffer: [2048]u8 = undefined;
-    
-    const response = try std.fmt.bufPrint(&response_buffer,
-        "HTTP/1.1 200 OK\r\n" ++
+    var writer_buffer: [2048]u8 = undefined;
+
+    const response = try std.fmt.bufPrint(&response_buffer, "HTTP/1.1 200 OK\r\n" ++
         "Content-Type: text/html\r\n" ++
         "Content-Length: {}\r\n" ++
         "Connection: close\r\n" ++
         "\r\n" ++
-        "{s}",
-        .{ html_content.len, html_content }
-    );
-    
-    var stream_writer = stream.writer(&response_buffer);
-    try stream_writer.writeAll(response);
+        "{s}", .{ html_content.len, html_content });
+
+    var stream_writer = stream.writer(&writer_buffer);
+    const writer_interface = &stream_writer.interface;
+    try writer_interface.writeAll(response);
 }
 
 /// Send OAuth error response with user-friendly error page
 fn sendOAuthErrorResponse(stream: *std.net.Stream, error_code: []const u8, error_description: ?[]const u8) !void {
     var html_buffer: [2048]u8 = undefined;
-    
+
     const description = error_description orelse "No additional details provided.";
-    const html_content = try std.fmt.bufPrint(&html_buffer,
-        "<!DOCTYPE html>\n" ++
+    const html_content = try std.fmt.bufPrint(&html_buffer, "<!DOCTYPE html>\n" ++
         "<html><head><title>Authorization Error</title>" ++
         "<style>body{{font-family:Arial,sans-serif;max-width:600Dpx;margin:50px auto;text-align:center;background:#f5f5f5;padding:20px}}" ++
         ".error{{color:#dc3545;font-size:24px;margin:20px 0}}" ++
@@ -1099,39 +1481,36 @@ fn sendOAuthErrorResponse(stream: *std.net.Stream, error_code: []const u8, error
         "<body><div class='error'>❌ Authorization Failed</div>" ++
         "<div class='message'><strong>Error:</strong> {s}</div>" ++
         "<div class='message'>{s}</div>" ++
-        "<div class='message'>Please close this tab and try the authorization again.</div></body></html>",
-        .{ error_code, description }
-    );
-    
+        "<div class='message'>Please close this tab and try the authorization again.</div></body></html>", .{ error_code, description });
+
     var response_buffer: [3072]u8 = undefined;
-    
-    const response = try std.fmt.bufPrint(&response_buffer,
-        "HTTP/1.1 400 Bad Request\r\n" ++
+    var writer_buffer: [3072]u8 = undefined;
+
+    const response = try std.fmt.bufPrint(&response_buffer, "HTTP/1.1 400 Bad Request\r\n" ++
         "Content-Type: text/html\r\n" ++
         "Content-Length: {}\r\n" ++
         "Connection: close\r\n" ++
         "\r\n" ++
-        "{s}",
-        .{ html_content.len, html_content }
-    );
-    
-    var stream_writer = stream.writer(&response_buffer);
-    try stream_writer.writeAll(response);
+        "{s}", .{ html_content.len, html_content });
+
+    var stream_writer = stream.writer(&writer_buffer);
+    const writer_interface = &stream_writer.interface;
+    try writer_interface.writeAll(response);
 }
 
 /// Extract query parameter value from URL query string
 fn extractQueryParam(query_string: []const u8, param_name: []const u8) ?[]const u8 {
     const search_key = std.fmt.allocPrint(std.heap.page_allocator, "{s}=", .{param_name}) catch return null;
     defer std.heap.page_allocator.free(search_key);
-    
+
     const param_start = std.mem.indexOf(u8, query_string, search_key) orelse return null;
     const value_start = param_start + search_key.len;
-    
+
     // Find end of parameter value (next & or end of string)
     const value_end = std.mem.indexOfScalarPos(u8, query_string, value_start, '&') orelse query_string.len;
-    
+
     if (value_end <= value_start) return null;
-    
+
     return query_string[value_start..value_end];
 }
 

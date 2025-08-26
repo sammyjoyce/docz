@@ -5,6 +5,8 @@ pub const Error = error{
     OutOfMemory,
     InvalidRowIndex,
     InvalidColumnIndex,
+    ValidationFailed,
+    RepairFailed,
 };
 
 pub const Alignment = enum {
@@ -254,9 +256,10 @@ pub fn createTable(allocator: std.mem.Allocator, headers: []const []const u8, ro
     // Set alignments
     var new_alignments = try allocator.alloc(Alignment, headers.len);
     if (alignments) |aligns| {
-        @memcpy(new_alignments, aligns[0..@min(aligns.len, headers.len)]);
+        const copy_len = @min(aligns.len, headers.len);
+        @memcpy(new_alignments[0..copy_len], aligns[0..copy_len]);
         // Fill any remaining with left alignment
-        for (new_alignments[aligns.len..]) |*alignment| {
+        for (new_alignments[copy_len..]) |*alignment| {
             alignment.* = Alignment.left;
         }
     } else {
@@ -300,4 +303,162 @@ pub fn updateCell(table: *Table, row_index: usize, col_index: usize, new_content
 
     // Set new content
     table.rows[row_index][col_index] = try allocator.dupe(u8, new_content);
+}
+
+/// Table validation issue types
+pub const ValidationIssueType = enum {
+    inconsistent_column_count,
+    empty_table,
+    malformed_separator,
+    invalid_alignment,
+    missing_headers,
+    excessive_whitespace,
+    empty_cells,
+};
+
+/// Table validation issue severity
+pub const ValidationSeverity = enum {
+    err,
+    warning,
+    info,
+};
+
+/// Individual validation issue
+pub const ValidationIssue = struct {
+    issue_type: ValidationIssueType,
+    severity: ValidationSeverity,
+    message: []const u8,
+    line_number: ?usize = null,
+    column_index: ?usize = null,
+    row_index: ?usize = null,
+};
+
+/// Table validation configuration
+pub const ValidationConfig = struct {
+    check_column_consistency: bool = true,
+    check_empty_cells: bool = true,
+    check_alignment_format: bool = true,
+    check_separator_format: bool = true,
+    allow_empty_table: bool = false,
+    max_cell_length: usize = 1000,
+    trim_whitespace: bool = true,
+};
+
+/// Table validation result
+pub const ValidationResult = struct {
+    is_valid: bool,
+    issues: []ValidationIssue,
+    suggestions: [][]const u8,
+
+    pub fn deinit(self: *ValidationResult, allocator: std.mem.Allocator) void {
+        for (self.issues) |issue| {
+            allocator.free(issue.message);
+        }
+        allocator.free(self.issues);
+
+        for (self.suggestions) |suggestion| {
+            allocator.free(suggestion);
+        }
+        allocator.free(self.suggestions);
+    }
+};
+
+/// Table repair configuration
+pub const RepairConfig = struct {
+    fix_column_consistency: bool = true,
+    trim_whitespace: bool = true,
+    fill_empty_cells: bool = false,
+    empty_cell_placeholder: []const u8 = "",
+    normalize_alignments: bool = true,
+    remove_empty_rows: bool = false,
+};
+
+/// Validate a table structure and identify issues (simplified implementation)
+pub fn validateTable(allocator: std.mem.Allocator, tbl: *const Table, config: ValidationConfig) Error!ValidationResult {
+    var issues = std.array_list.Managed(ValidationIssue).init(allocator);
+    var suggestions = std.array_list.Managed([]const u8).init(allocator);
+
+    // Check for empty table
+    if (tbl.headers.len == 0 and tbl.rows.len == 0) {
+        if (!config.allow_empty_table) {
+            try issues.append(ValidationIssue{
+                .issue_type = .empty_table,
+                .severity = .err,
+                .message = try allocator.dupe(u8, "Table is empty - no headers or rows found"),
+            });
+            try suggestions.append(try allocator.dupe(u8, "Add table headers and at least one data row"));
+        }
+    }
+
+    // Check column consistency
+    if (config.check_column_consistency and tbl.headers.len > 0) {
+        const expected_columns = tbl.headers.len;
+
+        // Check alignment array length
+        if (tbl.alignments.len != expected_columns) {
+            const msg = try std.fmt.allocPrint(allocator, "Alignment count ({}) doesn't match header count ({})", .{ tbl.alignments.len, expected_columns });
+            try issues.append(ValidationIssue{
+                .issue_type = .invalid_alignment,
+                .severity = .err,
+                .message = msg,
+            });
+        }
+
+        // Check each row's column count
+        for (tbl.rows, 0..) |row, row_idx| {
+            if (row.len != expected_columns) {
+                const msg = try std.fmt.allocPrint(allocator, "Row {} has {} columns, expected {}", .{ row_idx, row.len, expected_columns });
+                try issues.append(ValidationIssue{
+                    .issue_type = .inconsistent_column_count,
+                    .severity = .err,
+                    .message = msg,
+                    .row_index = row_idx,
+                });
+            }
+        }
+    }
+
+    const is_valid = blk: {
+        for (issues.items) |issue| {
+            if (issue.severity == .err) {
+                break :blk false;
+            }
+        }
+        break :blk true;
+    };
+
+    return ValidationResult{
+        .is_valid = is_valid,
+        .issues = try issues.toOwnedSlice(),
+        .suggestions = try suggestions.toOwnedSlice(),
+    };
+}
+
+/// Repair common table issues (simplified implementation)
+pub fn repairTable(allocator: std.mem.Allocator, tbl: *Table, config: RepairConfig) Error!usize {
+    var repairs_made: usize = 0;
+
+    if (tbl.headers.len == 0) {
+        return Error.RepairFailed;
+    }
+
+    const expected_columns = tbl.headers.len;
+
+    // Fix alignment array length
+    if (config.normalize_alignments and tbl.alignments.len != expected_columns) {
+        const old_alignments = tbl.alignments;
+        tbl.alignments = try allocator.alloc(Alignment, expected_columns);
+
+        const copy_len = @min(old_alignments.len, expected_columns);
+        @memcpy(tbl.alignments[0..copy_len], old_alignments[0..copy_len]);
+
+        for (tbl.alignments[copy_len..]) |*alignment| {
+            alignment.* = Alignment.left;
+        }
+
+        allocator.free(old_alignments);
+        repairs_made += 1;
+    }
+
+    return repairs_made;
 }

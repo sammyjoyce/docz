@@ -7,6 +7,9 @@ const link = @import("../common/link.zig");
 // Document Validator Tool
 // Performs comprehensive quality checks on markdown documents
 
+// HTTP validation configuration for external link checking
+const EXTERNAL_LINK_TIMEOUT_MS = 30 * 1000; // 30 seconds for external link validation - reasonable timeout for HEAD requests
+
 pub const DocumentValidatorError = error{
     InvalidCommand,
     FileNotFound,
@@ -813,9 +816,78 @@ pub const DocumentValidator = struct {
         return json.Value{ .object = result };
     }
 
+    // HTTP validation helper function for external link checking
+    fn validateExternalUrl(allocator: Allocator, url: []const u8, timeout_ms: i64) !bool {
+        // First do basic URL format validation
+        if (!link.validateUrl(url)) return false;
+
+        // Only validate HTTP/HTTPS URLs
+        if (!std.mem.startsWith(u8, url, "http://") and !std.mem.startsWith(u8, url, "https://")) {
+            return false;
+        }
+
+        var client = std.http.Client{ .allocator = allocator };
+        defer client.deinit();
+
+        // Parse URI for HTTP request
+        const uri = std.Uri.parse(url) catch |err| {
+            std.log.debug("Invalid URI format for URL '{s}': {}", .{ url, err });
+            return false;
+        };
+
+        // Make HTTP HEAD request to check if URL exists without downloading content
+        var req = client.request(.HEAD, uri, .{
+            .keep_alive = false,
+            .redirect_behavior = .follow, // Follow redirects for better validation
+        }) catch |err| {
+            std.log.debug("Failed to create HTTP request for URL '{s}': {}", .{ url, err });
+            return false;
+        };
+
+        var buf: [0]u8 = undefined;
+        var bw = req.sendBody(&buf) catch |err| {
+            std.log.debug("Failed to send HTTP request for URL '{s}': {}", .{ url, err });
+            return false;
+        };
+        bw.end() catch |err| {
+            std.log.debug("Failed to complete HTTP request for URL '{s}': {}", .{ url, err });
+            return false;
+        };
+
+        // Receive response with enhanced error handling
+        const resp = req.receiveHead(&.{}) catch |err| {
+            switch (err) {
+                error.ConnectionTimedOut => {
+                    std.log.debug("External link validation timed out after {}s for URL '{s}' - server may be slow or unresponsive", .{ timeout_ms / 1000, url });
+                    return false;
+                },
+                error.ConnectionRefused => {
+                    std.log.debug("Connection refused for URL '{s}' - server may be down", .{url});
+                    return false;
+                },
+                error.UnknownHostName => {
+                    std.log.debug("Cannot resolve hostname for URL '{s}' - check DNS or server availability", .{url});
+                    return false;
+                },
+                else => {
+                    std.log.debug("Network error during validation of URL '{s}': {}", .{ url, err });
+                    return false;
+                },
+            }
+        };
+
+        // Consider successful HTTP status codes as valid links
+        const status_code = @intFromEnum(resp.head.status);
+        if (status_code >= 200 and status_code < 400) {
+            return true;
+        } else {
+            std.log.debug("URL '{s}' returned HTTP status {}: {}", .{ url, status_code, resp.head.status });
+            return false;
+        }
+    }
+
     fn validateExternalLinks(allocator: Allocator, params: json.ObjectMap, file_path: []const u8) !json.Value {
-        const timeout_ms = params.get("timeout_ms") orelse json.Value{ .integer = 5000 };
-        _ = timeout_ms; // For now, just basic validation without HTTP requests
+        const timeout_ms = if (params.get("timeout_ms")) |t| t.integer else EXTERNAL_LINK_TIMEOUT_MS;
 
         const content = try fs.readFileAlloc(allocator, file_path, null);
         defer allocator.free(content);
@@ -825,18 +897,31 @@ pub const DocumentValidator = struct {
 
         var external_links = json.Array.init(allocator);
         var valid_count: usize = 0;
+        var total_external_count: usize = 0;
 
         for (links) |found_link| {
             if (found_link.type == .external) {
+                total_external_count += 1;
+
                 var link_obj = json.ObjectMap.init(allocator);
                 try link_obj.put("url", json.Value{ .string = try allocator.dupe(u8, found_link.url) });
                 try link_obj.put("text", json.Value{ .string = try allocator.dupe(u8, found_link.text) });
-                try link_obj.put("line", json.Value{ .integer = @intCast(found_link.line) });
-                try link_obj.put("valid", json.Value{ .bool = link.validateUrl(found_link.url) });
+                try link_obj.put("line", json.Value{ .integer = @intCast(found_link.line + 1) }); // 1-based line numbers for user friendliness
 
-                if (link.validateUrl(found_link.url)) valid_count += 1;
+                // Perform actual HTTP validation instead of just format validation
+                const is_valid = validateExternalUrl(allocator, found_link.url, timeout_ms) catch |err| {
+                    std.log.debug("Error validating URL '{s}': {}", .{ found_link.url, err });
+                    false;
+                };
+
+                try link_obj.put("valid", json.Value{ .bool = is_valid });
+
+                if (is_valid) valid_count += 1;
 
                 try external_links.append(json.Value{ .object = link_obj });
+
+                // Add small delay between requests to be respectful to servers
+                std.time.sleep(100_000_000); // 100ms delay between requests
             }
         }
 
@@ -847,6 +932,8 @@ pub const DocumentValidator = struct {
         try result.put("file", json.Value{ .string = file_path });
         try result.put("external_links", json.Value{ .array = external_links });
         try result.put("valid_count", json.Value{ .integer = @intCast(valid_count) });
+        try result.put("total_external_count", json.Value{ .integer = @intCast(total_external_count) });
+        try result.put("timeout_ms", json.Value{ .integer = timeout_ms });
 
         return json.Value{ .object = result };
     }

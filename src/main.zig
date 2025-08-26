@@ -58,10 +58,9 @@ pub fn main() !void {
         .flags = .{
             .oauth = parsed_args.flags.oauth,
             .verbose = parsed_args.flags.verbose,
-            .help_me = parsed_args.flags.help_me,
+            .help = parsed_args.flags.help,
             .version = parsed_args.flags.version,
-            .stream = if (parsed_args.flags.disable_stream) false else (parsed_args.flags.stream),
-            .disable_stream = parsed_args.flags.disable_stream,
+            .stream = parsed_args.flags.stream,
             .pretty = parsed_args.flags.pretty,
             .debug = parsed_args.flags.debug,
             .interactive = parsed_args.flags.interactive,

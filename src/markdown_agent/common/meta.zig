@@ -106,7 +106,7 @@ fn parseYamlMetadata(allocator: std.mem.Allocator, yaml_content: []const u8) Err
         .raw_content = try allocator.dupe(u8, yaml_content),
     };
 
-    var lines = std.mem.split(u8, yaml_content, "\n");
+    var lines = std.mem.splitScalar(u8, yaml_content, '\n');
     while (lines.next()) |line| {
         const trimmed = std.mem.trim(u8, line, " \t");
         if (trimmed.len == 0) continue;
@@ -134,7 +134,7 @@ fn parseTomlMetadata(allocator: std.mem.Allocator, toml_content: []const u8) Err
         .raw_content = try allocator.dupe(u8, toml_content),
     };
 
-    var lines = std.mem.split(u8, toml_content, "\n");
+    var lines = std.mem.splitScalar(u8, toml_content, '\n');
     while (lines.next()) |line| {
         const trimmed = std.mem.trim(u8, line, " \t");
         if (trimmed.len == 0 or trimmed[0] == '#') continue; // Skip comments
@@ -227,30 +227,30 @@ fn parseTomlValue(allocator: std.mem.Allocator, value_str: []const u8) Error!Met
 
 /// Serialize metadata back to string format
 pub fn serializeMetadata(allocator: std.mem.Allocator, metadata: *const DocumentMetadata) Error![]u8 {
-    var result = std.ArrayList(u8).init(allocator);
+    var result = std.array_list.Managed(u8).init(allocator);
 
     switch (metadata.format) {
         .yaml => {
-            try result.appendSlice("---\n");
+            try result.appendSlice(allocator, "---\n");
             var iterator = metadata.content.iterator();
             while (iterator.next()) |entry| {
-                try result.appendSlice(entry.key_ptr.*);
-                try result.appendSlice(": ");
-                try serializeYamlValue(&result, entry.value_ptr.*);
-                try result.append('\n');
+                try result.appendSlice(allocator, entry.key_ptr.*);
+                try result.appendSlice(allocator, ": ");
+                try serializeYamlValue(&result, entry.value_ptr.*, allocator);
+                try result.append(allocator, '\n');
             }
-            try result.appendSlice("---\n");
+            try result.appendSlice(allocator, "---\n");
         },
         .toml => {
-            try result.appendSlice("+++\n");
+            try result.appendSlice(allocator, "+++\n");
             var iterator = metadata.content.iterator();
             while (iterator.next()) |entry| {
-                try result.appendSlice(entry.key_ptr.*);
-                try result.appendSlice(" = ");
-                try serializeTomlValue(&result, entry.value_ptr.*);
-                try result.append('\n');
+                try result.appendSlice(allocator, entry.key_ptr.*);
+                try result.appendSlice(allocator, " = ");
+                try serializeTomlValue(&result, entry.value_ptr.*, allocator);
+                try result.append(allocator, '\n');
             }
-            try result.appendSlice("+++\n");
+            try result.appendSlice(allocator, "+++\n");
         },
         .json => return Error.UnsupportedFormat, // JSON front matter not common
     }
@@ -259,63 +259,63 @@ pub fn serializeMetadata(allocator: std.mem.Allocator, metadata: *const Document
 }
 
 /// Helper to serialize YAML values
-fn serializeYamlValue(result: *std.ArrayList(u8), value: MetadataValue) Error!void {
+fn serializeYamlValue(result: *std.array_list.Managed(u8), value: MetadataValue, allocator: std.mem.Allocator) Error!void {
     switch (value) {
         .string => |s| {
             // Quote strings that need quoting
             const needs_quotes = std.mem.indexOfAny(u8, s, " \t\n:#[]{}") != null;
             if (needs_quotes) {
-                try result.append('"');
-                try result.appendSlice(s);
-                try result.append('"');
+                try result.append(allocator, '"');
+                try result.appendSlice(allocator, s);
+                try result.append(allocator, '"');
             } else {
-                try result.appendSlice(s);
+                try result.appendSlice(allocator, s);
             }
         },
         .integer => |i| {
-            const str = std.fmt.allocPrint(result.allocator, "{}", .{i}) catch return Error.OutOfMemory;
-            defer result.allocator.free(str);
-            try result.appendSlice(str);
+            const str = std.fmt.allocPrint(allocator, "{}", .{i}) catch return Error.OutOfMemory;
+            defer allocator.free(str);
+            try result.appendSlice(allocator, str);
         },
         .float => |f| {
-            const str = std.fmt.allocPrint(result.allocator, "{d}", .{f}) catch return Error.OutOfMemory;
-            defer result.allocator.free(str);
-            try result.appendSlice(str);
+            const str = std.fmt.allocPrint(allocator, "{d}", .{f}) catch return Error.OutOfMemory;
+            defer allocator.free(str);
+            try result.appendSlice(allocator, str);
         },
         .boolean => |b| {
-            try result.appendSlice(if (b) "true" else "false");
+            try result.appendSlice(allocator, if (b) "true" else "false");
         },
         .array, .object => {
             // Complex types not supported in this simplified implementation
-            try result.appendSlice("null");
+            try result.appendSlice(allocator, "null");
         },
     }
 }
 
 /// Helper to serialize TOML values
-fn serializeTomlValue(result: *std.ArrayList(u8), value: MetadataValue) Error!void {
+fn serializeTomlValue(result: *std.array_list.Managed(u8), value: MetadataValue, allocator: std.mem.Allocator) Error!void {
     switch (value) {
         .string => |s| {
-            try result.append('"');
-            try result.appendSlice(s);
-            try result.append('"');
+            try result.append(allocator, '"');
+            try result.appendSlice(allocator, s);
+            try result.append(allocator, '"');
         },
         .integer => |i| {
-            const str = std.fmt.allocPrint(result.allocator, "{}", .{i}) catch return Error.OutOfMemory;
-            defer result.allocator.free(str);
-            try result.appendSlice(str);
+            const str = std.fmt.allocPrint(allocator, "{}", .{i}) catch return Error.OutOfMemory;
+            defer allocator.free(str);
+            try result.appendSlice(allocator, str);
         },
         .float => |f| {
-            const str = std.fmt.allocPrint(result.allocator, "{d}", .{f}) catch return Error.OutOfMemory;
-            defer result.allocator.free(str);
-            try result.appendSlice(str);
+            const str = std.fmt.allocPrint(allocator, "{d}", .{f}) catch return Error.OutOfMemory;
+            defer allocator.free(str);
+            try result.appendSlice(allocator, str);
         },
         .boolean => |b| {
-            try result.appendSlice(if (b) "true" else "false");
+            try result.appendSlice(allocator, if (b) "true" else "false");
         },
         .array, .object => {
             // Complex types not supported in this simplified implementation
-            try result.appendSlice("\"\"");
+            try result.appendSlice(allocator, "\"\"");
         },
     }
 }

@@ -32,10 +32,9 @@ pub const CliOptions = struct {
     flags: struct {
         oauth: bool,
         verbose: bool,
-        help_me: bool,
+        help: bool,
         version: bool,
         stream: bool,
-        disable_stream: bool,
         pretty: bool,
         debug: bool,
         interactive: bool,
@@ -167,10 +166,9 @@ pub fn run(allocator: std.mem.Allocator) !void {
         .flags = .{
             .oauth = false,
             .verbose = false,
-            .help_me = false,
+            .help = false,
             .version = false,
             .stream = true,
-            .disable_stream = false,
             .pretty = false,
             .debug = false,
             .interactive = false,
@@ -267,54 +265,195 @@ pub fn runWithOptions(allocator: std.mem.Allocator, options: CliOptions) !void {
 
     try messages.append(.{ .role = .system, .content = system_prompt });
 
-    // Get user input - from positional arg, file, or stdin
+    // Get user input - from positional arg, file, or stdin ('-' means stdin)
     const user_prompt = blk: {
         // First check for positional argument
         if (options.positionals) |prompt| {
-            break :blk prompt;
+            break :blk try allocator.dupe(u8, prompt); // Make owned copy
         }
 
         // Then check for input file
         if (options.options.input) |input_file| {
-            const file = std.fs.cwd().openFile(input_file, .{}) catch |err| {
-                std.log.err("Failed to open input file '{s}': {}", .{ input_file, err });
-                return err;
-            };
-            defer file.close();
+            if (!std.mem.eql(u8, input_file, "-")) {
+                const file = std.fs.cwd().openFile(input_file, .{}) catch |err| {
+                    std.log.err("Failed to open input file '{s}': {}", .{ input_file, err });
+                    return err;
+                };
+                defer file.close();
 
-            const content = file.readToEndAlloc(allocator, 1024 * 1024) catch |err| {
-                std.log.err("Failed to read input file '{s}': {}", .{ input_file, err });
-                return err;
-            };
-            defer allocator.free(content);
-            break :blk content;
+                const content = file.readToEndAlloc(allocator, 1024 * 1024) catch |err| {
+                    std.log.err("Failed to read input file '{s}': {}", .{ input_file, err });
+                    return err;
+                };
+                // Don't defer free here - return the allocated content directly
+                break :blk content;
+            }
         }
 
-        // Fallback to default message for now
-        // TODO: Implement proper stdin reading
-        break :blk "Hello from DocZ!";
+        // Read from stdin for interactive usage (or when --input "-" is passed)
+        const stdin = std.fs.File.stdin();
+        const stdin_buffer = try allocator.alloc(u8, 64 * 1024); // 64KB buffer for user input
+        defer allocator.free(stdin_buffer);
+
+        // Read full input from stdin until EOF
+        const bytes_read = try stdin.readAll(stdin_buffer);
+        const stdin_content = std.mem.trim(u8, stdin_buffer[0..bytes_read], " \t\r\n");
+
+        if (stdin_content.len == 0) {
+            std.log.err("No input provided. Provide input via:\n  - Command argument: docz \"your prompt\"\n  - Input file: docz --input file.txt\n  - Stdin: echo \"your prompt\" | docz", .{});
+            return error.NoInputProvided;
+        }
+
+        // Return owned copy of stdin content
+        break :blk try allocator.dupe(u8, stdin_content);
     };
+    defer allocator.free(user_prompt); // Free the owned copy after use
 
     try messages.append(.{ .role = .user, .content = user_prompt });
 
-    // Stream response with configured model and parameters
-    // TODO: Implement output file support and non-streaming mode
+    // Initialize output file if specified ('-' means stdout)
     if (options.options.output) |output_file| {
-        std.log.warn("Output file support not yet implemented. Output will go to stdout. File: '{s}'", .{output_file});
+        if (!std.mem.eql(u8, output_file, "-")) {
+            try initOutputFile(output_file);
+            std.log.info("Output will be saved to: {s}", .{output_file});
+        }
     }
 
-    if (options.flags.disable_stream) {
-        std.log.warn("Non-streaming mode not yet implemented. Using streaming mode.", .{});
+    if (!options.flags.stream) {
+        std.log.info("Using non-streaming mode (complete response).", .{});
+
+        // Use non-streaming API call
+        const response = try client.complete(.{
+            .model = options.options.model,
+            .max_tokens = options.options.max_tokens,
+            .temperature = options.options.temperature,
+            .messages = messages.items,
+        });
+        defer {
+            var mutable_response = response;
+            mutable_response.deinit(allocator);
+        }
+
+        // Write complete response to stdout and output file
+        writeCompleteResponse(response.content);
+
+        // Log usage information
+        std.log.info("Completion: {} input tokens, {} output tokens", .{ response.usage.input_tokens, response.usage.output_tokens });
+
+        // Calculate cost information
+        const cost_calculator = anthropic.CostCalculator.init(client.isOAuthSession());
+        if (!client.isOAuthSession()) {
+            const input_cost = cost_calculator.calculateInputCost(response.usage.input_tokens, options.options.model);
+            const output_cost = cost_calculator.calculateOutputCost(response.usage.output_tokens, options.options.model);
+            const total_cost = input_cost + output_cost;
+            std.log.info("Estimated cost: ${d:.4} (Input: ${d:.4}, Output: ${d:.4})", .{ total_cost, input_cost, output_cost });
+        }
+    } else {
+        // Stream response with configured model and parameters
+        try client.stream(.{
+            .model = options.options.model,
+            .max_tokens = options.options.max_tokens,
+            .temperature = options.options.temperature,
+            .messages = messages.items,
+            .on_token = &onToken,
+        });
     }
 
-    try client.stream(.{
-        .model = options.options.model,
-        .messages = messages.items,
-        .on_token = &onToken,
-    });
+    // Ensure all output is flushed after completion
+    try flushAllOutputs();
 }
 
+/// Global stdout writer with buffer for streaming output
+var stdout_buffer: [4096]u8 = undefined;
+var stdout_writer_initialized = false;
+var stdout_writer: std.fs.File.Writer = undefined;
+
+/// Global output file writer for saving responses to files
+var global_output_file: ?std.fs.File = null;
+var output_buffer: [4096]u8 = undefined;
+var output_writer_initialized = false;
+var output_writer: ?std.fs.File.Writer = null;
+
+/// Initialize stdout writer with proper buffering (call once)
+fn initStdoutWriter() void {
+    if (!stdout_writer_initialized) {
+        stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+        stdout_writer_initialized = true;
+    }
+}
+
+/// Initialize output file writer with proper buffering
+fn initOutputFile(file_path: []const u8) !void {
+    if (!output_writer_initialized) {
+        global_output_file = try std.fs.cwd().createFile(file_path, .{});
+        output_writer = global_output_file.?.writer(&output_buffer);
+        output_writer_initialized = true;
+    }
+}
+
+/// Flush all output streams (stdout and output file if open)
+fn flushAllOutputs() !void {
+    // Flush stdout
+    if (stdout_writer_initialized) {
+        const stdout = &stdout_writer.interface;
+        stdout.flush() catch |err| {
+            std.log.warn("Failed to flush stdout after streaming: {}", .{err});
+        };
+    }
+
+    // Flush and close output file
+    if (output_writer_initialized) {
+        if (output_writer) |*writer| {
+            const file_writer = &writer.interface;
+            file_writer.flush() catch |err| {
+                std.log.warn("Failed to flush output file: {}", .{err});
+            };
+        }
+        if (global_output_file) |file| {
+            file.close();
+            global_output_file = null;
+            output_writer = null;
+            output_writer_initialized = false;
+        }
+    }
+}
+
+/// Enhanced streaming token callback that writes to both stdout and output file
 fn onToken(chunk: []const u8) void {
-    // TODO: Fix stdout API - for now just print to debug
-    std.debug.print("{s}", .{chunk});
+    // Always write to stdout for real-time feedback
+    initStdoutWriter();
+    const stdout = &stdout_writer.interface;
+    stdout.writeAll(chunk) catch |err| {
+        std.log.err("Failed to write streaming output to stdout: {}", .{err});
+    };
+
+    // Also write to output file if configured
+    if (output_writer_initialized) {
+        if (output_writer) |*writer| {
+            const file_writer = &writer.interface;
+            file_writer.writeAll(chunk) catch |err| {
+                std.log.err("Failed to write streaming output to file: {}", .{err});
+            };
+        }
+    }
+}
+
+/// Write complete response to both stdout and output file (for non-streaming mode)
+fn writeCompleteResponse(content: []const u8) void {
+    // Always write to stdout
+    initStdoutWriter();
+    const stdout = &stdout_writer.interface;
+    stdout.writeAll(content) catch |err| {
+        std.log.err("Failed to write complete response to stdout: {}", .{err});
+    };
+
+    // Also write to output file if configured
+    if (output_writer_initialized) {
+        if (output_writer) |*writer| {
+            const file_writer = &writer.interface;
+            file_writer.writeAll(content) catch |err| {
+                std.log.err("Failed to write complete response to file: {}", .{err});
+            };
+        }
+    }
 }

@@ -13,13 +13,13 @@
             .short = 'o',
             .long = "output",
             .type = "string",
-            .description = "Output file path (defaults to stdout)",
+            .description = "Output file path (use '-' for stdout)",
         },
         .{
             .short = 'i',
             .long = "input",
             .type = "string",
-            .description = "Input file path (defaults to stdin)",
+            .description = "Input file path (use '-' for stdin)",
         },
         .{
             .short = 's',
@@ -38,18 +38,22 @@
             .type = "u32",
             .default = 4096,
             .description = "Maximum tokens for response",
+            .short = 'T',
         },
         .{
             .long = "temperature",
             .type = "f32",
             .default = 0.7,
-            .description = "Temperature setting for model creativity (0.0-1.0)",
+            .description = "Temperature setting (0.0-1.0)",
+            .range = .{ .min = 0.0, .max = 1.0 },
+            .short = 't',
         },
     },
     .flags = .{
         .{
             .long = "oauth",
             .description = "Setup OAuth authentication flow",
+            .short = 'O',
         },
         .{
             .short = 'v',
@@ -57,36 +61,42 @@
             .description = "Enable verbose logging output",
         },
         .{
-            .long = "help_me",
+            .short = 'h',
+            .long = "help",
             .description = "Show help message and usage information",
         },
         .{
             .long = "version",
             .description = "Show version information",
+            .short = 'V',
         },
         .{
             .long = "stream",
             .default = true,
-            .description = "Enable streaming output (default behavior)",
+            .description = "Stream tokens to stdout as they arrive (default)",
+            .excludes = .{"no-stream"},
+            .short = 'S',
         },
+        // Preferred negative form per CLI guidelines
         .{
-            .long = "disable-stream",
-            .description = "Disable streaming, wait for complete response",
-            .excludes = .{
-                "stream",
-            },
+            .long = "no-stream",
+            .description = "Disable streaming; print only the complete response",
+            .excludes = .{"stream"},
         },
         .{
             .long = "pretty",
-            .description = "Pretty print JSON responses and debug output",
+            .description = "Pretty-print JSON responses and debug output",
+            .short = 'p',
         },
         .{
             .long = "debug",
             .description = "Enable debug mode with detailed logging",
+            .short = 'd',
         },
         .{
             .long = "interactive",
             .description = "Run in interactive mode for multi-turn conversations",
+            .short = 'I',
         },
     },
     .positionals = .{

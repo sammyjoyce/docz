@@ -24,7 +24,7 @@ pub fn readFileAlloc(allocator: std.mem.Allocator, path: []const u8, max_size: ?
 
 /// Write file content with error handling
 pub fn writeFile(path: []const u8, content: []const u8) Error!void {
-    std.fs.cwd().writeFile(path, content) catch |err| switch (err) {
+    std.fs.cwd().writeFile(.{ .sub_path = path, .data = content }) catch |err| switch (err) {
         error.AccessDenied => return Error.AccessDenied,
         error.OutOfMemory => return Error.OutOfMemory,
         error.NoSpaceLeft, error.FileTooBig, error.Unexpected => return Error.IoError,
@@ -72,14 +72,14 @@ pub fn listDir(allocator: std.mem.Allocator, path: []const u8, max_entries: ?usi
     };
     defer dir.close();
 
-    var entries = std.ArrayList([]const u8).init(allocator);
+    var entries = std.array_list.Managed([]const u8).init(allocator);
     var iterator = dir.iterate();
     var count: usize = 0;
 
     while (count < actual_max) {
         if (try iterator.next()) |entry| {
             const name = try allocator.dupe(u8, entry.name);
-            try entries.append(name);
+            try entries.append(allocator, name);
             count += 1;
         } else break;
     }

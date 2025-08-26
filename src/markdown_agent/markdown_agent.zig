@@ -47,10 +47,21 @@ pub const MarkdownAgent = struct {
         sections: [][]const u8,
     };
 
+    /// Error set for markdown agent tool operations
+    pub const AgentError = error{
+        InvalidInput,
+        MissingParameter,
+        OutOfMemory,
+        FileNotFound,
+        PermissionDenied,
+        ProcessingFailed,
+        UnexpectedError,
+    };
+
     pub const Tool = struct {
         name: []const u8,
         description: []const u8,
-        execute: *const fn (allocator: Allocator, params: json.Value) anyerror!json.Value,
+        execute: *const fn (allocator: Allocator, params: json.Value) AgentError!json.Value,
     };
 
     pub fn init(allocator: Allocator, config: Config) Self {

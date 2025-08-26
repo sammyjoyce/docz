@@ -23,8 +23,8 @@ pub const SearchResult = struct {
 
 /// Find all occurrences of a pattern in text
 pub fn findAll(allocator: std.mem.Allocator, text: []const u8, pattern: []const u8, options: SearchOptions) Error![]SearchResult {
-    var results = std.ArrayList(SearchResult).init(allocator);
-    var lines = std.mem.split(u8, text, "\n");
+    var results = std.array_list.Managed(SearchResult).init(allocator);
+    var lines = std.mem.splitScalar(u8, text, '\n');
     var line_num: usize = 0;
     var found_count: usize = 0;
 
@@ -73,7 +73,7 @@ pub fn findAll(allocator: std.mem.Allocator, text: []const u8, pattern: []const 
                 .match = line[abs_pos .. abs_pos + pattern.len],
             };
 
-            try results.append(result);
+            try results.append(allocator, result);
             found_count += 1;
 
             if (found_count >= max_results) break;
@@ -86,7 +86,7 @@ pub fn findAll(allocator: std.mem.Allocator, text: []const u8, pattern: []const 
 
 /// Replace all occurrences of a pattern
 pub fn replaceAll(allocator: std.mem.Allocator, text: []const u8, pattern: []const u8, replacement: []const u8, options: SearchOptions) Error![]u8 {
-    var result = std.ArrayList(u8).init(allocator);
+    var result = std.array_list.Managed(u8).init(allocator);
     var remaining = text;
     var replaced_count: usize = 0;
     const max_replacements = options.max_results orelse std.math.maxInt(usize);
@@ -108,36 +108,36 @@ pub fn replaceAll(allocator: std.mem.Allocator, text: []const u8, pattern: []con
             const after_ok = after_pos >= remaining.len or !isWordChar(remaining[after_pos]);
 
             if (!before_ok or !after_ok) {
-                try result.appendSlice(remaining[0 .. actual_pos + 1]);
+                try result.appendSlice(allocator, remaining[0 .. actual_pos + 1]);
                 remaining = remaining[actual_pos + 1 ..];
                 continue;
             }
         }
 
         // Add text before match
-        try result.appendSlice(remaining[0..actual_pos]);
+        try result.appendSlice(allocator, remaining[0..actual_pos]);
         // Add replacement
-        try result.appendSlice(replacement);
+        try result.appendSlice(allocator, replacement);
 
         remaining = remaining[actual_pos + pattern.len ..];
         replaced_count += 1;
     }
 
     // Add remaining text
-    try result.appendSlice(remaining);
+    try result.appendSlice(allocator, remaining);
 
     return result.toOwnedSlice();
 }
 
 /// Wrap text to specified width
 pub fn wrapText(allocator: std.mem.Allocator, text: []const u8, width: usize) Error![]u8 {
-    var result = std.ArrayList(u8).init(allocator);
-    var lines = std.mem.split(u8, text, "\n");
+    var result = std.array_list.Managed(u8).init(allocator);
+    var lines = std.mem.splitScalar(u8, text, '\n');
 
     while (lines.next()) |line| {
         if (line.len <= width) {
-            try result.appendSlice(line);
-            try result.append('\n');
+            try result.appendSlice(allocator, line);
+            try result.append(allocator, '\n');
             continue;
         }
 
@@ -152,8 +152,8 @@ pub fn wrapText(allocator: std.mem.Allocator, text: []const u8, width: usize) Er
             // If no space found, break at width
             if (break_pos == 0) break_pos = width;
 
-            try result.appendSlice(remaining[0..break_pos]);
-            try result.append('\n');
+            try result.appendSlice(allocator, remaining[0..break_pos]);
+            try result.append(allocator, '\n');
 
             // Skip space if that's where we broke
             if (break_pos < remaining.len and remaining[break_pos] == ' ') {
@@ -164,8 +164,8 @@ pub fn wrapText(allocator: std.mem.Allocator, text: []const u8, width: usize) Er
         }
 
         if (remaining.len > 0) {
-            try result.appendSlice(remaining);
-            try result.append('\n');
+            try result.appendSlice(allocator, remaining);
+            try result.append(allocator, '\n');
         }
     }
 
@@ -174,17 +174,17 @@ pub fn wrapText(allocator: std.mem.Allocator, text: []const u8, width: usize) Er
 
 /// Normalize whitespace in text
 pub fn normalizeWhitespace(allocator: std.mem.Allocator, text: []const u8) Error![]u8 {
-    var result = std.ArrayList(u8).init(allocator);
+    var result = std.array_list.Managed(u8).init(allocator);
     var in_whitespace = false;
 
     for (text) |char| {
         if (std.ascii.isWhitespace(char)) {
             if (!in_whitespace) {
-                try result.append(' ');
+                try result.append(allocator, ' ');
                 in_whitespace = true;
             }
         } else {
-            try result.append(char);
+            try result.append(allocator, char);
             in_whitespace = false;
         }
     }
@@ -194,7 +194,7 @@ pub fn normalizeWhitespace(allocator: std.mem.Allocator, text: []const u8) Error
 
 /// Get lines in a range
 pub fn getLines(text: []const u8, start_line: usize, end_line: usize) Error![]const u8 {
-    var lines = std.mem.split(u8, text, "\n");
+    var lines = std.mem.splitScalar(u8, text, '\n');
     var current_line: usize = 0;
     var start_pos: usize = 0;
     var end_pos: usize = text.len;
