@@ -2,16 +2,14 @@
     .name = .docz,
     .version = "0.0.0",
     .fingerprint = 0x288b9313a9cc2e06, // Changing this has security and trust implications.
-    .minimum_zig_version = "0.14.1",
-    .dependencies = .{
-        // Depend on argzon by running:
-        // zig fetch --save git+https://codeberg.org/tensorush/argzon.git
-    },
+    .minimum_zig_version = "0.15.1",
+    .dependencies = .{},
     .paths = .{
         "src/",
         "build.zig",
         "build.zig.zon",
         "LICENSE",
         "README.md",
+        "specs/",
     },
 }

@@ -1,0 +1,476 @@
+.{
+    .tool_metadata = .{
+        .categories = .{
+            .io_operations = .{"document_io"},
+            .content_manipulation = .{"content_editor"},
+            .quality_assurance = .{"document_validator"},
+            .document_generation = .{"document_transformer"},
+            .workflow_automation = .{"workflow_processor"},
+        },
+        .tool_attributes = .{
+            .document_io = .{
+                .complexity = "low",
+                .performance_cost = "low",
+                .preferred_for = .{ "file_access", "content_retrieval", "search", "discovery", "navigation" },
+                .requires_backup = false,
+            },
+            .content_editor = .{
+                .complexity = "medium",
+                .performance_cost = "medium",
+                .preferred_for = .{ "content_changes", "structure_edits", "table_operations", "metadata_management", "formatting" },
+                .requires_backup = true,
+            },
+            .document_validator = .{
+                .complexity = "high",
+                .performance_cost = "high",
+                .preferred_for = .{ "quality_assurance", "link_validation", "structure_checking", "compliance" },
+                .requires_backup = false,
+            },
+            .document_transformer = .{
+                .complexity = "medium",
+                .performance_cost = "medium",
+                .preferred_for = .{ "document_creation", "format_conversion", "template_generation", "publishing" },
+                .requires_backup = false,
+            },
+            .workflow_processor = .{
+                .complexity = "high",
+                .performance_cost = "high",
+                .preferred_for = .{ "complex_workflows", "batch_operations", "multi_step_processing", "automation" },
+                .requires_backup = true,
+            },
+        },
+        .workflow_recommendations = .{
+            .document_discovery = .{"document_io"},
+            .document_creation = .{ "document_transformer", "content_editor", "document_validator" },
+            .document_editing = .{ "document_io", "content_editor", "document_validator" },
+            .quality_assurance = .{"document_validator"},
+            .bulk_processing = .{"workflow_processor"},
+            .content_analysis = .{ "document_io", "document_validator" },
+        },
+    },
+    .document_io = .{
+        .description = "Unified tool for all document I/O operations: reading files, searching content, browsing workspace structure, and discovering information across markdown documents.",
+        .params = .{
+            .type = "object",
+            .properties = .{
+                .command = .{
+                    .type = "string",
+                    .@"enum" = .{ "read_file", "read_multiple", "read_section", "search_content", "search_pattern", "find_references", "list_directory", "find_files", "get_workspace_tree" },
+                    .description = "The I/O operation to perform",
+                },
+                .file_path = .{
+                    .type = "string",
+                    .description = "Absolute path to the file (for single file operations)",
+                },
+                .file_paths = .{
+                    .type = "array",
+                    .items = .{ .type = "string" },
+                    .maxItems = 20,
+                    .description = "Array of file paths for multi-file operations",
+                },
+                .query = .{
+                    .type = "string",
+                    .minLength = 1,
+                    .description = "Search query, pattern, or text to find",
+                },
+                .section_identifier = .{
+                    .type = "string",
+                    .description = "Section to read: 'heading:<text>', 'lines:start-end', or 'front_matter'",
+                    .examples = .{ "heading:Introduction", "lines:10-50", "front_matter" },
+                },
+                .directory_path = .{
+                    .type = "string",
+                    .description = "Path to directory to browse (defaults to current working directory)",
+                },
+                .search_options = .{
+                    .type = "object",
+                    .properties = .{
+                        .case_sensitive = .{ .type = "boolean", .default = false },
+                        .whole_words = .{ .type = "boolean", .default = false },
+                        .regex_mode = .{ .type = "boolean", .default = false },
+                        .context_lines = .{ .type = "integer", .minimum = 0, .maximum = 20, .default = 3 },
+                        .max_results = .{ .type = "integer", .minimum = 1, .maximum = 1000, .default = 50 },
+                    },
+                },
+                .file_patterns = .{
+                    .type = "array",
+                    .items = .{ .type = "string" },
+                    .description = "File patterns to include (e.g., ['*.md', '*.txt'])",
+                    .default = .{ "*.md", "*.markdown", "*.txt" },
+                },
+                .exclude_patterns = .{
+                    .type = "array",
+                    .items = .{ .type = "string" },
+                    .description = "Patterns to exclude from operations",
+                },
+                .max_depth = .{
+                    .type = "integer",
+                    .minimum = 1,
+                    .maximum = 10,
+                    .default = 3,
+                    .description = "Maximum directory depth to traverse",
+                },
+                .include_metadata = .{
+                    .type = "boolean",
+                    .default = true,
+                    .description = "Whether to include file metadata (size, modified date, etc.)",
+                },
+            },
+            .required = .{"command"},
+            .conditional_requirements = .{
+                .read_file = .{ .require = .{"file_path"} },
+                .read_multiple = .{ .require = .{"file_paths"} },
+                .read_section = .{ .require = .{ "file_path", "section_identifier" } },
+                .search_content = .{ .require = .{"query"} },
+                .search_pattern = .{ .require = .{"query"} },
+                .find_references = .{ .require = .{"query"} },
+            },
+        },
+    },
+    .content_editor = .{
+        .description = "Unified tool for all content modification operations: text editing, structural changes, table operations, metadata management, and formatting. Includes atomic transactions and rollback capabilities.",
+        .params = .{
+            .type = "object",
+            .properties = .{
+                .command = .{
+                    .type = "string",
+                    .@"enum" = .{ "insert_content", "replace_content", "move_content", "delete_content", "batch_replace", "add_section", "move_section", "delete_section", "generate_toc", "restructure", "create_table", "update_table_cell", "add_table_row", "add_table_column", "format_table", "set_metadata", "update_metadata", "remove_metadata", "validate_metadata", "apply_formatting", "normalize_markdown", "wrap_text", "fix_lists" },
+                    .description = "The content operation to perform",
+                },
+                .file_path = .{
+                    .type = "string",
+                    .pattern = "^/.+\\.(md|markdown|mdown|mkd|mkdn)$",
+                    .description = "Absolute path to the markdown file to modify",
+                },
+                .content = .{
+                    .type = "string",
+                    .minLength = 1,
+                    .description = "The content to insert, replacement text, or new section content",
+                },
+                .location = .{
+                    .type = "string",
+                    .pattern = "^(line:\\d+|after_section:[\\w-]+|before_section:[\\w-]+|start|end)$",
+                    .description = "Target location for content operations",
+                    .examples = .{ "line:42", "after_section:introduction", "before_section:conclusion", "start", "end" },
+                },
+                .search_pattern = .{
+                    .type = "string",
+                    .minLength = 1,
+                    .description = "Text or regex pattern to find for replacement operations",
+                },
+                .replacement = .{
+                    .type = "string",
+                    .description = "Replacement content for search patterns",
+                },
+                .scope = .{
+                    .type = "string",
+                    .pattern = "^(file|section:[\\w-]+|lines:\\d+-\\d+|table:\\d+)$",
+                    .description = "Operation scope: 'file', 'section:<slug>', 'lines:start-end', or 'table:N'",
+                    .examples = .{ "file", "section:api-reference", "lines:10-25", "table:0" },
+                },
+                .heading_text = .{
+                    .type = "string",
+                    .description = "Text of the heading for structural operations",
+                },
+                .heading_level = .{
+                    .type = "integer",
+                    .minimum = 1,
+                    .maximum = 6,
+                    .description = "Heading level (1-6) for new sections",
+                },
+                .table_data = .{
+                    .type = "object",
+                    .properties = .{
+                        .headers = .{ .type = "array", .items = .{ .type = "string" } },
+                        .rows = .{ .type = "array", .items = .{ .type = "array", .items = .{ .type = "string" } } },
+                        .row_index = .{ .type = "integer", .minimum = 0 },
+                        .column_index = .{ .type = "integer", .minimum = 0 },
+                        .cell_content = .{ .type = "string" },
+                        .alignment = .{ .type = "array", .items = .{ .type = "string", .@"enum" = .{ "left", "center", "right" } } },
+                    },
+                },
+                .metadata_updates = .{
+                    .type = "object",
+                    .description = "Object containing metadata key-value pairs to update",
+                },
+                .metadata_key = .{
+                    .type = "string",
+                    .description = "Specific metadata key to manipulate",
+                },
+                .metadata_value = .{
+                    .description = "Value to set (can be string, number, boolean, array, or object)",
+                },
+                .formatting_options = .{
+                    .type = "object",
+                    .properties = .{
+                        .style_type = .{ .type = "string", .@"enum" = .{ "bold", "italic", "code", "blockquote", "strikethrough" } },
+                        .wrap_width = .{ .type = "integer", .minimum = 60, .maximum = 120, .default = 80 },
+                        .preserve_code_blocks = .{ .type = "boolean", .default = true },
+                        .normalization_rules = .{ .type = "array", .items = .{ .type = "string" } },
+                    },
+                },
+                .batch_operations = .{
+                    .type = "array",
+                    .minItems = 1,
+                    .maxItems = 50,
+                    .items = .{
+                        .type = "object",
+                        .properties = .{
+                            .search = .{ .type = "string", .minLength = 1 },
+                            .replace = .{ .type = "string" },
+                            .is_regex = .{ .type = "boolean", .default = false },
+                            .scope = .{ .type = "string", .default = "file" },
+                        },
+                        .required = .{ "search", "replace" },
+                    },
+                    .description = "Array of operations for batch processing",
+                },
+                .is_regex = .{ .type = "boolean", .default = false },
+                .auto_format = .{ .type = "boolean", .default = false, .description = "Apply formatting after content changes" },
+                .backup_before_change = .{ .type = "boolean", .default = true },
+                .atomic_operation = .{ .type = "boolean", .default = true, .description = "Rollback on any failure" },
+            },
+            .required = .{ "command", "file_path" },
+            .conditional_requirements = .{
+                .insert_content = .{ .require = .{ "content", "location" } },
+                .replace_content = .{ .require = .{ "search_pattern", "replacement" } },
+                .batch_replace = .{ .require = .{"batch_operations"} },
+                .add_section = .{ .require = .{ "heading_text", "heading_level" } },
+                .create_table = .{ .require = .{ "table_data", "location" } },
+                .update_table_cell = .{ .require = .{"table_data"} },
+                .set_metadata = .{ .require = .{ "metadata_key", "metadata_value" } },
+                .update_metadata = .{ .require = .{"metadata_updates"} },
+            },
+        },
+    },
+    .document_validator = .{
+        .description = "Comprehensive quality assurance tool that validates document structure, checks links, validates metadata schemas, performs spell checking, and ensures compliance with style guidelines.",
+        .params = .{
+            .type = "object",
+            .properties = .{
+                .command = .{
+                    .type = "string",
+                    .@"enum" = .{ "full_validation", "check_structure", "validate_links", "check_spelling", "lint_style", "validate_metadata", "find_broken_refs", "check_accessibility", "add_link", "update_link", "resolve_relative_links" },
+                    .description = "The validation operation to perform",
+                },
+                .file_paths = .{
+                    .type = "array",
+                    .items = .{ .type = "string" },
+                    .description = "List of markdown files to validate",
+                },
+                .validation_scope = .{
+                    .type = "object",
+                    .properties = .{
+                        .structure = .{ .type = "boolean", .default = true },
+                        .links = .{ .type = "boolean", .default = true },
+                        .spelling = .{ .type = "boolean", .default = false },
+                        .style = .{ .type = "boolean", .default = true },
+                        .metadata = .{ .type = "boolean", .default = true },
+                        .accessibility = .{ .type = "boolean", .default = false },
+                    },
+                },
+                .link_validation = .{
+                    .type = "object",
+                    .properties = .{
+                        .check_external = .{ .type = "boolean", .default = false },
+                        .timeout_ms = .{ .type = "integer", .default = 5000 },
+                        .base_path = .{ .type = "string" },
+                        .resolve_relative = .{ .type = "boolean", .default = true },
+                        .link_text = .{ .type = "string" },
+                        .target_url = .{ .type = "string" },
+                        .old_target = .{ .type = "string" },
+                        .new_target = .{ .type = "string" },
+                    },
+                },
+                .structure_rules = .{
+                    .type = "object",
+                    .properties = .{
+                        .require_h1 = .{ .type = "boolean", .default = true },
+                        .max_heading_depth = .{ .type = "integer", .minimum = 2, .maximum = 6, .default = 4 },
+                        .allow_orphan_sections = .{ .type = "boolean", .default = false },
+                        .require_toc = .{ .type = "boolean", .default = false },
+                    },
+                },
+                .style_rules = .{
+                    .type = "object",
+                    .properties = .{
+                        .ruleset = .{ .type = "string", .@"enum" = .{ "default", "strict", "academic", "technical" } },
+                        .custom_rules_path = .{ .type = "string" },
+                        .max_line_length = .{ .type = "integer", .minimum = 60, .maximum = 120, .default = 80 },
+                    },
+                },
+                .spelling_options = .{
+                    .type = "object",
+                    .properties = .{
+                        .language = .{ .type = "string", .default = "en_US" },
+                        .ignore_words = .{ .type = "array", .items = .{ .type = "string" } },
+                        .custom_dictionary = .{ .type = "string" },
+                    },
+                },
+                .metadata_validation = .{
+                    .type = "object",
+                    .properties = .{
+                        .schema_type = .{ .type = "string", .@"enum" = .{ "blog", "documentation", "tutorial", "article" } },
+                        .custom_schema_path = .{ .type = "string" },
+                        .required_fields = .{ .type = "array", .items = .{ .type = "string" } },
+                    },
+                },
+                .output_format = .{
+                    .type = "string",
+                    .@"enum" = .{ "json", "text", "markdown", "summary" },
+                    .default = "json",
+                    .description = "Format for validation report output",
+                },
+                .fail_fast = .{ .type = "boolean", .default = false },
+                .max_errors = .{ .type = "integer", .minimum = 1, .default = 100 },
+            },
+            .required = .{ "command", "file_paths" },
+        },
+    },
+    .document_transformer = .{
+        .description = "Unified tool for document creation, conversion, and transformation. Handles template operations, format conversions, and document generation with comprehensive formatting options.",
+        .params = .{
+            .type = "object",
+            .properties = .{
+                .command = .{
+                    .type = "string",
+                    .@"enum" = .{ "create_from_template", "list_templates", "save_as_template", "update_template", "to_html", "to_pdf", "to_docx", "from_html", "from_docx", "to_latex" },
+                    .description = "The transformation operation to perform",
+                },
+                .template_options = .{
+                    .type = "object",
+                    .properties = .{
+                        .template_name = .{ .type = "string", .@"enum" = .{ "article", "blog_post", "tutorial", "documentation", "readme", "specification" } },
+                        .output_path = .{ .type = "string" },
+                        .template_variables = .{ .type = "object" },
+                        .source_file = .{ .type = "string" },
+                        .template_path = .{ .type = "string" },
+                        .include_sections = .{ .type = "array", .items = .{ .type = "string" } },
+                        .generate_placeholders = .{ .type = "boolean", .default = true },
+                    },
+                },
+                .conversion_options = .{
+                    .type = "object",
+                    .properties = .{
+                        .input_path = .{ .type = "string" },
+                        .output_path = .{ .type = "string" },
+                        .preserve_metadata = .{ .type = "boolean", .default = true },
+                    },
+                },
+                .style_options = .{
+                    .type = "object",
+                    .properties = .{
+                        .css_file = .{ .type = "string" },
+                        .theme = .{ .type = "string", .@"enum" = .{ "github", "academic", "minimal", "professional" } },
+                        .include_toc = .{ .type = "boolean", .default = true },
+                        .syntax_highlighting = .{ .type = "boolean", .default = true },
+                    },
+                },
+                .pdf_options = .{
+                    .type = "object",
+                    .properties = .{
+                        .page_size = .{ .type = "string", .@"enum" = .{ "A4", "Letter", "Legal" }, .default = "A4" },
+                        .margin = .{ .type = "string", .default = "1in" },
+                        .include_page_numbers = .{ .type = "boolean", .default = true },
+                        .header_footer = .{ .type = "boolean", .default = false },
+                    },
+                },
+            },
+            .required = .{"command"},
+            .conditional_requirements = .{
+                .create_from_template = .{ .require = .{"template_options"} },
+                .to_html = .{ .require = .{"conversion_options"} },
+                .to_pdf = .{ .require = .{"conversion_options"} },
+                .to_docx = .{ .require = .{"conversion_options"} },
+                .from_html = .{ .require = .{"conversion_options"} },
+                .from_docx = .{ .require = .{"conversion_options"} },
+                .to_latex = .{ .require = .{"conversion_options"} },
+            },
+        },
+    },
+    .workflow_processor = .{
+        .description = "Unified orchestration tool for executing sequential workflows and parallel batch operations with comprehensive error handling, progress tracking, and rollback support.",
+        .params = .{
+            .type = "object",
+            .properties = .{
+                .mode = .{
+                    .type = "string",
+                    .@"enum" = .{ "pipeline", "batch", "hybrid" },
+                    .description = "Execution mode: sequential pipeline, parallel batch, or adaptive hybrid",
+                },
+                .pipeline = .{
+                    .type = "array",
+                    .minItems = 2,
+                    .maxItems = 20,
+                    .items = .{
+                        .type = "object",
+                        .properties = .{
+                            .tool = .{
+                                .type = "string",
+                                .@"enum" = .{ "content_editor", "document_validator", "document_transformer", "document_io" },
+                            },
+                            .params = .{ .type = "object" },
+                            .on_error = .{ .type = "string", .@"enum" = .{ "halt", "continue", "retry", "rollback" }, .default = "halt" },
+                            .retry_count = .{ .type = "integer", .minimum = 0, .maximum = 3, .default = 0 },
+                            .description = .{ .type = "string" },
+                        },
+                        .required = .{ "tool", "params" },
+                    },
+                    .description = "Sequential operations for pipeline mode",
+                },
+                .batch_operations = .{
+                    .type = "array",
+                    .minItems = 1,
+                    .maxItems = 100,
+                    .items = .{
+                        .type = "object",
+                        .properties = .{
+                            .file_path = .{ .type = "string" },
+                            .operation_type = .{ .type = "string", .@"enum" = .{ "validate", "format", "convert", "update_metadata", "fix_links", "generate_toc" } },
+                            .parameters = .{ .type = "object" },
+                            .priority = .{ .type = "string", .@"enum" = .{ "low", "normal", "high" }, .default = "normal" },
+                        },
+                        .required = .{ "file_path", "operation_type" },
+                    },
+                    .description = "Parallel operations for batch mode",
+                },
+                .execution_options = .{
+                    .type = "object",
+                    .properties = .{
+                        .max_parallel = .{ .type = "integer", .minimum = 1, .maximum = 10, .default = 3 },
+                        .atomic = .{ .type = "boolean", .default = true },
+                        .dry_run = .{ .type = "boolean", .default = false },
+                        .progress_tracking = .{ .type = "boolean", .default = true },
+                    },
+                },
+                .error_handling = .{
+                    .type = "object",
+                    .properties = .{
+                        .continue_on_error = .{ .type = "boolean", .default = true },
+                        .max_failures = .{ .type = "integer", .minimum = 1, .default = 10 },
+                        .fail_fast = .{ .type = "boolean", .default = false },
+                        .collect_errors = .{ .type = "boolean", .default = true },
+                    },
+                },
+                .progress_reporting = .{
+                    .type = "object",
+                    .properties = .{
+                        .enabled = .{ .type = "boolean", .default = true },
+                        .update_interval = .{ .type = "integer", .minimum = 1, .default = 5 },
+                        .detailed_errors = .{ .type = "boolean", .default = true },
+                    },
+                },
+                .workflow_name = .{
+                    .type = "string",
+                    .description = "Optional name for the workflow for logging and tracking",
+                },
+            },
+            .required = .{"mode"},
+            .conditional_requirements = .{
+                .pipeline = .{ .require = .{"pipeline"} },
+                .batch = .{ .require = .{"batch_operations"} },
+                .hybrid = .{ .require = .{ "pipeline", "batch_operations" } },
+            },
+        },
+    },
+}

@@ -1,0 +1,99 @@
+.{
+    .name = "docz",
+    .description = "CLI agent for writing and refining markdown documents",
+    .options = .{
+        .{
+            .short = 'm',
+            .long = "model",
+            .type = "string",
+            .default = "claude-3-sonnet-20240229",
+            .description = "Anthropic model to use for generation",
+        },
+        .{
+            .short = 'o',
+            .long = "output",
+            .type = "string",
+            .description = "Output file path (defaults to stdout)",
+        },
+        .{
+            .short = 'i',
+            .long = "input",
+            .type = "string",
+            .description = "Input file path (defaults to stdin)",
+        },
+        .{
+            .short = 's',
+            .long = "system",
+            .type = "string",
+            .description = "Custom system prompt override",
+        },
+        .{
+            .short = 'c',
+            .long = "config",
+            .type = "string",
+            .description = "Path to configuration file",
+        },
+        .{
+            .long = "max-tokens",
+            .type = "u32",
+            .default = 4096,
+            .description = "Maximum tokens for response",
+        },
+        .{
+            .long = "temperature",
+            .type = "f32",
+            .default = 0.7,
+            .description = "Temperature setting for model creativity (0.0-1.0)",
+        },
+    },
+    .flags = .{
+        .{
+            .long = "oauth",
+            .description = "Setup OAuth authentication flow",
+        },
+        .{
+            .short = 'v',
+            .long = "verbose",
+            .description = "Enable verbose logging output",
+        },
+        .{
+            .long = "help_me",
+            .description = "Show help message and usage information",
+        },
+        .{
+            .long = "version",
+            .description = "Show version information",
+        },
+        .{
+            .long = "stream",
+            .default = true,
+            .description = "Enable streaming output (default behavior)",
+        },
+        .{
+            .long = "disable-stream",
+            .description = "Disable streaming, wait for complete response",
+            .excludes = .{
+                "stream",
+            },
+        },
+        .{
+            .long = "pretty",
+            .description = "Pretty print JSON responses and debug output",
+        },
+        .{
+            .long = "debug",
+            .description = "Enable debug mode with detailed logging",
+        },
+        .{
+            .long = "interactive",
+            .description = "Run in interactive mode for multi-turn conversations",
+        },
+    },
+    .positionals = .{
+        .{
+            .meta = .PROMPT,
+            .type = "string",
+            .description = "The prompt text to send (optional if using --input or stdin)",
+        },
+    },
+}

@@ -6,17 +6,25 @@ pub fn build(b: *std.Build) !void {
     const optimize = b.standardOptimizeOption(.{});
 
     const version_str = "0.0.0";
-    const version = try std.SemanticVersion.parse(version_str);
 
     const api_source_file = b.path("src/docz.zig");
     const root_source_file = b.path("src/main.zig");
 
     // Dependencies
-    const argzon_dep = b.dependency("argzon", .{
+
+    // CLI configuration module
+    const cli_zon = b.createModule(.{
+        .root_source_file = b.path("src/cli.zon"),
         .target = target,
         .optimize = optimize,
     });
-    const argzon_mod = argzon_dep.module("argzon");
+
+    // Markdown Agent module
+    const markdown_agent_mod = b.createModule(.{
+        .root_source_file = b.path("src/markdown_agent/markdown_agent.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
 
     // Public API module
     const api_mod = b.addModule("docz", .{
@@ -25,6 +33,9 @@ pub fn build(b: *std.Build) !void {
         .root_source_file = api_source_file,
     });
 
+    api_mod.addImport("cli.zon", cli_zon);
+    api_mod.addImport("markdown_agent", markdown_agent_mod);
+
     // Root module
     const root_mod = b.createModule(.{
         .target = target,
@@ -32,14 +43,16 @@ pub fn build(b: *std.Build) !void {
         .root_source_file = root_source_file,
         .strip = b.option(bool, "strip", "Strip the binary"),
     });
-    root_mod.addImport("argzon", argzon_mod);
+
+    root_mod.addImport("cli.zon", cli_zon);
+    root_mod.addImport("markdown_agent", markdown_agent_mod);
 
     // Executable
     const exe_run_step = b.step("run", "Run executable");
 
     const exe = b.addExecutable(.{
         .name = "docz",
-        .version = version,
+
         .root_module = root_mod,
     });
     b.installArtifact(exe);
@@ -54,7 +67,6 @@ pub fn build(b: *std.Build) !void {
     const tests_step = b.step("test", "Run test suite");
 
     const tests = b.addTest(.{
-        .version = version,
         .root_module = api_mod,
     });
 
@@ -86,7 +98,6 @@ pub fn build(b: *std.Build) !void {
 
         const release_exe = b.addExecutable(.{
             .name = RELEASE_NAME,
-            .version = version,
             .root_module = b.createModule(.{
                 .target = b.resolveTargetQuery(try std.Build.parseTargetQuery(.{ .arch_os_abi = RELEASE_TRIPLE })),
                 .optimize = .ReleaseSafe,
@@ -94,7 +105,6 @@ pub fn build(b: *std.Build) !void {
                 .strip = true,
             }),
         });
-        release_exe.root_module.addImport("argzon", argzon_mod);
 
         const release_exe_install = b.addInstallArtifact(release_exe, .{});
 
