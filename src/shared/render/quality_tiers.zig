@@ -7,7 +7,7 @@ const RenderTier = adaptive_renderer.RenderTier;
 pub const QualityTiers = struct {
     /// Progress bar rendering characteristics for each mode
     pub const ProgressBar = struct {
-        pub const high = Config{
+        pub const high = ProgressConfig{
             .use_gradient = true,
             .use_animations = true,
             .bar_chars = .{
@@ -21,7 +21,7 @@ pub const QualityTiers = struct {
             .width = 40,
         };
 
-        pub const medium = Config{
+        pub const medium = ProgressConfig{
             .use_gradient = false,
             .use_animations = false,
             .bar_chars = .{
@@ -35,7 +35,7 @@ pub const QualityTiers = struct {
             .width = 30,
         };
 
-        pub const low = Config{
+        pub const low = ProgressConfig{
             .use_gradient = false,
             .use_animations = false,
             .bar_chars = .{
@@ -49,7 +49,7 @@ pub const QualityTiers = struct {
             .width = 20,
         };
 
-        pub const basic = Config{
+        pub const basic = ProgressConfig{
             .use_gradient = false,
             .use_animations = false,
             .bar_chars = .{
@@ -63,7 +63,7 @@ pub const QualityTiers = struct {
             .width = 0,
         };
 
-        pub fn getConfig(mode: RenderTier) Config {
+        pub fn getConfig(mode: RenderTier) ProgressConfig {
             return switch (mode) {
                 .ultra => high, // Ultra gets high quality features
                 .rich => high,
@@ -183,7 +183,7 @@ pub const QualityTiers = struct {
 };
 
 /// Configuration for progress bar rendering
-pub const Config = struct {
+pub const ProgressConfig = struct {
     use_gradient: bool,
     use_animations: bool,
     bar_chars: BarCharSet,

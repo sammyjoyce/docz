@@ -105,7 +105,7 @@ pub const Config = struct {
 
         // Set derived configuration values if needed
         // For example, you might set model parameters based on other config
-        if (self.custom_feature_enabled) {
+        if (self.config.customFeatureEnabled) {
             // Adjust limits when custom feature is enabled
             self.agent_config.limits.max_processing_time_ms =
                 @max(self.agent_config.limits.max_processing_time_ms, 60000);

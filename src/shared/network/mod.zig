@@ -31,6 +31,9 @@ pub const HTTPResponse = curl.HTTPResponse;
 // Anthropic API types (prefer new split module models; legacy remains available)
 pub const MessageRole = anthropic.models.MessageRole;
 pub const Message = anthropic.models.Message;
+pub const MessagesParams = anthropic.MessagesParams;
+pub const MessagesResult = anthropic.MessagesResult;
+pub const StreamParams = anthropic.StreamParams;
 
 // OAuth types
 pub const Credentials = anthropic.models.Credentials;
@@ -40,12 +43,15 @@ pub const Pkce = anthropic.models.Pkce;
 pub const SSEError = sse.SSEError;
 pub const SSEField = sse.SSEField;
 pub const SSEEvent = sse.SSEEvent;
-pub const SSEEventFinal = sse.SSEEventFinal;
-pub const SSEProcessing = sse.SSEProcessing;
+pub const SSEEventBuilder = sse.SSEEventBuilder;
+pub const SSEConfig = sse.SSEConfig;
 
 // Service types
 pub const NetworkService = service.Service;
 pub const NetworkError = service.NetworkError;
+pub const NetworkRequest = service.NetworkRequest;
+pub const NetworkResponse = service.NetworkResponse;
+pub const NetworkEvent = service.NetworkEvent;
 
 /// Initialize the network module
 pub fn init() void {

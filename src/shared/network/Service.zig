@@ -12,7 +12,7 @@ pub const NetworkError = error{
     Canceled,
 };
 
-pub const Request = struct {
+pub const NetworkRequest = struct {
     method: []const u8 = "GET",
     url: []const u8,
     headers: []const []const u8 = &.{},
@@ -20,18 +20,18 @@ pub const Request = struct {
     timeout_ms: u32 = 30000,
 };
 
-pub const Response = struct {
+pub const NetworkResponse = struct {
     status: u16,
     body: []const u8,
 };
 
-pub const Event = struct {
+pub const NetworkEvent = struct {
     event: []const u8 = "message",
     data: []const u8,
 };
 
 pub const Service = struct {
-    pub fn request(alloc: std.mem.Allocator, req: Request) NetworkError!Response {
+    pub fn request(alloc: std.mem.Allocator, req: NetworkRequest) NetworkError!NetworkResponse {
         var client = try curl.HTTPClient.init(alloc);
         defer client.deinit();
 
@@ -78,10 +78,10 @@ pub const Service = struct {
         defer http_resp.deinit();
 
         const body = try alloc.dupe(u8, http_resp.body);
-        return Response{ .status = http_resp.status_code, .body = body };
+        return NetworkResponse{ .status = http_resp.status_code, .body = body };
     }
 
-    pub fn stream(alloc: std.mem.Allocator, req: Request, on_chunk: *const fn ([]const u8) void) NetworkError!void {
+    pub fn stream(alloc: std.mem.Allocator, req: NetworkRequest, on_chunk: *const fn ([]const u8) void) NetworkError!void {
         var client = try curl.HTTPClient.init(alloc);
         defer client.deinit();
 
@@ -113,13 +113,13 @@ pub const Service = struct {
         };
     }
 
-    pub fn sse(alloc: std.mem.Allocator, req: Request, on_event: *const fn (Event) void) NetworkError!void {
+    pub fn sse(alloc: std.mem.Allocator, req: NetworkRequest, on_event: *const fn (NetworkEvent) void) NetworkError!void {
         // Basic SSE adapter using streaming; parse lines and dispatch minimal events
         var buffer = std.ArrayListUnmanaged(u8){};
         defer buffer.deinit(alloc);
 
         const Self = struct {
-            on_event: *const fn (Event) void,
+            on_event: *const fn (NetworkEvent) void,
             alloc: std.mem.Allocator,
             buf: *std.ArrayListUnmanaged(u8),
         };
@@ -153,7 +153,7 @@ pub const Service = struct {
         };
     }
 
-    pub fn download(alloc: std.mem.Allocator, req: Request, path: []const u8) NetworkError!void {
+    pub fn download(alloc: std.mem.Allocator, req: NetworkRequest, path: []const u8) NetworkError!void {
         const resp = try Service.request(alloc, req);
         defer alloc.free(resp.body);
         var file = std.fs.cwd().createFile(path, .{ .truncate = true }) catch return NetworkError.Connection;
@@ -172,7 +172,7 @@ fn streamChunkThunk(chunk: []const u8, context: *anyopaque) void {
 
 fn streamChunkThunkWithCtx(chunk: []const u8, context: *anyopaque) void {
     const Self = struct {
-        on_event: *const fn (Event) void,
+        on_event: *const fn (NetworkEvent) void,
         alloc: std.mem.Allocator,
         buf: *std.ArrayList(u8),
     };
@@ -184,7 +184,7 @@ fn streamChunkThunkWithCtx(chunk: []const u8, context: *anyopaque) void {
     while (it.next()) |line| {
         consumed += line.len + 1;
         if (line.len == 0) continue;
-        self.on_event(Event{ .data = line });
+        self.on_event(NetworkEvent{ .data = line });
     }
     if (consumed > 0 and consumed <= self.buf.items.len) {
         const remaining = self.buf.items[consumed..];

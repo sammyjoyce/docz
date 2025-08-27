@@ -1,23 +1,22 @@
 const std = @import("std");
-const integration = @import("integration.zig");
 
 /// Prompt and command tracking functionality
 /// Provides high-level utilities for managing shell integration lifecycle
 pub fn PromptTracker(comptime WriterType: type) type {
     return struct {
         allocator: std.mem.Allocator,
-        context: ?ShellContext(WriterType) = null,
+        context: ?ShellContextType(WriterType) = null,
 
-        pub fn ShellContext(comptime InnerWriterType: type) type {
+        pub fn ShellContextType(comptime InnerWriterType: type) type {
             return struct {
                 writer: InnerWriterType,
                 allocator: std.mem.Allocator,
-                caps: integration.ShellManager.TermCaps,
-                iface: integration.ShellManager.Interface,
+                caps: @import("integration.zig").Shell.TermCaps,
+                iface: @import("integration.zig").Shell.Interface,
 
                 const Self = @This();
 
-                pub fn init(writer: InnerWriterType, allocator: std.mem.Allocator, caps: integration.ShellManager.TermCaps, iface: integration.ShellManager.Interface) Self {
+                pub fn init(writer: InnerWriterType, allocator: std.mem.Allocator, caps: @import("integration.zig").Shell.TermCaps, iface: @import("integration.zig").Shell.Interface) Self {
                     return .{
                         .writer = writer,
                         .allocator = allocator,
@@ -27,11 +26,11 @@ pub fn PromptTracker(comptime WriterType: type) type {
                 }
 
                 /// Create a shell integration context
-                pub fn createShellContext(self: Self) integration.ShellManager.Context(InnerWriterType) {
-                    return integration.ShellManager.createContext(InnerWriterType, self.writer, self.allocator, self.caps);
+                pub fn createShellContext(self: Self) @import("integration.zig").Shell.Context(InnerWriterType) {
+                    return @import("integration.zig").Shell.createContext(InnerWriterType, self.writer, self.allocator, self.caps);
                 }
-            };
-        }
+    };
+}
 
         const Self = @This();
 
@@ -42,7 +41,7 @@ pub fn PromptTracker(comptime WriterType: type) type {
         }
 
         /// Set the shell integration context
-        pub fn setContext(self: *Self, context: ShellContext(WriterType)) void {
+        pub fn setContext(self: *Self, context: ShellContextType(WriterType)) void {
             self.context = context;
         }
 
@@ -270,7 +269,7 @@ pub fn Notification(comptime WriterType: type) type {
         }
 
         /// Set alert on command completion
-        pub fn setAlertOnCompletion(self: Self, config: integration.ShellIntegration.AlertConfig) !void {
+        pub fn setAlertOnCompletion(self: Self, config: shell_integration.Shell.AlertConfig) !void {
             if (self.context) |ctx| {
                 const shell_ctx = ctx.createShellContext();
                 try ctx.iface.notification_ops.setAlertOnCompletion(shell_ctx, config);
@@ -278,7 +277,7 @@ pub fn Notification(comptime WriterType: type) type {
         }
 
         /// Trigger a file download
-        pub fn triggerDownload(self: Self, config: integration.ShellIntegration.DownloadConfig) !void {
+        pub fn triggerDownload(self: Self, config: shell_integration.Shell.DownloadConfig) !void {
             if (self.context) |ctx| {
                 const shell_ctx = ctx.createShellContext();
                 try ctx.iface.notification_ops.triggerDownload(shell_ctx, config);
@@ -323,7 +322,7 @@ pub fn SemanticZone(comptime WriterType: type) type {
         }
 
         /// Add an annotation to terminal output
-        pub fn addAnnotation(self: Self, config: integration.ShellIntegration.AnnotationConfig) !void {
+        pub fn addAnnotation(self: Self, config: shell_integration.Shell.AnnotationConfig) !void {
             if (self.context) |ctx| {
                 const shell_ctx = ctx.createShellContext();
                 try ctx.iface.semantic_ops.addAnnotation(shell_ctx, config);
@@ -340,77 +339,4 @@ pub fn SemanticZone(comptime WriterType: type) type {
     };
 }
 
-/// Complete shell integration manager
-pub fn ShellManager(comptime WriterType: type) type {
-    return struct {
-        allocator: std.mem.Allocator,
-        prompt_tracker: PromptTracker(WriterType),
-        command_tracker: CommandTracker(WriterType),
-        directory_tracker: DirectoryTracker(WriterType),
-        notification_manager: Notification(WriterType),
-        semantic_manager: SemanticZone(WriterType),
 
-        const Self = @This();
-
-        pub fn init(allocator: std.mem.Allocator) Self {
-            return .{
-                .allocator = allocator,
-                .prompt_tracker = PromptTracker(WriterType).init(allocator),
-                .command_tracker = CommandTracker(WriterType).init(allocator),
-                .directory_tracker = DirectoryTracker(WriterType).init(allocator),
-                .notification_manager = Notification(WriterType).init(allocator),
-                .semantic_manager = SemanticZone(WriterType).init(allocator),
-            };
-        }
-
-        pub fn deinit(self: *Self) void {
-            self.directory_tracker.deinit();
-        }
-
-        /// Set the shell integration context for all trackers
-        pub fn setContext(self: *Self, writer: WriterType, caps: integration.ShellIntegration.TermCaps, iface: integration.ShellIntegration.Interface) void {
-            const context = PromptTracker(WriterType).ShellContext(WriterType).init(writer, self.allocator, caps, iface);
-            self.prompt_tracker.setContext(context);
-            self.command_tracker.setContext(context);
-            self.directory_tracker.setContext(context);
-            self.notification_manager.setContext(context);
-            self.semantic_manager.setContext(context);
-        }
-
-        /// Convenience method to initialize full shell integration
-        pub fn initFullIntegration(self: *Self, writer: WriterType, caps: integration.ShellIntegration.TermCaps, iface: integration.ShellIntegration.Interface) !void {
-            self.setContext(writer, caps, iface);
-
-            const context = PromptTracker(WriterType).ShellContext(WriterType).init(writer, self.allocator, caps, iface);
-            const shell_ctx = context.createShellContext();
-            try integration.ShellIntegration.Convenience.initFullIntegration(WriterType, shell_ctx, iface);
-        }
-
-        /// Convenience method to mark SSH session start
-        pub fn startSshSession(self: *Self, hostname: []const u8, username: ?[]const u8) !void {
-            if (self.prompt_tracker.context) |ctx| {
-                const shell_ctx = ctx.createShellContext();
-                try integration.ShellIntegration.Convenience.startSshSession(WriterType, shell_ctx, ctx.iface, hostname, username);
-            }
-        }
-
-        /// Convenience method to mark SSH session end
-        pub fn endSshSession(self: *Self) !void {
-            if (self.prompt_tracker.context) |ctx| {
-                const shell_ctx = ctx.createShellContext();
-                try integration.ShellIntegration.Convenience.endSshSession(WriterType, shell_ctx, ctx.iface);
-            }
-        }
-
-        /// Convenience method to execute a command with full integration
-        pub fn executeCommand(
-            self: *Self,
-            command: []const u8,
-            cwd: ?[]const u8,
-            command_fn: anytype,
-            args: anytype,
-        ) !i32 {
-            return try self.command_tracker.executeCommand(command, cwd, command_fn, args);
-        }
-    };
-}

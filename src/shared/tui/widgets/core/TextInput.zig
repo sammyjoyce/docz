@@ -17,13 +17,13 @@ pub const TextInputState = struct {
 };
 
 /// Text input widget implementation
-pub const TextInputWidget = struct {
+pub const TextInput = struct {
     state: TextInputState,
     allocator: Allocator,
 
     /// Create a new text input widget
-    pub fn init(allocator: Allocator, placeholder: []const u8) !*TextInputWidget {
-        const widget = try allocator.create(TextInputWidget);
+    pub fn init(allocator: Allocator, placeholder: []const u8) !*TextInput {
+        const widget = try allocator.create(TextInput);
         widget.* = .{
             .state = .{
                 .content = std.ArrayList(u8).init(allocator),
@@ -36,7 +36,7 @@ pub const TextInputWidget = struct {
     }
 
     /// Create a Widget interface for this text input
-    pub fn createWidget(self: *TextInputWidget, id: []const u8, bounds: widget_interface.Rect) !*widget_interface.Widget {
+    pub fn createWidget(self: *TextInput, id: []const u8, bounds: widget_interface.Rect) !*widget_interface.Widget {
         const vtable = try self.allocator.create(widget_interface.WidgetVTable);
         vtable.* = .{
             .render = render,
@@ -178,7 +178,7 @@ pub const TextInputWidget = struct {
     /// Get widget type name
     pub fn getTypeName(ctx: *anyopaque) []const u8 {
         _ = ctx;
-        return "TextInputWidget";
+        return "TextInput";
     }
 
     /// Handle focus changes
@@ -190,7 +190,7 @@ pub const TextInputWidget = struct {
     }
 
     /// Insert character at cursor position
-    fn insertChar(self: *TextInputWidget, ch: u8) !void {
+    fn insertChar(self: *TextInput, ch: u8) !void {
         if (self.state.max_length) |max| {
             if (self.state.content.items.len >= max) return;
         }
@@ -205,7 +205,7 @@ pub const TextInputWidget = struct {
     }
 
     /// Delete character before cursor
-    fn deleteChar(self: *TextInputWidget) void {
+    fn deleteChar(self: *TextInput) void {
         if (self.state.cursor_pos > 0) {
             _ = self.state.content.orderedRemove(self.state.cursor_pos - 1);
             self.state.cursor_pos -= 1;
@@ -218,7 +218,7 @@ pub const TextInputWidget = struct {
     }
 
     /// Delete character after cursor
-    fn deleteForward(self: *TextInputWidget) void {
+    fn deleteForward(self: *TextInput) void {
         if (self.state.cursor_pos < self.state.content.items.len) {
             _ = self.state.content.orderedRemove(self.state.cursor_pos);
 
@@ -230,36 +230,36 @@ pub const TextInputWidget = struct {
     }
 
     /// Move cursor left
-    fn moveCursorLeft(self: *TextInputWidget) void {
+    fn moveCursorLeft(self: *TextInput) void {
         if (self.state.cursor_pos > 0) {
             self.state.cursor_pos -= 1;
         }
     }
 
     /// Move cursor right
-    fn moveCursorRight(self: *TextInputWidget) void {
+    fn moveCursorRight(self: *TextInput) void {
         if (self.state.cursor_pos < self.state.content.items.len) {
             self.state.cursor_pos += 1;
         }
     }
 
     /// Move cursor to home
-    fn moveCursorHome(self: *TextInputWidget) void {
+    fn moveCursorHome(self: *TextInput) void {
         self.state.cursor_pos = 0;
     }
 
     /// Move cursor to end
-    fn moveCursorEnd(self: *TextInputWidget) void {
+    fn moveCursorEnd(self: *TextInput) void {
         self.state.cursor_pos = self.state.content.items.len;
     }
 
     /// Get current text
-    pub fn getText(self: TextInputWidget) []const u8 {
+    pub fn getText(self: TextInput) []const u8 {
         return self.state.content.items;
     }
 
     /// Set text content
-    pub fn setText(self: *TextInputWidget, text: []const u8) !void {
+    pub fn setText(self: *TextInput, text: []const u8) !void {
         self.state.content.clearAndFree();
         try self.state.content.appendSlice(text);
         self.state.cursor_pos = @min(self.state.cursor_pos, self.state.content.items.len);
@@ -271,28 +271,28 @@ pub const TextInputWidget = struct {
     }
 
     /// Set placeholder text
-    pub fn setPlaceholder(self: *TextInputWidget, placeholder: []const u8) !void {
+    pub fn setPlaceholder(self: *TextInput, placeholder: []const u8) !void {
         self.allocator.free(self.state.placeholder);
         self.state.placeholder = try self.allocator.dupe(u8, placeholder);
     }
 
     /// Set change callback
-    pub fn setOnChange(self: *TextInputWidget, on_change: ?*const fn (*widget_interface.Widget, []const u8) void) void {
+    pub fn setOnChange(self: *TextInput, on_change: ?*const fn (*widget_interface.Widget, []const u8) void) void {
         self.state.on_change = on_change;
     }
 
     /// Set max length
-    pub fn setMaxLength(self: *TextInputWidget, max_length: ?usize) void {
+    pub fn setMaxLength(self: *TextInput, max_length: ?usize) void {
         self.state.max_length = max_length;
     }
 
     /// Set password mode
-    pub fn setPassword(self: *TextInputWidget, is_password: bool) void {
+    pub fn setPassword(self: *TextInput, is_password: bool) void {
         self.state.is_password = is_password;
     }
 
     /// Clean up resources
-    pub fn deinit(self: *TextInputWidget) void {
+    pub fn deinit(self: *TextInput) void {
         self.state.content.deinit();
         self.allocator.free(self.state.placeholder);
         self.allocator.destroy(self);
@@ -306,6 +306,6 @@ pub fn createTextInput(
     placeholder: []const u8,
     bounds: widget_interface.Rect,
 ) !*widget_interface.Widget {
-    const text_input = try TextInputWidget.init(allocator, placeholder);
+    const text_input = try TextInput.init(allocator, placeholder);
     return try text_input.createWidget(id, bounds);
 }

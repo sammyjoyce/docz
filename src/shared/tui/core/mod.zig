@@ -6,16 +6,8 @@ const std = @import("std");
 // Re-export existing core components from src/tui/core
 pub const events = @import("events.zig");
 pub const bounds = @import("bounds.zig");
-pub const layout = @import("layout.zig");
-pub const screen = @import("screen.zig");
 pub const renderer = @import("renderer.zig");
 pub const stylize = @import("stylize.zig");
-
-// Renderers
-pub const renderers = @import("renderers/mod.zig");
-
-// Input system
-pub const input = @import("input/mod.zig");
 
 // Border merging functionality
 pub const border_merger = @import("border_merger.zig");

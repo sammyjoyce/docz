@@ -275,7 +275,7 @@ pub const SelectMenu = struct {
         try self.renderTitle(stdout);
 
         // Search bar if enabled
-        if (self.show_search) {
+        if (self.showSearch) {
             try self.renderSearchBar(stdout);
         }
 
@@ -283,7 +283,7 @@ pub const SelectMenu = struct {
         try self.renderMenuItems(stdout);
 
         // Scrolling indicators
-        if (self.filtered_items.items.len > self.max_visible_items) {
+        if (self.filteredItems.items.len > self.max_visible_items) {
             try self.renderScrollIndicators(stdout);
         }
 
@@ -309,7 +309,7 @@ pub const SelectMenu = struct {
         try writer.print("┌─ {s} ", .{self.title});
 
         // Selection mode indicator
-        const mode_text = switch (self.selection_mode) {
+        const mode_text = switch (self.selectionMode) {
             .single => "(Single)",
             .multiple => "(Multiple)",
             .radio => "(Radio)",
@@ -317,7 +317,7 @@ pub const SelectMenu = struct {
         try writer.writeAll(mode_text);
 
         // Mouse hint in title
-        if (self.show_mouse_hints and self.mouse_enabled) {
+        if (self.showMouseHints and self.mouseEnabled) {
             try writer.writeAll(" 🖱️");
         }
 
@@ -351,13 +351,13 @@ pub const SelectMenu = struct {
             try term_ansi.setForeground256(writer, self.caps, 15);
         }
 
-        try writer.writeAll(self.search_query.items);
+        try writer.writeAll(self.searchQuery.items);
 
         // Cursor with better visibility
         try writer.writeAll("▎");
 
         // Pad to width
-        const used_width = 13 + self.search_query.items.len;
+        const used_width = 13 + self.searchQuery.items.len;
         const padding = if (68 > used_width) 68 - used_width else 0;
         for (0..padding) |_| {
             try writer.writeAll(" ");

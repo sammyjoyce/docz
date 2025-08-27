@@ -320,14 +320,14 @@ pub const Server = struct {
         self.resultChannel.send(result);
 
         // Send response to browser
-        if (self.config.show_success_page) {
+        if (self.config.showSuccessPage) {
             self.sendSuccessResponse(connection.stream) catch {};
         } else {
             self.sendMinimalResponse(connection.stream) catch {};
         }
 
         // Auto-close if configured
-        if (self.config.auto_close) {
+        if (self.config.autoClose) {
             std.Thread.sleep(1_000_000_000); // 1 second delay
             self.shutdownRequested.store(true, .seq_cst);
         }

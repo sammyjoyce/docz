@@ -26,7 +26,7 @@ const input_system = tui_mod.input;
 const canvas_engine = tui_mod.canvas_engine;
 const modal_system = @import("../../tui/widgets/modal.zig");
 const theme_manager = @import("../../theme_manager/mod.zig");
-const input_component = @import("../../components/input_component.zig");
+const input_enhanced = @import("../../components/input_enhanced.zig");
 
 // Import terminal capabilities
 const term = @import("../../term_refactored/mod.zig");
@@ -46,7 +46,7 @@ const CanvasEngine = canvas_engine.CanvasEngine;
 const Modal = modal_system.Modal;
 const ModalManager = modal_system.ModalManager;
 const ThemeManager = theme_manager.Theme;
-const InputField = input_component.InputField;
+const InputField = input_enhanced.InputField;
 
 /// OAuth wizard states with rich metadata
 const WizardState = enum {
@@ -720,7 +720,7 @@ pub const OAuthWizardPro = struct {
         if (self.input_component == null) {
             // Initialize smart input with validation
             const validation_fn = struct {
-                fn validate(code: []const u8) input_component.ValidationResult {
+                fn validate(code: []const u8) input_enhanced.ValidationResult {
                     if (code.len == 0) return .{ .isValid = true };
 
                     if (code.len < 10) {
@@ -750,7 +750,7 @@ pub const OAuthWizardPro = struct {
             });
 
             // Set up autocomplete for common OAuth providers
-            const completion_items = try self.allocator.alloc(input_component.CompletionItem, 3);
+            const completion_items = try self.allocator.alloc(input_enhanced.CompletionItem, 3);
             completion_items[0] = .{ .text = "anthropic-", .description = "Anthropic OAuth code prefix" };
             completion_items[1] = .{ .text = "claude-", .description = "Claude service code prefix" };
             completion_items[2] = .{ .text = "auth-", .description = "Generic auth code prefix" };

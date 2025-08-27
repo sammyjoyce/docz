@@ -6,7 +6,7 @@
 // The new dashboard is in the dashboard/ subdirectory
 // This line is commented for migration reference
 // pub const Dashboard = @import("Dashboard.zig");
-pub const DiffViewer = @import("DiffViewer.zig");
+// pub const DiffViewer = @import("DiffViewer.zig");
 pub const Authentication = @import("Authentication.zig").Authentication;
 pub const Session = @import("Session.zig").Session;
 pub const Progress = @import("Progress.zig").Progress;

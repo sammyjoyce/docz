@@ -27,7 +27,7 @@ const components_mod = @import("../../components/mod.zig");
 const notification_mod = @import("../../components/notification.zig");
 const progress_mod = @import("../../components/progress.zig");
 const input_mod = @import("../../components/input.zig");
-const input_component_mod = @import("../../components/input_component.zig");
+const input_enhanced_mod = @import("../../components/input_enhanced.zig");
 const theme_manager_mod = @import("../../theme_manager/mod.zig");
 
 // Import terminal capabilities and unified interface
@@ -52,7 +52,7 @@ const ProgressBar = progress_mod.ProgressBar;
 const ProgressConfig = progress_mod.ProgressConfig;
 const InputEvent = input_mod.InputEvent;
 const Key = input_mod.Key;
-const InputComponentField = input_component_mod.InputComponent;
+const InputComponentField = input_enhanced_mod.InputComponent;
 const ThemeManager = theme_manager_mod.ThemeManager;
 const CanvasEngine = canvas_engine.CanvasEngine;
 const Modal = modal_system.Modal;

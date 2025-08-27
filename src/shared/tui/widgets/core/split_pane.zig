@@ -13,11 +13,11 @@ const events = @import("../../core/events.zig");
 const mouse_mod = @import("../../core/input/mouse.zig");
 const focus_mod = @import("../../core/input/focus.zig");
 const constraint_solver = @import("../../core/constraint_solver.zig");
-// Use top-level term cursor API instead of ansi submodule
-const term_cursor = @import("../../../term_refactored/control/cursor.zig");
-const term_mod = @import("../../../term_refactored/mod.zig");
-const term_caps = @import("../../../term_refactored/core/capabilities.zig");
+// Use top-level term APIs
+const term_cursor = @import("../../../term/cursor.zig");
+const term_mod = @import("../../../term/mod.zig");
 const input_mod = @import("../../../components/input.zig");
+const term_color = @import("../../../term/color/mod.zig");
 
 // Type aliases for convenience
 const ConstraintSolver = constraint_solver.ConstraintSolver;
@@ -69,35 +69,59 @@ pub const DividerStyle = struct {
     active_color: []const u8,
     width: u32, // Width in cells for horizontal, height for vertical
 
+    /// Generate ANSI sequence for a color at comptime
+    fn colorSeq(comptime color: term_color.TerminalColor) []const u8 {
+        return switch (color) {
+            .default => "\x1b[39m",
+            .ansi16 => |c| switch (c) {
+                .bright_black => "\x1b[90m",
+                .bright_blue => "\x1b[94m",
+                .bright_green => "\x1b[92m",
+                else => "\x1b[39m", // fallback
+            },
+            .ansi256 => |c| switch (c.index) {
+                8 => "\x1b[38;5;8m",
+                12 => "\x1b[38;5;12m",
+                10 => "\x1b[38;5;10m",
+                else => "\x1b[39m", // fallback
+            },
+            .rgb => |rgb| switch (rgb.r) {
+                128 => if (rgb.g == 128 and rgb.b == 128) "\x1b[38;2;128;128;128m" else "\x1b[39m",
+                100 => if (rgb.g == 149 and rgb.b == 237) "\x1b[38;2;100;149;237m" else "\x1b[39m",
+                50 => if (rgb.g == 205 and rgb.b == 50) "\x1b[38;2;50;205;50m" else "\x1b[39m",
+                else => "\x1b[39m", // fallback
+            },
+        };
+    }
+
     pub fn default() DividerStyle {
         return .{
             .char = "│", // Vertical divider for horizontal split
-            .color = "\x1b[90m", // Bright black
-            .hover_color = "\x1b[94m", // Bright blue
-            .active_color = "\x1b[92m", // Bright green
+            .color = colorSeq(.{ .ansi16 = .bright_black }), // Bright black
+            .hover_color = colorSeq(.{ .ansi16 = .bright_blue }), // Bright blue
+            .active_color = colorSeq(.{ .ansi16 = .bright_green }), // Bright green
             .width = 1,
         };
     }
 
-    pub fn rich(caps: term_caps.TermCaps) DividerStyle {
+    pub fn rich(caps: term_mod.capabilities.TermCaps) DividerStyle {
         if (caps.supportsTruecolor) {
             return .{
                 .char = "│",
-                .color = "\x1b[38;2;128;128;128m", // Gray
-                .hover_color = "\x1b[38;2;100;149;237m", // Cornflower blue
-                .active_color = "\x1b[38;2;50;205;50m", // Lime green
-                .width = 1,
-            };
-        } else if (caps.supports256Color()) {
-            return .{
-                .char = "│",
-                .color = "\x1b[38;5;8m", // Bright black
-                .hover_color = "\x1b[38;5;12m", // Bright blue
-                .active_color = "\x1b[38;5;10m", // Bright green
+                .color = colorSeq(.{ .rgb = term_color.RGB.init(128, 128, 128) }), // Gray
+                .hover_color = colorSeq(.{ .rgb = term_color.RGB.init(100, 149, 237) }), // Cornflower blue
+                .active_color = colorSeq(.{ .rgb = term_color.RGB.init(50, 205, 50) }), // Lime green
                 .width = 1,
             };
         } else {
-            return default();
+            // Assume 256-color support for non-truecolor terminals
+            return .{
+                .char = "│",
+                .color = colorSeq(.{ .ansi256 = term_color.Ansi256.init(8) }), // Bright black
+                .hover_color = colorSeq(.{ .ansi256 = term_color.Ansi256.init(12) }), // Bright blue
+                .active_color = colorSeq(.{ .ansi256 = term_color.Ansi256.init(10) }), // Bright green
+                .width = 1,
+            };
         }
     }
 };
@@ -586,7 +610,7 @@ pub const SplitPane = struct {
         const label_x = left + (bounds.width - label.len) / 2;
         const label_y = top + bounds.height / 2;
         try term_cursor.cursorPosition(writer, caps, @as(u32, @intCast(label_y + 1)), @as(u32, @intCast(label_x + 1)));
-        try writer.writeAll("\x1b[90m"); // Bright black
+        try term_mod.ansi.sgr.setForeground256(writer, caps, 90); // Bright black
         try writer.writeAll(label);
         try term_mod.ansi.sgr.resetStyle(writer, caps); // Reset color using term module
     }

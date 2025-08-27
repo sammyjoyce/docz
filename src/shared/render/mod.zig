@@ -59,7 +59,7 @@ pub const RenderTier = Renderer.RenderTier;
 pub const Theme = Renderer.Theme;
 pub const cacheKey = Renderer.cacheKey;
 pub const QualityTiers = @import("quality_tiers.zig").QualityTiers;
-pub const Config = @import("quality_tiers.zig").Config;
+pub const ProgressConfig = @import("quality_tiers.zig").ProgressConfig;
 pub const TableConfig = @import("quality_tiers.zig").TableConfig;
 pub const ChartConfig = @import("quality_tiers.zig").ChartConfig;
 

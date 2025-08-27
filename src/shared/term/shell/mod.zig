@@ -14,17 +14,17 @@ pub const finalterm = @import("finalterm.zig");
 pub const prompt = @import("prompt.zig");
 
 // Re-export main types for convenience
-pub const ShellManager = integration.ShellManager;
-pub const TermCaps = integration.ShellManager.TermCaps;
-pub const Interface = integration.ShellManager.Interface;
-pub const Context = integration.ShellManager.Context;
+pub const Shell = integration.Shell;
+pub const TermCaps = integration.Shell.TermCaps;
+pub const Interface = integration.Shell.Interface;
+pub const Context = integration.Shell.Context;
 
 // Re-export implementations
 pub const ITerm2Interface = iterm2.iTerm2Interface;
 pub const FinalTermInterface = finalterm.FinalTermInterface;
 
 // Re-export convenience functions
-pub const Convenience = integration.ShellManager.Convenience;
+pub const Convenience = integration.Shell.Convenience;
 
 // Re-export high-level managers
 pub const PromptTracker = prompt.PromptTracker;
@@ -32,7 +32,7 @@ pub const CommandTracker = prompt.CommandTracker;
 pub const DirectoryTracker = prompt.DirectoryTracker;
 pub const Notification = prompt.Notification;
 pub const SemanticZone = prompt.SemanticZone;
-pub const ShellIntegrationManager = prompt.ShellManager;
+pub const ShellIntegration = prompt.Shell;
 
 /// Detect terminal capabilities for shell integration
 pub fn detectCapabilities() TermCaps {
@@ -51,8 +51,8 @@ pub fn detectCapabilities() TermCaps {
 }
 
 /// Create a shell integration manager with auto-detected capabilities
-pub fn createManager(allocator: std.mem.Allocator) ShellIntegrationManager {
-    return ShellIntegrationManager.init(allocator);
+pub fn createManager(allocator: std.mem.Allocator) ShellIntegration {
+    return ShellIntegration.init(allocator);
 }
 
 /// Get the appropriate shell integration interface for the current terminal

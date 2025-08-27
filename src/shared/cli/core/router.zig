@@ -31,14 +31,14 @@ pub const CommandRouter = struct {
     /// Execute a parsed command with pipeline support
     pub fn execute(self: *CommandRouter, args: types.Args) !types.CommandResult {
         // Check for pipeline syntax (e.g., "auth status | format json | clipboard")
-        if (args.raw_message) |msg| {
+        if (args.rawMessage) |msg| {
             if (std.mem.indexOf(u8, msg, "|")) |_| {
                 return self.executePipeline(args);
             }
         }
 
         // Check for workflow execution
-        if (args.raw_message) |msg| {
+        if (args.rawMessage) |msg| {
             if (std.mem.startsWith(u8, msg, "workflow ")) {
                 const workflow_name = msg[9..]; // Skip "workflow "
                 return self.executeWorkflow(workflow_name);
@@ -62,7 +62,7 @@ pub const CommandRouter = struct {
 
     /// Execute a command pipeline
     fn executePipeline(self: *CommandRouter, args: types.Args) !types.CommandResult {
-        if (args.raw_message) |msg| {
+        if (args.rawMessage) |msg| {
             const stages = std.mem.split(u8, msg, "|");
             var current_output: ?[]const u8 = null;
 
@@ -91,7 +91,7 @@ pub const CommandRouter = struct {
                     if (current_output) |output| {
                         // Format as JSON (simplified)
                         const json_output = try std.fmt.allocPrint(self.allocator, "{{\"result\": \"{s}\"}}", .{output});
-                        if (current_output != args.raw_message) {
+                        if (current_output != args.rawMessage) {
                             self.allocator.free(current_output.?);
                         }
                         current_output = json_output;
@@ -99,7 +99,7 @@ pub const CommandRouter = struct {
                 } else {
                     // Execute as regular command
                     const result = try self.executeBasicCommand(trimmed_stage);
-                    if (current_output and current_output != args.raw_message) {
+                    if (current_output and current_output != args.rawMessage) {
                         self.allocator.free(current_output.?);
                     }
                     current_output = result.output;
@@ -152,7 +152,7 @@ pub const CommandRouter = struct {
 
     fn executeAuth(self: *CommandRouter, args: types.Args) !types.CommandResult {
         // Handle auth subcommands
-        if (args.auth_subcommand) |subcmd| {
+        if (args.authSubcommand) |subcmd| {
             switch (subcmd) {
                 .login => return self.executeAuthLogin(args),
                 .status => return self.executeAuthStatus(args),

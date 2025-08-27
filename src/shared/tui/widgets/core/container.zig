@@ -7,13 +7,13 @@ const renderer_mod = @import("../../core/renderer.zig");
 const Allocator = std.mem.Allocator;
 
 /// Container widget implementation that wraps the Container struct
-pub const ContainerWidget = struct {
+pub const Container = struct {
     container: widget_interface.Container,
     allocator: Allocator,
 
     /// Create a new container widget
-    pub fn init(allocator: Allocator, direction: enum { horizontal, vertical }) !*ContainerWidget {
-        const widget = try allocator.create(ContainerWidget);
+    pub fn init(allocator: Allocator, direction: enum { horizontal, vertical }) !*Container {
+        const widget = try allocator.create(Container);
         widget.* = .{
             .container = widget_interface.Container.init(allocator),
             .allocator = allocator,
@@ -23,7 +23,7 @@ pub const ContainerWidget = struct {
     }
 
     /// Create a Widget interface for this container
-    pub fn createWidget(self: *ContainerWidget, id: []const u8, bounds: widget_interface.Rect) !*widget_interface.Widget {
+    pub fn createWidget(self: *Container, id: []const u8, bounds: widget_interface.Rect) !*widget_interface.Widget {
         const vtable = try self.allocator.create(widget_interface.WidgetVTable);
         vtable.* = .{
             .render = render,
@@ -59,31 +59,31 @@ pub const ContainerWidget = struct {
     /// Get widget type name
     pub fn getTypeName(ctx: *anyopaque) []const u8 {
         _ = ctx;
-        return "ContainerWidget";
+        return "Container";
     }
 
     /// Add a child widget
-    pub fn addChild(self: *ContainerWidget, child: *widget_interface.Widget) !void {
+    pub fn addChild(self: *Container, child: *widget_interface.Widget) !void {
         try self.container.addChild(child);
     }
 
     /// Remove a child widget
-    pub fn removeChild(self: *ContainerWidget, child: *widget_interface.Widget) void {
+    pub fn removeChild(self: *Container, child: *widget_interface.Widget) void {
         self.container.removeChild(child);
     }
 
     /// Set container direction
-    pub fn setDirection(self: *ContainerWidget, direction: enum { horizontal, vertical }) void {
+    pub fn setDirection(self: *Container, direction: enum { horizontal, vertical }) void {
         self.container.direction = direction;
     }
 
     /// Set spacing between children
-    pub fn setSpacing(self: *ContainerWidget, spacing: u16) void {
+    pub fn setSpacing(self: *Container, spacing: u16) void {
         self.container.spacing = spacing;
     }
 
     /// Set padding
-    pub fn setPadding(self: *ContainerWidget, top: u16, right: u16, bottom: u16, left: u16) void {
+    pub fn setPadding(self: *Container, top: u16, right: u16, bottom: u16, left: u16) void {
         self.container.padding = .{
             .top = top,
             .right = right,
@@ -93,12 +93,12 @@ pub const ContainerWidget = struct {
     }
 
     /// Set background color
-    pub fn setBackground(self: *ContainerWidget, color: renderer_mod.Style.Color) void {
+    pub fn setBackground(self: *Container, color: renderer_mod.Style.Color) void {
         self.container.background = color;
     }
 
     /// Set border
-    pub fn setBorder(self: *ContainerWidget, color: renderer_mod.Style.Color, style: enum { single, double, rounded }) void {
+    pub fn setBorder(self: *Container, color: renderer_mod.Style.Color, style: enum { single, double, rounded }) void {
         self.container.border = .{
             .color = color,
             .style = style,
@@ -106,7 +106,7 @@ pub const ContainerWidget = struct {
     }
 
     /// Clean up resources
-    pub fn deinit(self: *ContainerWidget) void {
+    pub fn deinit(self: *Container) void {
         self.container.deinit();
         self.allocator.destroy(self);
     }
@@ -119,6 +119,6 @@ pub fn createContainer(
     bounds: widget_interface.Rect,
     direction: enum { horizontal, vertical },
 ) !*widget_interface.Widget {
-    const container = try ContainerWidget.init(allocator, direction);
+    const container = try Container.init(allocator, direction);
     return try container.createWidget(id, bounds);
 }

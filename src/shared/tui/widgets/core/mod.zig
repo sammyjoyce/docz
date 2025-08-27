@@ -3,7 +3,7 @@
 
 pub const menu = @import("menu.zig");
 pub const section = @import("section.zig");
-pub const text_input = @import("text_input.zig");
+pub const text_input = @import("TextInput.zig");
 pub const tabs = @import("tabs.zig");
 pub const calendar = @import("calendar.zig");
 pub const file_tree = @import("file_tree.zig");
@@ -74,8 +74,8 @@ pub const SyntaxToken = scrollable_text_area.SyntaxToken;
 pub const SyntaxHighlightFn = scrollable_text_area.SyntaxHighlightFn;
 
 // ScrollableContainer widget exports
-pub const scrollable_container = @import("ScrollableContainer.zig");
-pub const ScrollableContainer = scrollable_container.ScrollableContainer;
+pub const scrollable_container = @import("container.zig");
+pub const ScrollableContainer = scrollable_container.Container;
 pub const ScrollDirection = scrollable_container.ScrollDirection;
 pub const ScrollBehavior = scrollable_container.ScrollBehavior;
 pub const ContentSizeMode = scrollable_container.ContentSizeMode;

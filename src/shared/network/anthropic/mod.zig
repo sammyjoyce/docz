@@ -16,9 +16,15 @@ pub const Message = models.Message;
 pub const MessageRole = models.MessageRole;
 pub const Stream = models.Stream;
 pub const Complete = models.Complete;
-pub const CompletionResponse = models.CompletionResponse;
+pub const CompletionResult = models.CompletionResult;
 pub const Usage = models.Usage;
 pub const Credentials = models.Credentials;
 pub const Pkce = models.Pkce;
+pub const MessagesParams = client.MessagesParams;
+pub const MessagesResult = client.MessagesResult;
+pub const StreamParams = client.StreamParams;
 
 // Note: explicit re-exports should be added incrementally as the split progresses.
+
+// Re-export curl for dependent modules
+pub const curl = @import("curl_shared");

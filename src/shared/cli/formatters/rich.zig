@@ -33,7 +33,7 @@ pub const CliFormatter = struct {
         accent: unified.Style,
         success: unified.Style,
         warning: unified.Style,
-        err_color: unified.Style,
+        errColor: unified.Style,
         muted: unified.Style,
         bold: unified.Style,
         dim: unified.Style,
@@ -52,7 +52,7 @@ pub const CliFormatter = struct {
                 .accent = .{ .fg_color = .{ .rgb = .{ .r = 245, .g = 121, .b = 0 } } }, // Orange
                 .success = .{ .fg_color = .{ .rgb = .{ .r = 46, .g = 204, .b = 113 } } }, // Light Green
                 .warning = .{ .fg_color = .{ .rgb = .{ .r = 241, .g = 196, .b = 15 } } }, // Yellow
-                .err_color = .{ .fg_color = .{ .rgb = .{ .r = 231, .g = 76, .b = 60 } } }, // Red
+                .errColor = .{ .fg_color = .{ .rgb = .{ .r = 231, .g = 76, .b = 60 } } }, // Red
                 .muted = .{ .fg_color = .{ .rgb = .{ .r = 108, .g = 117, .b = 125 } } }, // Gray
                 .bold = .{ .bold = true },
                 .dim = .{ .fg_color = .{ .palette = 8 } }, // Dark gray
@@ -65,7 +65,7 @@ pub const CliFormatter = struct {
                 .accent = .{ .fg_color = .{ .ansi = 11 } }, // Bright Yellow
                 .success = .{ .fg_color = .{ .ansi = 10 } }, // Bright Green
                 .warning = .{ .fg_color = .{ .ansi = 11 } }, // Bright Yellow
-                .err_color = .{ .fg_color = .{ .ansi = 9 } }, // Bright Red
+                .errColor = .{ .fg_color = .{ .ansi = 9 } }, // Bright Red
                 .muted = .{ .fg_color = .{ .ansi = 8 } }, // Dark Gray
                 .bold = .{ .bold = true },
                 .dim = .{ .fg_color = .{ .ansi = 8 } }, // Dark gray
@@ -122,7 +122,7 @@ pub const CliFormatter = struct {
     /// Enhanced error display with structured formatting
     pub fn printError(self: *CliFormatter, err: anytype, context: ?[]const u8) !void {
         // Error header with icon and color
-        try self.terminal.printf("\n❌ Error\n", .{}, self.styles.err_color);
+        try self.terminal.printf("\n❌ Error\n", .{}, self.styles.errColor);
 
         // Error message with context-aware handling
         var error_msg: []const u8 = undefined;
@@ -162,7 +162,7 @@ pub const CliFormatter = struct {
         try error_content.append("");
 
         // Print error section manually
-        try self.terminal.printf("Error Details\n", .{}, self.styles.err_color);
+        try self.terminal.printf("Error Details\n", .{}, self.styles.errColor);
         try self.terminal.printf("\n", .{}, self.styles.dim);
 
         // Print context if available

@@ -136,6 +136,22 @@ Phase 3 has been successfully completed, achieving the major objectives of split
 - Integration testing validates the modular structure
 - The deprecated files are marked and ready for removal after a grace period
 
+### Phase 4 - COMPLETED (Aug 28 2025)
+Phase 4 has been successfully completed, focusing on terminal primitives unification and consolidation under term/* modules.
+
+**Completed Tasks:**
+- ✅ Removed orphaned components/writer.zig and components/cursor.zig files
+- ✅ Verified all terminal primitives usage goes through term/* modules
+- ✅ Fixed raw ANSI sequences in split_pane.zig to use proper term/ansi abstractions
+- ✅ Validated that no references to components/terminal_writer or components/terminal_cursor remain
+- ✅ Ensured CLI/TUI code uses proper term/* primitives
+
+**Quick Wins Achieved:**
+- Components/writer.zig and components/cursor.zig successfully removed (orphaned files)
+- All terminal primitive usage consolidated under term/*
+- Raw ANSI emissions in TUI replaced with proper abstractions
+- Phase 4 acceptance criteria fully met
+
 ## Key Findings (from codebase_brief + tree scan)
 - Duplicate dashboards:
   - `src/shared/tui/components/Dashboard.zig` (older, uses render/EnhancedRenderer)
@@ -280,11 +296,19 @@ Phase 3 — COMPLETED (Aug 28 2025) - Sub‑modules + Services
 - Decide on canonical dashboard and move the other into examples or delete.
 
 ## Next Steps
-Phase 3 has been completed successfully, with all monolithic files modularized, service interfaces fully implemented, and integration testing in place. The system now has a cleaner architecture with split monoliths and feature-gated modules.
+Phase 4 has been completed successfully, with terminal primitives unified and all usage consolidated under term/* modules.
 
-**Phase 4 - IN PROGRESS (Aug 28 2025):**
-- Plan terminal primitives unification (replace `components/terminal_writer.zig` and `components/terminal_cursor.zig` with `term/writer.zig` and `term/cursor.zig`)
-- Ensure CLI/TUI never emit raw ANSI directly; go through `term/*` primitives
+**Phase 4 - COMPLETED (Aug 28 2025):**
+- Removed orphaned components/writer.zig and components/cursor.zig files
+- Verified all terminal primitives usage goes through term/* modules
+- Fixed raw ANSI sequences in split_pane.zig to use proper term/ansi abstractions
+- Validated that no references to components/terminal_writer or components/terminal_cursor remain
+- Ensured CLI/TUI code uses proper term/* primitives
+
+**Phase 5 - IN PROGRESS (Aug 28 2025):**
+- Hyperlinks: centralize OSC-8 creation in `term/ansi/hyperlink.zig`; migrate `cli/utils/hyperlinks.zig` to call into it.
+- Color: consolidate all conversion/distance/palette logic under `term/ansi/color/*` with a `mod.zig` barrel; deprecate strays such as `color_conversion*.zig`, `color_converter.zig`, `structured_colors.zig`, `palette.zig`, `color_distance.zig`.
+- Update renderers and TUI widgets to consume the unified color API.
 
 **Acceptance Criteria for Phase 2:**
 - ✅ Grep shows no direct OSC-8 implementations outside `term/ansi/hyperlink.zig`

@@ -9,10 +9,10 @@ const cli_types = @import("cli/core/types.zig");
 
 // Re-export the main public interface
 pub const Parser = cli_mod.parser.Parser;
-pub const ParsedArgs = cli_mod.ParsedArgs;
+pub const ParsedArgs = cli_mod.parser.ParsedArgs;
 pub const CliError = cli_types.CliError;
-pub const parseArgs = cli_mod.parseArgs;
-pub const parseAndHandle = cli_mod.parseAndHandle;
+pub const parseArgs = cli_mod.parser.parseArgs;
+pub const parseAndHandle = cli_mod.parser.parseAndHandle;
 
 // Re-export modules for advanced usage
 pub const core = cli_mod.core;

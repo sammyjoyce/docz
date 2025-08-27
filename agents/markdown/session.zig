@@ -83,7 +83,7 @@ const progress_tracker = @import("../../src/shared/tui/components/progress_track
 const modal = @import("../../src/shared/tui/widgets/modal.zig");
 
 // UI components
-const input_component = @import("../../src/shared/components/input_component.zig");
+const input_enhanced = @import("../../src/shared/components/input_enhanced.zig");
 const split_pane = @import("../../src/shared/tui/widgets/core/split_pane.zig");
 const file_tree = @import("../../src/shared/tui/widgets/core/file_tree.zig");
 const canvas_mod = @import("../../src/shared/tui/core/canvas.zig");

@@ -130,7 +130,7 @@ const sample_markdown =
 ;
 
 const technical_document =
-    \\# Technical Documentation: Async Task Manager
+    \\# Technical Documentation: Async Task
     \\
     \\## Architecture Overview
     \\
@@ -146,7 +146,7 @@ const technical_document =
     \\    workers: []Worker,
     \\    mutex: std.Thread.Mutex,
     \\    
-    \\    pub fn init(allocator: std.mem.Allocator, num_workers: usize) !TaskManager {
+    \\    pub fn init(allocator: std.mem.Allocator, num_workers: usize) !Task {
     \\        var workers = try allocator.alloc(Worker, num_workers);
     \\        for (workers) |*worker| {
     \\            worker.* = Worker.init(allocator);
@@ -160,7 +160,7 @@ const technical_document =
     \\        };
     \\    }
     \\    
-    \\    pub fn schedule(self: *TaskManager, task: Task) !void {
+    \\    pub fn schedule(self: *Task, task: Task) !void {
     \\        self.mutex.lock();
     \\        defer self.mutex.unlock();
     \\        
@@ -196,7 +196,7 @@ const technical_document =
     \\
     \\| Method | Parameters | Returns | Description |
     \\|--------|-----------|---------|-------------|
-    \\| `init` | `allocator`, `num_workers` | `TaskManager` | Initialize manager |
+    \\| `init` | `allocator`, `num_workers` | `Task` | Initialize task |
     \\| `schedule` | `task: Task` | `!void` | Add task to queue |
     \\| `execute` | `timeout: u64` | `!Result` | Execute next task |
     \\| `shutdown` | none | `void` | Graceful shutdown |

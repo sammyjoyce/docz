@@ -16,15 +16,15 @@ pub const Core = struct {
     pub const Logos = @import("core/logo.zig").Logos;
 
     // Enhanced widgets from existing modular system
-    pub const TextInput = @import("core/text_input.zig").TextInput;
+    pub const TextInput = @import("core/TextInput.zig").TextInput;
     pub const TabContainer = @import("core/tabs.zig").TabContainer;
     pub const TagInput = @import("core/tag_input.zig").TagInput;
-    pub const DiffViewer = @import("core/diff_viewer.zig").DiffViewer;
+    pub const DiffViewer = @import("core/diff.zig").DiffViewer;
     pub const Clear = @import("core/clear.zig").Clear;
     pub const Scrollbar = @import("core/scrollbar.zig").Scrollbar;
     pub const VirtualList = @import("core/VirtualList.zig").VirtualList;
     pub const ScrollableTextArea = @import("core/ScrollableTextArea.zig").ScrollableTextArea;
-    pub const ScrollableContainer = @import("core/ScrollableContainer.zig").ScrollableContainer;
+    pub const ScrollableContainer = @import("core/container.zig").Container;
 
     // Placeholder implementations for widgets to be extracted
     pub const Table = struct {

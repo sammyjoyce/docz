@@ -10,10 +10,7 @@ const term_shared = @import("term_shared");
 pub const core = @import("core/mod.zig");
 pub const events = core.events;
 pub const bounds = core.bounds;
-pub const layout = core.layout;
-pub const screen = core.screen;
 pub const renderer = core.renderer;
-pub const input = core.input;
 pub const canvas = core.canvas;
 // Backward compatibility alias
 pub const canvas_engine = core.canvas;
@@ -24,7 +21,7 @@ pub const typing_animation = core.typing_animation;
 pub const widgets = @import("widgets/mod.zig");
 
 // Themes and styling
-pub const themes = @import("themes/mod.zig");
+pub const themes = @import("../theme_manager/mod.zig");
 
 // Utilities
 pub const utils = @import("utils/mod.zig");
@@ -39,21 +36,9 @@ pub const Bounds = bounds.Bounds;
 pub const Point = bounds.Point;
 pub const TerminalSize = bounds.TerminalSize;
 
-pub const Layout = layout.Layout;
-pub const Direction = layout.Direction;
-pub const Alignment = layout.Alignment;
-pub const Size = layout.Size;
-
-pub const Screen = screen.Screen;
-pub const clearScreen = screen.clearScreen;
-pub const moveCursor = screen.moveCursor;
-
 // Event system exports
 pub const MouseEvent = events.MouseEvent;
 pub const KeyEvent = events.KeyEvent;
-pub const EventSystem = input.EventSystem;
-pub const InputEvent = input.InputEvent;
-pub const Focus = input.Focus;
 
 // Core widget exports
 pub const Menu = widgets.Core.Menu;
@@ -98,7 +83,7 @@ pub const Image = renderer.Image;
 
 // Theme exports
 pub const Theme = themes.Theme;
-pub const DefaultTheme = themes.DefaultTheme;
+pub const DefaultTheme = themes.ColorScheme;
 
 // Utility exports
 pub const CommandHistory = utils.CommandHistory;

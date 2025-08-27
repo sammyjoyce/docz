@@ -126,7 +126,7 @@ pub const LegacyArgs = struct {
     positionals: Positionals,
     allocator: Allocator,
 
-    pub fn deinit(self: *Args) void {
+    pub fn deinit(self: *LegacyArgs) void {
         // Clean up allocated strings
         if (self.options.model) |str| self.allocator.free(str);
         if (self.options.output) |str| self.allocator.free(str);

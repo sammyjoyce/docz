@@ -4,7 +4,32 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const session = @import("session.zig");
-const term = @import("../shared/term_refactored/mod.zig");
+const term = @import("term_shared");
+
+// Re-export session types for use by other modules
+pub const SessionManager = session.SessionManager;
+pub const SessionStats = session.SessionStats;
+pub const generateSessionId = session.generateSessionId;
+
+/// Configuration for interactive sessions
+pub const SessionConfig = struct {
+    /// Enable interactive mode
+    interactive: bool = true,
+    /// Enable TUI interface
+    enable_tui: bool = false,
+    /// Enable dashboard display
+    enable_dashboard: bool = false,
+    /// Enable authentication
+    enable_auth: bool = true,
+    /// Session title
+    title: []const u8 = "AI Agent Interactive Session",
+    /// Maximum input length
+    max_input_length: usize = 4096,
+    /// Enable multi-line input
+    multi_line: bool = true,
+    /// Show session statistics
+    show_stats: bool = true,
+};
 
 /// Main session browser interface with rich TUI features
 pub const SessionBrowser = struct {

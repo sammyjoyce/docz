@@ -42,20 +42,20 @@ pub const Pkce = struct {
 };
 
 /// Authentication methods supported
-pub const AuthMethod = union(enum) {
+pub const AuthType = union(enum) {
     api_key: []const u8,
     oauth: Credentials,
 };
 
 /// OAuth provider configuration
-pub const Provider = struct {
+pub const OAuthProvider = struct {
     client_id: []const u8,
     authorization_url: []const u8,
     token_url: []const u8,
     redirect_uri: []const u8,
     scopes: []const []const u8,
 
-    pub fn buildAuthURL(self: Provider, allocator: std.mem.Allocator, pkceParams: Pkce) ![]u8 {
+    pub fn buildAuthURL(self: OAuthProvider, allocator: std.mem.Allocator, pkceParams: Pkce) ![]u8 {
         const scopesJoined = try std.mem.join(allocator, " ", self.scopes);
         defer allocator.free(scopesJoined);
         return try std.fmt.allocPrint(
@@ -67,82 +67,82 @@ pub const Provider = struct {
 };
 
 /// Token refresh state to prevent concurrent refreshes
-pub const RefreshState = struct {
+pub const RefreshLock = struct {
     mutex: std.Thread.Mutex,
     in_progress: bool,
 
-    pub fn init() RefreshState {
+    pub fn init() RefreshLock {
         return .{ .mutex = .{}, .in_progress = false };
     }
 };
 
 /// Model pricing information (rates per million tokens)
-pub const ModelPricing = struct {
+pub const ModelRates = struct {
     input_rate: f64, // Rate per million input tokens
     output_rate: f64, // Rate per million output tokens
 
-    pub fn getInputCostPerToken(self: ModelPricing) f64 {
+    pub fn getInputCostPerToken(self: ModelRates) f64 {
         return self.input_rate / 1_000_000.0;
     }
 
-    pub fn getOutputCostPerToken(self: ModelPricing) f64 {
+    pub fn getOutputCostPerToken(self: ModelRates) f64 {
         return self.output_rate / 1_000_000.0;
     }
 };
 
 /// Anthropic API pricing table (updated as of August 2025)
-const MODEL_PRICING = std.StaticStringMap(ModelPricing).initComptime(.{
+const MODEL_PRICING = std.StaticStringMap(ModelRates).initComptime(.{
     // Current Models
-    .{ "claude-opus-4-1-20250805", ModelPricing{ .input_rate = 15.0, .output_rate = 75.0 } },
-    .{ "claude-opus-4-1", ModelPricing{ .input_rate = 15.0, .output_rate = 75.0 } },
-    .{ "claude-opus-4-20250514", ModelPricing{ .input_rate = 15.0, .output_rate = 75.0 } },
-    .{ "claude-opus-4-0", ModelPricing{ .input_rate = 15.0, .output_rate = 75.0 } },
-    .{ "claude-sonnet-4-20250514", ModelPricing{ .input_rate = 3.0, .output_rate = 15.0 } },
-    .{ "claude-sonnet-4-0", ModelPricing{ .input_rate = 3.0, .output_rate = 15.0 } },
-    .{ "claude-3-7-sonnet-20250219", ModelPricing{ .input_rate = 3.0, .output_rate = 15.0 } },
-    .{ "claude-3-7-sonnet-latest", ModelPricing{ .input_rate = 3.0, .output_rate = 15.0 } },
-    .{ "claude-3-5-haiku-20241022", ModelPricing{ .input_rate = 0.80, .output_rate = 4.0 } },
-    .{ "claude-3-5-haiku-latest", ModelPricing{ .input_rate = 0.80, .output_rate = 4.0 } },
-    .{ "claude-3-haiku-20240307", ModelPricing{ .input_rate = 0.25, .output_rate = 1.25 } },
+    .{ "claude-opus-4-1-20250805", ModelRates{ .input_rate = 15.0, .output_rate = 75.0 } },
+    .{ "claude-opus-4-1", ModelRates{ .input_rate = 15.0, .output_rate = 75.0 } },
+    .{ "claude-opus-4-20250514", ModelRates{ .input_rate = 15.0, .output_rate = 75.0 } },
+    .{ "claude-opus-4-0", ModelRates{ .input_rate = 15.0, .output_rate = 75.0 } },
+    .{ "claude-sonnet-4-20250514", ModelRates{ .input_rate = 3.0, .output_rate = 15.0 } },
+    .{ "claude-sonnet-4-0", ModelRates{ .input_rate = 3.0, .output_rate = 15.0 } },
+    .{ "claude-3-7-sonnet-20250219", ModelRates{ .input_rate = 3.0, .output_rate = 15.0 } },
+    .{ "claude-3-7-sonnet-latest", ModelRates{ .input_rate = 3.0, .output_rate = 15.0 } },
+    .{ "claude-3-5-haiku-20241022", ModelRates{ .input_rate = 0.80, .output_rate = 4.0 } },
+    .{ "claude-3-5-haiku-latest", ModelRates{ .input_rate = 0.80, .output_rate = 4.0 } },
+    .{ "claude-3-haiku-20240307", ModelRates{ .input_rate = 0.25, .output_rate = 1.25 } },
 
     // Legacy/Deprecated Models
-    .{ "claude-3-5-sonnet-20241022", ModelPricing{ .input_rate = 3.0, .output_rate = 15.0 } },
-    .{ "claude-3-5-sonnet-20240620", ModelPricing{ .input_rate = 3.0, .output_rate = 15.0 } },
-    .{ "claude-3-opus-20240229", ModelPricing{ .input_rate = 15.0, .output_rate = 75.0 } },
+    .{ "claude-3-5-sonnet-20241022", ModelRates{ .input_rate = 3.0, .output_rate = 15.0 } },
+    .{ "claude-3-5-sonnet-20240620", ModelRates{ .input_rate = 3.0, .output_rate = 15.0 } },
+    .{ "claude-3-opus-20240229", ModelRates{ .input_rate = 15.0, .output_rate = 75.0 } },
 });
 
 /// Default pricing for unknown models (uses Sonnet 4 rates)
-const DEFAULT_PRICING = ModelPricing{ .input_rate = 3.0, .output_rate = 15.0 };
+const DEFAULT_PRICING = ModelRates{ .input_rate = 3.0, .output_rate = 15.0 };
 
 /// Cost calculation structure with Pro/Max override support
-pub const CostCalculator = struct {
+pub const CostCalc = struct {
     is_oauth_session: bool,
 
-    pub fn init(is_oauth: bool) CostCalculator {
-        return .{ .is_oauth_session = is_oauth };
+    pub fn init(is_oauth: bool) CostCalc {
+        return CostCalc{ .is_oauth_session = is_oauth };
     }
 
-    fn getModelPricing(model: []const u8) ModelPricing {
+    fn getModelPricing(model: []const u8) ModelRates {
         return MODEL_PRICING.get(model) orelse DEFAULT_PRICING;
     }
 
-    pub fn calculateInputCost(self: CostCalculator, tokens: u32, model: []const u8) f64 {
+    pub fn calculateInputCost(self: CostCalc, tokens: u32, model: []const u8) f64 {
         if (self.is_oauth_session) return 0.0;
         const pricing = getModelPricing(model);
         return @as(f64, @floatFromInt(tokens)) * pricing.getInputCostPerToken();
     }
 
-    pub fn calculateOutputCost(self: CostCalculator, tokens: u32, model: []const u8) f64 {
+    pub fn calculateOutputCost(self: CostCalc, tokens: u32, model: []const u8) f64 {
         if (self.is_oauth_session) return 0.0;
         const pricing = getModelPricing(model);
         return @as(f64, @floatFromInt(tokens)) * pricing.getOutputCostPerToken();
     }
 
-    pub fn getPricingMode(self: CostCalculator) []const u8 {
+    pub fn getPricingMode(self: CostCalc) []const u8 {
         return if (self.is_oauth_session) "Subscription (Free)" else "Pay-per-use";
     }
 
-    pub fn getModelPricingInfo(self: CostCalculator, model: []const u8) ModelPricing {
+    pub fn getModelPricingInfo(self: CostCalc, model: []const u8) ModelRates {
         _ = self;
         return getModelPricing(model);
     }
@@ -212,12 +212,12 @@ pub const Stream = struct {
     on_token: *const fn ([]const u8) void,
 };
 
-pub const CompletionResponse = struct {
+pub const CompletionResult = struct {
     content: []const u8,
     usage: Usage,
     allocator: std.mem.Allocator,
 
-    pub fn deinit(self: *CompletionResponse, allocator: std.mem.Allocator) void {
+    pub fn deinit(self: *CompletionResult, allocator: std.mem.Allocator) void {
         _ = self;
         _ = allocator;
         // Content is owned by the collector, which will be freed separately

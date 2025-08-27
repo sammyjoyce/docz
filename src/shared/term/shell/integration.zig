@@ -2,7 +2,7 @@ const std = @import("std");
 
 /// Common shell integration interface
 /// Defines the standard operations that shell integration should support
-pub const ShellManager = struct {
+pub const Shell = struct {
     /// Error set for shell integration operations
     pub const Error = error{
         Io,
@@ -158,15 +158,15 @@ pub const ShellManager = struct {
     };
 
     /// Helper function to create a context
-    pub fn createContext(comptime WriterType: type, writer: WriterType, allocator: std.mem.Allocator, caps: TermCaps) Context(WriterType) {
-        return Context(WriterType).init(writer, allocator, caps);
+    pub fn createContext(comptime WriterType: type, writer: WriterType, allocator: std.mem.Allocator, caps: TermCaps) Shell.Context(WriterType) {
+        return Shell.Context(WriterType).init(writer, allocator, caps);
     }
 };
 
 /// Convenience functions that work with any shell integration implementation
 pub const Convenience = struct {
     /// Initialize full shell integration for a given implementation
-    pub fn initFullIntegration(comptime WriterType: type, ctx: ShellManager.Context(WriterType), iface: ShellManager.Interface) !void {
+    pub fn initFullIntegration(comptime WriterType: type, ctx: Shell.Context(WriterType), iface: Shell.Interface) !void {
         // Set current user if supported
         if (iface.notification_ops.setBadge != undefined) {
             try iface.notification_ops.setBadge(ctx, "Shell Ready");
@@ -179,8 +179,8 @@ pub const Convenience = struct {
     /// Mark SSH session start
     pub fn startSshSession(
         comptime WriterType: type,
-        ctx: ShellManager.Context(WriterType),
-        iface: ShellManager.Interface,
+        ctx: Shell.Context(WriterType),
+        iface: Shell.Interface,
         hostname: []const u8,
         username: ?[]const u8,
     ) !void {
@@ -194,7 +194,7 @@ pub const Convenience = struct {
     }
 
     /// Mark SSH session end
-    pub fn endSshSession(comptime WriterType: type, ctx: ShellManager.Context(WriterType), iface: ShellManager.Interface) !void {
+    pub fn endSshSession(comptime WriterType: type, ctx: Shell.Context(WriterType), iface: Shell.Interface) !void {
         try iface.directory_ops.clearRemoteHost(ctx);
 
         if (iface.notification_ops.setBadge != undefined) {
@@ -205,8 +205,8 @@ pub const Convenience = struct {
     /// Execute a command with proper shell integration markers
     pub fn executeCommand(
         comptime WriterType: type,
-        ctx: ShellManager.Context(WriterType),
-        iface: ShellManager.Interface,
+        ctx: Shell.Context(WriterType),
+        iface: Shell.Interface,
         command: []const u8,
         cwd: ?[]const u8,
     ) !void {
@@ -216,8 +216,8 @@ pub const Convenience = struct {
     /// Complete a command with status
     pub fn completeCommand(
         comptime WriterType: type,
-        ctx: ShellManager.Context(WriterType),
-        iface: ShellManager.Interface,
+        ctx: Shell.Context(WriterType),
+        iface: Shell.Interface,
         command: []const u8,
         exit_code: i32,
         duration_ms: u64,

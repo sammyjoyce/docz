@@ -55,23 +55,23 @@ fn runCustomServer(allocator: std.mem.Allocator) !void {
     };
 
     // Generate PKCE parameters
-    const pkce_params = try oauth.generatePkceParams(allocator);
-    defer pkce_params.deinit(allocator);
+    const pkceParams = try oauth.generatePkceParams(allocator);
+    defer pkceParams.deinit(allocator);
 
     std.debug.print("Generated PKCE parameters:\n", .{});
-    std.debug.print("  State: {s}\n", .{pkce_params.state});
-    std.debug.print("  Challenge: {s}...\n", .{pkce_params.code_challenge[0..@min(20, pkce_params.code_challenge.len)]});
+    std.debug.print("  State: {s}\n", .{pkceParams.state});
+    std.debug.print("  Challenge: {s}...\n", .{pkceParams.code_challenge[0..@min(20, pkceParams.code_challenge.len)]});
 
     // Run callback server and wait for authorization
-    const auth_result = try oauth.runCallbackServer(allocator, pkce_params, config);
-    defer auth_result.deinit(allocator);
+    const authResult = try oauth.runCallbackServer(allocator, pkceParams, config);
+    defer authResult.deinit(allocator);
 
     std.debug.print("\n✅ Authorization code received!\n", .{});
-    std.debug.print("Code: {s}...\n", .{auth_result.code[0..@min(20, auth_result.code.len)]});
+    std.debug.print("Code: {s}...\n", .{authResult.code[0..@min(20, authResult.code.len)]});
     std.debug.print("State verified: ✓\n", .{});
 
     // Exchange code for tokens
-    const credentials = try oauth.exchangeCodeForTokens(allocator, auth_result.code, pkce_params);
+    const credentials = try oauth.exchangeCodeForTokens(allocator, authResult.code, pkceParams);
     defer credentials.deinit(allocator);
 
     // Save credentials
@@ -84,46 +84,46 @@ fn runWithWizard(allocator: std.mem.Allocator) !void {
     std.debug.print("Starting OAuth wizard with callback server integration...\n\n", .{});
 
     // Generate PKCE parameters
-    const pkce_params = try oauth.generatePkceParams(allocator);
-    defer pkce_params.deinit(allocator);
+    const pkceParams = try oauth.generatePkceParams(allocator);
+    defer pkceParams.deinit(allocator);
 
     // Create callback server with default config
     var server = try oauth.Callback.init(allocator, .{});
     defer server.deinit();
 
     // Register session
-    try server.registerSession(pkce_params);
+    try server.registerSession(pkceParams);
 
     // Start server
     try server.start();
     std.debug.print("📡 Callback server started on http://localhost:8080\n\n", .{});
 
     // Build authorization URL
-    const auth_url = try oauth.buildAuthorizationUrl(allocator, pkce_params);
-    defer allocator.free(auth_url);
+    const authUrl = try oauth.buildAuthorizationUrl(allocator, pkceParams);
+    defer allocator.free(authUrl);
 
     // Display instructions
     std.debug.print("Please complete the following steps:\n", .{});
     std.debug.print("1. Open your browser and navigate to:\n", .{});
-    std.debug.print("   {s}\n\n", .{auth_url});
+    std.debug.print("   {s}\n\n", .{authUrl});
     std.debug.print("2. Log in to your Claude account\n", .{});
     std.debug.print("3. Authorize the application\n", .{});
     std.debug.print("4. You'll be redirected to the callback server\n\n", .{});
 
     // Launch browser
-    oauth.launchBrowser(auth_url) catch |err| {
+    oauth.launchBrowser(authUrl) catch |err| {
         std.debug.print("⚠️  Could not launch browser automatically: {}\n", .{err});
         std.debug.print("Please manually open the URL above.\n\n", .{});
     };
 
     // Wait for callback with 5-minute timeout
-    const auth_result = try server.waitForCallback(pkce_params.state, 300_000);
-    defer auth_result.deinit(allocator);
+    const authResult = try server.waitForCallback(pkceParams.state, 300_000);
+    defer authResult.deinit(allocator);
 
     std.debug.print("\n✅ Authorization successful!\n", .{});
 
     // Exchange code for tokens
-    const credentials = try oauth.exchangeCodeForTokens(allocator, auth_result.code, pkce_params);
+    const credentials = try oauth.exchangeCodeForTokens(allocator, authResult.code, pkceParams);
     
     std.debug.print("OAuth setup completed!\n", .{});
     std.debug.print("Access token received and ready to use.\n", .{});

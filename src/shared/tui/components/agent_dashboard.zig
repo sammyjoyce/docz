@@ -54,10 +54,10 @@ pub const DashboardConfig = struct {
     monitoring: MonitoringConfig = .{},
 
     /// Theme configuration
-    theme: ThemeSettings = .{},
+    theme: Theme = .{},
 
     /// Panel-specific configurations
-    panels: PanelConfigs = .{},
+    panels: PanelConfigSet = .{},
 
     /// Performance settings
     performance: PerformanceConfig = .{},
@@ -140,7 +140,7 @@ pub const AlertThresholds = struct {
 };
 
 /// Theme configuration
-pub const ThemeSettings = struct {
+pub const Theme = struct {
     /// Theme name to use
     theme_name: []const u8 = "auto",
 
@@ -173,7 +173,7 @@ pub const CustomColors = struct {
 };
 
 /// Panel-specific configurations
-pub const PanelConfigs = struct {
+pub const PanelConfigSet = struct {
     /// Status panel configuration
     status: StatusPanelConfig = .{},
 
@@ -388,11 +388,11 @@ pub const AgentDashboard = struct {
 
     // Layout and panels
     layout: Layout,
-    panel_manager: PanelManager,
+    panel_manager: PanelSet,
 
     // Monitoring and data
     monitor: DashboardMonitor,
-    data_store: DashboardDataStore,
+    data_store: Data,
 
     // Theme and styling
     theme_manager: *theme_manager.Theme,
@@ -432,13 +432,13 @@ pub const AgentDashboard = struct {
         const layout = try Layout.init(allocator, screen_size, dashboard_config.layout);
 
         // Initialize panel manager
-        const panel_manager = try PanelManager.init(allocator, dashboard_config.panels);
+        const panel_manager = try PanelSet.init(allocator, dashboard_config.panels);
 
         // Initialize monitoring
         const monitor = try DashboardMonitor.init(allocator, dashboard_config.monitoring);
 
         // Initialize data store
-        const data_store = try DashboardDataStore.init(allocator);
+        const data_store = try Data.init(allocator);
 
         // Initialize event handler
         const event_handler = try EventHandler.init(allocator, dashboard_config.shortcuts);
@@ -783,15 +783,15 @@ pub const Layout = struct {
     }
 };
 
-/// Panel manager for handling multiple dashboard panels
-pub const PanelManager = struct {
+/// Panel set for handling multiple dashboard panels
+pub const PanelSet = struct {
     allocator: Allocator,
     panels: std.StringHashMap(*Panel),
     panel_order: std.ArrayList([]const u8),
 
-    pub fn init(allocator: Allocator, panel_configs: PanelConfigs) !PanelManager {
+    pub fn init(allocator: Allocator, panel_configs: PanelConfigSet) !PanelSet {
         // panel_configs reserved for future custom panel initialization
-        const manager = PanelManager{
+        const manager = PanelSet{
             .allocator = allocator,
             .panels = std.StringHashMap(*Panel).init(allocator),
             .panel_order = std.ArrayList([]const u8).init(allocator),
@@ -809,7 +809,7 @@ pub const PanelManager = struct {
         return manager;
     }
 
-    pub fn deinit(self: *PanelManager) void {
+    pub fn deinit(self: *PanelSet) void {
         var iter = self.panels.iterator();
         while (iter.next()) |entry| {
             entry.value_ptr.deinit();
@@ -818,13 +818,13 @@ pub const PanelManager = struct {
         self.panel_order.deinit();
     }
 
-    pub fn addPanel(self: *PanelManager, name: []const u8, panel: *Panel) !void {
+    pub fn addPanel(self: *PanelSet, name: []const u8, panel: *Panel) !void {
         const owned_name = try self.allocator.dupe(u8, name);
         try self.panels.put(owned_name, panel);
         try self.panel_order.append(owned_name);
     }
 
-    pub fn removePanel(self: *PanelManager, name: []const u8) void {
+    pub fn removePanel(self: *PanelSet, name: []const u8) void {
         if (self.panels.fetchRemove(name)) |kv| {
             kv.value.deinit();
             self.allocator.free(kv.key);
@@ -840,18 +840,18 @@ pub const PanelManager = struct {
         }
     }
 
-    pub fn getPanel(self: *PanelManager, name: []const u8) ?*Panel {
+    pub fn getPanel(self: *PanelSet, name: []const u8) ?*Panel {
         return self.panels.get(name);
     }
 
-    pub fn updatePanels(self: *PanelManager, data_store: *DashboardDataStore) !void {
+    pub fn updatePanels(self: *PanelSet, data_store: *Data) !void {
         var iter = self.panels.iterator();
         while (iter.next()) |entry| {
             try entry.value_ptr.update(data_store);
         }
     }
 
-    pub fn render(self: *PanelManager, layout: Layout, terminal: unified.Terminal, theme: *theme_manager.ColorScheme) !void {
+    pub fn render(self: *PanelSet, layout: Layout, terminal: unified.Terminal, theme: *theme_manager.ColorScheme) !void {
         var iter = self.panels.iterator();
         while (iter.next()) |entry| {
             const bounds = layout.getPanelBounds(entry.key) orelse continue;
@@ -901,7 +901,7 @@ pub const Panel = struct {
         }
     }
 
-    pub fn update(self: *Panel, data_store: *DashboardDataStore) !void {
+    pub fn update(self: *Panel, data_store: *Data) !void {
         const now = std.time.timestamp();
         if (self.config.refresh_interval_ms > 0 and
             now - self.last_update < self.config.refresh_interval_ms)
@@ -980,7 +980,7 @@ pub const StatusPanel = struct {
         self.allocator.destroy(self);
     }
 
-    pub fn update(self: *StatusPanel, data_store: *DashboardDataStore) !void {
+    pub fn update(self: *StatusPanel, data_store: *Data) !void {
         // Update health status based on monitoring data
         const health_data = data_store.get(.health) orelse return;
         self.health_status = health_data.health_status;
@@ -1063,7 +1063,7 @@ pub const ActivityLogPanel = struct {
         self.allocator.destroy(self);
     }
 
-    pub fn update(self: *ActivityLogPanel, data_store: *DashboardDataStore) !void {
+    pub fn update(self: *ActivityLogPanel, data_store: *Data) !void {
         // Get new log entries from data store
         const log_data = data_store.get(.activity_log) orelse return;
 
@@ -1198,7 +1198,7 @@ pub const PerformancePanel = struct {
         self.allocator.destroy(self);
     }
 
-    pub fn update(self: *PerformancePanel, data_store: *DashboardDataStore) !void {
+    pub fn update(self: *PerformancePanel, data_store: *Data) !void {
         const perf_data = data_store.get(.performance) orelse return;
         self.metrics = perf_data.metrics;
     }
@@ -1312,7 +1312,7 @@ pub const ResourcePanel = struct {
         self.allocator.destroy(self);
     }
 
-    pub fn update(self: *ResourcePanel, data_store: *DashboardDataStore) !void {
+    pub fn update(self: *ResourcePanel, data_store: *Data) !void {
         const res_data = data_store.get(.resources) orelse return;
         self.resources = res_data.usage;
     }
@@ -1372,7 +1372,7 @@ pub const CustomPanel = struct {
     panel: Panel,
     name: []const u8,
     render_fn: ?*const fn (*CustomPanel, unified.Terminal, unified.Rect, *theme_manager.ColorScheme) anyerror!void = null,
-    update_fn: ?*const fn (*CustomPanel, *DashboardDataStore) anyerror!void = null,
+    update_fn: ?*const fn (*CustomPanel, *Data) anyerror!void = null,
     input_fn: ?*const fn (*CustomPanel, unified.Event) anyerror!bool = null,
 
     pub fn init(allocator: Allocator, name: []const u8) !*CustomPanel {
@@ -1398,7 +1398,7 @@ pub const CustomPanel = struct {
         self.render_fn = render_fn;
     }
 
-    pub fn setUpdateFunction(self: *CustomPanel, update_fn: *const fn (*CustomPanel, *DashboardDataStore) anyerror!void) void {
+    pub fn setUpdateFunction(self: *CustomPanel, update_fn: *const fn (*CustomPanel, *Data) anyerror!void) void {
         self.update_fn = update_fn;
     }
 
@@ -1406,7 +1406,7 @@ pub const CustomPanel = struct {
         self.input_fn = input_fn;
     }
 
-    pub fn update(self: *CustomPanel, data_store: *DashboardDataStore) !void {
+    pub fn update(self: *CustomPanel, data_store: *Data) !void {
         if (self.update_fn) |update_fn| {
             try update_fn(self, data_store);
         }
@@ -1556,19 +1556,19 @@ pub const DataType = enum {
     custom,
 };
 
-/// Dashboard data store for sharing data between components
-pub const DashboardDataStore = struct {
+/// Data store for sharing data between components
+pub const Data = struct {
     allocator: Allocator,
     data: std.HashMap(DataType, *anyopaque, std.hash_map.AutoContext(DataType), std.hash_map.default_max_load_percentage),
 
-    pub fn init(allocator: Allocator) !DashboardDataStore {
+    pub fn init(allocator: Allocator) !Data {
         return .{
             .allocator = allocator,
             .data = std.HashMap(DataType, *anyopaque, std.hash_map.AutoContext(DataType), std.hash_map.default_max_load_percentage).init(allocator),
         };
     }
 
-    pub fn deinit(self: *DashboardDataStore) void {
+    pub fn deinit(self: *Data) void {
         var iter = self.data.iterator();
         while (iter.next()) |entry| {
             // Free data based on type
@@ -1587,7 +1587,7 @@ pub const DashboardDataStore = struct {
         self.data.deinit();
     }
 
-    pub fn update(self: *DashboardDataStore, data_type: DataType, value: anytype) !void {
+    pub fn update(self: *Data, data_type: DataType, value: anytype) !void {
         // Remove existing data if present
         if (self.data.fetchRemove(data_type)) |kv| {
             switch (data_type) {
@@ -1608,11 +1608,11 @@ pub const DashboardDataStore = struct {
         try self.data.put(data_type, data_ptr);
     }
 
-    pub fn get(self: *DashboardDataStore, data_type: DataType) ?*anyopaque {
+    pub fn get(self: *Data, data_type: DataType) ?*anyopaque {
         return self.data.get(data_type);
     }
 
-    pub fn addLogEntry(self: *DashboardDataStore, entry: ActivityLogEntry) !void {
+    pub fn addLogEntry(self: *Data, entry: ActivityLogEntry) !void {
         var log_data = if (self.get(.activity_log)) |ptr| blk: {
             break :blk @as(*ActivityLog, @ptrCast(ptr));
         } else blk: {
@@ -1752,7 +1752,7 @@ pub const EventHandler = struct {
 };
 
 /// Apply theme configuration to theme manager
-fn applyThemeConfig(theme_mgr: *theme_manager.ThemeManager, theme_config: ThemeSettings) !void {
+fn applyThemeConfig(theme_mgr: *theme_manager.ThemeManager, theme_config: Theme) !void {
     // Switch to specified theme
     if (!std.mem.eql(u8, theme_config.theme_name, "auto")) {
         try theme_mgr.switchTheme(theme_config.theme_name);
@@ -1822,7 +1822,7 @@ pub fn addCustomPanelToDashboard(
     dashboard: *AgentDashboard,
     name: []const u8,
     render_fn: ?*const fn (*CustomPanel, unified.Terminal, unified.Rect, *theme_manager.ColorScheme) anyerror!void,
-    update_fn: ?*const fn (*CustomPanel, *DashboardDataStore) anyerror!void,
+    update_fn: ?*const fn (*CustomPanel, *Data) anyerror!void,
     input_fn: ?*const fn (*CustomPanel, unified.Event) anyerror!bool,
 ) !void {
     const panel = try createCustomPanel(dashboard.allocator, name);

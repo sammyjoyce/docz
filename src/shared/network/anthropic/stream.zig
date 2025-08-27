@@ -25,7 +25,7 @@ pub const StreamError = error{
 // ============================== Configuration Types ==============================
 
 /// Configuration for large payload processing
-pub const LargePayloadConfig = struct {
+pub const LargePayloadCfg = struct {
     large_chunk_threshold: usize = 1024 * 1024, // 1MB threshold for large chunk processing
     streaming_buffer_size: usize = 64 * 1024, // 64KB buffer for streaming large chunks
     max_accumulated_size: usize = 16 * 1024 * 1024, // 16MB max accumulated data before streaming
@@ -35,7 +35,7 @@ pub const LargePayloadConfig = struct {
 };
 
 /// Chunk size validation thresholds for large payload processing
-pub const ChunkSizeValidation = struct {
+pub const ChunkSizeLimits = struct {
     max_chunk_size: usize = 512 * 1024 * 1024, // 512MB absolute maximum per chunk
     large_chunk_threshold: usize = 1024 * 1024, // 1MB threshold for special handling
     warning_threshold: usize = 64 * 1024 * 1024, // 64MB threshold for warnings
@@ -60,20 +60,20 @@ pub const ChunkState = struct {
 };
 
 /// Streaming context for callback-based processing
-pub const StreamingContext = struct {
+pub const StreamingCtx = struct {
     allocator: std.mem.Allocator,
     callback: *const fn ([]const u8) void,
     buffer: std.ArrayListUnmanaged(u8),
 
-    pub fn init(allocator: std.mem.Allocator, callback: *const fn ([]const u8) void) StreamingContext {
-        return StreamingContext{
+    pub fn init(allocator: std.mem.Allocator, callback: *const fn ([]const u8) void) StreamingCtx {
+        return StreamingCtx{
             .allocator = allocator,
             .callback = callback,
             .buffer = std.ArrayListUnmanaged(u8){},
         };
     }
 
-    pub fn deinit(self: *StreamingContext) void {
+    pub fn deinit(self: *StreamingCtx) void {
         self.buffer.deinit(self.allocator);
     }
 };
@@ -82,7 +82,7 @@ pub const StreamingContext = struct {
 
 /// Process a stream chunk (entry point for curl callbacks)
 pub fn processStreamChunk(chunk: []const u8, context: *anyopaque) void {
-    const stream_ctx: *StreamingContext = @ptrCast(@alignCast(context));
+    const stream_ctx: *StreamingCtx = @ptrCast(@alignCast(context));
 
     // Process chunk for SSE events
     processSseChunk(stream_ctx, chunk) catch |err| {
@@ -91,7 +91,7 @@ pub fn processStreamChunk(chunk: []const u8, context: *anyopaque) void {
 }
 
 /// Process individual SSE chunk and extract events
-pub fn processSseChunk(stream_ctx: *StreamingContext, chunk: []const u8) !void {
+pub fn processSseChunk(stream_ctx: *StreamingCtx, chunk: []const u8) !void {
     // Add chunk to buffer
     try stream_ctx.buffer.appendSlice(stream_ctx.allocator, chunk);
 
@@ -133,7 +133,7 @@ pub fn isChunkedEncoding(response_head: anytype) bool {
 
 /// Parse chunk size and extensions from chunk size line with enhanced large payload support
 pub fn parseChunkSize(size_line: []const u8) !struct { size: usize, extensions: ?[]const u8 } {
-    const validation = ChunkSizeValidation{};
+    const validation = ChunkSizeLimits{};
 
     // Find semicolon separator for chunk extensions
     const semicolon_pos = std.mem.indexOf(u8, size_line, ";");
@@ -333,7 +333,7 @@ pub fn processChunkedStreamingResponse(
     var chunk_buffer = std.array_list.Managed(u8).init(allocator);
     defer chunk_buffer.deinit();
 
-    const config = LargePayloadConfig{};
+    const config = LargePayloadCfg{};
 
     // Use adaptive initial capacity based on expected large payload handling
     try event_data.ensureTotalCapacity(16384); // 16KB initial capacity
@@ -693,11 +693,11 @@ pub fn streamMessages(
 pub fn createStreamingContext(
     allocator: std.mem.Allocator,
     callback: *const fn ([]const u8) void,
-) StreamingContext {
-    return StreamingContext.init(allocator, callback);
+) StreamingCtx {
+    return StreamingCtx.init(allocator, callback);
 }
 
 /// Destroy a streaming context and free its resources
-pub fn destroyStreamingContext(context: *StreamingContext) void {
+pub fn destroyStreamingContext(context: *StreamingCtx) void {
     context.deinit();
 }

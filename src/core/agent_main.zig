@@ -9,7 +9,6 @@ const engine = @import("engine_shared");
 const session = @import("interactive_session");
 const auth = @import("auth_shared");
 const agent_base = @import("agent_base");
-const interactive_session = @import("interactive_session");
 
 const CliOptions = engine.CliOptions;
 
@@ -117,7 +116,7 @@ pub fn run_agent(allocator: std.mem.Allocator, spec: engine.AgentSpec) !void {
     _ = should_launch_launcher;
 
     // Parse interactive CLI arguments
-    const interactive_options = try parse_interactive_args(allocator, cliArgsConst);
+    var interactive_options = try parse_interactive_args(allocator, cliArgsConst);
     defer cleanup_interactive_options(allocator, &interactive_options);
 
     // Handle special modes that don't require the full engine
@@ -348,7 +347,7 @@ fn setup_authentication_flow(allocator: std.mem.Allocator, force_oauth: bool) !v
         const choice = std.mem.trim(u8, buffer[0..bytes_read], " \t\r\n");
 
         if (std.mem.eql(u8, choice, "1")) {
-            try engine.setupOauth(allocator);
+            _ = try auth.setupOAuth(allocator);
         } else if (std.mem.eql(u8, choice, "2")) {
             std.log.info("📝 To configure an API key:", .{});
             std.log.info("  1. Get your API key from: https://console.anthropic.com/", .{});

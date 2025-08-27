@@ -25,14 +25,14 @@ const stream_module = @import("stream.zig");
 // Re-export commonly used types
 pub const Message = models.Message;
 pub const MessageRole = models.MessageRole;
-pub const AuthMethod = models.AuthMethod;
+pub const AuthType = models.AuthType;
 pub const Credentials = models.Credentials;
 pub const Usage = models.Usage;
 pub const Error = models.Error;
-pub const CostCalculator = models.CostCalculator;
+pub const CostCalc = models.CostCalc;
 
 /// High-level request interface for messages API
-pub const MessagesRequest = struct {
+pub const MessagesParams = struct {
     model: []const u8,
     messages: []const Message,
     maxTokens: u32 = 1024,
@@ -45,7 +45,7 @@ pub const MessagesRequest = struct {
 };
 
 /// Response from non-streaming messages API
-pub const MessagesResponse = struct {
+pub const MessagesResult = struct {
     id: []const u8,
     content: []const u8,
     stopReason: []const u8,
@@ -53,7 +53,7 @@ pub const MessagesResponse = struct {
     usage: Usage,
     allocator: std.mem.Allocator,
 
-    pub fn deinit(self: *MessagesResponse) void {
+    pub fn deinit(self: *MessagesResult) void {
         self.allocator.free(self.id);
         self.allocator.free(self.content);
         self.allocator.free(self.stopReason);
@@ -62,7 +62,7 @@ pub const MessagesResponse = struct {
 };
 
 /// Streaming parameters for the messages API
-pub const StreamRequest = struct {
+pub const StreamParams = struct {
     model: []const u8,
     messages: []const Message,
     maxTokens: u32 = 1024,
@@ -75,7 +75,7 @@ pub const StreamRequest = struct {
 };
 
 /// Global refresh state for single-flight protection
-var globalRefreshState = models.RefreshState.init();
+var globalRefreshState = models.RefreshLock.init();
 
 /// Global content collector for complete method (not thread-safe)
 var globalContentCollector: std.ArrayListUnmanaged(u8) = .{};
@@ -88,7 +88,7 @@ var globalModel: ?[]const u8 = null;
 /// Anthropic HTTP client with OAuth and API key support
 pub const AnthropicClient = struct {
     allocator: std.mem.Allocator,
-    auth: AuthMethod,
+    auth: AuthType,
     credentialsPath: ?[]const u8 = null,
     baseUrl: []const u8 = "https://api.anthropic.com",
     apiVersion: []const u8 = "2023-06-01",
@@ -101,7 +101,7 @@ pub const AnthropicClient = struct {
         if (api_key.len == 0) return Error.MissingAPIKey;
         return Self{
             .allocator = allocator,
-            .auth = AuthMethod{ .api_key = api_key },
+            .auth = AuthType{ .api_key = api_key },
         };
     }
 
@@ -126,7 +126,7 @@ pub const AnthropicClient = struct {
 
         return Self{
             .allocator = allocator,
-            .auth = AuthMethod{ .oauth = dupedCreds },
+            .auth = AuthType{ .oauth = dupedCreds },
             .credentialsPath = dupedPath,
         };
     }
@@ -157,8 +157,8 @@ pub const AnthropicClient = struct {
     }
 
     /// Get a cost calculator for this client
-    pub fn getCostCalculator(self: Self) CostCalculator {
-        return CostCalculator.init(self.isOAuthSession());
+    pub fn getCostCalculator(self: Self) CostCalc {
+        return CostCalc.init(self.isOAuthSession());
     }
 
     /// Refresh OAuth tokens if needed with single-flight protection
@@ -195,7 +195,7 @@ pub const AnthropicClient = struct {
                 self.allocator.free(oauthCreds.refreshToken);
 
                 // Update with new credentials
-                self.auth = AuthMethod{ .oauth = newCreds };
+                self.auth = AuthType{ .oauth = newCreds };
 
                 // Persist updated credentials
                 if (self.credentialsPath) |path| {
@@ -208,7 +208,7 @@ pub const AnthropicClient = struct {
     }
 
     /// Create a non-streaming message (complete response)
-    pub fn create(self: *Self, req: MessagesRequest) !MessagesResponse {
+    pub fn create(self: *Self, req: MessagesParams) !MessagesResult {
         // Use the complete method which collects the streaming response
         return self.complete(.{
             .model = req.model,
@@ -223,7 +223,7 @@ pub const AnthropicClient = struct {
     }
 
     /// Complete method for non-streaming requests (collects streaming response)
-    pub fn complete(self: *Self, params: MessagesRequest) !MessagesResponse {
+    pub fn complete(self: *Self, params: MessagesParams) !MessagesResult {
         // Set up global collector (not thread-safe, but ok for single-threaded use)
         globalAllocator = self.allocator;
         globalContentCollector.clearRetainingCapacity();
@@ -234,7 +234,7 @@ pub const AnthropicClient = struct {
         globalModel = null;
 
         // Create stream params with our collector callback
-        const stream_params = StreamRequest{
+        const stream_params = StreamParams{
             .model = params.model,
             .max_tokens = params.max_tokens,
             .temperature = params.temperature,
@@ -324,7 +324,7 @@ pub const AnthropicClient = struct {
         if (globalStopReason) |reason| self.allocator.free(reason);
         if (globalModel) |model| self.allocator.free(model);
 
-        return MessagesResponse{
+        return MessagesResult{
             .id = owned_id,
             .content = owned_content,
             .stop_reason = owned_stop_reason,
@@ -335,12 +335,12 @@ pub const AnthropicClient = struct {
     }
 
     /// Stream messages using Server-Sent Events
-    pub fn stream(self: *Self, params: StreamRequest) !void {
+    pub fn stream(self: *Self, params: StreamParams) !void {
         return self.streamWithRetry(params, false);
     }
 
     /// Internal method to handle streaming with automatic retry on 401
-    fn streamWithRetry(self: *Self, params: StreamRequest, is_retry: bool) !void {
+    fn streamWithRetry(self: *Self, params: StreamParams, is_retry: bool) !void {
         // Refresh OAuth tokens if needed (unless this is already a retry)
         if (!is_retry) {
             try self.refreshOAuthIfNeeded();
@@ -435,7 +435,7 @@ pub const AnthropicClient = struct {
     }
 
     /// Build JSON request body for the messages API
-    fn buildBodyJson(self: *Self, params: StreamRequest) ![]u8 {
+    fn buildBodyJson(self: *Self, params: StreamParams) ![]u8 {
         var buffer = std.ArrayListUnmanaged(u8){};
         defer buffer.deinit(self.allocator);
 

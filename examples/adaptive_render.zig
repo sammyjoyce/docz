@@ -1,10 +1,10 @@
 const std = @import("std");
-const adaptive_render = @import("src/shared/render/mod.zig");
-const AdaptiveRenderer = adaptive_render.AdaptiveRenderer;
-const EnhancedRenderer = adaptive_render.Renderer;
-const Progress = adaptive_render.Progress;
-const Table = adaptive_render.Table;
-const Chart = adaptive_render.Chart;
+const adaptiveRender = @import("src/shared/render/mod.zig");
+const AdaptiveRenderer = adaptiveRender.AdaptiveRenderer;
+const EnhancedRenderer = adaptiveRender.Renderer;
+const Progress = adaptiveRender.Progress;
+const Table = adaptiveRender.Table;
+const Chart = adaptiveRender.Chart;
 const Color = @import("src/shared/term/ansi/color.zig").Color;
 
 pub fn main() !void {
@@ -35,13 +35,13 @@ pub fn main() !void {
     // Demo progress bars
     try enhanced.writeText("📊 Progress Bars:\n", Color.ansi(.bright_blue), true);
 
-    const progress_examples = [_]Progress{
+    const progressExamples = [_]Progress{
         .{ .value = 0.25, .label = "Download", .showPercentage = true, .color = Color.ansi(.blue) },
         .{ .value = 0.67, .label = "Processing", .showPercentage = true, .color = Color.ansi(.yellow) },
         .{ .value = 1.0, .label = "Complete", .showPercentage = true, .color = Color.ansi(.green) },
     };
 
-    for (progress_examples) |progress| {
+    for (progressExamples) |progress| {
         try enhanced.renderProgress(progress);
         try enhanced.writeText("\n", null, false);
     }
@@ -71,10 +71,10 @@ pub fn main() !void {
     // Demo chart
     try enhanced.writeText("📈 Sample Chart:\n", Color.ansi(.bright_blue), true);
 
-    const chart_data = [_]f64{ 10, 15, 12, 25, 20, 30, 28, 35, 32, 40 };
+    const chartData = [_]f64{ 10, 15, 12, 25, 20, 30, 28, 35, 32, 40 };
     const series = Chart.Series{
         .name = "Performance",
-        .data = &chart_data,
+        .data = &chartData,
         .color = Color.ansi(.green),
     };
 

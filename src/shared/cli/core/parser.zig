@@ -6,10 +6,10 @@ const types = @import("types.zig");
 const Allocator = std.mem.Allocator;
 
 // Re-export types for convenience
-pub const ParsedArgs = types.ParsedArgs;
-pub const ParsedOptions = types.ParsedOptions;
-pub const ParsedFlags = types.ParsedFlags;
-pub const ParsedPositionals = types.ParsedPositionals;
+pub const ParsedArgs = types.LegacyArgs;
+pub const ParsedOptions = types.Options;
+pub const ParsedFlags = types.Flags;
+pub const ParsedPositionals = types.Positionals;
 pub const CliError = types.CliError;
 pub const Command = types.Command;
 pub const AuthSubcommand = types.AuthSubcommand;

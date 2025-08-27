@@ -1247,6 +1247,10 @@ const ModuleBuilder = struct {
         modules.agent_main = self.createModule(BUILD_CONFIG.PATHS.AGENT_MAIN_ZIG);
         modules.agent_base = self.createModule(BUILD_CONFIG.PATHS.AGENT_BASE_ZIG);
 
+        // Always include auth module (will be stub when network access disabled)
+        modules.auth = self.createModule(BUILD_CONFIG.PATHS.AUTH_ZIG);
+        modules.oauth_callback_server = self.createModule(BUILD_CONFIG.PATHS.OAUTH_CALLBACK_SERVER_ZIG);
+
         // Add dependencies for core modules
         if (modules.agent_interface) |interface| {
             interface.addImport("config_shared", modules.config.?);
@@ -1263,6 +1267,15 @@ const ModuleBuilder = struct {
             agent_main.addImport("config_shared", modules.config.?);
             agent_main.addImport("engine_shared", modules.engine.?);
             agent_main.addImport("tools_shared", modules.tools.?);
+            if (modules.interactive_session) |interactive_session| {
+                agent_main.addImport("interactive_session", interactive_session);
+            }
+            if (modules.agent_base) |agent_base| {
+                agent_main.addImport("agent_base", agent_base);
+            }
+            if (modules.auth) |auth| {
+                agent_main.addImport("auth_shared", auth);
+            }
         }
 
         if (modules.agent_base) |agent_base| {
@@ -1272,15 +1285,11 @@ const ModuleBuilder = struct {
             if (modules.interactive_session) |session| {
                 agent_base.addImport("interactive_session", session);
             }
-            if (modules.auth) |auth| {
-                agent_base.addImport("auth_shared", auth);
-            }
             if (modules.anthropic) |anthropic| {
                 agent_base.addImport("anthropic_shared", anthropic);
             }
-            if (modules.agent_main) |agent_main| {
-                agent_base.addImport("agent_main", agent_main);
-            }
+            // Always add auth_shared dependency (auth module is always created now)
+            agent_base.addImport("auth_shared", modules.auth.?);
         }
 
         if (manifest) |*m| {
@@ -1308,11 +1317,8 @@ const ModuleBuilder = struct {
                 }
             }
 
-            // Include auth module if network access is needed
             if (m.capabilities.core_features.network_access) {
                 std.log.info("   🌐 Including auth module (network access enabled)", .{});
-                modules.auth = self.createModule(BUILD_CONFIG.PATHS.AUTH_ZIG);
-                modules.oauth_callback_server = self.createModule(BUILD_CONFIG.PATHS.OAUTH_CALLBACK_SERVER_ZIG);
 
                 // Add network dependencies
                 if (modules.anthropic) |anthropic| {
@@ -1327,7 +1333,7 @@ const ModuleBuilder = struct {
                     }
                 }
             } else {
-                std.log.info("   🚫 Excluding auth module (no network access needed)", .{});
+                std.log.info("   🚫 Auth module included but network access disabled (stub mode)", .{});
             }
 
             // Include terminal modules if terminal UI is needed

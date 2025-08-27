@@ -33,8 +33,8 @@ pub const Args = struct {
     preview: bool,
 
     // Commands and subcommands
-    command: ?types.UnifiedCommand,
-    auth_subcommand: ?types.AuthSubcommand,
+    command: ?types.Command,
+    authSubcommand: ?types.AuthSubcommand,
 
     // Positional arguments
     prompt: ?[]const u8,
@@ -181,8 +181,9 @@ pub const Parser = struct {
             } else {
                 // Commands or positional arguments
                 if (parsed.command == null) {
-                    if (types.UnifiedCommand.fromString(arg)) |cmd| {
+                    if (types.Command.fromString(arg)) |cmd| {
                         parsed.command = cmd;
+                        parsed.positionals.command = cmd;
                         if (cmd == .auth) {
                             // Next arg should be auth subcommand
                             i += 1;
@@ -190,6 +191,12 @@ pub const Parser = struct {
                                 // Pass "auth" as context for better error messages
                                 return error.UnknownSubcommand;
                             }
+                            parsed.authSubcommand = types.AuthSubcommand.fromString(args[i]) orelse {
+                                // Pass "auth" as context for better error messages
+                                return error.UnknownSubcommand;
+                            };
+                        }
+                    }
                             parsed.auth_subcommand = types.AuthSubcommand.fromString(args[i]) orelse {
                                 // Pass "auth" as context for better error messages
                                 return error.UnknownSubcommand;

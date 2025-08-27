@@ -7,8 +7,8 @@
 
 const std = @import("std");
 const tui = @import("../src/shared/tui/mod.zig");
-const bounds_mod = @import("../src/shared/tui/core/bounds.zig");
-const events_mod = @import("../src/shared/tui/core/events.zig");
+const boundsMod = @import("../src/shared/tui/core/bounds.zig");
+const eventsMod = @import("../src/shared/tui/core/events.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -23,24 +23,24 @@ pub fn main() !void {
     defer renderer.deinit();
 
     // Get terminal dimensions
-    const terminal_size = bounds_mod.getTerminalSize();
-    std.debug.print("📐 Terminal Size: {}×{}\n\n", .{ terminal_size.width, terminal_size.height });
+    const terminalSize = boundsMod.getTerminalSize();
+    std.debug.print("📐 Terminal Size: {}×{}\n\n", .{ terminalSize.width, terminalSize.height });
 
     // Demo different diff scenarios
-    try demoBasicDiff(allocator, renderer, terminal_size);
-    try demoCodeDiff(allocator, renderer, terminal_size);
-    try demoLargeFileDiff(allocator, renderer, terminal_size);
-    try demoInteractiveDiff(allocator, renderer, terminal_size);
+    try demoBasicDiff(allocator, renderer, terminalSize);
+    try demoCodeDiff(allocator, renderer, terminalSize);
+    try demoLargeFileDiff(allocator, renderer, terminalSize);
+    try demoInteractiveDiff(allocator, renderer, terminalSize);
 
     std.debug.print("\n✨ Demo completed! All DiffViewer features showcased.\n");
 }
 
 /// Demo basic text diff
-fn demoBasicDiff(allocator: std.mem.Allocator, renderer: *tui.Renderer, terminal_size: bounds_mod.TerminalSize) !void {
+fn demoBasicDiff(allocator: std.mem.Allocator, renderer: *tui.Renderer, terminalSize: boundsMod.TerminalSize) !void {
     std.debug.print("📝 Demo 1: Basic Text Diff\n");
     std.debug.print("   Simple text comparison with additions and deletions\n\n");
 
-    const original_text =
+    const originalText =
         \\The quick brown fox
         \\jumps over the lazy dog
         \\This is a test file
@@ -48,7 +48,7 @@ fn demoBasicDiff(allocator: std.mem.Allocator, renderer: *tui.Renderer, terminal
         \\of content to compare
     ;
 
-    const modified_text =
+    const modifiedText =
         \\The quick brown fox
         \\jumps over the sleeping dog
         \\This is a sample file
@@ -58,25 +58,25 @@ fn demoBasicDiff(allocator: std.mem.Allocator, renderer: *tui.Renderer, terminal
     ;
 
     // Create DiffViewer with default config
-    var diff_viewer = try tui.DiffViewer.init(allocator, original_text, modified_text, .{});
+    var diff_viewer = try tui.DiffViewer.init(allocator, originalText, modifiedText, .{});
     defer diff_viewer.deinit();
 
     // Set bounds for the viewer
-    const viewer_bounds = tui.Bounds{
+    const viewerBounds = tui.Bounds{
         .x = 2,
         .y = 8,
-        .width = terminal_size.width - 4,
+        .width = terminalSize.width - 4,
         .height = 15,
     };
-    diff_viewer.setBounds(viewer_bounds);
+    diff_viewer.setBounds(viewerBounds);
 
     // Render the diff
     try renderer.beginFrame();
     try renderer.clear(tui.Bounds{
         .x = 0,
         .y = 0,
-        .width = terminal_size.width,
-        .height = terminal_size.height,
+        .width = terminalSize.width,
+        .height = terminalSize.height,
     });
 
     // Draw title
@@ -97,11 +97,11 @@ fn demoBasicDiff(allocator: std.mem.Allocator, renderer: *tui.Renderer, terminal
     }, "Use arrow keys to scroll, Tab to switch panels");
 
     // Render the diff viewer
-    const render_ctx = tui.Render{
-        .bounds = viewer_bounds,
+    const renderCtx = tui.Render{
+        .bounds = viewerBounds,
         .style = .{},
     };
-    try diff_viewer.render(renderer, render_ctx);
+    try diff_viewer.render(renderer, renderCtx);
 
     try renderer.endFrame();
 
@@ -110,11 +110,11 @@ fn demoBasicDiff(allocator: std.mem.Allocator, renderer: *tui.Renderer, terminal
 }
 
 /// Demo code diff with syntax highlighting
-fn demoCodeDiff(allocator: std.mem.Allocator, renderer: *tui.Renderer, terminal_size: bounds_mod.TerminalSize) !void {
+fn demoCodeDiff(allocator: std.mem.Allocator, renderer: *tui.Renderer, terminalSize: boundsMod.TerminalSize) !void {
     std.debug.print("💻 Demo 2: Code Diff\n");
     std.debug.print("   Programming code comparison with view\n\n");
 
-    const original_code =
+    const originalCode =
         \\pub fn fibonacci(n: u32) u32 {
         \\    if (n <= 1) {
         \\        return n;
@@ -128,7 +128,7 @@ fn demoCodeDiff(allocator: std.mem.Allocator, renderer: *tui.Renderer, terminal_
         \\}
     ;
 
-    const modified_code =
+    const modifiedCode =
         \\pub fn fibonacci(n: u32) u32 {
         \\    if (n == 0) {
         \\        return 0;
@@ -144,7 +144,7 @@ fn demoCodeDiff(allocator: std.mem.Allocator, renderer: *tui.Renderer, terminal_
         \\}
         \\
         \\// Added function for memoization
-        \\pub fn fibonacci_memo(n: u32, memo: []u32) u32 {
+        \\pub fn fibonacciMemo(n: u32, memo: []u32) u32 {
         \\    if (memo[n] != 0) {
         \\        return memo[n];
         \\    }
@@ -152,13 +152,13 @@ fn demoCodeDiff(allocator: std.mem.Allocator, renderer: *tui.Renderer, terminal_
         \\        memo[n] = n;
         \\        return n;
         \\    }
-        \\    memo[n] = fibonacci_memo(n - 1, memo) + fibonacci_memo(n - 2, memo);
+        \\    memo[n] = fibonacciMemo(n - 1, memo) + fibonacciMemo(n - 2, memo);
         \\    return memo[n];
         \\}
     ;
 
     // Create DiffViewer with mode and custom config
-    var diff_viewer = try tui.DiffViewer.init(allocator, original_code, modified_code, .{
+    var diff_viewer = try tui.DiffViewer.init(allocator, originalCode, modifiedCode, .{
         .mode = .unified,
         .show_line_numbers = true,
         .context_lines = 2,
@@ -173,21 +173,21 @@ fn demoCodeDiff(allocator: std.mem.Allocator, renderer: *tui.Renderer, terminal_
     defer diff_viewer.deinit();
 
     // Set bounds for the viewer
-    const viewer_bounds = tui.Bounds{
+    const viewerBounds = tui.Bounds{
         .x = 2,
         .y = 8,
-        .width = terminal_size.width - 4,
+        .width = terminalSize.width - 4,
         .height = 20,
     };
-    diff_viewer.setBounds(viewer_bounds);
+    diff_viewer.setBounds(viewerBounds);
 
     // Render the diff
     try renderer.beginFrame();
     try renderer.clear(tui.Bounds{
         .x = 0,
         .y = 0,
-        .width = terminal_size.width,
-        .height = terminal_size.height,
+        .width = terminalSize.width,
+        .height = terminalSize.height,
     });
 
     // Draw title
@@ -208,11 +208,11 @@ fn demoCodeDiff(allocator: std.mem.Allocator, renderer: *tui.Renderer, terminal_
     }, "Use arrow keys to scroll through the diff");
 
     // Render the diff viewer
-    const render_ctx2 = tui.Render{
-        .bounds = viewer_bounds,
+    const renderCtx2 = tui.Render{
+        .bounds = viewerBounds,
         .style = .{},
     };
-    try diff_viewer.render(renderer, render_ctx2);
+    try diff_viewer.render(renderer, renderCtx2);
 
     try renderer.endFrame();
 
@@ -221,7 +221,7 @@ fn demoCodeDiff(allocator: std.mem.Allocator, renderer: *tui.Renderer, terminal_
 }
 
 /// Demo large file diff with scrolling
-fn demoLargeFileDiff(allocator: std.mem.Allocator, renderer: *tui.Renderer, terminal_size: bounds_mod.TerminalSize) !void {
+fn demoLargeFileDiff(allocator: std.mem.Allocator, renderer: *tui.Renderer, terminalSize: boundsMod.TerminalSize) !void {
     std.debug.print("📄 Demo 3: Large File Diff\n");
     std.debug.print("   Handling large files with efficient scrolling\n\n");
 
@@ -270,26 +270,26 @@ fn demoLargeFileDiff(allocator: std.mem.Allocator, renderer: *tui.Renderer, term
     defer diff_viewer.deinit();
 
     // Set bounds for the viewer
-    const viewer_bounds = tui.Bounds{
+    const viewerBounds = tui.Bounds{
         .x = 2,
         .y = 8,
-        .width = terminal_size.width - 4,
+        .width = terminalSize.width - 4,
         .height = 15,
     };
-    diff_viewer.setBounds(viewer_bounds);
+    diff_viewer.setBounds(viewerBounds);
 
     // Scroll to show different parts of the diff
-    const scroll_steps = [_]usize{ 0, 10, 25, 40 };
+    const scrollSteps = [_]usize{ 0, 10, 25, 40 };
 
-    for (scroll_steps) |scroll_pos| {
+    for (scrollSteps) |scroll_pos| {
         diff_viewer.scrollToLine(scroll_pos);
 
         try renderer.beginFrame();
         try renderer.clear(tui.Bounds{
             .x = 0,
             .y = 0,
-            .width = terminal_size.width,
-            .height = terminal_size.height,
+            .width = terminalSize.width,
+            .height = terminalSize.height,
         });
 
         // Draw title with scroll position
@@ -312,11 +312,11 @@ fn demoLargeFileDiff(allocator: std.mem.Allocator, renderer: *tui.Renderer, term
         }, "Green areas show additions, red areas show deletions");
 
         // Render the diff viewer
-        const render_ctx3 = tui.Render{
-            .bounds = viewer_bounds,
+        const renderCtx3 = tui.Render{
+            .bounds = viewerBounds,
             .style = .{},
         };
-        try diff_viewer.render(renderer, render_ctx3);
+        try diff_viewer.render(renderer, renderCtx3);
 
         try renderer.endFrame();
 
@@ -329,11 +329,11 @@ fn demoLargeFileDiff(allocator: std.mem.Allocator, renderer: *tui.Renderer, term
 }
 
 /// Demo interactive diff with keyboard navigation
-fn demoInteractiveDiff(allocator: std.mem.Allocator, renderer: *tui.Renderer, terminal_size: bounds_mod.TerminalSize) !void {
+fn demoInteractiveDiff(allocator: std.mem.Allocator, renderer: *tui.Renderer, terminalSize: boundsMod.TerminalSize) !void {
     std.debug.print("🎮 Demo 4: Interactive Diff\n");
     std.debug.print("   Keyboard navigation and selection features\n\n");
 
-    const original_config =
+    const originalConfig =
         \\[server]
         \\host = localhost
         \\port = 8080
@@ -346,7 +346,7 @@ fn demoInteractiveDiff(allocator: std.mem.Allocator, renderer: *tui.Renderer, te
         \\pool_size = 10
     ;
 
-    const modified_config =
+    const modifiedConfig =
         \\[server]
         \\host = 0.0.0.0
         \\port = 3000
@@ -366,7 +366,7 @@ fn demoInteractiveDiff(allocator: std.mem.Allocator, renderer: *tui.Renderer, te
     ;
 
     // Create DiffViewer with interactive features
-    var diff_viewer = try tui.DiffViewer.init(allocator, original_config, modified_config, .{
+    var diff_viewer = try tui.DiffViewer.init(allocator, originalConfig, modifiedConfig, .{
         .mode = .side_by_side,
         .show_line_numbers = true,
         .context_lines = 3,
@@ -381,16 +381,16 @@ fn demoInteractiveDiff(allocator: std.mem.Allocator, renderer: *tui.Renderer, te
     defer diff_viewer.deinit();
 
     // Set bounds for the viewer
-    const viewer_bounds = tui.Bounds{
+    const viewerBounds = tui.Bounds{
         .x = 2,
         .y = 10,
-        .width = terminal_size.width - 4,
+        .width = terminalSize.width - 4,
         .height = 18,
     };
-    diff_viewer.setBounds(viewer_bounds);
+    diff_viewer.setBounds(viewerBounds);
 
     // Demo different navigation features
-    const demo_actions = [_]struct {
+    const demoActions = [_]struct {
         action: []const u8,
         description: []const u8,
         delay_ms: u64,
@@ -401,7 +401,7 @@ fn demoInteractiveDiff(allocator: std.mem.Allocator, renderer: *tui.Renderer, te
         .{ .action = "scroll_up", .description = "Scrolling back up", .delay_ms = 1500 },
     };
 
-    for (demo_actions) |demo| {
+    for (demoActions) |demo| {
         // Perform the action
         if (std.mem.eql(u8, demo.action, "scroll_down")) {
             for (0..5) |_| {
@@ -425,8 +425,8 @@ fn demoInteractiveDiff(allocator: std.mem.Allocator, renderer: *tui.Renderer, te
         try renderer.clear(tui.Bounds{
             .x = 0,
             .y = 0,
-            .width = terminal_size.width,
-            .height = terminal_size.height,
+            .width = terminalSize.width,
+            .height = terminalSize.height,
         });
 
         // Draw title
@@ -453,11 +453,11 @@ fn demoInteractiveDiff(allocator: std.mem.Allocator, renderer: *tui.Renderer, te
         }, "Page Up/Down for faster scrolling");
 
         // Render the diff viewer
-        const render_ctx4 = tui.Render{
-            .bounds = viewer_bounds,
+        const renderCtx4 = tui.Render{
+            .bounds = viewerBounds,
             .style = .{},
         };
-        try diff_viewer.render(renderer, render_ctx4);
+        try diff_viewer.render(renderer, renderCtx4);
 
         try renderer.endFrame();
 
@@ -470,8 +470,8 @@ fn demoInteractiveDiff(allocator: std.mem.Allocator, renderer: *tui.Renderer, te
     try renderer.clear(tui.Bounds{
         .x = 0,
         .y = 0,
-        .width = terminal_size.width,
-        .height = terminal_size.height,
+        .width = terminalSize.width,
+        .height = terminalSize.height,
     });
 
     // Draw final title
@@ -481,13 +481,13 @@ fn demoInteractiveDiff(allocator: std.mem.Allocator, renderer: *tui.Renderer, te
     }, "Interactive Diff - Complete Feature Demo");
 
     // Show diff statistics
-    const total_lines = diff_viewer.getTotalLines();
-    const scroll_pos = diff_viewer.getScrollPosition();
+    const totalLines = diff_viewer.getTotalLines();
+    const scrollPos = diff_viewer.getScrollPosition();
 
     var stats_buf: [200]u8 = undefined;
     const stats = try std.fmt.bufPrint(&stats_buf,
         "Total lines: {}, Current scroll: line {}, Can scroll down: {}",
-        .{ total_lines, scroll_pos.y + 1, diff_viewer.canScroll(.down) }
+        .{ totalLines, scrollPos.y + 1, diff_viewer.canScroll(.down) }
     );
 
     try renderer.drawText(.{
@@ -496,11 +496,11 @@ fn demoInteractiveDiff(allocator: std.mem.Allocator, renderer: *tui.Renderer, te
     }, stats);
 
     // Render the final diff view
-    const render_ctx5 = tui.Render{
-        .bounds = viewer_bounds,
+    const renderCtx5 = tui.Render{
+        .bounds = viewerBounds,
         .style = .{},
     };
-    try diff_viewer.render(renderer, render_ctx5);
+    try diff_viewer.render(renderer, renderCtx5);
 
     try renderer.endFrame();
 

@@ -261,7 +261,7 @@ pub const Progress = struct {
 };
 
 /// Utility functions for progress bar rendering
-pub const Utility = struct {
+pub const Util = struct {
     /// HSV to RGB conversion for color effects
     pub fn hsvToRgb(h: f32, s: f32, v: f32) Color {
         const c = v * s;
@@ -597,7 +597,7 @@ pub const ProgressRenderer = struct {
             if (is_filled) {
                 // Rainbow gradient based on position
                 const hue = pos * 120.0; // Green to red range
-                const rgb = Utility.hsvToRgb(120.0 - hue, 0.8, 1.0);
+                const rgb = Util.hsvToRgb(120.0 - hue, 0.8, 1.0);
                 switch (rgb) {
                     .rgb => |r| try writer.print("\x1b[38;2;{d};{d};{d}m█\x1b[0m", .{ r.r, r.g, r.b }),
                     else => try writer.writeAll("█"),
@@ -626,7 +626,7 @@ pub const ProgressRenderer = struct {
             if (is_filled) {
                 // HSV rainbow based on position
                 const hue = pos * 360.0;
-                const rgb = Utility.hsvToRgb(hue, 0.8, 1.0);
+                const rgb = Util.hsvToRgb(hue, 0.8, 1.0);
                 switch (rgb) {
                     .rgb => |r| try writer.print("\x1b[38;2;{d};{d};{d}m█\x1b[0m", .{ r.r, r.g, r.b }),
                     else => try writer.writeAll("█"),
@@ -768,18 +768,18 @@ pub const ProgressRenderer = struct {
         else
             0;
 
-        // Mini bar chart
-        const bars = [_][]const u8{ "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█" };
+                // Mini bar chart
+                const bars = [_][]const u8{ "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█" };
 
-        var i: u32 = 0;
-        while (i < data_points) : (i += 1) {
-            const data_idx = start_idx + i;
-            const value = data.history.items[data_idx].value;
-            const bar_idx = @as(usize, @intFromFloat(value * 7.0));
+                var i: u32 = 0;
+                while (i < data_points) : (i += 1) {
+                    const data_idx = start_idx + i;
+                    const value = data.history.items[data_idx].value;
+                    const bar_idx = @as(usize, @intFromFloat(value * 7.0));
 
-            if (self.caps.supports_truecolor) {
-                const progress_color = value * 120.0; // Green to yellow range
-                const rgb = Utility.hsvToRgb(progress_color, 0.8, 1.0);
+                    if (self.caps.supports_truecolor) {
+                        const progress_color = value * 120.0; // Green to yellow range
+                        const rgb = Util.hsvToRgb(progress_color, 0.8, 1.0);
                 switch (rgb) {
                     .rgb => |r| try writer.print("\x1b[38;2;{d};{d};{d}m{s}\x1b[0m", .{ r.r, r.g, r.b, bars[@min(bar_idx, bars.len - 1)] }),
                     else => try writer.writeAll(bars[@min(bar_idx, bars.len - 1)]),
@@ -877,7 +877,7 @@ pub const ProgressRenderer = struct {
 // Adaptive Renderer Integration
 
 /// Progress bar data for adaptive renderer
-pub const AdaptiveProgress = struct {
+pub const ProgressAdapter = struct {
     value: f32, // 0.0 to 1.0
     label: ?[]const u8 = null,
     percentage: bool = true,
@@ -893,7 +893,7 @@ pub const AdaptiveProgress = struct {
     }
 
     /// Convert to Progress
-    pub fn toProgress(self: AdaptiveProgress, allocator: std.mem.Allocator) !Progress {
+    pub fn toProgress(self: ProgressAdapter, allocator: std.mem.Allocator) !Progress {
         var data = Progress.init(allocator);
         try data.setProgress(self.value);
         data.label = if (self.label) |l| try allocator.dupe(u8, l) else null;
@@ -906,7 +906,7 @@ pub const AdaptiveProgress = struct {
 };
 
 /// Render progress bar using renderer
-pub fn renderProgress(renderer: anytype, progress_data: AdaptiveProgress) !void {
+pub fn renderProgressAdapter(renderer: anytype, progress_data: ProgressAdapter) !void {
     const render_shared = @import("render_shared");
     const Renderer = render_shared.Renderer;
     _ = @as(*Renderer, @ptrCast(renderer));
@@ -978,14 +978,14 @@ pub fn renderProgressData(renderer: anytype, data: *Progress) !void {
 }
 
 /// Create animated progress bar that updates over time
-pub const Animated = struct {
+pub const AnimatedProgress = struct {
     renderer: *anyopaque,
     data: Progress,
     start_time: i64,
 
-    pub fn init(renderer: anytype, progress: AdaptiveProgress) !Animated {
+    pub fn init(renderer: anytype, progress: ProgressAdapter) !AnimatedProgress {
         const data = try progress.toProgress(renderer.allocator);
-        return Animated{
+        return AnimatedProgress{
             .renderer = renderer,
             .data = data,
             .start_time = std.time.milliTimestamp(),

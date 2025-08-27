@@ -765,7 +765,7 @@ pub const Input = struct {
 };
 
 /// Helper functions for working with input events
-pub const Utility = struct {
+pub const Util = struct {
     /// Check if a key event matches specific criteria
     pub fn keyMatches(event: InputEvent.KeyPressEvent, key: Key, modifiers: ?Modifiers) bool {
         if (event.key != key) return false;
@@ -867,10 +867,10 @@ test "input utils" {
         .modifiers = .{ .ctrl = true },
     };
 
-    try std.testing.expect(Utility.keyMatches(event, .enter, .{ .ctrl = true }));
-    try std.testing.expect(!Utility.keyMatches(event, .enter, .{ .alt = true }));
+    try std.testing.expect(Util.keyMatches(event, .enter, .{ .ctrl = true }));
+    try std.testing.expect(!Util.keyMatches(event, .enter, .{ .alt = true }));
 
-    const display_text = Utility.getKeyDisplayText(event);
+    const display_text = Util.getKeyDisplayText(event);
     try std.testing.expectEqualStrings("enter", display_text);
 }
 

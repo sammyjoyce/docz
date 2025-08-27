@@ -223,10 +223,10 @@ pub const Notification = struct {
 
     /// Sanitize notification content for safe display
     pub fn sanitizeContent(self: *const Self, allocator: std.mem.Allocator) !struct { title: []u8, message: []u8 } {
-        const clean_title = try NotificationUtils.sanitizeText(allocator, self.title);
+        const clean_title = try NotificationUtil.sanitizeText(allocator, self.title);
         errdefer allocator.free(clean_title);
 
-        const clean_message = try NotificationUtils.sanitizeText(allocator, self.message);
+        const clean_message = try NotificationUtil.sanitizeText(allocator, self.message);
         errdefer allocator.free(clean_message);
 
         return .{ .title = clean_title, .message = clean_message };
@@ -264,7 +264,7 @@ pub const SystemNotification = struct {
 };
 
 /// Common sanitization and formatting utilities
-pub const NotificationUtils = struct {
+pub const NotificationUtil = struct {
     /// Sanitize text by removing control characters
     pub fn sanitizeText(allocator: std.mem.Allocator, text: []const u8) ![]u8 {
         var out = std.ArrayList(u8).init(allocator);
@@ -288,14 +288,14 @@ pub const NotificationUtils = struct {
         message: []const u8,
         max_width: u32,
     ) !struct { formatted_title: []u8, formatted_message: []u8 } {
-        const clean_title = try sanitizeText(allocator, title);
+        const clean_title = try NotificationUtil.sanitizeText(allocator, title);
         errdefer allocator.free(clean_title);
 
-        const clean_message = try sanitizeText(allocator, message);
+        const clean_message = try NotificationUtil.sanitizeText(allocator, message);
         errdefer allocator.free(clean_message);
 
         // Simple word wrapping for message
-        const wrapped_message = try wordWrap(allocator, clean_message, max_width);
+        const wrapped_message = try NotificationUtil.wordWrap(allocator, clean_message, max_width);
         errdefer allocator.free(wrapped_message);
 
         return .{
@@ -493,7 +493,7 @@ test "notification sanitization" {
     const allocator = gpa.allocator();
 
     const dirty_text = "Hello\x1b[31m\x07World\x00Test";
-    const clean_text = try NotificationUtils.sanitizeText(allocator, dirty_text);
+    const clean_text = try NotificationUtil.sanitizeText(allocator, dirty_text);
     defer allocator.free(clean_text);
 
     try std.testing.expectEqualStrings("HelloWorldTest", clean_text);

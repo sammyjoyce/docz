@@ -13,7 +13,7 @@
 
 const std = @import("std");
 pub const callback_server = @import("callback_server.zig");
-const curl = @import("curl_shared");
+const curl = @import("../mod.zig").curl;
 
 // Re-export OAuth constants and types from anthropic
 pub const OAUTH_CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e";
@@ -314,7 +314,7 @@ pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorizationCode: []
     };
 
     // Make POST request to token endpoint
-    const response = httpClient.post(OAUTH_TOKEN_ENDPOINT, &headers, formData) catch |err| {
+    var response = httpClient.post(OAUTH_TOKEN_ENDPOINT, &headers, formData) catch |err| {
         std.log.err("Network error during OAuth token exchange: {any}", .{err});
         return Error.NetworkError;
     };
@@ -360,7 +360,7 @@ pub fn refreshTokens(allocator: std.mem.Allocator, refreshToken: []const u8) !Cr
     };
 
     // Make POST request to token endpoint
-    const response = httpClient.post(OAUTH_TOKEN_ENDPOINT, &headers, formData) catch |err| {
+    var response = httpClient.post(OAUTH_TOKEN_ENDPOINT, &headers, formData) catch |err| {
         std.log.err("Network error during OAuth token refresh: {any}", .{err});
         return Error.NetworkError;
     };

@@ -22,7 +22,7 @@ pub const BaseAgent = struct {
 
     const Self = @This();
 
-    // SessionStats is now imported from session.zig
+    // SessionStats is now imported from session_core.zig
 
     /// Initialize base agent with allocator
     pub fn init(allocator: Allocator) Self {
@@ -129,9 +129,9 @@ pub const BaseAgent = struct {
         } else if (std.mem.eql(u8, varName, "auth_status")) {
             return self.getAuthStatusText();
         } else if (std.mem.eql(u8, varName, "session_count")) {
-            return try std.fmt.allocPrint(self.allocator, "{d}", .{self.sessionStats.totalSessions});
+            return try std.fmt.allocPrint(self.allocator, "{d}", .{self.sessionStats.messagesProcessed});
         } else if (std.mem.eql(u8, varName, "total_messages")) {
-            return try std.fmt.allocPrint(self.allocator, "{d}", .{self.sessionStats.totalMessages});
+            return try std.fmt.allocPrint(self.allocator, "{d}", .{self.sessionStats.messagesProcessed});
         } else {
             // Unknown variable, return as-is with braces
             return try std.fmt.allocPrint(self.allocator, "{{{s}}}", .{varName});
@@ -399,32 +399,32 @@ pub const SessionHelpers = struct {
 pub const AuthHelpers = struct {
     /// Check if OAuth is available and valid
     pub fn hasValidOauth(allocator: Allocator) bool {
-        const client = auth.createClient(allocator) catch return false;
+        var client = auth.createClient(allocator) catch return false;
         defer client.deinit();
         return client.isOAuth() and client.credentials.isValid();
     }
 
     /// Check if API key authentication is available
     pub fn hasValidApiKey(allocator: Allocator) bool {
-        const client = auth.createClient(allocator) catch return false;
+        var client = auth.createClient(allocator) catch return false;
         defer client.deinit();
-        return client.credentials.getMethod() == .api_key and client.credentials.isValid();
+        return client.credentials.getMethod() == .apiKey and client.credentials.isValid();
     }
 
     /// Get current authentication status as a formatted string
     pub fn getStatusText(allocator: Allocator) ![]const u8 {
-        const client = try auth.createClient(allocator);
+        var client = try auth.createClient(allocator);
         defer client.deinit();
 
         return switch (client.credentials) {
             .oauth => |creds| {
                 if (creds.isExpired()) {
-                    try allocator.dupe(u8, "OAuth (expired)");
+                    return try allocator.dupe(u8, "OAuth (expired)");
                 } else {
-                    try allocator.dupe(u8, "OAuth (Claude Pro/Max)");
+                    return try allocator.dupe(u8, "OAuth (Claude Pro/Max)");
                 }
             },
-            .api_key => try allocator.dupe(u8, "API Key"),
+            .apiKey => try allocator.dupe(u8, "API Key"),
             .none => try allocator.dupe(u8, "Not authenticated"),
         };
     }
@@ -451,7 +451,7 @@ pub const ConfigHelpers = struct {
         agentName: []const u8,
         defaults: ConfigType,
     ) ConfigType {
-        const configUtils = @import("config.zig");
+        const configUtils = @import("config_shared");
         const configPath = configUtils.getAgentConfigPath(allocator, agentName) catch {
             std.log.info("Using default configuration for agent: {s}", .{agentName});
             return defaults;
@@ -463,18 +463,18 @@ pub const ConfigHelpers = struct {
 
     /// Get standard agent config path
     pub fn getConfigPath(allocator: Allocator, agentName: []const u8) ![]const u8 {
-        const configUtils = @import("config.zig");
+        const configUtils = @import("config_shared");
         return configUtils.getAgentConfigPath(allocator, agentName);
     }
 
     /// Create validated agent config with standard defaults
-    pub fn createAgentConfig(name: []const u8, description: []const u8, author: []const u8) @import("config.zig").AgentConfig {
-        const configUtils = @import("config.zig");
+    pub fn createAgentConfig(name: []const u8, description: []const u8, author: []const u8) @import("config_shared").AgentConfig {
+        const configUtils = @import("config_shared");
         return configUtils.createValidatedAgentConfig(name, description, author);
     }
 
     /// Create agent config with interactive features enabled
-    pub fn createInteractiveAgentConfig(name: []const u8, description: []const u8, author: []const u8) @import("config.zig").AgentConfig {
+    pub fn createInteractiveAgentConfig(name: []const u8, description: []const u8, author: []const u8) @import("config_shared").AgentConfig {
         var config = createAgentConfig(name, description, author);
         // Enable features commonly used with interactive agents
         config.features.enableNetworkAccess = true;
@@ -490,7 +490,7 @@ pub const ConfigHelpers = struct {
         agentName: []const u8,
         config: ConfigType,
     ) !void {
-        const configUtils = @import("config.zig");
+        const configUtils = @import("config_shared");
         const configPath = try configUtils.getAgentConfigPath(allocator, agentName);
         defer allocator.free(configPath);
 
@@ -512,7 +512,7 @@ pub const TemplateProcessor = struct {
     pub fn getTemplateVariableValue(
         allocator: Allocator,
         varName: []const u8,
-        config: @import("config.zig").AgentConfig,
+        config: @import("config_shared").AgentConfig,
     ) ![]const u8 {
         const cfg = &config;
 

@@ -9,7 +9,7 @@ pub const notification = @import("notification.zig");
 pub const base = @import("base.zig");
 // ui temporarily disabled until aligned with base API
 // pub const ui = @import("ui.zig");
-// pub const input_component = @import("input_component.zig");
+// pub const input_enhanced = @import("input_enhanced.zig");
 pub const input = @import("input.zig");
 
 // Re-export main types for convenience
@@ -18,7 +18,7 @@ pub const InputEvent = input.InputEvent;
 pub const Input = input.Input;
 pub const InputConfig = input.InputConfig;
 pub const InputFeature = input.InputFeature;
-pub const Utility = input.Utility;
+pub const Util = input.Util;
 pub const Key = input.Key;
 pub const Modifiers = input.Modifiers;
 pub const AdaptiveProgress = progress.AdaptiveProgress;
@@ -37,7 +37,7 @@ pub const NotificationConfiguration = notification.NotificationConfiguration;
 pub const NotificationAction = notification.NotificationAction;
 pub const Notification = notification.Notification;
 pub const SystemNotification = notification.SystemNotification;
-pub const NotificationUtils = notification.NotificationUtils;
+pub const NotificationUtil = notification.NotificationUtil;
 pub const ColorScheme = notification.ColorScheme;
 pub const SoundPattern = notification.SoundPattern;
 

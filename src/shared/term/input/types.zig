@@ -1,7 +1,7 @@
 const std = @import("std");
 
 // Re-export  types for backward compatibility
-pub const Modifiers = @import("shared_types").Modifiers;
+pub const Modifiers = @import("../../types.zig").Modifiers;
 
 // Extended key definitions for comprehensive input handling
 pub const Key = enum(u32) {
@@ -338,13 +338,13 @@ pub const Key = enum(u32) {
 };
 
 // Re-export  types for backward compatibility
-pub const MouseButton = @import("shared_types").MouseButton;
+pub const MouseButton = @import("../../types.zig").MouseButton;
 
 // Re-export  types for backward compatibility
-pub const MouseAction = @import("shared_types").MouseAction;
+pub const MouseAction = @import("../../types.zig").MouseAction;
 
 // Re-export  types for backward compatibility
-pub const MouseEvent = @import("shared_types").MouseEvent;
+pub const MouseEvent = @import("../../types.zig").MouseEvent;
 
 // Cursor position report (CPR / DECXCPR).
 pub const CursorPositionEvent = struct {

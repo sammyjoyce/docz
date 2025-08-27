@@ -30,6 +30,9 @@ pub const saveCredentials = core.saveCredentials;
 pub const setupOAuth = oauth.setupOAuth;
 pub const refreshTokens = oauth.refreshTokens;
 
+// Re-export curl for OAuth module usage
+pub const curl = @import("anthropic_shared").curl;
+
 // Re-export callback server types and functions
 pub const Server = oauth.Server;
 pub const Config = oauth.Config;
