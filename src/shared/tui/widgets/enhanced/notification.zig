@@ -1,14 +1,17 @@
-//! Advanced Notification Widget with Progressive Enhancement
+//! Advanced TUI Notification Widget with Progressive Enhancement
 //!
-//! This notification system automatically adapts to terminal capabilities:
+//! This notification system extends the unified base system with TUI-specific features:
 //! - System notifications (OSC 9) when supported
 //! - Rich in-terminal notifications with graphics/colors
 //! - Graceful fallback to basic text notifications
 //! - Proper positioning and animation where supported
+//! - TUI-specific animations and positioning
 
 const std = @import("std");
 const renderer_mod = @import("../../core/renderer.zig");
 const bounds_mod = @import("../../core/bounds.zig");
+const components_shared = @import("../../components/mod.zig");
+const notification_base = components_shared.notification_base;
 
 const Renderer = renderer_mod.Renderer;
 const RenderContext = renderer_mod.RenderContext;
@@ -18,17 +21,22 @@ const Point = renderer_mod.Point;
 const Bounds = renderer_mod.Bounds;
 const NotificationLevel = renderer_mod.NotificationLevel;
 
-/// Notification that adapts to terminal capabilities
+// Re-export base types for convenience
+pub const NotificationType = notification_base.NotificationType;
+pub const NotificationConfig = notification_base.NotificationConfig;
+pub const NotificationAction = notification_base.NotificationAction;
+pub const BaseNotification = notification_base.BaseNotification;
+
+/// TUI Notification that extends the base system with positioning and animation
 pub const Notification = struct {
     const Self = @This();
 
-    title: []const u8,
-    message: []const u8,
-    level: NotificationLevel,
+    // Base notification data
+    base: BaseNotification,
+
+    // TUI-specific options
     options: Options,
-    timestamp: i64,
     is_displayed: bool,
-    allocator: std.mem.Allocator,
 
     pub const Options = struct {
         position: Position = .top_right,
@@ -78,20 +86,16 @@ pub const Notification = struct {
     };
 
     pub fn init(
-        allocator: std.mem.Allocator,
         title: []const u8,
         message: []const u8,
-        level: NotificationLevel,
+        notification_type: NotificationType,
+        config: NotificationConfig,
         options: Options,
     ) Self {
         return Self{
-            .title = title,
-            .message = message,
-            .level = level,
+            .base = BaseNotification.init(title, message, notification_type, config),
             .options = options,
-            .timestamp = std.time.timestamp(),
             .is_displayed = false,
-            .allocator = allocator,
         };
     }
 
@@ -100,7 +104,12 @@ pub const Notification = struct {
 
         // Try system notification first if enabled and supported
         if (self.options.use_system_notification and caps.supportsNotifyOsc9) {
-            try renderer.sendNotification(self.title, self.message);
+            try notification_base.SystemNotification.sendFromBase(
+                renderer.writer(),
+                renderer.allocator,
+                caps,
+                &self.base,
+            );
         }
 
         // Show in-terminal notification if enabled
@@ -124,14 +133,14 @@ pub const Notification = struct {
         if (self.options.duration_ms == null) return false;
 
         const now = std.time.timestamp();
-        const age_ms = @as(u32, @intCast(now - self.timestamp)) * 1000;
+        const age_ms = @as(u32, @intCast(now - self.base.timestamp)) * 1000;
         return age_ms > self.options.duration_ms.?;
     }
 
     fn getBounds(self: *Self, terminal_size: bounds_mod.TerminalSize) Bounds {
         // Calculate content dimensions
-        const title_len = std.unicode.utf8CountCodepoints(self.title) catch self.title.len;
-        const message_len = std.unicode.utf8CountCodepoints(self.message) catch self.message.len;
+        const title_len = std.unicode.utf8CountCodepoints(self.base.title) catch self.base.title.len;
+        const message_len = std.unicode.utf8CountCodepoints(self.base.message) catch self.base.message.len;
         const max_content_width = @max(title_len, message_len);
 
         // Account for icon, spacing, and padding
@@ -319,16 +328,16 @@ pub const Notification = struct {
         // Title line with icon
         try content.appendSlice(icon);
         try content.appendSlice(" ");
-        try content.appendSlice(self.title);
+        try content.appendSlice(self.base.title);
         try content.appendSlice("\n");
 
         // Message (with simple word wrapping if needed)
-        try content.appendSlice(self.message);
+        try content.appendSlice(self.base.message);
 
         // Timestamp if requested
         if (self.options.show_timestamp) {
             try content.appendSlice("\n");
-            const timestamp_str = try std.fmt.allocPrint(allocator, "{}s ago", .{std.time.timestamp() - self.timestamp});
+            const timestamp_str = try std.fmt.allocPrint(allocator, "{}s ago", .{std.time.timestamp() - self.base.timestamp});
             try content.appendSlice(timestamp_str);
         }
 
@@ -343,49 +352,25 @@ pub const Notification = struct {
     }
 
     fn getLevelIcon(self: *Self) []const u8 {
-        return switch (self.level) {
-            .info => "ℹ",
-            .success => "✓",
-            .warning => "⚠",
-            .error_ => "✗",
-            .debug => "🐛",
-        };
+        return self.base.notification_type.icon();
     }
 
     fn getLevelColor(self: *Self, caps: renderer_mod.TermCaps) Style.Color {
-        if (caps.supportsTruecolor) {
-            return switch (self.level) {
-                .info => .{ .rgb = .{ .r = 100, .g = 149, .b = 237 } }, // Cornflower blue
-                .success => .{ .rgb = .{ .r = 50, .g = 205, .b = 50 } }, // Lime green
-                .warning => .{ .rgb = .{ .r = 255, .g = 215, .b = 0 } }, // Gold
-                .error_ => .{ .rgb = .{ .r = 220, .g = 20, .b = 60 } }, // Crimson
-                .debug => .{ .rgb = .{ .r = 138, .g = 43, .b = 226 } }, // Blue violet
-            };
-        } else {
-            return switch (self.level) {
-                .info => .{ .palette = 12 }, // Bright blue
-                .success => .{ .palette = 10 }, // Bright green
-                .warning => .{ .palette = 11 }, // Bright yellow
-                .error_ => .{ .palette = 9 }, // Bright red
-                .debug => .{ .palette = 13 }, // Bright magenta
-            };
-        }
+        const color = self.base.notification_type.color();
+        return if (caps.supportsTruecolor) color else color.adapt(caps);
     }
 
     fn getBackgroundColor(self: *Self, caps: renderer_mod.TermCaps) ?Style.Color {
-        // Subtle background for higher priority notifications
-        if (self.options.priority == .critical) {
-            if (caps.supportsTruecolor) {
-                return .{ .rgb = .{ .r = 40, .g = 40, .b = 40 } }; // Dark background
-            } else {
-                return .{ .ansi = 0 }; // Black background
-            }
+        // Use base color schemes for background
+        const color_scheme = notification_base.ColorSchemes.getStandard(self.base.notification_type);
+        if (color_scheme.background) |bg| {
+            return bg.adapt(caps);
         }
         return null; // No background for normal notifications
     }
 
     fn getPriorityZIndex(self: *Self) i32 {
-        return switch (self.options.priority) {
+        return switch (self.base.priority) {
             .low => 1000,
             .normal => 2000,
             .high => 3000,
@@ -424,39 +409,40 @@ pub const NotificationController = struct {
         self: *Self,
         title: []const u8,
         message: []const u8,
-        level: NotificationLevel,
+        notification_type: NotificationType,
+        config: NotificationConfig,
         options: Notification.Options,
     ) !void {
         // Clean up old/expired notifications
         try self.cleanup();
 
-        var notification = Notification.init(self.allocator, title, message, level, options);
+        var notification = Notification.init(title, message, notification_type, config, options);
         try notification.show(self.renderer);
         try self.notifications.append(notification);
     }
 
     pub fn info(self: *Self, title: []const u8, message: []const u8) !void {
-        try self.notify(title, message, .info, .{});
+        try self.notify(title, message, .info, .{}, .{});
     }
 
     pub fn success(self: *Self, title: []const u8, message: []const u8) !void {
-        try self.notify(title, message, .success, .{});
+        try self.notify(title, message, .success, .{}, .{});
     }
 
     pub fn warning(self: *Self, title: []const u8, message: []const u8) !void {
-        try self.notify(title, message, .warning, .{});
+        try self.notify(title, message, .warning, .{}, .{});
     }
 
     pub fn errorNotification(self: *Self, title: []const u8, message: []const u8) !void {
-        try self.notify(title, message, .error_, .{ .priority = .high, .persistent = true });
+        try self.notify(title, message, .@"error", .{}, .{ .priority = .high, .persistent = true });
     }
 
     pub fn debug(self: *Self, title: []const u8, message: []const u8) !void {
-        try self.notify(title, message, .debug, .{ .duration_ms = 5000 });
+        try self.notify(title, message, .debug, .{}, .{ .duration_ms = 5000 });
     }
 
     pub fn critical(self: *Self, title: []const u8, message: []const u8) !void {
-        try self.notify(title, message, .error_, .{
+        try self.notify(title, message, .critical, .{}, .{
             .priority = .critical,
             .persistent = true,
             .position = .center,
@@ -512,36 +498,36 @@ pub fn deinitGlobalManager() void {
     }
 }
 
-pub fn notify(title: []const u8, message: []const u8, level: NotificationLevel, options: Notification.Options) !void {
+pub fn notify(title: []const u8, message: []const u8, notification_type: NotificationType, config: NotificationConfig, options: Notification.Options) !void {
     if (global_controller) |*controller| {
-        try controller.notify(title, message, level, options);
+        try controller.notify(title, message, notification_type, config, options);
     } else {
         return error.ControllerNotInitialized;
     }
 }
 
 pub fn info(title: []const u8, message: []const u8) !void {
-    try notify(title, message, .info, .{});
+    try notify(title, message, .info, .{}, .{});
 }
 
 pub fn success(title: []const u8, message: []const u8) !void {
-    try notify(title, message, .success, .{});
+    try notify(title, message, .success, .{}, .{});
 }
 
 pub fn warning(title: []const u8, message: []const u8) !void {
-    try notify(title, message, .warning, .{});
+    try notify(title, message, .warning, .{}, .{});
 }
 
 pub fn errorNotification(title: []const u8, message: []const u8) !void {
-    try notify(title, message, .error_, .{ .priority = .high, .persistent = true });
+    try notify(title, message, .@"error", .{}, .{ .priority = .high, .persistent = true });
 }
 
 pub fn debug(title: []const u8, message: []const u8) !void {
-    try notify(title, message, .debug, .{ .duration_ms = 5000 });
+    try notify(title, message, .debug, .{}, .{ .duration_ms = 5000 });
 }
 
 pub fn critical(title: []const u8, message: []const u8) !void {
-    try notify(title, message, .error_, .{
+    try notify(title, message, .critical, .{}, .{
         .priority = .critical,
         .persistent = true,
         .position = .center,

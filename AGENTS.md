@@ -372,7 +372,7 @@ Automatically validates agents: checks directory exists, verifies required files
 
 ### Available Agents
 - **`markdown`** - CLI agent for writing and refining markdown documents with comprehensive markdown processing tools
-- **`test-agent`** - Example agent demonstrating enhanced tool integration, JSON tools, and basic functionality
+- **`test_agent`** - Example agent demonstrating enhanced tool integration, JSON tools, and basic functionality
 - **`_template`** - Template for creating new agents with standardized structure and patterns
 
 ## Tests
@@ -776,7 +776,7 @@ This pattern ensures optimal performance while maintaining type safety and clear
 - Reorganized `src/` directory with clear separation of shared infrastructure
 - Created logical groupings: `cli/`, `tui/`, `network/`, `tools/`, `render/`, `components/`, `auth/`, `term/`
 - Added new core modules: `agent_base.zig` and `agent_main.zig` for standardized base functionality
-- Standardized agent configuration patterns (markdown and test-agent updated as examples)
+- Standardized agent configuration patterns (markdown and test_agent updated as examples)
 - Updated build system to support individual agent builds with enhanced validation
 - Comprehensive documentation of new structure and architecture improvements
 - Moved CLI demo to `examples/cli_demo/` for better organization

@@ -159,6 +159,7 @@ pub const OAuthWizard = struct {
     renderer: *Renderer,
     notification_controller: AdvancedNotificationController,
     progress_bar: AdvancedProgressBar,
+    status_bar: StatusBar,
     text_input: ?AdvancedTextInput = null,
 
     // State management
@@ -181,19 +182,18 @@ pub const OAuthWizard = struct {
     pub fn init(allocator: std.mem.Allocator, renderer: *Renderer) !Self {
         const start_time = std.time.timestamp();
 
-        // Initialize notification controller
+        // Initialize components
         const notification_controller = AdvancedNotificationController.init(allocator, renderer);
-
-        // Initialize progress bar
         const progress_bar = AdvancedProgressBar.init("OAuth Setup", .gradient);
+        var status_bar_instance = StatusBar.init(allocator, renderer);
 
-        // Add initial status items
-        try status_bar.addItem(StatusBar.StatusItem{
+        // Configure status bar
+        try status_bar_instance.addItem(StatusBar.StatusItem{
             .id = "elapsed",
             .content = .{ .text = "00:00" },
             .priority = 100,
         });
-        try status_bar.addItem(StatusBar.StatusItem{
+        try status_bar_instance.addItem(StatusBar.StatusItem{
             .id = "connection",
             .content = .{ .text = "CONNECTING" },
             .priority = 90,
@@ -204,6 +204,7 @@ pub const OAuthWizard = struct {
             .renderer = renderer,
             .notification_controller = notification_controller,
             .progress_bar = progress_bar,
+            .status_bar = status_bar_instance,
             .current_state = .initializing,
             .start_time = start_time,
             .last_state_change = start_time,

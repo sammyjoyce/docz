@@ -217,15 +217,8 @@ pub fn createBuildModules(
         .optimize = optimize,
     });
 
-    // Add interface module based on tier
-    const interface_path = switch (config.manifest.interface.tier[0]) {
-        's' => if (config.manifest.interface.tier[1] == 'i') // simple/basic
-            "src/core/agent_interface_basic.zig"
-        else // standard
-            "src/core/agent_interface_standard.zig",
-        'a' => "src/core/agent_interface.zig", // advanced
-        else => return error.InvalidInterfaceTier,
-    };
+    // Add consolidated interface module (tier selection handled internally)
+    const interface_path = "src/core/agent_interface.zig";
 
     const interface_module = b.createModule(.{
         .root_source_file = b.path(interface_path),

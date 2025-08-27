@@ -12,7 +12,8 @@ const std = @import("std");
 const term_shared = @import("term_shared");
 const unified = term_shared.unified;
 const terminal_bridge = @import("../../core/terminal_bridge.zig");
-const notification_base = @import("../../../components/notification_base.zig");
+const components_shared = @import("../../components/mod.zig");
+const notification_base = components_shared.notification_base;
 
 // Re-export base types for convenience
 pub const NotificationType = notification_base.NotificationType;

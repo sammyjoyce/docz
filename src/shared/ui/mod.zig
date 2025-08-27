@@ -6,6 +6,20 @@ const std = @import("std");
 pub const components = @import("../components/mod.zig");
 pub const themes = @import("../cli/themes/mod.zig");
 
+// Direct re-exports of consolidated progress components for convenience
+pub const progress = components.progress;
+pub const progress_styles = components.progress_styles;
+pub const progress_minimal = @import("../components/progress_minimal.zig");
+
+// Re-export main progress types for direct access
+pub const ProgressData = components.ProgressData;
+pub const ProgressStyle = components.ProgressStyle;
+pub const ProgressRenderer = components.progress_minimal.ProgressRenderer;
+pub const StyleRenderer = components.StyleRenderer;
+pub const Color = components.Color;
+pub const TermCaps = components.TermCaps;
+pub const ProgressUtils = components.ProgressUtils;
+
 // Common UI interfaces
 pub const Component = struct {
     /// Render the component to a text buffer

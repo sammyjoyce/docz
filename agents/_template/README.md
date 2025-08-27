@@ -394,7 +394,7 @@ zig build -Dagent=my-agent run -- --verbose "test prompt"
 
 ### Complete Agent Examples
 - `agents/markdown/` - Full-featured markdown processing agent
-- `agents/test-agent/` - Simple agent demonstrating basic patterns
+- `agents/test_agent/` - Simple agent demonstrating basic patterns
 
 ### Shared Module Documentation
 - `src/shared/cli/` - CLI interface components

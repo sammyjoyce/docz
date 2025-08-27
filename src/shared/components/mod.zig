@@ -1,39 +1,29 @@
-//! Shared Components Library
+//! Shared UI Components
 //!
-//! This module provides reusable UI components that work across both CLI and TUI contexts.
-//! Components are designed with progressive enhancement, automatically adapting their
-//! rendering based on terminal capabilities.
+//! This module provides reusable UI components that work across different
+//! terminal interfaces (CLI, TUI, GUI). Components are designed to be
+//! adaptive and follow progressive enhancement principles.
 
-const std = @import("std");
+pub const progress = @import("progress.zig");
+pub const progress_styles = @import("progress_styles.zig");
+pub const notification_base = @import("notification_base.zig");
 
-// Core components
-pub const progress = @import("core/progress.zig");
+// Re-export main types for convenience
+pub const ProgressData = progress.ProgressData;
+pub const ProgressStyle = progress.ProgressStyle;
+pub const RenderContext = progress.RenderContext;
+pub const Color = progress.Color;
+pub const TermCaps = progress.TermCaps;
+pub const ProgressUtils = progress.ProgressUtils;
+pub const ProgressHistory = progress.ProgressHistory;
+pub const StyleRenderer = progress_styles.StyleRenderer;
 
-// Re-exports for convenience
-pub const UnifiedProgressBar = progress.UnifiedProgressBar;
-pub const ProgressConfig = progress.ProgressConfig;
-pub const ProgressState = progress.ProgressState;
-pub const ProgressBarPresets = progress.ProgressBarPresets;
-pub const ScopedProgress = progress.ScopedProgress;
-
-// Common types
-pub const ColorScheme = progress.ProgressConfig.ColorScheme;
-
-/// Initialize shared components with an allocator
-/// This can be extended in the future for global component management
-pub fn init(allocator: std.mem.Allocator) !void {
-    _ = allocator; // Reserved for future use
-}
-
-/// Deinitialize shared components
-pub fn deinit() void {
-    // Reserved for future cleanup
-}
-
-test "components module" {
-    // Basic smoke test to ensure module loads correctly
-    _ = UnifiedProgressBar;
-    _ = ProgressConfig;
-    _ = ProgressState;
-    _ = ProgressBarPresets;
-}
+// Notification system exports
+pub const NotificationType = notification_base.NotificationType;
+pub const NotificationConfig = notification_base.NotificationConfig;
+pub const NotificationAction = notification_base.NotificationAction;
+pub const BaseNotification = notification_base.BaseNotification;
+pub const SystemNotification = notification_base.SystemNotification;
+pub const NotificationUtils = notification_base.NotificationUtils;
+pub const ColorSchemes = notification_base.ColorSchemes;
+pub const SoundPatterns = notification_base.SoundPatterns;

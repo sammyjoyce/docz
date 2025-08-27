@@ -38,7 +38,7 @@ A comprehensive CLI agent for writing and refining markdown documents with advan
 - Quality validation and consistency checks
 - Large document support with streaming
 
-### test-agent
+### test_agent
 Example agent demonstrating enhanced tool integration and basic functionality.
 
 **Features:**
@@ -120,7 +120,7 @@ zig build run-theme-demo            # Theme and color schemes
 docz/
 ├── agents/                     # Individual terminal agents
 │   ├── markdown/              # Markdown document processor
-│   ├── test-agent/           # Example/testing agent
+│   ├── test_agent/           # Example/testing agent
 │   └── _template/            # Template for new agents
 │       ├── main.zig         # CLI entry point (required)
 │       ├── spec.zig         # Agent specification (required)

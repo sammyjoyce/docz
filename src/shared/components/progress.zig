@@ -6,8 +6,6 @@
 //! - Common rendering logic (percentage, ETA, labels)
 //! - Shared color/animation utilities
 //! - Style enumeration interface
-//!
-//! The actual rendering styles are implemented in progress_styles.zig
 
 const std = @import("std");
 const Allocator = std.mem.Allocator;
@@ -158,45 +156,6 @@ pub const ProgressStyle = enum {
     dots,
 };
 
-/// Writer interface for progress bar rendering
-pub const WriterInterface = struct {
-    ptr: *anyopaque,
-    writeFn: *const fn (ptr: *anyopaque, bytes: []const u8) anyerror!usize,
-    printFn: *const fn (ptr: *anyopaque, comptime fmt: []const u8, args: anytype) anyerror!void,
-
-    pub fn write(self: WriterInterface, bytes: []const u8) !usize {
-        return self.writeFn(self.ptr, bytes);
-    }
-
-    pub fn print(self: WriterInterface, comptime fmt: []const u8, args: anytype) !void {
-        return self.printFn(self.ptr, fmt, args);
-    }
-
-    pub fn writeAll(self: WriterInterface, bytes: []const u8) !void {
-        _ = try self.write(bytes);
-    }
-};
-
-/// Rendering context for progress bars
-pub const RenderContext = struct {
-    /// Available width for rendering
-    width: u32,
-    /// Terminal capabilities
-    caps: TermCaps,
-    /// Current animation frame/time
-    animation_time: f32 = 0.0,
-    /// Writer to output to
-    writer: WriterInterface,
-
-    pub fn init(writer: WriterInterface, width: u32, caps: TermCaps) RenderContext {
-        return .{
-            .width = width,
-            .caps = caps,
-            .writer = writer,
-        };
-    }
-};
-
 /// Terminal capabilities for adaptive rendering
 pub const TermCaps = struct {
     supports_truecolor: bool = false,
@@ -215,94 +174,6 @@ pub const TermCaps = struct {
             .supports_unicode = true,
             .supports_256_colors = true,
         };
-    }
-};
-
-/// Base progress bar renderer interface
-pub const ProgressRenderer = struct {
-    /// Render progress bar with given style and data
-    renderFn: *const fn (
-        data: *const ProgressData,
-        style: ProgressStyle,
-        ctx: RenderContext,
-        allocator: Allocator,
-    ) anyerror!void,
-
-    /// Get the preferred width for a style
-    getPreferredWidthFn: *const fn (style: ProgressStyle) u32,
-
-    /// Check if a style is supported with given capabilities
-    isSupportedFn: *const fn (style: ProgressStyle, caps: TermCaps) bool,
-
-    pub fn render(
-        self: ProgressRenderer,
-        data: *const ProgressData,
-        style: ProgressStyle,
-        ctx: RenderContext,
-        allocator: Allocator,
-    ) !void {
-        return self.renderFn(data, style, ctx, allocator);
-    }
-
-    pub fn getPreferredWidth(self: ProgressRenderer, style: ProgressStyle) u32 {
-        return self.getPreferredWidthFn(style);
-    }
-
-    pub fn isSupported(self: ProgressRenderer, style: ProgressStyle, caps: TermCaps) bool {
-        return self.isSupportedFn(style, caps);
-    }
-};
-
-/// History data for sparkline and chart styles
-pub const ProgressHistory = struct {
-    allocator: Allocator,
-    entries: std.ArrayList(HistoryEntry),
-    max_entries: usize,
-
-    pub const HistoryEntry = struct {
-        value: f32,
-        timestamp: i64,
-        label: ?[]const u8 = null,
-    };
-
-    pub fn init(allocator: Allocator, max_entries: usize) ProgressHistory {
-        return .{
-            .allocator = allocator,
-            .entries = std.ArrayList(HistoryEntry).init(allocator),
-            .max_entries = max_entries,
-        };
-    }
-
-    pub fn deinit(self: *ProgressHistory) void {
-        for (self.entries.items) |entry| {
-            if (entry.label) |label| {
-                self.allocator.free(label);
-            }
-        }
-        self.entries.deinit();
-    }
-
-    pub fn addEntry(self: *ProgressHistory, value: f32, label: ?[]const u8) !void {
-        const entry = HistoryEntry{
-            .value = value,
-            .timestamp = std.time.timestamp(),
-            .label = if (label) |l| try self.allocator.dupe(u8, l) else null,
-        };
-
-        try self.entries.append(entry);
-
-        // Maintain max entries
-        if (self.entries.items.len > self.max_entries) {
-            const removed = self.entries.orderedRemove(0);
-            if (removed.label) |l| {
-                self.allocator.free(l);
-            }
-        }
-    }
-
-    pub fn getRecentEntries(self: *const ProgressHistory, count: usize) []const HistoryEntry {
-        const available = @min(count, self.entries.items.len);
-        return self.entries.items[self.entries.items.len - available..];
     }
 };
 
