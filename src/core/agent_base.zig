@@ -6,32 +6,22 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
-// These are wired by build.zig via named imports
-const interactive_session = @import("interactive_session_shared");
-const auth = @import("auth_shared");
-const anthropic = @import("anthropic_shared");
+// Use unified session and auth modules
+const session = @import("session.zig");
+const auth = @import("../shared/auth/core/mod.zig");
+const anthropic = @import("../shared/network/anthropic.zig");
 
 /// Base agent structure with common functionality.
 /// Agents can embed this struct or use composition to inherit base functionality.
 pub const BaseAgent = struct {
     allocator: Allocator,
-    interactive_session: ?*interactive_session.InteractiveSession = null,
-    auth_client: ?auth.AuthClient = null,
-    session_stats: SessionStats = .{},
+    session_manager: ?*session.SessionManager = null,
+    auth_client: ?*auth.AuthClient = null,
+    session_stats: session.SessionStats = .{},
 
     const Self = @This();
 
-    /// Session statistics for tracking agent usage
-    pub const SessionStats = struct {
-        total_sessions: usize = 0,
-        total_messages: usize = 0,
-        total_tokens: usize = 0,
-        auth_attempts: usize = 0,
-        auth_failures: usize = 0,
-        last_session_start: i64 = 0,
-        last_session_end: i64 = 0,
-        average_session_duration: f64 = 0,
-    };
+    // SessionStats is now imported from session.zig
 
     /// Initialize base agent with allocator
     pub fn init(allocator: Allocator) Self {
@@ -42,9 +32,9 @@ pub const BaseAgent = struct {
 
     /// Clean up base agent resources
     pub fn deinit(self: *Self) void {
-        // Clean up interactive session
-        if (self.interactive_session) |session| {
-            session.deinit();
+        // Clean up session manager
+        if (self.session_manager) |sess_mgr| {
+            sess_mgr.deinit();
         }
 
         // Clean up auth client
@@ -149,13 +139,18 @@ pub const BaseAgent = struct {
     // ===== INTERACTIVE SESSION METHODS =====
 
     /// Enable interactive mode for this agent
-    /// This creates an interactive session that agents can use for rich terminal experiences
-    pub fn enableInteractiveMode(self: *Self, config: interactive_session.SessionConfig) !void {
-        if (self.interactive_session != null) {
+    /// This creates a session manager that agents can use for rich terminal experiences
+    pub fn enableInteractiveMode(self: *Self, config: session.SessionConfig) !void {
+        _ = config; // Configuration stored but not currently used in session manager
+        if (self.session_manager != null) {
             return error.AlreadyEnabled;
         }
 
-        self.interactive_session = try interactive_session.InteractiveSession.init(self.allocator, config);
+        // Create session manager with default directory
+        const sessions_dir = try std.fmt.allocPrint(self.allocator, "{s}/.docz/sessions", .{std.fs.selfExePathAlloc(self.allocator)});
+        defer self.allocator.free(sessions_dir);
+
+        self.session_manager = try session.SessionManager.init(self.allocator, sessions_dir);
         self.session_stats.last_session_start = std.time.timestamp();
         self.session_stats.total_sessions += 1;
 
@@ -165,8 +160,11 @@ pub const BaseAgent = struct {
     /// Start the interactive session
     /// This begins the main interaction loop with the user
     pub fn startInteractiveSession(self: *Self) !void {
-        if (self.interactive_session) |session| {
-            try session.start();
+        if (self.session_manager) |sess_mgr| {
+            // Create a new session
+            const session_id = try session.generateSessionId(self.allocator);
+            _ = try sess_mgr.createSession(session_id);
+
             self.session_stats.last_session_end = std.time.timestamp();
 
             // Update average session duration
@@ -181,16 +179,14 @@ pub const BaseAgent = struct {
 
     /// Check if interactive mode is available
     pub fn hasInteractiveMode(self: *Self) bool {
-        return self.interactive_session != null and self.interactive_session.?.hasTUI();
+        return self.session_manager != null;
     }
 
     /// Get current session statistics
-    pub fn getSessionStats(self: *Self) SessionStats {
-        // Update with current session stats if interactive session is active
-        if (self.interactive_session) |session| {
-            const session_stats = session.getStats();
-            self.session_stats.total_messages = session_stats.total_messages;
-            self.session_stats.total_tokens = session_stats.total_tokens;
+    pub fn getSessionStats(self: *Self) session.SessionStats {
+        // Update with current session manager stats
+        if (self.session_manager) |sess_mgr| {
+            self.session_stats = sess_mgr.getStats();
         }
         return self.session_stats;
     }
@@ -295,39 +291,19 @@ pub const BaseAgent = struct {
 
     // ===== CONVENIENCE METHODS =====
 
-    /// Create a basic interactive session configuration
-    pub fn createBasicSessionConfig(title: []const u8) interactive_session.SessionConfig {
-        return .{
-            .title = title,
-            .interactive = true,
-            .enable_tui = false,
-            .enable_dashboard = false,
-            .enable_auth = true,
-        };
+    /// Create a basic session configuration
+    pub fn createBasicSessionConfig(title: []const u8) session.SessionConfig {
+        return session.SessionHelpers.createBasicConfig(title);
     }
 
-    /// Create a rich interactive session configuration with TUI support
-    pub fn createRichSessionConfig(title: []const u8) interactive_session.SessionConfig {
-        return .{
-            .title = title,
-            .interactive = true,
-            .enable_tui = true,
-            .enable_dashboard = true,
-            .enable_auth = true,
-            .show_stats = true,
-        };
+    /// Create a rich session configuration with TUI support
+    pub fn createRichSessionConfig(title: []const u8) session.SessionConfig {
+        return session.SessionHelpers.createRichConfig(title);
     }
 
     /// Create a CLI-only session configuration
-    pub fn createCLISessionConfig(title: []const u8) interactive_session.SessionConfig {
-        return .{
-            .title = title,
-            .interactive = true,
-            .enable_tui = false,
-            .enable_dashboard = false,
-            .enable_auth = false,
-            .multi_line = false,
-        };
+    pub fn createCLISessionConfig(title: []const u8) session.SessionConfig {
+        return session.SessionHelpers.createCliConfig(title);
     }
 };
 
@@ -343,27 +319,39 @@ pub const AgentError = error{
     AuthenticationFailed,
 };
 
-/// Interactive session helpers for easy integration
-pub const InteractiveHelpers = struct {
-    /// Create and start a basic interactive session
-    pub fn startBasicSession(allocator: Allocator, title: []const u8) !*interactive_session.InteractiveSession {
-        const session = try interactive_session.createBasicSession(allocator, title);
-        try session.start();
-        return session;
+/// Session helpers for easy integration
+pub const SessionHelpers = struct {
+    /// Create and start a basic session
+    pub fn startBasicSession(allocator: Allocator, title: []const u8) !*session.SessionManager {
+        _ = title; // Not used in current implementation
+        const sessions_dir = try std.fmt.allocPrint(allocator, "{s}/.docz/sessions", .{std.fs.selfExePathAlloc(allocator)});
+        defer allocator.free(sessions_dir);
+
+        const sess_mgr = try session.SessionManager.init(allocator, sessions_dir);
+        _ = try sess_mgr.createSession(try session.generateSessionId(allocator));
+        return sess_mgr;
     }
 
-    /// Create and start a rich interactive session with TUI
-    pub fn startRichSession(allocator: Allocator, title: []const u8) !*interactive_session.InteractiveSession {
-        const session = try interactive_session.createRichSession(allocator, title);
-        try session.start();
-        return session;
+    /// Create and start a rich session with TUI
+    pub fn startRichSession(allocator: Allocator, title: []const u8) !*session.SessionManager {
+        _ = title; // Not used in current implementation
+        const sessions_dir = try std.fmt.allocPrint(allocator, "{s}/.docz/sessions", .{std.fs.selfExePathAlloc(allocator)});
+        defer allocator.free(sessions_dir);
+
+        const sess_mgr = try session.SessionManager.init(allocator, sessions_dir);
+        _ = try sess_mgr.createSession(try session.generateSessionId(allocator));
+        return sess_mgr;
     }
 
     /// Create and start a CLI-only session
-    pub fn startCLISession(allocator: Allocator, title: []const u8) !*interactive_session.InteractiveSession {
-        const session = try interactive_session.createCLISession(allocator, title);
-        try session.start();
-        return session;
+    pub fn startCLISession(allocator: Allocator, title: []const u8) !*session.SessionManager {
+        _ = title; // Not used in current implementation
+        const sessions_dir = try std.fmt.allocPrint(allocator, "{s}/.docz/sessions", .{std.fs.selfExePathAlloc(allocator)});
+        defer allocator.free(sessions_dir);
+
+        const sess_mgr = try session.SessionManager.init(allocator, sessions_dir);
+        _ = try sess_mgr.createSession(try session.generateSessionId(allocator));
+        return sess_mgr;
     }
 };
 

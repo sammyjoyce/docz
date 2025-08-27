@@ -1,136 +1,110 @@
 //! Enhanced event handling system for TUI components
-//! Integrates the unified input parser from @src/shared/term for comprehensive input support
+//! Uses the unified input system from @src/shared/components for comprehensive input support
 const std = @import("std");
-const tui_mod = @import("../../mod.zig");
-const unified_parser = tui_mod.term.input.unified_parser;
-const term_mouse = tui_mod.term.input.enhanced_mouse;
-const term_keyboard = tui_mod.term.input.enhanced_keyboard;
+const components_mod = @import("../../../components/mod.zig");
 
-// Re-export enhanced types from term
-pub const InputEvent = unified_parser.InputEvent;
-pub const InputParser = unified_parser.InputParser;
-pub const MouseEvent = term_mouse.MouseEvent;
-pub const KeyEvent = term_keyboard.KeyEvent;
-pub const KeyPressEvent = term_keyboard.KeyPressEvent;
-pub const KeyReleaseEvent = term_keyboard.KeyReleaseEvent;
+// Re-export unified input types
+pub const InputEvent = components_mod.InputEvent;
+pub const InputManager = components_mod.InputManager;
+pub const InputConfig = components_mod.InputConfig;
+pub const InputFeatures = components_mod.InputFeatures;
+pub const Key = components_mod.Key;
+pub const Modifiers = components_mod.Modifiers;
 
 /// Enhanced TUI event system with comprehensive input support
 pub const EventSystem = struct {
     allocator: std.mem.Allocator,
-    parser: InputParser,
+    input_manager: InputManager,
     focus_handlers: std.ArrayListUnmanaged(FocusHandler),
     paste_handlers: std.ArrayListUnmanaged(PasteHandler),
     window_resize_handlers: std.ArrayListUnmanaged(WindowResizeHandler),
     keyboard_handlers: std.ArrayListUnmanaged(KeyboardHandler),
     mouse_handlers: std.ArrayListUnmanaged(MouseHandler),
 
-    // Focus state
-    has_focus: bool,
-
-    // Paste state
-    paste_buffer: std.ArrayListUnmanaged(u8),
-    is_pasting: bool,
-
-    pub fn init(allocator: std.mem.Allocator) EventSystem {
+    pub fn init(allocator: std.mem.Allocator, config: InputConfig) !EventSystem {
+        const input_manager = try InputManager.init(allocator, config);
         return EventSystem{
             .allocator = allocator,
-            .parser = InputParser.init(allocator),
+            .input_manager = input_manager,
             .focus_handlers = std.ArrayListUnmanaged(FocusHandler){},
             .paste_handlers = std.ArrayListUnmanaged(PasteHandler){},
             .window_resize_handlers = std.ArrayListUnmanaged(WindowResizeHandler){},
             .keyboard_handlers = std.ArrayListUnmanaged(KeyboardHandler){},
             .mouse_handlers = std.ArrayListUnmanaged(MouseHandler){},
-            .has_focus = true,
-            .paste_buffer = std.ArrayListUnmanaged(u8){},
-            .is_pasting = false,
         };
     }
 
     pub fn deinit(self: *EventSystem) void {
-        self.parser.deinit();
+        self.input_manager.deinit();
         self.focus_handlers.deinit(self.allocator);
         self.paste_handlers.deinit(self.allocator);
         self.window_resize_handlers.deinit(self.allocator);
         self.keyboard_handlers.deinit(self.allocator);
         self.mouse_handlers.deinit(self.allocator);
-        self.paste_buffer.deinit(self.allocator);
     }
 
     /// Process raw input data and dispatch events
     pub fn processInput(self: *EventSystem, data: []const u8) !void {
-        const events = try self.parser.parse(data);
-        defer {
-            for (events) |event| {
-                switch (event) {
-                    .key_press => |e| self.allocator.free(e.text),
-                    .key_release => |e| self.allocator.free(e.text),
-                    .unknown => |e| self.allocator.free(e),
-                    else => {},
-                }
-            }
-            self.allocator.free(events);
-        }
+        try self.input_manager.processInput(data);
 
-        for (events) |event| {
+        // Process any queued events
+        while (self.input_manager.pollEvent()) |event| {
             try self.dispatchEvent(event);
         }
+    }
+
+    /// Enable input features
+    pub fn enableFeatures(self: *EventSystem) !void {
+        try self.input_manager.enableFeatures();
+    }
+
+    /// Read next event (blocking)
+    pub fn nextEvent(self: *EventSystem) !InputEvent {
+        return try self.input_manager.nextEvent();
+    }
+
+    /// Poll for events
+    pub fn pollEvent(self: *EventSystem) ?InputEvent {
+        return self.input_manager.pollEvent();
     }
 
     fn dispatchEvent(self: *EventSystem, event: InputEvent) !void {
         switch (event) {
             .key_press => |key_event| {
-                // Handle paste content during bracketed paste
-                if (self.is_pasting) {
-                    try self.paste_buffer.appendSlice(self.allocator, key_event.text);
-                } else {
-                    for (self.keyboard_handlers.items) |handler| {
-                        if (handler.func(.{ .key_press = key_event })) break;
-                    }
+                for (self.keyboard_handlers.items) |handler| {
+                    if (handler.func(.{ .key_press = key_event })) break;
                 }
             },
             .key_release => |key_event| {
-                if (!self.is_pasting) {
-                    for (self.keyboard_handlers.items) |handler| {
-                        if (handler.func(.{ .key_release = key_event })) break;
-                    }
+                for (self.keyboard_handlers.items) |handler| {
+                    if (handler.func(.{ .key_release = key_event })) break;
                 }
             },
-            .mouse => |mouse_event| {
+            .mouse_press, .mouse_release, .mouse_move, .mouse_scroll => {
                 for (self.mouse_handlers.items) |handler| {
-                    if (handler.func(mouse_event)) break;
+                    if (handler.func(event)) break;
                 }
             },
-            .focus_in => {
-                self.has_focus = true;
+            .focus_gained => {
                 for (self.focus_handlers.items) |handler| {
                     handler.func(true);
                 }
             },
-            .focus_out => {
-                self.has_focus = false;
+            .focus_lost => {
                 for (self.focus_handlers.items) |handler| {
                     handler.func(false);
                 }
             },
-            .paste_start => {
-                self.is_pasting = true;
-                self.paste_buffer.clearRetainingCapacity();
-            },
-            .paste_end => {
-                self.is_pasting = false;
-                const paste_content = try self.paste_buffer.toOwnedSlice(self.allocator);
-                defer self.allocator.free(paste_content);
-
+            .paste => |paste_event| {
                 for (self.paste_handlers.items) |handler| {
-                    handler.func(paste_content);
+                    handler.func(paste_event.text);
                 }
             },
-            .window_size => |size| {
+            .resize => |resize_event| {
                 for (self.window_resize_handlers.items) |handler| {
-                    handler.func(size.width, size.height);
+                    handler.func(resize_event.width, resize_event.height);
                 }
             },
-            .unknown => {},
         }
     }
 
@@ -170,10 +144,10 @@ pub const EventSystem = struct {
     }
 };
 
-/// Enhanced event types for handlers
-pub const EnhancedKeyEvent = union(enum) {
-    key_press: KeyPressEvent,
-    key_release: KeyReleaseEvent,
+/// Rich event types for handlers
+pub const RichKeyEvent = union(enum) {
+    key_press: InputEvent.KeyPressEvent,
+    key_release: InputEvent.KeyReleaseEvent,
 };
 
 /// Handler function types
@@ -186,21 +160,21 @@ pub const PasteHandler = struct {
 };
 
 pub const WindowResizeHandler = struct {
-    func: *const fn (width: u16, height: u16) void,
+    func: *const fn (width: u32, height: u32) void,
 };
 
 pub const KeyboardHandler = struct {
-    func: *const fn (event: EnhancedKeyEvent) bool, // Returns true if handled
+    func: *const fn (event: RichKeyEvent) bool, // Returns true if handled
 };
 
 pub const MouseHandler = struct {
-    func: *const fn (event: MouseEvent) bool, // Returns true if handled
+    func: *const fn (event: InputEvent) bool, // Returns true if handled
 };
 
 /// Utility functions for backward compatibility with existing TUI widgets
 pub const Compat = struct {
     /// Convert enhanced key event to legacy key event (for backward compatibility)
-    pub fn toLegacyKeyEvent(enhanced: KeyPressEvent) ?@import("../events.zig").KeyEvent {
+    pub fn toLegacyKeyEvent(enhanced: InputEvent.KeyPressEvent) ?@import("../events.zig").KeyEvent {
         const legacy_events = @import("../events.zig");
 
         const key: legacy_events.KeyEvent.Key = switch (enhanced.code) {
@@ -260,7 +234,7 @@ pub const Compat = struct {
     }
 
     /// Convert enhanced mouse event to legacy mouse event (for backward compatibility)
-    pub fn toLegacyMouseEvent(enhanced: MouseEvent) ?@import("../events.zig").MouseEvent {
+    pub fn toLegacyMouseEvent(enhanced: InputEvent) ?@import("../events.zig").MouseEvent {
         const legacy_events = @import("../events.zig");
         const mouse = enhanced.mouse();
 

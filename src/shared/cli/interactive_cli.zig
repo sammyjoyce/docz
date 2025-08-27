@@ -2,13 +2,13 @@
 //! Provides command palette and enhanced user experience
 
 const std = @import("std");
+const components = @import("../components/mod.zig");
 const tui = @import("tui/mod.zig");
+const term = @import("../../term/mod.zig");
 const engine = @import("core_engine");
 const selected_spec = @import("agent_spec");
 const anthropic = @import("anthropic_shared");
 const auth = @import("../auth/mod.zig");
-
-const print = std.debug.print;
 
 /// Available commands in the interactive interface
 const Command = enum {
@@ -131,7 +131,7 @@ fn displayHeader(force_redraw: bool) void {
 
     const header_section = tui.Section.init("Welcome to DocZ", &header_content, width);
     header_section.drawWithId("header");
-    print("\n", .{});
+    std.debug.print("\n", .{});
 }
 
 /// Display current authentication status using cached data
@@ -151,14 +151,14 @@ fn displayAuthStatus(auth_cache: *const AuthStatusCache) void {
 
     const status_section = tui.Section.init("Authentication Status", &status_content, width);
     status_section.drawWithId("auth_status");
-    print("\n", .{});
+    std.debug.print("\n", .{});
 }
 
 /// Display command palette with optional partial update
 fn displayCommandPalette() void {
     const menu = tui.Menu.init(&COMMANDS);
     menu.drawWithId("Select command:", "command_palette");
-    print("\n", .{});
+    std.debug.print("\n", .{});
 }
 
 /// Display help information
@@ -195,7 +195,7 @@ fn displayHelp() void {
 
     const help_section = tui.Section.init("📚 Help & Documentation", &help_content, width);
     help_section.draw();
-    print("\n", .{});
+    std.debug.print("\n", .{});
 }
 
 /// Run the interactive CLI interface
@@ -237,16 +237,16 @@ pub fn runInteractiveMode(allocator: std.mem.Allocator) !void {
             }
         }
 
-        print("\n", .{});
+        std.debug.print("\n", .{});
 
         // Get user command with history and tab completion
         const command_input = tui.promptInputEnhanced("docz>", allocator, &command_history, &COMMAND_NAMES) catch |err| switch (err) {
             error.Interrupted => {
-                print("Interrupted by user\n");
+                std.debug.print("Interrupted by user\n", .{});
                 continue;
             },
             else => {
-                print("Error reading input: {}\n", .{err});
+                std.debug.print("Error reading input: {}\n", .{err});
                 continue;
             },
         };
@@ -257,38 +257,38 @@ pub fn runInteractiveMode(allocator: std.mem.Allocator) !void {
         }
 
         const command = Command.fromString(command_input) orelse {
-            print("\n{s}Unknown command: '{s}'{s}\n", .{ tui.Color.BRIGHT_RED, command_input, tui.Color.RESET });
-            print("Type 'help' to see available commands.\n\n", .{});
-            print("Press Enter to continue...", .{});
+            std.debug.print("\n{s}Unknown command: '{s}'{s}\n", .{ tui.Color.BRIGHT_RED, command_input, tui.Color.RESET });
+            std.debug.print("Type 'help' to see available commands.\n\n", .{});
+            std.debug.print("Press Enter to continue...", .{});
             var buffer: [1]u8 = undefined;
             _ = std.fs.File.stdin().read(&buffer) catch {};
             continue;
         };
 
-        print("\n", .{});
+        std.debug.print("\n", .{});
 
         switch (command) {
             .chat => {
-                print("🚀 Starting interactive chat mode...\n", .{});
-                print("(This would launch the chat interface)\n", .{});
-                print("\nPress Enter to continue...", .{});
+                std.debug.print("🚀 Starting interactive chat mode...\n", .{});
+                std.debug.print("(This would launch the chat interface)\n", .{});
+                std.debug.print("\nPress Enter to continue...", .{});
                 var buffer: [1]u8 = undefined;
                 _ = std.fs.File.stdin().read(&buffer) catch {};
             },
             .oauth_setup => {
-                print("🔐 Starting OAuth setup...\n\n", .{});
+                std.debug.print("🔐 Starting OAuth setup...\n\n", .{});
                 auth.setupOAuth(allocator) catch |err| {
-                    print("OAuth setup failed: {}\n", .{err});
+                    std.debug.print("OAuth setup failed: {}\n", .{err});
                 };
                 // Refresh auth cache after OAuth setup
                 auth_cache.update(allocator);
-                print("\nPress Enter to continue...", .{});
+                std.debug.print("\nPress Enter to continue...", .{});
                 var buffer: [1]u8 = undefined;
                 _ = std.fs.File.stdin().read(&buffer) catch {};
             },
             .help => {
                 displayHelp();
-                print("Press Enter to continue...", .{});
+                std.debug.print("Press Enter to continue...", .{});
                 var buffer: [1]u8 = undefined;
                 _ = std.fs.File.stdin().read(&buffer) catch {};
             },
@@ -324,26 +324,26 @@ pub fn runInteractiveMode(allocator: std.mem.Allocator) !void {
                 const system_section = tui.Section.init("System Status", &system_content, width);
                 system_section.drawWithId("system_status");
 
-                print("\nPress Enter to continue...", .{});
+                std.debug.print("\nPress Enter to continue...", .{});
                 var buffer: [1]u8 = undefined;
                 _ = std.fs.File.stdin().read(&buffer) catch {};
             },
             .refresh => {
-                print("🔄 Refreshing authentication...\n", .{});
+                std.debug.print("🔄 Refreshing authentication...\n", .{});
                 auth.refreshTokens(allocator) catch |err| {
-                    print("Refresh failed: {}\n", .{err});
-                    print("Updating authentication status cache...\n", .{});
+                    std.debug.print("Refresh failed: {}\n", .{err});
+                    std.debug.print("Updating authentication status cache...\n", .{});
                 };
                 // Always update the cache after attempting refresh
                 auth_cache.update(allocator);
-                print("✅ Authentication refresh completed!\n", .{});
-                print("\nPress Enter to continue...", .{});
+                std.debug.print("✅ Authentication refresh completed!\n", .{});
+                std.debug.print("\nPress Enter to continue...", .{});
                 var buffer: [1]u8 = undefined;
                 _ = std.fs.File.stdin().read(&buffer) catch {};
             },
 
             .quit => {
-                print("👋 Thank you for using DocZ!\n", .{});
+                std.debug.print("👋 Thank you for using DocZ!\n", .{});
                 return;
             },
         }

@@ -1,16 +1,16 @@
 //! Enhanced mouse event handling for TUI applications
-//! Provides pixel-precise mouse tracking and advanced interaction support
+//! Provides pixel-precise mouse tracking and rich interaction support
 const std = @import("std");
 const tui_mod = @import("../../mod.zig");
-const term_mouse = tui_mod.term.input.enhanced_mouse;
+const term_mouse = tui_mod.term.input.mouse;
 
-// Re-export enhanced mouse types
+// Re-export rich mouse types
 pub const MouseEvent = term_mouse.MouseEvent;
 pub const MouseButton = term_mouse.MouseButton;
 pub const MouseAction = term_mouse.MouseAction;
 pub const MouseProtocol = term_mouse.MouseProtocol;
 
-/// Enhanced mouse controller with pixel precision support
+/// Rich mouse controller with pixel precision support
 pub const Mouse = struct {
     handlers: std.ArrayListUnmanaged(MouseHandler),
     click_handlers: std.ArrayListUnmanaged(ClickHandler),
@@ -83,18 +83,18 @@ pub const Mouse = struct {
     }
 
     fn processMouseClick(self: *Mouse, mouse: term_mouse.Mouse, now: i64) !void {
-        const pos = Position{ .x = mouse.x, .y = mouse.y };
+        const position = Position{ .x = mouse.x, .y = mouse.y };
 
         switch (mouse.action) {
             .press => {
                 // Check for drag start
-                self.drag_start_pos = pos;
+                self.drag_start_pos = position;
                 self.is_dragging = false;
 
                 // Handle click
-                const is_double_click = self.checkDoubleClick(pos, now);
+                const is_double_click = self.checkDoubleClick(position, now);
                 const click_event = ClickEvent{
-                    .position = pos,
+                    .position = position,
                     .button = mouse.button,
                     .modifiers = mouse.modifiers,
                     .is_double_click = is_double_click,
@@ -104,7 +104,7 @@ pub const Mouse = struct {
                     if (handler.func(click_event)) return;
                 }
 
-                self.last_click_pos = pos;
+                self.last_click_pos = position;
                 self.last_click_time = now;
             },
             .release => {
@@ -112,8 +112,8 @@ pub const Mouse = struct {
                     // End drag
                     const drag_event = DragEvent{
                         .start_pos = self.drag_start_pos.?,
-                        .end_pos = pos,
-                        .current_pos = pos,
+                        .end_pos = position,
+                        .current_pos = position,
                         .button = mouse.button,
                         .modifiers = mouse.modifiers,
                         .action = DragEvent.Action.end,
@@ -130,16 +130,16 @@ pub const Mouse = struct {
             .drag => {
                 if (self.drag_start_pos) |start_pos| {
                     // Check if drag threshold is exceeded
-                    const dx = if (pos.x > start_pos.x) pos.x - start_pos.x else start_pos.x - pos.x;
-                    const dy = if (pos.y > start_pos.y) pos.y - start_pos.y else start_pos.y - pos.y;
+                    const dx = if (position.x > start_pos.x) position.x - start_pos.x else start_pos.x - position.x;
+                    const dy = if (position.y > start_pos.y) position.y - start_pos.y else start_pos.y - position.y;
 
                     if (!self.is_dragging and (dx > self.drag_threshold_pixels or dy > self.drag_threshold_pixels)) {
                         // Start drag
                         self.is_dragging = true;
                         const drag_start = DragEvent{
                             .start_pos = start_pos,
-                            .end_pos = pos,
-                            .current_pos = pos,
+                            .end_pos = position,
+                            .current_pos = position,
                             .button = mouse.button,
                             .modifiers = mouse.modifiers,
                             .action = DragEvent.Action.start,
@@ -152,8 +152,8 @@ pub const Mouse = struct {
                         // Continue drag
                         const drag_continue = DragEvent{
                             .start_pos = start_pos,
-                            .end_pos = pos,
-                            .current_pos = pos,
+                            .end_pos = position,
+                            .current_pos = position,
                             .button = mouse.button,
                             .modifiers = mouse.modifiers,
                             .action = DragEvent.Action.drag,
@@ -180,11 +180,11 @@ pub const Mouse = struct {
         }
     }
 
-    fn checkDoubleClick(self: *Mouse, pos: Position, now: i64) bool {
+    fn checkDoubleClick(self: *Mouse, position: Position, now: i64) bool {
         if (self.last_click_pos) |last_pos| {
             const time_diff = now - self.last_click_time;
-            const dx = if (pos.x > last_pos.x) pos.x - last_pos.x else last_pos.x - pos.x;
-            const dy = if (pos.y > last_pos.y) pos.y - last_pos.y else last_pos.y - pos.y;
+            const dx = if (position.x > last_pos.x) position.x - last_pos.x else last_pos.x - position.x;
+            const dy = if (position.y > last_pos.y) position.y - last_pos.y else last_pos.y - position.y;
 
             return time_diff <= self.double_click_threshold_ms and
                 dx <= self.drag_threshold_pixels and

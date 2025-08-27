@@ -9,6 +9,7 @@ pub const calendar = @import("calendar.zig");
 pub const file_tree = @import("file_tree.zig");
 pub const logo = @import("logo.zig");
 pub const block = @import("block.zig");
+pub const clear = @import("clear.zig");
 
 // Re-export main types
 pub const Menu = menu.Menu;
@@ -39,3 +40,12 @@ pub const BorderStyle = block.BorderStyle;
 pub const TitleAlignment = block.TitleAlignment;
 pub const TitlePosition = block.TitlePosition;
 pub const Padding = block.Padding;
+
+// Clear/Overlay widget exports
+pub const Clear = clear.Clear;
+pub const ClearMode = clear.ClearMode;
+pub const ClearConfig = clear.ClearConfig;
+pub const ClearEffect = clear.ClearEffect;
+pub const Pattern = clear.Pattern;
+pub const PositionStrategy = clear.PositionStrategy;
+pub const BorderOptions = clear.BorderOptions;

@@ -16,26 +16,29 @@ const print = std.debug.print;
 const oauth = @import("../oauth/mod.zig");
 
 // Import TUI components
-const advanced_progress = @import("../../tui/widgets/enhanced/advanced_progress.zig");
-const advanced_notification = @import("../../tui/widgets/enhanced/advanced_notification.zig");
-const advanced_text_input = @import("../../tui/widgets/enhanced/advanced_text_input.zig");
+const advanced_progress = @import("../../tui/widgets/rich/advanced_progress.zig");
+const notification_mod = @import("../../tui/widgets/rich/notification.zig");
+const text_input = @import("../../tui/widgets/rich/text_input.zig");
 const status_bar = @import("../../tui/widgets/dashboard/status_bar.zig");
 const renderer_mod = @import("../../tui/core/renderer.zig");
 const bounds_mod = @import("../../tui/core/bounds.zig");
 const input_system = @import("../../tui/core/input.zig");
 
+// Import terminal capabilities
+const term = @import("../../term/mod.zig");
+// Import TUI module for consistent types
+const tui_mod = @import("../../tui/mod.zig");
 
 // Re-export types for convenience
 const AdvancedProgressBar = advanced_progress.AdvancedProgressBar;
-const AdvancedNotification = advanced_notification.AdvancedNotification;
-const AdvancedNotificationController = advanced_notification.AdvancedNotificationController;
-const AdvancedTextInput = advanced_text_input.AdvancedTextInput;
+const Notification = notification_mod.Notification;
+const NotificationController = notification_mod.NotificationController;
+const TextInput = text_input.TextInput;
 const StatusBar = status_bar.StatusBar;
 const Renderer = renderer_mod.Renderer;
 const RenderContext = renderer_mod.Render;
-const Bounds = bounds_mod.Bounds;
-const Point = bounds_mod.Point;
-
+const Bounds = tui_mod.Bounds;
+const Point = tui_mod.Point;
 
 /// Enhanced OAuth wizard states with rich metadata
 const WizardState = enum {
@@ -157,10 +160,21 @@ pub const OAuthWizard = struct {
 
     allocator: std.mem.Allocator,
     renderer: *Renderer,
-    notification_controller: AdvancedNotificationController,
+    notification_controller: NotificationController,
     progress_bar: AdvancedProgressBar,
     status_bar: StatusBar,
-    text_input: ?AdvancedTextInput = null,
+    text_input: ?TextInput = null,
+
+    // Terminal capabilities
+    caps: ?term.caps.TermCaps = null,
+
+    // Input system components
+    focus_controller: input_system.Focus,
+    paste_controller: input_system.Paste,
+    mouse_controller: input_system.Mouse,
+
+    // Manual code input storage
+    manual_code_input: std.ArrayList(u8),
 
     // State management
     current_state: WizardState,
@@ -168,8 +182,6 @@ pub const OAuthWizard = struct {
     last_state_change: i64,
     total_progress: f32,
     error_message: ?[]const u8,
-
-
 
     // Animation state
     animation_frame: u32 = 0,
@@ -183,7 +195,7 @@ pub const OAuthWizard = struct {
         const start_time = std.time.timestamp();
 
         // Initialize components
-        const notification_controller = AdvancedNotificationController.init(allocator, renderer);
+        const notification_controller = NotificationController.init(allocator, renderer);
         const progress_bar = AdvancedProgressBar.init("OAuth Setup", .gradient);
         var status_bar_instance = StatusBar.init(allocator, renderer);
 
@@ -199,12 +211,25 @@ pub const OAuthWizard = struct {
             .priority = 90,
         });
 
+        // Detect terminal capabilities
+        const caps = term.caps.detectCaps(allocator);
+
+        // Initialize input system components
+        const focus_controller = input_system.Focus.init(allocator);
+        const paste_controller = input_system.Paste.init(allocator);
+        const mouse_controller = input_system.Mouse.init(allocator);
+
         return Self{
             .allocator = allocator,
             .renderer = renderer,
             .notification_controller = notification_controller,
             .progress_bar = progress_bar,
             .status_bar = status_bar_instance,
+            .caps = caps,
+            .focus_controller = focus_controller,
+            .paste_controller = paste_controller,
+            .mouse_controller = mouse_controller,
+            .manual_code_input = std.ArrayList(u8).init(allocator),
             .current_state = .initializing,
             .start_time = start_time,
             .last_state_change = start_time,
@@ -219,6 +244,10 @@ pub const OAuthWizard = struct {
         if (self.text_input) |*input| {
             input.deinit();
         }
+        self.focus_controller.deinit();
+        self.paste_controller.deinit();
+        self.mouse_controller.deinit();
+        self.manual_code_input.deinit();
         if (self.error_message) |msg| {
             self.allocator.free(msg);
         }
@@ -339,7 +368,7 @@ pub const OAuthWizard = struct {
 
     /// Clear the entire screen
     fn clearScreen(self: *Self) !void {
-        const terminal_size = bounds_mod.getTerminalSize();
+        const terminal_size = tui_mod.getTerminalSize();
         const full_bounds = Bounds{
             .x = 0,
             .y = 0,
@@ -379,7 +408,7 @@ pub const OAuthWizard = struct {
 
     /// Draw the progress bar
     fn drawProgress(self: *Self) !void {
-        const terminal_size = bounds_mod.getTerminalSize();
+        const terminal_size = tui_mod.getTerminalSize();
         const progress_bounds = Bounds{
             .x = 2,
             .y = 5,
@@ -399,7 +428,7 @@ pub const OAuthWizard = struct {
 
     /// Draw the current state information
     fn drawCurrentState(self: *Self) !void {
-        const terminal_size = bounds_mod.getTerminalSize();
+        const terminal_size = tui_mod.getTerminalSize();
         const state_bounds = Bounds{
             .x = 2,
             .y = 9,
@@ -467,19 +496,13 @@ pub const OAuthWizard = struct {
 
     /// Draw code input interface
     fn drawCodeInput(self: *Self, y: u32) !void {
-        const terminal_size = bounds_mod.getTerminalSize();
+        const terminal_size = tui_mod.getTerminalSize();
         const input_bounds = Bounds{
             .x = 4,
             .y = y,
             .width = terminal_size.width - 8,
-            .height = 5,
+            .height = 8,
         };
-
-        // Initialize text input if not already done
-        if (self.text_input == null) {
-            // Note: This would need proper input system integration
-            // For now, we'll draw a placeholder
-        }
 
         const ctx = RenderContext{
             .bounds = input_bounds,
@@ -492,8 +515,9 @@ pub const OAuthWizard = struct {
             \\Please enter the authorization code from your browser:
             \\
             \\1. Complete the authorization in your browser
-            \\2. Copy the code from the redirect URL
-            \\3. Paste it here (Ctrl+V or right-click paste)
+            \\2. Copy the code from the redirect URL (usually from address bar)
+            \\3. Paste it here using Ctrl+V or right-click paste
+            \\4. Press Enter to submit or Escape to cancel
             \\
             \\Authorization Code:
         ;
@@ -503,8 +527,8 @@ pub const OAuthWizard = struct {
         // Draw input box
         const input_box_bounds = Bounds{
             .x = input_bounds.x,
-            .y = input_bounds.y + 8,
-            .width = input_bounds.width,
+            .y = input_bounds.y + 6,
+            .width = input_bounds.width - 4,
             .height = 3,
         };
 
@@ -513,17 +537,41 @@ pub const OAuthWizard = struct {
             .padding = .{ .top = 1, .right = 1, .bottom = 1, .left = 1 },
         };
 
-        try self.renderer.drawBox(RenderContext{
+        const box_ctx = RenderContext{
             .bounds = input_box_bounds,
             .style = .{},
             .zIndex = 0,
             .clipRegion = null,
-        }, box_style);
+        };
+
+        try self.renderer.drawBox(box_ctx, box_style);
+
+        // Show current input content (placeholder for now)
+        const content_bounds = Bounds{
+            .x = input_box_bounds.x + 1,
+            .y = input_box_bounds.y + 1,
+            .width = input_box_bounds.width - 2,
+            .height = 1,
+        };
+
+        const content_ctx = RenderContext{
+            .bounds = content_bounds,
+            .style = .{ .fg_color = .{ .ansi = 7 } },
+            .zIndex = 0,
+            .clipRegion = null,
+        };
+
+        const display_text = if (self.manual_code_input.len > 0)
+            self.manual_code_input
+        else
+            "Paste authorization code here...";
+
+        try self.renderer.drawText(content_ctx, display_text);
     }
 
     /// Draw error details
     fn drawErrorDetails(self: *Self, y: u32, error_msg: []const u8) !void {
-        const terminal_size = bounds_mod.getTerminalSize();
+        const terminal_size = tui_mod.getTerminalSize();
         const error_bounds = Bounds{
             .x = 4,
             .y = y,
@@ -554,7 +602,7 @@ pub const OAuthWizard = struct {
 
     /// Draw completion details
     fn drawCompletionDetails(self: *Self, y: u32) !void {
-        const terminal_size = bounds_mod.getTerminalSize();
+        const terminal_size = tui_mod.getTerminalSize();
         const complete_bounds = Bounds{
             .x = 4,
             .y = y,
@@ -585,7 +633,7 @@ pub const OAuthWizard = struct {
 
     /// Draw state-specific animation
     fn drawStateAnimation(self: *Self, y: u32) !void {
-        const terminal_size = bounds_mod.getTerminalSize();
+        const terminal_size = tui_mod.getTerminalSize();
         const anim_bounds = Bounds{
             .x = 4,
             .y = y,
@@ -631,7 +679,7 @@ pub const OAuthWizard = struct {
 
     /// Draw status bar
     fn drawStatusBar(self: *Self) !void {
-        const terminal_size = bounds_mod.getTerminalSize();
+        const terminal_size = tui_mod.getTerminalSize();
         const status_bounds = Bounds{
             .x = 0,
             .y = terminal_size.height - 1,
@@ -651,7 +699,7 @@ pub const OAuthWizard = struct {
 
     /// Draw keyboard shortcuts
     fn drawKeyboardShortcuts(self: *Self) !void {
-        const terminal_size = bounds_mod.getTerminalSize();
+        const terminal_size = tui_mod.getTerminalSize();
         const shortcuts_bounds = Bounds{
             .x = 2,
             .y = terminal_size.height - 3,
@@ -667,7 +715,7 @@ pub const OAuthWizard = struct {
         };
 
         const shortcuts = switch (self.current_state) {
-            .waiting_for_code => "Enter: Submit Code | Ctrl+V: Paste | Ctrl+U: Clear | Ctrl+C: Cancel",
+            .waiting_for_code => "Enter: Submit Code | Ctrl+V: Paste | Ctrl+U: Clear | Escape: Cancel",
             .error_state => "r: Retry | c: Cancel | h: Help | q: Quit",
             else => "Ctrl+C: Cancel | h: Help",
         };
@@ -719,16 +767,29 @@ pub const OAuthWizard = struct {
 
     /// Open browser with authorization URL
     fn openBrowser(self: *Self) !void {
+        const auth_url = "https://claude.ai/oauth/authorize";
+
         // Create clickable URL using OSC 8 if supported
-        if (self.caps.supportsHyperlinkOsc8) {
-            try self.renderer.setHyperlink("https://claude.ai/oauth/authorize");
+        if (self.caps) |caps| {
+            if (caps.supportsHyperlinkOsc8) {
+                try self.renderer.setHyperlink(auth_url);
+            } else {
+                // Fallback: display URL as plain text with instructions
+                try self.notification_controller.info("Browser Launch", try std.fmt.allocPrint(self.allocator, "Opening browser... If it doesn't open automatically, copy and paste this URL: {s}", .{auth_url}));
+            }
+        } else {
+            // No capabilities detected, show fallback message
+            try self.notification_controller.info("Browser Launch", try std.fmt.allocPrint(self.allocator, "Please open your browser and navigate to: {s}", .{auth_url}));
         }
 
         // Launch browser (would use oauth.launchBrowser)
         std.time.sleep(500_000_000); // 0.5 second
 
-        if (self.caps.supportsHyperlinkOsc8) {
-            try self.renderer.clearHyperlink();
+        // Clear hyperlink if it was set
+        if (self.caps) |caps| {
+            if (caps.supportsHyperlinkOsc8) {
+                try self.renderer.clearHyperlink();
+            }
         }
 
         try self.transitionTo(.waiting_for_code);
@@ -736,9 +797,12 @@ pub const OAuthWizard = struct {
 
     /// Wait for authorization code input
     fn waitForAuthorizationCode(self: *Self) ![]const u8 {
-        // This would integrate with the text input system
-        // For now, return a placeholder
-        return try self.allocator.dupe(u8, "placeholder_code");
+        // Use the new manual code entry system
+        if (try self.handleManualCodeEntry()) |code| {
+            return code;
+        } else {
+            return error.UserCancelled;
+        }
     }
 
     /// Exchange code for tokens
@@ -786,6 +850,149 @@ pub const OAuthWizard = struct {
         // For now, return false to exit
         return false;
     }
+
+    /// Validate authorization code format
+    fn validateAuthorizationCode(self: *Self, code: []const u8) ValidationResult {
+        _ = self; // Not used currently
+
+        // Basic validation for OAuth authorization codes
+        if (code.len == 0) {
+            return .{ .invalid = "Code cannot be empty" };
+        }
+
+        if (code.len < 10) {
+            return .{ .invalid = "Code too short - should be at least 10 characters" };
+        }
+
+        if (code.len > 300) {
+            return .{ .invalid = "Code too long - should be less than 300 characters" };
+        }
+
+        // Check for common invalid characters (OAuth codes are usually URL-safe)
+        const invalid_chars = "\r\n\t ";
+        for (invalid_chars) |invalid_char| {
+            if (std.mem.indexOfScalar(u8, code, invalid_char) != null) {
+                return .{ .invalid = "Code contains invalid characters (spaces, tabs, newlines)" };
+            }
+        }
+
+        // Check for suspicious patterns
+        if (std.mem.eql(u8, code, "placeholder_code") or std.mem.eql(u8, code, "test")) {
+            return .{ .invalid = "Please enter a real authorization code from your browser" };
+        }
+
+        return .valid;
+    }
+
+    /// Handle manual code entry with proper input processing
+    fn handleManualCodeEntry(self: *Self) !?[]const u8 {
+        // Clear any previous input
+        self.manual_code_input.clearRetainingCapacity();
+
+        // Enable input features
+        try self.enableInputFeatures();
+
+        // Main input loop
+        while (true) {
+            try self.render();
+
+            // Poll for input events
+            if (try self.pollInputEvent()) |event| {
+                switch (event) {
+                    .key_press => |key_event| {
+                        // Handle special keys
+                        switch (key_event.code) {
+                            .enter => {
+                                const code = self.manual_code_input.items;
+                                if (code.len > 0) {
+                                    const validation = self.validateAuthorizationCode(code);
+                                    switch (validation) {
+                                        .valid => {
+                                            // Return the code
+                                            return try self.allocator.dupe(u8, code);
+                                        },
+                                        .invalid => |msg| {
+                                            try self.notification_controller.errorNotification("Invalid Code", msg);
+                                            continue;
+                                        },
+                                    }
+                                }
+                            },
+                            .escape => {
+                                // Cancel input
+                                return null;
+                            },
+                            .backspace => {
+                                if (self.manual_code_input.items.len > 0) {
+                                    _ = self.manual_code_input.pop();
+                                }
+                            },
+                            else => {
+                                // Add character to input
+                                if (key_event.text.len > 0) {
+                                    try self.manual_code_input.appendSlice(key_event.text);
+                                }
+                            },
+                        }
+                    },
+                    .paste => |paste_event| {
+                        // Handle paste events
+                        try self.manual_code_input.appendSlice(paste_event.text);
+                    },
+                    else => {},
+                }
+            }
+
+            // Small delay to prevent excessive CPU usage
+            std.time.sleep(10_000_000); // 10ms
+        }
+    }
+
+    /// Enable input features for code entry
+    fn enableInputFeatures(self: *Self) !void {
+        // Enable focus reporting
+        try self.focus_controller.enableFocusReporting(std.fs.File.stdout().writer());
+
+        // Enable bracketed paste
+        try self.paste_controller.enableBracketedPaste(std.fs.File.stdout().writer());
+
+        // Enable mouse tracking if supported
+        if (self.caps) |caps| {
+            if (caps.supportsSgrMouse) {
+                try self.mouse_controller.enableMouseTracking(std.fs.File.stdout().writer(), .sgr);
+            } else if (caps.supportsX10Mouse) {
+                try self.mouse_controller.enableMouseTracking(std.fs.File.stdout().writer(), .normal);
+            }
+        }
+    }
+
+    /// Poll for input events
+    fn pollInputEvent(self: *Self) !?input_system.InputEvent {
+        // This is a simplified version - in a real implementation you'd integrate
+        // with the unified input system
+        const stdin = std.fs.File.stdin();
+        var buf: [1]u8 = undefined;
+
+        const bytes_read = stdin.read(&buf) catch return null;
+        if (bytes_read == 0) return null;
+
+        // For now, return a basic key press event
+        // In a real implementation, this would use the unified parser
+        const text = try self.allocator.dupe(u8, &buf);
+        return input_system.InputEvent{
+            .key_press = .{
+                .key = .char,
+                .text = text,
+                .modifiers = .{},
+            },
+        };
+    }
+
+    /// Validation result type
+    const ValidationResult = union(enum) {
+        valid,
+        invalid: []const u8,
+    };
 };
 
 /// Convenience function to run the OAuth wizard

@@ -2,8 +2,8 @@
 /// Provides a comprehensive input parsing system for terminal events.
 /// Compatible with Zig 0.15.1
 const std = @import("std");
-const enhanced_mouse = @import("enhanced_mouse.zig");
-const enhanced_keyboard = @import("enhanced_keyboard.zig");
+const enhanced_mouse = @import("mouse.zig");
+const enhanced_keyboard = @import("keyboard.zig");
 
 pub const MouseEvent = enhanced_mouse.MouseEvent;
 pub const KeyEvent = enhanced_keyboard.KeyEvent;

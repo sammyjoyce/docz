@@ -2,8 +2,9 @@
 //! Uses terminal capabilities from @src/term for enhanced user experience
 
 const std = @import("std");
+const components = @import("../../components/mod.zig");
 const completion = @import("completion.zig");
-const term_shared = @import("term_shared");
+const term_shared = @import("../../term/mod.zig");
 const term_ansi = term_shared.ansi.color;
 const term_cursor = term_shared.ansi.cursor;
 const term_screen = term_shared.ansi.screen;
@@ -14,9 +15,8 @@ const term_graphics = term_shared.ansi.graphics;
 const term_caps = term_shared.caps;
 const term_mode = term_shared.ansi.mode;
 const term_input = term_shared.input.types;
-const enhanced_keys = term_shared.input.enhanced_keys;
+const enhanced_keys = term_shared.input.keys;
 const Allocator = std.mem.Allocator;
-const print = std.debug.print;
 
 pub const CommandPaletteAction = enum {
     execute,

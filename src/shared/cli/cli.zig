@@ -43,6 +43,7 @@ pub fn parse(allocator: std.mem.Allocator, args: [][]const u8) !ParsedArgs {
 /// Print a CLI error with optional context
 pub fn printError(allocator: std.mem.Allocator, err: CliError, context: ?[]const u8) !void {
     const rich_formatter = @import("cli/formatters/rich.zig");
-    var formatter = rich_formatter.CliFormatter.init(allocator);
+    var formatter = try rich_formatter.CliFormatter.init(allocator);
+    defer formatter.deinit();
     try formatter.printEnhancedError(err, context);
 }

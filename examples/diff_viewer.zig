@@ -6,9 +6,9 @@
 //! Run with: zig run examples/diff_viewer_demo.zig
 
 const std = @import("std");
-const tui = @import("../src/tui/mod.zig");
-const bounds_mod = @import("../src/tui/core/bounds.zig");
-const events_mod = @import("../src/tui/core/events.zig");
+const tui = @import("../src/shared/tui/mod.zig");
+const bounds_mod = @import("../src/shared/tui/core/bounds.zig");
+const events_mod = @import("../src/shared/tui/core/events.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};

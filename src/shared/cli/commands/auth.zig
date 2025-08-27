@@ -2,14 +2,15 @@
 //! Comprehensive auth commands with enhanced CLI features
 
 const std = @import("std");
-const term_shared = @import("term_shared");
+const components = @import("../../components/mod.zig");
+const term_shared = @import("../../term/mod.zig");
 const term_ansi = term_shared.ansi.color;
 const term_caps = term_shared.caps;
 const term_hyperlink = term_shared.ansi.hyperlink;
 const notification_manager = @import("../interactive/notification_manager.zig");
 const workflow_runner = @import("../workflows/workflow_runner.zig");
 const workflow_step = @import("../workflows/workflow_step.zig");
-const ProgressBar = @import("../components/unified_progress_adapter.zig").ProgressBar;
+const ProgressBar = @import("../components/mod.zig").ProgressBar;
 const InputField = @import("../components/input_field.zig").InputField;
 const SelectMenu = @import("../components/select_menu.zig").SelectMenu;
 const colors = @import("../themes/colors.zig");

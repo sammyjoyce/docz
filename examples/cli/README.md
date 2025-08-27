@@ -38,7 +38,7 @@ cli/
 ├── core/
 │   └── unified_terminal.zig     # Central terminal interface
 ├── components/
-│   └── enhanced_cli.zig         # Main enhanced CLI implementation  
+│   └── cli.zig                  # Main CLI implementation  
 ├── dashboard/
 │   └── graphics_dashboard.zig   # Graphics-enhanced dashboard component
 ├── themes/                      # Theme definitions
@@ -149,8 +149,8 @@ const theme = try generateAccessibleTheme(base_colors);
 
 ### Enhanced Input Handling
 ```zig
-const enhanced_input = @import("../../src/shared/term/enhanced_input_handler.zig");
-const mouse = @import("../../src/shared/term/enhanced_mouse.zig");
+const enhanced_input = @import("../../src/shared/term/input_handler.zig");
+const mouse = @import("../../src/shared/term/mouse.zig");
 
 // Pixel-precise mouse tracking
 const event = try input_handler.parseMouseEvent(sequence);

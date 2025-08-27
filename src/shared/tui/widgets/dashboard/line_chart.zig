@@ -11,7 +11,7 @@ const engine_mod = @import("engine.zig");
 const term_caps = @import("../../term/caps.zig");
 const graphics_manager = @import("../../term/graphics_manager.zig");
 const color_palette = @import("../../term/color_palette.zig");
-const enhanced_mouse = @import("../../term/enhanced_mouse.zig");
+const enhanced_mouse = @import("../../term/mouse.zig");
 
 /// Advanced line chart with progressive enhancement
 pub const LineChart = struct {

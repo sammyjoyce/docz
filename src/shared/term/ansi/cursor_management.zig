@@ -1,5 +1,5 @@
 const std = @import("std");
-const advanced_color = @import("color_conversion_advanced.zig");
+const advanced_color = @import("color_conversion_extra.zig");
 
 /// Advanced cursor management for modern terminals
 /// Supports cursor styling, positioning, visibility, and color changes

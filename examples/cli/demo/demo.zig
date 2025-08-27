@@ -14,7 +14,7 @@ const std = @import("std");
 const unified = @import("../../src/shared/term/unified.zig");
 
 // Our components
-const terminal_abstraction = @import("../core/terminal_abstraction.zig");
+const terminal_abstraction = @import("../core/TerminalAbstraction.zig");
 const progress = @import("../components/progress.zig");
 const input = @import("../components/input/input.zig");
 const terminal_graphics = @import("../components/graphics/terminal_graphics.zig");

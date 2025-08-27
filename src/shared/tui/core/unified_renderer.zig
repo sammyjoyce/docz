@@ -170,13 +170,38 @@ pub const Layout = struct {
     };
 
     pub const Alignment = enum {
+        /// Align items to the start of the container
         start,
+        /// Center items within the container
         center,
+        /// Align items to the end of the container
         end,
+        /// Stretch items to fill the container
         stretch,
+        /// Distribute items with equal spacing between them (no space at edges)
+        space_between,
+        /// Distribute items with equal spacing around each item (half space at edges)
+        space_around,
+        /// Distribute items with equal spacing including edges
+        space_evenly,
     };
 
-    /// Simple flex layout implementation
+    /// Advanced flex layout implementation with space distribution modes
+    ///
+    /// Supports both traditional alignment and CSS Flexbox-style space distribution:
+    /// - `start`: Align items to the start of the container
+    /// - `center`: Center items within the container
+    /// - `end`: Align items to the end of the container
+    /// - `stretch`: Stretch items to fill the container
+    /// - `space_between`: Equal spacing between items, no space at edges
+    /// - `space_around`: Equal spacing around each item, half space at edges
+    /// - `space_evenly`: Equal spacing including edges
+    ///
+    /// ## Example
+    /// ```zig
+    /// var widgets = [_]Widget{ widget1, widget2, widget3 };
+    /// Layout.flexLayout(container_rect, &widgets, .horizontal, .space_between);
+    /// ```
     pub fn flexLayout(
         container: Rect,
         children: []Widget,
@@ -190,30 +215,75 @@ pub const Layout = struct {
             .vertical => container.height,
         };
 
-        const child_size = available_space / @as(u16, @intCast(children.len));
+        const item_count = children.len;
 
-        for (children, 0..) |*child, i| {
-            const index = @as(u16, @intCast(i));
+        // Calculate spacing and positioning for advanced flex modes
+        var spacing: u16 = 0;
+        var start_offset: u16 = 0;
+        const child_size: u16 = available_space / @as(u16, @intCast(item_count));
+
+        if (item_count > 1) {
+            switch (alignment) {
+                .space_between => {
+                    // Equal spacing between items, no space at edges
+                    // Child size remains the same, spacing is calculated from remaining space
+                    const total_item_space = child_size * @as(u16, @intCast(item_count));
+                    const remaining_space = available_space - total_item_space;
+                    spacing = remaining_space / @as(u16, @intCast(item_count - 1));
+                },
+                .space_around => {
+                    // Equal spacing around items, half space at edges
+                    // Child size remains the same, spacing is calculated from remaining space
+                    const total_item_space = child_size * @as(u16, @intCast(item_count));
+                    const remaining_space = available_space - total_item_space;
+                    spacing = remaining_space / @as(u16, @intCast(item_count));
+                    start_offset = spacing / 2;
+                },
+                .space_evenly => {
+                    // Equal spacing including edges
+                    // Child size remains the same, spacing is calculated from remaining space
+                    const total_item_space = child_size * @as(u16, @intCast(item_count));
+                    const remaining_space = available_space - total_item_space;
+                    spacing = remaining_space / @as(u16, @intCast(item_count + 1));
+                    start_offset = spacing;
+                },
+                else => {
+                    // Traditional alignment modes - equal space distribution
+                    spacing = 0;
+                    start_offset = 0;
+                },
+            }
+        }
+
+        // Position children based on alignment mode
+        var current_pos = switch (direction) {
+            .horizontal => container.x + @as(i16, @intCast(start_offset)),
+            .vertical => container.y + @as(i16, @intCast(start_offset)),
+        };
+
+        for (children) |*child| {
             switch (direction) {
                 .horizontal => {
                     child.bounds = Rect{
-                        .x = container.x + @as(i16, @intCast(index * child_size)),
+                        .x = current_pos,
                         .y = container.y,
                         .width = child_size,
                         .height = container.height,
                     };
+                    current_pos += @as(i16, @intCast(child_size + spacing));
                 },
                 .vertical => {
                     child.bounds = Rect{
                         .x = container.x,
-                        .y = container.y + @as(i16, @intCast(index * child_size)),
+                        .y = current_pos,
                         .width = container.width,
                         .height = child_size,
                     };
+                    current_pos += @as(i16, @intCast(child_size + spacing));
                 },
             }
 
-            // Apply alignment
+            // Apply alignment adjustments
             switch (alignment) {
                 .start => {}, // Already positioned at start
                 .center => {
@@ -247,6 +317,10 @@ pub const Layout = struct {
                     }
                 },
                 .stretch => {}, // Already stretched to fill space
+                .space_between, .space_around, .space_evenly => {
+                    // For space modes, items are positioned with calculated spacing
+                    // Additional alignment within each item's space can be applied here if needed
+                },
             }
         }
     }

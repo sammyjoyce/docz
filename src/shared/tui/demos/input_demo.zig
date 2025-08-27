@@ -49,7 +49,7 @@ pub fn main() !void {
     try stdout.print("   ├── paste.zig           # Bracketed paste support\n", .{});
     try stdout.print("   └── mouse.zig           # Advanced mouse handling\n\n", .{});
 
-    try stdout.print("   src/tui/widgets/enhanced/\n", .{});
+    try stdout.print("   src/tui/widgets/rich/\n", .{});
     try stdout.print("   └── advanced_text_input.zig  # Advanced text input widget\n\n", .{});
 
     try stdout.print("🔗 Integration with @src/term:\n", .{});

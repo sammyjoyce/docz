@@ -1,7 +1,7 @@
 const std = @import("std");
-const Color = @import("color_conversion_enhanced.zig").Color;
-const RGBColor = @import("color_conversion_enhanced.zig").RGBColor;
-const RGBA = @import("color_conversion_enhanced.zig").RGBA;
+const Color = @import("color_conversion.zig").Color;
+const RGBColor = @import("color_conversion.zig").RGBColor;
+const RGBA = @import("color_conversion.zig").RGBA;
 
 /// Terminal background and foreground color control based on standard ANSI OSC sequences
 /// Supports OSC (Operating System Command) sequences for setting and querying terminal colors.

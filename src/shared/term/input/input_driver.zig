@@ -1,5 +1,5 @@
 const std = @import("std");
-const enhanced_keys = @import("enhanced_keys.zig");
+const enhanced_keys = @import("keys.zig");
 const types = @import("types.zig");
 
 /// Advanced input driver with comprehensive terminal input handling

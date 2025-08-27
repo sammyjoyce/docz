@@ -2,8 +2,9 @@
 //! Displays structured information with icons, colors, and hyperlinks
 
 const std = @import("std");
-const term_ansi = @import("term_shared").ansi.color;
-const term_caps = @import("term_shared").caps;
+const components = @import("../../../components/mod.zig");
+const term_ansi = @import("../../../term/mod.zig").ansi.color;
+const term_caps = @import("../../../term/mod.zig").caps;
 const hyperlinks = @import("../../utils/hyperlinks.zig");
 
 const Allocator = std.mem.Allocator;

@@ -132,7 +132,7 @@ pub const Parser = struct {
                 if (comptime std.mem.eql(u8, field_name, "model")) {
                     result.options.model = try result.allocator.dupe(u8, opt.default);
                 } else if (comptime std.mem.eql(u8, field_name, "max-tokens")) {
-                    result.options.max_tokens = opt.default;
+                    result.options.maxTokens = opt.default;
                 } else if (comptime std.mem.eql(u8, field_name, "temperature")) {
                     result.options.temperature = opt.default;
                 }
@@ -183,8 +183,8 @@ pub const Parser = struct {
                     result.options.system = try result.allocator.dupe(u8, parsed_value);
                 } else if (comptime std.mem.eql(u8, field_name, "config")) {
                     result.options.config = try result.allocator.dupe(u8, parsed_value);
-                } else if (comptime std.mem.eql(u8, field_name, "max-tokens")) {
-                    result.options.max_tokens = parsed_value;
+                 } else if (comptime std.mem.eql(u8, field_name, "max-tokens")) {
+                     result.options.maxTokens = parsed_value;
                 } else if (comptime std.mem.eql(u8, field_name, "temperature")) {
                     result.options.temperature = parsed_value;
                 }

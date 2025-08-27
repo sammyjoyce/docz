@@ -24,31 +24,31 @@ pub fn calculator(allocator: std.mem.Allocator, params: std.json.Value) tools_mo
     const params_obj = params.object;
 
     const operation = params_obj.get("operation") orelse return tools_mod.ToolError.MissingParameter;
-    const a = params_obj.get("a") orelse return tools_mod.ToolError.MissingParameter;
-    const b = params_obj.get("b") orelse return tools_mod.ToolError.MissingParameter;
+    const firstNumber = params_obj.get("a") orelse return tools_mod.ToolError.MissingParameter;
+    const secondNumber = params_obj.get("b") orelse return tools_mod.ToolError.MissingParameter;
 
-    if (operation != .string or a != .integer or b != .integer) {
+    if (operation != .string or firstNumber != .integer or secondNumber != .integer) {
         return tools_mod.ToolError.InvalidInput;
     }
 
-    const op = operation.string;
-    const x = a.integer;
-    const y = b.integer;
+    const operationString = operation.string;
+    const x = firstNumber.integer;
+    const y = secondNumber.integer;
 
-    const result_value: i64 = if (std.mem.eql(u8, op, "add"))
+    const result_value: i64 = if (std.mem.eql(u8, operationString, "add"))
         x + y
-    else if (std.mem.eql(u8, op, "subtract"))
+    else if (std.mem.eql(u8, operationString, "subtract"))
         x - y
-    else if (std.mem.eql(u8, op, "multiply"))
+    else if (std.mem.eql(u8, operationString, "multiply"))
         x * y
-    else if (std.mem.eql(u8, op, "divide"))
+    else if (std.mem.eql(u8, operationString, "divide"))
         if (y == 0) return tools_mod.ToolError.InvalidInput else @divTrunc(x, y)
     else
         return tools_mod.ToolError.InvalidInput;
 
     var result = std.json.ObjectMap.init(allocator);
     try result.put("result", std.json.Value{ .integer = result_value });
-    try result.put("operation", std.json.Value{ .string = op });
+    try result.put("operation", std.json.Value{ .string = operationString });
     try result.put("inputs", std.json.Value{ .array = std.json.Array.init(allocator) });
     try result.put("success", std.json.Value{ .bool = true });
 

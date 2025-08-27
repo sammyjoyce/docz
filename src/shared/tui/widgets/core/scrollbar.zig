@@ -1,9 +1,9 @@
-//! Enhanced Scrollbar widget for terminal interfaces
+//! Rich Scrollbar widget for terminal interfaces
 //! Supports vertical/horizontal orientations, mouse interaction, and multiple styles
 
 const std = @import("std");
 const term_shared = @import("term_shared");
-const enhanced_cellbuf = term_shared.cellbuf_enhanced;
+const rich_cellbuf = term_shared.cellbuf;
 const term_caps = term_shared.caps;
 
 /// Scrollbar orientation
@@ -19,7 +19,7 @@ pub const Style = enum {
     minimal, // Simple line-based design
 };
 
-/// Enhanced scrollbar widget with mouse interaction and multiple styles
+/// Rich scrollbar widget with mouse interaction and multiple styles
 pub const Scrollbar = struct {
     /// Scrollbar orientation
     orientation: Orientation,
@@ -88,7 +88,7 @@ pub const Scrollbar = struct {
     /// Render scrollbar to a cell buffer
     pub fn renderToBuffer(
         self: *Scrollbar,
-        buffer: *enhanced_cellbuf.Buffer,
+        buffer: *rich_cellbuf.Buffer,
         x: usize,
         y: usize,
         length: usize,
@@ -107,7 +107,7 @@ pub const Scrollbar = struct {
 
     fn renderVertical(
         self: *Scrollbar,
-        buffer: *enhanced_cellbuf.Buffer,
+        buffer: *rich_cellbuf.Buffer,
         x: usize,
         y: usize,
         length: usize,
@@ -148,7 +148,7 @@ pub const Scrollbar = struct {
 
     fn renderHorizontal(
         self: *Scrollbar,
-        buffer: *enhanced_cellbuf.Buffer,
+        buffer: *rich_cellbuf.Buffer,
         x: usize,
         y: usize,
         length: usize,
@@ -189,7 +189,7 @@ pub const Scrollbar = struct {
 
     fn renderThumbCell(
         self: *Scrollbar,
-        cell: *enhanced_cellbuf.Cell,
+        cell: *rich_cellbuf.Cell,
         supports_unicode: bool,
     ) !void {
         const char: u21 = switch (self.style) {
@@ -212,7 +212,7 @@ pub const Scrollbar = struct {
 
     fn renderTrackCell(
         self: *Scrollbar,
-        cell: *enhanced_cellbuf.Cell,
+        cell: *rich_cellbuf.Cell,
         orientation: Orientation,
         supports_unicode: bool,
     ) !void {
@@ -238,7 +238,7 @@ pub const Scrollbar = struct {
     }
 
     fn renderArrowCell(
-        cell: *enhanced_cellbuf.Cell,
+        cell: *rich_cellbuf.Cell,
         direction: enum { up, down, left, right },
         supports_unicode: bool,
     ) !void {

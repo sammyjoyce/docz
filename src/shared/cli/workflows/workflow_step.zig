@@ -11,26 +11,26 @@ pub const StepResult = struct {
 };
 
 pub const Step = struct {
-    params: std.StringHashMap([]const u8),
+    parameters: std.StringHashMap([]const u8),
     previousOutput: ?[]const u8 = null,
     stepIndex: u32 = 0,
 
     pub fn init(allocator: Allocator) Step {
         return .{
-            .params = std.StringHashMap([]const u8).init(allocator),
+            .parameters = std.StringHashMap([]const u8).init(allocator),
         };
     }
 
     pub fn deinit(self: *Step) void {
-        self.params.deinit();
+        self.parameters.deinit();
     }
 
     pub fn setParam(self: *Step, key: []const u8, value: []const u8) !void {
-        try self.params.put(key, value);
+        try self.parameters.put(key, value);
     }
 
     pub fn getParam(self: Step, key: []const u8) ?[]const u8 {
-        return self.params.get(key);
+        return self.parameters.get(key);
     }
 };
 

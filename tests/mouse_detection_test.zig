@@ -1,12 +1,13 @@
 const std = @import("std");
 const testing = std.testing;
-const TerminalQuerySystem = @import("../src/shared/term/terminal_query_system.zig").TerminalQuerySystem;
-const QueryType = @import("../src/shared/term/terminal_query_system.zig").QueryType;
-const MouseCapabilityDetector = @import("../src/shared/term/mouse_capability_detector.zig").MouseCapabilityDetector;
-const MouseMode = @import("../src/shared/term/mouse_capability_detector.zig").MouseMode;
-const DECRQMStatus = @import("../src/shared/term/mouse_capability_detector.zig").DECRQMStatus;
-const MouseProtocol = @import("../src/shared/term/mouse_capability_detector.zig").MouseProtocol;
-const CapabilityDetector = @import("../src/shared/term/capability_detector.zig").CapabilityDetector;
+const term = @import("../src/shared/term/mod.zig");
+const TerminalQuerySystem = term.terminal_query_system.TerminalQuerySystem;
+const QueryType = term.terminal_query_system.QueryType;
+const MouseCapabilityDetector = term.mouse_capability_detector.MouseCapabilityDetector;
+const MouseMode = term.mouse_capability_detector.MouseMode;
+const DECRQMStatus = term.mouse_capability_detector.DECRQMStatus;
+const MouseProtocol = term.mouse_capability_detector.MouseProtocol;
+const CapabilityDetector = term.capability_detector.CapabilityDetector;
 
 test "mouse query types are properly defined" {
     // Verify that all mouse query types exist

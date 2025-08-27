@@ -1,7 +1,6 @@
 //! Pure Zig CLI parser using comptime reflection from cli.zon configuration
 
 const std = @import("std");
-const print = std.debug.print;
 const Allocator = std.mem.Allocator;
 const cli_config = @import("cli.zon");
 const CliFormatter = @import("cli/formatters/basic.zig").CliFormatter;
@@ -317,67 +316,71 @@ fn labelLenFlag(comptime T: type, flag: T) usize {
 }
 
 fn printSpaces(n: usize) void {
+    const stdout = std.fs.File.stdout().writer();
     var i: usize = 0;
-    while (i < n) : (i += 1) print(" ", .{});
+    while (i < n) : (i += 1) stdout.print(" ", .{}) catch {};
 }
 
 fn printOption(opt: anytype, max_width: usize) void {
+    const stdout = std.fs.File.stdout().writer();
     // Indent
-    print("    ", .{});
+    stdout.print("    ", .{}) catch {};
     // short or spaces
     if (@hasField(@TypeOf(opt), "short")) {
         const sc: u8 = @intCast(opt.short);
-        print("-{c}, ", .{sc});
+        stdout.print("-{c}, ", .{sc}) catch {};
     } else {
-        print("    ", .{});
+        stdout.print("    ", .{}) catch {};
     }
     // long + type
-    print("--{s} <{s}>", .{ opt.long, opt.type });
+    stdout.print("--{s} <{s}>", .{ opt.long, opt.type }) catch {};
 
     const label_len = labelLenOption(@TypeOf(opt), opt);
     const pad = if (max_width > label_len) (max_width - label_len + 2) else 2;
     printSpaces(pad);
 
     // description
-    print("{s}", .{opt.description});
+    stdout.print("{s}", .{opt.description}) catch {};
     if (@hasField(@TypeOf(opt), "default")) {
         if (comptime std.mem.eql(u8, opt.long, "model")) {
-            print(" [default: {s}]", .{opt.default});
+            stdout.print(" [default: {s}]", .{opt.default}) catch {};
         } else {
-            print(" [default: {}]", .{opt.default});
+            stdout.print(" [default: {}]", .{opt.default}) catch {};
         }
     }
     if (@hasField(@TypeOf(opt), "deprecated")) {
-        if (opt.deprecated) print(" (deprecated)", .{});
+        if (opt.deprecated) stdout.print(" (deprecated)", .{}) catch {};
     }
-    print("\n", .{});
+    stdout.print("\n", .{}) catch {};
 }
 
 fn printFlag(flag: anytype, max_width: usize) void {
-    print("    ", .{});
+    const stdout = std.fs.File.stdout().writer();
+    stdout.print("    ", .{}) catch {};
     if (@hasField(@TypeOf(flag), "short")) {
         const sc: u8 = @intCast(flag.short);
-        print("-{c}, ", .{sc});
+        stdout.print("-{c}, ", .{sc}) catch {};
     } else {
-        print("    ", .{});
+        stdout.print("    ", .{}) catch {};
     }
-    print("--{s}", .{flag.long});
+    stdout.print("--{s}", .{flag.long}) catch {};
 
     const label_len = labelLenFlag(@TypeOf(flag), flag);
     const pad = if (max_width > label_len) (max_width - label_len + 2) else 2;
     printSpaces(pad);
 
-    print("{s}", .{flag.description});
+    stdout.print("{s}", .{flag.description}) catch {};
     if (@hasField(@TypeOf(flag), "default")) {
-        print(" [default: {}]", .{flag.default});
+        stdout.print(" [default: {}]", .{flag.default}) catch {};
     }
     if (@hasField(@TypeOf(flag), "deprecated")) {
-        if (flag.deprecated) print(" (deprecated)", .{});
+        if (flag.deprecated) stdout.print(" (deprecated)", .{}) catch {};
     }
-    print("\n", .{});
+    stdout.print("\n", .{}) catch {};
 }
 
 fn printSubcommands(subcommands: anytype) void {
+    const stdout = std.fs.File.stdout().writer();
     const SubcommandsT = @TypeOf(subcommands);
     const subcommands_info = @typeInfo(SubcommandsT).@"struct";
 
@@ -390,7 +393,7 @@ fn printSubcommands(subcommands: anytype) void {
             cmd_name_upper[i] = std.ascii.toUpper(c);
         }
 
-        print("{s} COMMANDS:\n", .{cmd_name_upper});
+        stdout.print("{s} COMMANDS:\n", .{cmd_name_upper}) catch {};
 
         if (@hasField(@TypeOf(command), "subcommands")) {
             const SubT = @TypeOf(command.subcommands);
@@ -406,27 +409,29 @@ fn printSubcommands(subcommands: anytype) void {
 
             inline for (sub_info.fields) |sub_field| {
                 const subcmd_desc = @field(command.subcommands, sub_field.name);
-                print("    {s}", .{sub_field.name});
+                stdout.print("    {s}", .{sub_field.name}) catch {};
                 const pad = if (max_subcmd_width > sub_field.name.len)
                     (max_subcmd_width - sub_field.name.len + 4)
                 else
                     4;
                 printSpaces(pad);
-                print("{s}\n", .{subcmd_desc});
+                stdout.print("{s}\n", .{subcmd_desc}) catch {};
             }
         }
-        print("\n", .{});
+        stdout.print("\n", .{}) catch {};
     }
 }
 
 pub fn printHelp(allocator: Allocator) !void {
     // For now, use a simple approach
-    var formatter = CliFormatter.init(allocator);
+    var formatter = try CliFormatter.init(allocator);
+    defer formatter.deinit();
     try formatter.printEnhancedHelp(cli_config);
 }
 
 pub fn printVersion(allocator: Allocator) !void {
-    var formatter = CliFormatter.init(allocator);
+    var formatter = try CliFormatter.init(allocator);
+    defer formatter.deinit();
     try formatter.printEnhancedVersion(cli_config);
 }
 
@@ -439,6 +444,7 @@ pub fn shouldShowVersion(parsed: *const ParsedArgs) bool {
 }
 
 pub fn printError(allocator: Allocator, err: CliError, context: ?[]const u8) !void {
-    var formatter = CliFormatter.init(allocator);
+    var formatter = try CliFormatter.init(allocator);
+    defer formatter.deinit();
     try formatter.printEnhancedError(err, context);
 }

@@ -1,5 +1,5 @@
 const std = @import("std");
-const input = @import("../src/shared/term/enhanced_input.zig");
+const input = @import("../src/shared/term/ansi/input_extra.zig");
 
 /// Demonstration of the enhanced input system
 /// Advanced terminal input features with Zig implementation

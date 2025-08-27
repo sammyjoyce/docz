@@ -2,7 +2,7 @@
 /// Provides comprehensive key event types with support for modern terminal protocols.
 /// Compatible with Zig 0.15.1
 const std = @import("std");
-const enhanced_mouse = @import("enhanced_mouse.zig");
+const enhanced_mouse = @import("mouse.zig");
 
 /// Key modifiers (reusing from enhanced_mouse for consistency)
 pub const KeyMod = enhanced_mouse.KeyMod;

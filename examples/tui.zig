@@ -6,8 +6,8 @@
 const std = @import("std");
 
 // Import the TUI module with our enhancements
-const tui = @import("../src/tui/mod.zig");
-const bounds_mod = @import("../src/tui/core/bounds.zig");
+const tui = @import("../src/shared/tui/mod.zig");
+const bounds_mod = @import("../src/shared/tui/core/bounds.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -33,10 +33,10 @@ pub fn main() !void {
     std.debug.print("📐 Terminal Size: {}×{}\n\n", .{ terminal_size.width, terminal_size.height });
 
     // Demo the advanced TUI components
-    try demoAdvancedNotifications();
-    try demoAdvancedProgressBars(renderer, terminal_size);
+    try demoNotifications();
+    try demoProgressBars(renderer, terminal_size);
     try demoBoxDrawing(renderer, caps);
-    try demoAdvancedFeatures(renderer, caps);
+    try demoFeatures(renderer, caps);
 
     std.debug.print("\n✨ Demo completed! All TUI enhancements showcased.\n");
 }
@@ -54,7 +54,7 @@ fn printCapabilities(caps: tui.TermCaps) void {
     std.debug.print("\n");
 }
 
-fn demoAdvancedNotifications() !void {
+fn demoNotifications() !void {
     std.debug.print("🔔 Demo 1: Advanced Notifications\n");
     std.debug.print("   Progressive enhancement from basic terminal bell to rich OSC notifications\n\n");
 
@@ -68,7 +68,7 @@ fn demoAdvancedNotifications() !void {
     std.time.sleep(800 * std.time.ns_per_ms);
 }
 
-fn demoAdvancedProgressBars(renderer: *tui.Renderer, terminal_size: bounds_mod.TerminalSize) !void {
+fn demoProgressBars(renderer: *tui.Renderer, terminal_size: bounds_mod.TerminalSize) !void {
     std.debug.print("📊 Demo 2: Advanced Progress Bars\n");
     std.debug.print("   Multiple visual styles that adapt based on terminal support\n\n");
 
@@ -93,7 +93,7 @@ fn demoAdvancedProgressBars(renderer: *tui.Renderer, terminal_size: bounds_mod.T
         // Render each progress style
         var y: i32 = 16;
         for (progress_styles, style_names) |style, name| {
-            const ctx = tui.RenderContext{
+            const context = tui.RenderContext{
                 .bounds = .{
                     .x = 5,
                     .y = y,
@@ -105,7 +105,7 @@ fn demoAdvancedProgressBars(renderer: *tui.Renderer, terminal_size: bounds_mod.T
             var progress_bar = tui.ProgressBar.init(name, style);
             progress_bar.setProgress(progress);
             progress_bar.show_percentage = true;
-            try progress_bar.render(renderer, ctx);
+            try progress_bar.render(renderer, context);
 
             y += 3;
         }
@@ -158,7 +158,7 @@ fn demoBoxDrawing(renderer: *tui.Renderer, caps: tui.TermCaps) !void {
     try renderer.endFrame();
 }
 
-fn demoAdvancedFeatures(renderer: *tui.Renderer, caps: tui.TermCaps) !void {
+fn demoFeatures(renderer: *tui.Renderer, caps: tui.TermCaps) !void {
     std.debug.print("🚀 Demo 4: Advanced Features\n");
     std.debug.print("   Hyperlinks, clipboard, and system integration\n\n");
 

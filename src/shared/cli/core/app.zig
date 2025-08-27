@@ -9,6 +9,7 @@ const router = @import("router.zig");
 pub const CliApp = struct {
     allocator: std.mem.Allocator,
     context: context.Cli,
+    router: router.CommandRouter,
 
     pub fn init(allocator: std.mem.Allocator) !CliApp {
         // Initialize context with terminal capabilities
@@ -60,21 +61,12 @@ pub const CliApp = struct {
         // Handle result
         if (result.success) {
             if (result.output) |output| {
-                var stdoutBuffer: [4096]u8 = undefined;
-                var stdoutWriter = std.fs.File.stdout().writer(&stdoutBuffer);
-                const writer = &stdoutWriter.interface;
-                try writer.writeAll(output);
-                try writer.flush();
+                try self.context.terminal.printf("{s}", .{output}, null);
             }
             return result.exit_code;
         } else {
             if (result.errorMessage) |msg| {
-                var stderrBuffer: [4096]u8 = undefined;
-                var stderrWriter = std.fs.File.stderr().writer(&stderrBuffer);
-                const writer = &stderrWriter.interface;
-                try writer.writeAll(msg);
-                try writer.writeAll("\n");
-                try writer.flush();
+                try self.context.terminal.printf("{s}\n", .{msg}, .{ .fg_color = .{ .rgb = .{ .r = 220, .g = 20, .b = 60 } } });
             }
             return result.exit_code;
         }

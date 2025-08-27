@@ -449,15 +449,15 @@ pub const InputParser = struct {
 
     fn parseMouseSequence(self: *InputParser, sequence: []const u8) !ParseResult {
         // Import mouse parser
-        const mouse_mod = @import("enhanced_mouse.zig");
+        const mouse_mod = @import("mouse.zig");
 
         // Create a temporary mouse parser to parse the sequence
         var mouse_parser = mouse_mod.MouseParser.init(self.allocator);
 
-        if (mouse_parser.parseEvent(sequence)) |enhanced_mouse_event| {
-            // Convert enhanced mouse event to types.MouseEvent
-            const mouse_event = types.MouseEvent{
-                .button = switch (enhanced_mouse_event.button) {
+        if (mouse_parser.parseEvent(sequence)) |mouse_event| {
+            // Convert mouse event to types.MouseEvent
+            const converted_mouse_event = types.MouseEvent{
+                .button = switch (mouse_event.button) {
                     .left => .left,
                     .middle => .middle,
                     .right => .right,
@@ -469,12 +469,12 @@ pub const InputParser = struct {
                     .button5 => .button5,
                     else => .none,
                 },
-                .action = switch (enhanced_mouse_event.action) {
+                .action = switch (mouse_event.action) {
                     .press => .press,
                     .release => .release,
                     .drag => .drag,
                     .motion => .move,
-                    .wheel => switch (enhanced_mouse_event.button) {
+                    .wheel => switch (mouse_event.button) {
                         .wheel_up => .wheel_up,
                         .wheel_down => .wheel_down,
                         .wheel_left => .wheel_left,
@@ -483,14 +483,14 @@ pub const InputParser = struct {
                     },
                     else => .move,
                 },
-                .x = enhanced_mouse_event.col,
-                .y = enhanced_mouse_event.row,
-                .pixel_x = enhanced_mouse_event.pixel_x,
-                .pixel_y = enhanced_mouse_event.pixel_y,
+                .x = mouse_event.col,
+                .y = mouse_event.row,
+                .pixel_x = mouse_event.pixel_x,
+                .pixel_y = mouse_event.pixel_y,
                 .mods = .{
-                    .shift = enhanced_mouse_event.modifiers.shift,
-                    .alt = enhanced_mouse_event.modifiers.alt,
-                    .ctrl = enhanced_mouse_event.modifiers.ctrl,
+                    .shift = mouse_event.modifiers.shift,
+                    .alt = mouse_event.modifiers.alt,
+                    .ctrl = mouse_event.modifiers.ctrl,
                 },
             };
 

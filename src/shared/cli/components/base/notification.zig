@@ -9,17 +9,21 @@
 //! - CLI-specific sound patterns and actions
 
 const std = @import("std");
-const term_shared = @import("term_shared");
+const components = @import("../../../components/mod.zig");
+const term_shared = @import("../../../term/mod.zig");
 const unified = term_shared.unified;
 const terminal_bridge = @import("../../core/terminal_bridge.zig");
 const components_shared = @import("../../components/mod.zig");
-const notification_base = components_shared.notification_base;
+const notification = components_shared.notification;
 
 // Re-export base types for convenience
-pub const NotificationType = notification_base.NotificationType;
-pub const NotificationConfig = notification_base.NotificationConfig;
-pub const NotificationAction = notification_base.NotificationAction;
-pub const BaseNotification = notification_base.BaseNotification;
+pub const NotificationType = notification.NotificationType;
+pub const NotificationConfig = notification.NotificationConfig;
+pub const NotificationAction = notification.NotificationAction;
+pub const BaseNotification = notification.BaseNotification;
+pub const NotificationUtils = notification.NotificationUtils;
+pub const ColorScheme = notification.ColorScheme;
+pub const SoundPattern = notification.SoundPattern;
 
 /// Main CLI notification component extending the base system
 pub const Notification = struct {
@@ -52,46 +56,117 @@ pub const Notification = struct {
         const strategy = self.bridge.getRenderStrategy();
         const caps = self.bridge.getCapabilities();
 
+        // Create base notification
+        const base_notif = BaseNotification.init(title, message, notification_type, self.config);
+
         // Try system notification first if enabled and supported
-        if (self.config.enable_system_notifications and caps.supportsNotifyOsc9) {
-            try notification_base.SystemNotification.sendFromBase(
+        if (self.config.enableSystemNotifications and caps.supportsNotifyOsc9) {
+            try notification.SystemNotification.sendFromBase(
                 self.bridge.writer(),
                 self.bridge.allocator,
                 caps,
-                &BaseNotification.init(title, message, notification_type, self.config),
+                &base_notif,
             );
         }
 
         // Always render in-terminal notification as well
-        try self.renderInTerminal(notification_type, title, message, actions, strategy);
+        try self.renderInTerminal(&base_notif, actions, strategy);
 
         // Add sound notification if enabled
-        if (self.config.enable_sound) {
+        if (self.config.enableSound) {
             try self.playNotificationSound(notification_type);
         }
     }
 
+    /// Show a progress notification
+    pub fn showProgress(self: *Self, title: []const u8, message: []const u8, progress_value: f32) !void {
+        self.notification_count += 1;
+        self.last_notification_time = std.time.milliTimestamp();
+
+        const strategy = self.bridge.getRenderStrategy();
+        const caps = self.bridge.getCapabilities();
+
+        // Create progress notification
+        const base_notif = BaseNotification.initProgress(title, message, progress_value, self.config);
+
+        // Try system notification first if enabled and supported
+        if (self.config.enableSystemNotifications and caps.supportsNotifyOsc9) {
+            try notification.SystemNotification.sendFromBase(
+                self.bridge.writer(),
+                self.bridge.allocator,
+                caps,
+                &base_notif,
+            );
+        }
+
+        // Render progress notification
+        try self.renderProgressNotification(&base_notif, strategy);
+    }
+
+    /// Update progress for an existing notification
+    pub fn updateProgress(self: *Self, title: []const u8, message: []const u8, progress_value: f32) !void {
+        // For now, just show a new progress notification
+        // In a more sophisticated implementation, we'd track notifications by ID
+        try self.showProgress(title, message, progress_value);
+    }
+
     /// Render the notification in the terminal with adaptive styling
-    fn renderInTerminal(self: *Self, notification_type: NotificationType, title: []const u8, message: []const u8, actions: []const NotificationAction, strategy: terminal_bridge.RenderStrategy) !void {
+    fn renderInTerminal(self: *Self, base_notif: *const BaseNotification, actions: []const NotificationAction, strategy: terminal_bridge.RenderStrategy) !void {
         // Create notification box with adaptive styling
-        const box_style = self.createBoxStyle(notification_type, strategy);
+        const box_style = self.createBoxStyle(base_notif.notification_type, strategy);
 
         // Calculate dimensions
-        const content_width = @min(self.config.max_width - 4, @max(title.len, message.len) + 4);
+        const content_width = @min(self.config.maxWidth - 4, @max(base_notif.title.len, base_notif.message.len) + 4);
         const total_width = content_width + 4; // Account for borders
 
         // Save cursor position and render notification
         var render_ctx = try self.bridge.createRenderContext();
         defer render_ctx.deinit();
 
-        try self.renderNotificationBox(notification_type, title, message, actions, box_style, content_width, total_width, strategy);
+        try self.renderNotificationBox(base_notif, actions, box_style, content_width, total_width, strategy);
+    }
+
+    /// Render a progress notification with progress bar
+    fn renderProgressNotification(self: *Self, base_notif: *const BaseNotification, strategy: terminal_bridge.RenderStrategy) !void {
+        const use_unicode = strategy.supportsColor();
+
+        // Get progress information
+        const progress = base_notif.progress orelse 0.0;
+        const percentage = try base_notif.getProgressPercentage(self.bridge.allocator);
+        defer self.bridge.allocator.free(percentage);
+
+        // Create progress bar
+        const bar_width = 30;
+        const progress_bar = try NotificationUtils.formatProgressBar(
+            self.bridge.allocator,
+            progress,
+            bar_width,
+            use_unicode,
+        );
+        defer self.bridge.allocator.free(progress_bar);
+
+        // Render progress notification
+        const icon = if (use_unicode) base_notif.notification_type.icon() else base_notif.notification_type.asciiIcon();
+        const color_style = unified.Style{ .fg_color = base_notif.notification_type.color() };
+
+        try self.bridge.print("\n", null);
+        try self.bridge.print(icon, color_style);
+        try self.bridge.print(" ", null);
+        try self.bridge.print(base_notif.title, unified.Style{ .bold = true });
+        try self.bridge.print(" [", null);
+        try self.bridge.print(progress_bar, color_style);
+        try self.bridge.print("] ", null);
+        try self.bridge.print(percentage, null);
+        try self.bridge.print(" - ", null);
+        try self.bridge.print(base_notif.message, null);
+        try self.bridge.print("\n", null);
     }
 
     /// Create appropriate box styling based on notification type and terminal capabilities
     fn createBoxStyle(self: *Self, notification_type: NotificationType, strategy: terminal_bridge.RenderStrategy) BoxStyle {
         _ = self;
 
-        const color_scheme = notification_base.ColorSchemes.getStandard(notification_type);
+        const color_scheme = notification.ColorScheme.getStandard(notification_type);
 
         return BoxStyle{
             .border_color = color_scheme.border,
@@ -109,18 +184,18 @@ pub const Notification = struct {
     }
 
     /// Render the complete notification box with borders, content, and actions
-    fn renderNotificationBox(self: *Self, notification_type: NotificationType, title: []const u8, message: []const u8, actions: []const NotificationAction, box_style: BoxStyle, content_width: u32, total_width: u32, strategy: terminal_bridge.RenderStrategy) !void {
+    fn renderNotificationBox(self: *Self, base_notif: *const BaseNotification, actions: []const NotificationAction, box_style: BoxStyle, content_width: u32, total_width: u32, strategy: terminal_bridge.RenderStrategy) !void {
         // Top border
         try self.renderBorderLine(.top, box_style, total_width);
 
         // Title line with icon
-        try self.renderTitleLine(notification_type, title, box_style, content_width, strategy);
+        try self.renderTitleLine(base_notif.notification_type, base_notif.title, box_style, content_width, strategy);
 
         // Message line(s) - handle word wrapping
-        try self.renderMessageLines(message, box_style, content_width);
+        try self.renderMessageLines(base_notif.message, box_style, content_width);
 
         // Timestamp if enabled
-        if (self.config.show_timestamp) {
+        if (self.config.showTimestamp) {
             try self.renderTimestampLine(box_style, content_width);
         }
 
@@ -321,9 +396,9 @@ pub const Notification = struct {
     /// Play system bell with notification-type-specific patterns
     fn playSystemBell(self: *Self, notification_type: NotificationType) !void {
         const writer = self.bridge.writer();
-        const pattern = notification_base.SoundPatterns.getPattern(notification_type);
+        const pattern = SoundPattern.getPattern(notification_type);
 
-        try notification_base.SoundPatterns.playPattern(writer, pattern.pattern, pattern.duration_ms);
+        try SoundPattern.playPattern(writer, pattern.pattern, pattern.duration_ms);
     }
 
     /// Get notification statistics
@@ -359,44 +434,54 @@ pub const NotificationStats = struct {
 /// Convenient preset notification functions
 pub const NotificationPresets = struct {
     /// Show a success notification with copy action
-    pub fn success(notification: *Notification, title: []const u8, message: []const u8, copy_text: ?[]const u8) !void {
+    pub fn success(notif: *Notification, title: []const u8, message: []const u8, copy_text: ?[]const u8) !void {
         if (copy_text) |text| {
             const actions = [_]NotificationAction{
-                NotificationAction{
+                .{
                     .label = "Copy Result",
                     .action = .{ .copy_text = text },
                 },
             };
-            try notification.showWithActions(.success, title, message, &actions);
+            try notif.showWithActions(.success, title, message, &actions);
         } else {
-            try notification.show(.success, title, message);
+            try notif.show(.success, title, message);
         }
     }
 
     /// Show an error notification with support link
-    pub fn showError(notification: *Notification, title: []const u8, message: []const u8, support_url: ?[]const u8) !void {
+    pub fn showError(notif: *Notification, title: []const u8, message: []const u8, support_url: ?[]const u8) !void {
         if (support_url) |url| {
             const actions = [_]NotificationAction{
-                NotificationAction{
+                .{
                     .label = "Get Help",
                     .action = .{ .open_url = url },
                 },
             };
-            try notification.showWithActions(.@"error", title, message, &actions);
+            try notif.showWithActions(.@"error", title, message, &actions);
         } else {
-            try notification.show(.@"error", title, message);
+            try notif.show(.@"error", title, message);
         }
     }
 
     /// Show an info notification with a clickable link
-    pub fn infoWithLink(notification: *Notification, title: []const u8, message: []const u8, link_text: []const u8, url: []const u8) !void {
+    pub fn infoWithLink(notif: *Notification, title: []const u8, message: []const u8, link_text: []const u8, url: []const u8) !void {
         const actions = [_]NotificationAction{
-            NotificationAction{
+            .{
                 .label = link_text,
                 .action = .{ .open_url = url },
             },
         };
-        try notification.showWithActions(.info, title, message, &actions);
+        try notif.showWithActions(.info, title, message, &actions);
+    }
+
+    /// Show a progress notification
+    pub fn progress(notif: *Notification, title: []const u8, message: []const u8, progress_value: f32) !void {
+        try notif.showProgress(title, message, progress_value);
+    }
+
+    /// Update progress for an existing notification
+    pub fn updateProgress(notif: *Notification, title: []const u8, message: []const u8, progress_value: f32) !void {
+        try notif.updateProgress(title, message, progress_value);
     }
 };
 
@@ -418,9 +503,9 @@ test "enhanced notification initialization" {
     defer bridge.deinit();
 
     const notification_config = NotificationConfig{};
-    var notification = Notification.init(&bridge, notification_config);
+    var test_notification = Notification.init(&bridge, notification_config);
 
-    const stats = notification.getStats();
+    const stats = test_notification.getStats();
     try std.testing.expect(stats.total_count == 0);
 }
 
@@ -434,15 +519,15 @@ test "sound notification functionality" {
     defer bridge.deinit();
 
     // Test with sound enabled
-    const notification_config = NotificationConfig{ .enable_sound = true };
-    var notification = Notification.init(&bridge, notification_config);
+    const notification_config = NotificationConfig{ .enableSound = true };
+    var test_notification = Notification.init(&bridge, notification_config);
 
     // Test that sound notifications don't error (we can't easily test the actual bell sound)
-    try notification.playNotificationSound(.info);
-    try notification.playNotificationSound(.success);
-    try notification.playNotificationSound(.warning);
-    try notification.playNotificationSound(.@"error");
-    try notification.playNotificationSound(.critical);
+    try test_notification.playNotificationSound(.info);
+    try test_notification.playNotificationSound(.success);
+    try test_notification.playNotificationSound(.warning);
+    try test_notification.playNotificationSound(.@"error");
+    try test_notification.playNotificationSound(.critical);
 
     // Test with sound disabled
     const silent_config = NotificationConfig{ .enable_sound = false };

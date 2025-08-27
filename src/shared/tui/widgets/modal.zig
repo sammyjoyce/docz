@@ -11,7 +11,7 @@ const events_mod = @import("../core/events.zig");
 const screen_mod = @import("../core/screen.zig");
 const term_caps = @import("../../term/caps.zig");
 const term_ansi = @import("../../term/ansi/color.zig");
-const term_cursor = @import("../../term/ansi/cursor.zig");
+const terminal_cursor = @import("../components/terminal_cursor.zig");
 
 pub const Point = bounds_mod.Point;
 pub const Bounds = bounds_mod.Bounds;

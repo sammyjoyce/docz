@@ -1,5 +1,5 @@
 const std = @import("std");
-const enhanced_keys = @import("enhanced_keys.zig");
+const enhanced_keys = @import("keys.zig");
 
 /// Enhanced input system with advanced terminal features and Zig 0.15.1 compatibility
 /// Supports comprehensive key events, mouse events, and modern terminal features

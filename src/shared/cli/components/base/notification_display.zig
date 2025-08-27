@@ -3,17 +3,14 @@
 
 const std = @import("std");
 const context = @import("../../core/context.zig");
+const components_shared = @import("../../components/mod.zig");
+const notification_base = components_shared.notification;
+
+// Use base notification types for consistency
+pub const NotificationType = notification_base.NotificationType;
 
 pub const NotificationDisplay = struct {
     context: *context.Cli,
-
-    pub const NotificationType = enum {
-        info,
-        success,
-        warning,
-        err, // error is reserved keyword
-        progress,
-    };
 
     pub const NotificationStyle = enum {
         minimal, // Just icon and text
@@ -35,6 +32,8 @@ pub const NotificationDisplay = struct {
             .minimal => try self.showMinimal(notification_type, title, message),
         }
     }
+
+
 
     fn showSystem(self: *NotificationDisplay, notification_type: NotificationType, title: []const u8, message: ?[]const u8) !void {
         if (self.context.hasFeature(.notifications)) {
@@ -63,46 +62,57 @@ pub const NotificationDisplay = struct {
         const stderr_file = std.fs.File.stderr();
         var writer = stderr_file.writer(&stderr_buffer);
 
-        // Get colors based on terminal capabilities
+        // Get style based on terminal capabilities
         const elements = if (self.context.hasFeature(.truecolor))
             self.getStyledElements(notification_type, true)
         else
             self.getStyledElements(notification_type, false);
         const icon = elements.icon;
-        const color_start = elements.color_start;
-        const color_end = elements.color_end;
+        const style = elements.style;
 
         // Top border
-        try writer.print("{s}┌─", .{color_start});
+        try style.apply(writer, self.context.termCaps);
+        try writer.print("┌─", .{});
         for (title) |_| try writer.print("─");
         if (message) |msg| {
             const max_len = @max(title.len, msg.len);
             for (0..max_len - title.len) |_| try writer.print("─");
         }
-        try writer.print("─┐{s}\n", .{color_end});
+        try writer.print("─┐", .{});
+        try context.term.unified.Style.reset(writer, self.context.termCaps);
+        try writer.print("\n", .{});
 
         // Title line
-        try writer.print("{s}│ {s} {s} │{s}\n", .{ color_start, icon, title, color_end });
+        try style.apply(writer, self.context.termCaps);
+        try writer.print("│ {s} {s} │", .{ icon, title });
+        try context.term.unified.Style.reset(writer, self.context.termCaps);
+        try writer.print("\n", .{});
 
         // Message line if provided
         if (message) |msg| {
-            try writer.print("{s}│   {s}", .{ color_start, msg });
+            try style.apply(writer, self.context.termCaps);
+            try writer.print("│   {s}", .{ msg });
 
             // Pad to match title width
             const padding = if (title.len > msg.len) title.len - msg.len else 0;
             for (0..padding) |_| try writer.print(" ");
 
-            try writer.print(" │{s}\n", .{color_end});
+            try writer.print(" │", .{});
+            try context.term.unified.Style.reset(writer, self.context.termCaps);
+            try writer.print("\n", .{});
         }
 
         // Bottom border
-        try writer.print("{s}└─", .{color_start});
+        try style.apply(writer, self.context.termCaps);
+        try writer.print("└─", .{});
         for (title) |_| try writer.print("─");
         if (message) |msg| {
             const max_len = @max(title.len, msg.len);
             for (0..max_len - title.len) |_| try writer.print("─");
         }
-        try writer.print("─┘{s}\n\n", .{color_end});
+        try writer.print("─┘", .{});
+        try context.term.unified.Style.reset(writer, self.context.termCaps);
+        try writer.print("\n\n", .{});
     }
 
     fn showMinimal(self: *NotificationDisplay, notification_type: NotificationType, title: []const u8, message: ?[]const u8) !void {
@@ -115,34 +125,44 @@ pub const NotificationDisplay = struct {
         else
             self.getStyledElements(notification_type, false);
         const icon = elements.icon;
-        const color_start = elements.color_start;
-        const color_end = elements.color_end;
+        const style = elements.style;
 
-        try writer.print("{s}{s} {s}", .{ color_start, icon, title });
+        try style.apply(writer, self.context.termCaps);
+        try writer.print("{s} {s}", .{ icon, title });
 
         if (message) |msg| {
             try writer.print(": {s}", .{msg});
         }
 
-        try writer.print("{s}\n", .{color_end});
+        try context.term.unified.Style.reset(writer, self.context.termCaps);
+        try writer.print("\n", .{});
     }
 
     const StyleElements = struct {
         icon: []const u8,
-        color_start: []const u8,
-        color_end: []const u8,
+        style: context.term.unified.Style,
     };
 
     fn getStyledElements(self: *NotificationDisplay, notification_type: NotificationType, use_colors: bool) StyleElements {
         _ = self;
 
-        return switch (notification_type) {
-            .info => StyleElements{ .icon = "ℹ", .color_start = if (use_colors) "\x1b[94m" else "", .color_end = if (use_colors) "\x1b[0m" else "" },
-            .success => StyleElements{ .icon = "✓", .color_start = if (use_colors) "\x1b[92m" else "", .color_end = if (use_colors) "\x1b[0m" else "" },
-            .warning => StyleElements{ .icon = "⚠", .color_start = if (use_colors) "\x1b[93m" else "", .color_end = if (use_colors) "\x1b[0m" else "" },
-            .err => StyleElements{ .icon = "✗", .color_start = if (use_colors) "\x1b[91m" else "", .color_end = if (use_colors) "\x1b[0m" else "" },
-            .progress => StyleElements{ .icon = "⋯", .color_start = if (use_colors) "\x1b[96m" else "", .color_end = if (use_colors) "\x1b[0m" else "" },
-        };
+        const style = if (use_colors) switch (notification_type) {
+            .info => context.term.unified.Style{ .fg_color = .{ .ansi = 12 } }, // Bright Blue
+            .success => context.term.unified.Style{ .fg_color = .{ .ansi = 10 } }, // Bright Green
+            .warning => context.term.unified.Style{ .fg_color = .{ .ansi = 11 } }, // Bright Yellow
+            .@"error" => context.term.unified.Style{ .fg_color = .{ .ansi = 9 } }, // Bright Red
+            .debug => context.term.unified.Style{ .fg_color = .{ .ansi = 13 } }, // Bright Magenta
+            .critical => context.term.unified.Style{ .fg_color = .{ .ansi = 9 } }, // Bright Red
+            .progress => context.term.unified.Style{ .fg_color = .{ .ansi = 14 } }, // Bright Cyan
+        } else context.term.unified.Style{};
+
+        // Use base notification system's icons
+        const icon = if (use_colors)
+            notification_type.icon()
+        else
+            notification_type.asciiIcon();
+
+        return StyleElements{ .icon = icon, .style = style };
     }
 
     /// Show progress notification with percentage

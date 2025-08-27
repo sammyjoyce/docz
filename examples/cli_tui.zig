@@ -4,9 +4,9 @@
 const std = @import("std");
 
 // Import our systems
-const cli = @import("cli_demo/components/cli.zig");
-const unified_renderer = @import("tui/core/unified_renderer.zig");
-const demo_widget = @import("tui/widgets/demo_widget.zig");
+const cli = @import("examples/cli/components/cli.zig");
+const unified_renderer = @import("src/shared/tui/core/unified_renderer.zig");
+const demo_widget = @import("src/shared/tui/widgets/demo_widget.zig");
 
 const Allocator = std.mem.Allocator;
 const CLI = cli.CLI;
@@ -14,7 +14,7 @@ const UnifiedRenderer = unified_renderer.UnifiedRenderer;
 const Theme = unified_renderer.Theme;
 const Rect = unified_renderer.Rect;
 const Size = unified_renderer.Size;
-const Color = @import("cli/core/unified_terminal.zig").Color;
+const Color = @import("src/shared/cli/core/unified_terminal.zig").Color;
 
 /// Main demonstration function
 pub fn main() !void {
@@ -223,7 +223,7 @@ fn runIntegratedDemo(allocator: Allocator) !void {
 }
 
 /// Show TUI startup message with terminal capability info
-fn showTUIStartupMessage(terminal: *@import("cli/core/unified_terminal.zig").UnifiedTerminal) !void {
+fn showTUIStartupMessage(terminal: *@import("src/shared/cli/core/unified_terminal.zig").UnifiedTerminal) !void {
     const w = terminal.writer();
 
     try terminal.clearScreen();
@@ -234,7 +234,7 @@ fn showTUIStartupMessage(terminal: *@import("cli/core/unified_terminal.zig").Uni
     try w.writeAll("Detected Capabilities:\n");
 
     const capabilities = [_]struct {
-        feature: @import("cli/core/unified_terminal.zig").UnifiedTerminal.Feature,
+        feature: @import("src/shared/cli/core/unified_terminal.zig").UnifiedTerminal.Feature,
         name: []const u8,
         icon: []const u8,
     }{

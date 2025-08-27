@@ -99,19 +99,22 @@ pub const NotificationHandler = struct {
         if (!self.enabled) return;
 
         if (self.capabilities.notifications) {
-            // Simulate system notification (would use OSC 9)
-            std.debug.print("🔔 {s}", .{title});
+            // Use system notification (OSC 9)
+            var stdout_buffer: [4096]u8 = undefined;
+            var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+            try stdout_writer.interface.print("\x1b]9;{s}", .{title});
             if (message) |msg| {
-                std.debug.print(": {s}", .{msg});
+                try stdout_writer.interface.print(": {s}", .{msg});
             }
-            std.debug.print("\n", .{});
+            try stdout_writer.interface.print("\x1b\\", .{});
         } else {
-            // Fallback to console output
-            std.debug.print("ℹ {s}", .{title});
+            // Fallback to console output with proper formatting
+            const stdout = std.fs.File.stdout().writer();
             if (message) |msg| {
-                std.debug.print(": {s}", .{msg});
+                try stdout.print("ℹ {s}: {s}\n", .{title, msg});
+            } else {
+                try stdout.print("ℹ {s}\n", .{title});
             }
-            std.debug.print("\n", .{});
         }
     }
 };
@@ -125,10 +128,16 @@ pub const Clipboard = struct {
 
     pub fn copy(self: *Clipboard, data: []const u8) !void {
         if (self.capabilities.clipboard) {
-            // Would use OSC 52 to copy to clipboard
-            std.debug.print("📋 Copied to clipboard: {s}\n", .{data[0..@min(50, data.len)]});
+            // Use OSC 52 to copy to clipboard
+            var encoded_buffer: [4096]u8 = undefined;
+            const encoded = std.base64.standard.Encoder.encode(&encoded_buffer, data);
+            const stdout = std.fs.File.stdout().writer();
+            try stdout.print("\x1b]52;c;{s}\x1b\\", .{encoded});
+            // Show confirmation
+            try stdout.print("📋 Copied to clipboard: {s}\n", .{data[0..@min(50, data.len)]});
         } else {
-            std.debug.print("📄 Copy manually: {s}\n", .{data});
+            const stdout = std.fs.File.stdout().writer();
+            try stdout.print("📄 Copy manually: {s}\n", .{data});
         }
     }
 };
@@ -201,7 +210,8 @@ pub const Cli = struct {
 
     pub fn verboseLog(self: *Cli, comptime fmt: []const u8, args: anytype) void {
         if (self.verbose) {
-            std.debug.print("[VERBOSE] " ++ fmt ++ "\n", args);
+            const stdout = std.fs.File.stdout().writer();
+            stdout.print("[VERBOSE] " ++ fmt ++ "\n", args) catch {};
         }
     }
 };
@@ -476,15 +486,18 @@ pub const CliApp = struct {
         const result = try self.router.execute(args);
 
         // Handle result
+        const stdout = std.fs.File.stdout().writer();
+        const stderr = std.fs.File.stderr().writer();
+
         if (result.success) {
             if (result.output) |output| {
-                std.debug.print("{s}\n", .{output});
+                stdout.print("{s}\n", .{output}) catch {};
                 self.allocator.free(output);
             }
             return result.exit_code;
         } else {
             if (result.error_msg) |msg| {
-                std.debug.print("Error: {s}\n", .{msg});
+                stderr.print("Error: {s}\n", .{msg}) catch {};
             }
             return result.exit_code;
         }
@@ -500,67 +513,69 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    std.debug.print("=== Unified CLI Architecture Demo ===\n\n", .{});
+    const stdout = std.fs.File.stdout().writer();
+    try stdout.print("=== Unified CLI Architecture Demo ===\n\n", .{});
 
     var app = CliApp.init(allocator);
 
     // Demo 1: Show capabilities and help
-    std.debug.print("1. Capability Detection and Help:\n", .{});
-    std.debug.print("Terminal Type: {s}\n", .{app.context.capabilitySummary()});
+    try stdout.print("1. Capability Detection and Help:\n", .{});
+    try stdout.print("Terminal Type: {s}\n", .{app.context.capabilitySummary()});
     _ = try app.run(&[_][]const u8{"help"});
 
-    std.debug.print("\n==================================================\n", .{});
+    try stdout.print("\n==================================================\n", .{});
 
     // Demo 2: Basic commands
-    std.debug.print("2. Basic Commands:\n", .{});
+    try stdout.print("2. Basic Commands:\n", .{});
     _ = try app.run(&[_][]const u8{"version"});
-    std.debug.print("\n", .{});
+    try stdout.print("\n", .{});
     _ = try app.run(&[_][]const u8{ "auth", "status" });
 
-    std.debug.print("\n==================================================\n", .{});
+    try stdout.print("\n==================================================\n", .{});
 
     // Demo 3: Pipeline commands
-    std.debug.print("3. Pipeline Commands:\n", .{});
+    try stdout.print("3. Pipeline Commands:\n", .{});
     _ = try app.run(&[_][]const u8{"auth status | clipboard"});
-    std.debug.print("\n", .{});
+    try stdout.print("\n", .{});
     _ = try app.run(&[_][]const u8{"auth status | format json"});
 
-    std.debug.print("\n==================================================\n", .{});
+    try stdout.print("\n==================================================\n", .{});
 
     // Demo 4: Workflow execution
-    std.debug.print("4. Workflow Execution:\n", .{});
+    try stdout.print("4. Workflow Execution:\n", .{});
     _ = try app.run(&[_][]const u8{ "workflow", "auth-setup", "--verbose" });
 
-    std.debug.print("\n==================================================\n", .{});
+    try stdout.print("\n==================================================\n", .{});
 
     // Demo 5: Smart components showcase
-    std.debug.print("5. Smart Components:\n", .{});
+    try stdout.print("5. Smart Components:\n", .{});
     demoSmartComponents(&app.context);
 
-    std.debug.print("\n=== Demo Complete ===\n", .{});
-    std.debug.print("✅ Successfully demonstrated unified CLI architecture\n", .{});
+    try stdout.print("\n=== Demo Complete ===\n", .{});
+    try stdout.print("✅ Successfully demonstrated unified CLI architecture\n", .{});
 }
 
 fn demoSmartComponents(ctx: *Cli) void {
-    std.debug.print("Smart Component Examples:\n\n", .{});
+    const stdout = std.fs.File.stdout().writer();
+    stdout.print("Smart Component Examples:\n\n", .{}) catch {};
 
     // Hyperlink example
-    std.debug.print("Hyperlink Component:\n", .{});
+    stdout.print("Hyperlink Component:\n", .{}) catch {};
     var stdout_buffer: [4096]u8 = undefined;
     var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
-    const stdout = &stdout_writer.interface;
-    ctx.hyperlink.writeLink(stdout, "https://docs.example.com", "Documentation") catch {};
-    stdout.flush() catch {};
-    std.debug.print("\n", .{});
-    ctx.hyperlink.writeLink(stdout, "https://api.example.com", "API Reference") catch {};
-    stdout.flush() catch {};
-    std.debug.print("\n\n", .{});
+    const stdout_interface = &stdout_writer.interface;
+    ctx.hyperlink.writeLink(stdout_interface, "https://docs.example.com", "Documentation") catch {};
+    stdout_interface.flush() catch {};
+    stdout.print("\n", .{}) catch {};
+    ctx.hyperlink.writeLink(stdout_interface, "https://api.example.com", "API Reference") catch {};
+    stdout_interface.flush() catch {};
+    stdout.print("\n\n", .{}) catch {};
 
     // Notification example
-    std.debug.print("Notification Component:\n", .{});
+    stdout.print("Notification Component:\n", .{}) catch {};
     ctx.notification.send("Demo Notification", "This shows how notifications work") catch {};
 
     // Clipboard example
-    std.debug.print("Clipboard Component:\n", .{});
+    stdout.print("Clipboard Component:\n", .{}) catch {};
     ctx.clipboard.copy("Sample text for clipboard") catch {};
 }

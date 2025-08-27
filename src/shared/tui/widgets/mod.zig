@@ -19,6 +19,7 @@ pub const Core = struct {
     pub const TabContainer = @import("core/tabs.zig").TabContainer;
     pub const TagInput = @import("core/tag_input.zig").TagInput;
     pub const DiffViewer = @import("core/diff_viewer.zig").DiffViewer;
+    pub const Clear = @import("core/clear.zig").Clear;
 
     // Placeholder implementations for widgets to be extracted
     pub const Table = struct {
@@ -29,11 +30,11 @@ pub const Core = struct {
     };
 };
 
-// Enhanced widgets (advanced functionality)
-pub const Enhanced = struct {
-    pub const ProgressBar = @import("enhanced/progress.zig").ProgressBar;
-    pub const Notification = @import("enhanced/notification.zig").Notification;
-    pub const Graphics = @import("enhanced/graphics.zig").GraphicsWidget;
+// Rich widgets (advanced functionality)
+pub const Rich = struct {
+    pub const ProgressBar = @import("rich/progress.zig").ProgressBar;
+    pub const Notification = @import("rich/notification.zig").Notification;
+    pub const Graphics = @import("rich/graphics.zig").GraphicsWidget;
 };
 
 // Dashboard widgets (new advanced graphics widgets)
@@ -50,12 +51,13 @@ pub const TabContainer = Core.TabContainer;
 pub const Table = Core.Table;
 pub const TagInput = Core.TagInput;
 pub const DiffViewer = Core.DiffViewer;
+pub const Clear = Core.Clear;
 pub const Tag = @import("core/tag_input.zig").Tag;
 pub const TagCategory = @import("core/tag_input.zig").TagCategory;
 pub const TagInputConfig = @import("core/tag_input.zig").TagInputConfig;
-pub const ProgressBar = Enhanced.ProgressBar;
-pub const Notification = Enhanced.Notification;
-pub const Graphics = Enhanced.Graphics;
+pub const ProgressBar = Rich.ProgressBar;
+pub const Notification = Rich.Notification;
+pub const Graphics = Rich.Graphics;
 
 // Dashboard exports
 pub const Dashboard = dashboard.Dashboard;
@@ -72,7 +74,7 @@ pub const KPICard = dashboard.KPICard;
 // Legacy compatibility exports
 pub const MenuItem = Menu.MenuItem;
 pub const GraphicsWidget = Graphics;
-pub const NotificationController = Enhanced.NotificationController;
+pub const NotificationController = Rich.NotificationController;
 
 // Additional dashboard exports for compatibility
 pub const Chart = LineChart;

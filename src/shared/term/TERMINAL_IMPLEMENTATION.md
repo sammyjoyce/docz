@@ -25,7 +25,7 @@ I've successfully implemented the most valuable components for improving this pr
 
 ### 2. ✅ Enhanced cellbuf with advanced features
 
-**File:** `src/term/enhanced_cellbuf.zig`
+**File:** `src/shared/term/cellbuf.zig`
 
 **New Features Added:**
 - **AttrMask**: Packed bitfield for text attributes (bold, italic, underline, etc.)
@@ -43,7 +43,7 @@ I've successfully implemented the most valuable components for improving this pr
 
 ### 3. ✅ Modern key input handling
 
-**File:** `src/term/enhanced_input.zig`
+**File:** `src/term/ansi/input_extra.zig`
 
 **New Features Added:**
 - **KeyMod**: Comprehensive modifier key support (shift, alt, ctrl, meta, hyper, super, caps_lock, num_lock)
@@ -132,7 +132,7 @@ The new implementations are designed to:
 
 ### Enhanced Cellbuf
 ```zig
-const cellbuf = @import("term/enhanced_cellbuf.zig");
+const cellbuf = @import("term/cellbuf.zig");
 
 var buffer = try cellbuf.Buffer.init(allocator, 80, 24);
 defer buffer.deinit();
@@ -143,7 +143,7 @@ _ = buffer.setCell(0, 0, cell);
 
 ### Enhanced Input
 ```zig
-const input = @import("term/enhanced_input.zig");
+const input = @import("term/input/input_extra.zig");
 
 var parser = input.InputParser.init(allocator);
 defer parser.deinit();

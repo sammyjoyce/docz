@@ -11,13 +11,9 @@ const std = @import("std");
 
 // Core terminal capabilities and detection
 pub const caps = @import("caps.zig");
-pub const capability_detector = @import("capability_detector.zig");
-pub const modern_terminal_detection = @import("modern_terminal_detection.zig");
-pub const terminal_features = @import("terminal_features.zig");
 
 // Terminal management
 pub const cellbuf = @import("cellbuf.zig");
-pub const cellbuf_extended = @import("cellbuf_extended.zig");
 pub const graphics_manager = @import("graphics_manager.zig");
 pub const editor = @import("editor.zig");
 pub const pty = @import("pty.zig");
@@ -31,12 +27,14 @@ pub const clipboard_extended = @import("clipboard_extended.zig");
 // Terminal features
 pub const bracketed_paste = @import("bracketed_paste.zig");
 pub const terminal_capabilities = @import("terminal_capabilities.zig");
+pub const capability_detector = @import("capability_detector.zig");
+pub const mouse_capability_detector = @import("mouse_capability_detector.zig");
+pub const terminal_query_system = @import("terminal_query_system.zig");
 pub const grapheme = @import("grapheme.zig");
 pub const wcwidth = @import("wcwidth.zig");
 
 // Terminal color management
 pub const terminal_color_management = @import("ansi/terminal_color_management.zig");
-pub const terminal_query_system = @import("terminal_query_system.zig");
 pub const precise_ansi_palette = @import("precise_ansi_palette.zig");
 
 // ANSI submodule - All ANSI escape sequence handling

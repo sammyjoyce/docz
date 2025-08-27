@@ -2,109 +2,13 @@
 //! Represents a complete color scheme with all semantic colors
 
 const std = @import("std");
+const color_mod = @import("../term/ansi/color.zig");
 
-/// RGB color representation
-pub const RGB = struct {
-    r: u8,
-    g: u8,
-    b: u8,
+// Re-export color types from the primary color module
+pub const RGB = color_mod.RgbColor;
+pub const HSL = color_mod.Hsl;
 
-    pub fn init(r: u8, g: u8, b: u8) RGB {
-        return .{ .r = r, .g = g, .b = b };
-    }
-
-    /// Convert to HSL for calculations
-    pub fn toHSL(self: RGB) HSL {
-        const rNorm = @as(f32, @floatFromInt(self.r)) / 255.0;
-        const gNorm = @as(f32, @floatFromInt(self.g)) / 255.0;
-        const bNorm = @as(f32, @floatFromInt(self.b)) / 255.0;
-
-        const max = @max(rNorm, @max(gNorm, bNorm));
-        const min = @min(rNorm, @min(gNorm, bNorm));
-        const delta = max - min;
-
-        var h: f32 = 0;
-        var s: f32 = 0;
-        const l = (max + min) / 2.0;
-
-        if (delta > 0) {
-            s = if (l < 0.5) delta / (max + min) else delta / (2 - max - min);
-
-            if (max == rNorm) {
-                h = ((gNorm - bNorm) / delta) + if (gNorm < bNorm) 6 else 0;
-            } else if (max == gNorm) {
-                h = ((bNorm - rNorm) / delta) + 2;
-            } else {
-                h = ((rNorm - gNorm) / delta) + 4;
-            }
-            h = h / 6.0;
-        }
-
-        return .{ .h = h * 360, .s = s, .l = l };
-    }
-
-    /// Convert to hex string
-    pub fn toHex(self: RGB, allocator: std.mem.Allocator) ![]u8 {
-        return try std.fmt.allocPrint(allocator, "#{x:0>2}{x:0>2}{x:0>2}", .{ self.r, self.g, self.b });
-    }
-
-    /// Parse from hex string
-    pub fn fromHex(hex: []const u8) !RGB {
-        var cleanHex = hex;
-        if (hex[0] == '#') {
-            cleanHex = hex[1..];
-        }
-
-        if (cleanHex.len != 6) return error.InvalidHexColor;
-
-        const r = try std.fmt.parseInt(u8, cleanHex[0..2], 16);
-        const g = try std.fmt.parseInt(u8, cleanHex[2..4], 16);
-        const b = try std.fmt.parseInt(u8, cleanHex[4..6], 16);
-
-        return RGB.init(r, g, b);
-    }
-};
-
-/// HSL color representation for calculations
-pub const HSL = struct {
-    h: f32, // Hue (0-360)
-    s: f32, // Saturation (0-1)
-    l: f32, // Lightness (0-1)
-
-    pub fn toRGB(self: HSL) RGB {
-        const h_norm = self.h / 360.0;
-
-        if (self.s == 0) {
-            const v = @as(u8, @intFromFloat(self.l * 255));
-            return RGB.init(v, v, v);
-        }
-
-        const q = if (self.l < 0.5) self.l * (1 + self.s) else self.l + self.s - (self.l * self.s);
-        const p = 2 * self.l - q;
-
-        const r = hueToRGB(p, q, h_norm + 1.0 / 3.0);
-        const g = hueToRGB(p, q, h_norm);
-        const b = hueToRGB(p, q, h_norm - 1.0 / 3.0);
-
-        return RGB.init(
-            @as(u8, @intFromFloat(r * 255)),
-            @as(u8, @intFromFloat(g * 255)),
-            @as(u8, @intFromFloat(b * 255)),
-        );
-    }
-
-    fn hueToRGB(p: f32, q: f32, t_raw: f32) f32 {
-        var t = t_raw;
-        if (t < 0) t += 1;
-        if (t > 1) t -= 1;
-        if (t < 1.0 / 6.0) return p + (q - p) * 6 * t;
-        if (t < 0.5) return q;
-        if (t < 2.0 / 3.0) return p + (q - p) * (2.0 / 3.0 - t) * 6;
-        return p;
-    }
-};
-
-/// Color with multiple fallback representations
+/// Color with multiple fallback representations for terminal compatibility
 pub const Color = struct {
     rgb: RGB,
     ansi256: u8,

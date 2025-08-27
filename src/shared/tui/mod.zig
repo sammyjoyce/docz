@@ -105,8 +105,8 @@ pub fn deinitTUI() void {
 }
 
 // Progressive enhancement detection
-pub fn detectCapabilities() term_shared.TermCaps {
-    return term_shared.capability_detector.detectCapabilities();
+pub fn detectCapabilities() term_shared.caps.TermCaps {
+    return term_shared.caps.getTermCaps();
 }
 
 // Convenience functions for quick setup

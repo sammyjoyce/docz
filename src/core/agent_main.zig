@@ -4,7 +4,8 @@
 const std = @import("std");
 const engine = @import("engine.zig");
 const cli = @import("cli_shared");
-const interactive_session = @import("interactive_session.zig");
+const session = @import("session.zig");
+const auth = @import("../shared/auth/core/mod.zig");
 const agent_base = @import("agent_base.zig");
 const term = @import("../shared/term/mod.zig");
 
@@ -404,7 +405,7 @@ fn determineTuiMode(requested_mode: TuiMode) TuiMode {
 }
 
 /// Create session configuration based on options and TUI mode
-fn createSessionConfig(options: InteractiveCliOptions, tui_mode: TuiMode) interactive_session.SessionConfig {
+fn createSessionConfig(options: InteractiveCliOptions, tui_mode: TuiMode) session.SessionConfig {
     const enable_tui = switch (tui_mode) {
         .rich, .basic => true,
         .none, .auto => false,
@@ -423,10 +424,9 @@ fn createSessionConfig(options: InteractiveCliOptions, tui_mode: TuiMode) intera
 }
 
 /// Clean up session configuration memory
-fn cleanupSessionConfig(allocator: std.mem.Allocator, config: *interactive_session.SessionConfig) void {
-    if (config.title.len > 0 and !std.mem.eql(u8, config.title, "AI Agent Interactive Session")) {
-        allocator.free(config.title);
-    }
+fn cleanupSessionConfig(allocator: std.mem.Allocator, config: *session.SessionConfig) void {
+    _ = allocator; // Not currently used since session config is copied
+    _ = config; // Not currently used since session config is copied
 }
 
 /// Ensure authentication is properly configured

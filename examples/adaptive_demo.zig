@@ -1,9 +1,10 @@
 const std = @import("std");
 const AdaptiveRenderer = @import("../src/shared/render/adaptive_renderer.zig").AdaptiveRenderer;
 const RenderMode = AdaptiveRenderer.RenderMode;
-const Progress = @import("../src/shared/render/components/ProgressBar.zig").Progress;
-const renderProgress = @import("../src/shared/render/components/ProgressBar.zig").renderProgress;
-const AnimatedProgress = @import("../src/shared/render/components/ProgressBar.zig").AnimatedProgress;
+const ProgressData = @import("../src/shared/components/progress.zig").ProgressData;
+const ProgressRenderer = @import("../src/shared/components/progress.zig").ProgressRenderer;
+const renderProgressData = @import("../src/shared/components/progress.zig").renderProgressData;
+const AnimatedProgress = @import("../src/shared/components/progress.zig").AnimatedProgress;
 const Table = @import("../src/shared/render/components/Table.zig").Table;
 const renderTable = @import("../src/shared/render/components/Table.zig").renderTable;
 const Chart = @import("../src/shared/render/components/Chart.zig").Chart;
@@ -101,37 +102,32 @@ fn demoProgressBars(renderer: *AdaptiveRenderer) !void {
     try renderer.writeText("=" ** 40, null, false);
     try renderer.writeText("\n\n", null, false);
 
-    const progress_examples = [_]Progress{
-        .{
-            .value = 0.25,
-            .label = "Download",
-            .percentage = true,
-            .color = Color.ansi(.blue),
-        },
-        .{
-            .value = 0.67,
-            .label = "Processing",
-            .percentage = true,
-            .eta = true,
-            .eta_seconds = 45,
-            .color = Color.ansi(.yellow),
-        },
-        .{
-            .value = 0.89,
-            .label = "Upload",
-            .percentage = true,
-            .color = Color.ansi(.green),
-        },
-        .{
-            .value = 1.0,
-            .label = "Complete",
-            .percentage = true,
-            .color = Color.rgb(0, 255, 0),
-        },
-    };
+    // Create progress examples
+    var download_data = ProgressData.init(renderer.allocator);
+    try download_data.setProgress(0.25);
+    download_data.label = try renderer.allocator.dupe(u8, "Download");
+    download_data.show_percentage = true;
+
+    var processing_data = ProgressData.init(renderer.allocator);
+    try processing_data.setProgress(0.67);
+    processing_data.label = try renderer.allocator.dupe(u8, "Processing");
+    processing_data.show_percentage = true;
+    processing_data.show_eta = true;
+
+    var upload_data = ProgressData.init(renderer.allocator);
+    try upload_data.setProgress(0.89);
+    upload_data.label = try renderer.allocator.dupe(u8, "Upload");
+    upload_data.show_percentage = true;
+
+    var complete_data = ProgressData.init(renderer.allocator);
+    try complete_data.setProgress(1.0);
+    complete_data.label = try renderer.allocator.dupe(u8, "Complete");
+    complete_data.show_percentage = true;
+
+    const progress_examples = [_]*ProgressData{ &download_data, &processing_data, &upload_data, &complete_data };
 
     for (progress_examples) |progress| {
-        try renderProgress(renderer, progress);
+        try renderProgressData(renderer, progress);
         try renderer.writeText("\n", null, false);
     }
 
@@ -282,13 +278,12 @@ fn demoAnimatedProgress(renderer: *AdaptiveRenderer) !void {
     try renderer.writeText("=" ** 45, null, false);
     try renderer.writeText("\n\n", null, false);
 
-    var progress = AnimatedProgress.init(renderer, Progress{
-        .value = 0.0,
-        .label = "Processing files",
-        .percentage = true,
-        .eta = true,
-        .color = Color.ansi(.green),
-    });
+    var progress_data = ProgressData.init(renderer.allocator);
+    progress_data.label = try renderer.allocator.dupe(u8, "Processing files");
+    progress_data.show_percentage = true;
+    progress_data.show_eta = true;
+
+    var progress = try AnimatedProgress.init(renderer, progress_data);
 
     const steps = 50;
     for (0..steps + 1) |i| {
@@ -330,13 +325,11 @@ fn demoRenderModeComparison(allocator: std.mem.Allocator) !void {
         try renderer.writeText("\n\n", null, false);
 
         // Sample progress bar
-        const progress = Progress{
-            .value = 0.75,
-            .label = "Sample Progress",
-            .percentage = true,
-            .color = Color.ansi(.green),
-        };
-        try renderProgress(renderer, progress);
+        var progress_data = ProgressData.init(renderer.allocator);
+        try progress_data.setProgress(0.75);
+        progress_data.label = try renderer.allocator.dupe(u8, "Sample Progress");
+        progress_data.show_percentage = true;
+        try renderProgressData(renderer, &progress_data);
         try renderer.writeText("\n\n", null, false);
 
         // Sample table
@@ -377,12 +370,11 @@ test "adaptive demo" {
     const renderer = try AdaptiveRenderer.initWithMode(testing.allocator, .minimal);
     defer renderer.deinit();
 
-    const progress = Progress{
-        .value = 0.5,
-        .label = "Test",
-        .percentage = true,
-    };
-    try renderProgress(renderer, progress);
+    var progress_data = ProgressData.init(testing.allocator);
+    try progress_data.setProgress(0.5);
+    progress_data.label = try testing.allocator.dupe(u8, "Test");
+    progress_data.show_percentage = true;
+    try renderProgressData(renderer, &progress_data);
 
     const headers = [_][]const u8{ "A", "B" };
     const row = [_][]const u8{ "1", "2" };

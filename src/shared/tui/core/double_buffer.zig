@@ -1,10 +1,10 @@
 const std = @import("std");
 const term_shared = @import("term_shared");
-const Cell = term_shared.cellbuf_enhanced.Cell;
-const Style = term_shared.cellbuf_enhanced.Style;
-const Color = term_shared.cellbuf_enhanced.Color;
-const EnhancedCellBuffer = term_shared.cellbuf_enhanced.EnhancedCellBuffer;
-const Rectangle = term_shared.cellbuf_enhanced.Rectangle;
+const Cell = term_shared.cellbuf.Cell;
+const Style = term_shared.cellbuf.Style;
+const Color = term_shared.cellbuf.Color;
+const RichCellBuffer = @import("../../components/cell_buffer.zig").RichCellBuffer;
+const Rectangle = term_shared.cellbuf.Rectangle;
 
 /// Statistics for tracking rendering performance
 pub const RenderStatistics = struct {
@@ -78,9 +78,9 @@ pub const RenderOptimization = struct {
 pub const DoubleBuffer = struct {
     allocator: std.mem.Allocator,
     /// Front buffer (what's currently displayed)
-    front: EnhancedCellBuffer,
+    front: RichCellBuffer,
     /// Back buffer (what we're drawing to)
-    back: EnhancedCellBuffer,
+    back: RichCellBuffer,
     /// Width of buffers
     width: u32,
     /// Height of buffers
@@ -103,10 +103,10 @@ pub const DoubleBuffer = struct {
 
     /// Initialize double buffer with given dimensions
     pub fn init(allocator: std.mem.Allocator, width: u32, height: u32) !Self {
-        const front = try EnhancedCellBuffer.init(allocator, width, height);
+        const front = try RichCellBuffer.init(allocator, width, height);
         errdefer front.deinit();
 
-        const back = try EnhancedCellBuffer.init(allocator, width, height);
+        const back = try RichCellBuffer.init(allocator, width, height);
         errdefer back.deinit();
 
         var self = Self{
@@ -132,7 +132,7 @@ pub const DoubleBuffer = struct {
     }
 
     /// Get the back buffer for drawing
-    pub fn getBackBuffer(self: *Self) *EnhancedCellBuffer {
+    pub fn getBackBuffer(self: *Self) *RichCellBuffer {
         return &self.back;
     }
 
@@ -342,8 +342,8 @@ pub const DoubleBuffer = struct {
                 break :blk sum;
             };
 
-            for (run_start..run_start + run.length) |idx| {
-                const cell_str = try changes[idx].cell.toString(self.allocator);
+            for (run_start..run_start + run.length) |index| {
+                const cell_str = try changes[index].cell.toString(self.allocator);
                 defer self.allocator.free(cell_str);
                 try content.appendSlice(cell_str);
             }

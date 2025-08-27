@@ -1,14 +1,18 @@
 //! Enhanced input system for TUI applications
-//! Integrates comprehensive input handling from @src/shared/term
+//! Uses the unified input system from @src/shared/components for comprehensive input support
 pub const events = @import("events.zig");
 pub const focus = @import("focus.zig");
 pub const paste = @import("paste.zig");
 pub const mouse = @import("mouse.zig");
 
-// Re-export commonly used types
+// Re-export unified input types
 pub const EventSystem = events.EventSystem;
 pub const InputEvent = events.InputEvent;
-pub const InputParser = events.InputParser;
+pub const InputManager = events.InputManager;
+pub const InputConfig = events.InputConfig;
+pub const InputFeatures = events.InputFeatures;
+pub const Key = events.Key;
+pub const Modifiers = events.Modifiers;
 
 pub const Focus = focus.Focus;
 pub const FocusHandler = focus.FocusHandler;

@@ -15,7 +15,7 @@ const focus_mod = @import("../../core/input/focus.zig");
 const constraint_solver = @import("../../core/constraint_solver.zig");
 const term_ansi = @import("../../../term/ansi/color.zig");
 const term_caps = @import("../../../term/caps.zig");
-const term_input = @import("../../../term/input/unified_input.zig");
+const input_mod = @import("../../../components/input.zig");
 
 // Type aliases for convenience
 const ConstraintSolver = constraint_solver.ConstraintSolver;
@@ -107,7 +107,7 @@ pub const PaneContent = struct {
 
     pub const VTable = struct {
         render: *const fn (ptr: *anyopaque, bounds: Bounds) anyerror!void,
-        handleKeyEvent: *const fn (ptr: *anyopaque, event: term_input.KeyEvent) anyerror!bool,
+        handleKeyEvent: *const fn (ptr: *anyopaque, event: input_mod.InputEvent.KeyPressEvent) anyerror!bool,
         handleMouseEvent: *const fn (ptr: *anyopaque, event: MouseEvent) anyerror!bool,
         onFocus: *const fn (ptr: *anyopaque) void,
         onBlur: *const fn (ptr: *anyopaque) void,
@@ -118,7 +118,7 @@ pub const PaneContent = struct {
         return self.vtable.render(self.ptr, bounds);
     }
 
-    pub fn handleKeyEvent(self: PaneContent, event: term_input.KeyEvent) !bool {
+    pub fn handleKeyEvent(self: PaneContent, event: input_mod.InputEvent.KeyPressEvent) !bool {
         return self.vtable.handleKeyEvent(self.ptr, event);
     }
 
@@ -579,7 +579,7 @@ pub const SplitPane = struct {
     }
 
     /// Handle keyboard events
-    pub fn handleKeyEvent(self: *Self, event: term_input.KeyEvent) !bool {
+    pub fn handleKeyEvent(self: *Self, event: input_mod.InputEvent.KeyPressEvent) !bool {
         // Check if Alt is pressed for resize operations
         if (event.modifiers.alt) {
             switch (event.key) {
@@ -945,7 +945,7 @@ pub const SplitPane = struct {
         }.onBlur,
 
         .handleKeyEvent = struct {
-            fn handleKeyEvent(ptr: *anyopaque, event: term_input.KeyEvent) bool {
+            fn handleKeyEvent(ptr: *anyopaque, event: input_mod.InputEvent.KeyPressEvent) bool {
                 const self = @as(*Self, @ptrCast(@alignCast(ptr)));
                 return self.handleKeyEvent(event) catch false;
             }
@@ -994,7 +994,7 @@ pub const ExamplePane = struct {
         }.render,
 
         .handleKeyEvent = struct {
-            fn handleKeyEvent(ptr: *anyopaque, event: term_input.KeyEvent) anyerror!bool {
+            fn handleKeyEvent(ptr: *anyopaque, event: input_mod.InputEvent.KeyPressEvent) anyerror!bool {
                 _ = ptr;
                 _ = event;
                 return false;

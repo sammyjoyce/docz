@@ -8,8 +8,8 @@ const std = @import("std");
 const term_shared = @import("term_shared");
 const graphics_manager = term_shared.graphics_manager;
 const unified = term_shared.unified;
-const enhanced_mouse = term_shared.input.enhanced_mouse;
-const enhanced_input = term_shared.input.enhanced_input_handler;
+const enhanced_mouse = term_shared.input.mouse;
+const enhanced_input = term_shared.input.input_handler;
 
 /// Graphics Canvas with layer management and real-time interaction
 pub const Canvas = struct {

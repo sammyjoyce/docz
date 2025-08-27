@@ -9,6 +9,7 @@ pub const bounds = @import("bounds.zig");
 pub const layout = @import("layout.zig");
 pub const screen = @import("screen.zig");
 pub const renderer = @import("renderer.zig");
+pub const stylize = @import("stylize.zig");
 
 // Renderers
 pub const renderers = @import("renderers/mod.zig");

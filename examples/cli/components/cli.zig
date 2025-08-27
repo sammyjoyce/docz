@@ -224,7 +224,7 @@ pub const Cli = struct {
 
         try w.writeAll("⚡ Progress Bar Styles:\n");
 
-        const rich_progress = @import("../../src/cli/components/base/rich_progress_bar.zig");
+        const rich_progress = @import("../../src/shared/cli/components/base/rich_progress_bar.zig");
 
         const styles = [_]struct {
             style: rich_progress.ProgressStyle,

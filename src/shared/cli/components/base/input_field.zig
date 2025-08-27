@@ -2,8 +2,9 @@
 //! Supports different input types, real-time validation, and clipboard integration
 
 const std = @import("std");
-const term_ansi = @import("term_shared").ansi.color;
-const term_caps = @import("term_shared").caps;
+const components = @import("../../../components/mod.zig");
+const term_ansi = @import("../../../term/mod.zig").ansi.color;
+const term_caps = @import("../../../term/mod.zig").caps;
 const completion = @import("../../interactive/completion.zig");
 const Allocator = std.mem.Allocator;
 

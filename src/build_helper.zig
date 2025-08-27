@@ -265,14 +265,7 @@ pub fn createBuildModules(
         agent_module.addImport("tui", tui_module);
     }
 
-    if (config.manifest.modules.shared.ui) {
-        const ui_module = b.createModule(.{
-            .root_source_file = b.path("src/shared/ui/mod.zig"),
-            .target = target,
-            .optimize = optimize,
-        });
-        agent_module.addImport("ui", ui_module);
-    }
+
 
     // Add custom module paths
     for (config.manifest.modules.custom.paths) |custom_path| {

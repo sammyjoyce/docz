@@ -144,7 +144,7 @@ pub const Config = struct {
     maxTokens: u32 = 4096,
 
     // Output formatting
-    format: OutputFormat = .enhanced,
+    format: OutputFormat = .rich,
     theme: []const u8 = "default",
     color: bool = true,
 
@@ -161,14 +161,14 @@ pub const Config = struct {
     allocator: Allocator,
 
     pub const OutputFormat = enum {
-        simple,
-        enhanced,
+        basic,
+        rich,
         json,
         markdown,
 
         pub fn fromString(str: []const u8) ?OutputFormat {
-            if (std.mem.eql(u8, str, "simple")) return .simple;
-            if (std.mem.eql(u8, str, "enhanced")) return .enhanced;
+            if (std.mem.eql(u8, str, "basic")) return .basic;
+            if (std.mem.eql(u8, str, "rich")) return .rich;
             if (std.mem.eql(u8, str, "json")) return .json;
             if (std.mem.eql(u8, str, "markdown")) return .markdown;
             return null;

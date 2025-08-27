@@ -19,7 +19,7 @@
         .version = "1.0.0",
 
         // Brief description of what the agent does
-        .description = "Example agent demonstrating enhanced tool integration, JSON tools, and basic functionality",
+        .description = "Example agent demonstrating tool integration, JSON tools, and basic functionality",
 
         // Author information
         .author = .{

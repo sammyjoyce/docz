@@ -6,10 +6,10 @@
 pub const Theme = @import("default.zig").Theme;
 pub const DefaultTheme = @import("default.zig");
 
-// Enhanced theme system
-pub const EnhancedColor = @import("enhanced.zig").Color;
-pub const EnhancedTheme = @import("enhanced.zig").Theme;
-pub const ThemeManager = @import("enhanced.zig").ThemeManager;
+// Rich theme system
+pub const RichColor = @import("rich.zig").Color;
+pub const RichTheme = @import("rich.zig").Theme;
+pub const ThemeManager = @import("rich.zig").ThemeManager;
 
 // Additional theme definitions
 pub const Color = Theme.Color;

@@ -6,8 +6,7 @@ This directory contains a unified progress bar implementation that eliminates du
 
 ### Core Components
 
-- **`progress.zig`** - Base progress implementation with core data structures and utilities
-- **`progress_styles.zig`** - All unique rendering styles (ASCII, Unicode, gradients, animations, etc.)
+- **`progress.zig`** - Unified progress implementation with core data structures, utilities, and all rendering styles
 - **`mod.zig`** - Module exports and convenience functions
 
 ### Key Features
@@ -84,7 +83,7 @@ try progress.render(stdout);
 ### TUI Usage (with adapter)
 
 ```zig
-const TuiProgressBar = @import("tui/widgets/enhanced/progress_adapter.zig").ProgressBar;
+const TuiProgressBar = @import("tui/widgets/rich/progress_adapter.zig").ProgressBar;
 
 var progress = try TuiProgressBar.init("Upload", .gradient);
 progress.setProgress(0.75);
@@ -117,7 +116,7 @@ try progress.render(renderer, ctx);
 
 ### From TUI Progress Bar
 
-1. Replace `src/shared/tui/widgets/enhanced/progress.zig` usage with adapter
+1. Replace `src/shared/tui/widgets/rich/progress.zig` usage with adapter
 2. Update style enumeration
 3. Maintain existing render context compatibility
 

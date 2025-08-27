@@ -3,7 +3,8 @@
 //! This replaces the fragmented initialization patterns from multiple CLI entry points
 
 const std = @import("std");
-const term = @import("term_shared");
+const components = @import("../../components/mod.zig");
+const term = @import("../../term/mod.zig");
 const ansi_clipboard = term.ansi.clipboard;
 const ansi_notification = term.ansi.notification;
 const ansi_graphics = term.ansi.graphics;
@@ -48,6 +49,7 @@ pub const NotificationHandler = struct {
     allocator: std.mem.Allocator,
     capabilities: CapabilitySet,
     termCaps: term.caps.TermCaps,
+    terminal: *term.unified.Terminal,
     enabled: bool = true,
 
     pub const NotificationLevel = enum {
@@ -65,11 +67,12 @@ pub const NotificationHandler = struct {
         duration: ?u32 = null, // seconds
     };
 
-    pub fn init(allocator: std.mem.Allocator, capabilities: CapabilitySet, termCaps: term.caps.TermCaps) NotificationHandler {
+    pub fn init(allocator: std.mem.Allocator, capabilities: CapabilitySet, termCaps: term.caps.TermCaps, terminal: *term.unified.Terminal) NotificationHandler {
         return NotificationHandler{
             .allocator = allocator,
             .capabilities = capabilities,
             .termCaps = termCaps,
+            .terminal = terminal,
         };
     }
 
@@ -78,9 +81,7 @@ pub const NotificationHandler = struct {
 
         if (self.capabilities.notifications) {
             // Use system notifications via OSC sequences
-            var stdoutBuffer: [4096]u8 = undefined;
-            var stdoutWriter = std.fs.File.stdout().writer(&stdoutBuffer);
-            try ansi_notification.writeNotification(&stdoutWriter.interface, self.allocator, self.termCaps, notification.body orelse notification.title);
+            try ansi_notification.writeNotification(self.terminal.writer, self.allocator, self.termCaps, notification.body orelse notification.title);
         } else {
             // Fallback to formatted terminal output
             const level_prefix = switch (notification.level) {
@@ -91,9 +92,9 @@ pub const NotificationHandler = struct {
             };
 
             if (notification.body) |body| {
-                std.debug.print("{s} {s}: {s}\n", .{ level_prefix, notification.title, body });
+                try self.terminal.printf("{s} {s}: {s}\n", .{ level_prefix, notification.title, body }, null);
             } else {
-                std.debug.print("{s} {s}\n", .{ level_prefix, notification.title });
+                try self.terminal.printf("{s} {s}\n", .{ level_prefix, notification.title }, null);
             }
         }
     }
@@ -103,11 +104,13 @@ pub const NotificationHandler = struct {
 pub const Graphics = struct {
     allocator: std.mem.Allocator,
     capabilities: CapabilitySet,
+    terminal: *term.unified.Terminal,
 
-    pub fn init(allocator: std.mem.Allocator, capabilities: CapabilitySet) Graphics {
+    pub fn init(allocator: std.mem.Allocator, capabilities: CapabilitySet, terminal: *term.unified.Terminal) Graphics {
         return Graphics{
             .allocator = allocator,
             .capabilities = capabilities,
+            .terminal = terminal,
         };
     }
 
@@ -126,15 +129,15 @@ pub const Graphics = struct {
         const width = 40;
         const filled = @as(usize, @intFromFloat(progress * @as(f32, @floatFromInt(width))));
 
-        std.debug.print("[");
+        try self.terminal.printf("[", .{}, null);
         for (0..width) |i| {
             if (i < filled) {
-                std.debug.print("█");
+                try self.terminal.printf("█", .{}, null);
             } else {
-                std.debug.print("░");
+                try self.terminal.printf("░", .{}, null);
             }
         }
-        std.debug.print("] {d:.1}%\r", .{progress * 100});
+        try self.terminal.printf("] {d:.1}%\r", .{progress * 100}, null);
     }
 };
 
@@ -143,23 +146,23 @@ pub const Clipboard = struct {
     allocator: std.mem.Allocator,
     capabilities: CapabilitySet,
     termCaps: term.caps.TermCaps,
+    terminal: *term.unified.Terminal,
 
-    pub fn init(allocator: std.mem.Allocator, capabilities: CapabilitySet, termCaps: term.caps.TermCaps) Clipboard {
+    pub fn init(allocator: std.mem.Allocator, capabilities: CapabilitySet, termCaps: term.caps.TermCaps, terminal: *term.unified.Terminal) Clipboard {
         return Clipboard{
             .allocator = allocator,
             .capabilities = capabilities,
             .termCaps = termCaps,
+            .terminal = terminal,
         };
     }
 
     pub fn copy(self: *Clipboard, data: []const u8) !void {
         if (self.capabilities.clipboard) {
-            var stdoutBuffer: [4096]u8 = undefined;
-            var stdoutWriter = std.fs.File.stdout().writer(&stdoutBuffer);
-            try ansi_clipboard.writeClipboardDefault(&stdoutWriter.interface, self.allocator, self.termCaps, data);
+            try ansi_clipboard.writeClipboardDefault(self.terminal.writer, self.allocator, self.termCaps, data);
         } else {
             // Fallback: display data and suggest manual copy
-            std.debug.print("Copy the following to clipboard:\n{s}\n", .{data});
+            try self.terminal.printf("Copy the following to clipboard:\n{s}\n", .{data}, null);
         }
     }
 
@@ -173,20 +176,22 @@ pub const Hyperlink = struct {
     allocator: std.mem.Allocator,
     capabilities: CapabilitySet,
     termCaps: term.caps.TermCaps,
+    terminal: *term.unified.Terminal,
 
-    pub fn init(allocator: std.mem.Allocator, capabilities: CapabilitySet, termCaps: term.caps.TermCaps) Hyperlink {
+    pub fn init(allocator: std.mem.Allocator, capabilities: CapabilitySet, termCaps: term.caps.TermCaps, terminal: *term.unified.Terminal) Hyperlink {
         return Hyperlink{
             .allocator = allocator,
             .capabilities = capabilities,
             .termCaps = termCaps,
+            .terminal = terminal,
         };
     }
 
-    pub fn writeLink(self: *Hyperlink, writer: anytype, url: []const u8, text: []const u8) !void {
+    pub fn writeLink(self: *Hyperlink, url: []const u8, text: []const u8) !void {
         if (self.capabilities.hyperlinks) {
-            try ansi_hyperlink.writeHyperlink(writer, self.allocator, self.termCaps, url, text);
+            try ansi_hyperlink.writeHyperlink(self.terminal.writer, self.allocator, self.termCaps, url, text);
         } else {
-            try writer.print("{s} ({s})", .{ text, url });
+            try self.terminal.printf("{s} ({s})", .{ text, url }, null);
         }
     }
 
@@ -200,6 +205,7 @@ pub const Cli = struct {
     allocator: std.mem.Allocator,
     capabilities: CapabilitySet,
     termCaps: term.caps.TermCaps,
+    terminal: term.unified.Terminal,
     notification: NotificationHandler,
     graphics: Graphics,
     clipboard: Clipboard,
@@ -212,6 +218,9 @@ pub const Cli = struct {
         const capabilities = CapabilitySet.detect(allocator);
         const termCaps = try term.caps.detectCaps(allocator);
 
+        // Initialize unified terminal
+        var terminal = try term.unified.Terminal.init(allocator);
+
         // Load configuration
         const config = types.Config.loadDefault(allocator);
 
@@ -219,15 +228,17 @@ pub const Cli = struct {
             .allocator = allocator,
             .capabilities = capabilities,
             .termCaps = termCaps,
-            .notification = NotificationHandler.init(allocator, capabilities, termCaps),
-            .graphics = Graphics.init(allocator, capabilities),
-            .clipboard = Clipboard.init(allocator, capabilities, termCaps),
-            .hyperlink = Hyperlink.init(allocator, capabilities, termCaps),
+            .terminal = terminal,
+            .notification = NotificationHandler.init(allocator, capabilities, termCaps, &terminal),
+            .graphics = Graphics.init(allocator, capabilities, &terminal),
+            .clipboard = Clipboard.init(allocator, capabilities, termCaps, &terminal),
+            .hyperlink = Hyperlink.init(allocator, capabilities, termCaps, &terminal),
             .config = config,
         };
     }
 
     pub fn deinit(self: *Cli) void {
+        self.terminal.deinit();
         self.config.deinit(self.allocator);
     }
 
@@ -263,7 +274,7 @@ pub const Cli = struct {
     /// Log a message if verbose mode is enabled
     pub fn verboseLog(self: *Cli, comptime fmt: []const u8, args: anytype) void {
         if (self.verbose) {
-            std.debug.print("[VERBOSE] " ++ fmt ++ "\n", args);
+            self.terminal.printf("[VERBOSE] " ++ fmt ++ "\n", args, null) catch {};
         }
     }
 };

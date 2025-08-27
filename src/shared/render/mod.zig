@@ -61,14 +61,13 @@ pub const QualityTiers = @import("quality_tiers.zig").QualityTiers;
 pub const diff = @import("diff.zig");
 
 // Component modules
-const progress_bar_mod = @import("components/ProgressBar.zig");
 const table_mod = @import("components/Table.zig");
 const chart_mod = @import("components/Chart.zig");
 
-// Component exports
-pub const Progress = progress_bar_mod.Progress;
-pub const renderProgress = progress_bar_mod.renderProgress;
-pub const AnimatedProgress = progress_bar_mod.AnimatedProgress;
+// Progress bar exports from consolidated module
+pub const Progress = @import("../components/progress.zig").Progress;
+pub const renderProgress = @import("../components/progress.zig").renderProgress;
+pub const AnimatedProgress = @import("../components/progress.zig").AnimatedProgress;
 
 pub const Table = table_mod.Table;
 pub const renderTable = table_mod.renderTable;

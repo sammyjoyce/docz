@@ -64,7 +64,7 @@ pub fn main() !void {
     std.debug.print("Demo 2: Advanced Progress Bars\n");
     std.debug.print("------------------------------\n");
 
-    const advanced_progress = @import("widgets/enhanced/advanced_progress.zig");
+    const advanced_progress = @import("widgets/rich/advanced_progress.zig");
 
     // Different progress bar styles
     const progress_styles = [_]advanced_progress.AdvancedProgressBar.ProgressStyle{ .bar, .blocks, .gradient, .dots };

@@ -12,11 +12,11 @@
 
 const std = @import("std");
 const unified = @import("../../../src/shared/term/unified.zig");
-const caps = @import("../../../src/shared/term/caps.zig");
-const terminal_abstraction = @import("../../core/terminal_abstraction.zig");
+const capabilities = @import("../../../src/shared/term/caps.zig");
+const terminal_abstraction = @import("../../core/TerminalAbstraction.zig");
 
 // Advanced input handling
-const input_events = @import("../../../src/shared/term/input/advanced_input_driver.zig");
+const input_events = @import("../../../src/shared/term/input/input_driver.zig");
 const mouse_handler = @import("../../../src/shared/term/input/mouse.zig");
 const focus_events = @import("../../../src/shared/term/input/focus.zig");
 const paste_handler = @import("../../../src/shared/term/input/paste.zig");
@@ -675,9 +675,9 @@ pub const Input = struct {
     }
 
     fn handleTabCompletion(self: *Input) !void {
-        if (self.state.selected_suggestion) |idx| {
-            if (idx < self.state.suggestions.len) {
-                const suggestion = self.state.suggestions[idx];
+        if (self.state.selected_suggestion) |index| {
+            if (index < self.state.suggestions.len) {
+                const suggestion = self.state.suggestions[index];
                 // Replace current word with suggestion
                 self.state.text.clearRetainingCapacity();
                 try self.state.text.appendSlice(suggestion.text);
@@ -716,8 +716,8 @@ pub const Input = struct {
 
         // Update input text
         self.state.text.clearRetainingCapacity();
-        if (self.history_index) |idx| {
-            try self.state.text.appendSlice(self.history.items[idx]);
+        if (self.history_index) |index| {
+            try self.state.text.appendSlice(self.history.items[index]);
         }
         self.state.cursor_position = self.state.text.items.len;
     }

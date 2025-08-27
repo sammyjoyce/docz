@@ -3,7 +3,7 @@
 ## ✅ Completed Automatic Fixes
 
 The following have been automatically fixed:
-- All capital letter function names in `enhanced_cursor_control.zig` (CUU → cuu, etc.)
+- All capital letter function names in `cursor_control.zig` (CUU → cuu, etc.)
 - Generic type-returning functions (CommandContext → commandContext, etc.)  
 - Functions with underscores (error_ → errorNotification, verbose_log → verboseLog)
 - Created `src/shared/globals.zig` template for global state management
@@ -93,10 +93,10 @@ rg "(const|var) [a-z]\w*_\w+" --type zig | grep -v test | head -20
 If any modules import the renamed functions directly:
 ```zig
 // OLD
-const CUU = @import("enhanced_cursor_control.zig").CUU;
+const CUU = @import("cursor_control.zig").CUU;
 
 // NEW
-const cuu = @import("enhanced_cursor_control.zig").cuu;
+const cuu = @import("cursor_control.zig").cuu;
 ```
 
 ## Testing After Fixes

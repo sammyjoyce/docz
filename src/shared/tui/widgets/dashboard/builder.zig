@@ -333,8 +333,7 @@ pub const DashboardBuilder = struct {
     }
 
     fn detectCapabilities() term_caps.TermCaps {
-        const capability_detector = @import("../../term/capability_detector.zig");
-        return capability_detector.detectCapabilities();
+        return term_caps.getTermCaps();
     }
 };
 

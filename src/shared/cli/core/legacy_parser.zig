@@ -2,7 +2,6 @@
 //! Provides backward compatibility while using the new modular system
 
 const std = @import("std");
-const print = std.debug.print;
 const Allocator = std.mem.Allocator;
 const cli_config = @import("../cli.zon");
 const rich_formatter = @import("../formatters/rich.zig");
@@ -13,13 +12,13 @@ pub const CliError = types.CliError;
 pub const ParsedArgs = struct {
     // Core options from config
     model: []const u8,
-    max_tokens: ?u32,
+    maxTokens: ?u32,
     temperature: ?f32,
     stream: bool,
     json: bool,
     quiet: bool,
     verbose: bool,
-    no_color: bool,
+    noColor: bool,
 
     // Flags
     help: bool,
@@ -34,16 +33,16 @@ pub const ParsedArgs = struct {
     prompt: ?[]const u8,
 
     // Raw arguments for debugging
-    raw_args: [][]const u8,
+    rawArgs: [][]const u8,
 
     allocator: Allocator,
 
     pub fn deinit(self: *ParsedArgs) void {
         // Clean up any allocated strings
-        for (self.raw_args) |arg| {
+        for (self.rawArgs) |arg| {
             self.allocator.free(arg);
         }
-        self.allocator.free(self.raw_args);
+        self.allocator.free(self.rawArgs);
 
         if (self.prompt) |p| {
             self.allocator.free(p);
@@ -53,50 +52,54 @@ pub const ParsedArgs = struct {
     pub fn init(allocator: Allocator) ParsedArgs {
         return ParsedArgs{
             .model = cli_config.options[0].default,
-            .max_tokens = null,
+            .maxTokens = null,
             .temperature = null,
             .stream = cli_config.flags[3].default,
             .json = false, // Not defined in zon file, using default
             .quiet = false, // Not defined in zon file, using default
             .verbose = false, // cli_config.flags[0] doesn't have default
-            .no_color = false, // Not defined in zon file, using default
+            .noColor = false, // Not defined in zon file, using default
             .help = false,
             .version = false,
             .preview = false,
             .command = null,
             .auth_subcommand = null,
             .prompt = null,
-            .raw_args = &[_][]const u8{},
+            .rawArgs = &[_][]const u8{},
             .allocator = allocator,
         };
     }
 };
 
-pub const EnhancedParser = struct {
+pub const Parser = struct {
     allocator: Allocator,
     formatter: rich_formatter.CliFormatter,
 
-    pub fn init(allocator: Allocator) EnhancedParser {
-        return EnhancedParser{
+    pub fn init(allocator: Allocator) !Parser {
+        return Parser{
             .allocator = allocator,
-            .formatter = rich_formatter.CliFormatter.init(allocator),
+            .formatter = try rich_formatter.CliFormatter.init(allocator),
         };
     }
 
-    pub fn parse(self: *EnhancedParser, args: [][]const u8) !ParsedArgs {
+    pub fn deinit(self: *Parser) void {
+        self.formatter.deinit();
+    }
+
+    pub fn parse(self: *Parser, args: [][]const u8) !ParsedArgs {
         var parsed = ParsedArgs.init(self.allocator);
 
         // Store raw args for debugging
-        parsed.raw_args = try self.allocator.alloc([]const u8, args.len);
+        parsed.rawArgs = try self.allocator.alloc([]const u8, args.len);
         errdefer {
-            // Clean up raw_args on error
-            for (parsed.raw_args) |arg| {
+            // Clean up rawArgs on error
+            for (parsed.rawArgs) |arg| {
                 self.allocator.free(arg);
             }
-            self.allocator.free(parsed.raw_args);
+            self.allocator.free(parsed.rawArgs);
         }
         for (args, 0..) |arg, i| {
-            parsed.raw_args[i] = try self.allocator.dupe(u8, arg);
+            parsed.rawArgs[i] = try self.allocator.dupe(u8, arg);
         }
 
         var i: usize = 0; // Program name already stripped by caller
@@ -122,21 +125,21 @@ pub const EnhancedParser = struct {
                     parsed.stream = true;
                 } else if (std.mem.eql(u8, arg, "--json")) {
                     parsed.json = true;
-                } else if (std.mem.eql(u8, arg, "--no-color")) {
-                    parsed.no_color = true;
+                 } else if (std.mem.eql(u8, arg, "--no-color")) {
+                     parsed.noColor = true;
                 } else if (std.mem.startsWith(u8, arg, "--model=")) {
                     parsed.model = arg[8..];
                 } else if (std.mem.eql(u8, arg, "--model")) {
                     i += 1;
                     if (i >= args.len) return CliError.MissingValue;
                     parsed.model = args[i];
-                } else if (std.mem.startsWith(u8, arg, "--max-tokens=")) {
-                    const value_str = arg[13..];
-                    parsed.max_tokens = std.fmt.parseInt(u32, value_str, 10) catch return CliError.InvalidValue;
-                } else if (std.mem.eql(u8, arg, "--max-tokens")) {
-                    i += 1;
-                    if (i >= args.len) return CliError.MissingValue;
-                    parsed.max_tokens = std.fmt.parseInt(u32, args[i], 10) catch return CliError.InvalidValue;
+                 } else if (std.mem.startsWith(u8, arg, "--max-tokens=")) {
+                     const value_str = arg[13..];
+                     parsed.maxTokens = std.fmt.parseInt(u32, value_str, 10) catch return CliError.InvalidValue;
+                 } else if (std.mem.eql(u8, arg, "--max-tokens")) {
+                     i += 1;
+                     if (i >= args.len) return CliError.MissingValue;
+                     parsed.maxTokens = std.fmt.parseInt(u32, args[i], 10) catch return CliError.InvalidValue;
                 } else if (std.mem.startsWith(u8, arg, "--temperature=")) {
                     const value_str = arg[14..];
                     parsed.temperature = std.fmt.parseFloat(f32, value_str) catch return CliError.InvalidValue;
@@ -229,25 +232,25 @@ pub const EnhancedParser = struct {
         return parsed;
     }
 
-    pub fn handleParsedArgs(self: *EnhancedParser, parsed: *ParsedArgs) !void {
+    pub fn handleParsedArgs(self: *Parser, parsed: *ParsedArgs) !void {
         if (parsed.help) {
-            try self.formatter.printEnhancedHelp(cli_config);
+            try self.formatter.printHelp(cli_config);
             return;
         }
 
         if (parsed.version) {
-            try self.formatter.printEnhancedVersion(cli_config);
+            try self.formatter.printVersion(cli_config);
             return;
         }
 
         if (parsed.command) |cmd| {
             switch (cmd) {
                 .help => {
-                    try self.formatter.printEnhancedHelp(cli_config);
+                    try self.formatter.printHelp(cli_config);
                     return;
                 },
                 .version => {
-                    try self.formatter.printEnhancedVersion(cli_config);
+                    try self.formatter.printVersion(cli_config);
                     return;
                 },
                 .auth => {
@@ -273,46 +276,49 @@ pub const EnhancedParser = struct {
             }
         } else if (parsed.prompt == null) {
             // No command and no prompt - show help
-            try self.formatter.printEnhancedHelp(cli_config);
+            try self.formatter.printHelp(cli_config);
         }
         // If we have a prompt, the caller will handle it
     }
 
-    fn handleAuthCommand(self: *EnhancedParser, subcommand: types.AuthSubcommand) !void {
+    fn handleAuthCommand(self: *Parser, subcommand: types.AuthSubcommand) !void {
+        const stdout = std.fs.File.stdout().writer();
         switch (subcommand) {
             .login => {
-                print("{s}{s}🔐 Starting authentication...{s}{s}\n", .{ self.formatter.colors.bold, self.formatter.colors.primary, self.formatter.colors.reset, self.formatter.colors.reset });
+                try stdout.print("{s}{s}🔐 Starting authentication...{s}{s}\n", .{ self.formatter.colors.bold, self.formatter.colors.primary, self.formatter.colors.reset, self.formatter.colors.reset });
                 // Authentication logic would go here
-                print("{s}✅ Please complete authentication in your browser{s}\n", .{ self.formatter.colors.success, self.formatter.colors.reset });
+                try stdout.print("{s}✅ Please complete authentication in your browser{s}\n", .{ self.formatter.colors.success, self.formatter.colors.reset });
             },
             .status => {
-                print("{s}{s}📊 Authentication Status{s}{s}\n", .{ self.formatter.colors.bold, self.formatter.colors.primary, self.formatter.colors.reset, self.formatter.colors.reset });
+                try stdout.print("{s}{s}📊 Authentication Status{s}{s}\n", .{ self.formatter.colors.bold, self.formatter.colors.primary, self.formatter.colors.reset, self.formatter.colors.reset });
                 // Status check logic would go here
-                print("{s}✅ Authenticated{s}\n", .{ self.formatter.colors.success, self.formatter.colors.reset });
+                try stdout.print("{s}✅ Authenticated{s}\n", .{ self.formatter.colors.success, self.formatter.colors.reset });
             },
             .refresh => {
-                print("{s}{s}🔄 Refreshing authentication...{s}{s}\n", .{ self.formatter.colors.bold, self.formatter.colors.primary, self.formatter.colors.reset, self.formatter.colors.reset });
+                try stdout.print("{s}{s}🔄 Refreshing authentication...{s}{s}\n", .{ self.formatter.colors.bold, self.formatter.colors.primary, self.formatter.colors.reset, self.formatter.colors.reset });
                 // Refresh logic would go here
-                print("{s}✅ Authentication refreshed{s}\n", .{ self.formatter.colors.success, self.formatter.colors.reset });
+                try stdout.print("{s}✅ Authentication refreshed{s}\n", .{ self.formatter.colors.success, self.formatter.colors.reset });
             },
         }
     }
 
-    pub fn printError(self: *EnhancedParser, err: CliError, context: ?[]const u8) !void {
-        try self.formatter.printEnhancedError(err, context);
+    pub fn printError(self: *Parser, err: CliError, context: ?[]const u8) !void {
+        try self.formatter.printError(err, context);
     }
 };
 
-/// Convenience function to parse arguments using the enhanced parser
-pub fn parseArgsEnhanced(allocator: Allocator, args: [][]const u8) !ParsedArgs {
-    var parser = EnhancedParser.init(allocator);
+/// Convenience function to parse arguments using the parser
+pub fn parseArgs(allocator: Allocator, args: [][]const u8) !ParsedArgs {
+    var parser = try Parser.init(allocator);
+    defer parser.deinit();
     return try parser.parse(args);
 }
 
 /// Full parsing and handling in one call
 /// Note: Auth commands are NOT handled here to allow agents to implement their own OAuth flow
 pub fn parseAndHandle(allocator: Allocator, args: [][]const u8) !?ParsedArgs {
-    var parser = EnhancedParser.init(allocator);
+    var parser = try Parser.init(allocator);
+    defer parser.deinit();
     var parsed = parser.parse(args) catch |err| {
         // For auth-related errors, use the command as context instead of the failing argument
         const context = if (args.len > 0 and std.mem.eql(u8, args[0], "auth")) "auth" else if (args.len > 1) args[1] else null;
@@ -324,12 +330,12 @@ pub fn parseAndHandle(allocator: Allocator, args: [][]const u8) !?ParsedArgs {
     if (parsed.command) |cmd| {
         switch (cmd) {
             .help => {
-                try parser.formatter.printEnhancedHelp(cli_config);
+                try parser.formatter.printHelp(cli_config);
                 parsed.deinit();
                 return null;
             },
             .version => {
-                try parser.formatter.printEnhancedVersion(cli_config);
+                try parser.formatter.printVersion(cli_config);
                 parsed.deinit();
                 return null;
             },
@@ -344,7 +350,7 @@ pub fn parseAndHandle(allocator: Allocator, args: [][]const u8) !?ParsedArgs {
         }
     } else if (parsed.prompt == null) {
         // No command and no prompt - show help
-        try parser.formatter.printEnhancedHelp(cli_config);
+        try parser.formatter.printHelp(cli_config);
         parsed.deinit();
         return null;
     }

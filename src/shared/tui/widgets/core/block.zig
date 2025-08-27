@@ -4,7 +4,7 @@
 const std = @import("std");
 const Bounds = @import("../../core/bounds.zig").Bounds;
 const Color = @import("../../themes/default.zig").Color;
-const print = @import("../../../term/writer.zig").print;
+const terminal_writer = @import("../../components/terminal_writer.zig");
 
 /// Border style for the block
 pub const BorderStyle = enum {
@@ -208,11 +208,11 @@ pub const Block = struct {
         }
 
         // Reset colors
-        print("\x1b[0m", .{});
+        terminal_writer.print("\x1b[0m", .{});
     }
 
     fn fillBackground(self: *const Block, color: Color) void {
-        print("\x1b[{d}m", .{@intFromEnum(color) + 10}); // Background color
+        terminal_writer.print("\x1b[{d}m", .{@intFromEnum(color) + 10}); // Background color
 
         const start_y = if (self.border_style != .none) self.bounds.y + 1 else self.bounds.y;
         const end_y = if (self.border_style != .none) self.bounds.y + self.bounds.height - 1 else self.bounds.y + self.bounds.height;
@@ -222,7 +222,7 @@ pub const Block = struct {
         for (start_y..end_y) |y| {
             moveCursor(@intCast(y), @intCast(start_x));
             for (start_x..end_x) |_| {
-                print(" ", .{});
+                terminal_writer.print(" ", .{});
             }
         }
     }
@@ -231,35 +231,35 @@ pub const Block = struct {
         const chars = getBorderChars(self.border_style);
 
         // Set border color
-        print("\x1b[{d}m", .{@intFromEnum(self.border_color)});
+        terminal_writer.print("\x1b[{d}m", .{@intFromEnum(self.border_color)});
 
         // Top border with title
         moveCursor(self.bounds.y, self.bounds.x);
-        print("{s}", .{chars.top_left});
+        terminal_writer.print("{s}", .{chars.top_left});
 
         if (self.title_position == .top and self.title) |title| {
             self.drawTitleOnBorder(title, self.title_alignment, self.title_color, chars.horizontal);
         } else {
             for (1..self.bounds.width - 1) |_| {
-                print("{s}", .{chars.horizontal});
+                terminal_writer.print("{s}", .{chars.horizontal});
             }
         }
-        print("{s}", .{chars.top_right});
+        terminal_writer.print("{s}", .{chars.top_right});
 
         // Side borders
         for (1..self.bounds.height - 1) |i| {
             // Left border
             moveCursor(self.bounds.y + i, self.bounds.x);
-            print("{s}", .{chars.vertical});
+            terminal_writer.print("{s}", .{chars.vertical});
 
             // Right border
             moveCursor(self.bounds.y + i, self.bounds.x + self.bounds.width - 1);
-            print("{s}", .{chars.vertical});
+            terminal_writer.print("{s}", .{chars.vertical});
         }
 
         // Bottom border with subtitle
         moveCursor(self.bounds.y + self.bounds.height - 1, self.bounds.x);
-        print("{s}", .{chars.bottom_left});
+        terminal_writer.print("{s}", .{chars.bottom_left});
 
         if (self.subtitle) |subtitle| {
             self.drawTitleOnBorder(subtitle, self.subtitle_alignment, self.subtitle_color, chars.horizontal);
@@ -267,10 +267,10 @@ pub const Block = struct {
             self.drawTitleOnBorder(title, self.title_alignment, self.title_color, chars.horizontal);
         } else {
             for (1..self.bounds.width - 1) |_| {
-                print("{s}", .{chars.horizontal});
+                terminal_writer.print("{s}", .{chars.horizontal});
             }
         }
-        print("{s}", .{chars.bottom_right});
+        terminal_writer.print("{s}", .{chars.bottom_right});
     }
 
     fn drawTitleOnBorder(self: *const Block, title: []const u8, alignment: TitleAlignment, color: Color, border_char: []const u8) void {
@@ -289,11 +289,11 @@ pub const Block = struct {
 
         // Draw border before title
         for (0..left_padding) |_| {
-            print("{s}", .{border_char});
+            terminal_writer.print("{s}", .{border_char});
         }
 
         // Draw title with color
-        print(" \x1b[{d}m{s}\x1b[{d}m ", .{
+        terminal_writer.print(" \x1b[{d}m{s}\x1b[{d}m ", .{
             @intFromEnum(color),
             display_title,
             @intFromEnum(self.border_color),
@@ -302,7 +302,7 @@ pub const Block = struct {
         // Draw border after title
         const remaining = self.bounds.width -| left_padding -| display_title.len -| 4;
         for (0..remaining) |_| {
-            print("{s}", .{border_char});
+            terminal_writer.print("{s}", .{border_char});
         }
     }
 
@@ -319,10 +319,10 @@ pub const Block = struct {
             };
 
             for (0..padding) |_| {
-                print(" ", .{});
+                terminal_writer.print(" ", .{});
             }
 
-            print("\x1b[{d}m{s}\x1b[0m", .{
+            terminal_writer.print("\x1b[{d}m{s}\x1b[0m", .{
                 @intFromEnum(self.title_color),
                 title,
             });
@@ -330,7 +330,7 @@ pub const Block = struct {
     }
 
     fn moveCursor(row: u32, col: u32) void {
-        print("\x1b[{d};{d}H", .{ row + 1, col + 1 });
+        terminal_writer.print("\x1b[{d};{d}H", .{ row + 1, col + 1 });
     }
 };
 

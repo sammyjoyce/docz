@@ -2,37 +2,40 @@
 //! Run with: zig run src/cli_demo.zig
 
 const std = @import("std");
-const cli = @import("cli/mod.zig");
-const tui = @import("tui/mod.zig");
+const cli = @import("../cli/mod.zig");
+const tui = @import("../tui/mod.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    std.debug.print("🚀 DocZ CLI & TUI Enhancement Demo\n", .{});
-    std.debug.print("=" ** 50 ++ "\n\n", .{});
+    const stdout = std.fs.File.stdout().writer();
+    const stderr = std.fs.File.stderr().writer();
+
+    try stdout.print("🚀 DocZ CLI & TUI Enhancement Demo\n", .{});
+    try stdout.print("=" ** 50 ++ "\n\n", .{});
 
     // CLI demonstration
-    std.debug.print("=== Enhanced CLI Parser ===\n", .{});
+    try stdout.print("=== Enhanced CLI Parser ===\n", .{});
     const test_args = [_][]const u8{"--help"};
 
     var app = cli.CliApp.init(allocator) catch |err| {
-        std.debug.print("❌ Failed to initialize CLI app: {}\n", .{err});
+        try stderr.print("❌ Failed to initialize CLI app: {}\n", .{err});
         return;
     };
     defer app.deinit();
 
     const exit_code = app.run(&test_args) catch |err| {
-        std.debug.print("❌ CLI execution failed: {}\n", .{err});
+        try stderr.print("❌ CLI execution failed: {}\n", .{err});
         return;
     };
 
     if (exit_code == 0) {
-        std.debug.print("✅ Built-in command was handled\n", .{});
+        try stdout.print("✅ Built-in command was handled\n", .{});
     }
 
-    std.debug.print("\n=== Advanced CLI Features ===\n");
+    try stdout.print("\n=== Advanced CLI Features ===\n", .{});
     const advanced_args = [_][]const u8{ "--model", "claude-3-haiku", "Hello world!" };
 
     var parser = cli.EnhancedParser.init(allocator);
@@ -44,24 +47,24 @@ pub fn main() !void {
     if (parser.parse(&argv)) |parsed_adv| {
         defer parsed_adv.deinit();
 
-        std.debug.print("✅ Parsed arguments successfully:\n", .{});
-        std.debug.print("   Model: {s}\n", .{parsed_adv.model});
-        std.debug.print("   Stream: {}\n", .{parsed_adv.stream});
+        try stdout.print("✅ Parsed arguments successfully:\n", .{});
+        try stdout.print("   Model: {s}\n", .{parsed_adv.model});
+        try stdout.print("   Stream: {}\n", .{parsed_adv.stream});
         if (parsed_adv.prompt) |prompt| {
-            std.debug.print("   Prompt: {s}\n", .{prompt});
+            try stdout.print("   Prompt: {s}\n", .{prompt});
         }
     } else |err| {
-        std.debug.print("❌ Parsing failed: {}\n", .{err});
+        try stderr.print("❌ Parsing failed: {}\n", .{err});
     }
 
-    std.debug.print("\n=== Terminal Capabilities ===\n", .{});
+    try stdout.print("\n=== Terminal Capabilities ===\n", .{});
     const caps = tui.TermCaps.getTermCaps();
-    std.debug.print("Truecolor support: {}\n", .{caps.supportsTruecolor});
-    std.debug.print("Hyperlink support: {}\n", .{caps.supportsHyperlinkOsc8});
-    std.debug.print("Graphics support: {} (Kitty: {}, Sixel: {})\n", .{ caps.supportsKittyGraphics or caps.supportsSixel, caps.supportsKittyGraphics, caps.supportsSixel });
-    std.debug.print("Notification support: {}\n", .{caps.supportsNotifyOsc9});
+    try stdout.print("Truecolor support: {}\n", .{caps.supportsTruecolor});
+    try stdout.print("Hyperlink support: {}\n", .{caps.supportsHyperlinkOsc8});
+    try stdout.print("Graphics support: {} (Kitty: {}, Sixel: {})\n", .{ caps.supportsKittyGraphics or caps.supportsSixel, caps.supportsKittyGraphics, caps.supportsSixel });
+    try stdout.print("Notification support: {}\n", .{caps.supportsNotifyOsc9});
 
-    std.debug.print("\n=== Widget Demonstration ===\n", .{});
+    try stdout.print("\n=== Widget Demonstration ===\n", .{});
 
     // Quick widget demo
     var section = tui.Section.init(allocator, "Demo Section");
@@ -73,7 +76,7 @@ pub fn main() !void {
     try section.addLine("✅ Modular architecture");
     section.draw();
 
-    std.debug.print("\n", .{});
+    try stdout.print("\n", .{});
 
     // Menu demo
     const menu_items = [_]tui.MenuItem{
@@ -87,7 +90,7 @@ pub fn main() !void {
     defer demo_menu.deinit();
     demo_menu.draw();
 
-    std.debug.print("\n=== Notification System ===\n", .{});
+    try stdout.print("\n=== Notification System ===\n", .{});
     var notificationHandler = tui.NotificationHandler.init(allocator);
     defer notificationHandler.deinit();
 
@@ -98,7 +101,7 @@ pub fn main() !void {
         try tui.notification.systemNotify(allocator, "CLI Enhancement Demo finished! 🎉");
     }
 
-    std.debug.print("\n" ++ "=" ** 50 ++ "\n", .{});
-    std.debug.print("✨ Demo completed! Run 'zig run src/tui/demo.zig' for full TUI demo\n", .{});
-    std.debug.print("=" ** 50 ++ "\n", .{});
+    try stdout.print("\n" ++ "=" ** 50 ++ "\n", .{});
+    try stdout.print("✨ Demo completed! Run 'zig run examples/components_demo.zig' for full components demo\n", .{});
+    try stdout.print("=" ** 50 ++ "\n", .{});
 }

@@ -3,8 +3,8 @@ const AdaptiveRenderer = @import("../adaptive_renderer.zig").AdaptiveRenderer;
 const RenderMode = AdaptiveRenderer.RenderMode;
 const QualityTiers = @import("../quality_tiers.zig").QualityTiers;
 const ChartConfig = @import("../quality_tiers.zig").ChartConfig;
-const term_shared = @import("term_shared");
-const Color = term_shared.ansi.color.Color;
+const term_mod = @import("../../term/mod.zig");
+const Color = term_mod.ansi.color.Color;
 const cacheKey = @import("../adaptive_renderer.zig").cacheKey;
 
 /// Chart data structure

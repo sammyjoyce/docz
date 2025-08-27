@@ -1,9 +1,190 @@
+//! Unified Color Management System
+//! Consolidated color primitives, conversions, and terminal color operations
+
 const std = @import("std");
 const caps_mod = @import("../caps.zig");
 const passthrough = @import("passthrough.zig");
 const seqcfg = @import("ansi.zon");
 
 pub const TermCaps = caps_mod.TermCaps;
+
+// === CORE COLOR TYPES ===
+
+/// RGB color representation (24-bit true color)
+pub const RgbColor = struct {
+    r: u8,
+    g: u8,
+    b: u8,
+
+    pub fn init(r: u8, g: u8, b: u8) RgbColor {
+        return .{ .r = r, .g = g, .b = b };
+    }
+
+    pub fn toHex(self: RgbColor) u32 {
+        return (@as(u32, self.r) << 16) | (@as(u32, self.g) << 8) | @as(u32, self.b);
+    }
+
+    pub fn fromHex(hex: u32) RgbColor {
+        return .{
+            .r = @intCast((hex >> 16) & 0xFF),
+            .g = @intCast((hex >> 8) & 0xFF),
+            .b = @intCast(hex & 0xFF),
+        };
+    }
+
+    pub fn toHsl(self: RgbColor) Hsl {
+        const r_norm = @as(f32, @floatFromInt(self.r)) / 255.0;
+        const g_norm = @as(f32, @floatFromInt(self.g)) / 255.0;
+        const b_norm = @as(f32, @floatFromInt(self.b)) / 255.0;
+
+        const max = @max(r_norm, @max(g_norm, b_norm));
+        const min = @min(r_norm, @min(g_norm, b_norm));
+        const delta = max - min;
+
+        var h: f32 = 0;
+        var s: f32 = 0;
+        const l = (max + min) / 2.0;
+
+        if (delta > 0) {
+            s = if (l < 0.5) delta / (max + min) else delta / (2 - max - min);
+
+            if (max == r_norm) {
+                h = ((g_norm - b_norm) / delta) + if (g_norm < b_norm) 6 else 0;
+            } else if (max == g_norm) {
+                h = ((b_norm - r_norm) / delta) + 2;
+            } else {
+                h = ((r_norm - g_norm) / delta) + 4;
+            }
+            h = h / 6.0;
+        }
+
+        return .{ .h = h * 360, .s = s, .l = l };
+    }
+};
+
+/// HSL color representation for calculations
+pub const Hsl = struct {
+    h: f32, // Hue (0-360)
+    s: f32, // Saturation (0-1)
+    l: f32, // Lightness (0-1)
+
+    pub fn toRgb(self: Hsl) RgbColor {
+        const h_norm = self.h / 360.0;
+
+        if (self.s == 0) {
+            const v = @as(u8, @intFromFloat(self.l * 255));
+            return RgbColor.init(v, v, v);
+        }
+
+        const q = if (self.l < 0.5) self.l * (1 + self.s) else self.l + self.s - (self.l * self.s);
+        const p = 2 * self.l - q;
+
+        const r = hueToRgb(p, q, h_norm + 1.0 / 3.0);
+        const g = hueToRgb(p, q, h_norm);
+        const b = hueToRgb(p, q, h_norm - 1.0 / 3.0);
+
+        return RgbColor.init(
+            @as(u8, @intFromFloat(r * 255)),
+            @as(u8, @intFromFloat(g * 255)),
+            @as(u8, @intFromFloat(b * 255)),
+        );
+    }
+
+    fn hueToRgb(p: f32, q: f32, t_raw: f32) f32 {
+        var t = t_raw;
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1.0 / 6.0) return p + (q - p) * 6 * t;
+        if (t < 0.5) return q;
+        if (t < 2.0 / 3.0) return p + (q - p) * (2.0 / 3.0 - t) * 6;
+        return p;
+    }
+};
+
+/// Hex color representation (#RRGGBB)
+pub const HexColor = struct {
+    value: u32,
+
+    pub fn init(hex: u32) HexColor {
+        return .{ .value = hex & 0xFFFFFF };
+    }
+
+    pub fn fromString(hex_str: []const u8) !HexColor {
+        const clean = if (hex_str.len > 0 and hex_str[0] == '#') hex_str[1..] else hex_str;
+        if (clean.len != 6) return error.InvalidHexColor;
+
+        const hex = std.fmt.parseInt(u32, clean, 16) catch return error.InvalidHexColor;
+        return init(hex);
+    }
+
+    pub fn toString(self: HexColor, allocator: std.mem.Allocator) ![]u8 {
+        return std.fmt.allocPrint(allocator, "#{x:0>6}", .{self.value});
+    }
+
+    pub fn toRgb(self: HexColor) RgbColor {
+        return RgbColor.fromHex(self.value);
+    }
+};
+
+/// XParseColor RGB format (rgb:RRRR/GGGG/BBBB)
+pub const XRGBColor = struct {
+    r: u16,
+    g: u16,
+    b: u16,
+
+    pub fn init(r: u16, g: u16, b: u16) XRGBColor {
+        return .{ .r = r, .g = g, .b = b };
+    }
+
+    pub fn fromRgb8(r: u8, g: u8, b: u8) XRGBColor {
+        return .{
+            .r = (@as(u16, r) << 8) | r,
+            .g = (@as(u16, g) << 8) | g,
+            .b = (@as(u16, b) << 8) | b,
+        };
+    }
+
+    pub fn toString(self: XRGBColor, allocator: std.mem.Allocator) ![]u8 {
+        return std.fmt.allocPrint(allocator, "rgb:{x:0>4}/{x:0>4}/{x:0>4}", .{ self.r, self.g, self.b });
+    }
+};
+
+/// XParseColor RGBA format (rgba:RRRR/GGGG/BBBB/AAAA)
+pub const XRGBAColor = struct {
+    r: u16,
+    g: u16,
+    b: u16,
+    a: u16,
+
+    pub fn init(r: u16, g: u16, b: u16, a: u16) XRGBAColor {
+        return .{ .r = r, .g = g, .b = b, .a = a };
+    }
+
+    pub fn fromRgba8(r: u8, g: u8, b: u8, a: u8) XRGBAColor {
+        return .{
+            .r = (@as(u16, r) << 8) | r,
+            .g = (@as(u16, g) << 8) | g,
+            .b = (@as(u16, b) << 8) | b,
+            .a = (@as(u16, a) << 8) | a,
+        };
+    }
+
+    pub fn toString(self: XRGBAColor, allocator: std.mem.Allocator) ![]u8 {
+        return std.fmt.allocPrint(allocator, "rgba:{x:0>4}/{x:0>4}/{x:0>4}/{x:0>4}", .{ self.r, self.g, self.b, self.a });
+    }
+};
+
+/// Color format types for terminal color specification
+pub const ColorFormat = enum {
+    hex, // #RRGGBB format
+    xrgb, // XParseColor rgb:RRRR/GGGG/BBBB format
+    xrgba, // XParseColor rgba:RRRR/GGGG/BBBB/AAAA format
+    named, // Named color (e.g., "red", "blue")
+};
+
+/// ANSI color types
+pub const BasicColor = u8; // 0-15 (4-bit)
+pub const IndexedColor = u8; // 0-255 (8-bit)
 
 fn oscTerminator() []const u8 {
     return if (std.mem.eql(u8, seqcfg.osc.default_terminator, "bel"))

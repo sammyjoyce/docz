@@ -671,7 +671,7 @@ const ChunkState = struct {
     }
 };
 
-/// Enhanced configuration for large payload processing
+/// Configuration for large payload processing
 const LargePayloadConfig = struct {
     large_chunk_threshold: usize = 1024 * 1024, // 1MB threshold for large chunk processing
     streaming_buffer_size: usize = 64 * 1024, // 64KB buffer for streaming large chunks
@@ -681,7 +681,7 @@ const LargePayloadConfig = struct {
     adaptive_buffer_max: usize = 512 * 1024, // Maximum adaptive buffer size: 512KB
 };
 
-/// Process chunked Server-Sent Events with enhanced large payload optimization and streaming processing
+/// Process chunked Server-Sent Events with large payload optimization and streaming processing
 fn processChunkedStreamingResponse(allocator: std.mem.Allocator, reader: *std.Io.Reader, callback: *const fn ([]const u8) void) !void {
     var event_data = std.array_list.Managed(u8).init(allocator);
     defer event_data.deinit();
@@ -901,7 +901,7 @@ fn processChunkedStreamingResponse(allocator: std.mem.Allocator, reader: *std.Io
     }
 }
 
-/// Enhanced chunk size validation thresholds for large payload processing
+/// Chunk size validation thresholds for large payload processing
 const ChunkSizeValidation = struct {
     max_chunk_size: usize = 512 * 1024 * 1024, // 512MB absolute maximum per chunk
     large_chunk_threshold: usize = 1024 * 1024, // 1MB threshold for special handling
@@ -918,7 +918,7 @@ fn parseChunkSize(size_line: []const u8) !struct { size: usize, extensions: ?[]c
     const size_str = if (semicolon_pos) |pos| size_line[0..pos] else size_line;
     const extensions = if (semicolon_pos) |pos| size_line[pos + 1 ..] else null;
 
-    // Enhanced size string validation before parsing
+    // Size string validation before parsing
     if (size_str.len == 0) {
         std.log.warn("Empty chunk size string", .{});
         return Error.ChunkParseError;
@@ -930,7 +930,7 @@ fn parseChunkSize(size_line: []const u8) !struct { size: usize, extensions: ?[]c
         return Error.InvalidChunkSize;
     }
 
-    // Parse hex chunk size with enhanced error handling
+    // Parse hex chunk size with error handling
     const size = std.fmt.parseInt(usize, size_str, 16) catch |err| switch (err) {
         error.Overflow => {
             std.log.warn("Chunk size overflow when parsing: '{s}'", .{size_str});
@@ -942,7 +942,7 @@ fn parseChunkSize(size_line: []const u8) !struct { size: usize, extensions: ?[]c
         },
     };
 
-    // Enhanced chunk size validation with multiple thresholds
+    // Chunk size validation with multiple thresholds
     if (size > validation.max_chunk_size) {
         std.log.err("Chunk size {} exceeds absolute maximum allowed size ({})", .{ size, validation.max_chunk_size });
         return Error.PayloadTooLarge;
@@ -950,7 +950,7 @@ fn parseChunkSize(size_line: []const u8) !struct { size: usize, extensions: ?[]c
 
     // Warning thresholds for large payload awareness
     if (size >= validation.warning_threshold) {
-        std.log.warn("Very large chunk detected: {} bytes ({}MB) - enhanced processing enabled", .{ size, size / (1024 * 1024) });
+        std.log.warn("Very large chunk detected: {} bytes ({}MB) - processing enabled", .{ size, size / (1024 * 1024) });
     } else if (size >= validation.streaming_threshold) {
         std.log.info("Large chunk detected: {} bytes ({}MB) - streaming processing enabled", .{ size, size / (1024 * 1024) });
     } else if (size >= validation.large_chunk_threshold) {
@@ -992,7 +992,7 @@ fn processChunkTrailers(reader: *std.Io.Reader) !void {
     }
 }
 
-/// Process accumulated chunk data as Server-Sent Event lines with enhanced large payload handling
+/// Process accumulated chunk data as Server-Sent Event lines with large payload handling
 fn processSSELines(chunk_data: []const u8, event_data: *std.array_list.Managed(u8), callback: *const fn ([]const u8) void) !void {
     const sse_config = sse.SSEProcessingConfig{};
     var line_iter = std.mem.splitSequence(u8, chunk_data, "\n");
@@ -1006,7 +1006,7 @@ fn processSSELines(chunk_data: []const u8, event_data: *std.array_list.Managed(u
         if (line.len == 0) {
             // Empty line indicates end of SSE event
             if (event_data.items.len > 0) {
-                // Enhanced event size validation for large payloads
+                // Event size validation for large payloads
                 if (event_data.items.len >= sse_config.large_event_threshold) {
                     std.log.debug("Processing large SSE event: {} bytes", .{event_data.items.len});
                 }
@@ -1024,10 +1024,10 @@ fn processSSELines(chunk_data: []const u8, event_data: *std.array_list.Managed(u
                 event_data.clearRetainingCapacity();
             }
         } else if (std.mem.startsWith(u8, line, "data: ")) {
-            // Parse SSE data field with enhanced capacity management for large payloads
+            // Parse SSE data field with capacity management for large payloads
             const data_content = line[6..]; // Skip "data: "
 
-            // Enhanced validation for extremely large data lines
+            // Validation for extremely large data lines
             if (data_content.len > sse_config.max_event_size / 2) { // More than half max event size per line
                 std.log.warn("Very large SSE data line: {} bytes - consider streaming optimization", .{data_content.len});
             }
@@ -1036,7 +1036,7 @@ fn processSSELines(chunk_data: []const u8, event_data: *std.array_list.Managed(u
                 try event_data.append('\n'); // Multi-line data separator
             }
 
-            // Enhanced capacity management with overflow protection
+            // Capacity management with overflow protection
             const required_capacity = event_data.items.len + data_content.len;
             if (required_capacity > sse_config.max_event_size) {
                 std.log.warn("SSE event would exceed maximum size, triggering early callback", .{});
@@ -1051,7 +1051,7 @@ fn processSSELines(chunk_data: []const u8, event_data: *std.array_list.Managed(u
             try event_data.ensureUnusedCapacity(data_content.len);
             try event_data.appendSlice(data_content);
 
-            // Enhanced streaming: trigger callback for very large events before completion
+            // Streaming: trigger callback for very large events before completion
             if (event_data.items.len >= sse_config.streaming_callback_threshold) {
                 std.log.debug("Large SSE event streaming: triggering early callback for {} bytes", .{event_data.items.len});
                 callback(event_data.items);
@@ -1061,7 +1061,7 @@ fn processSSELines(chunk_data: []const u8, event_data: *std.array_list.Managed(u
             std.mem.startsWith(u8, line, "id: ") or
             std.mem.startsWith(u8, line, "retry: "))
         {
-            // Enhanced logging for other SSE fields in large payload scenarios
+            // Logging for other SSE fields in large payload scenarios
             if (chunk_data.len >= sse_config.large_event_threshold) {
                 std.log.debug("SSE field in large payload: {s}", .{line[0..@min(line.len, 50)]});
             }
@@ -1081,7 +1081,7 @@ fn processSSELines(chunk_data: []const u8, event_data: *std.array_list.Managed(u
     }
 }
 
-/// Process Server-Sent Events using Io.Reader with comprehensive event field handling and enhanced error recovery
+/// Process Server-Sent Events using Io.Reader with comprehensive event field handling and error recovery
 fn processStreamingResponse(allocator: std.mem.Allocator, reader: *std.Io.Reader, callback: *const fn ([]const u8) void) !void {
     const sse_config = sse.SSEProcessingConfig{};
     var event_state = sse.SSEEventState.init(allocator);
@@ -1097,10 +1097,10 @@ fn processStreamingResponse(allocator: std.mem.Allocator, reader: *std.Io.Reader
     // Use larger initial capacity for potentially large events
     try event_state.data_buffer.ensureTotalCapacity(4096);
 
-    std.log.debug("Enhanced SSE processing started with comprehensive field support", .{});
+    std.log.debug("SSE processing started with comprehensive field support", .{});
 
     while (true) {
-        // Enhanced line reading with partial line accumulation for large events
+        // Line reading with partial line accumulation for large events
         const line_result = reader.*.takeDelimiterExclusive('\n') catch |err| switch (err) {
             error.EndOfStream => {
                 // Process any remaining partial line
@@ -1118,7 +1118,7 @@ fn processStreamingResponse(allocator: std.mem.Allocator, reader: *std.Io.Reader
                     events_processed += 1;
                 }
 
-                std.log.debug("Enhanced SSE processing complete: {} lines, {} events, {} bytes, {} malformed", .{ lines_processed, events_processed, bytes_processed, malformed_lines });
+                std.log.debug("SSE processing complete: {} lines, {} events, {} bytes, {} malformed", .{ lines_processed, events_processed, bytes_processed, malformed_lines });
                 return; // Normal end of stream
             },
             error.StreamTooLong => {
@@ -1146,11 +1146,11 @@ fn processStreamingResponse(allocator: std.mem.Allocator, reader: *std.Io.Reader
         lines_processed += 1;
         bytes_processed += line.len;
 
-        // Enhanced empty line handling with event dispatch
+        // Empty line handling with event dispatch
         if (line.len == 0) {
             // Empty line indicates end of SSE event - dispatch complete event
             if (event_state.has_data) {
-                // Enhanced event size validation
+                // Event size validation
                 if (event_state.data_buffer.items.len >= sse_config.large_event_threshold) {
                     std.log.debug("Dispatching large SSE event: {} bytes, type: {s}, id: {s}", .{ event_state.data_buffer.items.len, event_state.event_type orelse "default", event_state.event_id orelse "none" });
                 }
@@ -1175,7 +1175,7 @@ fn processStreamingResponse(allocator: std.mem.Allocator, reader: *std.Io.Reader
                 // Continue processing despite malformed line
             };
 
-            // Enhanced early callback for very large events to prevent memory buildup
+            // Early callback for very large events to prevent memory buildup
             if (event_state.data_buffer.items.len >= sse_config.streaming_callback_threshold) {
                 std.log.debug("Triggering early callback for large SSE event: {} bytes", .{event_state.data_buffer.items.len});
                 callback(event_state.data_buffer.items);
@@ -1191,7 +1191,7 @@ fn processStreamingResponse(allocator: std.mem.Allocator, reader: *std.Io.Reader
     }
 }
 
-/// Process individual SSE line with comprehensive field support and enhanced validation
+/// Process individual SSE line with comprehensive field support and validation
 fn processSSELine(line: []const u8, event_state: *sse.SSEEventState, sse_config: *const sse.SSEProcessingConfig) !void {
     _ = try sse.processSSELine(line, event_state, sse_config);
 }

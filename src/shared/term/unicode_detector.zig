@@ -1,6 +1,5 @@
 const std = @import("std");
-const terminal_query_system = @import("terminal_query_system.zig");
-const capability_detector = @import("capability_detector.zig");
+const caps = @import("caps.zig");
 const wcwidth = @import("wcwidth.zig");
 
 /// Unicode version detection and compatibility system
@@ -9,7 +8,8 @@ const wcwidth = @import("wcwidth.zig");
 pub const UnicodeDetector = struct {
     allocator: std.mem.Allocator,
     capabilities: UnicodeCapabilities = .{},
-    query_system: ?*terminal_query_system.QuerySystem = null,
+    // Query system functionality is now integrated into caps.zig
+    // query_system: ?*terminal_query_system.QuerySystem = null,
 
     const Self = @This();
 
@@ -245,12 +245,11 @@ pub const UnicodeDetector = struct {
 
     /// Detect terminal-specific Unicode features
     fn detectTerminalUnicodeFeatures(self: *Self) !void {
-        // Get terminal type from capability detector
-        var cap_detector = capability_detector.CapabilityDetector.init(self.allocator);
-        try cap_detector.detect();
+        // Get terminal capabilities
+        const term_caps = caps.getTermCaps();
 
         // Apply terminal-specific Unicode knowledge
-        switch (cap_detector.capabilities.terminal_type) {
+        switch (caps.detectProgramFromCaps(term_caps)) {
             .kitty => {
                 // Kitty has excellent Unicode support
                 self.capabilities.wcwidth_accuracy = .full;

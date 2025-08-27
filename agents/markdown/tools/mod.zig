@@ -5,8 +5,8 @@ const std = @import("std");
 
 // Official Tools (from tools.zon)
 pub const DocumentIO = @import("document_io.zig");
-pub const ContentEditor = @import("ContentEditor.zig");
-pub const DocumentValidator = @import("DocumentValidator.zig");
+pub const ContentEditor = @import("content_editor.zig");
+pub const DocumentValidator = @import("document_validator.zig");
 pub const DocumentTransformer = @import("document_transformer.zig");
 pub const WorkflowProcessor = @import("workflow_processor.zig");
 

@@ -5,7 +5,7 @@ const std = @import("std");
 const term_mod = @import("../../term");
 const unified = term_mod.unified;
 const graphics_manager = term_mod.graphics_manager;
-const capability_detector = term_mod.terminal_capability_detector;
+const caps = term_mod.caps;
 
 const Allocator = std.mem.Allocator;
 
@@ -32,26 +32,21 @@ pub const RenderLevel = enum {
     /// ASCII only + 16 colors
     minimal,
 
-    pub fn fromCapabilities(caps: capability_detector.TerminalCapabilities) RenderLevel {
+    pub fn fromCapabilities(caps: caps.TermCaps) RenderLevel {
         // Premium: Kitty graphics + true colors + mouse + clipboard
-        if (caps.supports_images and caps.is_kitty and caps.supports_truecolor and
-            caps.supports_mouse and caps.supports_clipboard)
+        if (caps.supportsKittyGraphics and caps.supportsTruecolor and
+            caps.supportsSgrMouse and caps.supportsClipboardOsc52)
         {
             return .premium;
         }
 
         // Enhanced: True colors + mouse + some advanced features
-        if (caps.supports_truecolor and caps.supports_mouse and caps.supports_hyperlinks) {
+        if (caps.supportsTruecolor and caps.supportsSgrMouse and caps.supportsHyperlinkOsc8) {
             return .enhanced;
         }
 
-        // Standard: 256 colors + basic features
-        if (caps.supports_256_color) {
-            return .standard;
-        }
-
-        // Minimal: Basic color support only
-        return .minimal;
+        // Standard: Basic features
+        return .standard;
     }
 };
 
@@ -64,7 +59,7 @@ pub const AdaptiveDashboard = struct {
 
     // Terminal integration
     terminal: unified.Terminal,
-    capabilities: capability_detector.TerminalCapabilities,
+    capabilities: caps.TermCaps,
     render_level: RenderLevel,
     graphics_manager: ?graphics_manager.GraphicsManager,
 
@@ -97,7 +92,7 @@ pub const AdaptiveDashboard = struct {
         var terminal = try unified.Terminal.init(allocator);
 
         // Detect comprehensive capabilities
-        const capabilities = try capability_detector.detectCapabilities(allocator);
+        const capabilities = caps.detectCaps(allocator);
         const render_level = RenderLevel.fromCapabilities(capabilities);
 
         // Initialize graphics manager if supported

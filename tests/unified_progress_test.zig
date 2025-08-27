@@ -1,5 +1,5 @@
 const std = @import("std");
-const ProgressBar = @import("src/cli/components/unified_progress_adapter.zig").ProgressBar;
+const ProgressBar = @import("src/shared/cli/components/mod.zig").ProgressBar;
 
  test "progressBarInitialization" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -34,12 +34,12 @@ const ProgressBar = @import("src/cli/components/unified_progress_adapter.zig").P
     const allocator = gpa.allocator();
 
     // Test different styles
-    const styles = [_]@import("src/cli/components/unified_progress_adapter.zig").ProgressBarStyle{
+    const styles = [_]@import("src/shared/cli/components/mod.zig").ProgressStyle{
         .simple,
         .unicode,
         .gradient,
         .animated,
-        .rainbow,
+        .circular,
     };
 
     for (styles) |style| {

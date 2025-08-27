@@ -8,7 +8,7 @@ The following enhancements have been implemented in the `src/term/ansi/` directo
 
 ## Implemented Features
 
-### 1. Enhanced Color Management (`enhanced_color.zig`)
+### 1. Enhanced Color Management (`color.zig`)
 
 **Features:**
 - Complete 256-color palette with accurate RGB mappings
@@ -26,7 +26,7 @@ The following enhancements have been implemented in the `src/term/ansi/` directo
 - Support for industry-standard color formats
 - Better conversion algorithms for darker colors
 
-### 2. Advanced Cursor Control (`enhanced_cursor.zig`)
+### 2. Advanced Cursor Control (`cursor.zig`)
 
 **Features:**
 - Comprehensive cursor movement functions with optimization for single-cell movements
@@ -48,7 +48,7 @@ The following enhancements have been implemented in the `src/term/ansi/` directo
 - Enhanced position reporting capabilities
 - Comprehensive constant definitions for direct use
 
-### 3. Terminal Background/Foreground Control (`enhanced_background.zig`)
+### 3. Terminal Background/Foreground Control (`background.zig`)
 
 **Features:**
 - Terminal color control via OSC sequences:
@@ -64,7 +64,7 @@ The following enhancements have been implemented in the `src/term/ansi/` directo
 - Safe handling of untrusted color strings
 - Proper OSC sequence termination
 
-### 4. Device Attributes and Capability Detection (`enhanced_device_attributes.zig`)
+### 4. Device Attributes and Capability Detection (`device_attributes.zig`)
 
 **Features:**
 - Primary Device Attributes (DA1) - terminal capability reporting
@@ -80,7 +80,7 @@ The following enhancements have been implemented in the `src/term/ansi/` directo
 - Comprehensive status reporting system
 - Parser utilities for handling terminal responses
 
-### 5. Clipboard Integration (`enhanced_clipboard.zig`)
+### 5. Clipboard Integration (`clipboard.zig`)
 
 **Features:**
 - OSC 52 clipboard manipulation support
@@ -115,9 +115,9 @@ All enhancements integrate seamlessly with the existing docz terminal system:
 ## Usage Examples
 
 ```zig
-const enhanced_color = @import("ansi/enhanced_color.zig");
-const enhanced_cursor = @import("ansi/enhanced_cursor.zig");
-const enhanced_background = @import("ansi/enhanced_background.zig");
+const enhanced_color = @import("ansi/color.zig");
+const enhanced_cursor = @import("ansi/cursor.zig");
+const enhanced_background = @import("ansi/background.zig");
 
 // Enhanced color conversion
 const rgb = ansi_color.RGBColor{ .r = 128, .g = 64, .b = 192 };

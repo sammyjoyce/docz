@@ -1,5 +1,5 @@
 const std = @import("std");
-const enhanced_keys = @import("enhanced_keys.zig");
+const enhanced_keys = @import("keys.zig");
 
 /// Dynamic key sequence to Key mapping with terminal compatibility
 /// Provides terminal-specific key sequence translation with fallback support

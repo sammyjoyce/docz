@@ -2,20 +2,14 @@
 //! Provides semantic color names and terminal capability adaptation
 
 const std = @import("std");
-const term_shared = @import("term_shared");
+const components = @import("../../components/mod.zig");
+const term_shared = @import("../../term/mod.zig");
 const term_ansi = term_shared.ansi.color;
 const term_caps = term_shared.caps;
+const color_mod = @import("../../term/ansi/color.zig");
 
-/// RGB color values for true color terminals
-pub const RgbColor = struct {
-    r: u8,
-    g: u8,
-    b: u8,
-
-    pub fn init(r: u8, g: u8, b: u8) RgbColor {
-        return .{ .r = r, .g = g, .b = b };
-    }
-};
+// Re-export color types from the primary color module
+pub const RgbColor = color_mod.RgbColor;
 
 /// Color palette supporting multiple terminal types
 pub const Color = struct {

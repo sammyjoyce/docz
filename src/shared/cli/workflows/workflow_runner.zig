@@ -2,11 +2,12 @@
 //! Provides progress tracking, error handling, and user interaction
 
 const std = @import("std");
-const term_shared = @import("term_shared");
+const components = @import("../../components/mod.zig");
+const term_shared = @import("../../term/mod.zig");
 const term_ansi = term_shared.ansi.color;
 const term_caps = term_shared.caps;
 const notification_manager = @import("../interactive/notification_manager.zig");
-const ProgressBar = @import("../components/unified_progress_adapter.zig").ProgressBar;
+const ProgressBar = @import("../components/mod.zig").ProgressBar;
 const WorkflowStep = @import("workflow_step.zig");
 const Allocator = std.mem.Allocator;
 

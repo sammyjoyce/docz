@@ -1,0 +1,1076 @@
+const std = @import("std");
+
+// Configuration constants
+const BUILD_CONFIG = struct {
+    const VERSION = "0.0.0";
+    const DEFAULT_AGENT = "markdown";
+    const BINARY_NAME = "docz";
+
+    const PATHS = struct {
+        const SOURCE_DIRS = [_][]const u8{ "src/", "agents/" };
+        const CLI_ZON = "src/shared/cli/cli.zon";
+        const TERMCAPS_ZON = "src/shared/term/caps.zon";
+        const ANSI_ZON = "src/shared/term/ansi.zon";
+        const ANTHROPIC_ZIG = "src/shared/network/anthropic.zig";
+        const TOOLS_ZIG = "src/shared/tools/mod.zig";
+        const ENGINE_ZIG = "src/core/engine.zig";
+        const CONFIG_ZIG = "src/core/config.zig";
+        const CLI_ZIG = "src/shared/cli/mod.zig";
+        const AUTH_ZIG = "src/shared/auth/mod.zig";
+        const TUI_ZIG = "src/shared/tui/mod.zig";
+        const SCAFFOLD_TOOL = "src/tools/agent_scaffold.zig";
+    };
+
+    const RELEASE_TARGETS = [_]ReleaseTarget{
+        .{ .arch_os_abi = "aarch64-macos", .archive_ext = ".tar.xz", .is_windows = false },
+        .{ .arch_os_abi = "x86_64-linux", .archive_ext = ".tar.xz", .is_windows = false },
+        .{ .arch_os_abi = "x86_64-windows", .archive_ext = ".zip", .is_windows = true },
+    };
+
+    const ReleaseTarget = struct {
+        arch_os_abi: []const u8,
+        archive_ext: []const u8,
+        is_windows: bool,
+    };
+};
+
+// Agent manifest structure for parsing agent.manifest.zon files
+const AgentManifest = struct {
+    agent: struct {
+        id: []const u8,
+        name: []const u8,
+        version: []const u8,
+        description: []const u8,
+        author: struct {
+            name: []const u8,
+            email: []const u8,
+            organization: []const u8,
+        },
+        license: []const u8,
+        homepage: []const u8,
+    },
+    capabilities: struct {
+        core_features: struct {
+            file_processing: bool,
+            system_commands: bool,
+            network_access: bool,
+            terminal_ui: bool,
+            media_processing: bool,
+            streaming_responses: bool,
+        },
+        specialized_features: std.json.Value,
+        performance: struct {
+            memory_usage: []const u8,
+            cpu_intensity: []const u8,
+            network_bandwidth: []const u8,
+        },
+    },
+    categorization: struct {
+        primary_category: []const u8,
+        secondary_categories: [][]const u8,
+        tags: [][]const u8,
+        use_cases: [][]const u8,
+    },
+};
+
+// Build context for organizing related data
+const BuildContext = struct {
+    b: *std.Build,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+    selected_agent: []const u8,
+    agent_paths: AgentPaths,
+
+    const AgentPaths = struct {
+        dir: []const u8,
+        main: []const u8,
+        spec: []const u8,
+    };
+
+    fn init(b: *std.Build) !BuildContext {
+        const selected_agent = b.option([]const u8, "agent", "Agent to build (e.g. 'markdown')") orelse BUILD_CONFIG.DEFAULT_AGENT;
+        const agent_dir = try std.fmt.allocPrint(b.allocator, "agents/{s}", .{selected_agent});
+
+        return BuildContext{
+            .b = b,
+            .target = b.standardTargetOptions(.{}),
+            .optimize = b.standardOptimizeOption(.{}),
+            .selected_agent = selected_agent,
+            .agent_paths = .{
+                .dir = agent_dir,
+                .main = try std.fmt.allocPrint(b.allocator, "{s}/main.zig", .{agent_dir}),
+                .spec = try std.fmt.allocPrint(b.allocator, "{s}/spec.zig", .{agent_dir}),
+            },
+        };
+    }
+};
+
+// Module builder for creating and wiring modules
+const ModuleBuilder = struct {
+    ctx: BuildContext,
+
+    fn init(ctx: BuildContext) ModuleBuilder {
+        return ModuleBuilder{ .ctx = ctx };
+    }
+
+    /// Parse agent manifest from agent.manifest.zon file
+    fn parseAgentManifest(self: ModuleBuilder, agent_name: []const u8) !?AgentManifest {
+        const manifest_path = try std.fmt.allocPrint(self.ctx.b.allocator, "agents/{s}/agent.manifest.zon", .{agent_name});
+        defer self.ctx.b.allocator.free(manifest_path);
+
+        const manifest_file = std.fs.cwd().openFile(manifest_path, .{}) catch |err| {
+            switch (err) {
+                error.FileNotFound => return null,
+                else => return err,
+            }
+        };
+        defer manifest_file.close();
+
+        const manifest_content = try manifest_file.readToEndAlloc(self.ctx.b.allocator, std.math.maxInt(usize));
+        defer self.ctx.b.allocator.free(manifest_content);
+
+        // For now, return a basic manifest structure
+        // In a full implementation, you'd use std.zig.parseFromSlice or similar
+        var manifest = AgentManifest{
+            .agent = .{
+                .id = try self.ctx.b.allocator.dupe(u8, agent_name),
+                .name = try self.ctx.b.allocator.dupe(u8, agent_name),
+                .version = try self.ctx.b.allocator.dupe(u8, "1.0.0"),
+                .description = try self.ctx.b.allocator.dupe(u8, "AI Agent"),
+                .author = .{
+                    .name = try self.ctx.b.allocator.dupe(u8, "Unknown"),
+                    .email = try self.ctx.b.allocator.dupe(u8, ""),
+                    .organization = try self.ctx.b.allocator.dupe(u8, ""),
+                },
+                .license = try self.ctx.b.allocator.dupe(u8, "MIT"),
+                .homepage = try self.ctx.b.allocator.dupe(u8, ""),
+            },
+            .capabilities = .{
+                .core_features = .{
+                    .file_processing = true,
+                    .system_commands = false,
+                    .network_access = true,
+                    .terminal_ui = true,
+                    .media_processing = false,
+                    .streaming_responses = true,
+                },
+                .specialized_features = std.json.Value{ .null = {} },
+                .performance = .{
+                    .memory_usage = try self.ctx.b.allocator.dupe(u8, "medium"),
+                    .cpu_intensity = try self.ctx.b.allocator.dupe(u8, "low"),
+                    .network_bandwidth = try self.ctx.b.allocator.dupe(u8, "low"),
+                },
+            },
+            .categorization = .{
+                .primary_category = try self.ctx.b.allocator.dupe(u8, "development"),
+                .secondary_categories = &.{},
+                .tags = &.{},
+                .use_cases = &.{},
+            },
+        };
+
+        // Try to extract basic info from manifest content
+        if (std.mem.indexOf(u8, manifest_content, ".name = \"")) |name_start| {
+            const name_end = std.mem.indexOf(u8, manifest_content[name_start + 8 ..], "\"") orelse manifest_content.len;
+            const name_value = manifest_content[name_start + 8 .. name_start + 8 + name_end];
+            self.ctx.b.allocator.free(manifest.agent.name);
+            manifest.agent.name = try self.ctx.b.allocator.dupe(u8, name_value);
+        }
+
+        if (std.mem.indexOf(u8, manifest_content, ".description = \"")) |desc_start| {
+            const desc_end = std.mem.indexOf(u8, manifest_content[desc_start + 15 ..], "\"") orelse manifest_content.len;
+            const desc_value = manifest_content[desc_start + 15 .. desc_start + 15 + desc_end];
+            self.ctx.b.allocator.free(manifest.agent.description);
+            manifest.agent.description = try self.ctx.b.allocator.dupe(u8, desc_value);
+        }
+
+        if (std.mem.indexOf(u8, manifest_content, ".version = \"")) |ver_start| {
+            const ver_end = std.mem.indexOf(u8, manifest_content[ver_start + 12 ..], "\"") orelse manifest_content.len;
+            const ver_value = manifest_content[ver_start + 12 .. ver_start + 12 + ver_end];
+            self.ctx.b.allocator.free(manifest.agent.version);
+            manifest.agent.version = try self.ctx.b.allocator.dupe(u8, ver_value);
+        }
+
+        return manifest;
+    }
+
+    /// Free agent manifest memory
+    fn freeAgentManifest(self: ModuleBuilder, manifest: *const AgentManifest) void {
+        self.ctx.b.allocator.free(manifest.agent.id);
+        self.ctx.b.allocator.free(manifest.agent.name);
+        self.ctx.b.allocator.free(manifest.agent.version);
+        self.ctx.b.allocator.free(manifest.agent.description);
+        self.ctx.b.allocator.free(manifest.agent.author.name);
+        self.ctx.b.allocator.free(manifest.agent.author.email);
+        self.ctx.b.allocator.free(manifest.agent.author.organization);
+        self.ctx.b.allocator.free(manifest.agent.license);
+        self.ctx.b.allocator.free(manifest.agent.homepage);
+        self.ctx.b.allocator.free(manifest.capabilities.performance.memory_usage);
+        self.ctx.b.allocator.free(manifest.capabilities.performance.cpu_intensity);
+        self.ctx.b.allocator.free(manifest.capabilities.performance.network_bandwidth);
+        self.ctx.b.allocator.free(manifest.categorization.primary_category);
+    }
+
+    /// Validate that the selected agent exists and has required files
+    fn validateAgent(self: ModuleBuilder) !void {
+        const agent_path = try std.fmt.allocPrint(self.ctx.b.allocator, "agents/{s}", .{self.ctx.selected_agent});
+        defer self.ctx.b.allocator.free(agent_path);
+
+        // Check if agent directory exists
+        var agent_dir = std.fs.cwd().openDir(agent_path, .{}) catch |err| {
+            switch (err) {
+                error.FileNotFound => {
+                    std.log.err("❌ Agent '{s}' not found!", .{self.ctx.selected_agent});
+                    std.log.err("   Available agents:", .{});
+                    try self.listAvailableAgents();
+                    std.log.err("", .{});
+                    std.log.err("💡 To create a new agent: zig build scaffold-agent -- <name> <description> <author>", .{});
+                    return error.AgentNotFound;
+                },
+                else => return err,
+            }
+        };
+        defer agent_dir.close();
+
+        // Check for required files
+        const required_files = [_][]const u8{ "main.zig", "spec.zig", "agent.zig" };
+        var missing_files = try std.ArrayList([]const u8).initCapacity(self.ctx.b.allocator, 4);
+        defer missing_files.deinit(self.ctx.b.allocator);
+
+        for (required_files) |file| {
+            const file_path = try std.fmt.allocPrint(self.ctx.b.allocator, "{s}/{s}", .{ agent_path, file });
+            defer self.ctx.b.allocator.free(file_path);
+
+            _ = std.fs.cwd().openFile(file_path, .{}) catch |err| {
+                switch (err) {
+                    error.FileNotFound => {
+                        try missing_files.append(self.ctx.b.allocator, try self.ctx.b.allocator.dupe(u8, file));
+                    },
+                    else => return err,
+                }
+            };
+        }
+
+        if (missing_files.items.len > 0) {
+            std.log.err("❌ Agent '{s}' is missing required files:", .{self.ctx.selected_agent});
+            for (missing_files.items) |file| {
+                std.log.err("   - {s}", .{file});
+                self.ctx.b.allocator.free(file);
+            }
+            std.log.err("", .{});
+            std.log.err("💡 Required files for agents:", .{});
+            std.log.err("   - main.zig: CLI entry point", .{});
+            std.log.err("   - spec.zig: Agent specification and tools", .{});
+            std.log.err("   - agent.zig: Main agent implementation", .{});
+            return error.MissingRequiredFile;
+        }
+
+        // Validate manifest if it exists
+        const manifest = try self.parseAgentManifest(self.ctx.selected_agent);
+        if (manifest) |*m| {
+            defer self.freeAgentManifest(m);
+            std.log.info("✅ Agent '{s}' validated successfully", .{self.ctx.selected_agent});
+            std.log.info("   📋 Name: {s}", .{m.agent.name});
+            std.log.info("   📝 Description: {s}", .{m.agent.description});
+            std.log.info("   🔖 Version: {s}", .{m.agent.version});
+        } else {
+            std.log.info("✅ Agent '{s}' validated successfully (no manifest)", .{self.ctx.selected_agent});
+        }
+    }
+
+    /// List all available agents with detailed information
+    fn listAvailableAgents(self: ModuleBuilder) !void {
+        var agents_dir = try std.fs.cwd().openDir("agents", .{ .iterate = true });
+        defer agents_dir.close();
+
+        std.log.info("🤖 Available Agents", .{});
+        std.log.info("==================", .{});
+
+        var it = agents_dir.iterate();
+        var agent_count: usize = 0;
+        while (try it.next()) |entry| {
+            if (entry.kind == .directory and !std.mem.eql(u8, entry.name, "_template")) {
+                agent_count += 1;
+                const manifest = try self.parseAgentManifest(entry.name);
+                if (manifest) |*m| {
+                    defer self.freeAgentManifest(m);
+                    std.log.info("  📦 {s} (v{s})", .{ m.agent.name, m.agent.version });
+                    std.log.info("     {s}", .{ m.agent.description });
+                    std.log.info("     👤 {s} | 📂 {s}", .{ m.agent.author.name, m.categorization.primary_category });
+                    std.log.info("", .{});
+                } else {
+                    std.log.info("  📦 {s}", .{entry.name});
+                    std.log.info("     No manifest available", .{});
+                    std.log.info("", .{});
+                }
+            }
+        }
+
+        if (agent_count == 0) {
+            std.log.info("  (No agents found)", .{});
+        }
+
+        std.log.info("", .{});
+        std.log.info("🚀 Quick Start:", .{});
+        std.log.info("  zig build -Dagent=<agent-name>           # Build specific agent", .{});
+        std.log.info("  zig build -Dagent=<agent-name> run       # Run agent", .{});
+        std.log.info("  zig build all-agents                     # Build all agents", .{});
+        std.log.info("  zig build scaffold-agent -- <name> <desc> <author>  # Create new agent", .{});
+        std.log.info("", .{});
+    }
+
+    /// Get agent information from manifest file
+    fn getAgentInfo(self: ModuleBuilder, agent_name: []const u8) ![]const u8 {
+        const manifest = try self.parseAgentManifest(agent_name);
+        if (manifest) |*m| {
+            defer self.freeAgentManifest(m);
+            return try std.fmt.allocPrint(self.ctx.b.allocator, "{s} (v{s}) - {s}", .{ m.agent.name, m.agent.version, m.agent.description });
+        }
+        return try self.ctx.b.allocator.dupe(u8, "Custom AI agent");
+    }
+
+    /// Validate all agents in the agents directory
+    fn validateAllAgents(self: ModuleBuilder) !void {
+        var agents_dir = try std.fs.cwd().openDir("agents", .{ .iterate = true });
+        defer agents_dir.close();
+
+        std.log.info("🔍 Validating all agents...", .{});
+        std.log.info("", .{});
+
+        var it = agents_dir.iterate();
+        var valid_count: usize = 0;
+        var invalid_count: usize = 0;
+
+        while (try it.next()) |entry| {
+            if (entry.kind == .directory and !std.mem.eql(u8, entry.name, "_template")) {
+                const is_valid = try self.validateSingleAgent(entry.name);
+                if (is_valid) {
+                    valid_count += 1;
+                } else {
+                    invalid_count += 1;
+                }
+            }
+        }
+
+        std.log.info("", .{});
+        std.log.info("📊 Validation Summary:", .{});
+        std.log.info("  ✅ Valid agents: {d}", .{valid_count});
+        std.log.info("  ❌ Invalid agents: {d}", .{invalid_count});
+        std.log.info("  📁 Total agents: {d}", .{valid_count + invalid_count});
+
+        if (invalid_count > 0) {
+            std.log.info("", .{});
+            std.log.info("💡 Fix invalid agents by ensuring they have:", .{});
+            std.log.info("   - main.zig, spec.zig, agent.zig files", .{});
+            std.log.info("   - Valid agent.manifest.zon file", .{});
+        }
+    }
+
+    /// Validate a single agent (returns true if valid)
+    fn validateSingleAgent(self: ModuleBuilder, agent_name: []const u8) !bool {
+        const agent_path = try std.fmt.allocPrint(self.ctx.b.allocator, "agents/{s}", .{agent_name});
+        defer self.ctx.b.allocator.free(agent_path);
+
+        // Check if agent directory exists
+        var agent_dir = std.fs.cwd().openDir(agent_path, .{}) catch |err| {
+            switch (err) {
+                error.FileNotFound => {
+                    std.log.err("❌ Agent '{s}': Directory not found", .{agent_name});
+                    return false;
+                },
+                else => return err,
+            }
+        };
+        defer agent_dir.close();
+
+        // Check for required files
+        const required_files = [_][]const u8{ "main.zig", "spec.zig", "agent.zig" };
+        var missing_files = try std.ArrayList([]const u8).initCapacity(self.ctx.b.allocator, 4);
+        defer missing_files.deinit(self.ctx.b.allocator);
+
+        for (required_files) |file| {
+            const file_path = try std.fmt.allocPrint(self.ctx.b.allocator, "{s}/{s}", .{ agent_path, file });
+            defer self.ctx.b.allocator.free(file_path);
+
+            _ = std.fs.cwd().openFile(file_path, .{}) catch |err| {
+                switch (err) {
+                    error.FileNotFound => {
+                        try missing_files.append(self.ctx.b.allocator, try self.ctx.b.allocator.dupe(u8, file));
+                    },
+                    else => return err,
+                }
+            };
+        }
+
+        if (missing_files.items.len > 0) {
+            std.log.err("❌ Agent '{s}': Missing files - {s}", .{ agent_name, std.mem.join(self.ctx.b.allocator, ", ", missing_files.items) catch "unknown" });
+            for (missing_files.items) |file| {
+                self.ctx.b.allocator.free(file);
+            }
+            return false;
+        }
+
+        // Check manifest
+        const manifest = try self.parseAgentManifest(agent_name);
+        if (manifest) |*m| {
+            defer self.freeAgentManifest(m);
+            std.log.info("✅ Agent '{s}': Valid ({s})", .{ agent_name, m.agent.description });
+        } else {
+            std.log.warn("⚠️  Agent '{s}': Valid but no manifest", .{agent_name});
+        }
+
+        return true;
+    }
+
+    /// Get list of all available agent names
+    fn getAllAgentNames(self: ModuleBuilder) !std.ArrayList([]const u8) {
+        var agents_dir = try std.fs.cwd().openDir("agents", .{ .iterate = true });
+        defer agents_dir.close();
+
+        var agent_names = try std.ArrayList([]const u8).initCapacity(self.ctx.b.allocator, 4);
+        var it = agents_dir.iterate();
+
+        while (try it.next()) |entry| {
+            if (entry.kind == .directory and !std.mem.eql(u8, entry.name, "_template")) {
+                try agent_names.append(self.ctx.b.allocator, try self.ctx.b.allocator.dupe(u8, entry.name));
+            }
+        }
+
+        return agent_names;
+    }
+
+    fn createConfigModules(self: ModuleBuilder) ConfigModules {
+        return .{
+            .cli_zon = self.createModule(BUILD_CONFIG.PATHS.CLI_ZON),
+            .termcaps_zon = self.createModule(BUILD_CONFIG.PATHS.TERMCAPS_ZON),
+            .ansi_zon = self.createModule(BUILD_CONFIG.PATHS.ANSI_ZON),
+        };
+    }
+
+    fn createSharedModules(self: ModuleBuilder) SharedModules {
+        const anthropic = self.createModule(BUILD_CONFIG.PATHS.ANTHROPIC_ZIG);
+
+        const tools = self.createModule(BUILD_CONFIG.PATHS.TOOLS_ZIG);
+        tools.addImport("anthropic_shared", anthropic);
+
+        const config = self.createModule(BUILD_CONFIG.PATHS.CONFIG_ZIG);
+
+        const auth = self.createModule(BUILD_CONFIG.PATHS.AUTH_ZIG);
+        auth.addImport("anthropic_shared", anthropic);
+
+        // Terminal capability module aggregator shared across CLI and TUI
+        const term = self.createModule("src/shared/term/mod.zig");
+
+        const engine = self.createModule(BUILD_CONFIG.PATHS.ENGINE_ZIG);
+        engine.addImport("anthropic_shared", anthropic);
+        engine.addImport("tools_shared", tools);
+        engine.addImport("auth_shared", auth);
+
+        // CLI depends on terminal capabilities
+        const cli = self.createModule(BUILD_CONFIG.PATHS.CLI_ZIG);
+        cli.addImport("term_shared", term);
+
+        // TUI depends on terminal capabilities
+        const tui = self.createModule(BUILD_CONFIG.PATHS.TUI_ZIG);
+        tui.addImport("term_shared", term);
+
+        return .{
+            .anthropic = anthropic,
+            .tools = tools,
+            .engine = engine,
+            .cli = cli,
+            .tui = tui,
+            .term = term,
+            .config = config,
+            .auth = auth,
+        };
+    }
+
+    fn createAgentModules(self: ModuleBuilder, shared: SharedModules) AgentModules {
+        const entry = self.createModule(self.ctx.agent_paths.main);
+        entry.addImport("core_engine", shared.engine);
+        entry.addImport("cli_shared", shared.cli);
+        entry.addImport("tools_shared", shared.tools);
+        entry.addImport("config_shared", shared.config);
+
+        const spec = self.createModule(self.ctx.agent_paths.spec);
+        spec.addImport("core_engine", shared.engine);
+        spec.addImport("tools_shared", shared.tools);
+
+        return .{ .entry = entry, .spec = spec };
+    }
+
+    fn createRootModule(_: ModuleBuilder, _: ConfigModules, _: SharedModules, agent: AgentModules) *std.Build.Module {
+        // For multi-agent builds, we use the agent entry directly
+        return agent.entry;
+    }
+
+    fn createApiModule(self: ModuleBuilder, _: ConfigModules) *std.Build.Module {
+        // For testing, use a simple test module
+        return self.createModule("examples/basic_demo.zig");
+    }
+
+    // Helper functions
+    fn createModule(self: ModuleBuilder, path: []const u8) *std.Build.Module {
+        // Generate a module name from the path
+        const name = std.fs.path.basename(path);
+        const module_name = if (std.mem.lastIndexOf(u8, name, ".zig")) |ext_pos|
+            name[0..ext_pos]
+        else
+            name;
+
+        return self.ctx.b.addModule(module_name, .{
+            .target = self.ctx.target,
+            .optimize = self.ctx.optimize,
+            .root_source_file = self.ctx.b.path(path),
+        });
+    }
+
+    fn addConfigImports(self: ModuleBuilder, mod: *std.Build.Module, config: ConfigModules) void {
+        _ = self;
+        mod.addImport("cli.zon", config.cli_zon);
+        mod.addImport("termcaps.zon", config.termcaps_zon);
+        mod.addImport("ansi.zon", config.ansi_zon);
+    }
+
+    fn addSharedImports(self: ModuleBuilder, mod: *std.Build.Module, shared: SharedModules) void {
+        _ = self;
+        mod.addImport("core_engine", shared.engine);
+        mod.addImport("anthropic_shared", shared.anthropic);
+        mod.addImport("cli_shared", shared.cli);
+        mod.addImport("tui_shared", shared.tui);
+        mod.addImport("tools_shared", shared.tools);
+        mod.addImport("config_shared", shared.config);
+    }
+
+    fn addAgentImports(self: ModuleBuilder, mod: *std.Build.Module, agent: AgentModules) void {
+        _ = self;
+        mod.addImport("agent_entry", agent.entry);
+        mod.addImport("agent_spec", agent.spec);
+    }
+
+    fn createRootModuleStripped(
+        self: ModuleBuilder,
+        config: ConfigModules,
+        shared: SharedModules,
+        agent: AgentModules,
+    ) *std.Build.Module {
+        // For multi-agent builds, we use the agent entry directly
+        _ = self;
+        _ = config;
+        _ = shared;
+        return agent.entry;
+    }
+};
+
+// Module collections for better organization
+const ConfigModules = struct {
+    cli_zon: *std.Build.Module,
+    termcaps_zon: *std.Build.Module,
+    ansi_zon: *std.Build.Module,
+};
+
+const SharedModules = struct {
+    anthropic: *std.Build.Module,
+    tools: *std.Build.Module,
+    engine: *std.Build.Module,
+    cli: *std.Build.Module,
+    tui: *std.Build.Module,
+    term: *std.Build.Module,
+    config: *std.Build.Module,
+    auth: *std.Build.Module,
+};
+
+const AgentModules = struct {
+    entry: *std.Build.Module,
+    spec: *std.Build.Module,
+};
+
+pub fn build(b: *std.Build) !void {
+    // Check for special build modes that don't require agent selection
+    const list_agents = b.option(bool, "list-agents", "List all available agents") orelse false;
+    const validate_agents = b.option(bool, "validate-agents", "Validate all agents") orelse false;
+    const all_agents = b.option(bool, "all-agents", "Build all available agents") orelse false;
+    const scaffold_agent = b.option(bool, "scaffold-agent", "Scaffold a new agent") orelse false;
+    const agents_list = b.option([]const u8, "agents", "Comma-separated list of agents to build") orelse "";
+
+    // Handle special build modes
+    if (list_agents) {
+        const dummy_ctx = try BuildContext.init(b);
+        const builder = ModuleBuilder.init(dummy_ctx);
+        try builder.listAvailableAgents();
+        return;
+    }
+
+    if (validate_agents) {
+        const dummy_ctx = try BuildContext.init(b);
+        const builder = ModuleBuilder.init(dummy_ctx);
+        try builder.validateAllAgents();
+        return;
+    }
+
+    if (scaffold_agent) {
+        try runScaffoldAgent(b);
+        return;
+    }
+
+    if (all_agents or agents_list.len > 0) {
+        try buildMultipleAgents(b, all_agents, agents_list);
+        return;
+    }
+
+    // Normal single agent build
+    const ctx = try BuildContext.init(b);
+    const builder = ModuleBuilder.init(ctx);
+
+    // Add list-agents command that doesn't require agent selection
+    const list_step = b.step("list-agents", "List all available agents with metadata");
+    list_step.makeFn = struct {
+        fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
+            _ = step;
+            _ = options;
+            const dummy_ctx = BuildContext.init(b) catch return;
+            const temp_builder = ModuleBuilder.init(dummy_ctx);
+            temp_builder.listAvailableAgents() catch return;
+        }
+    }.make;
+    list_step.dependOn(&b.addWriteFiles().step);
+
+    // Add validate-agents command
+    const validate_step = b.step("validate-agents", "Validate all agents have required files and valid manifests");
+    validate_step.makeFn = struct {
+        fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
+            _ = step;
+            _ = options;
+            const dummy_ctx = BuildContext.init(b) catch return;
+            const temp_builder = ModuleBuilder.init(dummy_ctx);
+            temp_builder.validateAllAgents() catch return;
+        }
+    }.make;
+    validate_step.dependOn(&b.addWriteFiles().step);
+
+    // Add scaffold-agent command
+    const scaffold_step = b.step("scaffold-agent", "Scaffold a new agent from template");
+    scaffold_step.makeFn = struct {
+        fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
+            _ = step;
+            _ = options;
+            runScaffoldAgent(b) catch |err| {
+                std.log.err("❌ Scaffold failed: {}", .{err});
+            };
+        }
+    }.make;
+    scaffold_step.dependOn(&b.addWriteFiles().step);
+
+    // Add all-agents command
+    const all_agents_step = b.step("all-agents", "Build all available agents");
+    all_agents_step.makeFn = struct {
+        fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
+            _ = step;
+            _ = options;
+            buildMultipleAgents(b, true, "") catch |err| {
+                std.log.err("❌ Build all agents failed: {}", .{err});
+            };
+        }
+    }.make;
+    all_agents_step.dependOn(&b.addWriteFiles().step);
+
+    // Validate the selected agent before building
+    try builder.validateAgent();
+
+    // Create all module collections
+    const config_modules = builder.createConfigModules();
+    const shared_modules = builder.createSharedModules();
+    const agent_modules = builder.createAgentModules(shared_modules);
+
+    // Build main components
+    const root_module = builder.createRootModule(config_modules, shared_modules, agent_modules);
+    const api_module = builder.createApiModule(config_modules);
+
+    // Setup build steps
+    setupMainExecutable(ctx, root_module);
+    setupAgentExecutable(ctx, agent_modules.entry);
+    setupTestSuite(ctx, api_module);
+    setupFormatting(ctx);
+    setupAgentCommands(ctx, builder);
+    try setupReleaseBuilds(ctx, config_modules);
+}
+
+// Custom step to list agents
+const ListAgentsAction = struct {
+    builder: ModuleBuilder,
+
+    fn make(action: *const ListAgentsAction, step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
+        _ = step;
+        _ = options;
+        try action.builder.listAvailableAgents();
+    }
+};
+
+// Custom step to validate all agents
+const ValidateAgentsAction = struct {
+    builder: ModuleBuilder,
+
+    fn make(action: *const ValidateAgentsAction, step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
+        _ = step;
+        _ = options;
+        try action.builder.validateAllAgents();
+    }
+};
+
+// Custom step to scaffold new agent
+const ScaffoldAgentAction = struct {
+    fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
+        _ = step;
+        _ = options;
+        std.log.err("❌ Use: zig build scaffold-agent -- <agent_name> <description> <author>", .{});
+        std.log.err("   Example: zig build scaffold-agent -- my-agent \"A custom AI agent\" \"John Doe\"", .{});
+        return error.InvalidUsage;
+    }
+};
+
+// Custom step to build all agents
+const AllAgentsAction = struct {
+    fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
+        _ = step;
+        _ = options;
+        std.log.err("❌ Use: zig build all-agents", .{});
+        std.log.err("   Or: zig build -Dagents=markdown,test_agent", .{});
+        return error.InvalidUsage;
+    }
+};
+
+// Run scaffold agent tool
+fn runScaffoldAgent(b: *std.Build) !void {
+    const args = b.args orelse {
+        std.log.err("❌ Scaffold agent requires arguments:", .{});
+        std.log.err("   zig build scaffold-agent -- <agent_name> <description> <author>", .{});
+        std.log.err("   Example: zig build scaffold-agent -- my-agent \"A custom AI agent\" \"John Doe\"", .{});
+        return error.MissingArguments;
+    };
+
+    if (args.len < 3) {
+        std.log.err("❌ Scaffold agent requires 3 arguments:", .{});
+        std.log.err("   <agent_name> <description> <author>", .{});
+        std.log.err("   Example: zig build scaffold-agent -- my-agent \"A custom AI agent\" \"John Doe\"", .{});
+        return error.MissingArguments;
+    }
+
+    const agent_name = args[0];
+    const description = args[1];
+    const author = args[2];
+
+    std.log.info("🔧 Scaffolding new agent '{s}'...", .{agent_name});
+    std.log.info("   Description: {s}", .{description});
+    std.log.info("   Author: {s}", .{author});
+
+    // Create the scaffold tool executable
+    const scaffold_exe = b.addExecutable(.{
+        .name = "scaffold_tool",
+        .root_module = b.createModule(.{
+            .target = b.standardTargetOptions(.{}),
+            .optimize = .Debug,
+            .root_source_file = b.path(BUILD_CONFIG.PATHS.SCAFFOLD_TOOL),
+        }),
+    });
+
+    // Create run step for scaffold tool
+    const scaffold_run = b.addRunArtifact(scaffold_exe);
+    scaffold_run.addArgs(&.{ agent_name, description, author });
+
+    // Add to default build step
+    b.getInstallStep().dependOn(&scaffold_run.step);
+
+    std.log.info("✅ Agent '{s}' scaffolded successfully!", .{agent_name});
+    std.log.info("   📁 Location: agents/{s}/", .{agent_name});
+    std.log.info("   🚀 Build with: zig build -Dagent={s}", .{agent_name});
+}
+
+// Build multiple agents
+fn buildMultipleAgents(b: *std.Build, all_agents: bool, agents_list: []const u8) !void {
+    const dummy_ctx = try BuildContext.init(b);
+    const builder = ModuleBuilder.init(dummy_ctx);
+
+    var agent_names = if (all_agents)
+        try builder.getAllAgentNames()
+    else
+        try parseAgentList(b.allocator, agents_list);
+
+    defer {
+        for (agent_names.items) |name| {
+            b.allocator.free(name);
+        }
+        agent_names.deinit();
+    }
+
+    if (agent_names.items.len == 0) {
+        std.log.err("❌ No agents specified or found", .{});
+        return error.NoAgents;
+    }
+
+    std.log.info("🔨 Building {d} agent(s)...", .{agent_names.items.len});
+
+    for (agent_names.items) |agent_name| {
+        std.log.info("   📦 Building agent: {s}", .{agent_name});
+
+        // Create build context for this agent
+        const agent_ctx = BuildContext{
+            .b = b,
+            .target = b.standardTargetOptions(.{}),
+            .optimize = b.standardOptimizeOption(.{}),
+            .selected_agent = agent_name,
+            .agent_paths = .{
+                .dir = try std.fmt.allocPrint(b.allocator, "agents/{s}", .{agent_name}),
+                .main = try std.fmt.allocPrint(b.allocator, "agents/{s}/main.zig", .{agent_name}),
+                .spec = try std.fmt.allocPrint(b.allocator, "agents/{s}/spec.zig", .{agent_name}),
+            },
+        };
+
+        const agent_builder = ModuleBuilder.init(agent_ctx);
+
+        // Validate agent
+        agent_builder.validateAgent() catch |err| {
+            std.log.err("   ❌ Failed to validate agent '{s}': {}", .{agent_name, err});
+            continue;
+        };
+
+        // Create modules and build
+        const config_modules = agent_builder.createConfigModules();
+        const shared_modules = agent_builder.createSharedModules();
+        const agent_modules = agent_builder.createAgentModules(shared_modules);
+        const root_module = agent_builder.createRootModule(config_modules, shared_modules, agent_modules);
+
+        // Create executable
+        const exe_name = try std.fmt.allocPrint(b.allocator, "{s}-{s}", .{ BUILD_CONFIG.BINARY_NAME, agent_name });
+        const exe = b.addExecutable(.{ .name = exe_name, .root_module = root_module });
+        linkSystemDependencies(exe);
+
+        // Install
+        const install = b.addInstallArtifact(exe, .{});
+        b.getInstallStep().dependOn(&install.step);
+
+        std.log.info("   ✅ Agent '{s}' built successfully", .{agent_name});
+
+        // Free allocated paths
+        b.allocator.free(agent_ctx.agent_paths.dir);
+        b.allocator.free(agent_ctx.agent_paths.main);
+        b.allocator.free(agent_ctx.agent_paths.spec);
+        b.allocator.free(exe_name);
+    }
+
+    std.log.info("🎉 All agents built successfully!", .{});
+}
+
+// Parse comma-separated agent list
+fn parseAgentList(allocator: std.mem.Allocator, agents_list: []const u8) !std.ArrayList([]const u8) {
+    var agents = try std.ArrayList([]const u8).initCapacity(allocator, 4);
+
+    var it = std.mem.splitSequence(u8, agents_list, ",");
+    while (it.next()) |agent| {
+        const trimmed = std.mem.trim(u8, agent, " \t");
+        if (trimmed.len > 0) {
+            try agents.append(allocator, try allocator.dupe(u8, trimmed));
+        }
+    }
+
+    return agents;
+}
+
+fn setupAgentCommands(ctx: BuildContext, builder: ModuleBuilder) void {
+    // Add help command
+    const help_step = ctx.b.step("help", "Show help and available commands");
+    help_step.makeFn = struct {
+        fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
+            _ = step;
+            _ = options;
+            printHelp();
+        }
+    }.make;
+    help_step.dependOn(&ctx.b.addWriteFiles().step);
+
+    // Add agent-info command
+    const info_step = ctx.b.step("agent-info", "Show information about the selected agent");
+    info_step.makeFn = struct {
+        fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
+            _ = step;
+            _ = options;
+            const manifest = builder.parseAgentManifest(ctx.selected_agent) catch null;
+            if (manifest) |*m| {
+                defer builder.freeAgentManifest(m);
+                std.log.info("📋 Agent Information: {s}", .{m.agent.name});
+                std.log.info("   🔖 Version: {s}", .{m.agent.version});
+                std.log.info("   📝 Description: {s}", .{m.agent.description});
+                std.log.info("   👤 Author: {s}", .{m.agent.author.name});
+                std.log.info("   📂 Category: {s}", .{m.categorization.primary_category});
+                std.log.info("   🏷️  Tags: {s}", .{std.mem.join(ctx.b.allocator, ", ", m.categorization.tags) catch "none"});
+            } else {
+                std.log.info("📋 Agent: {s} (no manifest available)", .{ctx.selected_agent});
+            }
+        }
+    }.make;
+    info_step.dependOn(&ctx.b.addWriteFiles().step);
+}
+
+fn printHelp() void {
+    std.log.info("🤖 Multi-Agent Terminal AI System - Help", .{});
+    std.log.info("=========================================", .{});
+    std.log.info("", .{});
+    std.log.info("📦 AGENT MANAGEMENT:", .{});
+    std.log.info("  zig build list-agents              # List all available agents", .{});
+    std.log.info("  zig build validate-agents          # Validate all agents", .{});
+    std.log.info("  zig build scaffold-agent -- <name> <desc> <author>  # Create new agent", .{});
+    std.log.info("", .{});
+    std.log.info("🔨 BUILDING AGENTS:", .{});
+    std.log.info("  zig build -Dagent=<name>           # Build specific agent", .{});
+    std.log.info("  zig build all-agents               # Build all agents", .{});
+    std.log.info("  zig build -Dagents=a,b,c           # Build multiple agents", .{});
+    std.log.info("", .{});
+    std.log.info("🚀 RUNNING AGENTS:", .{});
+    std.log.info("  zig build -Dagent=<name> run       # Run agent interactively", .{});
+    std.log.info("  zig build -Dagent=<name> run-agent # Run agent directly", .{});
+    std.log.info("  zig build -Dagent=<name> install-agent  # Install agent binary", .{});
+    std.log.info("", .{});
+    std.log.info("🛠️  DEVELOPMENT:", .{});
+    std.log.info("  zig build test                     # Run tests", .{});
+    std.log.info("  zig build fmt                      # Format code", .{});
+    std.log.info("  zig build release                  # Create release builds", .{});
+    std.log.info("", .{});
+    std.log.info("📋 INFORMATION:", .{});
+    std.log.info("  zig build help                     # Show this help", .{});
+    std.log.info("  zig build agent-info               # Show current agent info", .{});
+    std.log.info("", .{});
+    std.log.info("💡 EXAMPLES:", .{});
+    std.log.info("  zig build scaffold-agent -- my-ai \"AI assistant\" \"John Doe\"", .{});
+    std.log.info("  zig build -Dagent=my-ai run -- \"Hello, how are you?\"", .{});
+    std.log.info("  zig build -Dagents=markdown,test_agent", .{});
+}
+
+fn setupMainExecutable(ctx: BuildContext, root_module: *std.Build.Module) void {
+    const exe = ctx.b.addExecutable(.{ .name = BUILD_CONFIG.BINARY_NAME, .root_module = root_module });
+    linkSystemDependencies(exe);
+    ctx.b.installArtifact(exe);
+
+    // Run command
+    const run_step = ctx.b.step("run", "Run the selected agent");
+    const run_cmd = ctx.b.addRunArtifact(exe);
+    if (ctx.b.args) |args| {
+        if (args.len == 0) {
+            std.log.info("💡 Tip: Provide a prompt as argument, e.g.:", .{});
+            std.log.info("   zig build -Dagent={s} run -- \"Your prompt here\"", .{ctx.selected_agent});
+        }
+        run_cmd.addArgs(args);
+    }
+    run_step.dependOn(&run_cmd.step);
+}
+
+fn setupAgentExecutable(ctx: BuildContext, agent_entry: *std.Build.Module) void {
+    const exe_name = std.fmt.allocPrint(ctx.b.allocator, "{s}-{s}", .{ BUILD_CONFIG.BINARY_NAME, ctx.selected_agent }) catch return;
+    const exe = ctx.b.addExecutable(.{ .name = exe_name, .root_module = agent_entry });
+    linkSystemDependencies(exe);
+
+    // Install agent step
+    const install_agent = ctx.b.addInstallArtifact(exe, .{});
+    const agent_step = ctx.b.step("install-agent", "Install only the selected agent executable");
+    agent_step.dependOn(&install_agent.step);
+
+    // Run agent step
+    const run_agent_step = ctx.b.step("run-agent", "Run the selected agent directly");
+    const run_agent = ctx.b.addRunArtifact(exe);
+    if (ctx.b.args) |args| run_agent.addArgs(args);
+    run_agent_step.dependOn(&run_agent.step);
+}
+
+fn setupTestSuite(ctx: BuildContext, api_module: *std.Build.Module) void {
+    const tests_step = ctx.b.step("test", "Run test suite");
+    const tests = ctx.b.addTest(.{ .root_module = api_module });
+    linkSystemDependencies(tests);
+    const tests_run = ctx.b.addRunArtifact(tests);
+    tests_step.dependOn(&tests_run.step);
+    ctx.b.getInstallStep().dependOn(tests_step);
+}
+
+fn setupFormatting(ctx: BuildContext) void {
+    const fmt_step = ctx.b.step("fmt", "Check formatting");
+    const fmt = ctx.b.addFmt(.{ .paths = &BUILD_CONFIG.PATHS.SOURCE_DIRS, .check = true });
+    fmt_step.dependOn(&fmt.step);
+    ctx.b.getInstallStep().dependOn(fmt_step);
+}
+
+fn setupReleaseBuilds(ctx: BuildContext, config_modules: ConfigModules) !void {
+    const release_step = ctx.b.step("release", "Install and archive release binaries");
+
+    for (BUILD_CONFIG.RELEASE_TARGETS) |target_info| {
+        try buildReleaseForTarget(ctx, release_step, target_info, config_modules);
+    }
+}
+
+fn linkSystemDependencies(exe: *std.Build.Step.Compile) void {
+    exe.linkSystemLibrary("curl");
+    exe.linkLibC();
+}
+
+fn buildReleaseForTarget(
+    ctx: BuildContext,
+    release_step: *std.Build.Step,
+    target_info: BUILD_CONFIG.ReleaseTarget,
+    config_modules: ConfigModules,
+) !void {
+    const release_target = ctx.b.resolveTargetQuery(try std.Build.parseTargetQuery(.{ .arch_os_abi = target_info.arch_os_abi }));
+    const release_name = try std.fmt.allocPrint(ctx.b.allocator, "{s}-v{s}-{s}", .{ BUILD_CONFIG.BINARY_NAME, BUILD_CONFIG.VERSION, target_info.arch_os_abi });
+    const archive_name = try std.fmt.allocPrint(ctx.b.allocator, "{s}{s}", .{ release_name, target_info.archive_ext });
+
+    // Create release context and builder
+    const release_ctx = BuildContext{
+        .b = ctx.b,
+        .target = release_target,
+        .optimize = .ReleaseSafe,
+        .selected_agent = ctx.selected_agent,
+        .agent_paths = ctx.agent_paths,
+    };
+    const release_builder = ModuleBuilder.init(release_ctx);
+
+    // Build optimized modules for release
+    const shared_modules = release_builder.createSharedModules();
+    const agent_modules = release_builder.createAgentModules(shared_modules);
+    const root_module = release_builder.createRootModuleStripped(config_modules, shared_modules, agent_modules);
+
+    // Build and install executable
+    const exe = ctx.b.addExecutable(.{ .name = release_name, .root_module = root_module });
+    linkSystemDependencies(exe);
+    const exe_install = ctx.b.addInstallArtifact(exe, .{});
+
+    // Create and install archive
+    const archive_install = createArchive(ctx.b, exe, exe_install, archive_name, target_info.is_windows);
+    release_step.dependOn(&archive_install.step);
+}
+
+// Helper functions for release building
+fn createArchive(
+    b: *std.Build,
+    exe: *std.Build.Step.Compile,
+    exe_install: *std.Build.Step.InstallArtifact,
+    archive_name: []const u8,
+    is_windows: bool,
+) *std.Build.Step.InstallFile {
+    const archive_cmd = if (is_windows)
+        b.addSystemCommand(&.{ "zip", "-9" })
+    else
+        b.addSystemCommand(&.{ "tar", "-cJf" });
+
+    archive_cmd.setCwd(exe.getEmittedBinDirectory());
+    if (!is_windows) {
+        archive_cmd.setEnvironmentVariable("XZ_OPT", "-9");
+    }
+
+    const archive_path = archive_cmd.addOutputFileArg(archive_name);
+    archive_cmd.addArg(exe.out_filename);
+    archive_cmd.step.dependOn(&exe_install.step);
+
+    const archive_install = b.addInstallFileWithDir(
+        archive_path,
+        .{ .custom = "release" },
+        archive_name,
+    );
+    archive_install.step.dependOn(&archive_cmd.step);
+    return archive_install;
+}

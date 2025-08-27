@@ -15,12 +15,12 @@ pub fn main() !void {
     const args = try std.process.argsAlloc(gpa);
     defer std.process.argsFree(gpa, args);
 
-    const cli_args = if (args.len > 1) args[1..] else args[0..0];
+    const commandLineArgs = if (args.len > 1) args[1..] else args[0..0];
 
     // Convert [][:0]u8 to [][]const u8
-    const cli_args_const = try gpa.alloc([]const u8, cli_args.len);
+    const cli_args_const = try gpa.alloc([]const u8, commandLineArgs.len);
     defer gpa.free(cli_args_const);
-    for (cli_args, 0..) |arg, i| {
+    for (commandLineArgs, 0..) |arg, i| {
         cli_args_const[i] = std.mem.sliceTo(arg, 0);
     }
 
@@ -37,11 +37,11 @@ pub fn main() !void {
     defer args_to_process.deinit();
 
     // Handle auth commands (these are handled by parseAndHandle, but we keep this for completeness)
-    if (args_to_process.command) |cmd| {
-        switch (cmd) {
+    if (args_to_process.command) |command| {
+        switch (command) {
             .auth => {
-                if (args_to_process.auth_subcommand) |sub| {
-                    switch (sub) {
+                if (args_to_process.auth_subcommand) |subcommand| {
+                    switch (subcommand) {
                         .login => {
                             try engine.setupOAuth(gpa);
                             return;

@@ -1,5 +1,5 @@
 const std = @import("std");
-const capability_detector = @import("capability_detector.zig");
+const caps = @import("../caps.zig");
 
 /// Sophisticated color palette management system
 /// Provides intelligent color conversion, palette optimization, and theme management
@@ -455,7 +455,7 @@ pub const ANSI256Palette = struct {
 pub const ColorPalette = struct {
     allocator: std.mem.Allocator,
     ansi_palette: ANSI256Palette,
-    capabilities: capability_detector.Capabilities,
+    capabilities: caps.TermCaps,
     current_theme: Theme = .auto,
     custom_colors: std.StringHashMap(RGBColor),
 
@@ -468,7 +468,7 @@ pub const ColorPalette = struct {
         custom, // User-defined theme
     };
 
-    pub fn init(allocator: std.mem.Allocator, capabilities: capability_detector.Capabilities) Self {
+    pub fn init(allocator: std.mem.Allocator, capabilities: caps.TermCaps) Self {
         return Self{
             .allocator = allocator,
             .ansi_palette = ANSI256Palette.init(),

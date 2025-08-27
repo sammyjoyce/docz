@@ -1,5 +1,5 @@
 const std = @import("std");
-const term = @import("../src/shared/term/enhanced_cellbuf.zig");
+const term = @import("../src/shared/term/cellbuf.zig");
 
 /// Demonstration of the enhanced cellbuf functionality
 /// Advanced terminal cell buffer features with Zig implementation
@@ -32,7 +32,7 @@ pub fn main() !void {
 
     // Demo 5: Advanced styling
     std.debug.print("\n5. Advanced styling features:\n");
-    try demoAdvancedStyling(&buffer, allocator);
+    try demoStyling(&buffer, allocator);
 
     std.debug.print("\nDemo completed!\n");
 }
@@ -180,7 +180,7 @@ fn demoLineOperations(buffer: *term.EnhancedCellBuffer, allocator: std.mem.Alloc
     std.debug.print("{s}\n", .{after_delete});
 }
 
-fn demoAdvancedStyling(buffer: *term.EnhancedCellBuffer, allocator: std.mem.Allocator) !void {
+fn demoStyling(buffer: *term.EnhancedCellBuffer, allocator: std.mem.Allocator) !void {
     buffer.clear();
 
     // Demonstrate various underline styles

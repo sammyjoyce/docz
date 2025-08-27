@@ -8,9 +8,8 @@ const term_shared = @import("term_shared");
 const term_caps = term_shared.caps;
 const graphics_manager = term_shared.graphics_manager;
 const color_palette = term_shared.color_palette;
-const enhanced_mouse = term_shared.input.enhanced_mouse;
+const enhanced_mouse = term_shared.input.mouse;
 const terminal_graphics = term_shared.unicode_image_renderer;
-const capability_detector = term_shared.capability_detector;
 
 // Import widget types
 const LineChart = @import("chart/line.zig").LineChart;
@@ -77,7 +76,7 @@ pub const DashboardEngine = struct {
         const engine = try allocator.create(DashboardEngine);
 
         // Detect terminal capabilities
-        const caps = capability_detector.detectCapabilities();
+        const caps = term_caps.getTermCaps();
         const tier = CapabilityTier.detectFromCaps(caps);
 
         engine.* = .{

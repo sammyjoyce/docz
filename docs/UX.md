@@ -247,7 +247,7 @@ The smart command palette provides intelligent command discovery and execution w
 
 #### Key Features
 
-- **Fuzzy Search**: Scoring algorithm in `src/shared/tui/widgets/enhanced/command_palette.zig`
+- **Fuzzy Search**: Scoring algorithm in `src/shared/tui/widgets/rich/command_palette.zig`
 - **Command History**: Frecency-based command ranking
 - **Keyboard Navigation**: Full keyboard-driven interface
 - **Visual Highlighting**: Match highlighting in search results
