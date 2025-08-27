@@ -53,7 +53,7 @@ pub const ThemeDevelopmentTools = struct {
         try self.previewColor(writer, "Secondary", theme.secondary);
         try self.previewColor(writer, "Success", theme.success);
         try self.previewColor(writer, "Warning", theme.warning);
-        try self.previewColor(writer, "Error", theme.error_color);
+        try self.previewColor(writer, "Error", theme.errorColor);
         try self.previewColor(writer, "Info", theme.info);
 
         // ANSI colors
@@ -143,7 +143,7 @@ pub const ThemeDevelopmentTools = struct {
         try self.documentColor(writer, "Secondary", theme.secondary, "Secondary accent color");
         try self.documentColor(writer, "Success", theme.success, "Success messages");
         try self.documentColor(writer, "Warning", theme.warning, "Warning messages");
-        try self.documentColor(writer, "Error", theme.error_color, "Error messages");
+        try self.documentColor(writer, "Error", theme.errorColor, "Error messages");
         try self.documentColor(writer, "Info", theme.info, "Information messages");
 
         try writer.writeAll("\n## Accessibility\n\n");
@@ -204,7 +204,7 @@ pub const ThemeDevelopmentTools = struct {
 
         for (cb_types) |cb_type| {
             const distinguishable = self.cb_adapter.areColorsDistinguishable(
-                theme.error_color.rgb,
+                theme.errorColor.rgb,
                 theme.success.rgb,
                 cb_type,
             );

@@ -213,7 +213,7 @@ pub const EnhancedUIDemo = struct {
                 .syntax_highlighting = true,
                 .live_validation = true,
             },
-            .suggestion_provider = smart_input.defaultSuggestionProvider,
+            .suggestionProvider = smart_input.defaultSuggestionProvider,
             .validator = smart_input.defaultValidator,
         });
 

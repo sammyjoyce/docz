@@ -581,7 +581,7 @@ pub const SmartInput = struct {
         }
 
         switch (mouse_event.action) {
-            .press => {
+            .PRESS => {
                 switch (mouse_event.button) {
                     .left => {
                         // Handle cursor positioning
@@ -603,7 +603,7 @@ pub const SmartInput = struct {
                     else => return false,
                 }
             },
-            .move => {
+            .MOVE => {
                 // Handle text selection with mouse drag
                 if (self.selectionStart != null) {
                     const text_pos = self.screenToTextPosition(relative_x +| self.scrollOffset);
@@ -615,7 +615,7 @@ pub const SmartInput = struct {
                     }
                 }
             },
-            .release => {
+            .RELEASE => {
                 // Selection is complete
                 if (self.selectionStart != null and self.selectionEnd != null) {
                     // Ensure selection is properly ordered

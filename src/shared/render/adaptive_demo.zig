@@ -104,27 +104,27 @@ fn demoProgressBars(renderer: *AdaptiveRenderer) !void {
         .{
             .value = 0.25,
             .label = "Download",
-            .show_percentage = true,
+            .showPercentage = true,
             .color = Color.ansi(.blue),
         },
         .{
             .value = 0.67,
             .label = "Processing",
-            .show_percentage = true,
-            .show_eta = true,
+            .showPercentage = true,
+            .showEta = true,
             .eta_seconds = 45,
             .color = Color.ansi(.yellow),
         },
         .{
             .value = 0.89,
             .label = "Upload",
-            .show_percentage = true,
+            .showPercentage = true,
             .color = Color.ansi(.green),
         },
         .{
             .value = 1.0,
             .label = "Complete",
-            .show_percentage = true,
+            .showPercentage = true,
             .color = Color.rgb(0, 255, 0),
         },
     };
@@ -284,8 +284,8 @@ fn demoAnimatedProgress(renderer: *AdaptiveRenderer) !void {
     var progress = AnimatedProgress.init(renderer, Progress{
         .value = 0.0,
         .label = "Processing files",
-        .show_percentage = true,
-        .show_eta = true,
+        .showPercentage = true,
+        .showEta = true,
         .color = Color.ansi(.green),
     });
 
@@ -332,7 +332,7 @@ fn demoRenderModeComparison(allocator: std.mem.Allocator) !void {
         const progress = Progress{
             .value = 0.75,
             .label = "Sample Progress",
-            .show_percentage = true,
+            .showPercentage = true,
             .color = Color.ansi(.green),
         };
         try renderProgress(renderer, progress);
@@ -379,7 +379,7 @@ test "adaptive demo" {
     const progress = Progress{
         .value = 0.5,
         .label = "Test",
-        .show_percentage = true,
+        .showPercentage = true,
     };
     try renderProgress(renderer, progress);
 

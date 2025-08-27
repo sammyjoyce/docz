@@ -226,7 +226,7 @@ pub const ProgressBar = struct {
 
         // Cache terminal capabilities for performance
         const caps = ctx.terminal.getCapabilities();
-        self.cached_terminal_caps = caps;
+        self.cachedTerminalCaps = caps;
 
         // Determine best style for terminal capabilities
         const actual_style = chooseStyle(self.config.style, caps);
@@ -465,7 +465,7 @@ pub const ProgressBar = struct {
     }
 
     fn renderRainbow(self: *Self, ctx: RenderContext, progress: f32) !void {
-        const caps = self.cached_terminal_caps orelse ctx.terminal.getCapabilities();
+        const caps = self.cachedTerminalCaps orelse ctx.terminal.getCapabilities();
         if (!caps.supportsTruecolor) {
             // Fallback to unicode blocks if no truecolor support
             try self.renderUnicodeBlocks(ctx, progress, ctx.theme.colors.primary, ctx.theme.colors.background);

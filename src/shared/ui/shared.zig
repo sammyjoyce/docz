@@ -160,12 +160,12 @@ pub const UI = struct {
     /// Render all components (mainly for TUI mode)
     pub fn render(self: *Self, bounds: Rect) !void {
         const ctx = self.createRenderContext(bounds);
-        try self.component_manager.render(ctx);
+        try self.componentManager.render(ctx);
     }
 
     /// Update animations and time-based components
     pub fn update(self: *Self, dt: f32) !void {
-        try self.component_manager.update(dt);
+        try self.componentManager.update(dt);
     }
 
     /// Clear the screen

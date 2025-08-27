@@ -36,9 +36,9 @@ pub fn main() !void {
     try enhanced.writeText("📊 Progress Bars:\n", Color.ansi(.bright_blue), true);
 
     const progress_examples = [_]Progress{
-        .{ .value = 0.25, .label = "Download", .show_percentage = true, .color = Color.ansi(.blue) },
-        .{ .value = 0.67, .label = "Processing", .show_percentage = true, .color = Color.ansi(.yellow) },
-        .{ .value = 1.0, .label = "Complete", .show_percentage = true, .color = Color.ansi(.green) },
+        .{ .value = 0.25, .label = "Download", .showPercentage = true, .color = Color.ansi(.blue) },
+        .{ .value = 0.67, .label = "Processing", .showPercentage = true, .color = Color.ansi(.yellow) },
+        .{ .value = 1.0, .label = "Complete", .showPercentage = true, .color = Color.ansi(.green) },
     };
 
     for (progress_examples) |progress| {

@@ -56,7 +56,7 @@ fn testBasicRendering(renderer: *AdaptiveRenderer) !void {
     const progress = Progress{
         .value = 0.75,
         .label = "Test Progress",
-        .show_percentage = true,
+        .showPercentage = true,
         .color = Color.ansi(.green),
     };
     try adaptive_render.renderProgress(renderer, progress);
@@ -97,9 +97,9 @@ fn testComponentFunctionality(allocator: std.mem.Allocator) !void {
     // Test progress bars with different configurations
     std.debug.print("  Testing progress bars... ");
     const progress_tests = [_]Progress{
-        .{ .value = 0.0, .label = "Start", .show_percentage = true },
-        .{ .value = 0.5, .label = "Middle", .show_percentage = true, .color = Color.ansi(.yellow) },
-        .{ .value = 1.0, .label = "Complete", .show_percentage = true, .color = Color.ansi(.green) },
+        .{ .value = 0.0, .label = "Start", .showPercentage = true },
+        .{ .value = 0.5, .label = "Middle", .showPercentage = true, .color = Color.ansi(.yellow) },
+        .{ .value = 1.0, .label = "Complete", .showPercentage = true, .color = Color.ansi(.green) },
     };
 
     for (progress_tests) |progress| {

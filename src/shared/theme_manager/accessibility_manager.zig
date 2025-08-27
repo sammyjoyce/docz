@@ -9,7 +9,7 @@ const HSL = @import("color_scheme.zig").HSL;
 
 pub const Accessibility = struct {
     allocator: std.mem.Allocator,
-    wcag_level: WCAGLevel,
+    wcagLevel: WCAGLevel,
 
     pub const WCAGLevel = enum {
         AA, // Minimum contrast 4.5:1 for normal text, 3:1 for large text
@@ -21,7 +21,7 @@ pub const Accessibility = struct {
     pub fn init(allocator: std.mem.Allocator) Self {
         return .{
             .allocator = allocator,
-            .wcag_level = .AA,
+            .wcagLevel = .AA,
         };
     }
 
@@ -46,7 +46,7 @@ pub const Accessibility = struct {
             hc_theme.secondary = self.enhanceColorForDarkBg(base_theme.secondary);
             hc_theme.success = self.enhanceColorForDarkBg(base_theme.success);
             hc_theme.warning = self.enhanceColorForDarkBg(base_theme.warning);
-            hc_theme.error_color = self.enhanceColorForDarkBg(base_theme.error_color);
+            hc_theme.errorColor = self.enhanceColorForDarkBg(base_theme.errorColor);
             hc_theme.info = self.enhanceColorForDarkBg(base_theme.info);
         } else {
             // Light theme: pure white background, dark foreground
@@ -58,13 +58,13 @@ pub const Accessibility = struct {
             hc_theme.secondary = self.enhanceColorForLightBg(base_theme.secondary);
             hc_theme.success = self.enhanceColorForLightBg(base_theme.success);
             hc_theme.warning = self.enhanceColorForLightBg(base_theme.warning);
-            hc_theme.error_color = self.enhanceColorForLightBg(base_theme.error_color);
+            hc_theme.errorColor = self.enhanceColorForLightBg(base_theme.errorColor);
             hc_theme.info = self.enhanceColorForLightBg(base_theme.info);
         }
 
         // Ensure all colors meet WCAG AAA standards
-        hc_theme.contrast_ratio = 21.0;
-        hc_theme.wcag_level = "AAA";
+        hc_theme.contrastRatio = 21.0;
+        hc_theme.wcagLevel = "AAA";
 
         return hc_theme;
     }
@@ -75,11 +75,11 @@ pub const Accessibility = struct {
         const contrast = ColorScheme.calculateContrast(foreground, background);
 
         return .{
-            .contrast_ratio = contrast,
-            .passes_aa_normal = contrast >= 4.5,
-            .passes_aa_large = contrast >= 3.0,
-            .passes_aaa_normal = contrast >= 7.0,
-            .passes_aaa_large = contrast >= 4.5,
+            .contrastRatio = contrast,
+            .passesAaNormal = contrast >= 4.5,
+            .passesAaLarge = contrast >= 3.0,
+            .passesAaaNormal = contrast >= 7.0,
+            .passesAaaLarge = contrast >= 4.5,
         };
     }
 
@@ -101,7 +101,7 @@ pub const Accessibility = struct {
         const warning_result = self.checkWCAGCompliance(theme.warning.rgb, theme.background.rgb);
         try report.addResult("Warning", warning_result);
 
-        const error_result = self.checkWCAGCompliance(theme.error_color.rgb, theme.background.rgb);
+        const error_result = self.checkWCAGCompliance(theme.errorColor.rgb, theme.background.rgb);
         try report.addResult("Error", error_result);
 
         return report;
@@ -191,11 +191,11 @@ pub const Accessibility = struct {
 };
 
 pub const WCAGResult = struct {
-    contrast_ratio: f32,
-    passes_aa_normal: bool,
-    passes_aa_large: bool,
-    passes_aaa_normal: bool,
-    passes_aaa_large: bool,
+    contrastRatio: f32,
+    passesAaNormal: bool,
+    passesAaLarge: bool,
+    passesAaaNormal: bool,
+    passesAaaLarge: bool,
 };
 
 pub const ValidationReport = struct {
@@ -228,8 +228,8 @@ pub const ValidationReport = struct {
             .result = result,
         });
 
-        if (!result.passes_aa_normal) self.overall_aa_pass = false;
-        if (!result.passes_aaa_normal) self.overall_aaa_pass = false;
+        if (!result.passesAaNormal) self.overall_aa_pass = false;
+        if (!result.passesAaaNormal) self.overall_aaa_pass = false;
     }
 
     pub fn generateReport(self: *ValidationReport, allocator: std.mem.Allocator) ![]u8 {
@@ -240,11 +240,11 @@ pub const ValidationReport = struct {
 
         for (self.results.items) |entry| {
             try writer.print("{s}:\n", .{entry.element});
-            try writer.print("  Contrast Ratio: {d:.2}\n", .{entry.result.contrast_ratio});
-            try writer.print("  WCAG AA (Normal): {s}\n", .{if (entry.result.passes_aa_normal) "PASS" else "FAIL"});
-            try writer.print("  WCAG AA (Large): {s}\n", .{if (entry.result.passes_aa_large) "PASS" else "FAIL"});
-            try writer.print("  WCAG AAA (Normal): {s}\n", .{if (entry.result.passes_aaa_normal) "PASS" else "FAIL"});
-            try writer.print("  WCAG AAA (Large): {s}\n\n", .{if (entry.result.passes_aaa_large) "PASS" else "FAIL"});
+            try writer.print("  Contrast Ratio: {d:.2}\n", .{entry.result.contrastRatio});
+            try writer.print("  WCAG AA (Normal): {s}\n", .{if (entry.result.passesAaNormal) "PASS" else "FAIL"});
+            try writer.print("  WCAG AA (Large): {s}\n", .{if (entry.result.passesAaLarge) "PASS" else "FAIL"});
+            try writer.print("  WCAG AAA (Normal): {s}\n", .{if (entry.result.passesAaaNormal) "PASS" else "FAIL"});
+            try writer.print("  WCAG AAA (Large): {s}\n\n", .{if (entry.result.passesAaaLarge) "PASS" else "FAIL"});
         }
 
         try writer.print("\nOverall AA Compliance: {s}\n", .{if (self.overall_aa_pass) "PASS" else "FAIL"});
