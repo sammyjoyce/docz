@@ -1,5 +1,5 @@
 const std = @import("std");
-const caps_mod = @import("caps.zig");
+const caps_mod = @import("capabilities.zig");
 const passthrough = @import("ansi/passthrough.zig");
 
 pub const TermCaps = caps_mod.TermCaps;
@@ -12,6 +12,210 @@ pub const Control = struct {
     pub const SAVE_CURSOR = "\x1b7";
     pub const RESTORE_CURSOR = "\x1b8";
     pub const REQUEST_CURSOR_POSITION = "\x1b[6n";
+};
+
+/// Low-level ANSI screen control functions
+pub const Ansi = struct {
+    /// Clear part/all of the screen (ED)
+    ///  CSI 0 J  -> clear from cursor to end of screen
+    ///  CSI 1 J  -> clear from cursor to beginning of screen
+    ///  CSI 2 J  -> clear entire screen
+    pub fn clearScreenToEnd(writer: anytype, caps: TermCaps) !void {
+        try passthrough.writeWithPassthrough(writer, caps, "\x1b[0J");
+    }
+    pub fn clearScreenToStart(writer: anytype, caps: TermCaps) !void {
+        try passthrough.writeWithPassthrough(writer, caps, "\x1b[1J");
+    }
+    pub fn clearScreenAll(writer: anytype, caps: TermCaps) !void {
+        try passthrough.writeWithPassthrough(writer, caps, "\x1b[2J");
+    }
+
+    /// Clear part/all of the line (EL)
+    ///  CSI 0 K  -> clear from cursor to end of line
+    ///  CSI 1 K  -> clear from cursor to beginning of line
+    ///  CSI 2 K  -> clear entire line
+    pub fn clearLineToEnd(writer: anytype, caps: TermCaps) !void {
+        try passthrough.writeWithPassthrough(writer, caps, "\x1b[0K");
+    }
+    pub fn clearLineToStart(writer: anytype, caps: TermCaps) !void {
+        try passthrough.writeWithPassthrough(writer, caps, "\x1b[1K");
+    }
+    pub fn clearLineAll(writer: anytype, caps: TermCaps) !void {
+        try passthrough.writeWithPassthrough(writer, caps, "\x1b[2K");
+    }
+
+    /// Set scroll region (DECSTBM): CSI top ; bottom r
+    pub fn setScrollRegion(writer: anytype, caps: TermCaps, top: u32, bottom: u32) !void {
+        var tmp: [32]u8 = undefined;
+        var fbs = std.io.fixedBufferStream(&tmp);
+        var w = fbs.writer();
+        try w.writeAll("\x1b[");
+        try std.fmt.format(w, "{d};{d}r", .{ top, bottom });
+        try passthrough.writeWithPassthrough(writer, caps, fbs.getWritten());
+    }
+
+    /// Reset scroll region to full screen: CSI r
+    pub fn resetScrollRegion(writer: anytype, caps: TermCaps) !void {
+        try passthrough.writeWithPassthrough(writer, caps, "\x1b[r");
+    }
+
+    /// Scroll Up (SU): CSI n S
+    pub fn scrollUp(writer: anytype, caps: TermCaps, n: u32) !void {
+        if (n == 0) return;
+        var tmp: [16]u8 = undefined;
+        var fbs = std.io.fixedBufferStream(&tmp);
+        var w = fbs.writer();
+        try w.writeAll("\x1b[");
+        try std.fmt.format(w, "{d}S", .{n});
+        try passthrough.writeWithPassthrough(writer, caps, fbs.getWritten());
+    }
+
+    /// Scroll Down (SD): CSI n T
+    pub fn scrollDown(writer: anytype, caps: TermCaps, n: u32) !void {
+        if (n == 0) return;
+        var tmp: [16]u8 = undefined;
+        var fbs = std.io.fixedBufferStream(&tmp);
+        var w = fbs.writer();
+        try w.writeAll("\x1b[");
+        try std.fmt.format(w, "{d}T", .{n});
+        try passthrough.writeWithPassthrough(writer, caps, fbs.getWritten());
+    }
+
+    /// Insert Line (IL): CSI n L
+    pub fn insertLine(writer: anytype, caps: TermCaps, n: u32) !void {
+        const count = if (n == 0) 1 else n;
+        var tmp: [16]u8 = undefined;
+        var fbs = std.io.fixedBufferStream(&tmp);
+        var w = fbs.writer();
+        try w.writeAll("\x1b[");
+        try std.fmt.format(w, "{d}L", .{count});
+        try passthrough.writeWithPassthrough(writer, caps, fbs.getWritten());
+    }
+
+    /// Delete Line (DL): CSI n M
+    pub fn deleteLine(writer: anytype, caps: TermCaps, n: u32) !void {
+        const count = if (n == 0) 1 else n;
+        var tmp: [16]u8 = undefined;
+        var fbs = std.io.fixedBufferStream(&tmp);
+        var w = fbs.writer();
+        try w.writeAll("\x1b[");
+        try std.fmt.format(w, "{d}M", .{count});
+        try passthrough.writeWithPassthrough(writer, caps, fbs.getWritten());
+    }
+
+    /// Insert Character (ICH): CSI n @
+    pub fn insertCharacter(writer: anytype, caps: TermCaps, n: u32) !void {
+        const count = if (n == 0) 1 else n;
+        var tmp: [16]u8 = undefined;
+        var fbs = std.io.fixedBufferStream(&tmp);
+        var w = fbs.writer();
+        try w.writeAll("\x1b[");
+        try std.fmt.format(w, "{d}@", .{count});
+        try passthrough.writeWithPassthrough(writer, caps, fbs.getWritten());
+    }
+
+    /// Delete Character (DCH): CSI n P
+    pub fn deleteCharacter(writer: anytype, caps: TermCaps, n: u32) !void {
+        const count = if (n == 0) 1 else n;
+        var tmp: [16]u8 = undefined;
+        var fbs = std.io.fixedBufferStream(&tmp);
+        var w = fbs.writer();
+        try w.writeAll("\x1b[");
+        try std.fmt.format(w, "{d}P", .{count});
+        try passthrough.writeWithPassthrough(writer, caps, fbs.getWritten());
+    }
+
+    /// Horizontal Tab Set (HTS): ESC H
+    pub fn setHorizontalTabStop(writer: anytype, caps: TermCaps) !void {
+        try passthrough.writeWithPassthrough(writer, caps, "\x1bH");
+    }
+
+    /// Tab Clear (TBC): CSI n g, where n=0 clears at current column, n=3 clears all
+    pub fn tabClear(writer: anytype, caps: TermCaps, n: u32) !void {
+        if (n == 0) {
+            try passthrough.writeWithPassthrough(writer, caps, "\x1b[g");
+        } else {
+            var tmp: [16]u8 = undefined;
+            var fbs = std.io.fixedBufferStream(&tmp);
+            var w = fbs.writer();
+            try w.writeAll("\x1b[");
+            try std.fmt.format(w, "{d}g", .{n});
+            try passthrough.writeWithPassthrough(writer, caps, fbs.getWritten());
+        }
+    }
+
+    /// Set Top/Bottom Margins (DECSTBM): CSI top ; bot r (alias of setScrollRegion)
+    pub fn setTopBottomMargins(writer: anytype, caps: TermCaps, top: u32, bottom: u32) !void {
+        try Ansi.setScrollRegion(writer, caps, top, bottom);
+    }
+
+    /// Set Left/Right Margins (DECSLRM): CSI left ; right s
+    pub fn setLeftRightMargins(writer: anytype, caps: TermCaps, left: u32, right: u32) !void {
+        var tmp: [32]u8 = undefined;
+        var fbs = std.io.fixedBufferStream(&tmp);
+        var w = fbs.writer();
+        try w.writeAll("\x1b[");
+        try std.fmt.format(w, "{d};{d}s", .{ left, right });
+        try passthrough.writeWithPassthrough(writer, caps, fbs.getWritten());
+    }
+
+    /// Set tab stops every 8 columns (DECST8C): CSI ? 5 W
+    pub fn setTabEvery8Columns(writer: anytype, caps: TermCaps) !void {
+        try passthrough.writeWithPassthrough(writer, caps, "\x1b[?5W");
+    }
+
+    /// Repeat previous character (REP): CSI n b
+    pub fn repeatPreviousCharacter(writer: anytype, caps: TermCaps, n: u32) !void {
+        if (n == 0) n = 1;
+        var tmp: [16]u8 = undefined;
+        var fbs = std.io.fixedBufferStream(&tmp);
+        var w = fbs.writer();
+        try w.writeAll("\x1b[");
+        try std.fmt.format(w, "{d}b", .{n});
+        try passthrough.writeWithPassthrough(writer, caps, fbs.getWritten());
+    }
+
+    /// Request presentation state report (DECRQPSR): CSI Ps $ w
+    pub fn requestPresentationStateReport(writer: anytype, caps: TermCaps, ps: u32) !void {
+        var tmp: [32]u8 = undefined;
+        var fbs = std.io.fixedBufferStream(&tmp);
+        var w = fbs.writer();
+        try w.writeAll("\x1b[");
+        try std.fmt.format(w, "{d}$w", .{ps});
+        try passthrough.writeWithPassthrough(writer, caps, fbs.getWritten());
+    }
+
+    /// Tab Stop Report (DECTABSR): DCS 2 $ u D/.../D ST
+    pub fn tabStopReport(writer: anytype, caps: TermCaps, stops: []const u32) !void {
+        var buf = std.ArrayList(u8).init(std.heap.page_allocator);
+        defer buf.deinit();
+        try buf.appendSlice("\x1bP2$u");
+        var first = true;
+        for (stops) |s| {
+            if (!first) try buf.append('/') else first = false;
+            var tmp: [16]u8 = undefined;
+            const z = try std.fmt.bufPrint(&tmp, "{d}", .{s});
+            try buf.appendSlice(z);
+        }
+        try buf.appendSlice("\x1b\\");
+        try passthrough.writeWithPassthrough(writer, caps, buf.items);
+    }
+
+    /// Cursor Information Report (DECCIR): DCS 1 $ u D;...;D ST
+    pub fn cursorInformationReport(writer: anytype, caps: TermCaps, values: []const u32) !void {
+        var buf = std.ArrayList(u8).init(std.heap.page_allocator);
+        defer buf.deinit();
+        try buf.appendSlice("\x1bP1$u");
+        var first = true;
+        for (values) |v| {
+            if (!first) try buf.append(';') else first = false;
+            var tmp: [16]u8 = undefined;
+            const z = try std.fmt.bufPrint(&tmp, "{d}", .{v});
+            try buf.appendSlice(z);
+        }
+        try buf.appendSlice("\x1b\\");
+        try passthrough.writeWithPassthrough(writer, caps, buf.items);
+    }
 };
 
 /// Bounds represents a rectangular area on screen
@@ -36,9 +240,9 @@ pub const Bounds = struct {
 
     pub fn intersects(self: Bounds, other: Bounds) bool {
         return !(self.x + self.width <= other.x or
-                other.x + other.width <= self.x or
-                self.y + self.height <= other.y or
-                other.y + other.height <= self.y);
+            other.x + other.width <= self.x or
+            self.y + self.height <= other.y or
+            other.y + other.height <= self.y);
     }
 
     pub fn clamp(self: Bounds, other: Bounds) Bounds {
@@ -217,7 +421,6 @@ pub const Screen = struct {
     }
 
     fn clearRegion(self: *Screen, writer: anytype, region: Bounds) !void {
-        _ = self;
         // Move cursor to region start and clear the area
         var y: u32 = region.y;
         while (y < region.y + region.height) : (y += 1) {
@@ -231,7 +434,6 @@ pub const Screen = struct {
     }
 
     fn renderComponent(self: *Screen, writer: anytype, component: Component, clipRegion: Bounds) !void {
-        _ = self;
 
         // Calculate the intersection of component bounds and clip region
         const render_bounds = component.bounds.clamp(clipRegion);

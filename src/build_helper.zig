@@ -218,7 +218,7 @@ pub fn createBuildModules(
     });
 
     // Add consolidated interface module (tier selection handled internally)
-    const interface_path = "src/core/agent_interface.zig";
+    const interface_path = "src/shared/tui/agent_interface.zig";
 
     const interface_module = b.createModule(.{
         .root_source_file = b.path(interface_path),
@@ -264,8 +264,6 @@ pub fn createBuildModules(
         });
         agent_module.addImport("tui", tui_module);
     }
-
-
 
     // Add custom module paths
     for (config.manifest.modules.custom.paths) |custom_path| {

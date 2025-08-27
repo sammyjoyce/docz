@@ -1,5 +1,5 @@
 const std = @import("std");
-const caps_mod = @import("../caps.zig");
+const caps_mod = @import("../capabilities.zig");
 
 pub const WidthMethod = caps_mod.WidthMethod;
 

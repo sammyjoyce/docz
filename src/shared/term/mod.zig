@@ -9,8 +9,9 @@
 
 const std = @import("std");
 
-// Core terminal capabilities and detection
-pub const caps = @import("caps.zig");
+// Core terminal capabilities and detection - unified capabilities system
+pub const capabilities = @import("capabilities.zig");
+pub const caps = capabilities; // Alias for backward compatibility
 
 // Terminal management
 pub const cellbuf = @import("cellbuf.zig");
@@ -26,10 +27,6 @@ pub const clipboard_extended = @import("clipboard_extended.zig");
 
 // Terminal features
 pub const bracketed_paste = @import("bracketed_paste.zig");
-pub const terminal_capabilities = @import("terminal_capabilities.zig");
-pub const capability_detector = @import("capability_detector.zig");
-pub const mouse_capability_detector = @import("mouse_capability_detector.zig");
-pub const terminal_query_system = @import("terminal_query_system.zig");
 pub const grapheme = @import("grapheme.zig");
 pub const wcwidth = @import("wcwidth.zig");
 

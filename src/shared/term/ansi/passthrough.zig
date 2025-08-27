@@ -1,5 +1,5 @@
 const std = @import("std");
-const caps_mod = @import("../caps.zig");
+const caps_mod = @import("../capabilities.zig");
 const seqcfg = @import("ansi.zon");
 
 pub const TermCaps = caps_mod.TermCaps;

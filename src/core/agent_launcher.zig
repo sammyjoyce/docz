@@ -327,7 +327,7 @@ pub const AgentLauncher = struct {
         }
 
         // Show result count
-        const result_text = try std.fmt.allocPrint(self.allocator, " ({}/{})", .{state.filtered_agents.items.len, state.agents.items.len});
+        const result_text = try std.fmt.allocPrint(self.allocator, " ({}/{})", .{ state.filtered_agents.items.len, state.agents.items.len });
         defer self.allocator.free(result_text);
         try self.screen.moveCursor(size.width - result_text.len, 3);
         try self.screen.writeWithStyle(result_text, .{ .foreground = .dark_gray });
@@ -386,7 +386,7 @@ pub const AgentLauncher = struct {
         try self.screen.write(status_icon);
 
         // Agent name
-        const name = if (agent.name.len > width - 4) agent.name[0..width - 4] else agent.name;
+        const name = if (agent.name.len > width - 4) agent.name[0 .. width - 4] else agent.name;
         try self.screen.moveCursor(x + 3, y + 1);
         try self.screen.writeWithStyle(name, .{ .bold = true });
 
@@ -397,15 +397,15 @@ pub const AgentLauncher = struct {
         }
 
         // Description
-        const desc = if (agent.description.len > width - 2) agent.description[0..width - 2] else agent.description;
+        const desc = if (agent.description.len > width - 2) agent.description[0 .. width - 2] else agent.description;
         try self.screen.moveCursor(x + 1, y + 3);
         try self.screen.writeWithStyle(desc, .{ .foreground = .dark_gray });
 
         // Author and version
-        const author_version = try std.fmt.allocPrint(self.allocator, "{s} v{s}", .{agent.author, agent.version});
+        const author_version = try std.fmt.allocPrint(self.allocator, "{s} v{s}", .{ agent.author, agent.version });
         defer self.allocator.free(author_version);
 
-        const av_text = if (author_version.len > width - 2) author_version[0..width - 2] else author_version;
+        const av_text = if (author_version.len > width - 2) author_version[0 .. width - 2] else author_version;
         try self.screen.moveCursor(x + 1, y + 4);
         try self.screen.writeWithStyle(av_text, .{ .foreground = .blue });
 
@@ -487,11 +487,11 @@ pub const AgentLauncher = struct {
 
         // Description
         try self.screen.moveCursor(4, y + 1);
-        const desc = if (agent.description.len > width - 8) agent.description[0..width - 8] else agent.description;
+        const desc = if (agent.description.len > width - 8) agent.description[0 .. width - 8] else agent.description;
         try self.screen.writeWithStyle(desc, .{ .foreground = .dark_gray });
 
         // Author and version
-        const author_version = try std.fmt.allocPrint(self.allocator, "{s} v{s}", .{agent.author, agent.version});
+        const author_version = try std.fmt.allocPrint(self.allocator, "{s} v{s}", .{ agent.author, agent.version });
         defer self.allocator.free(author_version);
         try self.screen.moveCursor(4, y + 2);
         try self.screen.writeWithStyle(author_version, .{ .foreground = .blue });
@@ -502,12 +502,12 @@ pub const AgentLauncher = struct {
         // Calculate dynamic column widths based on terminal size
         const total_width = size.width - 2; // Account for borders
         const col_widths = [_]u16{
-            8,  // Status
+            8, // Status
             @min(20, total_width / 5), // Name
             @min(30, total_width / 3), // Description
             @min(15, total_width / 6), // Author
             10, // Version
-            8,  // Usage
+            8, // Usage
         };
 
         // Position table at start_y
@@ -624,10 +624,10 @@ pub const AgentLauncher = struct {
             const indicator = if (is_selected) "▶" else " ";
             try self.screen.writeWithStyle(indicator, style);
 
-            const compact_text = try std.fmt.allocPrint(self.allocator, "{s} - {s} ({s})", .{agent.name, agent.description, agent.author});
+            const compact_text = try std.fmt.allocPrint(self.allocator, "{s} - {s} ({s})", .{ agent.name, agent.description, agent.author });
             defer self.allocator.free(compact_text);
 
-            const text = if (compact_text.len > size.width - 2) compact_text[0..size.width - 2] else compact_text;
+            const text = if (compact_text.len > size.width - 2) compact_text[0 .. size.width - 2] else compact_text;
             try self.screen.moveCursor(2, y);
             try self.screen.writeWithStyle(text, style);
 
@@ -644,7 +644,7 @@ pub const AgentLauncher = struct {
         if (state.selected_index < state.filtered_agents.items.len) {
             const agent_index = state.filtered_agents.items[state.selected_index];
             const agent = state.agents.items[agent_index].agent;
-            const status_text = try std.fmt.allocPrint(self.allocator, "Selected: {s} v{s}", .{agent.name, agent.version});
+            const status_text = try std.fmt.allocPrint(self.allocator, "Selected: {s} v{s}", .{ agent.name, agent.version });
             defer self.allocator.free(status_text);
             try self.screen.writeWithStyle(status_text, .{ .foreground = .cyan });
         }
@@ -740,7 +740,8 @@ pub const AgentLauncher = struct {
         // Use state for dashboard metrics
         const total_agents = state.agents.items.len;
         const filtered_count = state.filtered_agents.items.len;
-        _ = total_agents; _ = filtered_count; // TODO: Show dashboard metrics
+        _ = total_agents;
+        _ = filtered_count; // TODO: Show dashboard metrics
         try self.screen.moveCursor(title_x, 0);
         try self.screen.writeWithStyle(dashboard_title, .{ .foreground = .cyan, .bold = true });
 

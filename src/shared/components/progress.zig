@@ -500,7 +500,7 @@ pub const ProgressRenderer = struct {
     }
 
     /// Render simple ASCII progress bar
-    fn renderAscii(self: *ProgressRenderer, data: *const ProgressData, writer: anytype, width: u32) !void {
+    fn renderAscii(_: *ProgressRenderer, data: *const ProgressData, writer: anytype, width: u32) !void {
         const filled_count = @as(u32, @intFromFloat(data.value * @as(f32, @floatFromInt(width))));
 
         // Label
@@ -519,7 +519,7 @@ pub const ProgressRenderer = struct {
     }
 
     /// Render Unicode block progress bar
-    fn renderUnicodeBlocks(self: *ProgressRenderer, data: *const ProgressData, writer: anytype, width: u32) !void {
+    fn renderUnicodeBlocks(_: *ProgressRenderer, data: *const ProgressData, writer: anytype, width: u32) !void {
         const filled_count = @as(u32, @intFromFloat(data.value * @as(f32, @floatFromInt(width))));
         const partial_progress = (data.value * @as(f32, @floatFromInt(width))) - @as(f32, @floatFromInt(filled_count));
 
@@ -556,7 +556,7 @@ pub const ProgressRenderer = struct {
     }
 
     /// Render smooth Unicode progress bar
-    fn renderUnicodeSmooth(self: *ProgressRenderer, data: *const ProgressData, writer: anytype, width: u32) !void {
+    fn renderUnicodeSmooth(_: *ProgressRenderer, data: *const ProgressData, writer: anytype, width: u32) !void {
         const filled_count = @as(u32, @intFromFloat(data.value * @as(f32, @floatFromInt(width))));
         const partial_progress = (data.value * @as(f32, @floatFromInt(width))) - @as(f32, @floatFromInt(filled_count));
 
@@ -732,7 +732,7 @@ pub const ProgressRenderer = struct {
     }
 
     /// Render spinner progress bar
-    fn renderSpinner(self: *ProgressRenderer, data: *const ProgressData, writer: anytype, width: u32) !void {
+    fn renderSpinner(_: *ProgressRenderer, data: *const ProgressData, writer: anytype, width: u32) !void {
         _ = width;
         const spinner_chars = [_][]const u8{ "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏" };
         const spinner_idx = (@as(u64, @intCast(std.time.timestamp())) / 100) % spinner_chars.len;
@@ -741,7 +741,7 @@ pub const ProgressRenderer = struct {
     }
 
     /// Render dots progress bar
-    fn renderDots(self: *ProgressRenderer, data: *const ProgressData, writer: anytype, width: u32) !void {
+    fn renderDots(_: *ProgressRenderer, data: *const ProgressData, writer: anytype, width: u32) !void {
         const filled_dots = @as(u32, @intFromFloat(data.value * @as(f32, @floatFromInt(width))));
 
         var i: u32 = 0;
@@ -832,7 +832,7 @@ pub const ProgressRenderer = struct {
     }
 
     /// Render simple progress bar
-    fn renderSimple(self: *ProgressRenderer, data: *const ProgressData, writer: anytype, width: u32) !void {
+    fn renderSimple(_: *ProgressRenderer, data: *const ProgressData, writer: anytype, width: u32) !void {
         const filled_count = @as(u32, @intFromFloat(data.value * @as(f32, @floatFromInt(width))));
 
         var i: u32 = 0;
@@ -855,7 +855,7 @@ pub const ProgressRenderer = struct {
                 const eta_minutes = eta_seconds / 60;
                 const eta_remaining_seconds = eta_seconds % 60;
                 if (eta_minutes > 0) {
-                    try writer.print(" ETA: {d}m{d}s", .{eta_minutes, eta_remaining_seconds});
+                    try writer.print(" ETA: {d}m{d}s", .{ eta_minutes, eta_remaining_seconds });
                 } else {
                     try writer.print(" ETA: {d}s", .{eta_seconds});
                 }
@@ -904,13 +904,13 @@ pub const Progress = struct {
     }
 };
 
-/// Render progress bar using adaptive renderer
-pub fn renderProgress(renderer: *AdaptiveRenderer, progress_data: Progress) !void {
+/// Render progress bar using unified renderer
+pub fn renderProgress(renderer: *@import("../render/Renderer.zig").Renderer, progress_data: Progress) !void {
     try progress_data.validate();
 
     const key = cacheKey("progress_{d}_{?s}_{}_{}_{?d}", .{ progress_data.value, progress_data.label, progress_data.percentage, progress_data.eta, progress_data.eta_seconds });
 
-    if (renderer.cache.get(key, renderer.render_mode)) |cached| {
+    if (renderer.cache.get(key, renderer.render_tier)) |cached| {
         try renderer.terminal.writeText(cached);
         return;
     }
@@ -922,11 +922,11 @@ pub fn renderProgress(renderer: *AdaptiveRenderer, progress_data: Progress) !voi
     var data = try progress_data.toProgressData(renderer.allocator);
     defer data.deinit();
 
-    // Choose style based on render mode
-    const style = switch (renderer.render_mode) {
-        .enhanced => ProgressStyle.rainbow,
-        .standard => ProgressStyle.unicode_smooth,
-        .compatible => ProgressStyle.ascii,
+    // Choose style based on render tier
+    const style = switch (renderer.render_tier) {
+        .ultra => ProgressStyle.rainbow,
+        .enhanced => ProgressStyle.unicode_smooth,
+        .standard => ProgressStyle.ascii,
         .minimal => ProgressStyle.simple,
     };
 
@@ -936,15 +936,15 @@ pub fn renderProgress(renderer: *AdaptiveRenderer, progress_data: Progress) !voi
     const content = try output.toOwnedSlice();
     defer renderer.allocator.free(content);
 
-    try renderer.cache.put(key, content, renderer.render_mode);
+    try renderer.cache.put(key, content, renderer.render_tier);
     try renderer.terminal.writeText(content);
 }
 
 /// Render progress bar from unified ProgressData
-pub fn renderProgressData(renderer: *AdaptiveRenderer, data: *ProgressData) !void {
+pub fn renderProgressData(renderer: *@import("../render/Renderer.zig").Renderer, data: *ProgressData) !void {
     const key = cacheKey("progress_data_{d}_{?s}_{}_{}_{}", .{ data.value, data.label, data.show_percentage, data.show_eta, data.show_rate });
 
-    if (renderer.cache.get(key, renderer.render_mode)) |cached| {
+    if (renderer.cache.get(key, renderer.render_tier)) |cached| {
         try renderer.terminal.writeText(cached);
         return;
     }
@@ -952,11 +952,11 @@ pub fn renderProgressData(renderer: *AdaptiveRenderer, data: *ProgressData) !voi
     var output = std.ArrayList(u8).init(renderer.allocator);
     defer output.deinit();
 
-    // Choose style based on render mode
-    const style = switch (renderer.render_mode) {
-        .enhanced => ProgressStyle.rainbow,
-        .standard => ProgressStyle.unicode_smooth,
-        .compatible => ProgressStyle.ascii,
+    // Choose style based on render tier
+    const style = switch (renderer.render_tier) {
+        .ultra => ProgressStyle.rainbow,
+        .enhanced => ProgressStyle.unicode_smooth,
+        .standard => ProgressStyle.ascii,
         .minimal => ProgressStyle.simple,
     };
 
@@ -966,17 +966,17 @@ pub fn renderProgressData(renderer: *AdaptiveRenderer, data: *ProgressData) !voi
     const content = try output.toOwnedSlice();
     defer renderer.allocator.free(content);
 
-    try renderer.cache.put(key, content, renderer.render_mode);
+    try renderer.cache.put(key, content, renderer.render_tier);
     try renderer.terminal.writeText(content);
 }
 
 /// Create animated progress bar that updates over time
 pub const AnimatedProgress = struct {
-    renderer: *AdaptiveRenderer,
+    renderer: *@import("../render/Renderer.zig").Renderer,
     data: ProgressData,
     start_time: i64,
 
-    pub fn init(renderer: *AdaptiveRenderer, progress: Progress) !AnimatedProgress {
+    pub fn init(renderer: *@import("../render/Renderer.zig").Renderer, progress: Progress) !AnimatedProgress {
         const data = try progress.toProgressData(renderer.allocator);
         return AnimatedProgress{
             .renderer = renderer,

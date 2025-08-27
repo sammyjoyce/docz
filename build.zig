@@ -15,7 +15,7 @@ const BUILD_CONFIG = struct {
         const TOOLS_ZIG = "src/shared/tools/mod.zig";
         const ENGINE_ZIG = "src/core/engine.zig";
         const CONFIG_ZIG = "src/core/config.zig";
-        const AGENT_INTERFACE_ZIG = "src/core/agent_interface.zig";
+        const AGENT_INTERFACE_ZIG = "src/shared/tui/agent_interface.zig";
         const AGENT_DASHBOARD_ZIG = "src/core/agent_dashboard.zig";
         const INTERACTIVE_SESSION_ZIG = "src/core/interactive_session.zig";
         const CLI_ZIG = "src/shared/cli/mod.zig";
@@ -1335,16 +1335,7 @@ const ModuleBuilder = struct {
         if (shared.interactive_session) |session| entry.addImport("interactive_session", session);
         if (shared.oauth_callback_server) |oauth| entry.addImport("oauth_callback_server", oauth);
 
-        // Special handling for markdown agent's enhanced editor
-        if (std.mem.eql(u8, self.ctx.selected_agent, "markdown")) {
-            const enhanced_editor = self.createModule("agents/markdown/enhanced_markdown_editor.zig");
-            if (shared.cli) |cli| enhanced_editor.addImport("cli_shared", cli);
-            if (shared.tui) |tui| enhanced_editor.addImport("tui_shared", tui);
-            if (shared.tools) |tools| enhanced_editor.addImport("tools_shared", tools);
-            if (shared.term) |term| enhanced_editor.addImport("term_shared", term);
-            if (shared.config) |config| enhanced_editor.addImport("config_shared", config);
-            entry.addImport("enhanced_markdown_editor", enhanced_editor);
-        }
+
 
         const spec = self.createModule(self.ctx.agent_paths.spec);
         if (shared.engine) |engine| spec.addImport("core_engine", engine);
@@ -1359,8 +1350,21 @@ const ModuleBuilder = struct {
     }
 
     fn createApiModule(self: ModuleBuilder) *std.Build.Module {
-        // For testing, use a simple test module
-        return self.createModule("examples/basic.zig");
+        // For testing, use a test module that includes our border merger test
+        const test_module = self.ctx.b.addModule("border_merger_test", .{
+            .target = self.ctx.target,
+            .optimize = self.ctx.optimize,
+            .root_source_file = self.ctx.b.path("tests/border_merger_test.zig"),
+        });
+
+        // Add necessary imports for the test
+        const border_merger = self.createModule("src/shared/tui/core/border_merger.zig");
+        const bounds = self.createModule("src/shared/tui/core/bounds.zig");
+
+        test_module.addImport("BorderMerger", border_merger);
+        test_module.addImport("Point", bounds);
+
+        return test_module;
     }
 
     // Helper functions
@@ -1864,6 +1868,14 @@ pub fn build(b: *std.Build) !void {
         std.log.info("✅ Build configured for agent '{s}' v{s}", .{ m.agent.name, m.agent.version });
         std.log.info("   📦 Binary size optimized based on manifest capabilities", .{});
     }
+}
+
+/// Setup example targets for building standalone examples
+fn setupExampleTargets(ctx: BuildContext, shared_modules: ConditionalSharedModules) void {
+    _ = ctx;
+    _ = shared_modules;
+    // Example targets setup - currently no examples to build
+    // This function is called but not implemented yet
 }
 
 // ============================================================================
@@ -2527,6 +2539,26 @@ fn setupExampleTargets(ctx: BuildContext, shared_modules: ConditionalSharedModul
     linkSystemDependencies(stylize_exe);
     const stylize_run = ctx.b.addRunArtifact(stylize_exe);
     stylize_demo_step.dependOn(&stylize_run.step);
+
+    // Tabs demo - demonstrates the tabs widget system
+    const tabs_demo_step = ctx.b.step("example-tabs", "Run tabs widget comprehensive demo");
+    const tabs_module = ctx.b.addModule("tabs_demo", .{
+        .target = ctx.target,
+        .optimize = ctx.optimize,
+        .root_source_file = ctx.b.path("examples/tabs_demo.zig"),
+    });
+
+    // Add necessary imports for the tabs demo
+    if (shared_modules.tui) |tui| tabs_module.addImport("tui_shared", tui);
+    if (shared_modules.term) |term| tabs_module.addImport("term_shared", term);
+
+    const tabs_exe = ctx.b.addExecutable(.{
+        .name = "tabs-demo",
+        .root_module = tabs_module,
+    });
+    linkSystemDependencies(tabs_exe);
+    const tabs_run = ctx.b.addRunArtifact(tabs_exe);
+    tabs_demo_step.dependOn(&tabs_run.step);
 }
 
 fn setupAgentExecutable(ctx: BuildContext, agent_entry: *std.Build.Module, manifest: ?AgentManifest) void {

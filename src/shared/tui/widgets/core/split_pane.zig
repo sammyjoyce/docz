@@ -14,6 +14,8 @@ const mouse_mod = @import("../../core/input/mouse.zig");
 const focus_mod = @import("../../core/input/focus.zig");
 const constraint_solver = @import("../../core/constraint_solver.zig");
 const term_ansi = @import("../../../term/ansi/color.zig");
+const term_cursor = @import("../../../term/ansi/cursor.zig");
+const term_mod = @import("../../../term/mod.zig");
 const term_caps = @import("../../../term/caps.zig");
 const input_mod = @import("../../../components/input.zig");
 
@@ -78,7 +80,7 @@ pub const DividerStyle = struct {
     }
 
     pub fn rich(caps: term_caps.TermCaps) DividerStyle {
-        if (caps.supportsTrueColor()) {
+        if (caps.supportsTruecolor) {
             return .{
                 .char = "│",
                 .color = "\x1b[38;2;128;128;128m", // Gray
@@ -510,6 +512,7 @@ pub const SplitPane = struct {
 
     /// Render the divider between panes
     fn renderDivider(self: *Self, writer: anytype) !void {
+        const caps = term_mod.capabilities.getTermCaps();
         const color = if (self.is_dragging)
             self.divider_style.active_color
         else if (self.is_hovering)
@@ -524,7 +527,8 @@ pub const SplitPane = struct {
             const x = self.bounds.x + self.first_bounds.width;
             var y = self.bounds.y;
             while (y < self.bounds.y + self.bounds.height) : (y += 1) {
-                try writer.print("\x1b[{d};{d}H{s}", .{ y + 1, x + 1, self.divider_style.char });
+                try term_cursor.cursorPosition(writer, caps, @as(u32, @intCast(y + 1)), @as(u32, @intCast(x + 1)));
+                try writer.writeAll(self.divider_style.char);
             }
         } else {
             // Horizontal divider
@@ -532,16 +536,18 @@ pub const SplitPane = struct {
             var x = self.bounds.x;
             const divider_char = if (self.orientation.isVertical()) "─" else self.divider_style.char;
             while (x < self.bounds.x + self.bounds.width) : (x += 1) {
-                try writer.print("\x1b[{d};{d}H{s}", .{ y + 1, x + 1, divider_char });
+                try term_cursor.cursorPosition(writer, caps, @as(u32, @intCast(y + 1)), @as(u32, @intCast(x + 1)));
+                try writer.writeAll(divider_char);
             }
         }
 
-        try writer.writeAll("\x1b[0m"); // Reset color
+        try term_mod.ansi.sgr.resetStyle(writer, caps); // Reset color using term module
     }
 
     /// Render empty pane placeholder
     fn renderEmptyPane(self: *Self, writer: anytype, bounds: Bounds, label: []const u8) !void {
         _ = self;
+        const caps = term_mod.capabilities.getTermCaps();
 
         // Draw border
         const top = bounds.y;
@@ -550,7 +556,8 @@ pub const SplitPane = struct {
         const right = bounds.x + bounds.width - 1;
 
         // Top border
-        try writer.print("\x1b[{d};{d}H┌", .{ top + 1, left + 1 });
+        try term_cursor.cursorPosition(writer, caps, @as(u32, @intCast(top + 1)), @as(u32, @intCast(left + 1)));
+        try writer.writeAll("┌");
         var x = left + 1;
         while (x < right) : (x += 1) {
             try writer.writeAll("─");
@@ -560,12 +567,15 @@ pub const SplitPane = struct {
         // Side borders
         var y = top + 1;
         while (y < bottom) : (y += 1) {
-            try writer.print("\x1b[{d};{d}H│", .{ y + 1, left + 1 });
-            try writer.print("\x1b[{d};{d}H│", .{ y + 1, right + 1 });
+            try term_cursor.cursorPosition(writer, caps, @as(u32, @intCast(y + 1)), @as(u32, @intCast(left + 1)));
+            try writer.writeAll("│");
+            try term_cursor.cursorPosition(writer, caps, @as(u32, @intCast(y + 1)), @as(u32, @intCast(right + 1)));
+            try writer.writeAll("│");
         }
 
         // Bottom border
-        try writer.print("\x1b[{d};{d}H└", .{ bottom + 1, left + 1 });
+        try term_cursor.cursorPosition(writer, caps, @as(u32, @intCast(bottom + 1)), @as(u32, @intCast(left + 1)));
+        try writer.writeAll("└");
         x = left + 1;
         while (x < right) : (x += 1) {
             try writer.writeAll("─");
@@ -575,7 +585,10 @@ pub const SplitPane = struct {
         // Center label
         const label_x = left + (bounds.width - label.len) / 2;
         const label_y = top + bounds.height / 2;
-        try writer.print("\x1b[{d};{d}H\x1b[90m{s}\x1b[0m", .{ label_y + 1, label_x + 1, label });
+        try term_cursor.cursorPosition(writer, caps, @as(u32, @intCast(label_y + 1)), @as(u32, @intCast(label_x + 1)));
+        try writer.writeAll("\x1b[90m"); // Bright black
+        try writer.writeAll(label);
+        try term_mod.ansi.sgr.resetStyle(writer, caps); // Reset color using term module
     }
 
     /// Handle keyboard events

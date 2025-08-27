@@ -33,8 +33,6 @@ pub const NotificationDisplay = struct {
         }
     }
 
-
-
     fn showSystem(self: *NotificationDisplay, notification_type: NotificationType, title: []const u8, message: ?[]const u8) !void {
         if (self.context.hasFeature(.notifications)) {
             // Use system notifications
@@ -91,7 +89,7 @@ pub const NotificationDisplay = struct {
         // Message line if provided
         if (message) |msg| {
             try style.apply(writer, self.context.termCaps);
-            try writer.print("│   {s}", .{ msg });
+            try writer.print("│   {s}", .{msg});
 
             // Pad to match title width
             const padding = if (title.len > msg.len) title.len - msg.len else 0;

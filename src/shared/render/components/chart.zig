@@ -4,6 +4,7 @@ const RenderMode = AdaptiveRenderer.RenderMode;
 const QualityTiers = @import("../quality_tiers.zig").QualityTiers;
 const ChartConfig = @import("../quality_tiers.zig").ChartConfig;
 const term_mod = @import("../../term/mod.zig");
+const term_sgr = @import("../../term/ansi/sgr.zig");
 const Color = term_mod.ansi.color.Color;
 const cacheKey = @import("../adaptive_renderer.zig").cacheKey;
 
@@ -69,13 +70,13 @@ pub const Chart = struct {
     }
 };
 
-/// Render chart using adaptive renderer
-pub fn renderChart(renderer: *AdaptiveRenderer, chart: Chart) !void {
+/// Render chart using unified renderer
+pub fn renderChart(renderer: *@import("../Renderer.zig").Renderer, chart: Chart) !void {
     try chart.validate();
 
     const key = cacheKey("chart_{d}_{s}_{?s}", .{ chart.data_series.len, @tagName(chart.chart_type), chart.title });
 
-    if (renderer.cache.get(key, renderer.render_mode)) |cached| {
+    if (renderer.cache.get(key, renderer.render_tier)) |cached| {
         try renderer.terminal.writeText(cached);
         return;
     }
@@ -83,17 +84,17 @@ pub fn renderChart(renderer: *AdaptiveRenderer, chart: Chart) !void {
     var output = std.ArrayList(u8).init(renderer.allocator);
     defer output.deinit();
 
-    switch (renderer.render_mode) {
-        .enhanced => try renderEnhanced(renderer, chart, &output),
-        .standard => try renderStandard(renderer, chart, &output),
-        .compatible => try renderCompatible(renderer, chart, &output),
+    switch (renderer.render_tier) {
+        .ultra => try renderEnhanced(renderer, chart, &output),
+        .enhanced => try renderStandard(renderer, chart, &output),
+        .standard => try renderCompatible(renderer, chart, &output),
         .minimal => try renderMinimal(renderer, chart, &output),
     }
 
     const content = try output.toOwnedSlice();
     defer renderer.allocator.free(content);
 
-    try renderer.cache.put(key, content, renderer.render_mode);
+    try renderer.cache.put(key, content, renderer.render_tier);
     try renderer.terminal.writeText(content);
 }
 
@@ -104,7 +105,11 @@ fn renderEnhanced(renderer: *AdaptiveRenderer, chart: Chart, output: *std.ArrayL
 
     // Title
     if (chart.title) |title| {
-        try writer.print("\x1b[1m{s}\x1b[0m\n\n", .{title});
+        const caps = term_mod.capabilities.getTermCaps();
+        try term_sgr.bold(writer, caps);
+        try writer.print("{s}", .{title});
+        try term_sgr.resetStyle(writer, caps);
+        try writer.writeAll("\n\n");
     }
 
     if (config.use_graphics and renderer.graphics_manager != null) {
@@ -270,7 +275,8 @@ fn renderUnicodeLineChart(renderer: *AdaptiveRenderer, chart: Chart, config: Cha
                 }
                 try writer.writeAll("●");
                 if (config.supports_color and point_color) |_| {
-                    try writer.writeAll("\x1b[0m");
+                    const caps = term_mod.capabilities.getTermCaps();
+                    try term_sgr.resetStyle(writer, caps);
                 }
             } else {
                 try writer.writeAll(" ");
@@ -318,7 +324,8 @@ fn renderUnicodeBarChart(renderer: *AdaptiveRenderer, chart: Chart, config: Char
                 }
                 try writer.writeAll("█");
                 if (config.supports_color and series.color) |_| {
-                    try writer.writeAll("\x1b[0m");
+                    const caps = term_mod.capabilities.getTermCaps();
+                    try term_sgr.resetStyle(writer, caps);
                 }
             } else {
                 try writer.writeAll(" ");
@@ -363,7 +370,8 @@ fn renderSparkline(renderer: *AdaptiveRenderer, chart: Chart, config: ChartConfi
     }
 
     if (config.supports_color and series.color) |_| {
-        try writer.writeAll("\x1b[0m");
+        const caps = term_mod.capabilities.getTermCaps();
+        try term_sgr.resetStyle(writer, caps);
     }
 
     try writer.writeAll("\n");
@@ -439,7 +447,8 @@ fn renderLegend(renderer: *AdaptiveRenderer, chart: Chart, config: ChartConfig, 
         try writer.print("  ● {s}", .{series.name});
 
         if (config.supports_color and series.color) |_| {
-            try writer.writeAll("\x1b[0m");
+            const caps = term_mod.capabilities.getTermCaps();
+            try term_sgr.resetStyle(writer, caps);
         }
 
         try writer.writeAll("\n");
@@ -480,27 +489,40 @@ fn renderDataTable(chart: Chart, writer: anytype) !void {
 
 /// Set chart color based on renderer capabilities
 fn setChartColor(renderer: *AdaptiveRenderer, color: Color, writer: anytype) !void {
+    const caps = term_mod.capabilities.getTermCaps();
+
     switch (renderer.render_mode) {
         .enhanced => {
             switch (color) {
-                .rgb => |rgb| try writer.print("\x1b[38;2;{d};{d};{d}m", .{ rgb.r, rgb.g, rgb.b }),
-                .ansi => |ansi| try writer.print("\x1b[3{d}m", .{@intFromEnum(ansi)}),
-                .palette => |pal| try writer.print("\x1b[38;5;{d}m", .{pal}),
+                .rgb => |rgb| try term_sgr.setForegroundRgb(writer, caps, rgb.r, rgb.g, rgb.b),
+                .ansi => |ansi| {
+                    // For ANSI colors, we need to map them to the appropriate SGR codes
+                    // This is a simplified mapping - in practice you'd need a proper ANSI color mapping
+                    const color_code = @as(u16, @intFromEnum(ansi)) + 30; // 30-37 for foreground
+                    try writer.print("\x1b[{d}m", .{color_code});
+                },
+                .palette => |pal| try term_sgr.setForeground256(writer, caps, pal),
             }
         },
         .standard => {
             switch (color) {
                 .rgb => |rgb| {
                     const palette_index = rgbToPalette256(rgb);
-                    try writer.print("\x1b[38;5;{d}m", .{palette_index});
+                    try term_sgr.setForeground256(writer, caps, palette_index);
                 },
-                .ansi => |ansi| try writer.print("\x1b[3{d}m", .{@intFromEnum(ansi)}),
-                .palette => |pal| try writer.print("\x1b[38;5;{d}m", .{pal}),
+                .ansi => |ansi| {
+                    const color_code = @as(u16, @intFromEnum(ansi)) + 30; // 30-37 for foreground
+                    try writer.print("\x1b[{d}m", .{color_code});
+                },
+                .palette => |pal| try term_sgr.setForeground256(writer, caps, pal),
             }
         },
         .compatible, .minimal => {
             switch (color) {
-                .ansi => |ansi| try writer.print("\x1b[3{d}m", .{@intFromEnum(ansi)}),
+                .ansi => |ansi| {
+                    const color_code = @as(u16, @intFromEnum(ansi)) + 30; // 30-37 for foreground
+                    try writer.print("\x1b[{d}m", .{color_code});
+                },
                 else => {}, // No color support
             }
         },

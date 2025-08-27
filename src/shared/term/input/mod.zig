@@ -1,43 +1,41 @@
 //! Terminal input handling module.
 //! Provides keyboard, mouse, and clipboard input management with advanced
 //! event handling and cross-platform support.
+//!
+//! This module now serves as a compatibility layer that re-exports the unified
+//! input system from src/shared/input.zig for backward compatibility.
 
 const std = @import("std");
 
-// Core input functionality
+// Re-export unified input system
+pub const input = @import("../../input.zig");
+
+// Re-export all unified types for convenience
+pub const Event = input.Event;
+pub const Key = input.Key;
+pub const Modifiers = input.Modifiers;
+pub const MouseButton = input.MouseButton;
+pub const MouseMode = input.MouseMode;
+pub const InputManager = input.InputManager;
+pub const InputConfig = input.InputConfig;
+pub const InputFeatures = input.InputFeatures;
+pub const InputParser = input.InputParser;
+pub const InputUtils = input.InputUtils;
+
+// Legacy compatibility - keep existing module exports for backward compatibility
 pub const input_extended = @import("input_extended.zig");
 pub const input_handler = @import("input_handler.zig");
 pub const input_parser = @import("input_parser.zig");
 pub const input_driver = @import("input_driver.zig");
-
-// Import for event parsing
-const input_parser_mod = @import("input_parser.zig");
-
-// Keyboard handling
 pub const keyboard = @import("keyboard.zig");
 pub const keys = @import("keys.zig");
 pub const key_mapping = @import("key_mapping.zig");
-// Kitty keyboard support
 pub const kitty_keyboard = @import("kitty_keyboard.zig");
-
-// Mouse handling
 pub const mouse = @import("mouse.zig");
-// TODO: Implement mouse events and tracker
-// pub const mouse_events = @import("mouse_events.zig");
-// pub const mouse_tracker = @import("mouse_tracker.zig");
-
-// Clipboard support
 pub const clipboard = @import("clipboard.zig");
-
-// Event system
-// TODO: Implement input events and color events
-// pub const input_events = @import("input_events.zig");
-// pub const color_events = @import("color_events.zig");
-
-// Cursor input
 pub const cursor = @import("cursor.zig");
 
-/// Input event types
+// Legacy event types for backward compatibility
 pub const EventType = enum {
     key_press,
     key_release,
@@ -50,38 +48,21 @@ pub const EventType = enum {
     blur,
 };
 
-/// Generic input event structure
-pub const Event = struct {
-    type: EventType,
-    timestamp: i64,
-    data: union(EventType) {
-        key_press: KeyEvent,
-        key_release: KeyEvent,
-        mouse_move: MouseMoveEvent,
-        mouse_button: MouseButtonEvent,
-        mouse_wheel: MouseWheelEvent,
-        clipboard_paste: ClipboardEvent,
-        resize: ResizeEvent,
-        focus: void,
-        blur: void,
-    },
-};
-
-/// Key event data
+/// Legacy key event data (for backward compatibility)
 pub const KeyEvent = struct {
     code: u32,
     modifiers: Modifiers,
     text: ?[]const u8 = null,
 };
 
-/// Mouse move event data
+/// Legacy mouse move event data
 pub const MouseMoveEvent = struct {
     x: i32,
     y: i32,
     modifiers: Modifiers,
 };
 
-/// Mouse button event data
+/// Legacy mouse button event data
 pub const MouseButtonEvent = struct {
     button: MouseButton,
     pressed: bool,
@@ -90,7 +71,7 @@ pub const MouseButtonEvent = struct {
     modifiers: Modifiers,
 };
 
-/// Mouse wheel event data
+/// Legacy mouse wheel event data
 pub const MouseWheelEvent = struct {
     delta_x: f32,
     delta_y: f32,
@@ -99,154 +80,156 @@ pub const MouseWheelEvent = struct {
     modifiers: Modifiers,
 };
 
-/// Clipboard event data
+/// Legacy clipboard event data
 pub const ClipboardEvent = struct {
     text: []const u8,
 };
 
-/// Window resize event data
+/// Legacy window resize event data
 pub const ResizeEvent = struct {
     width: u32,
     height: u32,
 };
 
-/// Modifier keys state
-pub const Modifiers = struct {
-    shift: bool = false,
-    ctrl: bool = false,
-    alt: bool = false,
-    meta: bool = false,
-    caps_lock: bool = false,
-    num_lock: bool = false,
-};
-
-/// Mouse button enumeration
-pub const MouseButton = enum {
-    left,
-    middle,
-    right,
-    button4,
-    button5,
-};
-
-/// Input handler interface
+/// Legacy input handler interface (for backward compatibility)
 pub const InputHandler = struct {
     allocator: std.mem.Allocator,
+    unified_manager: InputManager,
 
     /// Initialize input handler
     pub fn init(allocator: std.mem.Allocator) !InputHandler {
+        const config = InputConfig{};
+        const manager = try InputManager.init(allocator, config);
         return InputHandler{
             .allocator = allocator,
+            .unified_manager = manager,
         };
     }
 
     /// Poll for input events
     pub fn pollEvent(self: *InputHandler) ?Event {
-        // Try to read available input without blocking
-        const stdin = std.fs.File.stdin();
-        var buffer: [1024]u8 = undefined;
-
-        const bytes_read = stdin.read(&buffer) catch return null;
-        if (bytes_read == 0) return null;
-
-        const input = buffer[0..bytes_read];
-        return self.parseInput(input);
+        const unified_event = self.unified_manager.pollEvent() orelse return null;
+        return convertToLegacyEvent(unified_event);
     }
 
     /// Wait for next input event
     pub fn waitEvent(self: *InputHandler) !Event {
-        // Block until input is available
-        const stdin = std.fs.File.stdin();
-        var buffer: [1]u8 = undefined;
-
-        // Read at least one byte to ensure we have input
-        const bytes_read = try stdin.read(&buffer);
-        if (bytes_read == 0) return error.EndOfStream;
-
-        // Read more data if available
-        var input_buffer = std.ArrayList(u8).init(self.allocator);
-        defer input_buffer.deinit();
-
-        try input_buffer.appendSlice(buffer[0..bytes_read]);
-
-        // Try to read more data without blocking
-        while (true) {
-            const additional_bytes = stdin.read(&buffer) catch break;
-            if (additional_bytes == 0) break;
-            try input_buffer.appendSlice(buffer[0..additional_bytes]);
-        }
-
-        const event = self.parseInput(input_buffer.items);
-        return event orelse error.InvalidInput;
-    }
-
-    /// Parse raw input bytes into an event
-    fn parseInput(self: *InputHandler, input: []const u8) ?Event {
-        // Use input parser for complex sequences
-        var parser = input_parser_mod.InputParser.init(self.allocator);
-        defer parser.deinit();
-
-        const events = parser.parseSequence(input) catch return null;
-        defer self.allocator.free(events);
-
-        if (events.len == 0) return null;
-
-        // Convert first event to our Event type
-        const first_event = events[0];
-        return switch (first_event) {
-            .key_press => |key| Event{
-                .type = .key_press,
-                .timestamp = std.time.microTimestamp(),
-                .data = .{
-                    .key_press = KeyEvent{
-                        .code = 0, // TODO: Map key to code
-                        .modifiers = Modifiers{
-                            .shift = key.modifiers.shift,
-                            .ctrl = key.modifiers.ctrl,
-                            .alt = key.modifiers.alt,
-                            .meta = key.modifiers.meta,
-                        },
-                        .text = if (key.key.len == 1) key.key else null,
-                    },
-                },
-            },
-            .mouse => |mouse| Event{
-                .type = .mouse_button,
-                .timestamp = std.time.microTimestamp(),
-                .data = .{ .mouse_button = MouseButtonEvent{
-                    .button = switch (mouse.button) {
-                        .left => .left,
-                        .middle => .middle,
-                        .right => .right,
-                        else => .left,
-                    },
-                    .pressed = mouse.action == .press,
-                    .x = mouse.x,
-                    .y = mouse.y,
-                    .modifiers = Modifiers{
-                        .shift = mouse.modifiers.shift,
-                        .ctrl = mouse.modifiers.ctrl,
-                        .alt = mouse.modifiers.alt,
-                    },
-                } },
-            },
-            .paste => |paste| Event{
-                .type = .clipboard_paste,
-                .timestamp = std.time.microTimestamp(),
-                .data = .{ .clipboard_paste = ClipboardEvent{
-                    .text = paste.content,
-                } },
-            },
-            else => null,
-        };
+        const unified_event = try self.unified_manager.nextEvent();
+        return convertToLegacyEvent(unified_event) orelse error.InvalidInput;
     }
 
     /// Cleanup input handler
     pub fn deinit(self: *InputHandler) void {
-        _ = self;
-        // Cleanup resources
+        self.unified_manager.deinit();
     }
 };
+
+/// Convert unified event to legacy event format
+fn convertToLegacyEvent(unified: input.Event) ?Event {
+    return switch (unified) {
+        .key_press => |key| Event{
+            .type = .key_press,
+            .timestamp = key.timestamp,
+            .data = .{
+                .key_press = KeyEvent{
+                    .code = @intFromEnum(key.key),
+                    .modifiers = key.modifiers,
+                    .text = key.text,
+                },
+            },
+        },
+        .key_release => |key| Event{
+            .type = .key_release,
+            .timestamp = key.timestamp,
+            .data = .{
+                .key_release = KeyEvent{
+                    .code = @intFromEnum(key.key),
+                    .modifiers = key.modifiers,
+                    .text = null,
+                },
+            },
+        },
+        .mouse_press => |mouse_press| Event{
+            .type = .mouse_button,
+            .timestamp = mouse_press.timestamp,
+            .data = .{
+                .mouse_button = MouseButtonEvent{
+                    .button = mouse_press.button,
+                    .pressed = true,
+                    .x = @as(i32, @intCast(mouse_press.x)),
+                    .y = @as(i32, @intCast(mouse_press.y)),
+                    .modifiers = mouse_press.modifiers,
+                },
+            },
+        },
+        .mouse_release => |mouse_release| Event{
+            .type = .mouse_button,
+            .timestamp = mouse_release.timestamp,
+            .data = .{
+                .mouse_button = MouseButtonEvent{
+                    .button = mouse_release.button,
+                    .pressed = false,
+                    .x = @as(i32, @intCast(mouse_release.x)),
+                    .y = @as(i32, @intCast(mouse_release.y)),
+                    .modifiers = mouse_release.modifiers,
+                },
+            },
+        },
+        .mouse_move => |mouse_move| Event{
+            .type = .mouse_move,
+            .timestamp = mouse_move.timestamp,
+            .data = .{
+                .mouse_move = MouseMoveEvent{
+                    .x = @as(i32, @intCast(mouse_move.x)),
+                    .y = @as(i32, @intCast(mouse_move.y)),
+                    .modifiers = mouse_move.modifiers,
+                },
+            },
+        },
+        .mouse_scroll => |mouse_scroll| Event{
+            .type = .mouse_wheel,
+            .timestamp = mouse_scroll.timestamp,
+            .data = .{
+                .mouse_wheel = MouseWheelEvent{
+                    .delta_x = mouse_scroll.delta_x,
+                    .delta_y = mouse_scroll.delta_y,
+                    .x = @as(i32, @intCast(mouse_scroll.x)),
+                    .y = @as(i32, @intCast(mouse_scroll.y)),
+                    .modifiers = mouse_scroll.modifiers,
+                },
+            },
+        },
+        .paste => |paste| Event{
+            .type = .clipboard_paste,
+            .timestamp = paste.timestamp,
+            .data = .{
+                .clipboard_paste = ClipboardEvent{
+                    .text = paste.text,
+                },
+            },
+        },
+        .resize => |resize| Event{
+            .type = .resize,
+            .timestamp = resize.timestamp,
+            .data = .{
+                .resize = ResizeEvent{
+                    .width = resize.width,
+                    .height = resize.height,
+                },
+            },
+        },
+        .focus_gained => Event{
+            .type = .focus,
+            .timestamp = std.time.microTimestamp(),
+            .data = .focus,
+        },
+        .focus_lost => Event{
+            .type = .blur,
+            .timestamp = std.time.microTimestamp(),
+            .data = .blur,
+        },
+    };
+}
 
 test "input module exports" {
     // Basic test to ensure module compiles

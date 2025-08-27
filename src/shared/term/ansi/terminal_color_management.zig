@@ -1,5 +1,5 @@
 const std = @import("std");
-const caps_mod = @import("../caps.zig");
+const caps_mod = @import("../capabilities.zig");
 const precise_palette = @import("precise_ansi_palette.zig");
 
 /// Terminal color management system with comprehensive color support

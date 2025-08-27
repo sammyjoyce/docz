@@ -32,16 +32,16 @@ pub const RenderLevel = enum {
     /// ASCII only + 16 colors
     minimal,
 
-    pub fn fromCapabilities(caps: caps.TermCaps) RenderLevel {
+    pub fn fromCapabilities(term_caps: caps.TermCaps) RenderLevel {
         // Premium: Kitty graphics + true colors + mouse + clipboard
-        if (caps.supportsKittyGraphics and caps.supportsTruecolor and
-            caps.supportsSgrMouse and caps.supportsClipboardOsc52)
+        if (term_caps.supportsKittyGraphics and term_caps.supportsTruecolor and
+            term_caps.supportsSgrMouse and term_caps.supportsClipboardOsc52)
         {
             return .premium;
         }
 
         // Enhanced: True colors + mouse + some advanced features
-        if (caps.supportsTruecolor and caps.supportsSgrMouse and caps.supportsHyperlinkOsc8) {
+        if (term_caps.supportsTruecolor and term_caps.supportsSgrMouse and term_caps.supportsHyperlinkOsc8) {
             return .enhanced;
         }
 
@@ -103,13 +103,13 @@ pub const AdaptiveDashboard = struct {
 
         // Initialize layout manager
         const size = terminal.getSize() orelse .{ .width = config.width orelse 80, .height = config.height orelse 24 };
-        var layout = try LayoutManager.init(allocator, size);
+        const layout = try LayoutManager.init(allocator, size);
 
         // Initialize renderer with detected capabilities
-        var renderer = try DashboardRenderer.init(allocator, &terminal, render_level);
+        const renderer = try DashboardRenderer.init(allocator, &terminal, render_level);
 
         // Initialize theme
-        var theme = try DashboardTheme.load(allocator, config.theme_name, render_level);
+        const theme = try DashboardTheme.load(allocator, config.theme_name, render_level);
 
         // Enable terminal features
         try terminal.enterRawMode();
@@ -387,7 +387,7 @@ pub const AdaptiveDashboard = struct {
 
 /// Create a dashboard with demo data for testing
 pub fn createDemoDashboard(allocator: Allocator) !AdaptiveDashboard {
-    var config = DashboardConfig{
+    const config = DashboardConfig{
         .title = "Live System Dashboard",
         .refresh_rate_ms = 500,
         .enable_animations = true,

@@ -4,7 +4,7 @@
 /// Compatible with Zig 0.15.1
 const std = @import("std");
 
-pub const cellbuf = @import("cellbuf.zig");
+pub const cellbuf = @import("../../components/cell_buffer.zig");
 // TODO: Implement advanced cursor optimizer
 // pub const cursor_optimizer = @import("ansi/cursor_optimizer.zig");
 // TODO: Implement enhanced input handler
@@ -15,8 +15,9 @@ pub const cellbuf = @import("cellbuf.zig");
 // Re-export key types for convenience
 pub const CellBuffer = cellbuf.CellBuffer;
 pub const Cell = cellbuf.Cell;
-pub const CellColor = cellbuf.CellColor;
-pub const CellAttrs = cellbuf.CellAttrs;
+pub const Color = cellbuf.Color;
+pub const Style = cellbuf.Style;
+pub const AttrMask = cellbuf.AttrMask;
 
 // TODO: Implement cursor optimizer types
 // pub const CursorOptimizer = cursor_optimizer.CursorOptimizer;

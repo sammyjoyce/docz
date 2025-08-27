@@ -122,16 +122,16 @@ pub const Clear = struct {
     bounds: Bounds,
     config: ClearConfig,
     allocator: Allocator,
-    
+
     // State
     is_visible: bool,
     saved_content: ?[]u8,
     parent_bounds: ?Bounds,
-    
+
     // Callbacks
     before_clear: ?*const fn () void,
     after_clear: ?*const fn () void,
-    
+
     /// Initialize a new Clear widget with default settings
     pub fn init(allocator: Allocator, bounds: Bounds) Clear {
         return .{
@@ -145,14 +145,14 @@ pub const Clear = struct {
             .after_clear = null,
         };
     }
-    
+
     /// Create a Clear widget configured for modal overlay
     pub fn initModal(allocator: Allocator, parent_bounds: Bounds, width_percent: u8, height_percent: u8) Clear {
         const width = (parent_bounds.width * width_percent) / 100;
         const height = (parent_bounds.height * height_percent) / 100;
         const x = parent_bounds.x + (parent_bounds.width - width) / 2;
         const y = parent_bounds.y + (parent_bounds.height - height) / 2;
-        
+
         return .{
             .bounds = Bounds.init(x, y, width, height),
             .config = ClearConfig{
@@ -178,7 +178,7 @@ pub const Clear = struct {
             .after_clear = null,
         };
     }
-    
+
     /// Create a Clear widget configured for tooltip
     pub fn initTooltip(allocator: Allocator, anchor_point: Point, width: u32, height: u32) Clear {
         return .{
@@ -202,35 +202,35 @@ pub const Clear = struct {
             .after_clear = null,
         };
     }
-    
+
     /// Set the clear mode
     pub fn withMode(self: Clear, mode: ClearMode) Clear {
         var new_clear = self;
         new_clear.config.mode = mode;
         return new_clear;
     }
-    
+
     /// Set the background color
     pub fn withBackgroundColor(self: Clear, color: Color) Clear {
         var new_clear = self;
         new_clear.config.background_color = color;
         return new_clear;
     }
-    
+
     /// Set the position strategy
     pub fn withPosition(self: Clear, position: PositionStrategy) Clear {
         var new_clear = self;
         new_clear.config.position = position;
         return new_clear;
     }
-    
+
     /// Set alignment options
     pub fn withAlignment(self: Clear, alignment: Alignment) Clear {
         var new_clear = self;
         new_clear.config.alignment = alignment;
         return new_clear;
     }
-    
+
     /// Enable shadow effect
     pub fn withShadow(self: Clear, enabled: bool, color: Color) Clear {
         var new_clear = self;
@@ -238,21 +238,21 @@ pub const Clear = struct {
         new_clear.config.effects.shadow_color = color;
         return new_clear;
     }
-    
+
     /// Set border options
     pub fn withBorder(self: Clear, border: BorderOptions) Clear {
         var new_clear = self;
         new_clear.config.effects.border = border;
         return new_clear;
     }
-    
+
     /// Set transparency level
     pub fn withTransparency(self: Clear, level: u8) Clear {
         var new_clear = self;
         new_clear.config.transparency = level;
         return new_clear;
     }
-    
+
     /// Set pattern type
     pub fn withPattern(self: Clear, pattern: Pattern, custom: ?[]const u8) Clear {
         var new_clear = self;
@@ -260,7 +260,7 @@ pub const Clear = struct {
         new_clear.config.custom_pattern = custom;
         return new_clear;
     }
-    
+
     /// Set callbacks
     pub fn withCallbacks(self: Clear, before: ?*const fn () void, after: ?*const fn () void) Clear {
         var new_clear = self;
@@ -268,7 +268,7 @@ pub const Clear = struct {
         new_clear.after_clear = after;
         return new_clear;
     }
-    
+
     /// Calculate actual bounds based on position strategy
     pub fn getActualBounds(self: *const Clear) Bounds {
         return switch (self.config.position) {
@@ -318,18 +318,18 @@ pub const Clear = struct {
             .custom => self.bounds, // Custom positioning handled externally
         };
     }
-    
+
     /// Save content that will be overwritten
     pub fn saveContent(self: *Clear) !void {
         if (!self.config.preserve_content) return;
-        
+
         const bounds = self.getActualBounds();
         const size = bounds.width * bounds.height;
         self.saved_content = try self.allocator.alloc(u8, size);
         // In a real implementation, this would read from the terminal buffer
         // For now, we'll just allocate the space
     }
-    
+
     /// Restore previously saved content
     pub fn restoreContent(self: *Clear) !void {
         if (self.saved_content) |content| {
@@ -339,31 +339,31 @@ pub const Clear = struct {
             self.saved_content = null;
         }
     }
-    
+
     /// Draw shadow effect
     fn drawShadow(self: *const Clear, bounds: Bounds) void {
         if (!self.config.effects.shadow) return;
-        
+
         // Draw shadow to the right and bottom
         terminal_writer.terminal_writer.print("\x1b[{d}m", .{@intFromEnum(self.config.effects.shadow_color) + 10}); // Background
-        
+
         // Right shadow
         for (bounds.y + 1..bounds.y + bounds.height + 1) |y| {
             moveCursor(@intCast(y), @intCast(bounds.x + bounds.width));
             terminal_writer.print(" ", .{});
         }
-        
+
         // Bottom shadow
         moveCursor(@intCast(bounds.y + bounds.height), @intCast(bounds.x + 1));
         for (0..bounds.width) |_| {
             terminal_writer.print(" ", .{});
         }
     }
-    
+
     /// Draw border if configured
     fn drawBorder(self: *const Clear, bounds: Bounds) void {
         const border = self.config.effects.border orelse return;
-        
+
         const chars = switch (border.style) {
             .none => return,
             .single => .{ .h = "─", .v = "│", .tl = "┌", .tr = "┐", .bl = "└", .br = "┘" },
@@ -372,9 +372,9 @@ pub const Clear = struct {
             .thick => .{ .h = "━", .v = "┃", .tl = "┏", .tr = "┓", .bl = "┗", .br = "┛" },
             .dashed => .{ .h = "╌", .v = "╎", .tl = "┌", .tr = "┐", .bl = "└", .br = "┘" },
         };
-        
+
         terminal_writer.print("\x1b[{d}m", .{@intFromEnum(border.color)});
-        
+
         // Top border
         moveCursor(@intCast(bounds.y), @intCast(bounds.x));
         terminal_writer.print("{s}", .{chars.tl});
@@ -382,7 +382,7 @@ pub const Clear = struct {
             terminal_writer.print("{s}", .{chars.h});
         }
         terminal_writer.print("{s}", .{chars.tr});
-        
+
         // Side borders
         for (1..bounds.height - 1) |i| {
             moveCursor(@intCast(bounds.y + i), @intCast(bounds.x));
@@ -390,7 +390,7 @@ pub const Clear = struct {
             moveCursor(@intCast(bounds.y + i), @intCast(bounds.x + bounds.width - 1));
             terminal_writer.print("{s}", .{chars.v});
         }
-        
+
         // Bottom border
         moveCursor(@intCast(bounds.y + bounds.height - 1), @intCast(bounds.x));
         terminal_writer.print("{s}", .{chars.bl});
@@ -399,7 +399,7 @@ pub const Clear = struct {
         }
         terminal_writer.print("{s}", .{chars.br});
     }
-    
+
     /// Clear the area based on the configured mode
     fn clearArea(self: *const Clear, bounds: Bounds) void {
         switch (self.config.mode) {
@@ -412,7 +412,7 @@ pub const Clear = struct {
             .color_filter => self.clearWithColorFilter(bounds),
         }
     }
-    
+
     fn clearWithSpaces(self: *const Clear, bounds: Bounds) void {
         _ = self;
         for (bounds.y..bounds.y + bounds.height) |y| {
@@ -422,7 +422,7 @@ pub const Clear = struct {
             }
         }
     }
-    
+
     fn clearWithCharacter(self: *const Clear, bounds: Bounds) void {
         for (bounds.y..bounds.y + bounds.height) |y| {
             moveCursor(@intCast(y), @intCast(bounds.x));
@@ -431,13 +431,13 @@ pub const Clear = struct {
             }
         }
     }
-    
+
     fn clearWithTransparentOverlay(self: *const Clear, bounds: Bounds) void {
         // Simulate transparency with dim/faint text attribute
         const transparency_chars = [_]u8{ ' ', '░', '▒', '▓', '█' };
         const char_index = @min(self.config.transparency / 51, 4); // 255/5 = 51
         const char = transparency_chars[char_index];
-        
+
         terminal_writer.print("\x1b[2m", .{}); // Dim text
         for (bounds.y..bounds.y + bounds.height) |y| {
             moveCursor(@intCast(y), @intCast(bounds.x));
@@ -447,10 +447,10 @@ pub const Clear = struct {
         }
         terminal_writer.print("\x1b[22m", .{}); // Reset dim
     }
-    
+
     fn clearWithSolidColor(self: *const Clear, bounds: Bounds) void {
         terminal_writer.print("\x1b[{d}m", .{@intFromEnum(self.config.background_color) + 10}); // Background
-        
+
         for (bounds.y..bounds.y + bounds.height) |y| {
             moveCursor(@intCast(y), @intCast(bounds.x));
             for (0..bounds.width) |_| {
@@ -458,7 +458,7 @@ pub const Clear = struct {
             }
         }
     }
-    
+
     fn clearWithPattern(self: *const Clear, bounds: Bounds) void {
         const patterns = switch (self.config.pattern) {
             .checkered => [_][]const u8{ "█", " " },
@@ -476,10 +476,10 @@ pub const Clear = struct {
                 break :blk [_][]const u8{ "█", " " };
             },
         };
-        
+
         terminal_writer.print("\x1b[{d}m", .{@intFromEnum(self.config.foreground_color)});
         terminal_writer.print("\x1b[{d}m", .{@intFromEnum(self.config.background_color) + 10});
-        
+
         for (bounds.y..bounds.y + bounds.height) |y| {
             moveCursor(@intCast(y), @intCast(bounds.x));
             for (0..bounds.width) |x| {
@@ -488,11 +488,11 @@ pub const Clear = struct {
             }
         }
     }
-    
+
     fn clearWithBlur(self: *const Clear, bounds: Bounds) void {
         const blur_chars = [_][]const u8{ " ", "░", "▒", "▓" };
         const char_index = @min(self.config.blur_intensity - 1, 3);
-        
+
         terminal_writer.print("\x1b[2m", .{}); // Dim
         for (bounds.y..bounds.y + bounds.height) |y| {
             moveCursor(@intCast(y), @intCast(bounds.x));
@@ -502,61 +502,61 @@ pub const Clear = struct {
         }
         terminal_writer.print("\x1b[22m", .{}); // Reset dim
     }
-    
+
     fn clearWithColorFilter(self: *const Clear, bounds: Bounds) void {
         // Apply color filter by setting foreground color
         terminal_writer.print("\x1b[{d}m", .{@intFromEnum(self.config.color_filter)});
         terminal_writer.print("\x1b[7m", .{}); // Reverse video for filter effect
-        
+
         for (bounds.y..bounds.y + bounds.height) |y| {
             moveCursor(@intCast(y), @intCast(bounds.x));
             for (0..bounds.width) |_| {
                 terminal_writer.print(" ", .{});
             }
         }
-        
+
         terminal_writer.print("\x1b[27m", .{}); // Reset reverse video
     }
-    
+
     /// Main draw function
     pub fn draw(self: *Clear) !void {
         if (!self.is_visible) return;
-        
+
         // Execute before callback
         if (self.before_clear) |callback| {
             callback();
         }
-        
+
         // Save content if needed
         try self.saveContent();
-        
+
         // Get actual bounds based on position strategy
         const bounds = self.getActualBounds();
-        
+
         // Draw shadow first (appears behind)
         self.drawShadow(bounds);
-        
+
         // Clear the main area
         self.clearArea(bounds);
-        
+
         // Draw border on top
         self.drawBorder(bounds);
-        
+
         // Reset all attributes
         terminal_writer.print("\x1b[0m", .{});
-        
+
         // Execute after callback
         if (self.after_clear) |callback| {
             callback();
         }
     }
-    
+
     /// Show the overlay
     pub fn show(self: *Clear) !void {
         self.is_visible = true;
         try self.draw();
     }
-    
+
     /// Hide the overlay and optionally restore content
     pub fn hide(self: *Clear) !void {
         self.is_visible = false;
@@ -564,7 +564,7 @@ pub const Clear = struct {
             try self.restoreContent();
         }
     }
-    
+
     /// Toggle visibility
     pub fn toggle(self: *Clear) !void {
         if (self.is_visible) {
@@ -573,28 +573,28 @@ pub const Clear = struct {
             try self.show();
         }
     }
-    
+
     /// Update bounds
     pub fn setBounds(self: *Clear, bounds: Bounds) void {
         self.bounds = bounds;
     }
-    
+
     /// Set parent bounds for relative positioning
     pub fn setParentBounds(self: *Clear, parent: Bounds) void {
         self.parent_bounds = parent;
     }
-    
+
     /// Check if a point is within the clear area
     pub fn contains(self: *const Clear, point: Point) bool {
         const bounds = self.getActualBounds();
         return bounds.containsPoint(point);
     }
-    
+
     /// Get z-index for layering
     pub fn getZIndex(self: *const Clear) i32 {
         return self.config.z_index;
     }
-    
+
     /// Create a widget interface for this Clear
     pub fn createWidget(self: *Clear, id: []const u8) !*widget_interface.Widget {
         const vtable = try self.allocator.create(widget_interface.WidgetVTable);
@@ -604,7 +604,7 @@ pub const Clear = struct {
             .measure = measureWidget,
             .get_type_name = getTypeNameWidget,
         };
-        
+
         const widget = try self.allocator.create(widget_interface.Widget);
         const actual_bounds = self.getActualBounds();
         widget.* = widget_interface.Widget.init(
@@ -618,10 +618,10 @@ pub const Clear = struct {
                 .height = @intCast(actual_bounds.height),
             },
         );
-        
+
         return widget;
     }
-    
+
     // Widget interface implementations
     fn renderWidget(ctx: *anyopaque, renderer: *unified_renderer.UnifiedRenderer, area: widget_interface.Rect) !void {
         _ = renderer;
@@ -629,11 +629,11 @@ pub const Clear = struct {
         const self: *Clear = @ptrCast(@alignCast(ctx));
         try self.draw();
     }
-    
+
     fn handleInputWidget(ctx: *anyopaque, event: widget_interface.InputEvent, area: widget_interface.Rect) !bool {
         _ = area;
         const self: *Clear = @ptrCast(@alignCast(ctx));
-        
+
         // Handle escape key to hide overlay
         switch (event) {
             .key => |key| {
@@ -652,10 +652,10 @@ pub const Clear = struct {
             },
             else => {},
         }
-        
+
         return false;
     }
-    
+
     fn measureWidget(ctx: *anyopaque, constraints: widget_interface.Constraints) widget_interface.Size {
         _ = constraints;
         const self: *Clear = @ptrCast(@alignCast(ctx));
@@ -665,7 +665,7 @@ pub const Clear = struct {
             .height = @intCast(bounds.height),
         };
     }
-    
+
     fn getTypeNameWidget(ctx: *anyopaque) []const u8 {
         _ = ctx;
         return "Clear";
@@ -682,7 +682,7 @@ test "Clear initialization" {
     const allocator = std.testing.allocator;
     const bounds = Bounds.init(10, 10, 20, 10);
     const clear = Clear.init(allocator, bounds);
-    
+
     try std.testing.expectEqual(clear.bounds, bounds);
     try std.testing.expectEqual(clear.config.mode, .spaces);
     try std.testing.expect(clear.is_visible);
@@ -692,7 +692,7 @@ test "Clear modal initialization" {
     const allocator = std.testing.allocator;
     const parent = Bounds.init(0, 0, 80, 24);
     const modal = Clear.initModal(allocator, parent, 50, 50);
-    
+
     try std.testing.expectEqual(modal.config.mode, .solid_color);
     try std.testing.expectEqual(modal.config.position, .centered);
     try std.testing.expect(modal.config.preserve_content);
@@ -703,19 +703,19 @@ test "Clear bounds calculation" {
     const allocator = std.testing.allocator;
     const bounds = Bounds.init(10, 10, 20, 10);
     var clear = Clear.init(allocator, bounds);
-    
+
     // Test absolute positioning
     clear.config.position = .absolute;
     try std.testing.expectEqual(clear.getActualBounds(), bounds);
-    
+
     // Test centered positioning
     const parent = Bounds.init(0, 0, 80, 24);
     clear.parent_bounds = parent;
     clear.config.position = .centered;
     const centered = clear.getActualBounds();
     try std.testing.expectEqual(centered.x, 30); // (80-20)/2
-    try std.testing.expectEqual(centered.y, 7);  // (24-10)/2
-    
+    try std.testing.expectEqual(centered.y, 7); // (24-10)/2
+
     // Test fill parent
     clear.config.position = .fill_parent;
     try std.testing.expectEqual(clear.getActualBounds(), parent);
@@ -725,7 +725,7 @@ test "Clear contains point" {
     const allocator = std.testing.allocator;
     const bounds = Bounds.init(10, 10, 20, 10);
     const clear = Clear.init(allocator, bounds);
-    
+
     try std.testing.expect(clear.contains(Point{ .x = 15, .y = 15 }));
     try std.testing.expect(!clear.contains(Point{ .x = 5, .y = 5 }));
     try std.testing.expect(!clear.contains(Point{ .x = 35, .y = 15 }));

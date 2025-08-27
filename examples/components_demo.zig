@@ -23,7 +23,7 @@ pub const UIDemo = struct {
     uiContext: UI,
 
     pub fn init(allocator: std.mem.Allocator) !Self {
-        var uiContext = try UI.init(allocator, .tui);
+        const uiContext = try UI.init(allocator, .tui);
 
         return Self{
             .allocator = allocator,

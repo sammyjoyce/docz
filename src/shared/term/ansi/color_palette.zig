@@ -1,5 +1,5 @@
 const std = @import("std");
-const caps = @import("../caps.zig");
+const caps = @import("../capabilities.zig");
 
 /// Sophisticated color palette management system
 /// Provides intelligent color conversion, palette optimization, and theme management

@@ -28,10 +28,10 @@ pub const Style = struct {
 
     pub const Color = union(enum) {
         default,
-        ansi: u8,       // 0-15 ANSI colors
-        palette: u8,    // 0-255 palette colors
-        rgb: RGB,       // RGB truecolor
-        
+        ansi: u8, // 0-15 ANSI colors
+        palette: u8, // 0-255 palette colors
+        rgb: RGB, // RGB truecolor
+
         pub const RGB = struct {
             r: u8,
             g: u8,
@@ -42,9 +42,9 @@ pub const Style = struct {
         pub fn fromHex(hex: []const u8) !Color {
             if (hex.len < 6) return error.InvalidHexColor;
             const start = if (hex[0] == '#') 1 else 0;
-            const r = try std.fmt.parseInt(u8, hex[start..start+2], 16);
-            const g = try std.fmt.parseInt(u8, hex[start+2..start+4], 16);
-            const b = try std.fmt.parseInt(u8, hex[start+4..start+6], 16);
+            const r = try std.fmt.parseInt(u8, hex[start .. start + 2], 16);
+            const g = try std.fmt.parseInt(u8, hex[start + 2 .. start + 4], 16);
+            const b = try std.fmt.parseInt(u8, hex[start + 4 .. start + 6], 16);
             return Color{ .rgb = .{ .r = r, .g = g, .b = b } };
         }
     };
@@ -274,24 +274,58 @@ pub fn Stylize(comptime T: type) type {
         }
 
         // Color helper methods
-        pub fn black(self: *T) *T { return self.fg(Style.Color{ .ansi = 0 }); }
-        pub fn red(self: *T) *T { return self.fg(Style.Color{ .ansi = 1 }); }
-        pub fn green(self: *T) *T { return self.fg(Style.Color{ .ansi = 2 }); }
-        pub fn yellow(self: *T) *T { return self.fg(Style.Color{ .ansi = 3 }); }
-        pub fn blue(self: *T) *T { return self.fg(Style.Color{ .ansi = 4 }); }
-        pub fn magenta(self: *T) *T { return self.fg(Style.Color{ .ansi = 5 }); }
-        pub fn cyan(self: *T) *T { return self.fg(Style.Color{ .ansi = 6 }); }
-        pub fn white(self: *T) *T { return self.fg(Style.Color{ .ansi = 7 }); }
-        pub fn gray(self: *T) *T { return self.fg(Style.Color{ .ansi = 8 }); }
+        pub fn black(self: *T) *T {
+            return self.fg(Style.Color{ .ansi = 0 });
+        }
+        pub fn red(self: *T) *T {
+            return self.fg(Style.Color{ .ansi = 1 });
+        }
+        pub fn green(self: *T) *T {
+            return self.fg(Style.Color{ .ansi = 2 });
+        }
+        pub fn yellow(self: *T) *T {
+            return self.fg(Style.Color{ .ansi = 3 });
+        }
+        pub fn blue(self: *T) *T {
+            return self.fg(Style.Color{ .ansi = 4 });
+        }
+        pub fn magenta(self: *T) *T {
+            return self.fg(Style.Color{ .ansi = 5 });
+        }
+        pub fn cyan(self: *T) *T {
+            return self.fg(Style.Color{ .ansi = 6 });
+        }
+        pub fn white(self: *T) *T {
+            return self.fg(Style.Color{ .ansi = 7 });
+        }
+        pub fn gray(self: *T) *T {
+            return self.fg(Style.Color{ .ansi = 8 });
+        }
 
-        pub fn on_black(self: *T) *T { return self.bg(Style.Color{ .ansi = 0 }); }
-        pub fn on_red(self: *T) *T { return self.bg(Style.Color{ .ansi = 1 }); }
-        pub fn on_green(self: *T) *T { return self.bg(Style.Color{ .ansi = 2 }); }
-        pub fn on_yellow(self: *T) *T { return self.bg(Style.Color{ .ansi = 3 }); }
-        pub fn on_blue(self: *T) *T { return self.bg(Style.Color{ .ansi = 4 }); }
-        pub fn on_magenta(self: *T) *T { return self.bg(Style.Color{ .ansi = 5 }); }
-        pub fn on_cyan(self: *T) *T { return self.bg(Style.Color{ .ansi = 6 }); }
-        pub fn on_white(self: *T) *T { return self.bg(Style.Color{ .ansi = 7 }); }
+        pub fn on_black(self: *T) *T {
+            return self.bg(Style.Color{ .ansi = 0 });
+        }
+        pub fn on_red(self: *T) *T {
+            return self.bg(Style.Color{ .ansi = 1 });
+        }
+        pub fn on_green(self: *T) *T {
+            return self.bg(Style.Color{ .ansi = 2 });
+        }
+        pub fn on_yellow(self: *T) *T {
+            return self.bg(Style.Color{ .ansi = 3 });
+        }
+        pub fn on_blue(self: *T) *T {
+            return self.bg(Style.Color{ .ansi = 4 });
+        }
+        pub fn on_magenta(self: *T) *T {
+            return self.bg(Style.Color{ .ansi = 5 });
+        }
+        pub fn on_cyan(self: *T) *T {
+            return self.bg(Style.Color{ .ansi = 6 });
+        }
+        pub fn on_white(self: *T) *T {
+            return self.bg(Style.Color{ .ansi = 7 });
+        }
 
         /// Set RGB foreground color
         pub fn rgb(self: *T, r: u8, g: u8, b: u8) *T {
@@ -366,30 +400,62 @@ pub const StyleBuilder = struct {
     }
 
     // Include all the color helpers from Stylize
-    pub fn black(self: *StyleBuilder) *StyleBuilder { return self.fg(Style.Color{ .ansi = 0 }); }
-    pub fn red(self: *StyleBuilder) *StyleBuilder { return self.fg(Style.Color{ .ansi = 1 }); }
-    pub fn green(self: *StyleBuilder) *StyleBuilder { return self.fg(Style.Color{ .ansi = 2 }); }
-    pub fn yellow(self: *StyleBuilder) *StyleBuilder { return self.fg(Style.Color{ .ansi = 3 }); }
-    pub fn blue(self: *StyleBuilder) *StyleBuilder { return self.fg(Style.Color{ .ansi = 4 }); }
-    pub fn magenta(self: *StyleBuilder) *StyleBuilder { return self.fg(Style.Color{ .ansi = 5 }); }
-    pub fn cyan(self: *StyleBuilder) *StyleBuilder { return self.fg(Style.Color{ .ansi = 6 }); }
-    pub fn white(self: *StyleBuilder) *StyleBuilder { return self.fg(Style.Color{ .ansi = 7 }); }
+    pub fn black(self: *StyleBuilder) *StyleBuilder {
+        return self.fg(Style.Color{ .ansi = 0 });
+    }
+    pub fn red(self: *StyleBuilder) *StyleBuilder {
+        return self.fg(Style.Color{ .ansi = 1 });
+    }
+    pub fn green(self: *StyleBuilder) *StyleBuilder {
+        return self.fg(Style.Color{ .ansi = 2 });
+    }
+    pub fn yellow(self: *StyleBuilder) *StyleBuilder {
+        return self.fg(Style.Color{ .ansi = 3 });
+    }
+    pub fn blue(self: *StyleBuilder) *StyleBuilder {
+        return self.fg(Style.Color{ .ansi = 4 });
+    }
+    pub fn magenta(self: *StyleBuilder) *StyleBuilder {
+        return self.fg(Style.Color{ .ansi = 5 });
+    }
+    pub fn cyan(self: *StyleBuilder) *StyleBuilder {
+        return self.fg(Style.Color{ .ansi = 6 });
+    }
+    pub fn white(self: *StyleBuilder) *StyleBuilder {
+        return self.fg(Style.Color{ .ansi = 7 });
+    }
 
-    pub fn on_black(self: *StyleBuilder) *StyleBuilder { return self.bg(Style.Color{ .ansi = 0 }); }
-    pub fn on_red(self: *StyleBuilder) *StyleBuilder { return self.bg(Style.Color{ .ansi = 1 }); }
-    pub fn on_green(self: *StyleBuilder) *StyleBuilder { return self.bg(Style.Color{ .ansi = 2 }); }
-    pub fn on_yellow(self: *StyleBuilder) *StyleBuilder { return self.bg(Style.Color{ .ansi = 3 }); }
-    pub fn on_blue(self: *StyleBuilder) *StyleBuilder { return self.bg(Style.Color{ .ansi = 4 }); }
-    pub fn on_magenta(self: *StyleBuilder) *StyleBuilder { return self.bg(Style.Color{ .ansi = 5 }); }
-    pub fn on_cyan(self: *StyleBuilder) *StyleBuilder { return self.bg(Style.Color{ .ansi = 6 }); }
-    pub fn on_white(self: *StyleBuilder) *StyleBuilder { return self.bg(Style.Color{ .ansi = 7 }); }
+    pub fn on_black(self: *StyleBuilder) *StyleBuilder {
+        return self.bg(Style.Color{ .ansi = 0 });
+    }
+    pub fn on_red(self: *StyleBuilder) *StyleBuilder {
+        return self.bg(Style.Color{ .ansi = 1 });
+    }
+    pub fn on_green(self: *StyleBuilder) *StyleBuilder {
+        return self.bg(Style.Color{ .ansi = 2 });
+    }
+    pub fn on_yellow(self: *StyleBuilder) *StyleBuilder {
+        return self.bg(Style.Color{ .ansi = 3 });
+    }
+    pub fn on_blue(self: *StyleBuilder) *StyleBuilder {
+        return self.bg(Style.Color{ .ansi = 4 });
+    }
+    pub fn on_magenta(self: *StyleBuilder) *StyleBuilder {
+        return self.bg(Style.Color{ .ansi = 5 });
+    }
+    pub fn on_cyan(self: *StyleBuilder) *StyleBuilder {
+        return self.bg(Style.Color{ .ansi = 6 });
+    }
+    pub fn on_white(self: *StyleBuilder) *StyleBuilder {
+        return self.bg(Style.Color{ .ansi = 7 });
+    }
 };
 
 /// Example widget that implements Stylize
 pub const StyledText = struct {
     content: []const u8,
     style: Style = Style{},
-    
+
     // Include Stylize methods manually
     pub fn getStyle(self: *const StyledText) Style {
         return self.style;
@@ -465,24 +531,58 @@ pub const StyledText = struct {
         return self.setStyle(current);
     }
 
-    pub fn black(self: *StyledText) *StyledText { return self.fg(Style.Color{ .ansi = 0 }); }
-    pub fn red(self: *StyledText) *StyledText { return self.fg(Style.Color{ .ansi = 1 }); }
-    pub fn green(self: *StyledText) *StyledText { return self.fg(Style.Color{ .ansi = 2 }); }
-    pub fn yellow(self: *StyledText) *StyledText { return self.fg(Style.Color{ .ansi = 3 }); }
-    pub fn blue(self: *StyledText) *StyledText { return self.fg(Style.Color{ .ansi = 4 }); }
-    pub fn magenta(self: *StyledText) *StyledText { return self.fg(Style.Color{ .ansi = 5 }); }
-    pub fn cyan(self: *StyledText) *StyledText { return self.fg(Style.Color{ .ansi = 6 }); }
-    pub fn white(self: *StyledText) *StyledText { return self.fg(Style.Color{ .ansi = 7 }); }
-    pub fn gray(self: *StyledText) *StyledText { return self.fg(Style.Color{ .ansi = 8 }); }
+    pub fn black(self: *StyledText) *StyledText {
+        return self.fg(Style.Color{ .ansi = 0 });
+    }
+    pub fn red(self: *StyledText) *StyledText {
+        return self.fg(Style.Color{ .ansi = 1 });
+    }
+    pub fn green(self: *StyledText) *StyledText {
+        return self.fg(Style.Color{ .ansi = 2 });
+    }
+    pub fn yellow(self: *StyledText) *StyledText {
+        return self.fg(Style.Color{ .ansi = 3 });
+    }
+    pub fn blue(self: *StyledText) *StyledText {
+        return self.fg(Style.Color{ .ansi = 4 });
+    }
+    pub fn magenta(self: *StyledText) *StyledText {
+        return self.fg(Style.Color{ .ansi = 5 });
+    }
+    pub fn cyan(self: *StyledText) *StyledText {
+        return self.fg(Style.Color{ .ansi = 6 });
+    }
+    pub fn white(self: *StyledText) *StyledText {
+        return self.fg(Style.Color{ .ansi = 7 });
+    }
+    pub fn gray(self: *StyledText) *StyledText {
+        return self.fg(Style.Color{ .ansi = 8 });
+    }
 
-    pub fn on_black(self: *StyledText) *StyledText { return self.bg(Style.Color{ .ansi = 0 }); }
-    pub fn on_red(self: *StyledText) *StyledText { return self.bg(Style.Color{ .ansi = 1 }); }
-    pub fn on_green(self: *StyledText) *StyledText { return self.bg(Style.Color{ .ansi = 2 }); }
-    pub fn on_yellow(self: *StyledText) *StyledText { return self.bg(Style.Color{ .ansi = 3 }); }
-    pub fn on_blue(self: *StyledText) *StyledText { return self.bg(Style.Color{ .ansi = 4 }); }
-    pub fn on_magenta(self: *StyledText) *StyledText { return self.bg(Style.Color{ .ansi = 5 }); }
-    pub fn on_cyan(self: *StyledText) *StyledText { return self.bg(Style.Color{ .ansi = 6 }); }
-    pub fn on_white(self: *StyledText) *StyledText { return self.bg(Style.Color{ .ansi = 7 }); }
+    pub fn on_black(self: *StyledText) *StyledText {
+        return self.bg(Style.Color{ .ansi = 0 });
+    }
+    pub fn on_red(self: *StyledText) *StyledText {
+        return self.bg(Style.Color{ .ansi = 1 });
+    }
+    pub fn on_green(self: *StyledText) *StyledText {
+        return self.bg(Style.Color{ .ansi = 2 });
+    }
+    pub fn on_yellow(self: *StyledText) *StyledText {
+        return self.bg(Style.Color{ .ansi = 3 });
+    }
+    pub fn on_blue(self: *StyledText) *StyledText {
+        return self.bg(Style.Color{ .ansi = 4 });
+    }
+    pub fn on_magenta(self: *StyledText) *StyledText {
+        return self.bg(Style.Color{ .ansi = 5 });
+    }
+    pub fn on_cyan(self: *StyledText) *StyledText {
+        return self.bg(Style.Color{ .ansi = 6 });
+    }
+    pub fn on_white(self: *StyledText) *StyledText {
+        return self.bg(Style.Color{ .ansi = 7 });
+    }
 
     pub fn rgb(self: *StyledText, r: u8, g: u8, b: u8) *StyledText {
         return self.fg(Style.Color{ .rgb = .{ .r = r, .g = g, .b = b } });
@@ -510,7 +610,7 @@ pub const StyledText = struct {
         const current = self.getStyle();
         return self.setStyle(current.patch(style_patch));
     }
-    
+
     pub fn init(text: []const u8) StyledText {
         return StyledText{ .content = text };
     }
@@ -521,7 +621,7 @@ test "style merging" {
     const style1 = Style{ .fg_color = Style.Color{ .ansi = 1 }, .bold = true };
     const style2 = Style{ .bg_color = Style.Color{ .ansi = 2 }, .italic = true };
     const merged = style1.merge(style2);
-    
+
     try std.testing.expect(merged.fg_color.?.ansi == 1);
     try std.testing.expect(merged.bg_color.?.ansi == 2);
     try std.testing.expect(merged.bold == true);
@@ -545,7 +645,7 @@ test "style builder" {
 test "stylize trait" {
     var text = StyledText.init("Hello");
     _ = text.red().bold().italic();
-    
+
     try std.testing.expect(text.style.fg_color.?.ansi == 1);
     try std.testing.expect(text.style.bold == true);
     try std.testing.expect(text.style.italic == true);
@@ -556,7 +656,7 @@ test "hex color parsing" {
     try std.testing.expect(color1.rgb.r == 255);
     try std.testing.expect(color1.rgb.g == 87);
     try std.testing.expect(color1.rgb.b == 51);
-    
+
     const color2 = try Style.Color.fromHex("00FF00");
     try std.testing.expect(color2.rgb.r == 0);
     try std.testing.expect(color2.rgb.g == 255);

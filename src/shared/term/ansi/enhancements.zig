@@ -3,18 +3,14 @@
 /// following Zig 0.15.1 patterns and best practices.
 const std = @import("std");
 
-pub const color_conversion = @import("color_conversion.zig");
-pub const cursor_control = @import("cursor_control.zig");
+pub const color = @import("color.zig");
+pub const cursor = @import("cursor.zig");
 
 // Re-export main types for convenience
-pub const Color = color_conversion.Color;
-pub const BasicColor = color_conversion.BasicColor;
-pub const IndexedColor = color_conversion.IndexedColor;
-pub const RGBColor = color_conversion.RGBColor;
-pub const RGBA = color_conversion.RGBA;
+pub const RgbColor = color.RgbColor;
 
-pub const CursorStyle = cursor_control.CursorStyle;
-pub const CursorControl = cursor_control.CursorControl;
+pub const CursorStyle = cursor.CursorStyle;
+pub const CursorController = cursor.CursorController;
 
 // Utility functions combining color and cursor control
 pub const TerminalEnhancer = struct {
@@ -36,7 +32,9 @@ pub const TerminalEnhancer = struct {
         errdefer result.deinit(self.allocator);
 
         // Move cursor to position
-        try result.appendSlice(self.allocator, CursorControl.cursorPosition(col, row));
+        const pos_seq = try cursor.cursorPositionString(self.allocator, row, col);
+        defer self.allocator.free(pos_seq);
+        try result.appendSlice(self.allocator, pos_seq);
 
         // Set color (simplified - would need full color sequence implementation)
         const indexed = color_conversion.convertTo256Color(color);
@@ -63,8 +61,13 @@ pub const TerminalEnhancer = struct {
         var result = std.ArrayListUnmanaged(u8){};
         errdefer result.deinit(self.allocator);
 
-        try result.appendSlice(self.allocator, CursorControl.cursorPosition(col, row));
-        try result.appendSlice(self.allocator, CursorControl.setCursorStyle(style));
+        const pos_seq = try cursor.cursorPositionString(self.allocator, row, col);
+        defer self.allocator.free(pos_seq);
+        try result.appendSlice(self.allocator, pos_seq);
+
+        const style_seq = try cursor.setCursorStyleString(self.allocator, style);
+        defer self.allocator.free(style_seq);
+        try result.appendSlice(self.allocator, style_seq);
 
         return try result.toOwnedSlice(self.allocator);
     }
@@ -77,28 +80,40 @@ pub const TerminalEnhancer = struct {
         for (ops) |op| {
             switch (op) {
                 .move_to => |pos| {
-                    try result.appendSlice(self.allocator, CursorControl.cursorPosition(pos.col, pos.row));
+                    const seq = try cursor.cursorPositionString(self.allocator, pos.row, pos.col);
+                    defer self.allocator.free(seq);
+                    try result.appendSlice(self.allocator, seq);
                 },
                 .move_by => |delta| {
                     if (delta.dx > 0) {
-                        try result.appendSlice(self.allocator, CursorControl.cursorForward(@intCast(delta.dx)));
+                        const seq = try cursor.cursorForwardString(self.allocator, @intCast(delta.dx));
+                        defer self.allocator.free(seq);
+                        try result.appendSlice(self.allocator, seq);
                     } else if (delta.dx < 0) {
-                        try result.appendSlice(self.allocator, CursorControl.cursorBackward(@intCast(-delta.dx)));
+                        const seq = try cursor.cursorBackwardString(self.allocator, @intCast(-delta.dx));
+                        defer self.allocator.free(seq);
+                        try result.appendSlice(self.allocator, seq);
                     }
                     if (delta.dy > 0) {
-                        try result.appendSlice(self.allocator, CursorControl.cursorDown(@intCast(delta.dy)));
+                        const seq = try cursor.cursorDownString(self.allocator, @intCast(delta.dy));
+                        defer self.allocator.free(seq);
+                        try result.appendSlice(self.allocator, seq);
                     } else if (delta.dy < 0) {
-                        try result.appendSlice(self.allocator, CursorControl.cursorUp(@intCast(-delta.dy)));
+                        const seq = try cursor.cursorUpString(self.allocator, @intCast(-delta.dy));
+                        defer self.allocator.free(seq);
+                        try result.appendSlice(self.allocator, seq);
                     }
                 },
                 .set_style => |style| {
-                    try result.appendSlice(self.allocator, CursorControl.setCursorStyle(style));
+                    const seq = try cursor.setCursorStyleString(self.allocator, style);
+                    defer self.allocator.free(seq);
+                    try result.appendSlice(self.allocator, seq);
                 },
                 .save => {
-                    try result.appendSlice(self.allocator, CursorControl.saveCursor);
+                    try result.appendSlice(self.allocator, cursor.SAVE_CURSOR);
                 },
                 .restore => {
-                    try result.appendSlice(self.allocator, CursorControl.restoreCursor);
+                    try result.appendSlice(self.allocator, cursor.RESTORE_CURSOR);
                 },
             }
         }

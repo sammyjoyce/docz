@@ -5,6 +5,7 @@
 const std = @import("std");
 
 // Core widgets (basic functionality)
+pub const core = @import("core/mod.zig");
 pub const Core = struct {
     // Consolidate from existing modular components
     pub const Menu = @import("core/menu.zig").Menu;

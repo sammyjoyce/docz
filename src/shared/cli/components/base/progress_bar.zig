@@ -17,10 +17,6 @@ const ProgressData = components.ProgressData;
 const ProgressRenderer = components.ProgressRenderer;
 const ProgressStyle = components.ProgressStyle;
 
-
-
-
-
 /// Progress Bar with advanced graphics capabilities
 pub const ProgressBar = struct {
     allocator: Allocator,
@@ -113,8 +109,6 @@ pub const ProgressBar = struct {
         try term_ansi.resetStyle(writer, self.caps);
     }
 
-
-
     fn updateChartGraphics(self: *ProgressBar) !void {
         // In a full implementation, this would generate chart graphics
         // using the GraphicsManager and update the display
@@ -137,5 +131,3 @@ pub const ProgressBar = struct {
         return self.data.getETA();
     }
 };
-
-

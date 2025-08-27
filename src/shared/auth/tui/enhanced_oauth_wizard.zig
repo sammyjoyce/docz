@@ -564,12 +564,7 @@ pub const EnhancedOAuthWizard = struct {
         };
 
         // Set canvas viewport
-        self.canvas_engine.setViewport(
-            @intCast(diagram_bounds.x),
-            @intCast(diagram_bounds.y),
-            diagram_bounds.width,
-            diagram_bounds.height
-        );
+        self.canvas_engine.setViewport(@intCast(diagram_bounds.x), @intCast(diagram_bounds.y), diagram_bounds.width, diagram_bounds.height);
 
         // Create diagram layer
         const diagram_layer = try self.canvas_engine.createDrawingLayer("oauth_flow");
@@ -630,9 +625,7 @@ pub const EnhancedOAuthWizard = struct {
             try self.canvas_engine.addStroke(layer_id, circle_points, color, 2.0);
 
             // Draw step label
-            try self.canvas_engine.addStroke(layer_id, &[_]canvas_engine.CanvasEngine.CanvasLayer.LayerContent.DrawingContent.Stroke.Point{
-                .{ .x = step.x + 5, .y = step.y + 1 }
-            }, .{ .ansi = 15 }, 1.0);
+            try self.canvas_engine.addStroke(layer_id, &[_]canvas_engine.CanvasEngine.CanvasLayer.LayerContent.DrawingContent.Stroke.Point{.{ .x = step.x + 5, .y = step.y + 1 }}, .{ .ansi = 15 }, 1.0);
         }
     }
 
@@ -749,12 +742,7 @@ pub const EnhancedOAuthWizard = struct {
                 }
             }.validate;
 
-            self.smart_input = try InputField.init(
-                self.allocator,
-                .text,
-                "Authorization Code",
-                "Paste authorization code here..."
-            );
+            self.smart_input = try InputField.init(self.allocator, .text, "Authorization Code", "Paste authorization code here...");
             try self.smart_input.?.configure(.{
                 .required = true,
                 .validator = validation_fn,

@@ -17,6 +17,14 @@ pub const renderers = @import("renderers/mod.zig");
 // Enhanced input system
 pub const input = @import("input/mod.zig");
 
+// Border merging functionality
+pub const border_merger = @import("border_merger.zig");
+pub const BorderMerger = border_merger.BorderMerger;
+
+// Advanced easing functions for animations
+pub const easing = @import("easing.zig");
+pub const Easing = easing.Easing;
+
 // Global initialization functions
 pub fn init(allocator: std.mem.Allocator) !void {
     _ = allocator;

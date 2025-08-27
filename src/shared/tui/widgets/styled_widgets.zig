@@ -97,18 +97,40 @@ pub const StyledButton = struct {
     }
 
     // Color convenience methods
-    pub fn red(self: *StyledButton) *StyledButton { return self.fg(stylize.Style.Color{ .ansi = 1 }); }
-    pub fn green(self: *StyledButton) *StyledButton { return self.fg(stylize.Style.Color{ .ansi = 2 }); }
-    pub fn blue(self: *StyledButton) *StyledButton { return self.fg(stylize.Style.Color{ .ansi = 4 }); }
-    pub fn yellow(self: *StyledButton) *StyledButton { return self.fg(stylize.Style.Color{ .ansi = 3 }); }
-    pub fn cyan(self: *StyledButton) *StyledButton { return self.fg(stylize.Style.Color{ .ansi = 6 }); }
-    pub fn white(self: *StyledButton) *StyledButton { return self.fg(stylize.Style.Color{ .ansi = 7 }); }
-    pub fn gray(self: *StyledButton) *StyledButton { return self.fg(stylize.Style.Color{ .ansi = 8 }); }
+    pub fn red(self: *StyledButton) *StyledButton {
+        return self.fg(stylize.Style.Color{ .ansi = 1 });
+    }
+    pub fn green(self: *StyledButton) *StyledButton {
+        return self.fg(stylize.Style.Color{ .ansi = 2 });
+    }
+    pub fn blue(self: *StyledButton) *StyledButton {
+        return self.fg(stylize.Style.Color{ .ansi = 4 });
+    }
+    pub fn yellow(self: *StyledButton) *StyledButton {
+        return self.fg(stylize.Style.Color{ .ansi = 3 });
+    }
+    pub fn cyan(self: *StyledButton) *StyledButton {
+        return self.fg(stylize.Style.Color{ .ansi = 6 });
+    }
+    pub fn white(self: *StyledButton) *StyledButton {
+        return self.fg(stylize.Style.Color{ .ansi = 7 });
+    }
+    pub fn gray(self: *StyledButton) *StyledButton {
+        return self.fg(stylize.Style.Color{ .ansi = 8 });
+    }
 
-    pub fn on_red(self: *StyledButton) *StyledButton { return self.bg(stylize.Style.Color{ .ansi = 1 }); }
-    pub fn on_green(self: *StyledButton) *StyledButton { return self.bg(stylize.Style.Color{ .ansi = 2 }); }
-    pub fn on_blue(self: *StyledButton) *StyledButton { return self.bg(stylize.Style.Color{ .ansi = 4 }); }
-    pub fn on_white(self: *StyledButton) *StyledButton { return self.bg(stylize.Style.Color{ .ansi = 7 }); }
+    pub fn on_red(self: *StyledButton) *StyledButton {
+        return self.bg(stylize.Style.Color{ .ansi = 1 });
+    }
+    pub fn on_green(self: *StyledButton) *StyledButton {
+        return self.bg(stylize.Style.Color{ .ansi = 2 });
+    }
+    pub fn on_blue(self: *StyledButton) *StyledButton {
+        return self.bg(stylize.Style.Color{ .ansi = 4 });
+    }
+    pub fn on_white(self: *StyledButton) *StyledButton {
+        return self.bg(stylize.Style.Color{ .ansi = 7 });
+    }
 
     // Button-specific styling methods
     pub fn onHover(self: *StyledButton, style: stylize.Style) *StyledButton {
@@ -216,9 +238,15 @@ pub const StyledText = struct {
     }
 
     // Color convenience methods
-    pub fn green(self: *StyledText) *StyledText { return self.fg(stylize.Style.Color{ .ansi = 2 }); }
-    pub fn red(self: *StyledText) *StyledText { return self.fg(stylize.Style.Color{ .ansi = 1 }); }
-    pub fn blue(self: *StyledText) *StyledText { return self.fg(stylize.Style.Color{ .ansi = 4 }); }
+    pub fn green(self: *StyledText) *StyledText {
+        return self.fg(stylize.Style.Color{ .ansi = 2 });
+    }
+    pub fn red(self: *StyledText) *StyledText {
+        return self.fg(stylize.Style.Color{ .ansi = 1 });
+    }
+    pub fn blue(self: *StyledText) *StyledText {
+        return self.fg(stylize.Style.Color{ .ansi = 4 });
+    }
 
     // Text-specific methods
     pub fn setAlignment(self: *StyledText, alignment: Alignment) *StyledText {

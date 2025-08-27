@@ -51,10 +51,11 @@
 
 const std = @import("std");
 
-// Core exports
-// Temporarily disabled due to module conflicts
-// pub const AdaptiveRenderer = @import("adaptive_renderer.zig").AdaptiveRenderer;
-// pub const RenderMode = AdaptiveRenderer.RenderMode;
+// Core exports - Unified Renderer System
+pub const Renderer = @import("Renderer.zig").Renderer;
+pub const RenderTier = Renderer.RenderTier;
+pub const Theme = Renderer.Theme;
+pub const cacheKey = Renderer.cacheKey;
 pub const QualityTiers = @import("quality_tiers.zig").QualityTiers;
 
 // Diff rendering module
@@ -92,74 +93,98 @@ pub const renderChart = chart_mod.renderChart;
 // Demo and utilities
 pub const runDemo = @import("../../examples/adaptive_demo.zig").runDemo;
 
-// Temporarily disabled due to module conflicts
-// /// Convenience function to create a renderer with automatic capability detection
-// pub fn createRenderer(allocator: std.mem.Allocator) !*AdaptiveRenderer {
-//     return AdaptiveRenderer.init(allocator);
-// }
+/// Convenience function to create a renderer with automatic capability detection
+pub fn createRenderer(allocator: std.mem.Allocator) !*Renderer {
+    return Renderer.init(allocator);
+}
 
-// /// Convenience function to create a renderer with explicit mode (for testing)
-// pub fn createRendererWithMode(allocator: std.mem.Allocator, mode: RenderMode) !*AdaptiveRenderer {
-//     return AdaptiveRenderer.initWithMode(allocator, mode);
-// }
+/// Convenience function to create a renderer with explicit tier (for testing)
+pub fn createRendererWithTier(allocator: std.mem.Allocator, tier: RenderTier) !*Renderer {
+    return Renderer.initWithTier(allocator, tier);
+}
 
-// /// Enhanced renderer API with component methods
-// pub const EnhancedRenderer = struct {
-//     renderer: *AdaptiveRenderer,
+/// Convenience function to create a renderer with custom theme
+pub fn createRendererWithTheme(allocator: std.mem.Allocator, theme: Theme) !*Renderer {
+    return Renderer.initWithTheme(allocator, theme);
+}
 
-//     pub fn init(allocator: std.mem.Allocator) !EnhancedRenderer {
-//         const renderer = try AdaptiveRenderer.init(allocator);
-//         return EnhancedRenderer{ .renderer = renderer };
-//     }
+/// Enhanced renderer API with component methods
+pub const EnhancedRenderer = struct {
+    renderer: *Renderer,
 
-//     pub fn deinit(self: *EnhancedRenderer) void {
-//         self.renderer.deinit();
-//         self.renderer.allocator.destroy(self.renderer);
-//     }
+    pub fn init(allocator: std.mem.Allocator) !EnhancedRenderer {
+        const renderer = try Renderer.init(allocator);
+        return EnhancedRenderer{ .renderer = renderer };
+    }
 
-//     pub fn renderProgress(self: *EnhancedRenderer, progress: Progress) !void {
-//         return renderProgress(self.renderer, progress);
-//     }
+    pub fn deinit(self: *EnhancedRenderer) void {
+        self.renderer.deinit();
+    }
 
-//     pub fn renderTable(self: *EnhancedRenderer, table: Table) !void {
-//         return renderTable(self.renderer, table);
-//     }
+    pub fn renderProgress(self: *EnhancedRenderer, progress: Progress) !void {
+        return @import("../components/progress.zig").renderProgress(self.renderer, progress);
+    }
 
-//     pub fn renderChart(self: *EnhancedRenderer, chart: Chart) !void {
-//         return renderChart(self.renderer, chart);
-//     }
+    pub fn renderTable(self: *EnhancedRenderer, table: Table) !void {
+        return @import("components/Table.zig").renderTable(self.renderer, table);
+    }
 
-//     pub fn getRenderingInfo(self: *const EnhancedRenderer) AdaptiveRenderer.Rendering {
-//         return self.renderer.getRenderingInfo();
-//     }
-// };
+    pub fn renderChart(self: *EnhancedRenderer, chart: Chart) !void {
+        return @import("components/Chart.zig").renderChart(self.renderer, chart);
+    }
 
-// Temporarily disabled due to module conflicts
-// /// Render a data dashboard with table and charts
-// pub fn renderDataDashboard(self: *EnhancedRenderer, dashboard: Dashboard) !void {
-//     try self.renderer.beginSynchronized();
-//     defer self.renderer.endSynchronized() catch {};
+    pub fn getRenderingInfo(self: *const EnhancedRenderer) Renderer.RenderingInfo {
+        return self.renderer.getRenderingInfo();
+    }
 
-//     // Title
-//     if (dashboard.title) |title| {
-//         try self.writeText(title, @import("../term/ansi/color.zig").Color.ansi(.bright_cyan), true);
-//         try self.writeText("\n\n", null, false);
-//     }
+    pub fn writeText(self: *EnhancedRenderer, text: []const u8, color: ?@import("../cli/core/unified_terminal.zig").Color, bold: bool) !void {
+        return self.renderer.writeText(text, color, bold);
+    }
 
-//     // Table
-//     if (dashboard.table) |table| {
-//         try self.renderTable(table);
-//         try self.writeText("\n", null, false);
-//     }
+    pub fn flush(self: *EnhancedRenderer) !void {
+        return self.renderer.flush();
+    }
 
-//     // Charts
-//     for (dashboard.charts) |chart| {
-//         try self.renderChart(chart);
-//         try self.writeText("\n", null, false);
-//     }
+    pub fn beginSynchronized(self: *EnhancedRenderer) !void {
+        return self.renderer.beginSynchronized();
+    }
 
-//     try self.flush();
-// }
+    pub fn endSynchronized(self: *EnhancedRenderer) !void {
+        return self.renderer.endSynchronized();
+    }
+};
+
+/// Render a data dashboard with table and charts
+pub fn renderDataDashboard(self: *EnhancedRenderer, dashboard: Dashboard) !void {
+    try self.renderer.beginSynchronized();
+    defer self.renderer.endSynchronized() catch {};
+
+    // Title
+    if (dashboard.title) |title| {
+        try self.writeText(title, @import("../cli/core/unified_terminal.zig").Color.CYAN, true);
+        try self.writeText("\n\n", null, false);
+    }
+
+    // Table
+    if (dashboard.table) |table| {
+        try self.renderTable(table);
+        try self.writeText("\n", null, false);
+    }
+
+    // Charts
+    for (dashboard.charts) |chart| {
+        try self.renderChart(chart);
+        try self.writeText("\n", null, false);
+    }
+
+    try self.flush();
+}
+
+pub const Dashboard = struct {
+    title: ?[]const u8 = null,
+    table: ?Table = null,
+    charts: []const Chart = &[_]Chart{},
+};
 
 // pub const Dashboard = struct {
 //     title: ?[]const u8 = null,
@@ -168,44 +193,43 @@ pub const runDemo = @import("../../examples/adaptive_demo.zig").runDemo;
 // };
 // }
 
-// Temporarily disabled due to module conflicts
-// // Tests
-// test "adaptive rendering system" {
-//     const testing = std.testing;
+// Tests
+test "unified rendering system" {
+    const testing = std.testing;
 
-//     // Test core renderer creation
-//     var renderer = try createRendererWithMode(testing.allocator, .minimal);
-//     defer renderer.deinit();
+    // Test core renderer creation
+    var renderer = try createRendererWithTier(testing.allocator, .minimal);
+    defer renderer.deinit();
 
-//     const info = renderer.getRenderingInfo();
-//     try testing.expect(info.mode == .minimal);
+    const info = renderer.getRenderingInfo();
+    try testing.expect(info.tier == .minimal);
 
-//     // Test enhanced renderer
-//     var enhanced = try EnhancedRenderer.init(testing.allocator);
-//     defer enhanced.deinit();
+    // Test enhanced renderer
+    var enhanced = try EnhancedRenderer.init(testing.allocator);
+    defer enhanced.deinit();
 
-//     const enhanced_info = enhanced.getRenderingInfo();
-//     try testing.expect(enhanced_info.mode != .minimal or enhanced_info.mode == .minimal); // Any mode is valid
+    const enhanced_info = enhanced.getRenderingInfo();
+    try testing.expect(enhanced_info.tier != .minimal or enhanced_info.tier == .minimal); // Any tier is valid
 
-//     // Test component rendering
-//     const progress = Progress{
-//         .value = 0.5,
-//         .label = "Test",
-//     };
-//     try enhanced.renderProgress(progress);
+    // Test component rendering
+    const progress = Progress{
+        .value = 0.5,
+        .label = "Test",
+    };
+    try enhanced.renderProgress(progress);
 
-//     const headers = [_][]const u8{ "A", "B" };
-//     const row = [_][]const u8{ "1", "2" };
-//     const rows = [_][]const []const u8{&row};
+    const headers = [_][]const u8{ "A", "B" };
+    const row = [_][]const u8{ "1", "2" };
+    const rows = [_][]const []const u8{&row};
 
-//     const table = Table{
-//         .headers = &headers,
-//         .rows = &rows,
-//     };
-//     try enhanced.renderTable(table);
+    const table = Table{
+        .headers = &headers,
+        .rows = &rows,
+    };
+    try enhanced.renderTable(table);
 
-//     const data = [_]f64{ 1.0, 2.0 };
-//     const series = Chart.Series{ .name = "Test", .data = &data };
-//     const chart = Chart{ .data_series = &[_]Chart.Series{series} };
-//     try enhanced.renderChart(chart);
-// }
+    const data = [_]f64{ 1.0, 2.0 };
+    const series = Chart.Series{ .name = "Test", .data = &data };
+    const chart = Chart{ .data_series = &[_]Chart.Series{series} };
+    try enhanced.renderChart(chart);
+}

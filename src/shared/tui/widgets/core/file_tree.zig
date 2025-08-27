@@ -641,11 +641,8 @@ pub const FileTree = struct {
         const end_idx = @min(self.scroll_offset + self.viewport_height, self.visible_nodes.items.len);
 
         for (self.visible_nodes.items[self.scroll_offset..end_idx]) |node| {
-            // Indentation
-            var indent_idx: u32 = 0;
-            while (indent_idx < node.depth * self.indent_size) : (indent_idx += 1) {
-                try writer.writeAll(" ");
-            }
+            // Indentation with tree lines
+            try self.renderTreeLines(writer, node);
 
             // Checkbox
             if (self.show_checkboxes) {
@@ -662,12 +659,25 @@ pub const FileTree = struct {
                 try writer.writeAll(" ");
             }
 
-            // Selection highlight
-            if (self.selected_node == node and self.focus_aware.isFocused()) {
+            // Git status indicator (placeholder - would be passed from FileBrowser)
+            // const git_status = self.getGitStatusIcon(node.path);
+            // if (git_status.len > 0) {
+            //     try term_ansi.setForeground(writer, .yellow);
+            //     try writer.writeAll(git_status);
+            //     try writer.writeAll(" ");
+            //     try term_ansi.reset(writer);
+            // }
+
+            // Selection highlight with color coding
+            const is_selected = self.selected_node == node;
+            if (is_selected and self.focus_aware.isFocused()) {
                 try term_ansi.setForeground(writer, .bright_white);
                 try term_ansi.setBackground(writer, .blue);
-            } else if (self.selected_node == node) {
+            } else if (is_selected) {
                 try term_ansi.setForeground(writer, .bright_white);
+            } else {
+                // Color code by file type
+                try self.setFileTypeColor(writer, node);
             }
 
             // Name
@@ -697,6 +707,14 @@ pub const FileTree = struct {
                 try term_ansi.reset(writer);
             }
 
+            // Permissions
+            if (self.show_metadata) {
+                try writer.writeAll(" ");
+                try term_ansi.setForeground(writer, .bright_black);
+                try writer.print("{o}", .{node.permissions & 0o777});
+                try term_ansi.reset(writer);
+            }
+
             // Loading indicator
             if (node.is_loading) {
                 try writer.writeAll(" ");
@@ -715,6 +733,61 @@ pub const FileTree = struct {
             const percentage = (self.scroll_offset * 100) / (self.visible_nodes.items.len - self.viewport_height);
             try writer.print("[{d}/{d} {d}%]", .{ self.scroll_offset + 1, self.visible_nodes.items.len, percentage });
             try term_ansi.reset(writer);
+        }
+    }
+
+    /// Render tree lines for better visual hierarchy
+    fn renderTreeLines(self: *Self, writer: anytype, node: *TreeNode) !void {
+        var current = node.parent;
+        var depth = node.depth;
+
+        // Draw tree lines
+        while (depth > 0) : (depth -= 1) {
+            // Check if this is the last child at this level
+            const is_last = if (current) |parent| blk: {
+                const children = parent.children.items;
+                const last_child = children[children.len - 1];
+                break :blk last_child == node;
+            } else false;
+
+            // Draw appropriate line character
+            var line_idx: u32 = 0;
+            while (line_idx < self.indent_size) : (line_idx += 1) {
+                const char = if (line_idx == self.indent_size - 1) blk: {
+                    if (depth == node.depth) {
+                        break :blk if (is_last) "└── " else "├── ";
+                    } else {
+                        break :blk if (is_last) "    " else "│   ";
+                    }
+                } else " ";
+
+                try writer.writeAll(char);
+            }
+
+            current = current.?.parent;
+        }
+    }
+
+    /// Set color based on file type
+    fn setFileTypeColor(self: *Self, writer: anytype, node: *TreeNode) !void {
+        _ = self;
+        if (node.is_directory) {
+            try term_ansi.setForeground(writer, .blue);
+        } else {
+            const ext = std.fs.path.extension(node.name);
+            if (std.mem.eql(u8, ext, ".zig")) {
+                try term_ansi.setForeground(writer, .cyan);
+            } else if (std.mem.eql(u8, ext, ".md") or std.mem.eql(u8, ext, ".txt")) {
+                try term_ansi.setForeground(writer, .green);
+            } else if (std.mem.eql(u8, ext, ".json") or std.mem.eql(u8, ext, ".yaml") or std.mem.eql(u8, ext, ".yml")) {
+                try term_ansi.setForeground(writer, .yellow);
+            } else if (std.mem.eql(u8, ext, ".sh") or std.mem.eql(u8, ext, ".bash")) {
+                try term_ansi.setForeground(writer, .red);
+            } else if (std.mem.eql(u8, ext, ".git")) {
+                try term_ansi.setForeground(writer, .magenta);
+            } else {
+                try term_ansi.setForeground(writer, .white);
+            }
         }
     }
 

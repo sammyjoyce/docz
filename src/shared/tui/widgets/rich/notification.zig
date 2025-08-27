@@ -546,7 +546,8 @@ pub const NotificationController = struct {
         // Find existing progress notification and update it
         for (self.notifications.items, 0..) |*notif, i| {
             if (notif.base.notification_type == .progress and
-                std.mem.eql(u8, notif.base.title, title)) {
+                std.mem.eql(u8, notif.base.title, title))
+            {
                 // Remove old notification
                 try notif.hide(self.renderer);
                 _ = self.notifications.swapRemove(i);

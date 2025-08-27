@@ -3,8 +3,8 @@
 
 const std = @import("std");
 const Allocator = std.mem.Allocator;
-const enhanced_editor = @import("enhanced_markdown_editor.zig");
-const agent_interface = @import("../../src/core/agent_interface.zig");
+const enhanced_editor = @import("enhanced_markdown_editor");
+const agent_interface = @import("agent_interface");
 
 // Editor configuration
 pub const EditorConfig = struct {

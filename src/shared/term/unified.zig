@@ -5,8 +5,8 @@
 //! based on detected terminal features.
 
 const std = @import("std");
-const caps_mod = @import("caps.zig");
-const ansi_color = @import("ansi/color.zig");
+const caps_mod = @import("capabilities.zig");
+const ansi_color = @import("ansi/colors.zig");
 const ansi_cursor = @import("ansi/cursor.zig");
 const ansi_graphics = @import("ansi/graphics.zig");
 const ansi_clipboard = @import("ansi/clipboard.zig");

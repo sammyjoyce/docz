@@ -5,6 +5,7 @@
 
 // Re-export the modular TUI framework
 const tui_mod = @import("tui/mod.zig");
+const core = @import("tui/core/mod.zig");
 
 // Re-export commonly used types
 pub const MouseEvent = tui_mod.MouseEvent;
@@ -24,6 +25,9 @@ pub const Size = tui_mod.Size;
 
 pub const Screen = tui_mod.Screen;
 
+// Re-export easing functions for animations
+pub const Easing = core.Easing;
+
 pub const ProgressBar = tui_mod.ProgressBar;
 pub const TextInput = tui_mod.TextInput;
 pub const TabContainer = tui_mod.TabContainer;
@@ -41,7 +45,7 @@ const std = @import("std");
 const print = std.debug.print;
 
 // Import terminal capabilities
-const caps_mod = @import("term/caps.zig");
+const caps_mod = @import("term/capabilities.zig");
 const mode = @import("term/ansi/mode.zig");
 
 // Legacy components that are still in this file (to be extracted later)

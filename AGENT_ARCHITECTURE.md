@@ -1801,7 +1801,7 @@ Here's a complete example of a simple file processing agent:
 #### `agents/file-processor/agent.zig`
 ```zig
 const std = @import("std");
-const AgentInterface = @import("../../src/core/agent_interface.zig");
+const AgentInterface = @import("../../src/shared/tui/agent_interface.zig");
 const BaseAgent = @import("../../src/core/agent_base.zig").BaseAgent;
 
 pub const FileProcessorAgent = struct {

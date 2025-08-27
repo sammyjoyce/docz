@@ -5,6 +5,8 @@ const std = @import("std");
 const Bounds = @import("../../core/bounds.zig").Bounds;
 const Color = @import("../../themes/default.zig").Color;
 const terminal_writer = @import("../../components/terminal_writer.zig");
+const term_mod = @import("../../../term/mod.zig");
+const term_cursor = @import("../../../term/ansi/cursor.zig");
 
 /// Border style for the block
 pub const BorderStyle = enum {
@@ -208,11 +210,13 @@ pub const Block = struct {
         }
 
         // Reset colors
-        terminal_writer.print("\x1b[0m", .{});
+        const caps = term_mod.capabilities.getTermCaps();
+        term_mod.ansi.sgr.resetStyle(terminal_writer.writer(), caps) catch {};
     }
 
     fn fillBackground(self: *const Block, color: Color) void {
-        terminal_writer.print("\x1b[{d}m", .{@intFromEnum(color) + 10}); // Background color
+        // Use the ANSI sequence directly since Color contains them as constants
+        terminal_writer.print("{s}", .{color});
 
         const start_y = if (self.border_style != .none) self.bounds.y + 1 else self.bounds.y;
         const end_y = if (self.border_style != .none) self.bounds.y + self.bounds.height - 1 else self.bounds.y + self.bounds.height;
@@ -322,15 +326,18 @@ pub const Block = struct {
                 terminal_writer.print(" ", .{});
             }
 
-            terminal_writer.print("\x1b[{d}m{s}\x1b[0m", .{
-                @intFromEnum(self.title_color),
+            terminal_writer.print("{s}{s}", .{
+                self.title_color,
                 title,
             });
+            const caps = term_mod.capabilities.getTermCaps();
+            term_mod.ansi.sgr.resetStyle(terminal_writer.writer(), caps) catch {};
         }
     }
 
     fn moveCursor(row: u32, col: u32) void {
-        terminal_writer.print("\x1b[{d};{d}H", .{ row + 1, col + 1 });
+        const caps = term_mod.capabilities.getTermCaps();
+        term_cursor.cursorPosition(terminal_writer.writer(), caps, row + 1, col + 1) catch {};
     }
 };
 

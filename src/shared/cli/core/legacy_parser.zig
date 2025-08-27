@@ -125,21 +125,21 @@ pub const Parser = struct {
                     parsed.stream = true;
                 } else if (std.mem.eql(u8, arg, "--json")) {
                     parsed.json = true;
-                 } else if (std.mem.eql(u8, arg, "--no-color")) {
-                     parsed.noColor = true;
+                } else if (std.mem.eql(u8, arg, "--no-color")) {
+                    parsed.noColor = true;
                 } else if (std.mem.startsWith(u8, arg, "--model=")) {
                     parsed.model = arg[8..];
                 } else if (std.mem.eql(u8, arg, "--model")) {
                     i += 1;
                     if (i >= args.len) return CliError.MissingValue;
                     parsed.model = args[i];
-                 } else if (std.mem.startsWith(u8, arg, "--max-tokens=")) {
-                     const value_str = arg[13..];
-                     parsed.maxTokens = std.fmt.parseInt(u32, value_str, 10) catch return CliError.InvalidValue;
-                 } else if (std.mem.eql(u8, arg, "--max-tokens")) {
-                     i += 1;
-                     if (i >= args.len) return CliError.MissingValue;
-                     parsed.maxTokens = std.fmt.parseInt(u32, args[i], 10) catch return CliError.InvalidValue;
+                } else if (std.mem.startsWith(u8, arg, "--max-tokens=")) {
+                    const value_str = arg[13..];
+                    parsed.maxTokens = std.fmt.parseInt(u32, value_str, 10) catch return CliError.InvalidValue;
+                } else if (std.mem.eql(u8, arg, "--max-tokens")) {
+                    i += 1;
+                    if (i >= args.len) return CliError.MissingValue;
+                    parsed.maxTokens = std.fmt.parseInt(u32, args[i], 10) catch return CliError.InvalidValue;
                 } else if (std.mem.startsWith(u8, arg, "--temperature=")) {
                     const value_str = arg[14..];
                     parsed.temperature = std.fmt.parseFloat(f32, value_str) catch return CliError.InvalidValue;

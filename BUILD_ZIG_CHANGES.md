@@ -6,7 +6,7 @@ Updated build.zig to integrate new UX enhancement modules and features into the 
 ## Key Changes Made
 
 ### 1. Added New Core Module Paths
-- `AGENT_INTERFACE_ZIG = "src/core/agent_interface.zig"`
+- `AGENT_INTERFACE_ZIG = "src/shared/tui/agent_interface.zig"`
 - `AGENT_DASHBOARD_ZIG = "src/core/agent_dashboard.zig"`
 - `INTERACTIVE_SESSION_ZIG = "src/core/interactive_session.zig"`
 - `OAUTH_CALLBACK_SERVER_ZIG = "src/shared/auth/oauth/callback_server.zig"`

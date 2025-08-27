@@ -1,7 +1,7 @@
 const std = @import("std");
-const caps_mod = @import("../caps.zig");
+const caps_mod = @import("../capabilities.zig");
 const passthrough = @import("passthrough.zig");
-const enhanced_color = @import("color.zig");
+const enhanced_color = @import("colors.zig");
 
 pub const TermCaps = caps_mod.TermCaps;
 pub const HexColor = enhanced_color.HexColor;

@@ -91,13 +91,13 @@ pub const Table = struct {
     }
 };
 
-/// Render table using adaptive renderer
-pub fn renderTable(renderer: *AdaptiveRenderer, table: Table) !void {
+/// Render table using unified renderer
+pub fn renderTable(renderer: *@import("../Renderer.zig").Renderer, table: Table) !void {
     try table.validate();
 
     const key = cacheKey("table_{d}_{d}_{?s}", .{ table.headers.len, table.rows.len, table.title });
 
-    if (renderer.cache.get(key, renderer.render_mode)) |cached| {
+    if (renderer.cache.get(key, renderer.render_tier)) |cached| {
         try renderer.terminal.writeText(cached);
         return;
     }
@@ -105,17 +105,17 @@ pub fn renderTable(renderer: *AdaptiveRenderer, table: Table) !void {
     var output = std.ArrayList(u8).init(renderer.allocator);
     defer output.deinit();
 
-    switch (renderer.render_mode) {
-        .enhanced => try renderEnhanced(renderer, table, &output),
-        .standard => try renderStandard(renderer, table, &output),
-        .compatible => try renderCompatible(renderer, table, &output),
+    switch (renderer.render_tier) {
+        .ultra => try renderEnhanced(renderer, table, &output),
+        .enhanced => try renderStandard(renderer, table, &output),
+        .standard => try renderCompatible(renderer, table, &output),
         .minimal => try renderMinimal(renderer, table, &output),
     }
 
     const content = try output.toOwnedSlice();
     defer renderer.allocator.free(content);
 
-    try renderer.cache.put(key, content, renderer.render_mode);
+    try renderer.cache.put(key, content, renderer.render_tier);
     try renderer.terminal.writeText(content);
 }
 

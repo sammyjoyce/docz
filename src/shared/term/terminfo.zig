@@ -57,7 +57,7 @@ pub const Database = struct {
         // Search for terminfo file in standard locations
         const term = self.term_name;
         const term_first_char = if (term.len > 0) term[0] else return false;
-        
+
         // Standard terminfo search paths
         const search_paths = [_][]const u8{
             "/usr/share/terminfo",
@@ -66,7 +66,7 @@ pub const Database = struct {
             "/lib/terminfo",
             "/usr/lib/terminfo",
         };
-        
+
         // Also check user's home directory
         var home_path_buf: [std.fs.max_path_bytes]u8 = undefined;
         var home_terminfo_path: ?[]const u8 = null;
@@ -74,21 +74,21 @@ pub const Database = struct {
             defer self.allocator.free(home);
             home_terminfo_path = std.fmt.bufPrint(&home_path_buf, "{s}/.terminfo", .{home}) catch null;
         } else |_| {}
-        
+
         // Try each search path
         for (search_paths) |base_path| {
             if (self.tryLoadTerminfoFile(base_path, term_first_char, term)) |_| {
                 return true;
             } else |_| {}
         }
-        
+
         // Try home directory if available
         if (home_terminfo_path) |path| {
             if (self.tryLoadTerminfoFile(path, term_first_char, term)) |_| {
                 return true;
             } else |_| {}
         }
-        
+
         // Try $TERMINFO environment variable
         if (std.process.getEnvVarOwned(self.allocator, "TERMINFO")) |terminfo_path| {
             defer self.allocator.free(terminfo_path);
@@ -96,54 +96,54 @@ pub const Database = struct {
                 return true;
             } else |_| {}
         } else |_| {}
-        
+
         return false;
     }
-    
+
     /// Try to load a terminfo file from a specific path
     fn tryLoadTerminfoFile(self: *Database, base_path: []const u8, first_char: u8, term_name: []const u8) !void {
         var path_buf: [std.fs.max_path_bytes]u8 = undefined;
-        
+
         // Try both single-char and hex directory structures
         const paths_to_try = [_][]const u8{
             try std.fmt.bufPrint(&path_buf, "{s}/{c}/{s}", .{ base_path, first_char, term_name }),
             try std.fmt.bufPrint(&path_buf, "{s}/{x:0>2}/{s}", .{ base_path, first_char, term_name }),
         };
-        
+
         for (paths_to_try) |path| {
             const file = std.fs.openFileAbsolute(path, .{}) catch continue;
             defer file.close();
-            
+
             // Parse the terminfo file
             try self.parseTerminfoFile(file);
             return;
         }
-        
+
         return error.FileNotFound;
     }
-    
+
     /// Parse a binary terminfo file
     fn parseTerminfoFile(self: *Database, file: std.fs.File) !void {
         const allocator = self.allocator;
-        
+
         // Read the entire file into memory
         const file_size = try file.getEndPos();
         if (file_size > 32768) { // Sanity check - terminfo files should be small
             return error.FileTooLarge;
         }
-        
+
         const data = try allocator.alloc(u8, file_size);
         defer allocator.free(data);
-        
+
         _ = try file.read(data);
-        
+
         // Parse the terminfo binary format
         var parser = TerminfoParser{
             .data = data,
             .pos = 0,
             .allocator = allocator,
         };
-        
+
         try parser.parse(self);
     }
 
@@ -231,80 +231,80 @@ const TerminfoParser = struct {
     data: []const u8,
     pos: usize,
     allocator: std.mem.Allocator,
-    
+
     // Terminfo format constants
     const MAGIC_NUMBER_OLD: u16 = 0o432; // Octal 432 (legacy format)
     const MAGIC_NUMBER_NEW: u16 = 0o542; // Octal 542 (extended format)
-    
+
     /// Parse the terminfo binary data
     fn parse(self: *TerminfoParser, db: *Database) !void {
         // Parse header (12 bytes)
         const header = try self.parseHeader();
-        
+
         // Skip terminal names section
         const names_size = header.names_size;
         if (self.pos + names_size > self.data.len) return error.InvalidFormat;
         self.pos += names_size;
-        
+
         // Parse boolean capabilities
         const bool_count = header.bool_count;
         if (self.pos + bool_count > self.data.len) return error.InvalidFormat;
-        const bools = self.data[self.pos..self.pos + bool_count];
+        const bools = self.data[self.pos .. self.pos + bool_count];
         self.pos += bool_count;
-        
+
         // Align to even byte boundary for numbers
         if (self.pos % 2 != 0) {
             self.pos += 1;
         }
-        
+
         // Parse numeric capabilities
         const num_count = header.num_count;
         const num_bytes = num_count * 2; // Each number is 2 bytes
         if (self.pos + num_bytes > self.data.len) return error.InvalidFormat;
-        const numbers = self.data[self.pos..self.pos + num_bytes];
+        const numbers = self.data[self.pos .. self.pos + num_bytes];
         self.pos += num_bytes;
-        
+
         // Parse string capabilities offsets
         const string_count = header.string_count;
         const string_offset_bytes = string_count * 2; // Each offset is 2 bytes
         if (self.pos + string_offset_bytes > self.data.len) return error.InvalidFormat;
-        const string_offsets = self.data[self.pos..self.pos + string_offset_bytes];
+        const string_offsets = self.data[self.pos .. self.pos + string_offset_bytes];
         self.pos += string_offset_bytes;
-        
+
         // Parse string table
         const string_table_size = header.string_table_size;
         if (self.pos + string_table_size > self.data.len) return error.InvalidFormat;
-        const string_table = self.data[self.pos..self.pos + string_table_size];
-        
+        const string_table = self.data[self.pos .. self.pos + string_table_size];
+
         // Map string capabilities to the database
         try self.mapStringCapabilities(db, string_offsets, string_table, string_count);
-        
+
         // Map boolean capabilities
         try self.mapBooleanCapabilities(db, bools, bool_count);
-        
+
         // Map numeric capabilities
         try self.mapNumericCapabilities(db, numbers, num_count);
     }
-    
+
     /// Terminfo header structure (12 bytes)
     const Header = struct {
-        magic: u16,           // Magic number (0432 or 0542)
-        names_size: u16,      // Size of terminal names section
-        bool_count: u16,      // Number of boolean capabilities
-        num_count: u16,       // Number of numeric capabilities
-        string_count: u16,    // Number of string capabilities
+        magic: u16, // Magic number (0432 or 0542)
+        names_size: u16, // Size of terminal names section
+        bool_count: u16, // Number of boolean capabilities
+        num_count: u16, // Number of numeric capabilities
+        string_count: u16, // Number of string capabilities
         string_table_size: u16, // Size of string table
     };
-    
+
     /// Parse the terminfo header
     fn parseHeader(self: *TerminfoParser) !Header {
         if (self.data.len < 12) return error.InvalidFormat;
-        
+
         const magic = self.readU16();
         if (magic != MAGIC_NUMBER_OLD and magic != MAGIC_NUMBER_NEW) {
             return error.InvalidMagicNumber;
         }
-        
+
         return Header{
             .magic = magic,
             .names_size = self.readU16(),
@@ -314,43 +314,43 @@ const TerminfoParser = struct {
             .string_table_size = self.readU16(),
         };
     }
-    
+
     /// Read a 16-bit little-endian value
     fn readU16(self: *TerminfoParser) u16 {
         const value = std.mem.readInt(u16, self.data[self.pos..][0..2], .little);
         self.pos += 2;
         return value;
     }
-    
+
     /// Map string capabilities to the database
     fn mapStringCapabilities(_: *TerminfoParser, db: *Database, offsets: []const u8, table: []const u8, count: u16) !void {
         // Important string capability indices (from ncurses term.h)
         // String capabilities are indexed starting from 0 in their own section
         const cap_indices = struct {
-            const kcuu1 = 66;   // key_up
-            const kcud1 = 65;   // key_down
-            const kcub1 = 64;   // key_left
-            const kcuf1 = 67;   // key_right
-            const khome = 70;   // key_home
-            const kend = 69;    // key_end
-            const kpp = 71;     // key_ppage
-            const knp = 72;     // key_npage
-            const kich1 = 73;   // key_ic
-            const kdch1 = 74;   // key_dc
-            const kf1 = 76;     // key_f1
-            const kf2 = 77;     // key_f2
-            const kf3 = 78;     // key_f3
-            const kf4 = 79;     // key_f4
-            const kf5 = 80;     // key_f5
-            const kf6 = 81;     // key_f6
-            const kf7 = 82;     // key_f7
-            const kf8 = 83;     // key_f8
-            const kf9 = 84;     // key_f9
-            const kf10 = 75;    // key_f0 (F10)
-            const kf11 = 85;    // key_f11
-            const kf12 = 86;    // key_f12
+            const kcuu1 = 66; // key_up
+            const kcud1 = 65; // key_down
+            const kcub1 = 64; // key_left
+            const kcuf1 = 67; // key_right
+            const khome = 70; // key_home
+            const kend = 69; // key_end
+            const kpp = 71; // key_ppage
+            const knp = 72; // key_npage
+            const kich1 = 73; // key_ic
+            const kdch1 = 74; // key_dc
+            const kf1 = 76; // key_f1
+            const kf2 = 77; // key_f2
+            const kf3 = 78; // key_f3
+            const kf4 = 79; // key_f4
+            const kf5 = 80; // key_f5
+            const kf6 = 81; // key_f6
+            const kf7 = 82; // key_f7
+            const kf8 = 83; // key_f8
+            const kf9 = 84; // key_f9
+            const kf10 = 75; // key_f0 (F10)
+            const kf11 = 85; // key_f11
+            const kf12 = 86; // key_f12
         };
-        
+
         // Map of capability name to index
         const capabilities = [_]struct { name: []const u8, index: u16 }{
             .{ .name = "kcuu1", .index = cap_indices.kcuu1 },
@@ -376,48 +376,48 @@ const TerminfoParser = struct {
             .{ .name = "kf11", .index = cap_indices.kf11 },
             .{ .name = "kf12", .index = cap_indices.kf12 },
         };
-        
+
         // Process each capability
         for (capabilities) |cap| {
             const name = cap.name;
             const index = cap.index;
-            
+
             // Check if this capability index is within our string count
             if (index >= count) continue;
-            
+
             // Read the offset from the offsets table
             const offset_pos = index * 2;
             if (offset_pos + 2 > offsets.len) continue;
-            
+
             const offset = std.mem.readInt(u16, offsets[offset_pos..][0..2], .little);
-            
+
             // Skip if offset is 0xFFFF (not present)
             if (offset == 0xFFFF) continue;
-            
+
             // Extract the string from the string table
             if (offset >= table.len) continue;
-            
+
             // Find the null terminator
             var end = offset;
             while (end < table.len and table[end] != 0) : (end += 1) {}
-            
+
             if (end > offset) {
                 const value = table[offset..end];
                 try db.addCapability(name, value);
             }
         }
     }
-    
+
     /// Map boolean capabilities to the database
     fn mapBooleanCapabilities(_: *TerminfoParser, db: *Database, bools: []const u8, _: u16) !void {
-        
+
         // Boolean capability indices (from term.h)
         const bool_indices = struct {
-            const has_meta_key = 37;  // km - Has a meta key
+            const has_meta_key = 37; // km - Has a meta key
             const auto_right_margin = 0; // am - Terminal has automatic margins
-            const can_change = 16;    // ccc - Terminal can re-define existing colors
+            const can_change = 16; // ccc - Terminal can re-define existing colors
         };
-        
+
         // Map important boolean capabilities
         if (bool_indices.has_meta_key < bools.len and bools[bool_indices.has_meta_key] != 0) {
             try db.addCapability("km", "true");
@@ -429,18 +429,18 @@ const TerminfoParser = struct {
             try db.addCapability("ccc", "true");
         }
     }
-    
+
     /// Map numeric capabilities to the database
     fn mapNumericCapabilities(_: *TerminfoParser, db: *Database, numbers: []const u8, _: u16) !void {
-        
+
         // Numeric capability indices (from term.h)
         const num_indices = struct {
-            const columns = 0;     // cols - Number of columns
-            const lines = 2;       // lines - Number of lines
-            const colors = 13;     // colors - Number of colors
-            const pairs = 14;      // pairs - Number of color pairs
+            const columns = 0; // cols - Number of columns
+            const lines = 2; // lines - Number of lines
+            const colors = 13; // colors - Number of colors
+            const pairs = 14; // pairs - Number of color pairs
         };
-        
+
         // Helper to read numeric value
         const readNum = struct {
             fn read(data: []const u8, index: u16) ?u16 {
@@ -451,7 +451,7 @@ const TerminfoParser = struct {
                 return value;
             }
         }.read;
-        
+
         // Map numeric capabilities
         if (readNum(numbers, num_indices.columns)) |cols| {
             var buf: [32]u8 = undefined;

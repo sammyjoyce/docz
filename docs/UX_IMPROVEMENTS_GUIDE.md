@@ -13,6 +13,14 @@
 9. [Migration Guide](#migration-guide)
 10. [Code Examples](#code-examples)
 11. [Troubleshooting](#troubleshooting)
+12. [Visual OAuth Flow Guide](#visual-oauth-flow-guide)
+13. [Enhanced Markdown Interactive Session](#enhanced-markdown-interactive-session)
+14. [Agent UX Framework Documentation](#agent-ux-framework-documentation)
+15. [Best Practices for Terminal UX](#best-practices-for-terminal-ux)
+16. [Integration Examples](#integration-examples)
+17. [Keyboard Shortcuts Reference](#keyboard-shortcuts-reference)
+18. [Accessibility Guidelines](#accessibility-guidelines)
+19. [Performance Considerations](#performance-considerations)
 
 ## Overview
 
@@ -30,7 +38,7 @@ This guide provides comprehensive instructions for integrating the new UX improv
 
 ## New UX Improvements Catalog
 
-### 1. Enhanced Agent Interface (`src/core/agent_interface.zig`)
+### 1. Enhanced Agent Interface (`src/shared/tui/agent_interface.zig`)
 
 Modern agent interface leveraging all terminal capabilities:
 
@@ -91,7 +99,7 @@ Feature-rich markdown editing environment:
 - Bracket matching
 ```
 
-### 5. Smart Command Palette (`src/shared/tui/widgets/rich/command_palette.zig`)
+### 5. Smart Command Palette (`src/shared/tui/components/command_palette.zig`)
 
 Intelligent command discovery:
 
@@ -105,125 +113,11 @@ Intelligent command discovery:
 - Session integration
 ```
 
-## Enhanced Agent Interface Integration
+## Visual OAuth Flow Guide
 
-### Step 1: Update Agent Configuration
+### Step-by-Step OAuth Implementation
 
-Modify your agent's configuration to use the enhanced interface:
-
-```zig
-// agents/your_agent/agent.zig
-const enhanced_interface = @import("../../src/core/agent_interface.zig");
-
-pub const Config = struct {
-    // Base configuration
-    base_config: enhanced_interface.Config,
-    
-    // Your agent-specific settings
-    custom_settings: CustomSettings = .{},
-};
-
-pub const CustomSettings = struct {
-    // Add your custom configuration fields
-    enable_special_feature: bool = true,
-    max_operations: u32 = 100,
-};
-```
-
-### Step 2: Initialize Enhanced Agent
-
-```zig
-// agents/your_agent/main.zig
-const std = @import("std");
-const enhanced_interface = @import("../../src/core/agent_interface.zig");
-const agent_impl = @import("agent.zig");
-
-pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
-    
-    // Create enhanced agent with all UX features
-    const agent = try enhanced_interface.createAgent(allocator, .{
-        .base_config = .{
-            .ui_settings = .{
-                .enable_dashboard = true,
-                .enable_mouse = true,
-                .enable_graphics = true,
-                .enable_notifications = true,
-                .enable_command_palette = true,
-                .enable_animations = true,
-                .theme = "cyberpunk", // or "auto" for system detection
-            },
-            .session_settings = .{
-                .enable_persistence = true,
-                .auto_save = true,
-                .session_dir = ".agent_sessions",
-            },
-            .interactive_features = .{
-                .enable_rich_prompt = true,
-                .enable_syntax_highlighting = true,
-                .enable_auto_complete = true,
-            },
-        },
-    });
-    defer agent.deinit();
-    
-    // Run in enhanced interactive mode
-    try agent.runInteractive();
-}
-```
-
-### Step 3: Implement Agent Methods
-
-```zig
-// agents/your_agent/agent.zig
-pub const YourAgent = struct {
-    config: Config,
-    interface: *enhanced_interface.Interface,
-    allocator: std.mem.Allocator,
-    
-    pub fn init(allocator: std.mem.Allocator, config: Config) !Self {
-        return .{
-            .allocator = allocator,
-            .config = config,
-            .interface = try enhanced_interface.create(allocator, config.base_config),
-        };
-    }
-    
-    pub fn runInteractive(self: *Self) !void {
-        // Start dashboard if enabled
-        if (self.config.base_config.ui_settings.enable_dashboard) {
-            try self.interface.startDashboard();
-        }
-        
-        // Main interaction loop with enhanced UI
-        while (true) {
-            // Use rich prompt with auto-complete
-            const input = try self.interface.getRichInput(.{
-                .prompt = "Enter command: ",
-                .enable_history = true,
-                .enable_suggestions = true,
-            });
-            
-            // Process with visual feedback
-            try self.interface.showProgress("Processing...");
-            const result = try self.processCommand(input);
-            try self.interface.hideProgress();
-            
-            // Display with syntax highlighting
-            try self.interface.displayRichOutput(result, .{
-                .syntax = "markdown",
-                .theme = self.config.base_config.ui_settings.theme,
-            });
-        }
-    }
-};
-```
-
-## OAuth Callback Server Implementation
-
-### Step 1: Configure OAuth Settings
+#### 1. Configure OAuth Settings
 
 ```zig
 // agents/your_agent/auth_config.zon
@@ -245,73 +139,7 @@ pub const YourAgent = struct {
 }
 ```
 
-### Step 2: Implement OAuth Flow
-
-```zig
-const oauth = @import("../../src/shared/auth/oauth/mod.zig");
-const callback_server = @import("../../src/shared/auth/oauth/callback_server.zig");
-
-pub fn authenticateWithOAuth(allocator: std.mem.Allocator) !oauth.TokenResponse {
-    // Create callback server
-    var server = try callback_server.CallbackServer.init(allocator, .{
-        .port = 8080,
-        .timeout_ms = 300_000,
-        .show_success_page = true,
-        .verbose = true,
-    });
-    defer server.deinit();
-    
-    // Start server in background
-    try server.start();
-    
-    // Generate OAuth URL with PKCE
-    const auth_params = try oauth.generateAuthUrl(allocator, .{
-        .client_id = "your_client_id",
-        .redirect_uri = "http://localhost:8080/callback",
-        .scopes = &[_][]const u8{ "read", "write" },
-        .use_pkce = true,
-    });
-    defer auth_params.deinit(allocator);
-    
-    // Display auth URL with clickable link (OSC 8)
-    try displayAuthUrl(auth_params.auth_url);
-    
-    // Wait for callback with visual progress
-    const auth_result = try server.waitForCallback(.{
-        .expected_state = auth_params.state,
-        .show_progress = true,
-    });
-    defer auth_result.deinit(allocator);
-    
-    // Exchange code for token
-    const token = try oauth.exchangeCodeForToken(allocator, .{
-        .code = auth_result.code,
-        .verifier = auth_params.verifier,
-        .client_id = "your_client_id",
-        .client_secret = "your_secret", // If not using PKCE
-        .redirect_uri = "http://localhost:8080/callback",
-    });
-    
-    return token;
-}
-
-fn displayAuthUrl(url: []const u8) !void {
-    const stdout = std.io.getStdOut().writer();
-    
-    // Use OSC 8 for clickable hyperlink
-    try stdout.print("\n🔐 OAuth Authentication Required\n", .{});
-    try stdout.print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n", .{});
-    
-    // Clickable link with OSC 8
-    try stdout.print("\x1b]8;;{s}\x1b\\", .{url});
-    try stdout.print("📋 Click here to authenticate", .{});
-    try stdout.print("\x1b]8;;\x1b\\\n\n", .{});
-    
-    try stdout.print("Or manually visit:\n{s}\n\n", .{url});
-}
-```
-
-### Step 3: Enhanced OAuth Wizard Integration
+#### 2. Enhanced OAuth Wizard Implementation
 
 ```zig
 const enhanced_oauth = @import("../../src/shared/auth/tui/enhanced_oauth_wizard.zig");
@@ -325,611 +153,505 @@ pub fn runOAuthWizard(allocator: std.mem.Allocator) !void {
         .theme = "modern",
     });
     defer wizard.deinit();
-    
+
     // Run the complete flow with visual feedback
     const result = try wizard.runFlow(.{
         .provider = "github", // or "google", "microsoft", etc.
         .scopes = &[_][]const u8{ "repo", "user" },
         .use_callback_server = true,
     });
-    
+
     // Save tokens securely
     try saveTokens(allocator, result.tokens);
-    
+
     // Show success notification
-    try wizard.showSuccessNotification("Authentication successful!");
+    try wizard.showSuccessNotification("Authentication complete!");
 }
 ```
 
-## Real-time Dashboard Integration
+#### 3. Visual Flow States
 
-### Step 1: Configure Dashboard Components
+The enhanced OAuth wizard provides rich visual feedback through different states:
 
-```zig
-// agents/your_agent/dashboard_config.zon
-.{
-    .dashboard = .{
-        .layout = "grid", // or "flex", "tabs"
-        .refresh_interval_ms = 1000,
-        .components = &[_]Component{
-            .{
-                .type = "stats",
-                .position = .{ .row = 0, .col = 0, .width = 2, .height = 1 },
-                .config = .{
-                    .title = "Session Statistics",
-                    .metrics = &[_][]const u8{
-                        "requests_handled",
-                        "tokens_used",
-                        "response_time_avg",
-                    },
-                },
-            },
-            .{
-                .type = "chart",
-                .position = .{ .row = 1, .col = 0, .width = 3, .height = 2 },
-                .config = .{
-                    .title = "Performance Metrics",
-                    .chart_type = "line",
-                    .data_source = "performance_monitor",
-                },
-            },
-            .{
-                .type = "cost_tracker",
-                .position = .{ .row = 0, .col = 2, .width = 1, .height = 1 },
-                .config = .{
-                    .title = "API Costs",
-                    .show_projection = true,
-                },
-            },
-        },
-    },
-}
+- **Initializing** - ⚡ Shows setup progress with spinner
+- **Network Check** - 🌐 Validates connectivity with indicators
+- **PKCE Generation** - 🔧 Creates secure parameters
+- **URL Building** - 🔗 Constructs authorization link
+- **Browser Launch** - 🌐 Opens browser with clickable links
+- **Waiting** - ⏳ Interactive code input with validation
+- **Token Exchange** - ⚡ Exchanges code for tokens
+- **Complete** - ✅ Success animation and confirmation
+
+### OAuth Flow Visualization
+
 ```
+🔐 Enhanced Claude Pro/Max OAuth Setup Wizard
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-### Step 2: Implement Dashboard
-
-```zig
-const dashboard = @import("../../src/core/agent_dashboard.zig");
-
-pub const AgentDashboard = struct {
-    allocator: std.mem.Allocator,
-    dashboard_instance: *dashboard.Dashboard,
-    metrics_collector: MetricsCollector,
-    update_thread: ?std.Thread,
-    
-    pub fn init(allocator: std.mem.Allocator) !Self {
-        const config = try loadDashboardConfig(allocator);
-        
-        return .{
-            .allocator = allocator,
-            .dashboard_instance = try dashboard.Dashboard.init(allocator, config),
-            .metrics_collector = try MetricsCollector.init(allocator),
-            .update_thread = null,
-        };
-    }
-    
-    pub fn start(self: *Self) !void {
-        // Start dashboard rendering
-        try self.dashboard_instance.start();
-        
-        // Start metrics collection thread
-        self.update_thread = try std.Thread.spawn(.{}, updateMetrics, .{self});
-    }
-    
-    fn updateMetrics(self: *Self) void {
-        while (self.dashboard_instance.isRunning()) {
-            // Collect metrics
-            const metrics = self.metrics_collector.collect() catch continue;
-            
-            // Update dashboard components
-            self.dashboard_instance.updateStats("requests_handled", metrics.requests) catch {};
-            self.dashboard_instance.updateStats("tokens_used", metrics.tokens) catch {};
-            self.dashboard_instance.updateStats("response_time_avg", metrics.avg_response) catch {};
-            
-            // Update chart data
-            self.dashboard_instance.addChartPoint("performance", .{
-                .x = std.time.timestamp(),
-                .y = metrics.avg_response,
-            }) catch {};
-            
-            // Update cost tracking
-            self.dashboard_instance.updateCost(metrics.estimated_cost) catch {};
-            
-            // Sleep for refresh interval
-            std.time.sleep(1_000_000_000); // 1 second
-        }
-    }
-};
-```
-
-### Step 3: Live Chart Integration
-
-```zig
-const charts = @import("../../src/shared/render/components/charts.zig");
-
-pub fn createLiveChart(allocator: std.mem.Allocator) !*charts.LiveChart {
-    return try charts.LiveChart.init(allocator, .{
-        .title = "Real-time Performance",
-        .type = .line,
-        .width = 60,
-        .height = 15,
-        .max_points = 100,
-        .update_interval_ms = 500,
-        .style = .{
-            .border = .rounded,
-            .colors = .gradient,
-            .show_grid = true,
-            .show_legend = true,
-        },
-    });
-}
-
-// Usage in dashboard
-pub fn addPerformanceChart(dashboard: *Dashboard) !void {
-    const chart = try createLiveChart(dashboard.allocator);
-    
-    // Add data source
-    try chart.addDataSource("response_time", .{
-        .label = "Response Time (ms)",
-        .color = .blue,
-        .style = .smooth,
-    });
-    
-    try chart.addDataSource("throughput", .{
-        .label = "Requests/sec",
-        .color = .green,
-        .style = .bars,
-    });
-    
-    // Add to dashboard
-    try dashboard.addComponent(chart, .{
-        .position = .{ .x = 0, .y = 10 },
-        .auto_refresh = true,
-    });
-}
-```
-
-## Upgrading Markdown Agent
-
-### Step 1: Current Markdown Agent Structure
-
-```zig
-// Before: Basic markdown agent
-// agents/markdown/main.zig (OLD)
-pub fn main() !void {
-    // Basic CLI argument parsing
-    const args = try std.process.argsAlloc(allocator);
-    // Simple text processing
-    const result = try processMarkdown(args[1]);
-    // Basic output
-    try stdout.print("{s}\n", .{result});
-}
-```
-
-### Step 2: Upgrade to Enhanced Editor
-
-```zig
-// After: Enhanced markdown agent
-// agents/markdown/main.zig (NEW)
-const enhanced_editor = @import("enhanced_markdown_editor.zig");
-const enhanced_interface = @import("../../src/core/agent_interface.zig");
-
-pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
-    
-    // Parse command line arguments
-    const args = try std.process.argsAlloc(allocator);
-    defer std.process.argsFree(allocator, args);
-    
-    // Check for interactive mode
-    if (args.len > 1 and std.mem.eql(u8, args[1], "edit")) {
-        // Launch enhanced interactive editor
-        try launchEnhancedEditor(allocator, args[2..]);
-    } else {
-        // Run standard agent mode with enhanced interface
-        try runEnhancedAgent(allocator, args);
-    }
-}
-
-fn launchEnhancedEditor(allocator: std.mem.Allocator, args: [][]u8) !void {
-    // Create enhanced markdown editor
-    var editor = try enhanced_editor.MarkdownEditor.init(allocator, .{
-        .base_config = .{
-            .ui_settings = .{
-                .enable_dashboard = true,
-                .enable_mouse = true,
-                .enable_graphics = true,
-                .theme = "github-dark",
-            },
-        },
-        .editor_settings = .{
-            .syntax_highlighting = true,
-            .auto_complete = true,
-            .smart_indent = true,
-            .multi_cursor = true,
-        },
-        .preview_settings = .{
-            .live_preview = true,
-            .enable_mermaid = true,
-            .enable_math = true,
-        },
-    });
-    defer editor.deinit();
-    
-    // Load file if provided
-    if (args.len > 0) {
-        try editor.loadFile(args[0]);
-    }
-    
-    // Run interactive editor with split-screen
-    try editor.runInteractive();
-}
-```
-
-### Step 3: Add Interactive Features
-
-```zig
-// agents/markdown/enhanced_features.zig
-pub const EnhancedFeatures = struct {
-    allocator: std.mem.Allocator,
-    editor: *enhanced_editor.MarkdownEditor,
-    
-    // Split-screen editing
-    pub fn enableSplitScreen(self: *Self) !void {
-        try self.editor.setLayout(.{
-            .mode = .split_vertical,
-            .left_pane = .editor,
-            .right_pane = .preview,
-            .sync_scroll = true,
-        });
-    }
-    
-    // Live preview with hot reload
-    pub fn enableLivePreview(self: *Self) !void {
-        try self.editor.preview.enable(.{
-            .auto_refresh = true,
-            .refresh_delay_ms = 300,
-            .render_mermaid = true,
-            .render_math = true,
-            .syntax_highlight = true,
-        });
-    }
-    
-    // Table of contents generation
-    pub fn generateTOC(self: *Self) !void {
-        const toc = try self.editor.generateTableOfContents();
-        try self.editor.sidebar.display(toc);
-    }
-    
-    // Export capabilities
-    pub fn exportDocument(self: *Self, format: ExportFormat) !void {
-        const exporter = try self.editor.getExporter(format);
-        const output = try exporter.export(self.editor.getContent());
-        
-        const filename = try std.fmt.allocPrint(
-            self.allocator,
-            "export.{s}",
-            .{@tagName(format)},
-        );
-        defer self.allocator.free(filename);
-        
-        try std.fs.cwd().writeFile(filename, output);
-        
-        // Show success notification
-        try self.editor.showNotification(.{
-            .type = .success,
-            .title = "Export Complete",
-            .message = try std.fmt.allocPrint(
-                self.allocator,
-                "Exported to {s}",
-                .{filename},
-            ),
-        });
-    }
-};
-```
-
-## Before/After Comparisons
-
-### 1. Authentication Flow
-
-#### Before (Basic)
-```bash
-$ ./agent auth
-Enter API key: _____
-Saved to ~/.agent/config
-```
-
-#### After (Enhanced)
-```bash
-$ ./agent auth
-🔐 OAuth Authentication Wizard
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📋 Step 1: Opening browser...
+📋 Step 1: Authorization
 🌐 Click here to authenticate [clickable link]
+   https://github.com/login/oauth/authorize?client_id=...
 
-⏳ Waiting for authorization...
-━━━━━━━━━ 65% [███████████░░░░░] ETA: 8s
+⏳ Waiting for authorization code...
+━━━━━━━━━━━━━━━━ 65% [███████████░░░░░] ETA: 8s
 
 ✅ Authentication successful!
-🔑 Token saved securely
-📊 Rate limits: 1000 requests/hour
+🔑 Token saved securely to keychain
+📊 Rate limits: 5000 requests/hour remaining
 ```
 
-### 2. Command Input
+## Enhanced Markdown Interactive Session
 
-#### Before (Basic)
-```bash
-$ ./agent
-> help
-Available commands: ...
-> process file.md
-Processing...
-Done.
+### Session Configuration
+
+```zig
+// Comprehensive session configuration
+pub const InteractiveSessionConfig = struct {
+    /// Base agent configuration
+    base_config: agent_interface.Config,
+
+    /// Dashboard settings
+    dashboard_config: DashboardConfig = .{
+        .enabled = true,
+        .title = "Markdown Interactive Session",
+        .refresh_interval_ms = 1000,
+        .enable_animations = true,
+        .enable_mouse = true,
+        .show_welcome = true,
+        .default_layout = .dashboard,
+    },
+
+    /// Layout configuration
+    layout_config: LayoutConfig = .{
+        .pane_sizes = .{
+            .editor_width_ratio = 0.6,
+            .preview_width_ratio = 0.4,
+            .sidebar_width = 30,
+            .metrics_height = 8,
+            .status_height = 1,
+        },
+        .resizable_panes = true,
+        .mode = .dashboard,
+        .show_borders = true,
+        .border_style = .rounded,
+    },
+
+    /// Preview settings
+    preview_config: PreviewConfig = .{
+        .live_preview = true,
+        .update_delay_ms = 300,
+        .adaptive_rendering = true,
+        .render_mode = .enhanced,
+        .syntax_highlighting = true,
+        .enable_math = true,
+        .enable_mermaid = true,
+        .enable_images = true,
+        .zoom_level = 1.0,
+    },
+
+    /// Metrics and monitoring
+    metrics_config: MetricsConfig = .{
+        .enabled = true,
+        .show_sparklines = true,
+        .update_interval_ms = 1000,
+        .max_history = 100,
+        .show_tokens = true,
+        .show_costs = true,
+        .show_response_times = true,
+        .show_complexity = true,
+    },
+
+    /// Session management
+    session_config: SessionConfig = .{
+        .enable_session_save = true,
+        .save_interval_s = 60,
+        .max_history = 1000,
+        .enable_version_history = true,
+        .max_versions = 50,
+        .enable_auto_backup = true,
+        .backup_interval_s = 300,
+        .max_backups = 10,
+    },
+
+    /// Input handling
+    input_config: InputConfig = .{
+        .smart_input = true,
+        .auto_completion = true,
+        .completion_delay_ms = 500,
+        .fuzzy_search = true,
+        .max_suggestions = 10,
+        .context_aware = true,
+        .tag_management = true,
+    },
+
+    /// Notification settings
+    notification_config: NotificationConfig = .{
+        .enabled = true,
+        .duration_ms = 3000,
+        .max_concurrent = 5,
+        .desktop_notifications = false,
+        .position = .top_right,
+        .sound_notifications = false,
+    },
+
+    /// Theme and appearance
+    theme_config: ThemeConfig = .{
+        .name = "dark",
+        .enable_switching = true,
+        .accessibility_themes = true,
+        .high_contrast = false,
+    },
+
+    /// Performance settings
+    performance_config: PerformanceConfig = .{
+        .background_processing = true,
+        .max_background_threads = 4,
+        .preview_quality = .high,
+        .enable_caching = true,
+        .cache_size_mb = 100,
+        .lazy_loading = true,
+    },
+
+    /// Accessibility options
+    accessibility_config: AccessibilityConfig = .{
+        .screen_reader = false,
+        .high_contrast = false,
+        .large_text = false,
+        .reduced_motion = false,
+        .keyboard_only = false,
+        .focus_indicators = true,
+        .skip_links = true,
+    },
+};
 ```
 
-#### After (Enhanced)
-```bash
-$ ./agent
-╭─ AI Agent v2.0 ─────────────────────────────────╮
-│ Welcome! Press Ctrl+P for command palette        │
-│ Mouse support enabled • Theme: Cyberpunk         │
-╰──────────────────────────────────────────────────╯
+### Interactive Session Features
 
-> proc[TAB]
-  └─ process (Process a markdown file)
-     process-batch (Process multiple files)
-     process-directory (Process all files in directory)
+#### Multi-Pane Layout Management
 
-> process file.md
-⠋ Processing file.md...
-  ████████████░░░░░ 75% [12.3s elapsed]
-  
-✅ Processing complete!
-📊 Stats: 234 lines • 1.2k tokens • 0.8s
+```zig
+pub const LayoutManager = struct {
+    allocator: Allocator,
+    config: LayoutConfig,
+    terminal_size: term.TerminalSize,
+
+    pub fn getEditorBounds(self: *LayoutManager) term.Rect {
+        return switch (self.config.mode) {
+            .dashboard => .{
+                .x = self.config.pane_sizes.sidebar_width,
+                .y = self.config.pane_sizes.metrics_height,
+                .width = @as(u16, @intFromFloat(@as(f32, @floatFromInt(self.terminal_size.width - self.config.pane_sizes.sidebar_width)) * self.config.pane_sizes.editor_width_ratio)),
+                .height = self.terminal_size.height - self.config.pane_sizes.metrics_height - self.config.pane_sizes.status_height,
+            },
+            .editor_focus => .{
+                .x = 0,
+                .y = 0,
+                .width = self.terminal_size.width,
+                .height = self.terminal_size.height - self.config.pane_sizes.status_height,
+            },
+            .split_view => .{
+                .x = 0,
+                .y = 0,
+                .width = self.terminal_size.width / 2,
+                .height = self.terminal_size.height - self.config.pane_sizes.status_height,
+            },
+            .minimal => .{
+                .x = 0,
+                .y = 0,
+                .width = self.terminal_size.width,
+                .height = self.terminal_size.height,
+            },
+        };
+    }
+};
 ```
 
-### 3. Dashboard View
+#### Live Preview System
 
-#### Before (None)
-```bash
-# No dashboard available
+```zig
+pub const PreviewRenderer = struct {
+    allocator: Allocator,
+    config: PreviewConfig,
+    last_update: i64 = 0,
+    cached_preview: ?[]u8 = null,
+
+    pub fn updatePreview(self: *PreviewRenderer, document: *const enhanced_editor.Document) !void {
+        // Generate preview based on configuration
+        // Implementation here...
+        _ = self;
+        _ = document;
+    }
+
+    pub fn renderAdaptivePreview(self: *PreviewRenderer, renderer: *anyopaque, x: u16, y: u16, width: u16, height: u16, document: *const enhanced_editor.Document) !void {
+        // Render preview with adaptive quality
+        // Implementation here...
+        _ = self;
+        _ = renderer;
+        _ = x;
+        _ = y;
+        _ = width;
+        _ = height;
+        _ = document;
+    }
+};
 ```
 
-#### After (Enhanced)
-```bash
-╭─ Session Dashboard ──────────────────────────────╮
-│ ┌─ Statistics ─────┬─ Performance ──────────┐   │
-│ │ Requests: 156    │ Avg Response: 234ms     │   │
-│ │ Tokens: 45,234   │ Throughput: 12 req/s    │   │
-│ │ Cost: $0.89      │ Success Rate: 99.2%     │   │
-│ └──────────────────┴────────────────────────┘   │
-│                                                  │
-│ ┌─ Live Chart ─────────────────────────────────┐ │
-│ │     ▂▄▆█▇▅▃▂▄▆████▇▅▃▂▄▆█▇▅▃                │ │
-│ │ 300ms ─────────────────────────              │ │
-│ │ 200ms ─────────────────────────              │ │
-│ │ 100ms ─────────────────────────              │ │
-│ │        └─────────────────────────┘           │ │
-│ │        0s          30s          60s          │ │
-│ └──────────────────────────────────────────────┘ │
-╰──────────────────────────────────────────────────╯
+#### Metrics and Monitoring
+
+```zig
+pub const MetricsCollector = struct {
+    allocator: Allocator,
+    config: MetricsConfig,
+    document_metrics: std.ArrayList(DocumentMetricsSnapshot),
+    session_metrics: std.ArrayList(SessionMetricsSnapshot),
+    sparklines: std.StringHashMap([]f32),
+
+    pub fn updateDocumentMetrics(self: *MetricsCollector, metrics: *const enhanced_editor.DocumentMetrics) !void {
+        const snapshot = DocumentMetricsSnapshot{
+            .timestamp = std.time.timestamp(),
+            .word_count = metrics.word_count,
+            .line_count = metrics.line_count,
+            .char_count = metrics.char_count,
+            .reading_time = metrics.reading_time,
+            .heading_count = @as(u32, @intCast(std.mem.count(u32, &metrics.heading_counts))),
+            .link_count = metrics.link_count,
+            .code_block_count = metrics.code_block_count,
+            .table_count = metrics.table_count,
+        };
+
+        try self.document_metrics.append(snapshot);
+
+        // Maintain history limit
+        if (self.document_metrics.items.len > self.config.max_history) {
+            _ = self.document_metrics.orderedRemove(0);
+        }
+
+        // Update sparklines
+        try self.updateSparkline("word_count", @floatFromInt(metrics.word_count));
+        try self.updateSparkline("line_count", @floatFromInt(metrics.line_count));
+        try self.updateSparkline("reading_time", metrics.reading_time);
+    }
+};
 ```
 
-### 4. Markdown Editing
+## Agent UX Framework Documentation
 
-#### Before (Basic)
-```bash
-$ ./markdown-agent edit file.md
-# Editing file.md
-# Type :w to save, :q to quit
+### Core Architecture
+
+The Agent UX Framework provides a comprehensive foundation for building modern terminal-based AI agents with rich user experiences.
+
+#### Key Components
+
+1. **StandardAgentInterface** - Base interface providing common functionality
+2. **HelpSystem** - Comprehensive help with keyboard shortcuts and documentation
+3. **Agent** - Main agent structure with full TUI capabilities
+4. **Configuration System** - Flexible configuration with ZON-based settings
+
+#### Standard Agent Interface
+
+```zig
+pub const StandardAgentInterface = struct {
+    allocator: Allocator,
+    base_agent: *base_agent.BaseAgent,
+    command_palette: ?*cli.interactive.CommandPalette = null,
+    notification_system: ?*tui.components.notification_system.NotificationSystem = null,
+    help_system: ?*HelpSystem = null,
+    theme_manager: ?*cli.themes.ThemeManager = null,
+
+    pub fn init(allocator: Allocator, base_agent_ptr: *base_agent.BaseAgent) !StandardAgentInterface {
+        return Self{
+            .allocator = allocator,
+            .base_agent = base_agent_ptr,
+        };
+    }
+
+    pub fn enableCLIMode(self: *StandardAgentInterface) !void {
+        // Initialize command palette for CLI
+        self.command_palette = try cli.interactive.CommandPalette.init(self.allocator);
+
+        // Initialize notification system
+        self.notification_system = try tui.components.notification_system.NotificationSystem.init(self.allocator, true);
+
+        // Initialize help system
+        self.help_system = try HelpSystem.init(self.allocator);
+    }
+};
 ```
 
-#### After (Enhanced)
-```bash
-┌─ Editor ──────────────┬─ Live Preview ─────────┐
-│ # My Document 🚀      │ My Document 🚀         │
-│ │                     │                        │
-│ ## Features           │ Features               │
-│ - Syntax highlight│   │ • Syntax highlighting  │
-│ - Live preview        │ • Live preview         │
-│ - Auto-complete       │ • Auto-complete        │
-│                       │                        │
-│ ```zig                │ ┌────────────────────┐ │
-│ const x = 42;         │ │ const x = 42;      │ │
-│ ```                   │ └────────────────────┘ │
-└───────────────────────┴────────────────────────┘
- Ln 8, Col 15 • Markdown • Modified • Auto-save ON
+#### Help System
+
+```zig
+pub const HelpSystem = struct {
+    allocator: Allocator,
+    topics: std.StringHashMap(HelpTopic),
+    shortcuts: std.ArrayList(KeyboardShortcut),
+    current_topic: ?[]const u8 = null,
+
+    pub const HelpTopic = struct {
+        id: []const u8,
+        title: []const u8,
+        content: []const u8,
+        category: []const u8,
+        related_topics: std.ArrayList([]const u8),
+        last_updated: i64 = 0,
+    };
+
+    pub const KeyboardShortcut = struct {
+        keys: []const u8,
+        description: []const u8,
+        category: []const u8,
+        context: []const u8 = "global",
+    };
+};
 ```
 
-## New Capabilities Summary
+### Configuration System
 
-### Terminal Capabilities
-- **Mouse Support**: Click buttons, select text, drag to scroll
-- **Graphics Rendering**: Charts, progress bars, visualizations
-- **OSC 8 Hyperlinks**: Clickable URLs in terminal
-- **Notifications**: Desktop notifications for important events
-- **Themes**: Dark/light modes with custom color schemes
-- **Animations**: Smooth transitions and progress indicators
+#### Agent Configuration
 
-### UI Components
-- **Command Palette**: Fuzzy search with Ctrl+P
-- **Rich Prompts**: Auto-complete, syntax highlighting, history
-- **Progress Bars**: Gradient styles with ETA calculations
-- **Live Charts**: Real-time data visualization
-- **Split Views**: Synchronized panes for editing
-- **Status Bars**: Contextual information display
+```zig
+pub const Config = struct {
+    /// Base agent configuration
+    base_config: config.AgentConfig,
 
-### Agent Features
-- **Session Persistence**: Save and restore agent state
-- **Dashboard Monitoring**: Real-time metrics and analytics
-- **OAuth Integration**: Complete authentication flows
-- **Export Capabilities**: Multiple output formats
-- **Network Monitoring**: Connection status indicators
-- **Cost Tracking**: Token usage and API cost monitoring
+    /// UI Enhancement Settings
+    ui_settings: UISettings = .{},
+};
 
-### Developer Features
-- **Modular Architecture**: Easy component integration
-- **Event System**: Reactive updates and notifications
-- **Configuration Management**: ZON-based settings
-- **Error Handling**: Graceful degradation and recovery
-- **Testing Support**: Mock interfaces for testing
-- **Documentation**: Inline help and tooltips
+pub const UISettings = struct {
+    /// Enable dashboard view
+    enable_dashboard: bool = true,
 
-## Migration Guide
+    /// Enable mouse interaction
+    enable_mouse: bool = true,
 
-### Phase 1: Assessment
+    /// Enable graphics rendering
+    enable_graphics: bool = true,
 
-1. **Inventory Current Features**
-   ```zig
-   // List current agent capabilities
-   - Basic CLI arguments
-   - Simple text processing
-   - File I/O operations
-   - API communication
-   ```
+    /// Enable desktop notifications
+    enable_notifications: bool = true,
 
-2. **Identify Enhancement Opportunities**
-   ```zig
-   // Determine which features to add
-   - [ ] Enhanced interface
-   - [ ] OAuth authentication
-   - [ ] Dashboard monitoring
-   - [ ] Interactive editing
-   - [ ] Command palette
-   ```
+    /// Enable command palette
+    enable_command_palette: bool = true,
 
-### Phase 2: Preparation
+    /// Enable animations and transitions
+    enable_animations: bool = true,
 
-1. **Update Dependencies**
-   ```zig
-   // build.zig.zon
-   .{
-       .dependencies = .{
-           .enhanced_interface = .{
-               .path = "src/core/agent_interface.zig",
-           },
-           .auth = .{
-               .path = "src/shared/auth/mod.zig",
-           },
-           .dashboard = .{
-               .path = "src/core/agent_dashboard.zig",
-           },
-       },
-   }
-   ```
+    /// Theme name or "auto" for system detection
+    theme: []const u8 = "auto",
 
-2. **Create Configuration Files**
-   ```zig
-   // agents/your_agent/enhanced_config.zon
-   .{
-       .ui_settings = .{
-           .enable_dashboard = true,
-           .enable_mouse = true,
-           .theme = "auto",
-       },
-   }
-   ```
+    /// Render quality mode
+    render_quality: RenderQuality = .auto,
 
-### Phase 3: Implementation
+    /// Layout mode
+    layout_mode: LayoutMode = .adaptive,
+};
+```
 
-1. **Update Main Entry Point**
-   ```zig
-   // Minimal changes to main.zig
-   const enhanced = @import("enhanced_interface.zig");
-   
-   pub fn main() !void {
-       // Check for --enhanced flag
-       if (shouldUseEnhanced()) {
-           try enhanced.run();
-       } else {
-           try legacyMain();
-       }
-   }
-   ```
+## Best Practices for Terminal UX
 
-2. **Add Enhanced Mode Gradually**
-   ```zig
-   // Start with basic enhancements
-   pub fn runEnhanced() !void {
-       // Phase 1: Add dashboard
-       if (config.enable_dashboard) {
-           try showDashboard();
-       }
-       
-       // Phase 2: Add OAuth
-       if (config.enable_oauth) {
-           try authenticateOAuth();
-       }
-       
-       // Phase 3: Add full interface
-       if (config.enable_full_ui) {
-           try runFullInterface();
-       }
-   }
-   ```
+### 1. Progressive Enhancement
 
-### Phase 4: Testing
+Always design with progressive enhancement in mind:
 
-1. **Test Individual Components**
-   ```zig
-   test "dashboard initialization" {
-       const dashboard = try Dashboard.init(allocator, .{});
-       defer dashboard.deinit();
-       try testing.expect(dashboard.isReady());
-   }
-   ```
+```zig
+// Check terminal capabilities and adapt
+const caps = term.caps.detectCaps(allocator);
+const render_level = if (caps.supportsTruecolor and caps.supportsSgrMouse) .enhanced else .standard;
 
-2. **Integration Testing**
-   ```zig
-   test "enhanced interface integration" {
-       const agent = try createTestAgent();
-       defer agent.deinit();
-       
-       try agent.enableDashboard();
-       try agent.runCommand("test");
-       
-       const metrics = try agent.getMetrics();
-       try testing.expect(metrics.requests > 0);
-   }
-   ```
+// Configure features based on capabilities
+const config = Config{
+    .enable_mouse = caps.supports_mouse,
+    .enable_graphics = caps.supports_images,
+    .render_quality = render_level,
+    .enable_animations = caps.supportsTruecolor,
+};
+```
 
-### Phase 5: Deployment
+### 2. Responsive Design
 
-1. **Gradual Rollout**
-   ```bash
-   # Use feature flags
-   ./agent --enhanced-ui=dashboard  # Dashboard only
-   ./agent --enhanced-ui=oauth      # OAuth only
-   ./agent --enhanced-ui=full       # All features
-   ```
+Handle different terminal sizes gracefully:
 
-2. **Documentation Update**
-   ```markdown
-   ## New Enhanced Mode
-   
-   To use enhanced features:
-   ```bash
-   ./agent --enhanced
-   ```
-   
-   Features available:
-   - Real-time dashboard (--dashboard)
-   - OAuth authentication (--oauth)
-   - Interactive editor (--editor)
-   ```
+```zig
+pub fn handleResize(self: *Self, size: TerminalSize) !void {
+    // Recalculate layouts
+    try self.layout_manager.updateSize(size);
 
-## Code Examples
+    // Update dashboard
+    try self.dashboard.handleResize(size);
+
+    // Force redraw
+    self.needs_redraw = true;
+}
+```
+
+### 3. Performance Optimization
+
+```zig
+// Use background processing for heavy operations
+if (config.performance_config.background_processing) {
+    self.background_thread = try Thread.spawn(.{}, backgroundWorker, .{self});
+}
+
+// Implement caching for expensive operations
+if (self.config.performance_config.enable_caching) {
+    try self.cache_manager.cacheResult(key, result);
+}
+
+// Use lazy loading for components
+try self.lazy_load_component.loadIfNeeded();
+```
+
+### 4. Error Handling
+
+```zig
+// Graceful degradation on errors
+pub fn processWithFallback(self: *Self, input: []const u8) ![]const u8 {
+    return self.processEnhanced(input) catch |err| {
+        // Log error for debugging
+        try self.logger.logError("Enhanced processing failed", err);
+
+        // Fall back to basic processing
+        try self.notifier.showNotification(.{
+            .title = "Using Basic Mode",
+            .message = "Enhanced features unavailable, using basic processing",
+            .type = .warning,
+        });
+
+        return self.processBasic(input);
+    };
+}
+```
+
+### 5. Accessibility
+
+```zig
+// Support screen readers
+if (config.accessibility_config.screen_reader) {
+    try self.renderer.enableScreenReaderMode();
+    try self.addScreenReaderLabels();
+}
+
+// High contrast mode
+if (config.accessibility_config.high_contrast) {
+    try self.theme_manager.switchToHighContrast();
+}
+
+// Keyboard navigation
+if (config.accessibility_config.keyboard_only) {
+    try self.enableKeyboardNavigation();
+    try self.disableMouseFeatures();
+}
+```
+
+## Integration Examples
 
 ### Example 1: Complete Enhanced Agent
 
 ```zig
 // agents/example/enhanced_agent.zig
 const std = @import("std");
-const enhanced = @import("../../src/core/agent_interface.zig");
+const enhanced = @import("../../src/shared/tui/agent_interface.zig");
 const dashboard = @import("../../src/core/agent_dashboard.zig");
 const oauth = @import("../../src/shared/auth/oauth/mod.zig");
 
@@ -938,7 +660,7 @@ pub const EnhancedExampleAgent = struct {
     interface: *enhanced.Interface,
     dashboard: *dashboard.Dashboard,
     auth_manager: *oauth.AuthManager,
-    
+
     pub fn init(allocator: std.mem.Allocator) !Self {
         return .{
             .allocator = allocator,
@@ -949,20 +671,20 @@ pub const EnhancedExampleAgent = struct {
             .auth_manager = try oauth.AuthManager.init(allocator, .{}),
         };
     }
-    
+
     pub fn run(self: *Self) !void {
         // Authenticate if needed
         if (!self.auth_manager.isAuthenticated()) {
             try self.runOAuthFlow();
         }
-        
+
         // Start dashboard
         try self.dashboard.start();
-        
+
         // Main loop with enhanced interface
         while (true) {
             const command = try self.interface.getCommand();
-            
+
             switch (command) {
                 .process => |file| {
                     try self.processWithProgress(file);
@@ -972,7 +694,7 @@ pub const EnhancedExampleAgent = struct {
                 },
                 .quit => break,
             }
-            
+
             // Update metrics
             try self.dashboard.updateMetrics(self.getMetrics());
         }
@@ -992,10 +714,10 @@ pub fn authenticateWithEnhancements(allocator: std.mem.Allocator) !void {
         .enable_animations = true,
     });
     defer wizard.deinit();
-    
+
     // Show animated introduction
     try wizard.showIntro();
-    
+
     // Start callback server
     var server = try CallbackServer.init(allocator, .{
         .port = 8080,
@@ -1003,21 +725,21 @@ pub fn authenticateWithEnhancements(allocator: std.mem.Allocator) !void {
     });
     defer server.deinit();
     try server.start();
-    
+
     // Generate and display auth URL
     const auth_url = try wizard.generateAuthUrl();
     try wizard.displayClickableUrl(auth_url);
-    
+
     // Wait with progress bar
     const result = try wizard.waitForAuth(.{
         .show_progress = true,
         .timeout_ms = 300_000,
     });
-    
+
     // Exchange and save tokens
     const tokens = try wizard.exchangeCode(result.code);
     try wizard.saveTokens(tokens);
-    
+
     // Show success notification
     try wizard.showSuccess("Authentication complete!");
 }
@@ -1032,7 +754,7 @@ pub fn createFullDashboard(allocator: std.mem.Allocator) !*Dashboard {
         .layout = .grid,
         .theme = "cyberpunk",
     });
-    
+
     // Add statistics panel
     try dash.addComponent(.{
         .type = .stats,
@@ -1042,7 +764,7 @@ pub fn createFullDashboard(allocator: std.mem.Allocator) !*Dashboard {
             .{ .name = "Cost", .value = 0.0 },
         },
     });
-    
+
     // Add live chart
     try dash.addComponent(.{
         .type = .chart,
@@ -1052,7 +774,7 @@ pub fn createFullDashboard(allocator: std.mem.Allocator) !*Dashboard {
             .max_points = 100,
         },
     });
-    
+
     // Add cost tracker
     try dash.addComponent(.{
         .type = .cost_tracker,
@@ -1061,149 +783,316 @@ pub fn createFullDashboard(allocator: std.mem.Allocator) !*Dashboard {
             .alert_threshold = 10.0,
         },
     });
-    
+
     // Start update loop
     try dash.startUpdateLoop(1000); // 1 second refresh
-    
+
     return dash;
 }
 ```
 
-## Troubleshooting
+## Keyboard Shortcuts Reference
 
-### Common Issues and Solutions
+### Global Shortcuts
 
-#### 1. Terminal Compatibility
+| Shortcut | Description | Context |
+|----------|-------------|---------|
+| `Ctrl+C` | Interrupt current operation | Global |
+| `Ctrl+D` | Exit agent | Global |
+| `↑/↓` | Navigate command history | Input |
+| `Tab` | Auto-complete commands and paths | Input |
+| `Ctrl+R` | Search command history | Input |
+| `F1` | Show help | Global |
+| `F2` | Show tools palette | Global |
+| `Ctrl+P` | Open command palette | Global |
+| `Ctrl+T` | Toggle theme | Global |
+| `Ctrl+S` | Save current work | Global |
+| `Ctrl+O` | Open file browser | Global |
+| `Ctrl+Shift+E` | Toggle file tree sidebar | Global |
 
-**Problem**: Features not working in certain terminals
+### Editor Shortcuts
 
-**Solution**:
+| Shortcut | Description | Context |
+|----------|-------------|---------|
+| `Ctrl+S` | Save document | Editor |
+| `Ctrl+Z` | Undo | Editor |
+| `Ctrl+Y` | Redo | Editor |
+| `Ctrl+F` | Find | Editor |
+| `Ctrl+H` | Replace | Editor |
+| `Ctrl+A` | Select all | Editor |
+| `Ctrl+C` | Copy | Editor |
+| `Ctrl+V` | Paste | Editor |
+| `Ctrl+X` | Cut | Editor |
+| `Alt+1-6` | Insert heading level | Editor |
+| `Ctrl+Shift+T` | Format table | Editor |
+| `Ctrl+K` | Insert link | Editor |
+
+### Dashboard Shortcuts
+
+| Shortcut | Description | Context |
+|----------|-------------|---------|
+| `Alt+D` | Toggle dashboard | Dashboard |
+| `Alt+M` | Show metrics | Dashboard |
+| `Alt+H` | Show version history | Dashboard |
+| `Alt+L` | Switch layout | Dashboard |
+| `Alt+P` | Toggle preview | Dashboard |
+| `Q` | Quit dashboard | Dashboard |
+| `R` | Refresh dashboard | Dashboard |
+
+### Command Palette Shortcuts
+
+| Shortcut | Description | Context |
+|----------|-------------|---------|
+| `Ctrl+P` | Open command palette | Global |
+| `↑/↓` | Navigate suggestions | Command Palette |
+| `Enter` | Execute selected command | Command Palette |
+| `Tab` | Auto-complete command | Command Palette |
+| `Escape` | Close palette | Command Palette |
+| `Ctrl+U` | Clear search | Command Palette |
+
+### OAuth Wizard Shortcuts
+
+| Shortcut | Description | Context |
+|----------|-------------|---------|
+| `?` | Show help | OAuth Wizard |
+| `Q` | Quit wizard | OAuth Wizard |
+| `R` | Retry operation | OAuth Wizard |
+| `Ctrl+V` | Paste authorization code | OAuth Wizard |
+| `Ctrl+U` | Clear input | OAuth Wizard |
+| `Enter` | Submit code | OAuth Wizard |
+| `Escape` | Cancel input | OAuth Wizard |
+
+## Accessibility Guidelines
+
+### Screen Reader Support
+
 ```zig
-// Add terminal detection
-const term_type = try detectTerminal();
-const features = try getTerminalFeatures(term_type);
+// Enable screen reader compatibility
+if (config.accessibility_config.screen_reader) {
+    // Add ARIA-like labels for terminal elements
+    try self.renderer.addScreenReaderLabel("main_content", "Main content area");
+    try self.renderer.addScreenReaderLabel("command_input", "Command input field");
+    try self.renderer.addScreenReaderLabel("status_bar", "Status information");
 
-// Adapt features based on capabilities
-if (!features.supports_mouse) {
-    config.ui_settings.enable_mouse = false;
-}
-if (!features.supports_graphics) {
-    config.ui_settings.enable_graphics = false;
+    // Announce dynamic content changes
+    try self.screen_reader.announce("New message received");
+    try self.screen_reader.announce("File saved successfully");
+
+    // Provide keyboard navigation hints
+    try self.showKeyboardNavigationHints();
 }
 ```
 
-#### 2. OAuth Callback Issues
+### High Contrast Mode
 
-**Problem**: Callback server fails to start
-
-**Solution**:
 ```zig
-// Try alternative ports
-const ports = [_]u16{ 8080, 8081, 8082, 3000 };
-for (ports) |port| {
-    server.config.port = port;
-    server.start() catch |err| {
-        if (err == error.AddressInUse) continue;
-        return err;
+// Implement high contrast theme
+pub fn enableHighContrast(self: *Self) !void {
+    try self.theme_manager.switchTheme("high_contrast");
+
+    // Ensure minimum contrast ratios
+    const min_contrast_ratio = 4.5; // WCAG AA standard
+
+    // Update all UI elements with high contrast colors
+    try self.updateContrastRatios(min_contrast_ratio);
+
+    // Add focus indicators
+    try self.renderer.enableFocusIndicators();
+}
+```
+
+### Keyboard Navigation
+
+```zig
+// Implement full keyboard navigation
+pub fn enableKeyboardNavigation(self: *Self) !void {
+    // Define tab order for interactive elements
+    const tab_order = &[_][]const u8{
+        "command_input",
+        "file_browser",
+        "dashboard_widgets",
+        "help_button",
     };
-    break;
+
+    try self.focus_manager.setTabOrder(tab_order);
+
+    // Enable focus cycling
+    try self.focus_manager.enableFocusCycling();
+
+    // Add skip links for screen readers
+    if (config.accessibility_config.skip_links) {
+        try self.renderer.addSkipLink("main_content", "Skip to main content");
+        try self.renderer.addSkipLink("navigation", "Skip to navigation");
+    }
 }
 ```
 
-#### 3. Dashboard Performance
+### Reduced Motion
 
-**Problem**: Dashboard causes high CPU usage
-
-**Solution**:
 ```zig
-// Adjust refresh rates
-dashboard.config.refresh_interval_ms = 2000; // Increase from 1000
-dashboard.config.enable_animations = false;  // Disable animations
-dashboard.config.chart_max_points = 50;      // Reduce data points
+// Respect user's motion preferences
+pub fn handleReducedMotion(self: *Self) !void {
+    if (config.accessibility_config.reduced_motion) {
+        // Disable animations
+        try self.animation_engine.disable();
+
+        // Use instant transitions
+        try self.renderer.setTransitionMode(.instant);
+
+        // Disable progress spinners
+        try self.progress_tracker.disableSpinners();
+
+        // Use static indicators instead of animated ones
+        try self.status_indicators.setMode(.static);
+    }
+}
 ```
 
-#### 4. Memory Usage
+## Performance Considerations
 
-**Problem**: Enhanced features use too much memory
+### Memory Management
 
-**Solution**:
 ```zig
-// Use arena allocator for temporary data
-var arena = std.heap.ArenaAllocator.init(allocator);
-defer arena.deinit();
+// Use arena allocators for temporary operations
+pub fn processWithArena(self: *Self, input: []const u8) ![]const u8 {
+    var arena = std.heap.ArenaAllocator.init(self.allocator);
+    defer arena.deinit();
+    const arena_allocator = arena.allocator();
 
-// Configure limits
-config.limits = .{
-    .max_chart_points = 100,
-    .history_size = 50,
-    .cache_size_mb = 10,
+    // Use arena for temporary allocations
+    const temp_buffer = try arena_allocator.alloc(u8, 1024);
+    const result = try self.processInput(arena_allocator, input, temp_buffer);
+
+    // Return owned copy using main allocator
+    return try self.allocator.dupe(u8, result);
+}
+```
+
+### Caching Strategies
+
+```zig
+// Implement intelligent caching
+pub const CacheManager = struct {
+    allocator: Allocator,
+    cache: std.StringHashMap(CacheEntry),
+    max_size_bytes: usize,
+    current_size_bytes: usize,
+
+    pub const CacheEntry = struct {
+        data: []const u8,
+        timestamp: i64,
+        access_count: u64,
+        size_bytes: usize,
+    };
+
+    pub fn cacheResult(self: *CacheManager, key: []const u8, data: []const u8) !void {
+        const owned_key = try self.allocator.dupe(u8, key);
+        const owned_data = try self.allocator.dupe(u8, data);
+
+        const entry = CacheEntry{
+            .data = owned_data,
+            .timestamp = std.time.timestamp(),
+            .access_count = 0,
+            .size_bytes = owned_data.len,
+        };
+
+        // Check if we need to evict entries
+        if (self.current_size_bytes + entry.size_bytes > self.max_size_bytes) {
+            try self.evictLeastRecentlyUsed(entry.size_bytes);
+        }
+
+        try self.cache.put(owned_key, entry);
+        self.current_size_bytes += entry.size_bytes;
+    }
+
+    pub fn getCachedResult(self: *CacheManager, key: []const u8) ?[]const u8 {
+        const entry = self.cache.getPtr(key) orelse return null;
+        entry.access_count += 1;
+        return entry.data;
+    }
 };
 ```
 
-### Debug Mode
-
-Enable debug mode for troubleshooting:
+### Background Processing
 
 ```zig
-// Enable verbose logging
-config.debug = .{
-    .enable_logging = true,
-    .log_level = .debug,
-    .log_file = "agent_debug.log",
-    .show_timings = true,
-    .trace_ui_events = true,
-};
+// Offload heavy operations to background threads
+pub fn startBackgroundProcessing(self: *Self) !void {
+    if (!self.config.performance_config.background_processing) return;
 
-// Use debug build
-// zig build -Dagent=your_agent -Ddebug=true
+    // Start background thread for file indexing
+    self.file_indexer_thread = try Thread.spawn(.{}, struct {
+        fn run(self_ptr: *Self) void {
+            while (self_ptr.is_running) {
+                // Index files in background
+                self_ptr.indexNextBatch() catch |err| {
+                    // Log error but continue
+                    std.log.err("Background indexing error: {}", .{err});
+                };
+                std.time.sleep(100 * std.time.ns_per_ms);
+            }
+        }
+    }.run, .{self});
+
+    // Start background thread for metrics collection
+    self.metrics_thread = try Thread.spawn(.{}, struct {
+        fn run(self_ptr: *Self) void {
+            while (self_ptr.is_running) {
+                // Collect system metrics
+                self_ptr.collectSystemMetrics() catch |err| {
+                    std.log.err("Metrics collection error: {}", .{err});
+                };
+                std.time.sleep(1 * std.time.ns_per_s);
+            }
+        }
+    }.run, .{self});
+}
 ```
 
-### Getting Help
+### Lazy Loading
 
-1. **Check Documentation**
-   - Read `docs/UX.md` for feature details
-   - Review `AGENTS.md` for architecture
-   - See example agents in `agents/`
+```zig
+// Implement lazy loading for heavy components
+pub const LazyLoader = struct {
+    allocator: Allocator,
+    components: std.StringHashMap(ComponentLoader),
+    loaded_components: std.StringHashMap(*anyopaque),
 
-2. **Run Diagnostics**
-   ```bash
-   ./agent --diagnose
-   # Shows terminal capabilities, config, and system info
-   ```
+    pub const ComponentLoader = struct {
+        load_fn: *const fn (allocator: Allocator) anyerror!*anyopaque,
+        is_loaded: bool = false,
+    };
 
-3. **Enable Verbose Mode**
-   ```bash
-   ./agent --verbose --debug
-   # Shows detailed operation logs
-   ```
+    pub fn loadComponent(self: *LazyLoader, name: []const u8) !*anyopaque {
+        // Check if already loaded
+        if (self.loaded_components.get(name)) |component| {
+            return component;
+        }
 
-4. **Test Individual Components**
-   ```bash
-   # Test dashboard only
-   ./agent --test-dashboard
-   
-   # Test OAuth only  
-   ./agent --test-oauth
-   
-   # Test terminal capabilities
-   ./agent --test-terminal
-   ```
+        // Get loader
+        const loader = self.components.get(name) orelse {
+            return error.ComponentNotFound;
+        };
 
-## Conclusion
+        // Load component
+        const component = try loader.load_fn(self.allocator);
+        try self.loaded_components.put(try self.allocator.dupe(u8, name), component);
 
-The new UX improvements transform the agent experience from basic CLI tools into rich, interactive terminal applications. By following this guide, you can incrementally adopt these enhancements while maintaining backward compatibility.
+        return component;
+    }
 
-Key benefits:
-- **Better User Experience**: Rich, interactive interfaces
-- **Improved Productivity**: Smart features like command palette and auto-complete
-- **Enhanced Monitoring**: Real-time dashboards and metrics
-- **Seamless Authentication**: OAuth flows with visual feedback
-- **Modern Terminal Features**: Mouse, graphics, animations
+    pub fn preloadComponent(self: *LazyLoader, name: []const u8) !void {
+        if (self.loaded_components.get(name) != null) return;
 
-Start with the features most valuable to your use case and gradually expand. The modular architecture ensures you only include what you need, keeping your agent lean and performant.
+        const loader = self.components.get(name) orelse return;
+        const component = try loader.load_fn(self.allocator);
+        try self.loaded_components.put(try self.allocator.dupe(u8, name), component);
+    }
+};
+```
 
-For additional examples and implementation details, refer to:
-- `agents/markdown/` - Full implementation of enhanced markdown editor
-- `examples/cli_demo/` - CLI component demonstrations
-- `src/shared/tui/demos/` - TUI feature showcases
-- `tests/` - Integration test examples
+This comprehensive guide covers all the UX improvements and provides detailed implementation guidance for developers. The modular architecture ensures that you can adopt these enhancements incrementally while maintaining backward compatibility.</content>
+</xai:function_call/>
+</xai:function_call name="run">
+<parameter name="bash">
+<parameter name="command">cd /Users/sam/code/docz && git add docs/UX_IMPROVEMENTS_GUIDE.md

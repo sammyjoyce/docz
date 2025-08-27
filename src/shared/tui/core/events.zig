@@ -1,5 +1,7 @@
 //! Event handling system for TUI components
+//! This module provides legacy compatibility while using the unified input system internally
 const std = @import("std");
+const input_mod = @import("../../components/input.zig");
 
 /// Mouse event types
 pub const MouseEvent = struct {

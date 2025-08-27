@@ -55,8 +55,6 @@ pub const ProgressBar = struct {
 
         try renderer.drawText(ctx, output.items);
     }
-
-
 };
 
 /// Convenience function to create and render a simple progress bar

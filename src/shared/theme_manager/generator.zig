@@ -1,12 +1,10 @@
 const std = @import("std");
-const color_conversion = @import("ansi/color_conversion_extra.zig");
+const color = @import("term/ansi/color.zig");
 
 /// Terminal theme generator for TUI applications
 /// Creates cohesive color schemes with proper contrast and accessibility
 /// Provides advanced theming capabilities for terminals
-const RGBColor = color_conversion.RGBColor;
-const ColorUtils = color_conversion.ColorUtils;
-const IndexedColor = color_conversion.IndexedColor;
+const RGBColor = color.RgbColor;
 
 /// Theme configuration for terminal applications
 pub const Theme = struct {

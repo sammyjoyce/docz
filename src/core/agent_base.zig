@@ -10,6 +10,7 @@ const Allocator = std.mem.Allocator;
 const session = @import("session.zig");
 const auth = @import("../shared/auth/core/mod.zig");
 const anthropic = @import("../shared/network/anthropic.zig");
+const agent_main = @import("agent_main.zig");
 
 /// Base agent structure with common functionality.
 /// Agents can embed this struct or use composition to inherit base functionality.
@@ -304,6 +305,44 @@ pub const BaseAgent = struct {
     /// Create a CLI-only session configuration
     pub fn createCLISessionConfig(title: []const u8) session.SessionConfig {
         return session.SessionHelpers.createCliConfig(title);
+    }
+
+    // ===== THEME SUPPORT METHODS =====
+
+    /// Get the current active theme
+    /// This provides easy access to theme colors for agents
+    pub fn getCurrentTheme(self: *Self) ?*agent_main.theme_manager.ColorScheme {
+        _ = self; // Not currently used but available for future per-agent theme customization
+        return agent_main.getCurrentTheme();
+    }
+
+    /// Get theme-aware color for UI elements
+    /// Convenience method that wraps agent_main.getThemeColor
+    pub fn getThemeColor(self: *Self, color_type: anytype) []const u8 {
+        _ = self; // Not currently used but available for future per-agent customization
+        _ = color_type; // TODO: Implement proper color type enum
+        return agent_main.getThemeColor(.primary);
+    }
+
+    /// Get accessibility information about the current theme
+    /// Useful for agents that need to adapt their UI based on accessibility settings
+    pub fn getThemeAccessibilityInfo(self: *Self) @TypeOf(agent_main.getThemeAccessibilityInfo()) {
+        _ = self; // Not currently used but available for future per-agent customization
+        return agent_main.getThemeAccessibilityInfo();
+    }
+
+    /// Check if the current theme is dark mode
+    /// Useful for agents that need to adapt content based on theme brightness
+    pub fn isDarkTheme(self: *Self) bool {
+        const theme = self.getCurrentTheme() orelse return false;
+        return theme.isDark;
+    }
+
+    /// Get theme-aware progress indicator
+    /// Convenience method for consistent progress display across agents
+    pub fn getProgressIndicator(self: *Self, completed: bool) []const u8 {
+        _ = self; // Not currently used but available for future per-agent customization
+        return agent_main.styleProgressIndicator(completed);
     }
 };
 

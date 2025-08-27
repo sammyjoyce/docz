@@ -469,7 +469,7 @@ pub fn captureOutput(
 /// Helper for testing components with a test terminal
 pub fn withTestTerminal(
     allocator: std.mem.Allocator,
-    comptime testFn: fn(*TestTerminal) anyerror!void,
+    comptime testFn: fn (*TestTerminal) anyerror!void,
 ) ![]const u8 {
     var terminal = try TestTerminal.init(allocator);
     defer terminal.deinit();

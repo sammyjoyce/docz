@@ -2,6 +2,7 @@
 //! Demonstrates the key architectural improvements without external dependencies
 
 const std = @import("std");
+const term_mod = @import("../term/mod.zig");
 
 // =============================================================================
 // Core Types (simplified versions)
@@ -86,32 +87,32 @@ pub const CapabilitySet = struct {
 // =============================================================================
 
 pub const NotificationHandler = struct {
-    capabilities: CapabilitySet,
     enabled: bool = true,
 
     pub fn init(capabilities: CapabilitySet) NotificationHandler {
-        return NotificationHandler{
-            .capabilities = capabilities,
-        };
+        _ = capabilities; // Not used anymore, capabilities detected from term module
+        return NotificationHandler{};
     }
 
     pub fn send(self: *NotificationHandler, title: []const u8, message: ?[]const u8) !void {
         if (!self.enabled) return;
 
-        if (self.capabilities.notifications) {
-            // Use system notification (OSC 9)
-            var stdout_buffer: [4096]u8 = undefined;
-            var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
-            try stdout_writer.interface.print("\x1b]9;{s}", .{title});
-            if (message) |msg| {
-                try stdout_writer.interface.print(": {s}", .{msg});
-            }
-            try stdout_writer.interface.print("\x1b\\", .{});
+        const caps = term_mod.capabilities.getTermCaps();
+        const stdout = std.fs.File.stdout().writer();
+
+        if (caps.supportsNotifyOsc9) {
+            // Use system notification (OSC 9) via term module
+            const notification_text = if (message) |msg|
+                try std.fmt.allocPrint(std.heap.page_allocator, "{s}: {s}", .{ title, msg })
+            else
+                try std.fmt.allocPrint(std.heap.page_allocator, "{s}", .{title});
+            defer std.heap.page_allocator.free(notification_text);
+
+            try term_mod.ansi.notification.writeNotification(stdout, std.heap.page_allocator, caps, notification_text);
         } else {
             // Fallback to console output with proper formatting
-            const stdout = std.fs.File.stdout().writer();
             if (message) |msg| {
-                try stdout.print("ℹ {s}: {s}\n", .{title, msg});
+                try stdout.print("ℹ {s}: {s}\n", .{ title, msg });
             } else {
                 try stdout.print("ℹ {s}\n", .{title});
             }
@@ -120,39 +121,38 @@ pub const NotificationHandler = struct {
 };
 
 pub const Clipboard = struct {
-    capabilities: CapabilitySet,
-
     pub fn init(capabilities: CapabilitySet) Clipboard {
-        return Clipboard{ .capabilities = capabilities };
+        _ = capabilities; // Not used anymore, capabilities detected from term module
+        return Clipboard{};
     }
 
-    pub fn copy(self: *Clipboard, data: []const u8) !void {
-        if (self.capabilities.clipboard) {
-            // Use OSC 52 to copy to clipboard
-            var encoded_buffer: [4096]u8 = undefined;
-            const encoded = std.base64.standard.Encoder.encode(&encoded_buffer, data);
-            const stdout = std.fs.File.stdout().writer();
-            try stdout.print("\x1b]52;c;{s}\x1b\\", .{encoded});
+    pub fn copy(data: []const u8) !void {
+        const caps = term_mod.capabilities.getTermCaps();
+        const stdout = std.fs.File.stdout().writer();
+
+        if (caps.supportsClipboardOsc52) {
+            // Use OSC 52 to copy to clipboard via term module
+            try term_mod.ansi.clipboard.setSystemClipboard(stdout, caps, std.heap.page_allocator, data);
             // Show confirmation
             try stdout.print("📋 Copied to clipboard: {s}\n", .{data[0..@min(50, data.len)]});
         } else {
-            const stdout = std.fs.File.stdout().writer();
             try stdout.print("📄 Copy manually: {s}\n", .{data});
         }
     }
 };
 
 pub const Hyperlink = struct {
-    capabilities: CapabilitySet,
-
     pub fn init(capabilities: CapabilitySet) Hyperlink {
-        return Hyperlink{ .capabilities = capabilities };
+        _ = capabilities; // Not used anymore, capabilities detected from term module
+        return Hyperlink{};
     }
 
-    pub fn writeLink(self: *Hyperlink, writer: anytype, url: []const u8, text: []const u8) !void {
-        if (self.capabilities.hyperlinks) {
-            // Would use OSC 8 for actual hyperlinks
-            try writer.print("\x1b]8;;{s}\x1b\\{s}\x1b]8;;\x1b\\", .{ url, text });
+    pub fn writeLink(writer: anytype, url: []const u8, text: []const u8) !void {
+        const caps = term_mod.capabilities.getTermCaps();
+
+        if (caps.supportsHyperlinkOsc8) {
+            // Use OSC 8 for actual hyperlinks via term module
+            try term_mod.ansi.hyperlink.writeHyperlink(writer, std.heap.page_allocator, caps, url, text);
         } else {
             try writer.print("{s} ({s})", .{ text, url });
         }
@@ -564,10 +564,10 @@ fn demoSmartComponents(ctx: *Cli) void {
     var stdout_buffer: [4096]u8 = undefined;
     var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
     const stdout_interface = &stdout_writer.interface;
-    ctx.hyperlink.writeLink(stdout_interface, "https://docs.example.com", "Documentation") catch {};
+    Hyperlink.writeLink(stdout_interface, "https://docs.example.com", "Documentation") catch {};
     stdout_interface.flush() catch {};
     stdout.print("\n", .{}) catch {};
-    ctx.hyperlink.writeLink(stdout_interface, "https://api.example.com", "API Reference") catch {};
+    Hyperlink.writeLink(stdout_interface, "https://api.example.com", "API Reference") catch {};
     stdout_interface.flush() catch {};
     stdout.print("\n\n", .{}) catch {};
 
@@ -577,5 +577,5 @@ fn demoSmartComponents(ctx: *Cli) void {
 
     // Clipboard example
     stdout.print("Clipboard Component:\n", .{}) catch {};
-    ctx.clipboard.copy("Sample text for clipboard") catch {};
+    Clipboard.copy("Sample text for clipboard") catch {};
 }

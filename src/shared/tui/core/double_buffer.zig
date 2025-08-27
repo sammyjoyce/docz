@@ -3,7 +3,7 @@ const term_shared = @import("term_shared");
 const Cell = term_shared.cellbuf.Cell;
 const Style = term_shared.cellbuf.Style;
 const Color = term_shared.cellbuf.Color;
-const RichCellBuffer = @import("../../components/cell_buffer.zig").RichCellBuffer;
+const CellBuffer = @import("../../components/cell_buffer.zig").CellBuffer;
 const Rectangle = term_shared.cellbuf.Rectangle;
 
 /// Statistics for tracking rendering performance
@@ -78,9 +78,9 @@ pub const RenderOptimization = struct {
 pub const DoubleBuffer = struct {
     allocator: std.mem.Allocator,
     /// Front buffer (what's currently displayed)
-    front: RichCellBuffer,
+    front: CellBuffer,
     /// Back buffer (what we're drawing to)
-    back: RichCellBuffer,
+    back: CellBuffer,
     /// Width of buffers
     width: u32,
     /// Height of buffers
@@ -103,10 +103,10 @@ pub const DoubleBuffer = struct {
 
     /// Initialize double buffer with given dimensions
     pub fn init(allocator: std.mem.Allocator, width: u32, height: u32) !Self {
-        const front = try RichCellBuffer.init(allocator, width, height);
+        const front = try CellBuffer.init(allocator, @intCast(width), @intCast(height));
         errdefer front.deinit();
 
-        const back = try RichCellBuffer.init(allocator, width, height);
+        const back = try CellBuffer.init(allocator, @intCast(width), @intCast(height));
         errdefer back.deinit();
 
         var self = Self{
@@ -132,7 +132,7 @@ pub const DoubleBuffer = struct {
     }
 
     /// Get the back buffer for drawing
-    pub fn getBackBuffer(self: *Self) *RichCellBuffer {
+    pub fn getBackBuffer(self: *Self) *CellBuffer {
         return &self.back;
     }
 

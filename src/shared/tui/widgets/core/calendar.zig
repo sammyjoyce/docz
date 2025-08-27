@@ -4,6 +4,8 @@
 
 const std = @import("std");
 const term_ansi = @import("../../../term/ansi/color.zig");
+const term_cursor = @import("../../../term/ansi/cursor.zig");
+const term_mod = @import("../../../term/mod.zig");
 const terminal_cursor = @import("../../components/terminal_cursor.zig");
 const input_mod = @import("../../../components/input.zig");
 const print = std.debug.print;
@@ -561,10 +563,9 @@ pub const Calendar = struct {
     pub fn render(self: *Calendar, writer: anytype) !void {
         if (!self.visible) return;
 
-        const save_cursor = "\x1b[s";
-        const restore_cursor = "\x1b[u";
+        const caps = term_mod.capabilities.getTermCaps();
 
-        try writer.print("{s}", .{save_cursor});
+        try term_cursor.saveCurrentCursorPosition(writer, caps);
 
         var current_y = self.y;
 
@@ -579,7 +580,7 @@ pub const Calendar = struct {
         // Render calendar days
         try self.renderDays(writer, current_y);
 
-        try writer.print("{s}", .{restore_cursor});
+        try term_cursor.restoreCurrentCursorPosition(writer, caps);
     }
 
     fn renderHeader(self: *Calendar, writer: anytype, y: u16) !void {

@@ -65,17 +65,17 @@ pub const CallbackServer = struct {
     allocator: std.mem.Allocator,
     config: ServerConfig,
     server: ?std.net.Server = null,
-    
+
     // State management
     active_sessions: std.ArrayList(SessionInfo),
     result_channel: Channel(AuthorizationResult),
     shutdown_requested: std.atomic.Value(bool),
-    
+
     // Status tracking
     start_time: i64,
     requests_handled: u32 = 0,
     last_activity: i64,
-    
+
     // Terminal status display
     status_thread: ?std.Thread = null,
     show_status: bool = true,
@@ -107,7 +107,7 @@ pub const CallbackServer = struct {
                 pub fn send(self: *@This(), value: T) void {
                     self.mutex.lock();
                     defer self.mutex.unlock();
-                    
+
                     self.value = value;
                     self.has_value = true;
                     self.condition.signal();
@@ -116,11 +116,11 @@ pub const CallbackServer = struct {
                 pub fn receive(self: *@This()) ?T {
                     self.mutex.lock();
                     defer self.mutex.unlock();
-                    
+
                     while (!self.has_value) {
                         self.condition.wait(&self.mutex);
                     }
-                    
+
                     const result = self.value;
                     self.value = null;
                     self.has_value = false;
@@ -130,7 +130,7 @@ pub const CallbackServer = struct {
                 pub fn tryReceive(self: *@This()) ?T {
                     self.mutex.lock();
                     defer self.mutex.unlock();
-                    
+
                     if (self.has_value) {
                         const result = self.value;
                         self.value = null;
@@ -157,13 +157,13 @@ pub const CallbackServer = struct {
 
     pub fn deinit(self: *Self) void {
         self.shutdown();
-        
+
         // Clean up sessions
         for (self.active_sessions.items) |session| {
             session.pkce_params.deinit(self.allocator);
         }
         self.active_sessions.deinit();
-        
+
         // Stop server if running
         if (self.server) |*server| {
             server.deinit();
@@ -184,7 +184,7 @@ pub const CallbackServer = struct {
         if (self.show_status) {
             self.status_thread = try std.Thread.spawn(.{}, statusDisplayThread, .{self});
         }
-        
+
         // Start accepting connections
         const accept_thread = try std.Thread.spawn(.{}, acceptLoop, .{self});
         accept_thread.detach();
@@ -193,12 +193,12 @@ pub const CallbackServer = struct {
     /// Stop the callback server
     pub fn shutdown(self: *Self) void {
         self.shutdown_requested.store(true, .seq_cst);
-        
+
         if (self.status_thread) |thread| {
             thread.join();
             self.status_thread = null;
         }
-        
+
         if (self.server) |*server| {
             server.deinit();
             self.server = null;
@@ -213,9 +213,9 @@ pub const CallbackServer = struct {
             .created_at = now,
             .expires_at = now + @as(i64, @intCast(self.config.timeout_ms / 1000)),
         };
-        
+
         try self.active_sessions.append(session);
-        
+
         if (self.config.verbose) {
             print("📝 Registered new OAuth session (state: {s})\n", .{pkce_params.state});
         }
@@ -225,12 +225,12 @@ pub const CallbackServer = struct {
     pub fn waitForCallback(self: *Self, expected_state: []const u8, timeout_ms: ?u64) !AuthorizationResult {
         const timeout = timeout_ms orelse self.config.timeout_ms;
         const deadline = std.time.milliTimestamp() + @as(i64, @intCast(timeout));
-        
+
         if (self.show_status) {
             print("\n{s}⏳ Waiting for authorization callback...{s}\n", .{ ansi.style.bold, ansi.style.reset });
             print("{s}Please complete the authorization in your browser.{s}\n\n", .{ ansi.fg.gray, ansi.style.reset });
         }
-        
+
         while (std.time.milliTimestamp() < deadline) {
             if (self.result_channel.tryReceive()) |result| {
                 // Verify state parameter
@@ -238,29 +238,26 @@ pub const CallbackServer = struct {
                     result.deinit(self.allocator);
                     return oauth.OAuthError.AuthError;
                 }
-                
+
                 // Check for errors
                 if (result.error_code) |_| {
                     if (self.config.verbose) {
-                        print("❌ OAuth error: {s} - {s}\n", .{ 
-                            result.error_code.?, 
-                            result.error_description orelse "No description" 
-                        });
+                        print("❌ OAuth error: {s} - {s}\n", .{ result.error_code.?, result.error_description orelse "No description" });
                     }
                     result.deinit(self.allocator);
                     return oauth.OAuthError.AuthError;
                 }
-                
+
                 if (self.show_status) {
                     print("\n{s}✅ Authorization code received!{s}\n", .{ ansi.fg.green, ansi.style.reset });
                 }
-                
+
                 return result;
             }
-            
+
             std.time.sleep(100_000_000); // 100ms
         }
-        
+
         return oauth.OAuthError.AuthError; // Timeout
     }
 
@@ -272,7 +269,7 @@ pub const CallbackServer = struct {
                 std.time.sleep(100_000_000); // 100ms retry
                 continue;
             };
-            
+
             // Handle connection in new thread
             const handle_thread = std.Thread.spawn(.{}, handleConnection, .{ self, connection }) catch {
                 connection.stream.close();
@@ -285,31 +282,31 @@ pub const CallbackServer = struct {
     /// Handle individual connection
     fn handleConnection(self: *Self, connection: std.net.Server.Connection) void {
         defer connection.stream.close();
-        
+
         self.requests_handled += 1;
         self.last_activity = std.time.timestamp();
-        
+
         // Read request
         var buffer: [4096]u8 = undefined;
         const bytes_read = connection.stream.read(&buffer) catch return;
         const request = buffer[0..bytes_read];
-        
+
         // Parse request
         const result = self.parseCallbackRequest(request) catch |err| {
             self.sendErrorResponse(connection.stream, err) catch {};
             return;
         };
-        
+
         // Send result through channel
         self.result_channel.send(result);
-        
+
         // Send response to browser
         if (self.config.show_success_page) {
             self.sendSuccessResponse(connection.stream) catch {};
         } else {
             self.sendMinimalResponse(connection.stream) catch {};
         }
-        
+
         // Auto-close if configured
         if (self.config.auto_close) {
             std.time.sleep(1_000_000_000); // 1 second delay
@@ -322,33 +319,33 @@ pub const CallbackServer = struct {
         // Find the request line
         const first_line_end = std.mem.indexOf(u8, request, "\r\n") orelse request.len;
         const request_line = request[0..first_line_end];
-        
+
         // Parse GET request
         if (!std.mem.startsWith(u8, request_line, "GET ")) {
             return oauth.OAuthError.InvalidFormat;
         }
-        
+
         // Extract path and query
         const path_start = 4; // After "GET "
         const path_end = std.mem.indexOf(u8, request_line[path_start..], " ") orelse return oauth.OAuthError.InvalidFormat;
-        const full_path = request_line[path_start..path_start + path_end];
-        
+        const full_path = request_line[path_start .. path_start + path_end];
+
         // Parse query parameters
         const query_start = std.mem.indexOf(u8, full_path, "?") orelse return oauth.OAuthError.InvalidFormat;
         const query = full_path[query_start + 1 ..];
-        
+
         var code: ?[]const u8 = null;
         var state: ?[]const u8 = null;
         var error_code: ?[]const u8 = null;
         var error_description: ?[]const u8 = null;
-        
+
         // Parse query parameters
         var iter = std.mem.tokenize(u8, query, "&");
         while (iter.next()) |param| {
             const eq_pos = std.mem.indexOf(u8, param, "=") orelse continue;
             const key = param[0..eq_pos];
             const value = param[eq_pos + 1 ..];
-            
+
             if (std.mem.eql(u8, key, "code")) {
                 code = try self.allocator.dupe(u8, try urlDecode(self.allocator, value));
             } else if (std.mem.eql(u8, key, "state")) {
@@ -359,19 +356,19 @@ pub const CallbackServer = struct {
                 error_description = try self.allocator.dupe(u8, try urlDecode(self.allocator, value));
             }
         }
-        
+
         // Check for required parameters
         if (code == null and error_code == null) {
             return oauth.OAuthError.InvalidFormat;
         }
-        
+
         if (state == null) {
             if (code) |c| self.allocator.free(c);
             if (error_code) |e| self.allocator.free(e);
             if (error_description) |d| self.allocator.free(d);
             return oauth.OAuthError.InvalidFormat;
         }
-        
+
         return AuthorizationResult{
             .code = code orelse try self.allocator.dupe(u8, ""),
             .state = state.?,
@@ -459,17 +456,14 @@ pub const CallbackServer = struct {
             \\</html>
         ;
 
-        const response = try std.fmt.allocPrint(self.allocator,
-            "HTTP/1.1 200 OK\r\n" ++
+        const response = try std.fmt.allocPrint(self.allocator, "HTTP/1.1 200 OK\r\n" ++
             "Content-Type: text/html; charset=utf-8\r\n" ++
             "Content-Length: {d}\r\n" ++
             "Connection: close\r\n" ++
             "\r\n" ++
-            "{s}",
-            .{ html.len, html }
-        );
+            "{s}", .{ html.len, html });
         defer self.allocator.free(response);
-        
+
         _ = try stream.write(response);
     }
 
@@ -540,17 +534,14 @@ pub const CallbackServer = struct {
         , .{@errorName(err)});
         defer self.allocator.free(html);
 
-        const response = try std.fmt.allocPrint(self.allocator,
-            "HTTP/1.1 400 Bad Request\r\n" ++
+        const response = try std.fmt.allocPrint(self.allocator, "HTTP/1.1 400 Bad Request\r\n" ++
             "Content-Type: text/html; charset=utf-8\r\n" ++
             "Content-Length: {d}\r\n" ++
             "Connection: close\r\n" ++
             "\r\n" ++
-            "{s}",
-            .{ html.len, html }
-        );
+            "{s}", .{ html.len, html });
         defer self.allocator.free(response);
-        
+
         _ = try stream.write(response);
     }
 
@@ -565,20 +556,20 @@ pub const CallbackServer = struct {
     fn statusDisplayThread(self: *Self) void {
         // Save cursor position
         print("{s}", .{ansi.cursor.save});
-        
+
         while (!self.shutdown_requested.load(.seq_cst)) {
             const now = std.time.timestamp();
             const elapsed = now - self.start_time;
             const minutes = elapsed / 60;
             const seconds = elapsed % 60;
-            
+
             // Move to status line and clear it
             print("{s}{s}", .{ ansi.cursor.restore, ansi.erase.toEndOfLine });
-            
+
             // Show animated spinner
             const spinner_chars = [_][]const u8{ "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏" };
             const spinner_idx = @as(usize, @intCast(now % spinner_chars.len));
-            
+
             print("{s}{s} Server Status: {s}Listening on port {d}{s} | ", .{
                 spinner_chars[spinner_idx],
                 ansi.fg.cyan,
@@ -586,23 +577,23 @@ pub const CallbackServer = struct {
                 self.config.port,
                 ansi.fg.gray,
             });
-            
+
             print("Elapsed: {s}{d:0>2}:{d:0>2}{s} | ", .{
                 ansi.fg.white,
                 minutes,
                 seconds,
                 ansi.fg.gray,
             });
-            
+
             print("Requests: {s}{d}{s}", .{
                 ansi.fg.white,
                 self.requests_handled,
                 ansi.style.reset,
             });
-            
+
             std.time.sleep(100_000_000); // 100ms update interval
         }
-        
+
         // Clear status line on shutdown
         print("{s}{s}\n", .{ ansi.cursor.restore, ansi.erase.toEndOfLine });
     }
@@ -612,7 +603,7 @@ pub const CallbackServer = struct {
 fn urlDecode(allocator: std.mem.Allocator, encoded: []const u8) ![]u8 {
     var decoded = try std.ArrayList(u8).initCapacity(allocator, encoded.len);
     defer decoded.deinit();
-    
+
     var i: usize = 0;
     while (i < encoded.len) {
         if (encoded[i] == '%' and i + 2 < encoded.len) {
@@ -628,7 +619,7 @@ fn urlDecode(allocator: std.mem.Allocator, encoded: []const u8) ![]u8 {
             i += 1;
         }
     }
-    
+
     return try decoded.toOwnedSlice();
 }
 
@@ -639,40 +630,40 @@ pub fn runCallbackServer(
     config: ?ServerConfig,
 ) !AuthorizationResult {
     const server_config = config orelse ServerConfig{};
-    
+
     var server = try CallbackServer.init(allocator, server_config);
     defer server.deinit();
-    
+
     // Register the session
     try server.registerSession(pkce_params);
-    
+
     // Start the server
     try server.start();
-    
+
     // Build and display authorization URL
     const auth_url = try oauth.buildAuthorizationUrl(allocator, pkce_params);
     defer allocator.free(auth_url);
-    
+
     // Update redirect URI to use local callback server
     const local_redirect = try std.fmt.allocPrint(allocator, "http://localhost:{d}/callback", .{server_config.port});
     defer allocator.free(local_redirect);
-    
+
     // Replace redirect URI in auth URL
     const updated_auth_url = try std.mem.replaceOwned(u8, allocator, auth_url, oauth.OAUTH_REDIRECT_URI, local_redirect);
     defer allocator.free(updated_auth_url);
-    
+
     print("\n{s}🔐 OAuth Authorization Required{s}\n", .{ ansi.style.bold, ansi.style.reset });
     print("{s}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━{s}\n\n", .{ ansi.fg.blue, ansi.style.reset });
-    
+
     print("Please visit this URL to authorize the application:\n\n");
     print("{s}{s}{s}\n\n", .{ ansi.fg.cyan, updated_auth_url, ansi.style.reset });
-    
+
     // Try to launch browser
     oauth.launchBrowser(updated_auth_url) catch {
         print("{s}⚠️  Could not launch browser automatically.{s}\n", .{ ansi.fg.yellow, ansi.style.reset });
         print("Please copy and paste the URL above into your browser.\n\n");
     };
-    
+
     // Wait for callback
     return try server.waitForCallback(pkce_params.state, null);
 }
@@ -685,66 +676,66 @@ pub fn integrateWithWizard(
     // Run callback server
     const auth_result = try runCallbackServer(allocator, pkce_params, null);
     defer auth_result.deinit(allocator);
-    
+
     // Exchange code for tokens
     const credentials = try oauth.exchangeCodeForTokens(allocator, auth_result.code, pkce_params);
-    
+
     // Save credentials
     try oauth.saveCredentials(allocator, "claude_oauth_creds.json", credentials);
-    
+
     print("\n{s}✅ OAuth setup completed successfully!{s}\n", .{ ansi.fg.green, ansi.style.reset });
     print("Your credentials have been saved securely.\n");
-    
+
     return credentials;
 }
 
 /// Complete OAuth flow with callback server
 pub fn completeOAuthFlow(allocator: std.mem.Allocator) !oauth.OAuthCredentials {
     print("\n{s}Starting OAuth setup with callback server...{s}\n", .{ ansi.style.bold, ansi.style.reset });
-    
+
     // Generate PKCE parameters
     const pkce_params = try oauth.generatePkceParams(allocator);
     defer pkce_params.deinit(allocator);
-    
+
     // Run the integrated flow
     return try integrateWithWizard(allocator, pkce_params);
 }
 
 test "callback server initialization" {
     const allocator = std.testing.allocator;
-    
+
     const config = ServerConfig{
         .port = 8080,
         .verbose = false,
     };
-    
+
     var server = try CallbackServer.init(allocator, config);
     defer server.deinit();
-    
+
     try std.testing.expect(server.config.port == 8080);
     try std.testing.expect(server.requests_handled == 0);
 }
 
 test "URL decode" {
     const allocator = std.testing.allocator;
-    
+
     const encoded = "hello%20world%21";
     const decoded = try urlDecode(allocator, encoded);
     defer allocator.free(decoded);
-    
+
     try std.testing.expectEqualStrings("hello world!", decoded);
 }
 
 test "parse callback request" {
     const allocator = std.testing.allocator;
-    
+
     var server = try CallbackServer.init(allocator, .{});
     defer server.deinit();
-    
+
     const request = "GET /callback?code=test_code&state=test_state HTTP/1.1\r\n\r\n";
     const result = try server.parseCallbackRequest(request);
     defer result.deinit(allocator);
-    
+
     try std.testing.expectEqualStrings("test_code", result.code);
     try std.testing.expectEqualStrings("test_state", result.state);
 }

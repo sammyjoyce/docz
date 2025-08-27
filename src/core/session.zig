@@ -291,7 +291,7 @@ pub const SessionManager = struct {
 
     /// Save session to disk
     pub fn saveSession(self: *SessionManager, session: *SessionData) !void {
-        const filename = try std.fmt.allocPrint(self.allocator, "{s}/{s}.json", .{self.sessions_dir, session.session_id});
+        const filename = try std.fmt.allocPrint(self.allocator, "{s}/{s}.json", .{ self.sessions_dir, session.session_id });
         defer self.allocator.free(filename);
 
         const file = try std.fs.cwd().createFile(filename, .{});
@@ -314,7 +314,7 @@ pub const SessionManager = struct {
 
     /// Load session from disk
     pub fn loadSession(self: *SessionManager, session_id: []const u8) !?*SessionData {
-        const filename = try std.fmt.allocPrint(self.allocator, "{s}/{s}.json", .{self.sessions_dir, session_id});
+        const filename = try std.fmt.allocPrint(self.allocator, "{s}/{s}.json", .{ self.sessions_dir, session_id });
         defer self.allocator.free(filename);
 
         const file = std.fs.cwd().openFile(filename, .{}) catch return null;
@@ -349,7 +349,7 @@ pub const SessionManager = struct {
         var it = dir.iterate();
         while (try it.next()) |entry| {
             if (entry.kind == .file and std.mem.endsWith(u8, entry.name, ".json")) {
-                const filepath = try std.fmt.allocPrint(self.allocator, "{s}/{s}", .{self.sessions_dir, entry.name});
+                const filepath = try std.fmt.allocPrint(self.allocator, "{s}/{s}", .{ self.sessions_dir, entry.name });
                 defer self.allocator.free(filepath);
 
                 const stat = try std.fs.cwd().statFile(filepath);
@@ -365,7 +365,7 @@ pub const SessionManager = struct {
 pub fn generateSessionId(allocator: Allocator) ![]const u8 {
     const timestamp = std.time.timestamp();
     const random = std.crypto.random.int(u32);
-    return try std.fmt.allocPrint(allocator, "session_{x}_{x}", .{timestamp, random});
+    return try std.fmt.allocPrint(allocator, "session_{x}_{x}", .{ timestamp, random });
 }
 
 /// Helper functions for session management

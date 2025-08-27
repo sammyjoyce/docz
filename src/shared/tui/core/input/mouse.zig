@@ -1,12 +1,16 @@
 //! Enhanced mouse event handling for TUI applications
 //! Provides pixel-precise mouse tracking and rich interaction support
 const std = @import("std");
+const unified_input = @import("../../../input.zig");
 const tui_mod = @import("../../mod.zig");
 const term_mouse = tui_mod.term.input.mouse;
 
-// Re-export rich mouse types
+// Re-export unified mouse types
+pub const MouseButton = unified_input.MouseButton;
+pub const MouseMode = unified_input.MouseMode;
+
+// Re-export legacy mouse types for backward compatibility
 pub const MouseEvent = term_mouse.MouseEvent;
-pub const MouseButton = term_mouse.MouseButton;
 pub const MouseAction = term_mouse.MouseAction;
 pub const MouseProtocol = term_mouse.MouseProtocol;
 
@@ -66,7 +70,7 @@ pub const Mouse = struct {
     }
 
     /// Process mouse event and dispatch to appropriate handlers
-    pub fn processMouseEvent(self: *Mouse, event: MouseEvent) !void {
+    pub fn processMouseEvent(self: *Mouse, event: unified_input.Event) !void {
         const now = std.time.milliTimestamp();
 
         // Dispatch to general handlers first
@@ -76,17 +80,22 @@ pub const Mouse = struct {
 
         // Process specific event types
         switch (event) {
-            .mouse => |m| try self.processMouseClick(m, now),
-            .scroll => |s| try self.processMouseScroll(s),
+            .mouse_press, .mouse_release, .mouse_move => try self.processMouseClick(event, now),
+            .mouse_scroll => |scroll| try self.processMouseScroll(scroll),
             else => {},
         }
     }
 
-    fn processMouseClick(self: *Mouse, mouse: term_mouse.Mouse, now: i64) !void {
-        const position = Position{ .x = mouse.x, .y = mouse.y };
+    fn processMouseClick(self: *Mouse, event: unified_input.Event, now: i64) !void {
+        const position, const button, const modifiers = switch (event) {
+            .mouse_press => |m| .{ Position{ .x = @as(i32, @intCast(m.x)), .y = @as(i32, @intCast(m.y)) }, m.button, m.modifiers },
+            .mouse_release => |m| .{ Position{ .x = @as(i32, @intCast(m.x)), .y = @as(i32, @intCast(m.y)) }, m.button, m.modifiers },
+            .mouse_move => |m| .{ Position{ .x = @as(i32, @intCast(m.x)), .y = @as(i32, @intCast(m.y)) }, .left, m.modifiers },
+            else => return,
+        };
 
-        switch (mouse.action) {
-            .press => {
+        switch (event) {
+            .mouse_press => {
                 // Check for drag start
                 self.drag_start_pos = position;
                 self.is_dragging = false;
@@ -95,8 +104,8 @@ pub const Mouse = struct {
                 const is_double_click = self.checkDoubleClick(position, now);
                 const click_event = ClickEvent{
                     .position = position,
-                    .button = mouse.button,
-                    .modifiers = mouse.modifiers,
+                    .button = button,
+                    .modifiers = modifiers,
                     .is_double_click = is_double_click,
                 };
 
