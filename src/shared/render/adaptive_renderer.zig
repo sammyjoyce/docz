@@ -1,13 +1,14 @@
 const std = @import("std");
-const unified = @import("term_shared").unified;
-const caps = @import("term_shared").caps;
-const graphics_manager = @import("term_shared").graphics_manager;
-const Color = @import("term_shared").ansi.color.Color;
+const term_shared = @import("term_shared");
+const unified = term_shared.unified;
+const caps = term_shared;
+const graphics_manager = term_shared.graphics_manager;
+const Color = term_shared.ansi.color.Color;
 
 /// Adaptive renderer that optimizes visual output based on terminal capabilities
 pub const AdaptiveRenderer = struct {
     allocator: std.mem.Allocator,
-    capabilities: caps.TermCaps,
+    capabilities: term_shared.TermCaps,
     render_mode: RenderMode,
     graphics_manager: ?*graphics_manager.GraphicsManager,
     cache: RenderCache,

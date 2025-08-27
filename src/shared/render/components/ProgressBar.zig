@@ -3,15 +3,16 @@ const AdaptiveRenderer = @import("../adaptive_renderer.zig").AdaptiveRenderer;
 const RenderMode = AdaptiveRenderer.RenderMode;
 const QualityTiers = @import("../quality_tiers.zig").QualityTiers;
 const ProgressBarConfig = @import("../quality_tiers.zig").ProgressBarConfig;
-const Color = @import("../../term/ansi/color.zig").Color;
+const term_shared = @import("term_shared");
+const Color = term_shared.ansi.color.Color;
 const cacheKey = @import("../adaptive_renderer.zig").cacheKey;
 
 /// Progress bar data and configuration
 pub const Progress = struct {
     value: f32, // 0.0 to 1.0
     label: ?[]const u8 = null,
-    show_percentage: bool = true,
-    show_eta: bool = false,
+    percentage: bool = true,
+    eta: bool = false,
     eta_seconds: ?u64 = null,
     color: ?Color = null,
     background_color: ?Color = null,
@@ -27,7 +28,7 @@ pub const Progress = struct {
 pub fn renderProgress(renderer: *AdaptiveRenderer, progress: Progress) !void {
     try progress.validate();
 
-    const key = cacheKey("progress_{d}_{?s}_{}_{}_{?d}", .{ progress.value, progress.label, progress.show_percentage, progress.show_eta, progress.eta_seconds });
+    const key = cacheKey("progress_{d}_{?s}_{}_{}_{?d}", .{ progress.value, progress.label, progress.percentage, progress.eta, progress.eta_seconds });
 
     if (renderer.cache.get(key, renderer.render_mode)) |cached| {
         try renderer.terminal.writeText(cached);
@@ -106,12 +107,12 @@ fn renderEnhanced(renderer: *AdaptiveRenderer, progress: Progress, output: *std.
     }
 
     // Percentage
-    if (progress.show_percentage and config.supports_percentage) {
+    if (progress.percentage and config.supports_percentage) {
         try writer.print(" {d:3.1}%", .{progress.value * 100});
     }
 
     // ETA
-    if (progress.show_eta and config.supports_eta and progress.eta_seconds) |eta| {
+    if (progress.eta and config.supports_eta and progress.eta_seconds) |eta| {
         try writer.print(" (ETA: {d}s)", .{eta});
     }
 }
@@ -163,12 +164,12 @@ fn renderStandard(renderer: *AdaptiveRenderer, progress: Progress, output: *std.
     }
 
     // Percentage
-    if (progress.show_percentage and config.supports_percentage) {
+    if (progress.percentage and config.supports_percentage) {
         try writer.print(" {d:3.1}%", .{progress.value * 100});
     }
 
     // ETA
-    if (progress.show_eta and config.supports_eta and progress.eta_seconds) |eta| {
+    if (progress.eta and config.supports_eta and progress.eta_seconds) |eta| {
         try writer.print(" (ETA: {d}s)", .{eta});
     }
 }
@@ -203,7 +204,7 @@ fn renderCompatible(_: *AdaptiveRenderer, progress: Progress, output: *std.Array
     try writer.writeAll("]");
 
     // Percentage
-    if (progress.show_percentage and config.supports_percentage) {
+    if (progress.percentage and config.supports_percentage) {
         try writer.print(" {d:3.0}%", .{progress.value * 100});
     }
 }
@@ -219,7 +220,7 @@ fn renderMinimal(_: *AdaptiveRenderer, progress: Progress, output: *std.ArrayLis
     }
 
     // Just percentage
-    if (progress.show_percentage and config.supports_percentage) {
+    if (progress.percentage and config.supports_percentage) {
         try writer.print("{d:3.0}%", .{progress.value * 100});
     } else {
         try writer.print("Progress: {d:3.1}", .{progress.value});
@@ -286,7 +287,7 @@ pub const AnimatedProgress = struct {
         self.progress.value = new_value;
 
         // Calculate ETA if not manually set
-        if (self.progress.show_eta and self.progress.eta_seconds == null) {
+        if (self.progress.eta and self.progress.eta_seconds == null) {
             const elapsed_ms = std.time.milliTimestamp() - self.start_time;
             if (new_value > 0) {
                 const total_estimated_ms = @as(f64, @floatFromInt(elapsed_ms)) / new_value;
@@ -318,7 +319,7 @@ test "progress bar rendering" {
     const progress = Progress{
         .value = 0.75,
         .label = "Test Progress",
-        .show_percentage = true,
+        .percentage = true,
     };
 
     try renderProgress(renderer, progress);

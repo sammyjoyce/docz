@@ -1,6 +1,6 @@
 const std = @import("std");
 const wcwidth = @import("wcwidth.zig");
-const color_conversion = @import("ansi/advanced_color_conversion.zig");
+const color_conversion = @import("ansi/color_conversion.zig");
 
 /// Cell-based terminal display buffer for efficient TUI rendering
 /// Tracks character data and attributes for each terminal position

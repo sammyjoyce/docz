@@ -1,5 +1,5 @@
 const std = @import("std");
-const color_conversion = @import("ansi/advanced_color_conversion.zig");
+const color_conversion = @import("ansi/color_conversion_advanced.zig");
 
 /// Terminal theme generator for TUI applications
 /// Creates cohesive color schemes with proper contrast and accessibility

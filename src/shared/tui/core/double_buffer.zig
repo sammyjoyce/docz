@@ -1,9 +1,10 @@
 const std = @import("std");
-const Cell = @import("../../term/enhanced_cellbuf.zig").Cell;
-const Style = @import("../../term/enhanced_cellbuf.zig").Style;
-const Color = @import("../../term/enhanced_cellbuf.zig").Color;
-const EnhancedCellBuffer = @import("../../term/enhanced_cellbuf.zig").EnhancedCellBuffer;
-const Rectangle = @import("../../term/enhanced_cellbuf.zig").Rectangle;
+const term_shared = @import("term_shared");
+const Cell = term_shared.cellbuf_enhanced.Cell;
+const Style = term_shared.cellbuf_enhanced.Style;
+const Color = term_shared.cellbuf_enhanced.Color;
+const EnhancedCellBuffer = term_shared.cellbuf_enhanced.EnhancedCellBuffer;
+const Rectangle = term_shared.cellbuf_enhanced.Rectangle;
 
 /// Statistics for tracking rendering performance
 pub const RenderStatistics = struct {

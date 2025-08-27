@@ -2,11 +2,11 @@
 //! Output formatting for CLI responses
 
 // Formatter implementations
-pub const simple = @import("simple.zig");
-pub const enhanced = @import("enhanced.zig");
+pub const formatter = @import("formatter.zig");
+pub const rich = @import("rich.zig");
 
-// Main formatter export (using simple by default)
-pub const CliFormatter = simple.CliFormatter;
+// Main formatter export (using formatter by default)
+pub const CliFormatter = formatter.CliFormatter;
 
 // Alternative formatters
-pub const EnhancedCliFormatter = enhanced.CliFormatter;
+pub const RichCliFormatter = rich.CliFormatter;

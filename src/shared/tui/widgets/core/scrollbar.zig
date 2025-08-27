@@ -2,9 +2,9 @@
 //! Supports vertical/horizontal orientations, mouse interaction, and multiple styles
 
 const std = @import("std");
-const term = @import("../../../term/mod.zig");
-const enhanced_cellbuf = term.enhanced_cellbuf;
-const term_caps = @import("../../../term/caps.zig");
+const term_shared = @import("term_shared");
+const enhanced_cellbuf = term_shared.cellbuf_enhanced;
+const term_caps = term_shared.caps;
 
 /// Scrollbar orientation
 pub const Orientation = enum {

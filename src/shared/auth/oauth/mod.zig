@@ -74,7 +74,7 @@ pub const OAuthProvider = struct {
     scopes: []const []const u8,
 
     /// Build authorization URL with PKCE parameters
-    pub fn buildAuthorizationURL(self: OAuthProvider, allocator: std.mem.Allocator, pkce_params: PkceParams) ![]u8 {
+    pub fn buildAuthorizationUrl(self: OAuthProvider, allocator: std.mem.Allocator, pkce_params: PkceParams) ![]u8 {
         const scopes_joined = try std.mem.join(allocator, " ", self.scopes);
         defer allocator.free(scopes_joined);
 
@@ -167,7 +167,7 @@ fn generateRandomState(allocator: std.mem.Allocator, length: usize) ![]u8 {
 }
 
 /// Build OAuth authorization URL
-pub fn buildAuthorizationURL(allocator: std.mem.Allocator, pkce_params: PkceParams) ![]u8 {
+pub fn buildAuthorizationUrl(allocator: std.mem.Allocator, pkce_params: PkceParams) ![]u8 {
     const scopes = [_][]const u8{ "org:create_api_key", "user:profile", "user:inference" };
     const provider = OAuthProvider{
         .client_id = OAUTH_CLIENT_ID,
@@ -177,7 +177,7 @@ pub fn buildAuthorizationURL(allocator: std.mem.Allocator, pkce_params: PkcePara
         .scopes = &scopes,
     };
 
-    return try provider.buildAuthorizationURL(allocator, pkce_params);
+    return try provider.buildAuthorizationUrl(allocator, pkce_params);
 }
 
 /// Exchange authorization code for tokens using PKCE flow
@@ -286,7 +286,7 @@ pub fn setupOAuth(allocator: std.mem.Allocator) !OAuthCredentials {
     defer pkce_params.deinit(allocator);
 
     // Build authorization URL
-    const auth_URL = try buildAuthorizationURL(allocator, pkce_params);
+    const auth_URL = try buildAuthorizationUrl(allocator, pkce_params);
     defer allocator.free(auth_URL);
 
     std.log.info("Please visit this URL to authorize the application:", .{});

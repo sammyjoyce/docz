@@ -1,368 +1,226 @@
-//! TUI Demo - Showcases all enhanced TUI capabilities
-//! Demonstrates the new graphics, notification, and enhanced widget features
+//! Smart TUI Demo
+//!
+//! This demonstrates the new advanced TUI components with progressive enhancement
+//! based on terminal capabilities.
 
 const std = @import("std");
 const tui = @import("mod.zig");
-const cli = @import("../cli.zig");
-const term_caps = @import("../term/caps.zig");
-const print = std.debug.print;
+const bounds_mod = @import("core/bounds.zig");
 
-pub const DemoError = error{
-    UserExit,
-    DemoFailed,
-    OutOfMemory,
-};
-
-pub const Demo = struct {
-    allocator: std.mem.Allocator,
-    notification_controller: tui.NotificationController,
-    graphics_widget: ?tui.GraphicsWidget,
-    caps: term_caps.TermCaps,
-
-    pub fn init(allocator: std.mem.Allocator) Demo {
-        return Demo{
-            .allocator = allocator,
-            .notification_controller = tui.NotificationController.init(allocator),
-            .graphics_widget = null,
-            .caps = term_caps.getTermCaps(),
-        };
-    }
-
-    pub fn deinit(self: *Demo) void {
-        self.notification_controller.deinit();
-        if (self.graphics_widget) |*widget| {
-            widget.deinit();
-        }
-    }
-
-    pub fn run(self: *Demo) !void {
-        try self.showWelcome();
-        try self.demonstrateCapabilities();
-        try self.showInteractiveMenu();
-        try self.showFarewell();
-    }
-
-    fn showWelcome(self: *Demo) !void {
-        print("\n");
-
-        // Welcome notification
-        try self.notification_controller.info("Welcome to the Enhanced TUI Demo!");
-
-        std.time.sleep(1_500_000_000); // 1.5 seconds
-
-        // Create welcome section
-        var section = tui.Section.init(self.allocator, "🚀 Enhanced TUI Demo");
-        defer section.deinit();
-
-        section.setIcon("🎨");
-        try section.addLine("This demo showcases the new TUI capabilities:");
-        try section.addLine("• Enhanced graphics support (Kitty & Sixel)");
-        try section.addLine("• Rich notification system");
-        try section.addLine("• Improved menu and section widgets");
-        try section.addLine("• Advanced terminal capability detection");
-        try section.addLine("");
-
-        const caps_info = if (self.caps.supportsKittyGraphics)
-            "✅ Kitty graphics supported"
-        else if (self.caps.supportsSixel)
-            "✅ Sixel graphics supported"
-        else
-            "❌ Graphics not supported in this terminal";
-
-        try section.addFormattedLine("Graphics: {s}", .{caps_info});
-
-        const notification_info = if (self.caps.supportsNotifyOsc9)
-            "✅ Desktop notifications supported"
-        else
-            "❌ Desktop notifications not supported";
-
-        try section.addFormattedLine("Notifications: {s}", .{notification_info});
-
-        section.draw();
-
-        std.time.sleep(2_000_000_000); // 2 seconds
-    }
-
-    fn demonstrateCapabilities(self: *Demo) !void {
-        // Graphics demo
-        try self.demoGraphics();
-
-        // Notification demo
-        try self.demoNotifications();
-
-        // Widget demo
-        try self.demoWidgets();
-    }
-
-    fn demoGraphics(self: *Demo) !void {
-        var graphics_section = tui.Section.init(self.allocator, "🖼️ Graphics Capabilities");
-        defer graphics_section.deinit();
-
-        graphics_section.setIcon("🎨");
-
-        if (tui.graphics.isGraphicsSupported()) {
-            const protocol = tui.graphics.getBestGraphicsProtocol() orelse "unknown";
-            try graphics_section.addFormattedLine("Using {s} graphics protocol", .{protocol});
-            try graphics_section.addLine("");
-            try graphics_section.addLine("Creating sample image display...");
-
-            graphics_section.draw();
-
-            // Try to display a simple graphic
-            self.graphics_widget = tui.GraphicsWidget.init(self.allocator);
-
-            // Create a simple test image (just some test data)
-            const test_image_data = "Simple test image data - in real usage this would be PNG/JPEG bytes";
-            self.graphics_widget.?.loadFromBytes(test_image_data, tui.graphics.ImageFormat.PNG) catch |err| {
-                try self.notification_manager.warning("Failed to load test image");
-                print("Graphics error: {}\n", .{err});
-                return;
-            };
-
-            const display_options = tui.graphics.DisplayOptions{
-                .width = 20,
-                .height = 10,
-                .x = 5,
-                .y = 15,
-            };
-            self.graphics_widget.?.setDisplayOptions(display_options);
-
-            self.graphics_widget.?.display() catch |err| {
-                try self.notification_manager.warning("Graphics display failed - this is expected for demo data");
-                print("Display error (expected): {}\n", .{err});
-            };
-
-            std.time.sleep(2_000_000_000); // 2 seconds
-
-        } else {
-            try graphics_section.addLine("Graphics not supported in this terminal");
-            try graphics_section.addLine("For graphics support, try:");
-            try graphics_section.addLine("  • Kitty terminal");
-            try graphics_section.addLine("  • iTerm2 with sixel support");
-            try graphics_section.addLine("  • WezTerm");
-
-            graphics_section.draw();
-        }
-
-        std.time.sleep(1_500_000_000); // 1.5 seconds
-
-        try self.notification_manager.success("Graphics demo completed!");
-    }
-
-    fn demoNotifications(self: *Demo) !void {
-        var notification_section = tui.Section.init(self.allocator, "🔔 Notification System");
-        defer notification_section.deinit();
-
-        notification_section.setIcon("📢");
-        try notification_section.addLine("Demonstrating different notification levels:");
-        try notification_section.addLine("");
-
-        notification_section.draw();
-
-        // Demo different notification types
-        try self.notification_manager.info("This is an info notification");
-        std.time.sleep(800_000_000);
-
-        try self.notification_manager.success("This is a success notification");
-        std.time.sleep(800_000_000);
-
-        try self.notification_manager.warning("This is a warning notification");
-        std.time.sleep(800_000_000);
-
-        try self.notification_manager.errorNotification("This is an error notification");
-        std.time.sleep(800_000_000);
-
-        try self.notification_manager.debug("This is a debug notification");
-        std.time.sleep(1_500_000_000);
-
-        // Try system notification if supported
-        if (self.caps.supportsNotifyOsc9) {
-            try tui.notification.systemNotify(self.allocator, "System notification test - check your desktop!");
-        }
-
-        std.time.sleep(1_000_000_000);
-
-        // Clear notifications
-        try self.notification_manager.clearAll();
-    }
-
-    fn demoWidgets(self: *Demo) !void {
-        var widgets_section = tui.Section.init(self.allocator, "🧩 Enhanced Widgets");
-        defer widgets_section.deinit();
-
-        widgets_section.setIcon("⚙️");
-        try widgets_section.addLine("Enhanced widget capabilities:");
-        try widgets_section.addLine("");
-
-        widgets_section.draw();
-
-        // Collapsible sections demo
-        try self.demoSections();
-
-        // Enhanced menu demo
-        try self.demoMenus();
-
-        std.time.sleep(1_000_000_000);
-    }
-
-    fn demoSections(self: *Demo) !void {
-        print("\n📁 Collapsible Sections:\n\n");
-
-        // Create multiple sections with different states
-        var section1 = tui.Section.init(self.allocator, "Expanded Section");
-        defer section1.deinit();
-        section1.setIcon("📂");
-        try section1.addLine("This section is expanded by default");
-        try section1.addLine("You can see all the content");
-        section1.draw();
-
-        print("\n");
-
-        var section2 = tui.Section.init(self.allocator, "Collapsed Section");
-        defer section2.deinit();
-        section2.setIcon("📁");
-        section2.collapse();
-        try section2.addLine("This content is hidden");
-        try section2.addLine("Click to expand in interactive mode");
-        section2.draw();
-
-        print("\n");
-
-        var section3 = tui.Section.init(self.allocator, "Nested Content");
-        defer section3.deinit();
-        section3.setIcon("🔗");
-        section3.setIndent(1);
-        try section3.addLine("This section is indented");
-        try section3.addLine("Perfect for hierarchical content");
-        section3.draw();
-
-        std.time.sleep(2_000_000_000);
-    }
-
-    fn demoMenus(self: *Demo) !void {
-        print("\n📋 Enhanced Menus:\n\n");
-
-        // Create sample menu items
-        const menu_items = [_]tui.MenuItem{
-            tui.MenuItem.init("1", "Graphics Demo")
-                .withDescription("Showcase graphics capabilities")
-                .withShortcut("g")
-                .withIcon("🎨"),
-            tui.MenuItem.init("2", "Notifications Demo")
-                .withDescription("Test notification system")
-                .withShortcut("n")
-                .withIcon("🔔"),
-            tui.MenuItem.init("3", "Terminal Info")
-                .withDescription("Show terminal capabilities")
-                .withShortcut("i")
-                .withIcon("💻"),
-            tui.MenuItem.init("4", "Help & Documentation")
-                .withDescription("Access help resources")
-                .withShortcut("h")
-                .withIcon("📚")
-                .withHelpUrl("https://github.com/example/docz"),
-        };
-
-        var demo_menu = try tui.Menu.initFromItems(self.allocator, "🎯 Demo Menu Options", &menu_items);
-        defer demo_menu.deinit();
-
-        demo_menu.draw();
-
-        std.time.sleep(3_000_000_000);
-    }
-
-    fn showInteractiveMenu(self: *Demo) !void {
-        print("\n");
-
-        var main_section = tui.Section.init(self.allocator, "🎮 Interactive Demo");
-        defer main_section.deinit();
-
-        main_section.setIcon("🎯");
-        try main_section.addLine("In a full application, you could:");
-        try main_section.addLine("• Navigate menus with arrow keys");
-        try main_section.addLine("• Click on sections to expand/collapse");
-        try main_section.addLine("• Use keyboard shortcuts for quick actions");
-        try main_section.addLine("• Copy content to clipboard");
-        try main_section.addLine("• Follow hyperlinks in supported terminals");
-        try main_section.addLine("");
-        try main_section.addLine("Press any key to continue...");
-
-        main_section.draw();
-
-        // Wait for user input (simplified)
-        var stdin_buffer: [1]u8 = undefined;
-        var stdin_reader = std.fs.File.stdin().reader(&stdin_buffer);
-        const stdin = &stdin_reader.interface;
-        _ = stdin.readByte() catch {};
-    }
-
-    fn showFarewell(self: *Demo) !void {
-        print("\n");
-
-        try self.notification_manager.success("Demo completed successfully!");
-
-        var farewell_section = tui.Section.init(self.allocator, "👋 Demo Complete");
-        defer farewell_section.deinit();
-
-        farewell_section.setIcon("✨");
-        try farewell_section.addLine("Thank you for exploring the enhanced TUI capabilities!");
-        try farewell_section.addLine("");
-        try farewell_section.addLine("New features demonstrated:");
-        try farewell_section.addLine("✅ Modular TUI widget system");
-        try farewell_section.addLine("✅ Graphics support (Kitty & Sixel protocols)");
-        try farewell_section.addLine("✅ Rich notification system (OSC 9 + in-terminal)");
-        try farewell_section.addLine("✅ Enhanced menus with icons and hyperlinks");
-        try farewell_section.addLine("✅ Collapsible sections with theming");
-        try farewell_section.addLine("✅ Terminal capability detection");
-        try farewell_section.addLine("✅ Restructured CLI architecture");
-        try farewell_section.addLine("");
-        try farewell_section.addLine("The TUI system is now ready for advanced applications!");
-
-        farewell_section.draw();
-
-        std.time.sleep(2_000_000_000);
-
-        // Final system notification
-        if (self.caps.supportsNotifyOsc9) {
-            try tui.notification.systemNotify(self.allocator, "TUI Demo completed! 🎉");
-        }
-    }
-};
-
-/// Run the TUI demo
-pub fn runDemo(allocator: std.mem.Allocator) !void {
-    var demo = Demo.init(allocator);
-    defer demo.deinit();
-
-    try demo.run();
-}
-
-/// CLI demo entry point
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    // Show CLI capabilities first
-    const args = [_][]const u8{ "tui-demo", "--version" };
-    var cli_parser = cli.EnhancedParser.init(allocator);
-    var parsed = try cli_parser.parse(&args);
-    defer parsed.deinit();
-    try cli_parser.handleParsedArgs(&parsed);
+    std.debug.print("Smart TUI Demo - Progressive Enhancement\n");
+    std.debug.print("========================================\n\n");
 
-    print("\n" ++ "=".repeat(60) ++ "\n");
-    print("🎨 Starting Enhanced TUI Demo\n");
-    print("=".repeat(60) ++ "\n");
+    // Create renderer based on terminal capabilities
+    const renderer = try tui.createRenderer(allocator);
+    defer renderer.deinit();
 
-    // Run the TUI demo
-    try runDemo(allocator);
+    const caps = renderer.getCapabilities();
+    std.debug.print("Terminal Capabilities Detected:\n");
+    std.debug.print("- Truecolor: {}\n", .{caps.supportsTruecolor});
+    std.debug.print("- Hyperlinks: {}\n", .{caps.supportsHyperlinkOsc8});
+    std.debug.print("- Clipboard: {}\n", .{caps.supportsClipboardOsc52});
+    std.debug.print("- Notifications: {}\n", .{caps.supportsNotifyOsc9});
+    std.debug.print("- Kitty Graphics: {}\n", .{caps.supportsKittyGraphics});
+    std.debug.print("- Sixel Graphics: {}\n", .{caps.supportsSixel});
+    std.debug.print("\n");
 
-    print("\n" ++ "=".repeat(60) ++ "\n");
-    print("✨ Demo completed successfully!\n");
-    print("=".repeat(60) ++ "\n\n");
+    // Initialize global notification manager
+    tui.initGlobalNotifications(allocator, renderer);
+    defer tui.deinitGlobalNotifications();
+
+    // Get terminal size for layout
+    const terminal_size = bounds_mod.getTerminalSize();
+    std.debug.print("Terminal Size: {}x{}\n\n", .{ terminal_size.width, terminal_size.height });
+
+    try renderer.beginFrame();
+
+    // Clear screen
+    const screen_bounds = tui.Bounds{
+        .x = 0,
+        .y = 0,
+        .width = terminal_size.width,
+        .height = terminal_size.height,
+    };
+    try renderer.clear(screen_bounds);
+
+    // Demo 1: Advanced Notifications
+    std.debug.print("Demo 1: Advanced Notifications\n");
+    std.debug.print("------------------------------\n");
+
+    try tui.notifyInfo("Demo Started", "Testing advanced notifications with progressive enhancement");
+
+    if (caps.supportsTruecolor) {
+        try tui.notifySuccess("Rich Colors", "Your terminal supports truecolor!");
+    } else {
+        try tui.notifyWarning("Basic Colors", "Using 256-color palette fallback");
+    }
+
+    // Demo 2: Advanced Progress Bars
+    std.debug.print("Demo 2: Advanced Progress Bars\n");
+    std.debug.print("------------------------------\n");
+
+    const advanced_progress = @import("widgets/enhanced/advanced_progress.zig");
+
+    // Different progress bar styles
+    const progress_styles = [_]advanced_progress.AdvancedProgressBar.ProgressStyle{ .bar, .blocks, .gradient, .dots };
+    const style_names = [_][]const u8{ "Traditional Bar", "Unicode Blocks", "Gradient", "Dots" };
+
+    var progress: f32 = 0.0;
+    while (progress <= 1.0) : (progress += 0.25) {
+        try renderer.beginFrame();
+
+        var y: i32 = 10;
+        for (progress_styles, style_names) |style, name| {
+            const ctx = tui.RenderContext{
+                .bounds = .{
+                    .x = 5,
+                    .y = y,
+                    .width = 50,
+                    .height = 2,
+                },
+                .style = .{},
+                .zIndex = 0,
+            };
+
+            var progress_bar = advanced_progress.AdvancedProgressBar.init(name, style);
+            progress_bar.setProgress(progress);
+            progress_bar.showPercentage = true;
+            try progress_bar.render(renderer, ctx);
+
+            y += 3;
+        }
+
+        try renderer.endFrame();
+
+        // Brief pause to show animation
+        std.time.sleep(500 * std.time.ns_per_ms);
+    }
+
+    // Demo 3: Box Drawing with Different Styles
+    std.debug.print("Demo 3: Box Drawing\n");
+    std.debug.print("-------------------\n");
+
+    const box_styles = [_]tui.BoxStyle.BorderStyle.LineStyle{ .single, .double, .rounded, .thick, .dotted };
+    const box_names = [_][]const u8{ "Single", "Double", "Rounded", "Thick", "Dotted" };
+
+    try renderer.beginFrame();
+
+    var x: i32 = 5;
+    for (box_styles, box_names) |line_style, name| {
+        const box_style = tui.BoxStyle{
+            .border = .{
+                .style = line_style,
+                .color = if (caps.supportsTruecolor)
+                    tui.Style.Color{ .rgb = .{ .r = 100, .g = 200, .b = 255 } }
+                else
+                    tui.Style.Color{ .palette = 14 },
+            },
+            .padding = .{ .top = 1, .right = 2, .bottom = 1, .left = 2 },
+        };
+
+        const box_ctx = tui.RenderContext{
+            .bounds = .{
+                .x = x,
+                .y = 25,
+                .width = 12,
+                .height = 5,
+            },
+            .style = .{},
+            .zIndex = 0,
+        };
+
+        try renderer.drawTextBox(box_ctx, name, box_style);
+        x += 15;
+    }
+
+    try renderer.endFrame();
+
+    // Demo 4: Advanced Features (if supported)
+    if (caps.supportsHyperlinkOsc8) {
+        std.debug.print("Demo 4: Hyperlink Support\n");
+        std.debug.print("--------------------------\n");
+
+        try renderer.setHyperlink("https://github.com/zig-lang/zig");
+        const link_ctx = tui.RenderContext{
+            .bounds = .{
+                .x = 5,
+                .y = 32,
+                .width = 50,
+                .height = 1,
+            },
+            .style = .{
+                .fg_color = .{ .ansi = 12 }, // Bright blue
+                .underline = true,
+            },
+            .zIndex = 0,
+        };
+        try renderer.drawText(link_ctx, "Click here to visit Zig homepage (hyperlink supported!)");
+        try renderer.clearHyperlink();
+    }
+
+    if (caps.supportsClipboardOsc52) {
+        std.debug.print("Demo 5: Clipboard Integration\n");
+        std.debug.print("-----------------------------\n");
+
+        try renderer.copyToClipboard("Smart TUI Demo - Progressive Enhancement");
+        try tui.notifySuccess("Clipboard", "Demo title copied to clipboard!");
+    }
+
+    // Final notification
+    try tui.notifyCritical("Demo Complete", "All advanced TUI features demonstrated!");
+
+    // Wait a moment to show notifications
+    std.time.sleep(2 * std.time.ns_per_s);
+
+    std.debug.print("\nDemo completed! Your terminal capabilities have been fully utilized.\n");
 }
 
-// Helper for string repetition (since Zig doesn't have it built-in)
-fn repeat(comptime str: []const u8, comptime n: usize) []const u8 {
-    return str ** n;
+// Utility function to demonstrate color capabilities
+fn demonstrateColors(renderer: *tui.Renderer) !void {
+    const caps = renderer.getCapabilities();
+
+    if (caps.supportsTruecolor) {
+        // Show RGB color gradient
+        std.debug.print("RGB Color Gradient:\n");
+        var r: u8 = 0;
+        while (r < 255) : (r += 32) {
+            const ctx = tui.RenderContext{
+                .bounds = .{
+                    .x = @as(i32, @intCast(r / 32)) * 2,
+                    .y = 35,
+                    .width = 2,
+                    .height = 1,
+                },
+                .style = .{
+                    .bg_color = .{ .rgb = .{ .r = r, .g = 100, .b = 200 } },
+                },
+                .zIndex = 0,
+            };
+            try renderer.fillRect(ctx, ctx.style.bg_color.?);
+        }
+    } else {
+        // Show 256-color palette
+        std.debug.print("256-Color Palette Sample:\n");
+        var color: u8 = 16;
+        while (color < 48) : (color += 1) {
+            const ctx = tui.RenderContext{
+                .bounds = .{
+                    .x = @as(i32, @intCast(color - 16)) * 2,
+                    .y = 35,
+                    .width = 2,
+                    .height = 1,
+                },
+                .style = .{
+                    .bg_color = .{ .palette = color },
+                },
+                .zIndex = 0,
+            };
+            try renderer.fillRect(ctx, ctx.style.bg_color.?);
+        }
+    }
 }

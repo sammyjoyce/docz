@@ -1,7 +1,7 @@
 const std = @import("std");
 const ProgressBar = @import("src/cli/components/unified_progress_adapter.zig").ProgressBar;
 
-test "progressBar initialization" {
+ test "progressBarInitialization" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
@@ -13,7 +13,7 @@ test "progressBar initialization" {
     try std.testing.expectEqualSlices(u8, "Test Progress", progress.label);
 }
 
-test "progressBar progress updates" {
+ test "progressBarProgressUpdates" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
@@ -28,7 +28,7 @@ test "progressBar progress updates" {
     try std.testing.expectEqual(progress.bytes_processed, 1024 * 1024);
 }
 
-test "progressBar style configuration" {
+ test "progressBarStyleConfiguration" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
@@ -50,7 +50,7 @@ test "progressBar style configuration" {
     }
 }
 
-test "progressBar label updates" {
+ test "progressBarLabelUpdates" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();

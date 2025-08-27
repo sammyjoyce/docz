@@ -4,7 +4,7 @@
 const std = @import("std");
 const caps_mod = @import("../caps.zig");
 const passthrough = @import("passthrough.zig");
-const enhanced_color = @import("enhanced_color.zig");
+const enhanced_color = @import("color_enhanced.zig");
 
 pub const TermCaps = caps_mod.TermCaps;
 pub const RGBColor = enhanced_color.RGBColor;

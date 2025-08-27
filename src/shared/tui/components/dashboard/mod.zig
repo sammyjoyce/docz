@@ -23,8 +23,8 @@ pub const Adaptive = struct {
 };
 
 // Main dashboard exports
-pub const Dashboard = @import("dashboard.zig").AdaptiveDashboard;
-pub const DashboardConfig = @import("dashboard.zig").DashboardConfig;
+pub const Dashboard = @import("Dashboard.zig").AdaptiveDashboard;
+pub const DashboardConfig = @import("Dashboard.zig").DashboardConfig;
 
 // Convenience re-exports
 pub const Renderer = Core.Renderer;

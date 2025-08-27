@@ -3,18 +3,18 @@
 /// following Zig 0.15.1 patterns and best practices.
 const std = @import("std");
 
-pub const enhanced_color_conversion = @import("enhanced_color_conversion.zig");
-pub const enhanced_cursor_control = @import("enhanced_cursor_control.zig");
+pub const color_conversion = @import("color_conversion.zig");
+pub const cursor_control = @import("cursor_control.zig");
 
 // Re-export main types for convenience
-pub const Color = enhanced_color_conversion.Color;
-pub const BasicColor = enhanced_color_conversion.BasicColor;
-pub const IndexedColor = enhanced_color_conversion.IndexedColor;
-pub const RGBColor = enhanced_color_conversion.RGBColor;
-pub const RGBA = enhanced_color_conversion.RGBA;
+pub const Color = color_conversion.Color;
+pub const BasicColor = color_conversion.BasicColor;
+pub const IndexedColor = color_conversion.IndexedColor;
+pub const RGBColor = color_conversion.RGBColor;
+pub const RGBA = color_conversion.RGBA;
 
-pub const CursorStyle = enhanced_cursor_control.CursorStyle;
-pub const CursorControl = enhanced_cursor_control.CursorControl;
+pub const CursorStyle = cursor_control.CursorStyle;
+pub const CursorControl = cursor_control.CursorControl;
 
 // Utility functions combining color and cursor control
 pub const TerminalEnhancer = struct {
@@ -39,7 +39,7 @@ pub const TerminalEnhancer = struct {
         try result.appendSlice(self.allocator, CursorControl.cursorPosition(col, row));
 
         // Set color (simplified - would need full color sequence implementation)
-        const indexed = enhanced_color_conversion.convert256(color);
+        const indexed = color_conversion.convertTo256Color(color);
         const color_seq = try std.fmt.allocPrint(self.allocator, "\x1b[38;5;{}m", .{indexed.value});
         defer self.allocator.free(color_seq);
         try result.appendSlice(self.allocator, color_seq);

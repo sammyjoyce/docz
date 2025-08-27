@@ -4,6 +4,7 @@
 //! capabilities, progressive enhancement, and comprehensive terminal integration.
 
 const std = @import("std");
+const term_shared = @import("term_shared");
 
 // Core system components
 pub const core = @import("core/mod.zig");
@@ -58,6 +59,7 @@ pub const Table = widgets.Core.Table;
 pub const ProgressBar = widgets.Enhanced.ProgressBar;
 pub const Notification = widgets.Enhanced.Notification;
 pub const Graphics = widgets.Enhanced.Graphics;
+pub const EnhancedTextInput = widgets.Enhanced.TextInput;
 
 // Dashboard widget exports - NEW
 pub const Dashboard = dashboard.Dashboard;
@@ -85,8 +87,7 @@ pub const DefaultTheme = themes.DefaultTheme;
 // Utility exports
 pub const CommandHistory = utils.CommandHistory;
 
-// Terminal capabilities
-pub const TermCaps = @import("../term/caps.zig").TermCaps;
+// Terminal capabilities - accessed through term_shared dependency
 
 // Factory functions
 pub const createRenderer = renderer.createRenderer;
@@ -104,9 +105,8 @@ pub fn deinitTUI() void {
 }
 
 // Progressive enhancement detection
-pub fn detectCapabilities() TermCaps {
-    const caps_detector = @import("../term/capability_detector.zig");
-    return caps_detector.detectCapabilities();
+pub fn detectCapabilities() term_shared.TermCaps {
+    return term_shared.capability_detector.detectCapabilities();
 }
 
 // Convenience functions for quick setup

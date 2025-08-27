@@ -10,6 +10,9 @@ pub const layout = @import("layout.zig");
 pub const screen = @import("screen.zig");
 pub const renderer = @import("renderer.zig");
 
+// Renderers
+pub const renderers = @import("renderers/mod.zig");
+
 // Enhanced input system
 pub const input = @import("input/mod.zig");
 

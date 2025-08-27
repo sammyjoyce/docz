@@ -2,9 +2,10 @@
 //! Supports Kitty Graphics Protocol and Sixel graphics
 
 const std = @import("std");
-const term_caps = @import("../../../term/caps.zig");
-const term_graphics = @import("../../../term/ansi/graphics.zig");
-const term_cursor = @import("../../../term/ansi/cursor.zig");
+const tui_mod = @import("../../mod.zig");
+const term_caps = tui_mod.term;
+const term_graphics = tui_mod.term.ansi.graphics;
+const term_cursor = tui_mod.term.ansi.cursor;
 const bounds_mod = @import("../../core/bounds.zig");
 
 pub const GraphicsError = error{
@@ -43,7 +44,7 @@ pub const DisplayOptions = struct {
 
 pub const GraphicsWidget = struct {
     allocator: std.mem.Allocator,
-    caps: term_caps.TermCaps,
+    caps: tui_mod.TermCaps,
     image_data: ?[]const u8,
     image_format: ImageFormat,
     transmission_mode: TransmissionMode,
@@ -59,7 +60,7 @@ pub const GraphicsWidget = struct {
     pub fn init(allocator: std.mem.Allocator) GraphicsWidget {
         return GraphicsWidget{
             .allocator = allocator,
-            .caps = term_caps.getTermCaps(),
+            .caps = tui_mod.detectCapabilities(),
             .image_data = null,
             .image_format = ImageFormat.PNG,
             .transmission_mode = TransmissionMode.Direct,

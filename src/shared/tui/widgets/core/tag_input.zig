@@ -5,7 +5,8 @@ const print = std.debug.print;
 const Bounds = @import("../../core/bounds.zig").Bounds;
 const Color = @import("../../themes/default.zig").Color;
 const Box = @import("../../themes/default.zig").Box;
-const TermCaps = @import("../../../term/caps.zig").TermCaps;
+const tui_mod = @import("../../mod.zig");
+const TermCaps = tui_mod.TermCaps;
 const events = @import("../../core/events.zig");
 const KeyEvent = events.KeyEvent;
 const MouseEvent = events.MouseEvent;
@@ -471,14 +472,12 @@ pub const TagInput = struct {
             try buffer.appendSlice(tag.text);
         }
 
-        const clipboard = @import("../../../term/ansi/clipboard.zig");
-        try clipboard.setClipboard(buffer.items, self.caps);
+        try tui_mod.term.ansi.clipboard.setClipboard(buffer.items, self.caps);
     }
 
     /// Paste tags from clipboard
     fn pasteFromClipboard(self: *Self) !void {
-        const clipboard = @import("../../../term/ansi/clipboard.zig");
-        if (try clipboard.getClipboard(self.caps)) |text| {
+        if (try tui_mod.term.ansi.clipboard.getClipboard(self.caps)) |text| {
             defer self.allocator.free(text);
             try self.pasteMultipleTags(text);
         }

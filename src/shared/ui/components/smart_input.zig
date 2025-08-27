@@ -210,7 +210,7 @@ pub const SmartInput = struct {
         // Render validation feedback
         switch (self.validationResult) {
             .warning => |msg| try self.renderValidation(ctx, msg, ctx.theme.colors.warning),
-            .validation_error => |msg| try self.renderValidation(ctx, msg, ctx.theme.colors.error_color),
+            .validation_error => |msg| try self.renderValidation(ctx, msg, ctx.theme.colors.errorColor),
             .valid => {},
         }
     }

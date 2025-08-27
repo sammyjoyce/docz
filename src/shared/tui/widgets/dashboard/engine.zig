@@ -4,12 +4,13 @@
 //! data visualization and interactive dashboard components with progressive enhancement.
 
 const std = @import("std");
-const term_caps = @import("../../term/caps.zig");
-const graphics_manager = @import("../../term/graphics_manager.zig");
-const color_palette = @import("../../term/color_palette.zig");
-const enhanced_mouse = @import("../../term/enhanced_mouse.zig");
-const terminal_graphics = @import("../../term/unicode_image_renderer.zig");
-const capability_detector = @import("../../term/capability_detector.zig");
+const term_shared = @import("term_shared");
+const term_caps = term_shared.caps;
+const graphics_manager = term_shared.graphics_manager;
+const color_palette = term_shared.color_palette;
+const enhanced_mouse = term_shared.input.enhanced_mouse;
+const terminal_graphics = term_shared.unicode_image_renderer;
+const capability_detector = term_shared.capability_detector;
 
 // Import widget types
 const LineChart = @import("chart/line.zig").LineChart;
@@ -29,7 +30,8 @@ const Bounds = @import("../../core/bounds.zig").Bounds;
 const Point = @import("../../core/bounds.zig").Point;
 
 // Import terminal types
-const terminal_mod = @import("../../../term/unified.zig");
+const tui_mod = @import("../../mod.zig");
+const terminal_mod = tui_mod.term.unified;
 
 /// Main dashboard engine coordinating all dashboard functionality
 pub const DashboardEngine = struct {
@@ -123,8 +125,8 @@ pub const DashboardEngine = struct {
         try self.render_pipeline.present();
 
         // Performance tracking
-        const frame_time = std.time.nanoTimestamp() - frame_start;
-        self.performance_optimizer.recordFrameTime(frame_time);
+        const frameTime = std.time.nanoTimestamp() - frame_start;
+        self.performance_optimizer.recordFrameTime(frameTime);
     }
 };
 

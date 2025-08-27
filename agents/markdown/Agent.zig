@@ -210,5 +210,4 @@ pub const MarkdownAgent = struct {
 // and registered in spec.zig. The actual implementations remain in the tools/ directory
 // but are called through the standardized interface.
 
-// Export the public interface
-pub const MARKDOWN_AGENT = MarkdownAgent;
+// MarkdownAgent is already exported as pub const above

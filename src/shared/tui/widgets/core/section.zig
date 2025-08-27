@@ -2,8 +2,8 @@
 //! Extracted from monolithic tui.zig for better modularity
 
 const std = @import("std");
-const term_ansi = @import("../../../term/ansi/color.zig");
-const term_caps = @import("../../../term/caps.zig");
+const term_shared = @import("term_shared");
+const TermCaps = term_shared.TermCaps;
 const print = std.debug.print;
 
 /// Enhanced Section widget with collapsible content and rich styling
@@ -36,7 +36,7 @@ pub const Section = struct {
         }
 
         // Rich theme using terminal capabilities
-        pub fn rich(caps: term_caps.TermCaps) ThemeColors {
+        pub fn rich(caps: TermCaps) ThemeColors {
             if (caps.supportsTrueColor()) {
                 return ThemeColors{
                     .title = "\x1b[38;2;100;149;237m", // Cornflower blue

@@ -1,6 +1,6 @@
 const std = @import("std");
 
-test "arrayList initialization methods" {
+ test "arrayListInitializationMethods" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();

@@ -7,7 +7,7 @@ const allocator = std.testing.allocator;
 
 const table = @import("agents/markdown/common/table.zig");
 
-test "table validation - valid table passes validation" {
+ test "tableValidationValidTablePassesValidation" {
     // Create a well-formed table
     const headers = [_][]const u8{ "Name", "Age", "City" };
     const row1 = [_][]const u8{ "John", "25", "NYC" };
@@ -26,7 +26,7 @@ test "table validation - valid table passes validation" {
     try expectEqual(@as(usize, 0), result.issues.len);
 }
 
-test "table validation - detects inconsistent column count" {
+ test "tableValidationDetectsInconsistentColumnCount" {
     // Create a table with inconsistent column counts
     const headers = [_][]const u8{ "Name", "Age", "City" };
     const row1 = [_][]const u8{ "John", "25" }; // Missing city
@@ -55,7 +55,7 @@ test "table validation - detects inconsistent column count" {
     try expect(foundConsistencyIssues);
 }
 
-test "table validation - detects empty cells" {
+ test "tableValidationDetectsEmptyCells" {
     // Create a table with empty cells
     const headers = [_][]const u8{ "Name", "Age", "City" };
     const row1 = [_][]const u8{ "John", "", "NYC" }; // Empty age
@@ -84,7 +84,7 @@ test "table validation - detects empty cells" {
     try expect(foundEmptyCellIssues);
 }
 
-test "table validation - detects alignment mismatch" {
+ test "tableValidationDetectsAlignmentMismatch" {
     // Create a table with mismatched alignment count
     const headers = [_][]const u8{ "Name", "Age", "City" };
     const row1 = [_][]const u8{ "John", "25", "NYC" };
@@ -111,7 +111,7 @@ test "table validation - detects alignment mismatch" {
     try expect(foundAlignmentIssue);
 }
 
-test "table repair - fixes column consistency" {
+ test "tableRepairFixesColumnConsistency" {
     // Create a table with inconsistent column counts
     const headers = [_][]const u8{ "Name", "Age", "City" };
     const row1 = [_][]const u8{ "John", "25" }; // Missing city
@@ -140,7 +140,7 @@ test "table repair - fixes column consistency" {
     try expectEqualSlices(u8, "-", testTable.rows[0][2]); // Should be placeholder for missing city
 }
 
-test "table repair - trims whitespace" {
+ test "tableRepairTrimsWhitespace" {
     // Create a table with excessive whitespace
     const headers = [_][]const u8{ "  Name  ", "Age", " City " };
     const row1 = [_][]const u8{ " John ", "  25  ", "NYC  " };
@@ -165,7 +165,7 @@ test "table repair - trims whitespace" {
     try expectEqualSlices(u8, "NYC", testTable.rows[0][2]);
 }
 
-test "table repair - fills empty cells" {
+ test "tableRepairFillsEmptyCells" {
     // Create a table with empty cells
     const headers = [_][]const u8{ "Name", "Age", "City" };
     const row1 = [_][]const u8{ "John", "", "NYC" }; // Empty age
@@ -190,7 +190,7 @@ test "table repair - fills empty cells" {
     try expectEqualSlices(u8, "N/A", testTable.rows[1][2]); // City should be N/A
 }
 
-test "table repair - normalizes alignments" {
+ test "tableRepairNormalizesAlignments" {
     // Create a table with mismatched alignment count
     const headers = [_][]const u8{ "Name", "Age", "City" };
     const row1 = [_][]const u8{ "John", "25", "NYC" };
@@ -214,7 +214,7 @@ test "table repair - normalizes alignments" {
     try expectEqual(table.Alignment.left, testTable.alignments[2]); // Should default to left
 }
 
-test "table validate and repair combined" {
+ test "tableValidateAndRepairCombined" {
     // Create a problematic table
     const headers = [_][]const u8{ "  Name  ", "Age", "City" };
     const row1 = [_][]const u8{ " John ", "25" }; // Missing city, extra whitespace

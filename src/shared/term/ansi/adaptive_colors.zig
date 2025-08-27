@@ -1,5 +1,5 @@
 const std = @import("std");
-const enhanced_color = @import("enhanced_color.zig");
+const enhanced_color = @import("color_enhanced.zig");
 
 /// Adaptive colors that automatically adjust based on terminal theme
 /// Advanced color adaptation system for modern terminals

@@ -4,7 +4,6 @@
 const std = @import("std");
 const Bounds = @import("../../core/bounds.zig").Bounds;
 const Color = @import("../../themes/default.zig").ColorEnum;
-const print = @import("../../../term/writer.zig").print;
 
 /// Logo display style
 pub const LogoStyle = enum {
@@ -230,7 +229,7 @@ pub const Logo = struct {
         }
 
         // Reset colors
-        print("\x1b[0m", .{});
+        std.debug.print("\x1b[0m", .{});
     }
 
     fn calculateXPosition(self: *Logo, line: []const u8, start_x: u32, max_width: u32) u32 {
@@ -248,46 +247,46 @@ pub const Logo = struct {
 
         // Top border
         moveCursor(self.bounds.y, self.bounds.x);
-        print("{s}{u}{s}", .{ Box.TOP_LEFT, Box.HORIZONTAL, self.bounds.width -| 2 });
-        print("{s}", .{Box.TOP_RIGHT});
+        std.debug.print("{s}{u}{s}", .{ Box.TOP_LEFT, Box.HORIZONTAL, self.bounds.width -| 2 });
+        std.debug.print("{s}", .{Box.TOP_RIGHT});
 
         // Side borders
         for (1..self.bounds.height -| 1) |i| {
             moveCursor(self.bounds.y + i, self.bounds.x);
-            print("{s}", .{Box.VERTICAL});
+            std.debug.print("{s}", .{Box.VERTICAL});
 
             moveCursor(self.bounds.y + i, self.bounds.x + self.bounds.width - 1);
-            print("{s}", .{Box.VERTICAL});
+            std.debug.print("{s}", .{Box.VERTICAL});
         }
 
         // Bottom border
         moveCursor(self.bounds.y + self.bounds.height - 1, self.bounds.x);
-        print("{s}{u}{s}", .{ Box.BOTTOM_LEFT, Box.HORIZONTAL, self.bounds.width -| 2 });
-        print("{s}", .{Box.BOTTOM_RIGHT});
+        std.debug.print("{s}{u}{s}", .{ Box.BOTTOM_LEFT, Box.HORIZONTAL, self.bounds.width -| 2 });
+        std.debug.print("{s}", .{Box.BOTTOM_RIGHT});
     }
 
     fn fillBackground(self: *Logo, color: Color) void {
-        print("\x1b[{d}m", .{@intFromEnum(color) + 10}); // Background color
+        std.debug.print("\x1b[{d}m", .{@intFromEnum(color) + 10}); // Background color
 
         for (self.padding..self.bounds.height -| self.padding) |y| {
             moveCursor(self.bounds.y + y, self.bounds.x + self.padding);
             for (self.padding..self.bounds.width -| self.padding) |_| {
-                print(" ", .{});
+                std.debug.print(" ", .{});
             }
         }
     }
 
     fn drawAsciiLine(self: *Logo, line: []const u8, max_width: u32) void {
-        print("\x1b[{d}m", .{@intFromEnum(self.color)});
+        std.debug.print("\x1b[{d}m", .{@intFromEnum(self.color)});
         const display_len = @min(line.len, max_width);
-        print("{s}", .{line[0..display_len]});
+        std.debug.print("{s}", .{line[0..display_len]});
     }
 
     fn drawStyledLine(self: *Logo, line: []const u8, max_width: u32) void {
         // Apply bold and color
-        print("\x1b[1;{d}m", .{@intFromEnum(self.color)});
+        std.debug.print("\x1b[1;{d}m", .{@intFromEnum(self.color)});
         const display_len = @min(line.len, max_width);
-        print("{s}", .{line[0..display_len]});
+        std.debug.print("{s}", .{line[0..display_len]});
     }
 
     fn drawBannerLine(self: *Logo, line: []const u8, max_width: u32, is_first: bool, is_last: bool) void {
@@ -295,33 +294,33 @@ pub const Logo = struct {
         _ = is_last;
 
         // Draw with emphasis
-        print("\x1b[1;{d}m", .{@intFromEnum(self.color)});
+        std.debug.print("\x1b[1;{d}m", .{@intFromEnum(self.color)});
 
         // Add decorative elements
-        print("┃ ", .{});
+        std.debug.print("┃ ", .{});
         const display_len = @min(line.len, max_width -| 4);
-        print("{s}", .{line[0..display_len]});
+        std.debug.print("{s}", .{line[0..display_len]});
 
         // Pad to width
         const padding = (max_width -| 4) -| display_len;
         for (0..padding) |_| {
-            print(" ", .{});
+            std.debug.print(" ", .{});
         }
-        print(" ┃", .{});
+        std.debug.print(" ┃", .{});
     }
 
     fn drawFigletLine(self: *Logo, line: []const u8, max_width: u32) void {
         // Draw with bold and possibly larger appearance
-        print("\x1b[1;{d}m", .{@intFromEnum(self.color)});
+        std.debug.print("\x1b[1;{d}m", .{@intFromEnum(self.color)});
         const display_len = @min(line.len, max_width);
 
         // Could implement actual FIGlet rendering here
         // For now, just draw bold text
-        print("{s}", .{line[0..display_len]});
+        std.debug.print("{s}", .{line[0..display_len]});
     }
 
     fn moveCursor(row: u32, col: u32) void {
-        print("\x1b[{d};{d}H", .{ row + 1, col + 1 });
+        std.debug.print("\x1b[{d};{d}H", .{ row + 1, col + 1 });
     }
 };
 

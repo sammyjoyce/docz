@@ -67,8 +67,8 @@ pub const Color = struct {
     }
 };
 
-/// Enhanced theme with rich color palette
-pub const EnhancedTheme = struct {
+/// Theme with rich color palette
+pub const Theme = struct {
     // UI Colors
     primary: Color,
     secondary: Color,
@@ -97,10 +97,10 @@ pub const EnhancedTheme = struct {
     caps: term_caps.TermCaps,
 
     /// Modern dark theme with blue accents
-    pub fn modernDark() EnhancedTheme {
+    pub fn modernDark() Theme {
         const caps = term_caps.getTermCaps();
 
-        return EnhancedTheme{
+        return Theme{
             .primary = Color.initTrueColor(100, 149, 237, 12, 34), // Cornflower blue
             .secondary = Color.initTrueColor(75, 0, 130, 5, 35), // Indigo
             .accent = Color.initTrueColor(255, 215, 0, 11, 33), // Gold
@@ -127,10 +127,10 @@ pub const EnhancedTheme = struct {
     }
 
     /// Clean light theme with subtle colors
-    pub fn cleanLight() EnhancedTheme {
+    pub fn cleanLight() Theme {
         const caps = term_caps.getTermCaps();
 
-        return EnhancedTheme{
+        return Theme{
             .primary = Color.initTrueColor(70, 130, 180, 4, 34), // Steel blue
             .secondary = Color.initTrueColor(106, 90, 205, 5, 35), // Slate blue
             .accent = Color.initTrueColor(255, 140, 0, 3, 33), // Dark orange
@@ -157,10 +157,10 @@ pub const EnhancedTheme = struct {
     }
 
     /// High contrast theme for accessibility
-    pub fn highContrast() EnhancedTheme {
+    pub fn highContrast() Theme {
         const caps = term_caps.getTermCaps();
 
-        return EnhancedTheme{
+        return Theme{
             .primary = Color.initTrueColor(255, 255, 0, 11, 33), // Yellow
             .secondary = Color.initTrueColor(0, 255, 255, 14, 36), // Cyan
             .accent = Color.initTrueColor(255, 0, 255, 13, 35), // Magenta
@@ -187,7 +187,7 @@ pub const EnhancedTheme = struct {
     }
 
     /// Apply theme colors to terminal
-    pub fn apply(self: EnhancedTheme, writer: anytype) !void {
+    pub fn apply(self: Theme, writer: anytype) !void {
         // Set terminal default colors if supported
         if (self.caps.supportsColorOsc10_12) {
             // Set default foreground
@@ -198,7 +198,7 @@ pub const EnhancedTheme = struct {
     }
 
     /// Reset terminal colors to defaults
-    pub fn reset(self: EnhancedTheme, writer: anytype) !void {
+    pub fn reset(self: Theme, writer: anytype) !void {
         if (self.caps.supportsColorOsc10_12) {
             try term_ansi.resetForegroundColor(writer, std.heap.page_allocator, self.caps);
             try term_ansi.resetBackgroundColor(writer, std.heap.page_allocator, self.caps);
@@ -208,8 +208,8 @@ pub const EnhancedTheme = struct {
 };
 
 /// Theme manager for switching between themes and adapting to terminal capabilities
-pub const Theme = struct {
-    current_theme: EnhancedTheme,
+pub const ThemeManager = struct {
+    current_theme: Theme,
     caps: term_caps.TermCaps,
     allocator: Allocator,
 
@@ -218,9 +218,9 @@ pub const Theme = struct {
 
         // Choose default theme based on terminal capabilities and environment
         const theme = if (isLightMode())
-            EnhancedTheme.cleanLight()
+            Theme.cleanLight()
         else
-            EnhancedTheme.modernDark();
+            Theme.modernDark();
 
         return Theme{
             .current_theme = theme,
@@ -229,11 +229,11 @@ pub const Theme = struct {
         };
     }
 
-    pub fn setTheme(self: *Theme, theme: EnhancedTheme) void {
+    pub fn setTheme(self: *Theme, theme: Theme) void {
         self.current_theme = theme;
     }
 
-    pub fn getTheme(self: Theme) EnhancedTheme {
+    pub fn getTheme(self: Theme) Theme {
         return self.current_theme;
     }
 

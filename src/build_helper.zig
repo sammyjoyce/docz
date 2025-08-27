@@ -219,10 +219,10 @@ pub fn createBuildModules(
 
     // Add interface module based on tier
     const interface_path = switch (config.manifest.interface.tier[0]) {
-        's' => if (config.manifest.interface.tier[1] == 'i') // simple
-            "src/core/simple_agent_interface.zig"
+        's' => if (config.manifest.interface.tier[1] == 'i') // simple/basic
+            "src/core/agent_interface_basic.zig"
         else // standard
-            "src/core/standard_agent_interface.zig",
+            "src/core/agent_interface_standard.zig",
         'a' => "src/core/agent_interface.zig", // advanced
         else => return error.InvalidInterfaceTier,
     };

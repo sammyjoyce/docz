@@ -65,7 +65,7 @@ pub const ThemeEditor = struct {
         } else if (std.mem.eql(u8, color_name, "warning")) {
             self.current_theme.warning.rgb = new_rgb;
         } else if (std.mem.eql(u8, color_name, "error")) {
-            self.current_theme.error_color.rgb = new_rgb;
+            self.current_theme.errorColor.rgb = new_rgb;
         }
         // Add more color mappings as needed
 
@@ -107,7 +107,7 @@ pub const ThemeEditor = struct {
         self.current_theme.secondary.rgb = self.adjustColorSaturation(self.current_theme.secondary.rgb, factor);
         self.current_theme.success.rgb = self.adjustColorSaturation(self.current_theme.success.rgb, factor);
         self.current_theme.warning.rgb = self.adjustColorSaturation(self.current_theme.warning.rgb, factor);
-        self.current_theme.error_color.rgb = self.adjustColorSaturation(self.current_theme.error_color.rgb, factor);
+        self.current_theme.errorColor.rgb = self.adjustColorSaturation(self.current_theme.errorColor.rgb, factor);
         // Adjust all other colors...
     }
 

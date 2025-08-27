@@ -1,11 +1,12 @@
 const std = @import("std");
-const caps_mod = @import("term_shared").caps;
+const term_shared = @import("term_shared");
+const caps_mod = term_shared;
 const QualityTiers = @import("quality_tiers.zig").QualityTiers;
 const AdaptiveRenderer = @import("adaptive_renderer.zig").AdaptiveRenderer;
 const RenderMode = AdaptiveRenderer.RenderMode;
-const Color = @import("term_shared").ansi.enhanced_color.Color;
-const BasicColor = @import("term_shared").ansi.enhanced_color.BasicColor;
-const RGBColor = @import("term_shared").ansi.enhanced_color.RGBColor;
+const Color = term_shared.ansi.color_enhanced.Color;
+const BasicColor = term_shared.ansi.color_enhanced.BasicColor;
+const RGBColor = term_shared.ansi.color_enhanced.RGBColor;
 
 /// Options for markdown rendering
 pub const MarkdownOptions = struct {

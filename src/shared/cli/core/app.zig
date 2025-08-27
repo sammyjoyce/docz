@@ -32,20 +32,20 @@ pub const CliApp = struct {
     /// Main entry point for CLI execution
     pub fn run(self: *CliApp, args: []const []const u8) !u8 {
         // Parse arguments (unified via enhanced parser)
-        const parsed_args = try self.parseArguments(args);
+        const parsedArgs = try self.parseArguments(args);
 
         // Handle built-in commands
-        if (parsed_args.help) {
+        if (parsedArgs.help) {
             try self.showHelp();
             return 0;
         }
 
-        if (parsed_args.version) {
+        if (parsedArgs.version) {
             try self.showVersion();
             return 0;
         }
 
-        if (parsed_args.verbose) {
+        if (parsedArgs.verbose) {
             self.context.enableVerbose();
         }
 
@@ -55,7 +55,7 @@ pub const CliApp = struct {
         }
 
         // Execute command through router
-        const result = try self.router.execute(parsed_args);
+        const result = try self.router.execute(parsedArgs);
 
         // Handle result
         if (result.success) {
@@ -81,14 +81,14 @@ pub const CliApp = struct {
     }
 
     fn parseArguments(self: *CliApp, args: []const []const u8) !types.ParsedArgsUnified {
-        const enhanced_parser = @import("enhanced_parser.zig");
+        const legacy_parser = @import("legacy_parser.zig");
         // The enhanced parser expects argv-style input including program name at index 0.
         var argv = try self.allocator.alloc([]const u8, args.len + 1);
         defer self.allocator.free(argv);
         argv[0] = "docz"; // synthetic argv[0]
         for (args, 0..) |a, i| argv[i + 1] = a;
 
-        var parser = enhanced_parser.EnhancedParser.init(self.allocator);
+        var parser = legacy_parser.EnhancedParser.init(self.allocator);
         var parsed = try parser.parse(argv);
         defer parsed.deinit();
 
@@ -122,7 +122,7 @@ pub const CliApp = struct {
         var stdoutWriter = std.fs.File.stdout().writer(&stdoutBuffer);
         const writer = &stdoutWriter.interface;
 
-        const help_text =
+        const helpText =
             \\docz - AI-powered document assistant
             \\
             \\Usage: docz [COMMAND] [OPTIONS] [MESSAGE]
@@ -147,7 +147,7 @@ pub const CliApp = struct {
             \\Terminal Features:
         ;
 
-        try writer.writeAll(help_text);
+        try writer.writeAll(helpText);
 
         // Show available terminal features
         if (self.context.hasFeature(.hyperlinks)) {

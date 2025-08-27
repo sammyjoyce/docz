@@ -8,15 +8,15 @@ const term = @import("../term/mod.zig");
 const cli_themes = @import("../cli/themes/mod.zig");
 const tui_themes = @import("../tui/themes/mod.zig");
 
-pub const ThemeManager = @import("theme_manager.zig").ThemeManager;
+pub const ThemeManager = @import("theme.zig").ThemeManager;
 pub const ThemeConfig = @import("theme_config.zig").ThemeConfig;
 pub const ColorScheme = @import("color_scheme.zig").ColorScheme;
 pub const ThemeInheritance = @import("theme_inheritance.zig").ThemeInheritance;
 pub const ThemeEditor = @import("theme_editor.zig").ThemeEditor;
 pub const ThemeExporter = @import("theme_exporter.zig").ThemeExporter;
-pub const SystemThemeDetector = @import("system_theme_detector.zig").SystemThemeDetector;
-pub const AccessibilityManager = @import("accessibility_manager.zig").AccessibilityManager;
-pub const ColorBlindnessAdapter = @import("color_blindness_adapter.zig").ColorBlindnessAdapter;
+pub const SystemThemeDetector = @import("system_theme.zig").SystemThemeDetector;
+pub const AccessibilityManager = @import("accessibility.zig").AccessibilityManager;
+pub const ColorBlindnessAdapter = @import("color_blindness.zig").ColorBlindnessAdapter;
 pub const ThemeValidator = @import("theme_validator.zig").ThemeValidator;
 pub const ThemeDevelopmentTools = @import("theme_development_tools.zig").ThemeDevelopmentTools;
 
@@ -40,9 +40,9 @@ pub const Quick = struct {
     /// Auto-detect and apply system theme
     pub fn applySystemTheme(manager: *ThemeManager) !void {
         const detector = SystemThemeDetector.init();
-        const is_dark = try detector.detectSystemTheme();
-        const theme_name = if (is_dark) "dark" else "light";
-        try manager.switchTheme(theme_name);
+        const isDark = try detector.detectSystemTheme();
+        const themeName = if (isDark) "dark" else "light";
+        try manager.switchTheme(themeName);
     }
 
     /// Generate high contrast version of current theme

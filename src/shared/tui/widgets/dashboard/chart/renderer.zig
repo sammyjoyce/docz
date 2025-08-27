@@ -136,8 +136,8 @@ pub const ChartRenderer = struct {
         const title_ctx = RenderContext{
             .bounds = Bounds.init(ctx.bounds.x, ctx.bounds.y, ctx.bounds.width, 1),
             .style = ctx.style,
-            .z_index = ctx.z_index,
-            .clip_region = ctx.clip_region,
+            .zIndex = ctx.zIndex,
+            .clipRegion = ctx.clipRegion,
         };
         try renderer.drawText(title_ctx, self.config.title orelse "Chart");
 
@@ -147,8 +147,8 @@ pub const ChartRenderer = struct {
             const series_ctx = RenderContext{
                 .bounds = Bounds.init(ctx.bounds.x, ctx.bounds.y + row, ctx.bounds.width, 1),
                 .style = ctx.style,
-                .z_index = ctx.z_index,
-                .clip_region = ctx.clip_region,
+                .zIndex = ctx.zIndex,
+                .clipRegion = ctx.clipRegion,
             };
 
             var buffer: [256]u8 = undefined;
@@ -161,8 +161,8 @@ pub const ChartRenderer = struct {
                 const value_ctx = RenderContext{
                     .bounds = Bounds.init(ctx.bounds.x + 2, ctx.bounds.y + row, ctx.bounds.width - 2, 1),
                     .style = ctx.style,
-                    .z_index = ctx.z_index,
-                    .clip_region = ctx.clip_region,
+                    .zIndex = ctx.zIndex,
+                    .clipRegion = ctx.clipRegion,
                 };
 
                 const value_text = try std.fmt.bufPrint(buffer[0..], "[{d}] {d:.2}", .{ i, value });
@@ -176,8 +176,8 @@ pub const ChartRenderer = struct {
                 const more_ctx = RenderContext{
                     .bounds = Bounds.init(ctx.bounds.x + 2, ctx.bounds.y + row, ctx.bounds.width - 2, 1),
                     .style = ctx.style,
-                    .z_index = ctx.z_index,
-                    .clip_region = ctx.clip_region,
+                    .zIndex = ctx.zIndex,
+                    .clipRegion = ctx.clipRegion,
                 };
 
                 const more_text = try std.fmt.bufPrint(buffer[0..], "... and {d} more values", .{series.values.len - 5});

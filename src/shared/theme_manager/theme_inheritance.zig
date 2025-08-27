@@ -74,7 +74,7 @@ pub const ThemeInheritance = struct {
         if (overrides.secondary) |s| theme.secondary = s;
         if (overrides.success) |s| theme.success = s;
         if (overrides.warning) |w| theme.warning = w;
-        if (overrides.error_color) |e| theme.error_color = e;
+        if (overrides.errorColor) |e| theme.errorColor = e;
     }
 
     /// Track inheritance relationship
@@ -114,5 +114,5 @@ pub const ThemeOverrides = struct {
     secondary: ?Color = null,
     success: ?Color = null,
     warning: ?Color = null,
-    error_color: ?Color = null,
+    errorColor: ?Color = null,
 };

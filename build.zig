@@ -7,7 +7,7 @@ const BUILD_CONFIG = struct {
     const BINARY_NAME = "docz";
 
     const PATHS = struct {
-        const SOURCE_DIRS = [_][]const u8{ "src/", "agents/", "build.zig", "build.zig.zon" };
+        const SOURCE_DIRS = [_][]const u8{ "src/", "agents/" };
         const CLI_ZON = "src/shared/cli/cli.zon";
         const TERMCAPS_ZON = "src/shared/term/caps.zon";
         const ANSI_ZON = "src/shared/term/ansi.zon";
@@ -1156,6 +1156,16 @@ const ModuleBuilder = struct {
                 std.log.info("   🎨 Including render modules (render, components)", .{});
                 modules.render = self.createModule("src/shared/render/mod.zig");
                 modules.components = self.createModule("src/shared/components/mod.zig");
+
+                // Add term dependency to render module
+                if (modules.term) |term| {
+                    if (modules.render) |render| {
+                        render.addImport("term_shared", term);
+                    }
+                    if (modules.components) |components| {
+                        components.addImport("term_shared", term);
+                    }
+                }
             } else {
                 std.log.info("   🚫 Excluding render modules (no media processing)", .{});
             }
@@ -1242,7 +1252,7 @@ const ModuleBuilder = struct {
 
     fn createApiModule(self: ModuleBuilder) *std.Build.Module {
         // For testing, use a simple test module
-        return self.createModule("examples/simple_demo.zig");
+        return self.createModule("examples/basic_demo.zig");
     }
 
     // Helper functions
@@ -1854,7 +1864,7 @@ const AllAgentsAction = struct {
         _ = step;
         _ = options;
         std.log.err("❌ Use: zig build all-agents", .{});
-        std.log.err("   Or: zig build -Dagents=markdown,test-agent", .{});
+        std.log.err("   Or: zig build -Dagents=markdown,test_agent", .{});
         return error.InvalidUsage;
     }
 };
@@ -2283,7 +2293,7 @@ fn printHelp() void {
     std.log.info("💡 EXAMPLES:", .{});
     std.log.info("  zig build scaffold-agent -- my-ai \"AI assistant\" \"John Doe\"", .{});
     std.log.info("  zig build -Dagent=my-ai run -- \"Hello, how are you?\"", .{});
-    std.log.info("  zig build -Dagents=markdown,test-agent", .{});
+    std.log.info("  zig build -Dagents=markdown,test_agent", .{});
 }
 
 fn setupMainExecutable(ctx: BuildContext, root_module: *std.Build.Module, manifest: ?AgentManifest) void {

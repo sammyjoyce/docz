@@ -1,7 +1,8 @@
 //! Enhanced mouse event handling for TUI applications
 //! Provides pixel-precise mouse tracking and advanced interaction support
 const std = @import("std");
-const term_mouse = @import("../../../term/input/enhanced_mouse.zig");
+const tui_mod = @import("../../mod.zig");
+const term_mouse = tui_mod.term.input.enhanced_mouse;
 
 // Re-export enhanced mouse types
 pub const MouseEvent = term_mouse.MouseEvent;

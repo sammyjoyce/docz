@@ -39,7 +39,7 @@
         .features = .{
             .enable_custom_tools = true, // Allow custom tool registration
             .enable_file_operations = true, // Allow file system operations
-            .enable_network_access = false, // Allow network requests
+            .enable_network_access = true, // Allow network requests
             .enable_system_commands = false, // Allow system command execution
         },
 

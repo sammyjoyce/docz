@@ -78,8 +78,8 @@ pub fn scaffoldAgent(options: ScaffoldAgentOptions) anyerror!void {
     };
 
     // Create subdirectories
-    const sub_directories = [_][]const u8{ "tools", "common", "examples" };
-    for (sub_directories) |subDirectory| {
+    const subDirectories = [_][]const u8{ "tools", "common", "examples" };
+    for (subDirectories) |subDirectory| {
         const subDirectoryPath = try std.fs.path.join(allocator, &.{ agentPath, subDirectory });
         defer allocator.free(subDirectoryPath);
         std.fs.cwd().makeDir(subDirectoryPath) catch |err| switch (err) {
@@ -113,8 +113,8 @@ fn isValidAgentName(name: []const u8) bool {
     }
 
     // Cannot be reserved names
-    const reserved_names = [_][]const u8{ "_template", "core", "shared", "tools" };
-    for (reserved_names) |reserved_name| {
+    const RESERVED_NAMES = [_][]const u8{ "_template", "core", "shared", "tools" };
+    for (RESERVED_NAMES) |reserved_name| {
         if (std.mem.eql(u8, name, reserved_name)) return false;
     }
 
@@ -130,7 +130,7 @@ fn copyTemplateFiles(
     description: []const u8,
     author: []const u8,
 ) anyerror!void {
-    const template_files = [_][]const u8{
+    const templateFiles = [_][]const u8{
         "main.zig",
         "Agent.zig",
         "spec.zig",
@@ -140,7 +140,7 @@ fn copyTemplateFiles(
         "tools/example_tool.zig",
     };
 
-    for (template_files) |templateFile| {
+    for (templateFiles) |templateFile| {
         const srcPath = try std.fs.path.join(allocator, &.{ templatePath, templateFile });
         defer allocator.free(srcPath);
 

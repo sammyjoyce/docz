@@ -512,6 +512,9 @@ pub const Animation = struct {
     }
 };
 
+/// Alias for backward compatibility
+pub const RenderContext = Render;
+
 test "component state" {
     var state = ComponentState{};
     try std.testing.expect(state.dirty);

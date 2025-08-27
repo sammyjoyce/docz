@@ -1,6 +1,6 @@
-//! Enhanced UI Capabilities Demo
+//! UI Capabilities Demo
 //!
-//! This demo showcases the new unified terminal interface, enhanced graphics manager,
+//! This demo showcases the new unified terminal interface, graphics manager,
 //! component-based architecture, and shared UI components with progressive enhancement.
 
 const std = @import("std");
@@ -15,8 +15,8 @@ const NotificationLevel = shared.NotificationLevel;
 const ProgressBar = progress_bar.ProgressBar;
 const SmartInput = smart_input.SmartInput;
 
-/// Demo showcasing enhanced UI capabilities
-pub const EnhancedUIDemo = struct {
+/// Demo showcasing UI capabilities
+pub const UIDemo = struct {
     const Self = @This();
 
     allocator: std.mem.Allocator,
@@ -55,7 +55,7 @@ pub const EnhancedUIDemo = struct {
         const TITLE_STYLE = shared.createTextStyle(shared.Colors.BRIGHT_BLUE, true);
 
         try self.ui_context.terminal.printf("╔═══════════════════════════════════════════╗\n", .{}, TITLE_STYLE);
-        try self.ui_context.terminal.printf("║          Enhanced UI Demo v2.0           ║\n", .{}, TITLE_STYLE);
+        try self.ui_context.terminal.printf("║            UI Demo v2.0                  ║\n", .{}, TITLE_STYLE);
         try self.ui_context.terminal.printf("╚═══════════════════════════════════════════╝\n\n", .{}, TITLE_STYLE);
 
         try self.ui_context.terminal.printf("Terminal Capabilities Detected:\n", .{}, shared.createTextStyle(shared.Colors.BRIGHT_WHITE, true));
@@ -86,7 +86,7 @@ pub const EnhancedUIDemo = struct {
         try self.ui_context.terminal.printf("  • Unified terminal interface with capability detection\n", .{}, null);
         try self.ui_context.terminal.printf("  • Progressive enhancement based on your terminal\n", .{}, null);
         try self.ui_context.terminal.printf("  • Smart components that adapt automatically\n", .{}, null);
-        try self.ui_context.terminal.printf("  • Enhanced graphics rendering\n", .{}, null);
+        try self.ui_context.terminal.printf("  • Graphics rendering\n", .{}, null);
         try self.ui_context.terminal.printf("  • Unified CLI/TUI component architecture\n\n", .{}, null);
 
         try self.ui_context.terminal.printf("Press Enter to continue...", .{}, shared.createTextStyle(shared.Colors.YELLOW, false));
@@ -146,7 +146,7 @@ pub const EnhancedUIDemo = struct {
                 .progress = 0.0,
                 .label = "Processing",
                 .style = style,
-                .show_percentage = true,
+                .showPercentage = true,
                 .animated = true,
             });
 
@@ -354,7 +354,7 @@ pub const EnhancedUIDemo = struct {
         try self.ui_context.terminal.printf("   • Automatic capability detection and adaptation\n", .{}, null);
         try self.ui_context.terminal.printf("   • Progressive enhancement based on your terminal\n\n", .{}, null);
 
-        try self.ui_context.terminal.printf("🎨 Enhanced Graphics Manager:\n", .{}, shared.createTextStyle(shared.Colors.BRIGHT_MAGENTA, true));
+        try self.ui_context.terminal.printf("🎨 Graphics Manager:\n", .{}, shared.createTextStyle(shared.Colors.BRIGHT_MAGENTA, true));
         try self.ui_context.terminal.printf("   • Support for Kitty Graphics Protocol and Sixel\n", .{}, null);
         try self.ui_context.terminal.printf("   • Automatic fallback to Unicode/ASCII art\n", .{}, null);
         try self.ui_context.terminal.printf("   • Built-in chart and visualization generation\n\n", .{}, null);
@@ -374,7 +374,7 @@ pub const EnhancedUIDemo = struct {
         try self.ui_context.terminal.printf("terminal's capabilities while maintaining universal\n", .{}, shared.createTextStyle(shared.Colors.BRIGHT_WHITE, false));
         try self.ui_context.terminal.printf("compatibility. 🚀\n\n", .{}, shared.createTextStyle(shared.Colors.BRIGHT_WHITE, false));
 
-        try self.ui_context.terminal.printf("Thank you for exploring the enhanced UI system!\n", .{}, shared.createTextStyle(shared.Colors.BRIGHT_GREEN, true));
+        try self.ui_context.terminal.printf("Thank you for exploring the UI system!\n", .{}, shared.createTextStyle(shared.Colors.BRIGHT_GREEN, true));
     }
 
     fn waitForEnter(self: *Self) !void {
@@ -390,13 +390,13 @@ pub const EnhancedUIDemo = struct {
 
 /// Entry point for the demo
 pub fn runDemo(allocator: std.mem.Allocator) !void {
-    var demo = try EnhancedUIDemo.init(allocator);
+    var demo = try UIDemo.init(allocator);
     defer demo.deinit();
 
     try demo.run();
 }
 
 test "demo initialization" {
-    var demo = try EnhancedUIDemo.init(std.testing.allocator);
+    var demo = try UIDemo.init(std.testing.allocator);
     defer demo.deinit();
 }

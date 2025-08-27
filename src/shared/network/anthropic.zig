@@ -1199,7 +1199,7 @@ fn processSSELine(line: []const u8, event_state: *sse.SSEEventState, sse_config:
 // ================== OAuth Implementation ==================
 
 /// Build OAuth authorization URL with default provider
-pub fn buildAuthorizationURL(allocator: std.mem.Allocator, pkce_params: PkceParams) ![]u8 {
+pub fn buildAuthorizationUrl(allocator: std.mem.Allocator, pkce_params: PkceParams) ![]u8 {
     const scopes = [_][]const u8{ "org:create_api_key", "user:profile", "user:inference" };
     const provider = OAuthProvider{
         .client_id = OAUTH_CLIENT_ID,

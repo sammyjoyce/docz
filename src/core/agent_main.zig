@@ -1,4 +1,4 @@
-//! Enhanced agent main entry point with comprehensive TUI support and interactive mode capabilities.
+//! Agent main entry point with TUI support and interactive mode capabilities.
 //! Provides common CLI parsing, argument handling, engine delegation, and rich terminal experiences.
 
 const std = @import("std");
@@ -10,8 +10,8 @@ const term = @import("../shared/term/mod.zig");
 
 const CliOptions = engine.CliOptions;
 
-/// Enhanced CLI options for interactive and TUI modes
-pub const EnhancedCliOptions = struct {
+/// Interactive CLI options for interactive and TUI modes
+pub const InteractiveCliOptions = struct {
     /// Base CLI options
     base: CliOptions,
     /// Interactive mode settings
@@ -72,7 +72,7 @@ pub const TuiMode = enum {
     none,
 };
 
-/// Enhanced main function for agents with comprehensive TUI and interactive support.
+/// Main function for agents with TUI and interactive support.
 /// Agents should call this from their main.zig with their specific spec.
 pub fn runAgent(allocator: std.mem.Allocator, spec: engine.AgentSpec) !void {
     const args = try std.process.argsAlloc(allocator);
@@ -87,28 +87,28 @@ pub fn runAgent(allocator: std.mem.Allocator, spec: engine.AgentSpec) !void {
         cliArgsConst[i] = std.mem.sliceTo(arg, 0);
     }
 
-    // Parse enhanced CLI arguments
-    const enhancedOptions = try parseEnhancedArgs(allocator, cliArgsConst);
-    defer cleanupEnhancedOptions(allocator, &enhancedOptions);
+    // Parse interactive CLI arguments
+    const interactiveOptions = try parseInteractiveArgs(allocator, cliArgsConst);
+    defer cleanupInteractiveOptions(allocator, &interactiveOptions);
 
     // Handle special modes that don't require the full engine
-    if (try handleSpecialModes(allocator, enhancedOptions)) {
+    if (try handleSpecialModes(allocator, interactiveOptions)) {
         return;
     }
 
     // Check if interactive mode is requested
-    if (enhancedOptions.interactive.enabled) {
-        try runInteractiveMode(allocator, enhancedOptions);
+    if (interactiveOptions.interactive.enabled) {
+        try runInteractiveMode(allocator, interactiveOptions);
         return;
     }
 
     // Fall back to standard engine execution
-    try engine.runWithOptions(allocator, enhancedOptions.base, spec);
+    try engine.runWithOptions(allocator, interactiveOptions.base, spec);
 }
 
-/// Parse enhanced CLI arguments with TUI and interactive support
-fn parseEnhancedArgs(allocator: std.mem.Allocator, args: [][]const u8) !EnhancedCliOptions {
-    var enhanced = EnhancedCliOptions{
+/// Parse interactive CLI arguments with TUI and interactive support
+fn parseInteractiveArgs(allocator: std.mem.Allocator, args: [][]const u8) !InteractiveCliOptions {
+    var interactive = InteractiveCliOptions{
         .base = CliOptions{
             .options = .{
                 .model = undefined,
@@ -141,70 +141,70 @@ fn parseEnhancedArgs(allocator: std.mem.Allocator, args: [][]const u8) !Enhanced
 
     if (parsedArgsResult == null) {
         // Built-in command was handled, return default options
-        return enhanced;
+        return interactive;
     }
 
     var argsToProcess = parsedArgsResult.?;
     defer argsToProcess.deinit();
 
-    // Copy standard options
-    enhanced.base.options.model = argsToProcess.model;
-    enhanced.base.options.maxTokens = argsToProcess.max_tokens orelse 4096;
-    enhanced.base.options.temperature = argsToProcess.temperature orelse 0.7;
-    enhanced.base.flags.verbose = argsToProcess.verbose;
-    enhanced.base.flags.help = argsToProcess.help;
-    enhanced.base.flags.version = argsToProcess.version;
-    enhanced.base.flags.stream = argsToProcess.stream;
-    enhanced.base.positionals = argsToProcess.prompt;
+        // Copy standard options
+    interactive.base.options.model = argsToProcess.model;
+    interactive.base.options.maxTokens = argsToProcess.max_tokens orelse 4096;
+    interactive.base.options.temperature = argsToProcess.temperature orelse 0.7;
+    interactive.base.flags.verbose = argsToProcess.verbose;
+    interactive.base.flags.help = argsToProcess.help;
+    interactive.base.flags.version = argsToProcess.version;
+    interactive.base.flags.stream = argsToProcess.stream;
+    interactive.base.positionals = argsToProcess.prompt;
 
-    // Parse additional enhanced options
+    // Parse additional interactive options
     var i: usize = 0;
     while (i < args.len) {
         const arg = args[i];
 
         if (std.mem.eql(u8, arg, "--interactive") or std.mem.eql(u8, arg, "-i")) {
-            enhanced.interactive.enabled = true;
+            interactive.interactive.enabled = true;
         } else if (std.mem.eql(u8, arg, "--interactive-help")) {
-            enhanced.interactive.show_help = true;
+            interactive.interactive.show_help = true;
         } else if (std.mem.eql(u8, arg, "--continue-session")) {
-            enhanced.interactive.continue_session = true;
+            interactive.interactive.continue_session = true;
         } else if (std.mem.startsWith(u8, arg, "--tui=")) {
             const mode_str = arg[6..];
-            enhanced.tui.mode = std.meta.stringToEnum(TuiMode, mode_str) orelse .auto;
+            interactive.tui.mode = std.meta.stringToEnum(TuiMode, mode_str) orelse .auto;
         } else if (std.mem.eql(u8, arg, "--tui")) {
             i += 1;
             if (i >= args.len) return error.MissingValue;
-            enhanced.tui.mode = std.meta.stringToEnum(TuiMode, args[i]) orelse .auto;
+            interactive.tui.mode = std.meta.stringToEnum(TuiMode, args[i]) orelse .auto;
         } else if (std.mem.eql(u8, arg, "--dashboard") or std.mem.eql(u8, arg, "-d")) {
-            enhanced.tui.dashboard = true;
+            interactive.tui.dashboard = true;
         } else if (std.mem.eql(u8, arg, "--no-progress")) {
-            enhanced.tui.progress = false;
+            interactive.tui.progress = false;
         } else if (std.mem.eql(u8, arg, "--auth") or std.mem.eql(u8, arg, "--setup-auth")) {
-            enhanced.auth.setup = true;
+            interactive.auth.setup = true;
         } else if (std.mem.eql(u8, arg, "--force-oauth")) {
-            enhanced.auth.force_oauth = true;
+            interactive.auth.force_oauth = true;
         } else if (std.mem.startsWith(u8, arg, "--session-title=")) {
-            enhanced.session.title = try allocator.dupe(u8, arg[16..]);
+            interactive.session.title = try allocator.dupe(u8, arg[16..]);
         } else if (std.mem.eql(u8, arg, "--session-title")) {
             i += 1;
             if (i >= args.len) return error.MissingValue;
-            enhanced.session.title = try allocator.dupe(u8, args[i]);
+            interactive.session.title = try allocator.dupe(u8, args[i]);
         } else if (std.mem.startsWith(u8, arg, "--save-session=")) {
-            enhanced.session.save_path = try allocator.dupe(u8, arg[15..]);
+            interactive.session.save_path = try allocator.dupe(u8, arg[15..]);
         } else if (std.mem.eql(u8, arg, "--save-session")) {
             i += 1;
             if (i >= args.len) return error.MissingValue;
-            enhanced.session.save_path = try allocator.dupe(u8, args[i]);
+            interactive.session.save_path = try allocator.dupe(u8, args[i]);
         }
 
         i += 1;
     }
 
-    return enhanced;
+    return interactive;
 }
 
-/// Clean up enhanced options memory
-fn cleanupEnhancedOptions(allocator: std.mem.Allocator, options: *EnhancedCliOptions) void {
+/// Clean up interactive options memory
+fn cleanupInteractiveOptions(allocator: std.mem.Allocator, options: *InteractiveCliOptions) void {
     if (options.session.title) |title| {
         allocator.free(title);
     }
@@ -214,7 +214,7 @@ fn cleanupEnhancedOptions(allocator: std.mem.Allocator, options: *EnhancedCliOpt
 }
 
 /// Handle special modes that don't require full engine execution
-fn handleSpecialModes(allocator: std.mem.Allocator, options: EnhancedCliOptions) !bool {
+fn handleSpecialModes(allocator: std.mem.Allocator, options: InteractiveCliOptions) !bool {
     // Handle authentication setup
     if (options.auth.setup or options.auth.force_oauth) {
         try setupAuthenticationFlow(allocator, options.auth.force_oauth);
@@ -348,7 +348,7 @@ fn showInteractiveHelp() !void {
 }
 
 /// Run interactive mode with TUI support
-fn runInteractiveMode(allocator: std.mem.Allocator, options: EnhancedCliOptions) !void {
+fn runInteractiveMode(allocator: std.mem.Allocator, options: InteractiveCliOptions) !void {
     // Determine TUI mode based on options and capabilities
     const tui_mode = determineTuiMode(options.tui.mode);
 
@@ -404,7 +404,7 @@ fn determineTuiMode(requested_mode: TuiMode) TuiMode {
 }
 
 /// Create session configuration based on options and TUI mode
-fn createSessionConfig(options: EnhancedCliOptions, tui_mode: TuiMode) interactive_session.SessionConfig {
+fn createSessionConfig(options: InteractiveCliOptions, tui_mode: TuiMode) interactive_session.SessionConfig {
     const enable_tui = switch (tui_mode) {
         .rich, .basic => true,
         .none, .auto => false,

@@ -8,7 +8,7 @@
 //! - Manages buffered output for performance
 
 const std = @import("std");
-const term_shared = @import("../../term/mod.zig");
+const term_shared = @import("term_shared");
 const unified = term_shared.unified;
 
 /// Rendering strategies based on terminal capabilities

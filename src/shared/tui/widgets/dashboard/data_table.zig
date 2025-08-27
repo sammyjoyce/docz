@@ -6,8 +6,9 @@ const std = @import("std");
 const renderer_mod = @import("../../core/renderer.zig");
 const bounds_mod = @import("../../core/bounds.zig");
 const events_mod = @import("../../core/events.zig");
-const clipboard_mod = @import("../../../term/ansi/clipboard.zig");
-const terminal_mod = @import("../../../term/unified.zig");
+const tui_mod = @import("../../mod.zig");
+const clipboard_mod = tui_mod.term.ansi.clipboard;
+const terminal_mod = tui_mod.term.unified;
 
 const Renderer = renderer_mod.Renderer;
 const RenderContext = renderer_mod.RenderContext;
@@ -58,8 +59,8 @@ pub const DataTable = struct {
         editable: bool = false,
 
         pub const CellStyle = struct {
-            foregroundColor: ?terminal_mod.Color = null,
-            backgroundColor: ?terminal_mod.Color = null,
+            foregroundColor: ?tui_mod.term.unified.Color = null,
+            backgroundColor: ?tui_mod.term.unified.Color = null,
             bold: bool = false,
             italic: bool = false,
             alignment: Alignment = .left,

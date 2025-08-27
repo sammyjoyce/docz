@@ -141,7 +141,7 @@ pub const Config = struct {
     // Core settings
     model: []const u8 = "claude-3-5-sonnet-20241022",
     temperature: f32 = 1.0,
-    max_tokens: u32 = 4096,
+    maxTokens: u32 = 4096,
 
     // Output formatting
     format: OutputFormat = .enhanced,
@@ -324,7 +324,7 @@ pub const ParsedArgsUnified = struct {
     // Core options
     model: []const u8,
     temperature: f32,
-    max_tokens: u32,
+    maxTokens: u32,
 
     // Output options
     format: Config.OutputFormat,
@@ -357,7 +357,7 @@ pub const ParsedArgsUnified = struct {
         return ParsedArgsUnified{
             .model = config.model,
             .temperature = config.temperature,
-            .max_tokens = config.max_tokens,
+            .maxTokens = config.maxTokens,
             .format = config.format,
             .theme = config.theme,
             .color = config.color,

@@ -25,7 +25,7 @@ pub const Rect = unified.Rect;
 pub const NotificationLevel = unified.NotificationLevel;
 
 // Component imports
-pub const ProgressBar = @import("components/ProgressBar.zig").Progress;
+pub const ProgressBar = @import("components/progress_bar.zig").Progress;
 
 /// Context mode determines how components are rendered
 pub const UIMode = enum {
@@ -75,10 +75,10 @@ pub const UI = struct {
         return RenderContext{
             .terminal = &self.terminal,
             .graphics = if (self.graphics) |*gfx| gfx else null,
-            .parent_bounds = bounds,
-            .clip_region = null,
+            .parentBounds = bounds,
+            .clipRegion = null,
             .theme = &self.theme,
-            .frame_time = std.time.timestamp(),
+            .frameTime = std.time.timestamp(),
         };
     }
 
@@ -231,7 +231,7 @@ pub const NotificationComponent = struct {
         _ = allocator;
         const self: *Self = @ptrCast(@alignCast(impl));
         self.state = ComponentState{
-            .z_index = 1000, // High z-index for notifications
+            .zIndex = 1000, // High z-index for notifications
         };
     }
 
@@ -259,7 +259,7 @@ pub const NotificationComponent = struct {
             .info => ctx.theme.colors.primary,
             .success => ctx.theme.colors.success,
             .warning => ctx.theme.colors.warning,
-            .@"error" => ctx.theme.colors.error_color,
+            .@"error" => ctx.theme.colors.errorColor,
             .debug => Color{ .rgb = .{ .r = 138, .g = 43, .b = 226 } },
         };
 
@@ -462,7 +462,7 @@ pub fn drawBorder(terminal: *Terminal, bounds: Rect, border: BorderStyle) !void 
 
     // Bottom border
     try terminal.moveTo(bounds.x, bounds.y + @as(i32, @intCast(bounds.height)) - 1);
-        try terminal.print(chars.bottomLeft, style);
+    try terminal.print(chars.bottomLeft, style);
     x = 1;
     while (x < bounds.width - 1) : (x += 1) {
         try terminal.print(chars.horizontal, style);

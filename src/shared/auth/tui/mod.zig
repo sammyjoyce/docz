@@ -36,15 +36,13 @@ const Tui = struct {
 
 // Re-export individual TUI components
 pub const oauth_wizard = @import("oauth_wizard.zig");
-// pub const enhanced_oauth_wizard = @import("enhanced_oauth_wizard.zig"); // Temporarily disabled due to import issues
 pub const auth_status = @import("auth_status.zig");
 pub const code_input = @import("code_input.zig");
 
 // Re-export main functions
 pub const runAuthTUI = runTUI;
-pub const setupOAuthWithTUI = oauth_wizard.setupOAuth;
-// pub const setupOAuthWithEnhancedTUI = enhanced_oauth_wizard.setupOAuthWithEnhancedTUI; // Temporarily disabled
-// pub const runEnhancedOAuthWizard = enhanced_oauth_wizard.runEnhancedOAuthWizard; // Temporarily disabled
+pub const setupOAuthWithTUI = oauth_wizard.setupOAuthWithTUI;
+pub const runOAuthWizard = oauth_wizard.runOAuthWizard;
 pub const showAuthStatus = auth_status.display;
 pub const inputAuthCode = code_input.input;
 

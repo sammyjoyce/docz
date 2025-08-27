@@ -133,7 +133,7 @@ pub const Screen = struct {
     pub fn render(self: *Screen) !void {
         if (self.dirty_regions.items.len == 0) return;
 
-        // Sort components by z_index for proper layering
+        // Sort components by zIndex for proper layering
         std.sort.sort(Component, self.components.items, {}, compareComponents);
 
         // Render each dirty region
@@ -181,11 +181,11 @@ pub const Screen = struct {
         }
     }
 
-    fn renderComponent(self: *Screen, component: Component, clip_region: Bounds) !void {
+    fn renderComponent(self: *Screen, component: Component, clipRegion: Bounds) !void {
         _ = self;
 
         // Calculate the intersection of component bounds and clip region
-        const render_bounds = component.bounds.clamp(clip_region);
+        const render_bounds = component.bounds.clamp(clipRegion);
         if (render_bounds.isEmpty()) return;
 
         // Position cursor at the start of the render area

@@ -10,8 +10,8 @@ pub const ThemeConfig = struct {
     highContrastEnabled: bool,
     colorBlindnessMode: ColorBlindnessMode,
     customThemesPath: []const u8,
-    recent_themes: std.ArrayList([]const u8),
-    theme_preferences: std.StringHashMap(ThemePreference),
+    recentThemes: std.ArrayList([]const u8),
+    themePreferences: std.StringHashMap(ThemePreference),
 
     pub const ColorBlindnessMode = enum {
         none,
@@ -36,48 +36,48 @@ pub const ThemeConfig = struct {
             .highContrastEnabled = false,
             .colorBlindnessMode = .none,
             .customThemesPath = "",
-            .recent_themes = std.ArrayList([]const u8).init(allocator),
-            .theme_preferences = std.StringHashMap(ThemePreference).init(allocator),
+            .recentThemes = std.ArrayList([]const u8).init(allocator),
+            .themePreferences = std.StringHashMap(ThemePreference).init(allocator),
         };
     }
 
     pub fn deinit(self: *Self) void {
-        for (self.recent_themes.items) |theme| {
+        for (self.recentThemes.items) |theme| {
             self.allocator.free(theme);
         }
-        self.recent_themes.deinit();
+        self.recentThemes.deinit();
 
-        var iter = self.theme_preferences.iterator();
+        var iter = self.themePreferences.iterator();
         while (iter.next()) |entry| {
             self.allocator.free(entry.key_ptr.*);
         }
-        self.theme_preferences.deinit();
+        self.themePreferences.deinit();
     }
 
-    pub fn setCurrentTheme(self: *Self, theme_name: []const u8) !void {
-        self.currentTheme = try self.allocator.dupe(u8, theme_name);
+    pub fn setCurrentTheme(self: *Self, themeName: []const u8) !void {
+        self.currentTheme = try self.allocator.dupe(u8, themeName);
 
         // Add to recent themes
-        try self.addToRecentThemes(theme_name);
+        try self.addToRecentThemes(themeName);
     }
 
-    fn addToRecentThemes(self: *Self, theme_name: []const u8) !void {
+    fn addToRecentThemes(self: *Self, themeName: []const u8) !void {
         // Remove if already exists
-        for (self.recent_themes.items, 0..) |theme, i| {
-            if (std.mem.eql(u8, theme, theme_name)) {
-                _ = self.recent_themes.orderedRemove(i);
+        for (self.recentThemes.items, 0..) |theme, i| {
+            if (std.mem.eql(u8, theme, themeName)) {
+                _ = self.recentThemes.orderedRemove(i);
                 self.allocator.free(theme);
                 break;
             }
         }
 
         // Add to front
-        const theme_copy = try self.allocator.dupe(u8, theme_name);
-        try self.recent_themes.insert(0, theme_copy);
+        const themeCopy = try self.allocator.dupe(u8, themeName);
+        try self.recentThemes.insert(0, themeCopy);
 
         // Keep only last 10
-        while (self.recent_themes.items.len > 10) {
-            const removed = self.recent_themes.pop();
+        while (self.recentThemes.items.len > 10) {
+            const removed = self.recentThemes.pop();
             self.allocator.free(removed);
         }
     }
@@ -96,9 +96,9 @@ pub const ThemeConfig = struct {
             try writer.print("    .customThemesPath = \"{s}\",\n", .{self.customThemesPath});
         }
 
-        if (self.recent_themes.items.len > 0) {
-            try writer.writeAll("    .recent_themes = .{\n");
-            for (self.recent_themes.items) |theme| {
+        if (self.recentThemes.items.len > 0) {
+            try writer.writeAll("    .recentThemes = .{\n");
+            for (self.recentThemes.items) |theme| {
                 try writer.print("        \"{s}\",\n", .{theme});
             }
             try writer.writeAll("    },\n");

@@ -1,4 +1,4 @@
-//! Simple tools registry and built-in tools.
+//! Tools registry and built-in tools.
 
 const std = @import("std");
 // Import anthropic conditionally - this will be handled by the build system
@@ -318,11 +318,11 @@ fn echo(allocator: std.mem.Allocator, input: []const u8) ToolError![]u8 {
     return allocator.dupe(u8, input) catch ToolError.OutOfMemory;
 }
 
-var global_list: ?*std.ArrayList(u8) = null;
-var global_allocator: ?std.mem.Allocator = null;
+var globalList: ?*std.ArrayList(u8) = null;
+var globalAllocator: ?std.mem.Allocator = null;
 fn tokenCallbackImpl(chunk: []const u8) void {
-    if (global_list) |lst| {
-        if (global_allocator) |alloc| {
+    if (globalList) |lst| {
+        if (globalAllocator) |alloc| {
             lst.appendSlice(alloc, chunk) catch |err| {
                 std.log.err("Failed to append token chunk: {}", .{err});
             };
@@ -359,11 +359,11 @@ fn oracleTool(allocator: std.mem.Allocator, input: []const u8) ToolError![]u8 {
     var accumulator = std.ArrayList(u8){};
     defer accumulator.deinit(allocator);
 
-    global_list = &accumulator;
-    global_allocator = allocator;
+    globalList = &accumulator;
+    globalAllocator = allocator;
     defer {
-        global_list = null;
-        global_allocator = null;
+        globalList = null;
+        globalAllocator = null;
     }
     const tokenCallback = &tokenCallbackImpl;
 
@@ -453,7 +453,7 @@ pub fn createJsonToolWrapper(json_func: JSONToolFunction) ToolFn {
 }
 
 /// Helper to register a JSON-based tool
-pub fn registerJSONTool(registry: *Registry, name: []const u8, description: []const u8, jsonFunc: JSONToolFunction, agentName: []const u8) !void {
+pub fn registerJsonTool(registry: *Registry, name: []const u8, description: []const u8, jsonFunc: JSONToolFunction, agentName: []const u8) !void {
     const wrappedFunction = createJsonToolWrapper(jsonFunc);
     const metadata = ToolMetadata{
         .name = name,

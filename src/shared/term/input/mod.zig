@@ -5,23 +5,23 @@
 const std = @import("std");
 
 // Core input functionality
-pub const enhanced_input = @import("enhanced_input.zig");
-pub const enhanced_input_handler = @import("enhanced_input_handler.zig");
-pub const enhanced_input_parser = @import("enhanced_input_parser.zig");
-pub const advanced_input_driver = @import("advanced_input_driver.zig");
+pub const input_extended = @import("input_extended.zig");
+pub const input_handler = @import("input_handler.zig");
+pub const input_parser = @import("input_parser.zig");
+pub const input_driver = @import("input_driver.zig");
 
 // Import for event parsing
-const enhanced_input_parser_mod = @import("enhanced_input_parser.zig");
+const input_parser_mod = @import("input_parser.zig");
 
 // Keyboard handling
-pub const enhanced_keyboard = @import("enhanced_keyboard.zig");
-pub const enhanced_keys = @import("enhanced_keys.zig");
+pub const keyboard = @import("keyboard.zig");
+pub const keys = @import("keys.zig");
 pub const key_mapping = @import("key_mapping.zig");
 // Kitty keyboard support
 pub const kitty_keyboard = @import("kitty_keyboard.zig");
 
 // Mouse handling
-pub const enhanced_mouse = @import("enhanced_mouse.zig");
+pub const mouse = @import("mouse.zig");
 // TODO: Implement mouse events and tracker
 // pub const mouse_events = @import("mouse_events.zig");
 // pub const mouse_tracker = @import("mouse_tracker.zig");
@@ -182,8 +182,8 @@ pub const InputHandler = struct {
 
     /// Parse raw input bytes into an event
     fn parseInput(self: *InputHandler, input: []const u8) ?Event {
-        // Use enhanced input parser for complex sequences
-        var parser = enhanced_input_parser_mod.EnhancedInputParser.init(self.allocator);
+        // Use input parser for complex sequences
+        var parser = input_parser_mod.InputParser.init(self.allocator);
         defer parser.deinit();
 
         const events = parser.parseSequence(input) catch return null;

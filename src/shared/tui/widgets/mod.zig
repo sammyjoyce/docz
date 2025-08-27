@@ -18,6 +18,7 @@ pub const Core = struct {
     pub const TextInput = @import("core/text_input.zig").TextInput;
     pub const TabContainer = @import("core/tabs.zig").TabContainer;
     pub const TagInput = @import("core/tag_input.zig").TagInput;
+    pub const DiffViewer = @import("core/diff_viewer.zig").DiffViewer;
 
     // Placeholder implementations for widgets to be extracted
     pub const Table = struct {
@@ -30,7 +31,7 @@ pub const Core = struct {
 
 // Enhanced widgets (advanced functionality)
 pub const Enhanced = struct {
-    pub const ProgressBar = @import("enhanced/smart_progress.zig").SmartProgressBar;
+    pub const ProgressBar = @import("enhanced/progress.zig").ProgressBar;
     pub const Notification = @import("enhanced/notification.zig").Notification;
     pub const Graphics = @import("enhanced/graphics.zig").GraphicsWidget;
 };
@@ -48,6 +49,7 @@ pub const TextInput = Core.TextInput;
 pub const TabContainer = Core.TabContainer;
 pub const Table = Core.Table;
 pub const TagInput = Core.TagInput;
+pub const DiffViewer = Core.DiffViewer;
 pub const Tag = @import("core/tag_input.zig").Tag;
 pub const TagCategory = @import("core/tag_input.zig").TagCategory;
 pub const TagInputConfig = @import("core/tag_input.zig").TagInputConfig;
@@ -71,9 +73,6 @@ pub const KPICard = dashboard.KPICard;
 pub const MenuItem = Menu.MenuItem;
 pub const GraphicsWidget = Graphics;
 pub const NotificationController = Enhanced.NotificationController;
-pub const SmartNotification = Notification;
-pub const SmartNotificationController = Enhanced.SmartNotificationController;
-pub const SmartProgressBar = ProgressBar;
 
 // Additional dashboard exports for compatibility
 pub const Chart = LineChart;

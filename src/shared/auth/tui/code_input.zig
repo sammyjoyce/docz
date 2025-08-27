@@ -31,7 +31,7 @@ const Tui = struct {
     };
 };
 
-/// Input authorization code with enhanced TUI interface
+/// Input authorization code with TUI interface
 pub fn input(allocator: std.mem.Allocator) ![]u8 {
     const terminal_size = Tui.getTerminalSize();
     const width = @min(terminal_size.width, 80);

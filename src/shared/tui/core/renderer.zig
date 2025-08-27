@@ -5,12 +5,12 @@
 //! progressive enhancement.
 
 const std = @import("std");
-const term_caps = @import("term_shared").caps;
 const bounds_mod = @import("bounds.zig");
+const tui_mod = @import("../mod.zig");
 
 pub const Point = bounds_mod.Point;
 pub const Bounds = bounds_mod.Bounds;
-pub const TermCaps = term_caps.TermCaps;
+pub const TermCaps = tui_mod.TermCaps;
 
 /// Style information for rendering
 pub const Style = struct {
@@ -80,11 +80,11 @@ pub const Render = struct {
     bounds: Bounds,
     style: Style = .{},
     zIndex: i32 = 0,
-    clip_region: ?Bounds = null,
+    clipRegion: ?Bounds = null,
 
     /// Create a context clipped to a smaller region
     pub fn clipped(self: Render, clip_bounds: Bounds) Render {
-        const intersection = if (self.clip_region) |existing|
+        const intersection = if (self.clipRegion) |existing|
             existing.intersection(clip_bounds)
         else
             clip_bounds;
@@ -93,7 +93,7 @@ pub const Render = struct {
             .bounds = self.bounds.intersection(intersection),
             .style = self.style,
             .zIndex = self.zIndex,
-            .clip_region = intersection,
+            .clipRegion = intersection,
         };
     }
 
@@ -103,7 +103,7 @@ pub const Render = struct {
             .bounds = self.bounds.offset(dx, dy),
             .style = self.style,
             .zIndex = self.zIndex,
-            .clip_region = if (self.clip_region) |clip| clip.offset(dx, dy) else null,
+            .clipRegion = if (self.clipRegion) |clip| clip.offset(dx, dy) else null,
         };
     }
 };
@@ -247,7 +247,7 @@ pub const Renderer = struct {
             .bounds = content_bounds,
             .style = ctx.style,
             .zIndex = ctx.zIndex,
-            .clip_region = ctx.clip_region,
+            .clipRegion = ctx.clipRegion,
         };
 
         // Draw the text content
@@ -282,7 +282,7 @@ pub const Renderer = struct {
             .bounds = ctx.bounds,
             .style = notification_style,
             .zIndex = ctx.zIndex + 1000, // High z-index for notifications
-            .clip_region = ctx.clip_region,
+            .clipRegion = ctx.clipRegion,
         };
 
         // Format notification text
@@ -337,8 +337,8 @@ fn getLevelColor(level: NotificationLevel, caps: TermCaps) Style.Color {
 }
 
 /// Factory function to create appropriate renderer based on terminal capabilities
-pub fn createRenderer(allocator: std.mem.Allocator) !*Renderer {
-    const caps = term_caps.detectCaps(allocator) catch term_caps.TermCaps{
+pub fn createRenderer(allocator: std.mem.Allocator) !Renderer {
+    const caps = tui_mod.detectCaps(allocator) catch TermCaps{
         .supportsTruecolor = false,
         .supportsHyperlinkOsc8 = false,
         .supportsClipboardOsc52 = false,
@@ -369,14 +369,13 @@ pub fn createRenderer(allocator: std.mem.Allocator) !*Renderer {
         .widthMethod = .grapheme,
     };
 
-    // Import renderer implementations
-    const enhanced_renderer = @import("renderers/enhanced.zig");
+    // Import renderer implementation
     const basic_renderer = @import("renderers/basic.zig");
 
-    // Choose renderer based on capabilities
-    if (caps.supportsTruecolor or caps.supportsKittyGraphics or caps.supportsSixel) {
-        return try enhanced_renderer.create(allocator, caps);
-    } else {
-        return try basic_renderer.create(allocator, caps);
-    }
+    // For now, always use basic renderer
+    const basic = try basic_renderer.BasicRenderer.init(allocator, caps);
+    return basic.toRenderer();
 }
+
+/// Alias for backward compatibility
+pub const RenderContext = Render;

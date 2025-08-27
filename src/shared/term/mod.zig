@@ -13,11 +13,11 @@ const std = @import("std");
 pub const caps = @import("caps.zig");
 pub const capability_detector = @import("capability_detector.zig");
 pub const modern_terminal_detection = @import("modern_terminal_detection.zig");
-pub const advanced_terminal_features = @import("advanced_terminal_features.zig");
+pub const terminal_features = @import("terminal_features.zig");
 
 // Terminal management
 pub const cellbuf = @import("cellbuf.zig");
-pub const enhanced_cellbuf = @import("enhanced_cellbuf.zig");
+pub const cellbuf_extended = @import("cellbuf_extended.zig");
 pub const graphics_manager = @import("graphics_manager.zig");
 pub const editor = @import("editor.zig");
 pub const pty = @import("pty.zig");
@@ -26,11 +26,11 @@ pub const writer = @import("writer.zig");
 pub const reader = @import("reader.zig");
 
 // Clipboard support
-pub const enhanced_clipboard = @import("enhanced_clipboard.zig");
+pub const clipboard_extended = @import("clipboard_extended.zig");
 
 // Terminal features
 pub const bracketed_paste = @import("bracketed_paste.zig");
-pub const enhanced_terminal_capabilities = @import("enhanced_terminal_capabilities.zig");
+pub const terminal_capabilities = @import("terminal_capabilities.zig");
 pub const grapheme = @import("grapheme.zig");
 pub const wcwidth = @import("wcwidth.zig");
 

@@ -33,8 +33,8 @@ const Point = renderer_mod.Point;
 const Bounds = renderer_mod.Bounds;
 const TermCaps = renderer_mod.TermCaps;
 
-/// Enhanced renderer implementation
-pub const EnhancedRenderer = struct {
+/// Advanced renderer implementation
+pub const AdvancedRenderer = struct {
     const Self = @This();
 
     allocator: std.mem.Allocator,
@@ -294,7 +294,7 @@ pub const EnhancedRenderer = struct {
         }
         self.current_hyperlink = try self.allocator.dupe(u8, url);
 
-        try term_ansi_hyperlink.startHyperlink(self.writer, self.allocator, self.caps, url, null);
+        try term_ansi_hyperlink.startHyperlinkWithAllocator(self.writer, self.allocator, self.caps, url, null);
     }
 
     fn clearHyperlink(impl: *anyopaque) anyerror!void {
@@ -607,10 +607,10 @@ fn rgbTo256Color(rgb: Style.Color.RGB) u8 {
     }
 }
 
-/// Factory function to create enhanced renderer
+/// Factory function to create advanced renderer
 pub fn create(allocator: std.mem.Allocator, caps: TermCaps) !*Renderer {
-    const enhanced = try EnhancedRenderer.init(allocator, caps);
+    const advanced = try AdvancedRenderer.init(allocator, caps);
     const renderer = try allocator.create(Renderer);
-    renderer.* = enhanced.toRenderer();
+    renderer.* = advanced.toRenderer();
     return renderer;
 }

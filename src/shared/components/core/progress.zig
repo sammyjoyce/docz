@@ -11,8 +11,10 @@
 
 const std = @import("std");
 const math = std.math;
-const unified = @import("../../term/unified.zig");
-const terminal_bridge = @import("../../cli/core/terminal_bridge.zig");
+const term_shared = @import("term_shared");
+const cli_shared = @import("cli_shared");
+const unified = term_shared.unified;
+const terminal_bridge = cli_shared.core.terminal_bridge;
 
 /// Configuration for the progress bar appearance and behavior
 pub const ProgressConfig = struct {
@@ -310,13 +312,13 @@ pub const UnifiedProgressBar = struct {
         }
 
         // Add percentage if enabled
-        if (self.config.show_percentage) {
+        if (self.config.showPercentage) {
             const percentageStr = try std.fmt.allocPrint(self.bridge.allocator, " {d:.1}%", .{self.state.percentage()});
             try metadataParts.append(percentageStr);
         }
 
         // Add ETA if enabled and available
-        if (self.config.show_eta) {
+        if (self.config.showEta) {
             if (self.state.eta()) |eta_ms| {
                 const etaSeconds = @divTrunc(eta_ms, 1000);
                 const etaStr = if (etaSeconds > 60)
@@ -331,7 +333,7 @@ pub const UnifiedProgressBar = struct {
         }
 
         // Add rate if enabled
-        if (self.config.show_rate) {
+        if (self.config.showRate) {
             const rateStr = try std.fmt.allocPrint(self.bridge.allocator, " {d:.2}/s", .{self.state.rate()});
             try metadataParts.append(rateStr);
         }
@@ -510,7 +512,7 @@ pub const ProgressBarPresets = struct {
     pub fn minimal(bridge: *terminal_bridge.TerminalBridge) UnifiedProgressBar {
         return UnifiedProgressBar.init(bridge, ProgressConfig{
             .width = 20,
-            .show_percentage = false,
+            .showPercentage = false,
             .enable_graphics = false,
             .leftCap = "",
             .rightCap = "",
@@ -521,9 +523,9 @@ pub const ProgressBarPresets = struct {
     pub fn rich(bridge: *terminal_bridge.TerminalBridge) UnifiedProgressBar {
         return UnifiedProgressBar.init(bridge, ProgressConfig{
             .width = 50,
-            .show_percentage = true,
-            .show_eta = true,
-            .show_rate = true,
+            .showPercentage = true,
+            .showEta = true,
+            .showRate = true,
             .enable_graphics = true,
             .colorScheme = .rainbow,
         });
@@ -541,9 +543,9 @@ pub const ProgressBarPresets = struct {
     pub fn download(bridge: *terminal_bridge.TerminalBridge) UnifiedProgressBar {
         return UnifiedProgressBar.init(bridge, ProgressConfig{
             .width = 60,
-            .show_percentage = true,
-            .show_eta = true,
-            .show_rate = true,
+            .showPercentage = true,
+            .showEta = true,
+            .showRate = true,
             .colorScheme = .ice,
         });
     }

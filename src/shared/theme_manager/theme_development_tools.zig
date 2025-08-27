@@ -6,14 +6,14 @@ const ColorScheme = @import("color_scheme.zig").ColorScheme;
 const Color = @import("color_scheme.zig").Color;
 const RGB = @import("color_scheme.zig").RGB;
 const ThemeValidator = @import("theme_validator.zig").ThemeValidator;
-const AccessibilityManager = @import("accessibility_manager.zig").AccessibilityManager;
-const ColorBlindnessAdapter = @import("color_blindness_adapter.zig").ColorBlindnessAdapter;
+const AccessibilityManager = @import("accessibility.zig").AccessibilityManager;
+const ColorBlindnessAdapter = @import("color_blindness.zig").ColorBlindnessAdapter;
 
 pub const ThemeDevelopmentTools = struct {
     allocator: std.mem.Allocator,
     validator: *ThemeValidator,
     accessibility: AccessibilityManager,
-    cb_adapter: ColorBlindnessAdapter,
+    cbAdapter: ColorBlindnessAdapter,
 
     const Self = @This();
 
@@ -23,7 +23,7 @@ pub const ThemeDevelopmentTools = struct {
             .allocator = allocator,
             .validator = try ThemeValidator.init(allocator),
             .accessibility = AccessibilityManager.init(allocator),
-            .cb_adapter = ColorBlindnessAdapter.init(allocator),
+            .cbAdapter = ColorBlindnessAdapter.init(allocator),
         };
         return self;
     }
@@ -115,9 +115,9 @@ pub const ThemeDevelopmentTools = struct {
         try writer.print("Contrast Ratio: {d:.2}:1\n", .{contrast});
         try writer.print("WCAG Level: {s}\n", .{theme.wcagLevel});
 
-        const wcag_result = self.accessibility.checkWCAGCompliance(theme.foreground.rgb, theme.background.rgb);
-        try writer.print("WCAG AA (Normal Text): {s}\n", .{if (wcag_result.passesAaNormal) "✓ PASS" else "✗ FAIL"});
-        try writer.print("WCAG AAA (Normal Text): {s}\n", .{if (wcag_result.passesAaaNormal) "✓ PASS" else "✗ FAIL"});
+        const wcagResult = self.accessibility.checkWCAGCompliance(theme.foreground.rgb, theme.background.rgb);
+        try writer.print("WCAG AA (Normal Text): {s}\n", .{if (wcagResult.passesAaNormal) "✓ PASS" else "✗ FAIL"});
+        try writer.print("WCAG AAA (Normal Text): {s}\n", .{if (wcagResult.passesAaaNormal) "✓ PASS" else "✗ FAIL"});
     }
 
     /// Generate theme documentation
@@ -160,7 +160,7 @@ pub const ThemeDevelopmentTools = struct {
         try writer.writeAll("## Usage\n\n");
         try writer.writeAll("```zig\n");
         try writer.writeAll("// In your application\n");
-        try writer.print("const theme_manager = try Theme.init(allocator);\n", .{});
+        try writer.print("const theme_manager = try ThemeManager.init(allocator);\n", .{});
         try writer.print("try theme_manager.switchTheme(\"{s}\");\n", .{theme.name});
         try writer.writeAll("```\n");
 
@@ -186,31 +186,28 @@ pub const ThemeDevelopmentTools = struct {
         var report = TestReport.init(self.allocator);
 
         // Validation tests
-        const validation_result = try self.validator.getValidationReport(theme);
-        defer validation_result.deinit();
-        try report.addSection("Validation", validation_result.passed);
+        const validationResult = try self.validator.getValidationReport(theme);
+        defer validationResult.deinit();
+        try report.addSection("Validation", validationResult.passed);
 
-        // Accessibility tests
-        const accessibility_report = try self.accessibility.validateThemeAccessibility(theme);
-        defer accessibility_report.deinit();
-        try report.addSection("Accessibility", accessibility_report.overall_aa_pass);
+        const accessibilityReport = try self.accessibility.validateThemeAccessibility(theme);
+        defer accessibilityReport.deinit();
+        try report.addSection("Accessibility", accessibilityReport.overall_aa_pass);
 
         // Color blindness tests
-        const cb_types = [_]ColorBlindnessAdapter.ColorBlindnessType{
-            .protanopia,
-            .deuteranopia,
-            .tritanopia,
+        const cbTypes = [_]ColorBlindnessAdapter.ColorBlindnessType{
+            .protanopia, .deuteranopia, .tritanopia, .achromatopsia,
         };
 
-        for (cb_types) |cb_type| {
-            const distinguishable = self.cb_adapter.areColorsDistinguishable(
-                theme.errorColor.rgb,
-                theme.success.rgb,
-                cb_type,
+        for (cbTypes) |cbType| {
+            const distinguishable = self.cbAdapter.areColorsDistinguishable(
+                theme.foreground.rgb,
+                theme.background.rgb,
+                cbType,
             );
-            const section_name = try std.fmt.allocPrint(self.allocator, "{s} Safety", .{@tagName(cb_type)});
-            defer self.allocator.free(section_name);
-            try report.addSection(section_name, distinguishable);
+            const sectionName = try std.fmt.allocPrint(self.allocator, "{s} Safety", .{@tagName(cbType)});
+            defer self.allocator.free(sectionName);
+            try report.addSection(sectionName, distinguishable);
         }
 
         return report;
@@ -255,9 +252,9 @@ pub const TestReport = struct {
     }
 
     pub fn addSection(self: *TestReport, name: []const u8, passed: bool) !void {
-        const name_copy = try self.allocator.dupe(u8, name);
+        const nameCopy = try self.allocator.dupe(u8, name);
         try self.sections.append(.{
-            .name = name_copy,
+            .name = nameCopy,
             .passed = passed,
         });
         if (!passed) self.overall_passed = false;

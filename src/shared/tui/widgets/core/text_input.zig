@@ -4,7 +4,9 @@ const print = std.debug.print;
 const Bounds = @import("../../core/bounds.zig").Bounds;
 const Color = @import("../../themes/default.zig").Color;
 const Box = @import("../../themes/default.zig").Box;
-const TermCaps = @import("../../../term/caps.zig").TermCaps;
+const tui_mod = @import("../../mod.zig");
+const TermCaps = tui_mod.TermCaps;
+const clipboard_mod = tui_mod.term.ansi.clipboard;
 
 /// Enhanced text input field with clipboard support
 pub const TextInput = struct {
@@ -198,24 +200,21 @@ pub const TextInput = struct {
     /// Copy selected text to clipboard using OSC 52
     pub fn copySelection(self: *TextInput) !void {
         if (self.getSelectedText()) |text| {
-            const clipboard = @import("../../../term/ansi/clipboard.zig");
-            try clipboard.setClipboard(text, self.caps);
+            try clipboard_mod.setClipboard(text, self.caps);
         }
     }
 
     /// Cut selected text to clipboard
     pub fn cutSelection(self: *TextInput) !void {
         if (self.getSelectedText()) |text| {
-            const clipboard = @import("../../../term/ansi/clipboard.zig");
-            try clipboard.setClipboard(text, self.caps);
+            try clipboard_mod.setClipboard(text, self.caps);
             self.deleteSelection();
         }
     }
 
     /// Paste text from clipboard using OSC 52
     pub fn paste(self: *TextInput) !void {
-        const clipboard = @import("../../../term/ansi/clipboard.zig");
-        if (try clipboard.getClipboard(self.caps)) |text| {
+        if (try clipboard_mod.getClipboard(self.caps)) |text| {
             defer self.content.allocator.free(text);
             try self.insertText(text);
         }

@@ -182,7 +182,7 @@ pub const ThemeValidator = struct {
             theme.secondary.rgb,
             theme.success.rgb,
             theme.warning.rgb,
-            theme.error_color.rgb,
+            theme.errorColor.rgb,
             theme.info.rgb,
         };
 
@@ -213,7 +213,7 @@ pub const ThemeValidator = struct {
             theme.secondary,
             theme.success,
             theme.warning,
-            theme.error_color,
+            theme.errorColor,
         };
 
         for (colors) |color| {
@@ -233,10 +233,10 @@ pub const ThemeValidator = struct {
 
     fn validateColorBlindSafe(theme: *ColorScheme) bool {
         // Simplified check - ensure red/green are not the only distinguishing colors
-        const red_green_distance = calculateColorDistance(theme.error_color.rgb, theme.success.rgb);
+        const red_green_distance = calculateColorDistance(theme.errorColor.rgb, theme.success.rgb);
 
         // Also check brightness difference
-        const red_lum = calculateLuminance(theme.error_color.rgb);
+        const red_lum = calculateLuminance(theme.errorColor.rgb);
         const green_lum = calculateLuminance(theme.success.rgb);
         const lum_diff = @abs(red_lum - green_lum);
 

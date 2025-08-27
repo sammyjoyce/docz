@@ -2,9 +2,10 @@
 //! Extracted from monolithic tui.zig with terminal capability enhancements
 
 const std = @import("std");
-const term_ansi = @import("../../../term/ansi/color.zig");
-const term_hyperlink = @import("../../../term/ansi/hyperlink.zig");
-const term_caps = @import("../../../term/caps.zig");
+const term_shared = @import("term_shared");
+const term_ansi = term_shared.ansi.color;
+const term_hyperlink = term_shared.ansi.hyperlink;
+const term_caps = term_shared.caps;
 const print = std.debug.print;
 
 /// Menu item with enhanced properties

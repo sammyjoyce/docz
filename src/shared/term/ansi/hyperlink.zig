@@ -54,3 +54,36 @@ pub fn writeHyperlink(writer: anytype, alloc: std.mem.Allocator, caps: TermCaps,
     defer alloc.free(seq);
     try passthrough.writeWithPassthrough(writer, caps, seq);
 }
+
+/// Start an OSC 8 hyperlink sequence
+/// Used by unified terminal interface
+pub fn startHyperlink(writer: anytype, caps: TermCaps, url: []const u8, extra_param: []const u8) !void {
+    _ = extra_param; // unused parameter for compatibility
+    if (!caps.supportsHyperlinkOsc8) return;
+
+    const st = oscTerminator();
+    try writer.writeAll("\x1b]");
+    try writer.print("{d}", .{seqcfg.osc.ops.hyperlink});
+    try writer.writeAll(";;");
+    try writer.writeAll(url);
+    try writer.writeAll(st);
+}
+
+/// Start an OSC 8 hyperlink sequence with allocator parameter
+/// Used by advanced renderer - allocator parameter included for API compatibility
+pub fn startHyperlinkWithAllocator(writer: anytype, alloc: std.mem.Allocator, caps: TermCaps, url: []const u8, extra_param: ?[]const u8) !void {
+    _ = alloc; // allocator not needed for start sequence
+    _ = extra_param; // unused parameter for compatibility
+    try startHyperlink(writer, caps, url, "");
+}
+
+/// End an OSC 8 hyperlink sequence
+pub fn endHyperlink(writer: anytype, caps: TermCaps) !void {
+    if (!caps.supportsHyperlinkOsc8) return;
+
+    const st = oscTerminator();
+    try writer.writeAll("\x1b]");
+    try writer.print("{d}", .{seqcfg.osc.ops.hyperlink});
+    try writer.writeAll(";;");
+    try writer.writeAll(st);
+}

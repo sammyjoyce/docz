@@ -387,10 +387,10 @@ pub const DataTableImpl = struct {
         // Render title if present
         if (self.config.title) |title| {
             const title_ctx = renderer_mod.RenderContext{
-                .bounds = base.Bounds.init(ctx.bounds.x, current_y, ctx.bounds.width, 1),
+                .bounds = ctx.bounds,
                 .style = renderer_mod.Style{ .bold = true },
                 .zIndex = ctx.zIndex,
-                .clip_region = ctx.clip_region,
+                .clipRegion = ctx.clipRegion,
             };
             try renderer.drawText(title_ctx, title);
             current_y += 2;
@@ -409,7 +409,7 @@ pub const DataTableImpl = struct {
                     .bounds = base.Bounds.init(current_x, current_y, @intCast(col_width), 1),
                     .style = renderer_mod.Style{ .bold = true },
                     .zIndex = ctx.zIndex,
-                    .clip_region = ctx.clip_region,
+                    .clipRegion = ctx.clipRegion,
                 };
                 try renderer.drawText(header_ctx, header);
                 current_x += @intCast(col_width + 1);
@@ -444,7 +444,7 @@ pub const DataTableImpl = struct {
                     .bounds = base.Bounds.init(current_x, current_y, @intCast(col_width), 1),
                     .style = cell_style,
                     .zIndex = ctx.zIndex,
-                    .clip_region = ctx.clip_region,
+                    .clipRegion = ctx.clipRegion,
                 };
 
                 // Truncate cell value to fit column width

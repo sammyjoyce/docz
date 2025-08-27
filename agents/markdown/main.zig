@@ -42,9 +42,9 @@ pub fn main() !void {
         const config = interactive_markdown.EditorConfig{
             .split_position = 0.5,
             .show_line_numbers = true,
-            .syntax_highlight = true,
+            .enable_syntax_highlight = true,
             .auto_save_interval = 30,
-            .word_wrap = true,
+            .enable_word_wrap = true,
             .max_preview_width = 80,
             .enable_mouse = true,
             .enable_hyperlinks = true,

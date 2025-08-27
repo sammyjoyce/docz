@@ -34,10 +34,9 @@ pub const iterm2_shell_integration = @import("iterm2_shell_integration.zig");
 pub const finalterm = @import("finalterm.zig");
 pub const ghostty = @import("ghostty.zig");
 
-// Advanced functionality
-pub const enhanced_color = @import("enhanced_color.zig");
-pub const advanced_color = @import("advanced_color.zig");
-pub const color_conversion = @import("color_conversion.zig");
+// Extended functionality
+pub const color_extended = @import("color_extended.zig");
+pub const color_conversion_extended = @import("color_conversion_extended.zig");
 pub const structured_colors = @import("structured_colors.zig");
 pub const terminal_background = @import("terminal_background.zig");
 pub const terminal_colors = @import("terminal_colors.zig");
@@ -47,16 +46,13 @@ pub const passthrough = @import("passthrough.zig");
 pub const truncate = @import("truncate.zig");
 pub const cwd = @import("cwd.zig");
 pub const winop = @import("winop.zig");
-pub const advanced_cursor_management = @import("advanced_cursor_management.zig");
-pub const advanced_color_conversion = @import("advanced_color_conversion.zig");
-
+pub const cursor_management = @import("cursor_management.zig");
 // Terminal enhancements
 pub const terminal_enhancements = @import("terminal_enhancements.zig");
-pub const enhanced_input = @import("enhanced_input.zig");
-pub const enhanced_cellbuf = @import("enhanced_cellbuf.zig");
-pub const enhanced_color_conversion = @import("enhanced_color_conversion.zig");
-pub const enhanced_color_converter = @import("enhanced_color_converter.zig");
-pub const enhanced_cursor_control = @import("enhanced_cursor_control.zig");
+pub const input_extended = @import("input_extended.zig");
+pub const cellbuf_extended = @import("cellbuf_extended.zig");
+pub const color_converter = @import("color_converter.zig");
+pub const cursor_control = @import("cursor_control.zig");
 pub const clipboard_integration = @import("clipboard_integration.zig");
 pub const terminal_color_control = @import("terminal_color_control.zig");
 pub const background = @import("background.zig");

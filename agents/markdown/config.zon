@@ -17,7 +17,7 @@
         .features = .{
             .enable_custom_tools = true,
             .enable_file_operations = true,
-            .enable_network_access = false,
+            .enable_network_access = true,
             .enable_system_commands = false,
         },
 

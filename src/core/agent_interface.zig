@@ -1,4 +1,4 @@
-//! Enhanced Agent Interface Contract
+//! Agent Interface Contract
 //!
 //! This module defines a comprehensive interface contract that all agents must implement.
 //! It provides a standardized way for agents to interact with the shared infrastructure,
@@ -109,7 +109,7 @@
 //! pub fn registerTools(agent: *anyopaque, context: AgentInterface.ToolContext) !void {
 //!     var self = @as(*MyAgent, @ptrCast(@alignCast(agent)));
 //!
-//!     // Register tools with enhanced metadata
+//!     // Register tools with metadata
 //!     const toolMetadata = AgentInterface.ToolMetadata{
 //!         .name = "my_custom_tool",
 //!         .description = "A custom tool for specialized processing",
@@ -389,7 +389,7 @@ pub const AgentInterface = struct {
         toolTimeoutMs: u32,
     };
 
-    /// Tool metadata for enhanced tool management
+    /// Tool metadata for tool management
     pub const ToolMetadata = struct {
         /// Tool name
         name: []const u8,

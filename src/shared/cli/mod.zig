@@ -10,7 +10,7 @@ pub const Core = struct {
 
     // Legacy parsers for compatibility
     pub const parser = @import("core/parser.zig");
-    pub const enhanced_parser = @import("core/enhanced_parser.zig");
+    pub const legacy_parser = @import("core/legacy_parser.zig");
 };
 
 // Main exports for the new system
@@ -24,14 +24,14 @@ pub const CommandResult = Core.types.CommandResult;
 pub const components = @import("components/mod.zig");
 
 // Legacy compatibility - existing modules
-pub const enhanced = @import("core/enhanced_parser.zig");
+pub const legacy = @import("core/legacy_parser.zig");
 pub const types = @import("core/types.zig");
 
 // Re-export commonly used legacy types for compatibility
-pub const ParsedArgs = enhanced.ParsedArgs;
-pub const EnhancedParser = enhanced.EnhancedParser;
-pub const parseArgs = enhanced.parseArgsEnhanced;
-pub const parseAndHandle = enhanced.parseAndHandle;
+pub const ParsedArgs = legacy.ParsedArgs;
+pub const EnhancedParser = legacy.EnhancedParser;
+pub const parseArgs = legacy.parseArgsEnhanced;
+pub const parseAndHandle = legacy.parseAndHandle;
 
 // Legacy compatibility
 pub const LegacyParser = @import("core/parser.zig").Parser;

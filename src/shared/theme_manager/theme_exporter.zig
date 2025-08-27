@@ -173,7 +173,7 @@ pub const ThemeExporter = struct {
         try self.writeCssVariable(writer, "--secondary", theme.secondary);
         try self.writeCssVariable(writer, "--success", theme.success);
         try self.writeCssVariable(writer, "--warning", theme.warning);
-        try self.writeCssVariable(writer, "--error", theme.error_color);
+        try self.writeCssVariable(writer, "--error", theme.errorColor);
         try self.writeCssVariable(writer, "--info", theme.info);
 
         try writer.writeAll("}\n");

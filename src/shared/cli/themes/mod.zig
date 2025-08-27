@@ -7,4 +7,4 @@ pub const LightTheme = @import("light_theme.zig");
 pub const HighContrastTheme = @import("high_contrast_theme.zig");
 
 pub const ThemeColors = @import("colors.zig");
-pub const ThemeManager = @import("theme_manager.zig");
+pub const ThemeManager = @import("theme.zig");

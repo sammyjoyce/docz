@@ -1,4 +1,4 @@
-//! Unified Progress Bar Component with Advanced Terminal Capabilities
+//! Unified Progress Bar Component with Terminal Capabilities
 //!
 //! This progress bar component leverages the sophisticated terminal capabilities
 //! from src/shared/term to provide enhanced visual effects, progressive enhancement,
@@ -9,7 +9,7 @@ const component_mod = @import("../component.zig");
 const term_shared = @import("../../term/mod.zig");
 const unified = term_shared.unified;
 const graphics = term_shared.graphics_manager;
-const advanced_color = term_shared.ansi.advanced_color;
+const advanced_color = term_shared.ansi.color_advanced;
 const unicode_renderer = @import("../../term/unicode_image_renderer.zig");
 const term_caps = term_shared.caps;
 
