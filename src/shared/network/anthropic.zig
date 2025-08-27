@@ -1,3 +1,13 @@
+//! DEPRECATED: Monolithic Anthropic client (transitional)
+//!
+//! This file is kept temporarily for backwards compatibility during the
+//! Phase 3 split. New code should import the split module via:
+//!   `@import("shared/network/anthropic/mod.zig")`
+//! and use `client.zig`, `models.zig`, `stream.zig`, and `oauth.zig` APIs.
+//!
+//! The implementation below remains functional but will be removed after the
+//! deprecation window. Please migrate to the split modules.
+//!
 //! Minimal Anthropic HTTP streaming client for Zig 0.15.1.
 //! Supports both API key and OAuth (Claude Pro/Max) authentication.
 
@@ -20,20 +30,20 @@ pub const OAUTH_REDIRECT_URI = "https://console.anthropic.com/oauth/code/callbac
 pub const OAUTH_SCOPES = "org:create_api_key user:profile user:inference";
 
 // OAuth credentials stored to disk
-pub const OAuthCredentials = struct {
+pub const Credentials = struct {
     type: []const u8, // Always "oauth"
     access_token: []const u8,
     refresh_token: []const u8,
     expires_at: i64, // Unix timestamp
 
     /// Check if the token is expired
-    pub fn isExpired(self: OAuthCredentials) bool {
+    pub fn isExpired(self: Credentials) bool {
         const now = std.time.timestamp();
         return now >= self.expires_at;
     }
 
     /// Check if the token will expire within the specified leeway (in seconds)
-    pub fn willExpireSoon(self: OAuthCredentials, leeway: i64) bool {
+    pub fn willExpireSoon(self: Credentials, leeway: i64) bool {
         const now = std.time.timestamp();
         return now + leeway >= self.expires_at;
     }
@@ -56,18 +66,18 @@ pub const Pkce = struct {
 /// Authentication methods supported
 pub const AuthMethod = union(enum) {
     api_key: []const u8,
-    oauth: OAuthCredentials,
+    oauth: Credentials,
 };
 
 /// OAuth provider configuration
-pub const OAuthProvider = struct {
+pub const Provider = struct {
     client_id: []const u8,
     authorization_url: []const u8,
     token_url: []const u8,
     redirect_uri: []const u8,
     scopes: []const []const u8,
 
-    pub fn buildAuthURL(self: OAuthProvider, allocator: std.mem.Allocator, pkce_params: Pkce) ![]u8 {
+    pub fn buildAuthURL(self: Provider, allocator: std.mem.Allocator, pkce_params: Pkce) ![]u8 {
         const scopes_joined = try std.mem.join(allocator, " ", self.scopes);
         defer allocator.free(scopes_joined);
 
@@ -234,7 +244,7 @@ pub const AnthropicClient = struct {
         };
     }
 
-    pub fn initWithOAuth(allocator: std.mem.Allocator, oauth_creds: OAuthCredentials, credentials_path: []const u8) Error!AnthropicClient {
+    pub fn initWithOAuth(allocator: std.mem.Allocator, oauth_creds: Credentials, credentials_path: []const u8) Error!AnthropicClient {
         return AnthropicClient{
             .allocator = allocator,
             .auth = AuthMethod{ .oauth = oauth_creds },
@@ -1123,7 +1133,7 @@ fn processSSELine(line: []const u8, event_state: *sse.SSEEvent, sse_config: *con
 }
 
 /// Exchange authorization code for tokens
-pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorization_code: []const u8, pkce_params: Pkce) !OAuthCredentials {
+pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorization_code: []const u8, pkce_params: Pkce) !Credentials {
     std.log.info("🔄 Exchanging authorization code for OAuth tokens...", .{});
 
     var client = curl.HTTPClient.init(allocator) catch |err| {
@@ -1223,7 +1233,7 @@ pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorization_code: [
     std.log.info("✅ OAuth tokens received successfully!", .{});
 
     // Return OAuth credentials with owned strings
-    return OAuthCredentials{
+    return Credentials{
         .type = try allocator.dupe(u8, "oauth"),
         .access_token = try allocator.dupe(u8, parsed.value.access_token),
         .refresh_token = try allocator.dupe(u8, parsed.value.refresh_token),
@@ -1232,7 +1242,7 @@ pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorization_code: [
 }
 
 /// Refresh OAuth tokens
-pub fn refreshTokens(allocator: std.mem.Allocator, refresh_token: []const u8) !OAuthCredentials {
+pub fn refreshTokens(allocator: std.mem.Allocator, refresh_token: []const u8) !Credentials {
     std.log.info("🔄 Refreshing OAuth tokens...", .{});
 
     var client = curl.HTTPClient.init(allocator) catch |err| {
@@ -1314,7 +1324,7 @@ pub fn refreshTokens(allocator: std.mem.Allocator, refresh_token: []const u8) !O
     std.log.info("✅ OAuth tokens refreshed successfully!", .{});
 
     // Return OAuth credentials with owned strings
-    return OAuthCredentials{
+    return Credentials{
         .type = try allocator.dupe(u8, "oauth"),
         .access_token = try allocator.dupe(u8, parsed.value.access_token),
         .refresh_token = try allocator.dupe(u8, parsed.value.refresh_token),
@@ -1323,7 +1333,7 @@ pub fn refreshTokens(allocator: std.mem.Allocator, refresh_token: []const u8) !O
 }
 
 /// Load OAuth credentials from file
-pub fn loadOAuthCredentials(allocator: std.mem.Allocator, file_path: []const u8) !?OAuthCredentials {
+pub fn loadOAuthCredentials(allocator: std.mem.Allocator, file_path: []const u8) !?Credentials {
     const file = std.fs.cwd().openFile(file_path, .{}) catch |err| switch (err) {
         error.FileNotFound => return null,
         else => return err,
@@ -1333,10 +1343,10 @@ pub fn loadOAuthCredentials(allocator: std.mem.Allocator, file_path: []const u8)
     const contents = try file.readToEndAlloc(allocator, 16 * 1024);
     defer allocator.free(contents);
 
-    const parsed = try std.json.parseFromSlice(OAuthCredentials, allocator, contents, .{});
+    const parsed = try std.json.parseFromSlice(Credentials, allocator, contents, .{});
     defer parsed.deinit();
 
-    return OAuthCredentials{
+    return Credentials{
         .type = try allocator.dupe(u8, parsed.value.type),
         .access_token = try allocator.dupe(u8, parsed.value.access_token),
         .refresh_token = try allocator.dupe(u8, parsed.value.refresh_token),
@@ -1345,7 +1355,7 @@ pub fn loadOAuthCredentials(allocator: std.mem.Allocator, file_path: []const u8)
 }
 
 /// Save OAuth credentials to file with atomic update
-pub fn saveOAuthCredentials(allocator: std.mem.Allocator, file_path: []const u8, creds: OAuthCredentials) !void {
+pub fn saveOAuthCredentials(allocator: std.mem.Allocator, file_path: []const u8, creds: Credentials) !void {
     // Use manual JSON construction (working approach in Zig 0.15.1)
     const json_content = try std.fmt.allocPrint(allocator, "{{\"type\":\"{s}\",\"access_token\":\"{s}\",\"refresh_token\":\"{s}\",\"expires_at\":{}}}", .{ creds.type, creds.access_token, creds.refresh_token, creds.expires_at });
     defer allocator.free(json_content);

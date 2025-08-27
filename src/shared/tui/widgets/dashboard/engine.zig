@@ -9,7 +9,7 @@ const term_caps = term_shared.caps;
 const graphics_manager = term_shared.graphics_manager;
 const color_palette = term_shared.color_palette;
 const enhanced_mouse = term_shared.input.mouse;
-const terminal_graphics = term_shared.unicode_image_renderer;
+const terminal_graphics = term_shared.unicode.image_renderer;
 
 // Import widget types
 const LineChart = @import("chart/line.zig").LineChart;

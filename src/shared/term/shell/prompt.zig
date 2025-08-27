@@ -6,18 +6,18 @@ const integration = @import("integration.zig");
 pub fn PromptTracker(comptime WriterType: type) type {
     return struct {
         allocator: std.mem.Allocator,
-        context: ?Context(WriterType) = null,
+        context: ?ShellContext(WriterType) = null,
 
-        pub fn Context(comptime InnerWriterType: type) type {
+        pub fn ShellContext(comptime InnerWriterType: type) type {
             return struct {
                 writer: InnerWriterType,
                 allocator: std.mem.Allocator,
-                caps: integration.ShellIntegration.TermCaps,
-                iface: integration.ShellIntegration.Interface,
+                caps: integration.ShellManager.TermCaps,
+                iface: integration.ShellManager.Interface,
 
                 const Self = @This();
 
-                pub fn init(writer: InnerWriterType, allocator: std.mem.Allocator, caps: integration.ShellIntegration.TermCaps, iface: integration.ShellIntegration.Interface) Self {
+                pub fn init(writer: InnerWriterType, allocator: std.mem.Allocator, caps: integration.ShellManager.TermCaps, iface: integration.ShellManager.Interface) Self {
                     return .{
                         .writer = writer,
                         .allocator = allocator,
@@ -27,8 +27,8 @@ pub fn PromptTracker(comptime WriterType: type) type {
                 }
 
                 /// Create a shell integration context
-                pub fn createShellContext(self: Self) integration.ShellIntegration.Context(InnerWriterType) {
-                    return integration.ShellIntegration.createContext(InnerWriterType, self.writer, self.allocator, self.caps);
+                pub fn createShellContext(self: Self) integration.ShellManager.Context(InnerWriterType) {
+                    return integration.ShellManager.createContext(InnerWriterType, self.writer, self.allocator, self.caps);
                 }
             };
         }
@@ -42,7 +42,7 @@ pub fn PromptTracker(comptime WriterType: type) type {
         }
 
         /// Set the shell integration context
-        pub fn setContext(self: *Self, context: Context(WriterType)) void {
+        pub fn setContext(self: *Self, context: ShellContext(WriterType)) void {
             self.context = context;
         }
 
@@ -84,7 +84,7 @@ pub fn PromptTracker(comptime WriterType: type) type {
 pub fn CommandTracker(comptime WriterType: type) type {
     return struct {
         allocator: std.mem.Allocator,
-        context: ?PromptTracker(WriterType).Context(WriterType) = null,
+        context: ?PromptTracker(WriterType).ShellContext(WriterType) = null,
 
         const Self = @This();
 
@@ -95,7 +95,7 @@ pub fn CommandTracker(comptime WriterType: type) type {
         }
 
         /// Set the shell integration context
-        pub fn setContext(self: *Self, context: PromptTracker(WriterType).Context(WriterType)) void {
+        pub fn setContext(self: *Self, context: PromptTracker(WriterType).ShellContext(WriterType)) void {
             self.context = context;
         }
 
@@ -164,7 +164,7 @@ pub fn CommandTracker(comptime WriterType: type) type {
 pub fn DirectoryTracker(comptime WriterType: type) type {
     return struct {
         allocator: std.mem.Allocator,
-        context: ?PromptTracker(WriterType).Context(WriterType) = null,
+        context: ?PromptTracker(WriterType).ShellContext(WriterType) = null,
         current_dir: ?[]u8 = null,
 
         const Self = @This();
@@ -182,7 +182,7 @@ pub fn DirectoryTracker(comptime WriterType: type) type {
         }
 
         /// Set the shell integration context
-        pub fn setContext(self: *Self, context: PromptTracker(WriterType).Context(WriterType)) void {
+        pub fn setContext(self: *Self, context: PromptTracker(WriterType).ShellContext(WriterType)) void {
             self.context = context;
         }
 
@@ -227,10 +227,10 @@ pub fn DirectoryTracker(comptime WriterType: type) type {
 }
 
 /// Notification manager for terminal notifications
-pub fn NotificationManager(comptime WriterType: type) type {
+pub fn Notification(comptime WriterType: type) type {
     return struct {
         allocator: std.mem.Allocator,
-        context: ?PromptTracker(WriterType).Context(WriterType) = null,
+        context: ?PromptTracker(WriterType).ShellContext(WriterType) = null,
 
         const Self = @This();
 
@@ -241,7 +241,7 @@ pub fn NotificationManager(comptime WriterType: type) type {
         }
 
         /// Set the shell integration context
-        pub fn setContext(self: *Self, context: PromptTracker(WriterType).Context(WriterType)) void {
+        pub fn setContext(self: *Self, context: PromptTracker(WriterType).ShellContext(WriterType)) void {
             self.context = context;
         }
 
@@ -291,7 +291,7 @@ pub fn NotificationManager(comptime WriterType: type) type {
 pub fn SemanticZone(comptime WriterType: type) type {
     return struct {
         allocator: std.mem.Allocator,
-        context: ?PromptTracker(WriterType).Context(WriterType) = null,
+        context: ?PromptTracker(WriterType).ShellContext(WriterType) = null,
 
         const Self = @This();
 
@@ -302,7 +302,7 @@ pub fn SemanticZone(comptime WriterType: type) type {
         }
 
         /// Set the shell integration context
-        pub fn setContext(self: *Self, context: PromptTracker(WriterType).Context(WriterType)) void {
+        pub fn setContext(self: *Self, context: PromptTracker(WriterType).ShellContext(WriterType)) void {
             self.context = context;
         }
 
@@ -341,13 +341,13 @@ pub fn SemanticZone(comptime WriterType: type) type {
 }
 
 /// Complete shell integration manager
-pub fn ShellIntegration(comptime WriterType: type) type {
+pub fn ShellManager(comptime WriterType: type) type {
     return struct {
         allocator: std.mem.Allocator,
         prompt_tracker: PromptTracker(WriterType),
         command_tracker: CommandTracker(WriterType),
         directory_tracker: DirectoryTracker(WriterType),
-        notification_manager: NotificationManager(WriterType),
+        notification_manager: Notification(WriterType),
         semantic_manager: SemanticZone(WriterType),
 
         const Self = @This();
@@ -358,7 +358,7 @@ pub fn ShellIntegration(comptime WriterType: type) type {
                 .prompt_tracker = PromptTracker(WriterType).init(allocator),
                 .command_tracker = CommandTracker(WriterType).init(allocator),
                 .directory_tracker = DirectoryTracker(WriterType).init(allocator),
-                .notification_manager = NotificationManager(WriterType).init(allocator),
+                .notification_manager = Notification(WriterType).init(allocator),
                 .semantic_manager = SemanticZone(WriterType).init(allocator),
             };
         }
@@ -369,7 +369,7 @@ pub fn ShellIntegration(comptime WriterType: type) type {
 
         /// Set the shell integration context for all trackers
         pub fn setContext(self: *Self, writer: WriterType, caps: integration.ShellIntegration.TermCaps, iface: integration.ShellIntegration.Interface) void {
-            const context = PromptTracker(WriterType).Context(WriterType).init(writer, self.allocator, caps, iface);
+            const context = PromptTracker(WriterType).ShellContext(WriterType).init(writer, self.allocator, caps, iface);
             self.prompt_tracker.setContext(context);
             self.command_tracker.setContext(context);
             self.directory_tracker.setContext(context);
@@ -381,7 +381,7 @@ pub fn ShellIntegration(comptime WriterType: type) type {
         pub fn initFullIntegration(self: *Self, writer: WriterType, caps: integration.ShellIntegration.TermCaps, iface: integration.ShellIntegration.Interface) !void {
             self.setContext(writer, caps, iface);
 
-            const context = PromptTracker(WriterType).Context(WriterType).init(writer, self.allocator, caps, iface);
+            const context = PromptTracker(WriterType).ShellContext(WriterType).init(writer, self.allocator, caps, iface);
             const shell_ctx = context.createShellContext();
             try integration.ShellIntegration.Convenience.initFullIntegration(WriterType, shell_ctx, iface);
         }

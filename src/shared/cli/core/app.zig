@@ -2,37 +2,37 @@
 //! Main application that coordinates all CLI functionality
 
 const std = @import("std");
-const context = @import("context.zig");
+const state = @import("state.zig");
 const types = @import("types.zig");
 const router = @import("Router.zig");
 
 pub const CliApp = struct {
     allocator: std.mem.Allocator,
-    context: context.Cli,
+    state: state.Cli,
     router: router.CommandRouter,
 
     pub fn init(allocator: std.mem.Allocator) !CliApp {
         // Initialize context with terminal capabilities
-        var ctx = try context.Cli.init(allocator);
+        var ctx = try state.Cli.init(allocator);
 
         // Initialize command router
         const commandRouter = try router.CommandRouter.init(allocator, &ctx);
 
         return CliApp{
             .allocator = allocator,
-            .context = ctx,
+            .state = ctx,
             .router = commandRouter,
         };
     }
 
     pub fn deinit(self: *CliApp) void {
         self.router.deinit();
-        self.context.deinit();
+        self.state.deinit();
     }
 
     /// Main entry point for CLI execution
     pub fn run(self: *CliApp, args: []const []const u8) !u8 {
-        // Parse arguments (unified via enhanced parser)
+        // Parse arguments (unified via parser)
         const parsedArgs = try self.parseArguments(args);
 
         // Handle built-in commands
@@ -47,12 +47,12 @@ pub const CliApp = struct {
         }
 
         if (parsedArgs.verbose) {
-            self.context.enableVerbose();
+            self.state.enableVerbose();
         }
 
         // Show capability info in verbose mode
-        if (self.context.verbose) {
-            self.context.verboseLog("Terminal capabilities: {s}", .{self.context.capabilitySummary()});
+        if (self.state.verbose) {
+            self.state.verboseLog("Terminal capabilities: {s}", .{self.state.capabilitySummary()});
         }
 
         // Execute command through router
@@ -61,18 +61,18 @@ pub const CliApp = struct {
         // Handle result
         if (result.success) {
             if (result.output) |output| {
-                try self.context.terminal.printf("{s}", .{output}, null);
+                try self.state.terminal.printf("{s}", .{output}, null);
             }
             return result.exit_code;
         } else {
             if (result.errorMessage) |msg| {
-                try self.context.terminal.printf("{s}\n", .{msg}, .{ .fg_color = .{ .rgb = .{ .r = 220, .g = 20, .b = 60 } } });
+                try self.state.terminal.printf("{s}\n", .{msg}, .{ .fg_color = .{ .rgb = .{ .r = 220, .g = 20, .b = 60 } } });
             }
             return result.exit_code;
         }
     }
 
-    fn parseArguments(self: *CliApp, args: []const []const u8) !types.ArgsUnified {
+    fn parseArguments(self: *CliApp, args: []const []const u8) !types.Args {
         const legacy_parser = @import("legacy_parser.zig");
         // The enhanced parser expects argv-style input including program name at index 0.
         var argv = try self.allocator.alloc([]const u8, args.len + 1);
@@ -80,11 +80,11 @@ pub const CliApp = struct {
         argv[0] = "docz"; // synthetic argv[0]
         for (args, 0..) |a, i| argv[i + 1] = a;
 
-        var parser = legacy_parser.EnhancedParser.init(self.allocator);
+        var parser = legacy_parser.Parser.init(self.allocator);
         var parsed = try parser.parse(argv);
         defer parsed.deinit();
 
-        var unified = types.ParsedArgsUnified.fromConfig(self.context.config, self.allocator);
+        var unified = types.Args.fromConfig(self.state.config, self.allocator);
 
         // Map enhanced -> unified
         unified.stream = parsed.stream;
@@ -142,16 +142,16 @@ pub const CliApp = struct {
         try writer.writeAll(helpText);
 
         // Show available terminal features
-        if (self.context.hasFeature(.hyperlinks)) {
+        if (self.state.hasFeature(.hyperlinks)) {
             try writer.writeAll("  ✓ Hyperlinks supported\n");
         }
-        if (self.context.hasFeature(.clipboard)) {
+        if (self.state.hasFeature(.clipboard)) {
             try writer.writeAll("  ✓ Clipboard integration\n");
         }
-        if (self.context.hasFeature(.notifications)) {
+        if (self.state.hasFeature(.notifications)) {
             try writer.writeAll("  ✓ System notifications\n");
         }
-        if (self.context.hasFeature(.graphics)) {
+        if (self.state.hasFeature(.graphics)) {
             try writer.writeAll("  ✓ Enhanced graphics\n");
         }
 

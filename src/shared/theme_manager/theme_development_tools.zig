@@ -7,13 +7,13 @@ const Color = @import("color_scheme.zig").Color;
 const RGB = @import("color_scheme.zig").RGB;
 const ThemeValidator = @import("theme_validator.zig").ThemeValidator;
 const Accessibility = @import("accessibility.zig").Accessibility;
-const ColorBlindnessAdapter = @import("color_blindness.zig").ColorBlindnessAdapter;
+const ColorBlindness = @import("color_blindness.zig").ColorBlindness;
 
 pub const ThemeDevelopmentTools = struct {
     allocator: std.mem.Allocator,
     validator: *ThemeValidator,
     accessibility: Accessibility,
-    cbAdapter: ColorBlindnessAdapter,
+    cbAdapter: ColorBlindness,
 
     const Self = @This();
 
@@ -23,7 +23,7 @@ pub const ThemeDevelopmentTools = struct {
             .allocator = allocator,
             .validator = try ThemeValidator.init(allocator),
             .accessibility = Accessibility.init(allocator),
-            .cbAdapter = ColorBlindnessAdapter.init(allocator),
+            .cbAdapter = ColorBlindness.init(allocator),
         };
         return self;
     }
@@ -195,7 +195,7 @@ pub const ThemeDevelopmentTools = struct {
         try report.addSection("Accessibility", accessibilityReport.overall_aa_pass);
 
         // Color blindness tests
-        const cbTypes = [_]ColorBlindnessAdapter.ColorBlindnessType{
+        const cbTypes = [_]ColorBlindness.ColorBlindnessType{
             .protanopia, .deuteranopia, .tritanopia, .achromatopsia,
         };
 

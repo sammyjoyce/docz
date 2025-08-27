@@ -4,7 +4,7 @@ const types = @import("types.zig");
 /// Kitty keyboard protocol implementation
 /// Supports advanced key event reporting with modifier combinations and key release events
 /// Based on Kitty's keyboard protocol: https://sw.kovidgoyal.net/kitty/keyboard-protocol/
-pub const KittyKeyboardProtocol = struct {
+pub const KittyProtocol = struct {
     allocator: std.mem.Allocator,
 
     const Self = @This();
@@ -149,9 +149,9 @@ pub const KittyKeyboardProtocol = struct {
 };
 
 /// Kitty keyboard manager for handling protocol state
-pub const KittyKeyboard = struct {
+pub const Kitty = struct {
     allocator: std.mem.Allocator,
-    keyboard: KittyKeyboardProtocol,
+    keyboard: KittyProtocol,
     enabled: bool = false,
 
     const Self = @This();
@@ -159,7 +159,7 @@ pub const KittyKeyboard = struct {
     pub fn init(allocator: std.mem.Allocator) Self {
         return Self{
             .allocator = allocator,
-            .keyboard = KittyKeyboardProtocol.init(allocator),
+            .keyboard = KittyProtocol.init(allocator),
             .enabled = false,
         };
     }
@@ -167,7 +167,7 @@ pub const KittyKeyboard = struct {
     /// Enable Kitty keyboard protocol
     pub fn enable(self: *Self) void {
         if (!self.enabled) {
-            KittyKeyboardProtocol.enable();
+            KittyProtocol.enable();
             self.enabled = true;
         }
     }
@@ -175,14 +175,14 @@ pub const KittyKeyboard = struct {
     /// Disable Kitty keyboard protocol
     pub fn disable(self: *Self) void {
         if (self.enabled) {
-            KittyKeyboardProtocol.disable();
+            KittyProtocol.disable();
             self.enabled = false;
         }
     }
 
     /// Parse input sequence, preferring Kitty protocol if enabled
     pub fn parseEvent(self: *Self, sequence: []const u8) ?types.KeyEvent {
-        if (self.enabled and KittyKeyboardProtocol.isKittySequence(sequence)) {
+        if (self.enabled and KittyProtocol.isKittySequence(sequence)) {
             return self.keyboard.parseSequence(sequence);
         }
         return null; // Let other parsers handle it
@@ -201,7 +201,7 @@ test "Kitty keyboard basic parsing" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    var keyboard = KittyKeyboardProtocol.init(allocator);
+    var keyboard = KittyProtocol.init(allocator);
 
     // Test F1 key
     const f1_event = keyboard.parseSequence("\x1b[57344u");
@@ -219,7 +219,7 @@ test "Kitty keyboard manager" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    var manager = KittyKeyboard.init(allocator);
+    var manager = Kitty.init(allocator);
     try testing.expect(!manager.enabled);
 
     manager.enable();

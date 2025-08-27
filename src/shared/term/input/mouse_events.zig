@@ -36,8 +36,8 @@ pub const MouseGesture = struct {
     };
 };
 
-/// Mouse event with enhanced metadata
-pub const EnhancedMouseEvent = struct {
+/// Mouse event with metadata
+pub const MouseEventWithMetadata = struct {
     base_event: types.MouseEvent,
     event_type: MouseEventType,
     gesture: ?MouseGesture = null,
@@ -88,7 +88,7 @@ pub const MouseEventTracker = struct {
     }
 
     /// Process a mouse event and return enhanced event with gesture information
-    pub fn processEvent(self: *Self, mouse_event: types.MouseEvent) EnhancedMouseEvent {
+    pub fn processEvent(self: *Self, mouse_event: types.MouseEvent) MouseEventWithMetadata {
         const now = std.time.microTimestamp();
         var event_type = MouseEventType.click;
         var click_count: u8 = 1;
@@ -171,7 +171,7 @@ pub const MouseEventTracker = struct {
             event_type = .wheel_scroll;
         }
 
-        return EnhancedMouseEvent{
+        return MouseEventWithMetadata{
             .base_event = mouse_event,
             .event_type = event_type,
             .gesture = gesture,
@@ -199,7 +199,7 @@ pub const MouseEventTracker = struct {
 /// Mouse event queue for buffering events
 pub const MouseEventQueue = struct {
     allocator: std.mem.Allocator,
-    events: std.ArrayList(EnhancedMouseEvent),
+    events: std.ArrayList(MouseEventWithMetadata),
     max_size: usize = 100,
 
     const Self = @This();
@@ -207,7 +207,7 @@ pub const MouseEventQueue = struct {
     pub fn init(allocator: std.mem.Allocator) Self {
         return Self{
             .allocator = allocator,
-            .events = std.ArrayList(EnhancedMouseEvent).init(allocator),
+            .events = std.ArrayList(MouseEventWithMetadata).init(allocator),
         };
     }
 
@@ -216,7 +216,7 @@ pub const MouseEventQueue = struct {
     }
 
     /// Add event to queue
-    pub fn push(self: *Self, event: EnhancedMouseEvent) !void {
+    pub fn push(self: *Self, event: MouseEventWithMetadata) !void {
         try self.events.append(event);
 
         // Remove oldest events if queue is full
@@ -226,13 +226,13 @@ pub const MouseEventQueue = struct {
     }
 
     /// Get next event from queue
-    pub fn pop(self: *Self) ?EnhancedMouseEvent {
+    pub fn pop(self: *Self) ?MouseEventWithMetadata {
         if (self.events.items.len == 0) return null;
         return self.events.orderedRemove(0);
     }
 
     /// Peek at next event without removing it
-    pub fn peek(self: *Self) ?EnhancedMouseEvent {
+    pub fn peek(self: *Self) ?MouseEventWithMetadata {
         if (self.events.items.len == 0) return null;
         return self.events.items[0];
     }
@@ -264,7 +264,7 @@ test "mouse event queue" {
     var queue = MouseEventQueue.init(allocator);
     defer queue.deinit();
 
-    const event = EnhancedMouseEvent{
+    const event = MouseEventWithMetadata{
         .base_event = types.MouseEvent{
             .button = .left,
             .action = .press,

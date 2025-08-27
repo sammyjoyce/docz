@@ -1,12 +1,12 @@
 const std = @import("std");
 const caps_mod = @import("../capabilities.zig");
 const passthrough = @import("../ansi/passthrough.zig");
-const tab_processor = @import("../tab_processor.zig");
+const tab = @import("../tab.zig");
 const error_mod = @import("../core/error.zig");
 
 pub const TermCaps = caps_mod.TermCaps;
 pub const TermError = error_mod.TermError;
-pub const TabConfig = tab_processor.TabConfig;
+pub const TabConfig = tab.TabConfig;
 
 /// Unified screen control module combining high-level state management
 /// with low-level ANSI escape sequence operations
@@ -487,7 +487,7 @@ pub const ScreenControl = struct {
     pub fn writeTextWithTabControl(self: Self, text: []const u8, tab_config: TabConfig) !void {
         if (tab_config.expand_tabs) {
             // Expand tabs to spaces for consistent rendering
-            const expanded = try tab_processor.expandTabs(self.allocator, text, tab_config);
+            const expanded = try tab.expandTabs(self.allocator, text, tab_config);
             defer self.allocator.free(expanded);
             try self.sendSequence(expanded);
         } else {

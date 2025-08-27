@@ -7,7 +7,7 @@ pub fn execute(allocator: std.mem.Allocator, params: json.Value) !json.Value {
     var result = json.ObjectMap.init(allocator);
     try result.put("success", json.Value{ .bool = false });
     try result.put("error", json.Value{ .string = "Tool not yet implemented" });
-    try result.put("tool", json.Value{ .string = "document_validator" });
+    try result.put("tool", json.Value{ .string = "validate" });
 
     return json.Value{ .object = result };
 }

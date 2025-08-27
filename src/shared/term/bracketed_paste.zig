@@ -7,9 +7,13 @@ const std = @import("std");
 pub const ENABLE_BRACKETED_PASTE = "\x1b[?2004h";
 pub const DISABLE_BRACKETED_PASTE = "\x1b[?2004l";
 
-// Import consolidated paste markers from input/paste.zig
-pub const PASTE_START = @import("input/paste.zig").BracketedPasteStart;
-pub const PASTE_END = @import("input/paste.zig").BracketedPasteEnd;
+// Paste markers (consolidated from input/paste.zig)
+pub const PASTE_START = "\x1b[200~";
+pub const PASTE_END = "\x1b[201~";
+
+// Re-export for compatibility
+pub const BracketedPasteStart = PASTE_START;
+pub const BracketedPasteEnd = PASTE_END;
 
 /// Paste event with metadata
 pub const PasteEvent = struct {
@@ -479,3 +483,86 @@ test "control character filtering" {
     // Cleanup
     allocator.free(paste_event.content);
 }
+
+// ============================================================================
+// Low-level parsing functionality (consolidated from input/paste.zig)
+// ============================================================================
+
+/// Simple parse result for low-level parsing
+pub const SimpleParseResult = struct { event: SimplePasteEvent, len: usize };
+
+/// Simple paste event for low-level parsing
+pub const SimplePasteEvent = enum {
+    start,
+    end,
+};
+
+/// Legacy simple parser for low-level paste detection
+pub fn tryParse(seq: []const u8) ?SimpleParseResult {
+    if (seq.len >= PASTE_START.len and std.mem.startsWith(u8, seq, PASTE_START))
+        return .{ .event = .start, .len = PASTE_START.len };
+    if (seq.len >= PASTE_END.len and std.mem.startsWith(u8, seq, PASTE_END))
+        return .{ .event = .end, .len = PASTE_END.len };
+    return null;
+}
+
+/// Simple paste buffer for accumulating pasted content
+pub const SimplePasteBuffer = struct {
+    data: std.ArrayListUnmanaged(u8),
+    is_pasting: bool = false,
+    allocator: std.mem.Allocator,
+
+    pub fn init(allocator: std.mem.Allocator) SimplePasteBuffer {
+        return SimplePasteBuffer{
+            .data = std.ArrayListUnmanaged(u8){},
+            .allocator = allocator,
+        };
+    }
+
+    pub fn deinit(self: *SimplePasteBuffer) void {
+        self.data.deinit(self.allocator);
+    }
+
+    /// Process input data and handle paste events
+    pub fn processInput(self: *SimplePasteBuffer, input: []const u8) !?PasteEvent {
+        if (!self.is_pasting) {
+            // Check for paste start
+            if (std.mem.startsWith(u8, input, PASTE_START)) {
+                self.is_pasting = true;
+                self.data.clearRetainingCapacity();
+                return PasteEvent{
+                    .content = "",
+                    .is_complete = false,
+                    .timestamp = std.time.timestamp(),
+                    .source_hint = .unknown,
+                };
+            }
+            return null;
+        }
+
+        // We're currently pasting - look for end marker
+        if (std.mem.indexOf(u8, input, PASTE_END)) |end_pos| {
+            // Add content before the end marker
+            try self.data.appendSlice(self.allocator, input[0..end_pos]);
+            self.is_pasting = false;
+
+            // Create content event with owned slice
+            const content = try self.data.toOwnedSlice(self.allocator);
+            return PasteEvent{
+                .content = content,
+                .is_complete = true,
+                .timestamp = std.time.timestamp(),
+                .source_hint = .clipboard,
+            };
+        } else {
+            // Still in paste mode, accumulate data
+            try self.data.appendSlice(self.allocator, input);
+            return null;
+        }
+    }
+
+    /// Check if currently in paste mode
+    pub fn isPasting(self: SimplePasteBuffer) bool {
+        return self.is_pasting;
+    }
+};

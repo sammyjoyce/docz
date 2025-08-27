@@ -2,10 +2,10 @@
 //! Interactive menu that uses hyperlinks when available, falls back to numbered options
 
 const std = @import("std");
-const context = @import("../../core/context.zig");
+const state = @import("../../core/state.zig");
 
 pub const HyperlinkMenu = struct {
-    context: *context.Cli,
+    state: *state.Cli,
     items: []const MenuItem,
     title: ?[]const u8 = null,
 
@@ -17,9 +17,9 @@ pub const HyperlinkMenu = struct {
         description: ?[]const u8 = null,
     };
 
-    pub fn init(ctx: *context.Cli, items: []const MenuItem) HyperlinkMenu {
+    pub fn init(ctx: *state.Cli, items: []const MenuItem) HyperlinkMenu {
         return HyperlinkMenu{
-            .context = ctx,
+            .state = ctx,
             .items = items,
         };
     }
@@ -38,7 +38,7 @@ pub const HyperlinkMenu = struct {
             try writer.print("\n\n");
         }
 
-        if (self.context.hasFeature(.hyperlinks)) {
+        if (self.state.hasFeature(.hyperlinks)) {
             try self.renderWithHyperlinks(writer);
         } else {
             try self.renderBasic(writer);
@@ -56,7 +56,7 @@ pub const HyperlinkMenu = struct {
 
             // Create clickable link or action
             if (item.url) |url| {
-                try self.context.hyperlink.writeLink(writer, url, item.label);
+                try self.state.hyperlink.writeLink(writer, url, item.label);
             } else {
                 try writer.print("{s}", .{item.label});
             }
@@ -103,7 +103,7 @@ pub const HyperlinkMenu = struct {
 };
 
 /// Convenience function to create a documentation menu
-pub fn createDocsMenu(ctx: *context.Cli) HyperlinkMenu {
+pub fn createDocsMenu(ctx: *state.Cli) HyperlinkMenu {
     const docs_items = [_]HyperlinkMenu.MenuItem{
         .{
             .label = "Getting Started Guide",

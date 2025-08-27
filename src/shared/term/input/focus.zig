@@ -6,8 +6,13 @@ pub const FocusEvent = types.FocusEvent;
 pub const ParseResult = struct { event: FocusEvent, len: usize };
 
 // Focus in/out sequences when DECSET 1004 is enabled.
-const FOCUS_IN: []const u8 = "\x1b[I";
-const FOCUS_OUT: []const u8 = "\x1b[O";
+// Consolidated from ansi/focus.zig
+pub const FOCUS_IN: []const u8 = "\x1b[I";
+pub const FOCUS_OUT: []const u8 = "\x1b[O";
+
+// Re-export for compatibility
+pub const Focus = FOCUS_IN;
+pub const Blur = FOCUS_OUT;
 
 pub fn tryParse(seq: []const u8) ?ParseResult {
     if (seq.len >= FOCUS_IN.len and std.mem.startsWith(u8, seq, FOCUS_IN))

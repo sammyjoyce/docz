@@ -13,7 +13,7 @@ const tools_mod = @import("tools_shared");
 /// ============================================================================
 /// TOOL FUNCTION EXPORTS
 /// ============================================================================
-/// Example tool demonstrating JSON input/output patterns.
+/// Tool demonstrating JSON input/output patterns.
 /// This tool shows how to:
 /// - Parse JSON input parameters
 /// - Validate input data
@@ -27,7 +27,7 @@ const tools_mod = @import("tools_shared");
 ///
 /// Returns: JSON string response
 /// Errors: ToolError for various failure conditions
-pub fn exampleTool(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.ToolError![]const u8 {
+pub fn tool(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.ToolError![]const u8 {
     // ============================================================================
     // INPUT VALIDATION AND PARSING
     // ============================================================================
@@ -212,9 +212,9 @@ pub fn registerAll(registry: *tools_mod.Registry) !void {
     // Register each tool individually with comprehensive metadata
     // This is the recommended approach for most cases
 
-    try tools_mod.registerJsonTool(registry, "template_example", // tool_name (unique identifier)
-        "Example tool demonstrating JSON input/output patterns, parameter validation, and structured responses", // description
-        exampleTool, // tool_function
+    try tools_mod.registerJsonTool(registry, "example", // tool_name (unique identifier)
+        "Tool demonstrating JSON input/output patterns, parameter validation, and structured responses", // description
+        tool, // tool_function
         "_template" // agent_name (for attribution)
     );
 

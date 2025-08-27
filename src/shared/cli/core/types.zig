@@ -120,7 +120,7 @@ pub const Positionals = struct {
 };
 
 /// Complete parsed arguments structure
-pub const Args = struct {
+pub const LegacyArgs = struct {
     options: Options,
     flags: Flags,
     positionals: Positionals,
@@ -320,8 +320,8 @@ pub const ConfigError = error{
     TypeMismatch,
 };
 
-/// Enhanced Args for unified CLI
-pub const ArgsUnified = struct {
+/// Args for unified CLI
+pub const Args = struct {
     // Core options
     model: []const u8,
     temperature: f32,
@@ -355,8 +355,8 @@ pub const ArgsUnified = struct {
 
     allocator: Allocator,
 
-    pub fn fromConfig(config: Config, allocator: Allocator) ArgsUnified {
-        return ArgsUnified{
+    pub fn fromConfig(config: Config, allocator: Allocator) Args {
+        return Args{
             .model = config.model,
             .temperature = config.temperature,
             .maxTokens = config.maxTokens,
@@ -380,7 +380,7 @@ pub const ArgsUnified = struct {
         };
     }
 
-    pub fn deinit(self: *ArgsUnified) void {
+    pub fn deinit(self: *Args) void {
         // Clean up allocated arrays if needed
         if (self.positionalArguments.len > 0) {
             self.allocator.free(self.positionalArguments);

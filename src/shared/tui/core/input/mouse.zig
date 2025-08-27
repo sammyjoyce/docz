@@ -2,14 +2,14 @@
 //! Provides pixel-precise mouse tracking and rich interaction support
 const std = @import("std");
 const shared = @import("../../../mod.zig");
-const unified_input = shared.components.input;
+const unified_input = @import("term_shared").input;
 const term_mouse = unified_input;
 const caps_mod = @import("term_shared").capabilities;
 
 // Re-export unified mouse types
 pub const MouseButton = unified_input.MouseButton;
-pub const MouseMode = unified_input.MouseMode;
-pub const UnifiedMouse = unified_input.Mouse;
+pub const MouseMode = unified_input.mouse.MouseMode;
+pub const UnifiedMouse = unified_input.mouse.Mouse;
 
 // Re-export legacy mouse types for backward compatibility
 pub const MouseEvent = unified_input.MouseEvent;
@@ -72,7 +72,7 @@ pub const TUIMouse = struct {
     }
 
     /// Process mouse event and dispatch to appropriate handlers
-    pub fn processMouseEvent(self: *TUIMouse, event: unified_input.Event) !void {
+    pub fn processMouseEvent(self: *TUIMouse, event: unified_input.InputEvent) !void {
         const now = std.time.milliTimestamp();
 
         // Dispatch to general handlers first
@@ -82,22 +82,23 @@ pub const TUIMouse = struct {
 
         // Process specific event types
         switch (event) {
-            .mouse_press, .mouse_release, .mouse_move => try self.processMouseClick(event, now),
-            .mouse_scroll => |scroll| try self.processMouseScroll(scroll),
+            .mouse => |mouse_event| {
+                switch (mouse_event.action) {
+                    .press, .release, .drag, .move => try self.processMouseClick(mouse_event, now),
+                    .scroll_up, .scroll_down => try self.processMouseScroll(mouse_event, now),
+                }
+            },
             else => {},
         }
     }
 
-    fn processMouseClick(self: *TUIMouse, event: unified_input.Event, now: i64) !void {
-        const position, const button, const modifiers = switch (event) {
-            .mouse_press => |m| .{ Position{ .x = @as(i32, @intCast(m.x)), .y = @as(i32, @intCast(m.y)) }, m.button, m.modifiers },
-            .mouse_release => |m| .{ Position{ .x = @as(i32, @intCast(m.x)), .y = @as(i32, @intCast(m.y)) }, m.button, m.modifiers },
-            .mouse_move => |m| .{ Position{ .x = @as(i32, @intCast(m.x)), .y = @as(i32, @intCast(m.y)) }, .left, m.modifiers },
-            else => return,
-        };
+    fn processMouseClick(self: *TUIMouse, event: unified_input.MouseEvent, now: i64) !void {
+        const position = Position{ .x = @as(i32, @intCast(event.x)), .y = @as(i32, @intCast(event.y)) };
+        const button = event.button;
+        const modifiers = event.mods;
 
-        switch (event) {
-            .mouse_press => {
+        switch (event.action) {
+            .press => {
                 // Check for drag start
                 self.drag_start_pos = position;
                 self.is_dragging = false;
@@ -179,11 +180,18 @@ pub const TUIMouse = struct {
         }
     }
 
-    fn processMouseScroll(self: *TUIMouse, scroll: term_mouse.Scroll) !void {
+    fn processMouseScroll(self: *TUIMouse, mouse_event: unified_input.MouseEvent, now: i64) !void {
+        _ = now; // Not used for scroll events
+        const direction = switch (mouse_event.action) {
+            .scroll_up => ScrollEvent.Direction.up,
+            .scroll_down => ScrollEvent.Direction.down,
+            else => return, // Should not happen
+        };
+
         const scroll_event = ScrollEvent{
-            .position = Position{ .x = scroll.x, .y = scroll.y },
-            .direction = scroll.direction,
-            .modifiers = scroll.modifiers,
+            .position = Position{ .x = @as(i32, @intCast(mouse_event.x)), .y = @as(i32, @intCast(mouse_event.y)) },
+            .direction = direction,
+            .modifiers = mouse_event.mods,
         };
 
         for (self.scroll_handlers.items) |handler| {
@@ -241,7 +249,7 @@ pub const Position = struct {
 pub const ClickEvent = struct {
     position: Position,
     button: MouseButton,
-    modifiers: term_mouse.Modifiers,
+    modifiers: unified_input.Modifiers,
     is_double_click: bool,
 };
 
@@ -251,7 +259,7 @@ pub const DragEvent = struct {
     end_pos: Position,
     current_pos: Position,
     button: MouseButton,
-    modifiers: term_mouse.Modifiers,
+    modifiers: unified_input.Modifiers,
     action: Action,
 
     pub const Action = enum { start, drag, end };
@@ -260,13 +268,15 @@ pub const DragEvent = struct {
 /// Scroll event
 pub const ScrollEvent = struct {
     position: Position,
-    direction: term_mouse.ScrollDirection,
-    modifiers: term_mouse.Modifiers,
+    direction: Direction,
+    modifiers: unified_input.Modifiers,
+
+    pub const Direction = enum { up, down };
 };
 
 /// Handler function types
 pub const MouseHandler = struct {
-    func: *const fn (event: MouseEvent) bool, // Returns true if handled
+    func: *const fn (event: unified_input.MouseEvent) bool, // Returns true if handled
 };
 
 pub const ClickHandler = struct {

@@ -3,7 +3,7 @@
 //! This example demonstrates the DiffViewer widget with various diff scenarios,
 //! display modes, and interactive features.
 //!
-//! Run with: zig run examples/diff_viewer_demo.zig
+//! Run with: zig run examples/diff_viewer.zig
 
 const std = @import("std");
 const tui = @import("../src/shared/tui/mod.zig");

@@ -6,7 +6,7 @@
 const std = @import("std");
 
 // Core query modules
-pub const system = @import("../query_system.zig");
+pub const system = @import("../query.zig");
 pub const queries = @import("../ansi/queries.zig");
 
 // ============================================================================

@@ -325,16 +325,16 @@ fn setup_authentication_flow(allocator: std.mem.Allocator, force_oauth: bool) !v
     }
 
     // Check current auth status
-    const auth_status = try agent_base.AuthHelpers.get_status_text(allocator);
-    defer allocator.free(auth_status);
+    const authStatus = try agent_base.AuthHelpers.getStatusText(allocator);
+    defer allocator.free(authStatus);
 
-    std.log.info("📊 Current authentication status: {s}", .{auth_status});
+    std.log.info("📊 Current authentication status: {s}", .{authStatus});
 
     // Offer setup options
-    const has_oauth = agent_base.AuthHelpers.has_valid_oauth(allocator);
-    const has_api_key = agent_base.AuthHelpers.has_valid_api_key(allocator);
+    const hasOauth = agent_base.AuthHelpers.hasValidOauth(allocator);
+    const hasApiKey = agent_base.AuthHelpers.hasValidApiKey(allocator);
 
-    if (!has_oauth and !has_api_key) {
+    if (!hasOauth and !hasApiKey) {
         std.log.info("❌ No authentication method configured.", .{});
         std.log.info("🔧 Available options:", .{});
         std.log.info("  1. Setup OAuth (Claude Pro/Max) - Recommended", .{});
@@ -348,7 +348,7 @@ fn setup_authentication_flow(allocator: std.mem.Allocator, force_oauth: bool) !v
         const choice = std.mem.trim(u8, buffer[0..bytes_read], " \t\r\n");
 
         if (std.mem.eql(u8, choice, "1")) {
-            try engine.setup_oauth(allocator);
+            try engine.setupOauth(allocator);
         } else if (std.mem.eql(u8, choice, "2")) {
             std.log.info("📝 To configure an API key:", .{});
             std.log.info("  1. Get your API key from: https://console.anthropic.com/", .{});
@@ -360,10 +360,10 @@ fn setup_authentication_flow(allocator: std.mem.Allocator, force_oauth: bool) !v
         }
     } else {
         std.log.info("✅ Authentication is already configured!", .{});
-        if (has_oauth) {
-            std.log.info("🔐 Using OAuth (Claude Pro/Max)", .{});
+        if (hasOauth) {
+            std.log.info("🔐 Using OAuth authentication (Claude Pro/Max)", .{});
         } else {
-            std.log.info("🔑 Using API Key authentication", .{});
+            std.log.info("🔑 Using API key authentication", .{});
         }
     }
 }
@@ -437,23 +437,23 @@ fn run_interactive_mode(allocator: std.mem.Allocator, options: InteractiveCliOpt
     defer base_agent.deinit();
 
     // Setup authentication
-    try ensure_authentication(&base_agent);
+    try ensureAuthentication(&base_agent);
 
     // Enable interactive mode on base agent
-    try base_agent.enable_interactive_mode(session_config);
+    try base_agent.enableInteractiveMode(session_config);
 
     // Start the main interaction loop
-    try base_agent.start_interactive_session();
+    try base_agent.startInteractiveSession();
 }
 
 /// Ensure authentication is properly configured
-fn ensure_authentication(base_agent: *agent_base.BaseAgent) !void {
-    const auth_status = try base_agent.checkAuthStatus();
+fn ensureAuthentication(baseAgent: *agent_base.BaseAgent) !void {
+    const authStatus = try baseAgent.checkAuthStatus();
 
-    switch (auth_status) {
+    switch (authStatus) {
         .none => {
             std.log.info("🔐 No authentication configured. Starting setup...", .{});
-            try base_agent.setupOAuth();
+            try baseAgent.setupOauth();
         },
         .oauth => {
             std.log.info("🔐 Using OAuth authentication (Claude Pro/Max)", .{});

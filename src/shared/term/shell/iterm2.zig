@@ -166,7 +166,7 @@ pub const CommandStatus = struct {
     working_directory: ?[]const u8 = null,
 };
 
-/// Mark the start of command execution with enhanced status
+/// Mark the start of command execution with status
 pub fn markCommandStart(alloc: std.mem.Allocator, status: CommandStatus) ![]u8 {
     var buf = std.ArrayListUnmanaged(u8){};
     defer buf.deinit(alloc);
@@ -531,7 +531,7 @@ pub const Convenience = struct {
 // ============================================================================
 
 /// iTerm2 shell integration interface implementation
-pub const iTerm2Interface = integration.ShellIntegration.Interface{
+pub const iTerm2Interface = integration.ShellManager.Interface{
     .name = "iTerm2",
     .getCapabilities = getCapabilities,
     .prompt_ops = .{
@@ -579,15 +579,15 @@ fn getCapabilities() integration.ShellIntegration.TermCaps {
     };
 }
 
-fn markPromptStartInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType)) !void {
+fn markPromptStartInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType)) integration.ShellIntegration.Error!void {
     try writeITerm2Sequence(ctx.writer, ctx.allocator, ctx.caps, "A");
 }
 
-fn markPromptEndInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType)) !void {
+fn markPromptEndInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType)) integration.ShellIntegration.Error!void {
     try writeITerm2Sequence(ctx.writer, ctx.allocator, ctx.caps, "B");
 }
 
-fn markPromptStartWithParamsInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType), params: []const []const u8) !void {
+fn markPromptStartWithParamsInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType), params: []const []const u8) integration.ShellIntegration.Error!void {
     var buf = std.ArrayListUnmanaged(u8){};
     defer buf.deinit(ctx.allocator);
 
@@ -602,7 +602,7 @@ fn markPromptStartWithParamsInterface(comptime WriterType: type, ctx: integratio
     try writeITerm2Sequence(ctx.writer, ctx.allocator, ctx.caps, payload);
 }
 
-fn markPromptEndWithParamsInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType), params: []const []const u8) !void {
+fn markPromptEndWithParamsInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType), params: []const []const u8) integration.ShellIntegration.Error!void {
     var buf = std.ArrayListUnmanaged(u8){};
     defer buf.deinit(ctx.allocator);
 
@@ -617,7 +617,7 @@ fn markPromptEndWithParamsInterface(comptime WriterType: type, ctx: integration.
     try writeITerm2Sequence(ctx.writer, ctx.allocator, ctx.caps, payload);
 }
 
-fn markCommandStartInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType), command: []const u8, cwd: ?[]const u8) !void {
+fn markCommandStartInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType), command: []const u8, cwd: ?[]const u8) integration.ShellIntegration.Error!void {
     const payload = try markCommandStart(ctx.allocator, .{
         .command = command,
         .working_directory = cwd,
@@ -626,7 +626,7 @@ fn markCommandStartInterface(comptime WriterType: type, ctx: integration.ShellIn
     try writeITerm2Sequence(ctx.writer, ctx.allocator, ctx.caps, payload);
 }
 
-fn markCommandEndInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType), command: []const u8, exit_code: i32, duration_ms: ?u64) !void {
+fn markCommandEndInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType), command: []const u8, exit_code: i32, duration_ms: ?u64) integration.ShellIntegration.Error!void {
     const payload = try markCommandEnd(ctx.allocator, .{
         .command = command,
         .exit_code = exit_code,
@@ -636,7 +636,7 @@ fn markCommandEndInterface(comptime WriterType: type, ctx: integration.ShellInte
     try writeITerm2Sequence(ctx.writer, ctx.allocator, ctx.caps, payload);
 }
 
-fn markCommandStartWithParamsInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType), command: []const u8, cwd: ?[]const u8, params: []const []const u8) !void {
+fn markCommandStartWithParamsInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType), command: []const u8, cwd: ?[]const u8, params: []const []const u8) integration.ShellIntegration.Error!void {
     var buf = std.ArrayListUnmanaged(u8){};
     defer buf.deinit(ctx.allocator);
 
@@ -658,7 +658,7 @@ fn markCommandStartWithParamsInterface(comptime WriterType: type, ctx: integrati
     try writeITerm2Sequence(ctx.writer, ctx.allocator, ctx.caps, payload);
 }
 
-fn markCommandEndWithParamsInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType), command: []const u8, exit_code: i32, duration_ms: ?u64, params: []const []const u8) !void {
+fn markCommandEndWithParamsInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType), command: []const u8, exit_code: i32, duration_ms: ?u64, params: []const []const u8) integration.ShellIntegration.Error!void {
     var buf = std.ArrayListUnmanaged(u8){};
     defer buf.deinit(ctx.allocator);
 
@@ -685,7 +685,7 @@ fn markCommandEndWithParamsInterface(comptime WriterType: type, ctx: integration
     try writeITerm2Sequence(ctx.writer, ctx.allocator, ctx.caps, payload);
 }
 
-fn setWorkingDirectoryInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType), path: []const u8) !void {
+fn setWorkingDirectoryInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType), path: []const u8) integration.ShellIntegration.Error!void {
     var buf = std.ArrayListUnmanaged(u8){};
     defer buf.deinit(ctx.allocator);
 
@@ -697,7 +697,7 @@ fn setWorkingDirectoryInterface(comptime WriterType: type, ctx: integration.Shel
     try writeITerm2Sequence(ctx.writer, ctx.allocator, ctx.caps, payload);
 }
 
-fn setRemoteHostInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType), hostname: []const u8, username: ?[]const u8, port: ?u16) !void {
+fn setRemoteHostInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType), hostname: []const u8, username: ?[]const u8, port: ?u16) integration.ShellIntegration.Error!void {
     const payload = try markRemoteHost(ctx.allocator, .{
         .hostname = hostname,
         .username = username,
@@ -707,26 +707,26 @@ fn setRemoteHostInterface(comptime WriterType: type, ctx: integration.ShellInteg
     try writeITerm2Sequence(ctx.writer, ctx.allocator, ctx.caps, payload);
 }
 
-fn clearRemoteHostInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType)) !void {
+fn clearRemoteHostInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType)) integration.ShellIntegration.Error!void {
     const payload = try clearRemoteHost(ctx.allocator);
     defer ctx.allocator.free(payload);
     try writeITerm2Sequence(ctx.writer, ctx.allocator, ctx.caps, payload);
 }
 
-fn markZoneStartInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType), zone_type: []const u8, name: ?[]const u8) !void {
+fn markZoneStartInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType), zone_type: []const u8, name: ?[]const u8) integration.ShellIntegration.Error!void {
     const mark_type = if (std.mem.eql(u8, zone_type, "error")) MarkType.error_mark else MarkType.custom;
     const payload = try setMark(ctx.allocator, mark_type, name);
     defer ctx.allocator.free(payload);
     try writeITerm2Sequence(ctx.writer, ctx.allocator, ctx.caps, payload);
 }
 
-fn markZoneEndInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType), zone_type: []const u8) !void {
+fn markZoneEndInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType), zone_type: []const u8) integration.ShellIntegration.Error!void {
     // iTerm2 doesn't have explicit zone end markers, but we can use marks
     _ = ctx;
     _ = zone_type;
 }
 
-fn addAnnotationInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType), config: integration.ShellIntegration.AnnotationConfig) !void {
+fn addAnnotationInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType), config: integration.ShellIntegration.AnnotationConfig) integration.ShellIntegration.Error!void {
     const payload = try addAnnotation(ctx.allocator, .{
         .text = config.text,
         .x = config.x,
@@ -738,31 +738,31 @@ fn addAnnotationInterface(comptime WriterType: type, ctx: integration.ShellInteg
     try writeITerm2Sequence(ctx.writer, ctx.allocator, ctx.caps, payload);
 }
 
-fn clearAnnotationsInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType)) !void {
+fn clearAnnotationsInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType)) integration.ShellIntegration.Error!void {
     const payload = try clearAnnotations(ctx.allocator);
     defer ctx.allocator.free(payload);
     try writeITerm2Sequence(ctx.writer, ctx.allocator, ctx.caps, payload);
 }
 
-fn requestAttentionInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType), message: ?[]const u8) !void {
+fn requestAttentionInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType), message: ?[]const u8) integration.ShellIntegration.Error!void {
     const payload = try requestAttention(ctx.allocator, message);
     defer ctx.allocator.free(payload);
     try writeITerm2Sequence(ctx.writer, ctx.allocator, ctx.caps, payload);
 }
 
-fn setBadgeInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType), text: []const u8) !void {
+fn setBadgeInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType), text: []const u8) integration.ShellIntegration.Error!void {
     const payload = try setBadge(ctx.allocator, text);
     defer ctx.allocator.free(payload);
     try writeITerm2Sequence(ctx.writer, ctx.allocator, ctx.caps, payload);
 }
 
-fn clearBadgeInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType)) !void {
+fn clearBadgeInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType)) integration.ShellIntegration.Error!void {
     const payload = try clearBadge(ctx.allocator);
     defer ctx.allocator.free(payload);
     try writeITerm2Sequence(ctx.writer, ctx.allocator, ctx.caps, payload);
 }
 
-fn setAlertOnCompletionInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType), config: integration.ShellIntegration.AlertConfig) !void {
+fn setAlertOnCompletionInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType), config: integration.ShellIntegration.AlertConfig) integration.ShellIntegration.Error!void {
     const payload = try setAlertOnCompletion(ctx.allocator, .{
         .message = config.message,
         .sound = config.sound,
@@ -772,7 +772,7 @@ fn setAlertOnCompletionInterface(comptime WriterType: type, ctx: integration.She
     try writeITerm2Sequence(ctx.writer, ctx.allocator, ctx.caps, payload);
 }
 
-fn triggerDownloadInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType), config: integration.ShellIntegration.DownloadConfig) !void {
+fn triggerDownloadInterface(comptime WriterType: type, ctx: integration.ShellIntegration.Context(WriterType), config: integration.ShellIntegration.DownloadConfig) integration.ShellIntegration.Error!void {
     const payload = try triggerDownload(ctx.allocator, .{
         .url = config.url,
         .filename = config.filename,

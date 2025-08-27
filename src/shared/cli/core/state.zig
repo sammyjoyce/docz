@@ -11,7 +11,7 @@ const ansi_graphics = term.ansi.graphics;
 const ansi_hyperlink = term.ansi.hyperlink;
 const types = @import("types.zig");
 
-pub const ContextError = error{
+pub const Error = error{
     InitializationFailed,
     TerminalDetectionFailed,
     CapabilityQueryFailed,
@@ -32,7 +32,7 @@ pub const Capability = struct {
         // This would integrate with the actual terminal detection system
         _ = allocator;
 
-        // Basic capability detection - this would be enhanced with real detection
+        // Basic capability detection - this would be improved with real detection
         return Capability{
             .hyperlinks = true, // Most modern terminals support this
             .clipboard = true, // OSC 52 is widely supported
@@ -114,7 +114,7 @@ pub const Notification = struct {
     }
 };
 
-/// Graphics manager for enhanced visual elements
+/// Graphics manager for visual elements
 pub const Graphics = struct {
     allocator: std.mem.Allocator,
     capabilities: Capability,
@@ -240,11 +240,11 @@ pub const Cli = struct {
 
     /// Get a summary of available capabilities for debugging
     pub fn capabilitySummary(self: *Cli) []const u8 {
-        // This could be enhanced to provide detailed capability info
+        // This could be improved to provide detailed capability info
         if (self.capabilities.hyperlinks and self.capabilities.clipboard and self.capabilities.graphics) {
-            return "Full Enhanced Terminal";
+            return "Full Terminal";
         } else if (self.capabilities.hyperlinks or self.capabilities.clipboard) {
-            return "Enhanced Terminal";
+            return "Terminal";
         } else {
             return "Basic Terminal";
         }

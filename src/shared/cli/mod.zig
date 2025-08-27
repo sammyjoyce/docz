@@ -4,7 +4,7 @@
 // Core system
 pub const Core = struct {
     pub const app = @import("core/App.zig");
-    pub const context = @import("core/context.zig");
+    pub const state = @import("core/state.zig");
     pub const router = @import("core/Router.zig");
     pub const types = @import("core/types.zig");
 
@@ -17,7 +17,7 @@ pub const Core = struct {
 
 // Main exports
 pub const CliApp = Core.app.CliApp;
-pub const Cli = Core.context.Cli;
+pub const Cli = Core.state.Cli;
 pub const CliError = Core.types.CliError;
 pub const Config = Core.types.Config;
 pub const CommandResult = Core.types.CommandResult;
@@ -26,6 +26,7 @@ pub const CommandResult = Core.types.CommandResult;
 pub const components = @import("components/mod.zig");
 
 // Legacy compatibility - existing modules
+pub const parser = @import("core/legacy_parser.zig");
 // DEPRECATED: Legacy parser exports - new code should use modern CLI system via agent_main.zig
 // These are temporarily kept as comments for reference during migration
 // pub const legacy = @import("core/legacy_parser.zig");

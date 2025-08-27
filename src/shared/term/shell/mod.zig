@@ -14,25 +14,25 @@ pub const finalterm = @import("finalterm.zig");
 pub const prompt = @import("prompt.zig");
 
 // Re-export main types for convenience
-pub const ShellIntegration = integration.ShellIntegration;
-pub const TermCaps = integration.ShellIntegration.TermCaps;
-pub const Interface = integration.ShellIntegration.Interface;
-pub const Context = integration.ShellIntegration.Context;
+pub const ShellManager = integration.ShellManager;
+pub const TermCaps = integration.ShellManager.TermCaps;
+pub const Interface = integration.ShellManager.Interface;
+pub const Context = integration.ShellManager.Context;
 
 // Re-export implementations
 pub const ITerm2Interface = iterm2.iTerm2Interface;
 pub const FinalTermInterface = finalterm.FinalTermInterface;
 
 // Re-export convenience functions
-pub const Convenience = integration.ShellIntegration.Convenience;
+pub const Convenience = integration.ShellManager.Convenience;
 
 // Re-export high-level managers
 pub const PromptTracker = prompt.PromptTracker;
 pub const CommandTracker = prompt.CommandTracker;
 pub const DirectoryTracker = prompt.DirectoryTracker;
-pub const NotificationManager = prompt.NotificationManager;
-pub const SemanticZoneManager = prompt.SemanticZoneManager;
-pub const ShellIntegrationManager = prompt.ShellIntegrationManager;
+pub const Notification = prompt.Notification;
+pub const SemanticZone = prompt.SemanticZone;
+pub const ShellIntegrationManager = prompt.ShellManager;
 
 /// Detect terminal capabilities for shell integration
 pub fn detectCapabilities() TermCaps {

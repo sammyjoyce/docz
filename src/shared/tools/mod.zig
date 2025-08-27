@@ -5,18 +5,18 @@ pub const Registry = @import("tools.zig").Registry;
 pub const registerBuiltins = @import("tools.zig").registerBuiltins;
 pub const ToolError = @import("tools.zig").ToolError;
 pub const ToolMetadata = @import("tools.zig").ToolMetadata;
-pub const JSONToolFunction = @import("tools.zig").JSONToolFunction;
+pub const JsonToolFunction = @import("tools.zig").JsonToolFunction;
 pub const registerJsonTool = @import("tools.zig").registerJsonTool;
 pub const registerJsonToolWithRequiredFields = @import("tools.zig").registerJsonToolWithRequiredFields;
 
 // JSON schema definitions for tool request/response handling
 pub const json_schemas = @import("json_schemas.zig");
 pub const ToolResponse = json_schemas.ToolResponse;
-pub const FileOperationResponse = json_schemas.FileOperationResponse;
-pub const TextProcessingResponse = json_schemas.TextProcessingResponse;
-pub const SearchResponse = json_schemas.SearchResponse;
-pub const DirectoryResponse = json_schemas.DirectoryResponse;
-pub const ValidationResponse = json_schemas.ValidationResponse;
+pub const FileOperation = json_schemas.FileOperation;
+pub const TextProcessing = json_schemas.TextProcessing;
+pub const Search = json_schemas.Search;
+pub const Directory = json_schemas.Directory;
+pub const Validation = json_schemas.Validation;
 
 // JSON helper utilities for simplifying tool development
 pub const json_helpers = @import("json_helpers.zig");

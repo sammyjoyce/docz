@@ -22,16 +22,16 @@ pub const Color = struct {
     }
 
     pub fn toU32(self: Color) u32 {
-        return (@as(u32, self.r) << 24) | 
-               (@as(u32, self.g) << 16) | 
-               (@as(u32, self.b) << 8) | 
-               @as(u32, self.a);
+        return (@as(u32, self.r) << 24) |
+            (@as(u32, self.g) << 16) |
+            (@as(u32, self.b) << 8) |
+            @as(u32, self.a);
     }
 
     pub fn luminance(self: Color) f32 {
         return 0.299 * @as(f32, @floatFromInt(self.r)) +
-               0.587 * @as(f32, @floatFromInt(self.g)) +
-               0.114 * @as(f32, @floatFromInt(self.b));
+            0.587 * @as(f32, @floatFromInt(self.g)) +
+            0.114 * @as(f32, @floatFromInt(self.b));
     }
 
     pub fn distance(self: Color, other: Color) f32 {
@@ -73,10 +73,10 @@ pub const Rect = struct {
     height: u32,
 
     pub fn contains(self: Rect, point: Point) bool {
-        return point.x >= self.x and 
-               point.x < self.x + @as(i32, @intCast(self.width)) and
-               point.y >= self.y and 
-               point.y < self.y + @as(i32, @intCast(self.height));
+        return point.x >= self.x and
+            point.x < self.x + @as(i32, @intCast(self.width)) and
+            point.y >= self.y and
+            point.y < self.y + @as(i32, @intCast(self.height));
     }
 };
 
@@ -86,9 +86,9 @@ pub const ImageFormat = enum {
     jpeg,
     gif,
     bmp,
-    rgb24,   // Raw RGB data
-    rgba32,  // Raw RGBA data
-    
+    rgb24, // Raw RGB data
+    rgba32, // Raw RGBA data
+
     pub fn isRaw(self: ImageFormat) bool {
         return self == .rgb24 or self == .rgba32;
     }
@@ -122,7 +122,7 @@ pub const Image = struct {
 
         const bpp = self.format.bytesPerPixel();
         const idx = (y * self.width + x) * bpp;
-        
+
         return switch (self.format) {
             .rgb24 => Color{
                 .r = self.data[idx],
@@ -173,7 +173,7 @@ pub const Chart = struct {
     data_points: []const DataPoint,
     size: Size,
     colors: ?[]const Color = null,
-    
+
     pub const DataPoint = struct {
         value: f32,
         label: ?[]const u8 = null,
@@ -190,7 +190,7 @@ pub const ProgressStyle = enum {
     spinner,
 };
 
-/// Progress configuration  
+/// Progress configuration
 pub const ProgressOptions = struct {
     style: ProgressStyle = .bar,
     size: Size,
@@ -201,13 +201,13 @@ pub const ProgressOptions = struct {
 
 /// Graphics protocol types
 pub const GraphicsProtocol = enum {
-    kitty,      // Kitty graphics protocol
-    sixel,      // Sixel graphics
-    iterm2,     // iTerm2 inline images
-    unicode,    // Unicode block characters
-    ascii,      // ASCII art fallback
-    none,       // No graphics support
-    
+    kitty, // Kitty graphics protocol
+    sixel, // Sixel graphics
+    iterm2, // iTerm2 inline images
+    unicode, // Unicode block characters
+    ascii, // ASCII art fallback
+    none, // No graphics support
+
     pub fn supportsCompression(self: GraphicsProtocol) bool {
         return self == .kitty or self == .iterm2;
     }

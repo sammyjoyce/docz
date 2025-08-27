@@ -2,21 +2,21 @@ const std = @import("std");
 const caps = @import("capabilities.zig");
 
 /// Simple terminal query system for testing
-pub const TerminalQuerySystem = struct {
+pub const TerminalQuery = struct {
     allocator: std.mem.Allocator,
 
-    pub fn init(allocator: std.mem.Allocator) TerminalQuerySystem {
-        return TerminalQuerySystem{
+    pub fn init(allocator: std.mem.Allocator) TerminalQuery {
+        return TerminalQuery{
             .allocator = allocator,
         };
     }
 
-    pub fn deinit(self: *TerminalQuerySystem) void {
+    pub fn deinit(self: *TerminalQuery) void {
         _ = self; // No-op
     }
 
     /// Build query sequence for the given query type
-    pub fn buildQuerySequence(self: *TerminalQuerySystem, query: QueryType) ![]u8 {
+    pub fn buildQuerySequence(self: *TerminalQuery, query: QueryType) ![]u8 {
         const sequence = switch (query) {
             .mouse_x10_query => "\x1b[?9$p",
             .mouse_vt200_query => "\x1b[?1000$p",

@@ -148,7 +148,7 @@ fn renderHigh(renderer: *Renderer, table: Table, output: *std.ArrayList(u8)) !vo
     }
 
     // Header row
-    try renderDataRow(renderer, config, table.headers, widths, table.column_alignments, table.header_color, writer, true);
+    try renderRow(renderer, config, table.headers, widths, table.column_alignments, table.header_color, writer, true);
 
     // Header separator
     if (config.use_box_drawing) {
@@ -165,7 +165,7 @@ fn renderHigh(renderer: *Renderer, table: Table, output: *std.ArrayList(u8)) !vo
             null;
         const final_color = row_color orelse alternating_color;
 
-        try renderDataRow(renderer, config, row, widths, table.column_alignments, final_color, writer, false);
+        try renderRow(renderer, config, row, widths, table.column_alignments, final_color, writer, false);
     }
 
     // Bottom border
@@ -196,7 +196,7 @@ fn renderCompatible(renderer: *Renderer, table: Table, output: *std.ArrayList(u8
     try writer.writeAll("\n");
 
     // Header row
-    try renderDataRow(renderer, config, table.headers, widths, table.column_alignments, null, writer, true);
+    try renderRow(renderer, config, table.headers, widths, table.column_alignments, null, writer, true);
 
     // Header separator
     try renderHorizontalBorder(writer, widths, border_chars, .middle);
@@ -204,7 +204,7 @@ fn renderCompatible(renderer: *Renderer, table: Table, output: *std.ArrayList(u8
 
     // Data rows
     for (table.rows) |row| {
-        try renderDataRow(renderer, config, row, widths, table.column_alignments, null, writer, false);
+        try renderRow(renderer, config, row, widths, table.column_alignments, null, writer, false);
     }
 
     // Bottom border
@@ -239,7 +239,7 @@ fn renderMedium(renderer: *Renderer, table: Table, output: *std.ArrayList(u8)) !
     try writer.writeAll("\n");
 
     // Header row
-    try renderDataRow(renderer, config, table.headers, widths, table.column_alignments, table.header_color, writer, true);
+    try renderRow(renderer, config, table.headers, widths, table.column_alignments, table.header_color, writer, true);
 
     // Header separator
     try renderHorizontalBorder(writer, widths, border_chars, .middle);
@@ -254,7 +254,7 @@ fn renderMedium(renderer: *Renderer, table: Table, output: *std.ArrayList(u8)) !
             null;
         const final_color = row_color orelse alternating_color;
 
-        try renderDataRow(renderer, config, row, widths, table.column_alignments, final_color, writer, false);
+        try renderRow(renderer, config, row, widths, table.column_alignments, final_color, writer, false);
     }
 
     // Bottom border
@@ -283,7 +283,7 @@ fn renderLow(renderer: *Renderer, table: Table, output: *std.ArrayList(u8)) !voi
     try writer.writeAll("\n");
 
     // Header row
-    try renderDataRow(renderer, config, table.headers, widths, table.column_alignments, null, writer, true);
+    try renderRow(renderer, config, table.headers, widths, table.column_alignments, null, writer, true);
 
     // Header separator
     try renderHorizontalBorder(writer, widths, border_chars, .middle);
@@ -291,7 +291,7 @@ fn renderLow(renderer: *Renderer, table: Table, output: *std.ArrayList(u8)) !voi
 
     // Data rows
     for (table.rows) |row| {
-        try renderDataRow(renderer, config, row, widths, table.column_alignments, null, writer, false);
+        try renderRow(renderer, config, row, widths, table.column_alignments, null, writer, false);
     }
 
     // Bottom border
@@ -366,8 +366,8 @@ fn renderHorizontalBorder(writer: anytype, widths: []const u16, chars: TableConf
     try writer.writeAll(right_char);
 }
 
-/// Render a data row
-fn renderDataRow(
+/// Render a row
+fn renderRow(
     renderer: *Renderer,
     config: TableConfig,
     row: []const []const u8,

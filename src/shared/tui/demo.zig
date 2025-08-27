@@ -1,6 +1,6 @@
 //! Smart TUI Demo
 //!
-//! This demonstrates the new advanced TUI components with progressive enhancement
+//! This demonstrates the new TUI components with progressive enhancement
 //! based on terminal capabilities.
 
 const std = @import("std");
@@ -52,7 +52,7 @@ pub fn main() !void {
     std.debug.print("Demo 1: Advanced Notifications\n");
     std.debug.print("------------------------------\n");
 
-    try tui.notifyInfo("Demo Started", "Testing advanced notifications with progressive enhancement");
+    try tui.notifyInfo("Demo Started", "Testing notifications with progressive enhancement");
 
     if (caps.supportsTruecolor) {
         try tui.notifySuccess("Rich Colors", "Your terminal supports truecolor!");
@@ -60,14 +60,14 @@ pub fn main() !void {
         try tui.notifyWarning("Basic Colors", "Using 256-color palette fallback");
     }
 
-    // Demo 2: Advanced Progress Bars
-    std.debug.print("Demo 2: Advanced Progress Bars\n");
+    // Demo 2: Progress Bars
+    std.debug.print("Demo 2: Progress Bars\n");
     std.debug.print("------------------------------\n");
 
-    const advanced_progress = @import("widgets/rich/advanced_progress.zig");
+    const progress_mod = @import("widgets/rich/progress.zig");
 
     // Different progress bar styles
-    const progress_styles = [_]advanced_progress.AdvancedProgressBar.ProgressStyle{ .bar, .blocks, .gradient, .dots };
+    const progress_styles = [_]progress_mod.ProgressStyle{ .bar, .blocks, .gradient, .dots };
     const style_names = [_][]const u8{ "Traditional Bar", "Unicode Blocks", "Gradient", "Dots" };
 
     var progress: f32 = 0.0;
@@ -87,9 +87,9 @@ pub fn main() !void {
                 .zIndex = 0,
             };
 
-            var progress_bar = advanced_progress.AdvancedProgressBar.init(name, style);
-            progress_bar.setProgress(progress);
-            progress_bar.showPercentage = true;
+            var progress_bar = try progress_mod.ProgressBar.init(renderer.allocator, name, style);
+            defer progress_bar.deinit();
+            try progress_bar.setProgress(progress);
             try progress_bar.render(renderer, ctx);
 
             y += 3;
@@ -172,7 +172,7 @@ pub fn main() !void {
     }
 
     // Final notification
-    try tui.notifyCritical("Demo Complete", "All advanced TUI features demonstrated!");
+    try tui.notifyCritical("Demo Complete", "All TUI features demonstrated!");
 
     // Wait a moment to show notifications
     std.time.sleep(2 * std.time.ns_per_s);

@@ -4,36 +4,36 @@ const std = @import("std");
 // Implements the 5 official tools as defined in tools.zon
 
 // Official Tools (from tools.zon)
-pub const DocumentIO = @import("document_io.zig");
+pub const Io = @import("io.zig");
 pub const ContentEditor = @import("content_editor.zig");
-pub const DocumentValidator = @import("document_validator.zig");
-pub const DocumentTransformer = @import("document_transformer.zig");
-pub const WorkflowProcessor = @import("workflow_processor.zig");
+pub const Validate = @import("validate.zig");
+pub const Document = @import("document.zig");
+pub const Workflow = @import("workflow.zig");
 
 // Extended Tools
-pub const FileManager = @import("file_manager.zig");
+pub const File = @import("file.zig");
 
 // Official Tool Registry
 pub const ToolRegistry = struct {
     pub const TOOLS = .{
-        .document_io = DocumentIO,
+        .io = Io,
         .content_editor = ContentEditor,
-        .document_validator = DocumentValidator,
-        .document_transformer = DocumentTransformer,
-        .workflow_processor = WorkflowProcessor,
-        .file_manager = FileManager,
+        .validate = Validate,
+        .document = Document,
+        .workflow = Workflow,
+        .file = File,
     };
 };
 
 // Extended Tool Registry (includes official + additional tools)
 pub const ExtendedToolRegistry = struct {
     pub const TOOLS = .{
-        .document_io = DocumentIO,
+        .io = Io,
         .content_editor = ContentEditor,
-        .document_validator = DocumentValidator,
-        .document_transformer = DocumentTransformer,
-        .workflow_processor = WorkflowProcessor,
-        .file_manager = FileManager,
+        .validate = Validate,
+        .document = Document,
+        .workflow = Workflow,
+        .file = File,
     };
 };
 

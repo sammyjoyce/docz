@@ -4,11 +4,11 @@
 const std = @import("std");
 
 // Import the modular CLI system
-const cli_mod = @import("cli/mod.zig");
+const cli_mod = @import("mod.zig");
 const cli_types = @import("cli/core/types.zig");
 
 // Re-export the main public interface
-pub const EnhancedParser = cli_mod.EnhancedParser;
+pub const Parser = cli_mod.parser.Parser;
 pub const ParsedArgs = cli_mod.ParsedArgs;
 pub const CliError = cli_types.CliError;
 pub const parseArgs = cli_mod.parseArgs;
@@ -16,7 +16,7 @@ pub const parseAndHandle = cli_mod.parseAndHandle;
 
 // Re-export modules for advanced usage
 pub const core = cli_mod.core;
-pub const enhanced = cli_mod.enhanced;
+pub const legacy = cli_mod.parser;
 pub const types = cli_mod.types;
 pub const commands = cli_mod.commands;
 pub const interactive = cli_mod.interactive;
@@ -45,5 +45,5 @@ pub fn printError(allocator: std.mem.Allocator, err: CliError, context: ?[]const
     const rich_formatter = @import("cli/formatters/rich.zig");
     var formatter = try rich_formatter.CliFormatter.init(allocator);
     defer formatter.deinit();
-    try formatter.printEnhancedError(err, context);
+    try formatter.printError(err, context);
 }

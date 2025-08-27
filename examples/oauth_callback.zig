@@ -7,7 +7,7 @@
 //! - Real-time terminal status display
 
 const std = @import("std");
-const oauth = @import("../src/shared/auth/oauth/mod.zig");
+const oauth = @import("auth_shared").oauth;
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};

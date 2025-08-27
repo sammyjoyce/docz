@@ -17,7 +17,7 @@ pub const cli = @import("cli/mod.zig");
 // Re-export commonly used types for convenience
 pub const AuthMethod = core.AuthMethod;
 pub const AuthCredentials = core.AuthCredentials;
-pub const OAuthCredentials = oauth.OAuthCredentials;
+pub const Credentials = oauth.Credentials;
 pub const AuthClient = core.AuthClient;
 pub const AuthError = core.AuthError;
 
@@ -29,6 +29,14 @@ pub const saveCredentials = core.saveCredentials;
 // Re-export OAuth functions
 pub const setupOAuth = oauth.setupOAuth;
 pub const refreshTokens = oauth.refreshTokens;
+
+// Re-export callback server types and functions
+pub const Server = oauth.Server;
+pub const Config = oauth.Config;
+pub const Result = oauth.Result;
+pub const runCallbackServer = oauth.runCallbackServer;
+pub const integrateWithWizard = oauth.integrateWithWizard;
+pub const completeOAuthFlow = oauth.completeOAuthFlow;
 
 // TUI functions are available via the TUI module when building interactive flows.
 

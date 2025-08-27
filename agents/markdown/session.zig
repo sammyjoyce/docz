@@ -70,7 +70,7 @@ const config = @import("config_shared");
 
 // Shared infrastructure
 const tui = @import("tui_shared");
-const term = @import("term_shared");
+const term = @import("../../src/term_shared.zig");
 const theme_manager = @import("../../src/shared/theme_manager/mod.zig");
 const render = @import("render_shared");
 const components = @import("components_shared");
@@ -83,7 +83,7 @@ const progress_tracker = @import("../../src/shared/tui/components/progress_track
 const modal = @import("../../src/shared/tui/widgets/modal.zig");
 
 // UI components
-const smart_input = @import("../../src/shared/components/smart_input.zig");
+const input_component = @import("../../src/shared/components/input_component.zig");
 const split_pane = @import("../../src/shared/tui/widgets/core/split_pane.zig");
 const file_tree = @import("../../src/shared/tui/widgets/core/file_tree.zig");
 const canvas_mod = @import("../../src/shared/tui/core/canvas.zig");
@@ -91,8 +91,8 @@ const canvas_mod = @import("../../src/shared/tui/core/canvas.zig");
 // Markdown agent specific
 const markdown_tools = @import("tools/mod.zig");
 const ContentEditor = @import("tools/ContentEditor.zig");
-const DocumentValidator = @import("tools/DocumentValidator.zig");
-const document_transformer = @import("tools/document_transformer.zig");
+const Validate = @import("tools/validate.zig");
+const document_tool = @import("tools/document.zig");
 const enhanced_editor = @import("markdown_editor.zig");
 
 // Common utilities
@@ -148,7 +148,7 @@ pub const SessionConfig = struct {
     notification_config: NotificationConfig = .{},
 
     /// Theme and appearance
-    theme_config: ThemeConfig = .{},
+    theme_config: ThemeSettings = .{},
 
     /// Performance settings
     performance_config: PerformanceConfig = .{},
@@ -588,7 +588,7 @@ pub const SessionManagementConfig = struct {
 /// Input configuration
 pub const InputConfig = struct {
     /// Enable smart input
-    smart_input: bool = true,
+    input_component: bool = true,
 
     /// Enable auto-completion
     auto_completion: bool = true,
@@ -643,7 +643,7 @@ pub const NotificationPosition = enum {
 };
 
 /// Theme configuration
-pub const ThemeConfig = struct {
+pub const ThemeSettings = struct {
     /// Theme name
     name: []const u8 = "dark",
 

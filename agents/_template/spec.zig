@@ -67,10 +67,10 @@ fn registerToolsImpl(registry: *tools_mod.Registry) !void {
     // Import the tools module to access individual tool functions
     const tools = @import("tools/mod.zig");
 
-    // Register the example tool with comprehensive metadata
-    try tools_mod.registerJsonTool(registry, "template_example", // tool_name (unique identifier)
-        "Example tool demonstrating JSON input/output patterns, parameter validation, and structured responses", // description
-        tools.exampleTool, // tool_function
+    // Register the tool with comprehensive metadata
+    try tools_mod.registerJsonTool(registry, "example", // tool_name (unique identifier)
+        "Tool demonstrating JSON input/output patterns, parameter validation, and structured responses", // description
+        tools.tool, // tool_function
         "_template" // agent_name (for attribution)
     );
 

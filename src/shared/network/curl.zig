@@ -338,10 +338,10 @@ pub const HTTPClient = struct {
         }
 
         // Get response status code
-        var status_code: c_long = 0;
-        _ = c.curl_easy_getinfo(handle, c.CURLINFO_RESPONSE_CODE, &status_code);
+        var statusCode: c_long = 0;
+        _ = c.curl_easy_getinfo(handle, c.CURLINFO_RESPONSE_CODE, &statusCode);
 
-        return @intCast(status_code);
+        return @intCast(statusCode);
     }
 
     // Convenience methods
@@ -372,7 +372,7 @@ fn writeCallback(
 ) callconv(.c) usize {
     const realSize = size * nmemb;
     const BodyCallback = struct {
-        responseBody: *std.ArrayList(u8),
+        responseBody: *std.ArrayListUnmanaged(u8),
         allocator: std.mem.Allocator,
     };
     const context: *const BodyCallback = @ptrCast(@alignCast(userData.?));

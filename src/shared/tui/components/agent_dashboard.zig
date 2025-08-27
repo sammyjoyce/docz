@@ -1,3 +1,7 @@
+//! DEPRECATED: This file is deprecated and will be removed in a future version.
+//! Please migrate to the modular version at src/shared/tui/components/agent_dashboard/mod.zig.
+//! For transitional support, use the aliases in mod.zig (e.g., agent_dashboard.AgentDashboard).
+//!
 //! Dashboard Framework for All Agents
 //!
 //! Provides a comprehensive dashboard system that integrates with:
@@ -50,7 +54,7 @@ pub const DashboardConfig = struct {
     monitoring: MonitoringConfig = .{},
 
     /// Theme configuration
-    theme: ThemeConfig = .{},
+    theme: ThemeSettings = .{},
 
     /// Panel-specific configurations
     panels: PanelConfigs = .{},
@@ -136,7 +140,7 @@ pub const AlertThresholds = struct {
 };
 
 /// Theme configuration
-pub const ThemeConfig = struct {
+pub const ThemeSettings = struct {
     /// Theme name to use
     theme_name: []const u8 = "auto",
 
@@ -383,7 +387,7 @@ pub const AgentDashboard = struct {
     render_level: tui_dashboard.RenderLevel,
 
     // Layout and panels
-    layout_manager: LayoutManager,
+    layout: Layout,
     panel_manager: PanelManager,
 
     // Monitoring and data
@@ -425,7 +429,7 @@ pub const AgentDashboard = struct {
 
         // Initialize layout manager
         const screen_size = terminal.getSize() orelse .{ .width = 80, .height = 24 };
-        const layout_manager = try LayoutManager.init(allocator, screen_size, dashboard_config.layout);
+        const layout = try Layout.init(allocator, screen_size, dashboard_config.layout);
 
         // Initialize panel manager
         const panel_manager = try PanelManager.init(allocator, dashboard_config.panels);
@@ -448,7 +452,7 @@ pub const AgentDashboard = struct {
             .terminal = terminal,
             .capabilities = capabilities,
             .render_level = render_level,
-            .layout_manager = layout_manager,
+            .layout = layout,
             .panel_manager = panel_manager,
             .monitor = monitor,
             .data_store = data_store,
@@ -478,7 +482,7 @@ pub const AgentDashboard = struct {
         self.data_store.deinit();
 
         // Clean up layout
-        self.layout_manager.deinit();
+        self.layout.deinit();
 
         // Clean up event handler
         self.event_handler.deinit();
@@ -628,8 +632,8 @@ pub const AgentDashboard = struct {
         // Update layout if terminal size changed
         const new_size = self.terminal.getSize();
         if (new_size) |size| {
-            if (!std.meta.eql(self.layout_manager.screen_size, size)) {
-                self.layout_manager.resize(size);
+            if (!std.meta.eql(self.layout.screen_size, size)) {
+                self.layout.resize(size);
                 self.needs_redraw = true;
             }
         }
@@ -645,7 +649,7 @@ pub const AgentDashboard = struct {
         try self.terminal.moveCursor(1, 1);
 
         // Render panels
-        try self.panel_manager.render(self.layout_manager, self.terminal, self.current_theme);
+        try self.panel_manager.render(self.layout, self.terminal, self.current_theme);
 
         // Render title bar
         try self.renderTitleBar();
@@ -692,13 +696,13 @@ pub const AgentDashboard = struct {
 };
 
 /// Layout manager for dashboard panels
-pub const LayoutManager = struct {
+pub const Layout = struct {
     allocator: Allocator,
     screen_size: unified.Size,
     config: LayoutConfig,
     panel_bounds: std.StringHashMap(unified.Rect),
 
-    pub fn init(allocator: Allocator, screen_size: unified.Size, layout_config: LayoutConfig) !LayoutManager {
+    pub fn init(allocator: Allocator, screen_size: unified.Size, layout_config: LayoutConfig) !Layout {
         return .{
             .allocator = allocator,
             .screen_size = screen_size,
@@ -707,26 +711,26 @@ pub const LayoutManager = struct {
         };
     }
 
-    pub fn deinit(self: *LayoutManager) void {
+    pub fn deinit(self: *Layout) void {
         self.panel_bounds.deinit();
     }
 
-    pub fn resize(self: *LayoutManager, new_size: unified.Size) void {
+    pub fn resize(self: *Layout, new_size: unified.Size) void {
         self.screen_size = new_size;
         // Recalculate all panel bounds
         self.recalculateLayout();
     }
 
-    pub fn getPanelBounds(self: *LayoutManager, panel_name: []const u8) ?unified.Rect {
+    pub fn getPanelBounds(self: *Layout, panel_name: []const u8) ?unified.Rect {
         return self.panel_bounds.get(panel_name);
     }
 
-    pub fn setPanelBounds(self: *LayoutManager, panel_name: []const u8, bounds: unified.Rect) !void {
+    pub fn setPanelBounds(self: *Layout, panel_name: []const u8, bounds: unified.Rect) !void {
         const owned_name = try self.allocator.dupe(u8, panel_name);
         try self.panel_bounds.put(owned_name, bounds);
     }
 
-    fn recalculateLayout(self: *LayoutManager) void {
+    fn recalculateLayout(self: *Layout) void {
         // Clear existing bounds
         self.panel_bounds.clearRetainingCapacity();
 
@@ -847,7 +851,7 @@ pub const PanelManager = struct {
         }
     }
 
-    pub fn render(self: *PanelManager, layout: LayoutManager, terminal: unified.Terminal, theme: *theme_manager.ColorScheme) !void {
+    pub fn render(self: *PanelManager, layout: Layout, terminal: unified.Terminal, theme: *theme_manager.ColorScheme) !void {
         var iter = self.panels.iterator();
         while (iter.next()) |entry| {
             const bounds = layout.getPanelBounds(entry.key) orelse continue;
@@ -1705,7 +1709,7 @@ pub const EventHandler = struct {
                 // Forward mouse events to panels
                 var iter = dashboard.panel_manager.panels.iterator();
                 while (iter.next()) |entry| {
-                    const bounds = dashboard.layout_manager.getPanelBounds(entry.key) orelse continue;
+                    const bounds = dashboard.layout.getPanelBounds(entry.key) orelse continue;
                     if (mouse_event.x >= bounds.x and mouse_event.x < bounds.x + bounds.width and
                         mouse_event.y >= bounds.y and mouse_event.y < bounds.y + bounds.height)
                     {
@@ -1748,7 +1752,7 @@ pub const EventHandler = struct {
 };
 
 /// Apply theme configuration to theme manager
-fn applyThemeConfig(theme_mgr: *theme_manager.ThemeManager, theme_config: ThemeConfig) !void {
+fn applyThemeConfig(theme_mgr: *theme_manager.ThemeManager, theme_config: ThemeSettings) !void {
     // Switch to specified theme
     if (!std.mem.eql(u8, theme_config.theme_name, "auto")) {
         try theme_mgr.switchTheme(theme_config.theme_name);

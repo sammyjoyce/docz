@@ -4,12 +4,12 @@
 // Base components (basic functionality)
 pub const Base = struct {
     pub const SelectMenu = @import("base/select_menu.zig").SelectMenu;
-    pub const NotificationManager = @import("../notifications.zig").Notification;
-    pub const Notification = @import("../core/context.zig").Notification;
+    pub const Notification = @import("../notifications.zig").Notification;
+    pub const CliNotification = @import("../core/state.zig").Notification;
     pub const NotificationDisplay = @import("../notifications.zig").Notification; // Alias for compatibility
     pub const HyperlinkMenu = @import("base/hyperlink_menu.zig").HyperlinkMenu;
     pub const ClipboardInput = @import("base/clipboard_input.zig").ClipboardInput;
-    pub const Panel = @import("base/info_panel.zig");
+    pub const Panel = @import("base/panel.zig");
     // StatusIndicator removed - not available within CLI module boundary
     // pub const StatusIndicator = ...;
     pub const BreadcrumbTrail = @import("base/breadcrumb_trail.zig");
@@ -20,8 +20,8 @@ pub const Base = struct {
 // Convenience re-exports for common components
 pub const HyperlinkMenu = Base.HyperlinkMenu;
 pub const ClipboardInput = Base.ClipboardInput;
-pub const NotificationDisplay = Base.NotificationDisplay;
-pub const Notification = Base.NotificationManager;
+pub const Notification = Base.Notification;
+pub const CliNotification = Base.CliNotification;
 
 // Legacy compatibility
 pub const SelectMenu = Base.SelectMenu;

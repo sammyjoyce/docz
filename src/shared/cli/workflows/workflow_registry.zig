@@ -2,7 +2,7 @@
 //! Integrated workflow system for the unified CLI
 
 const std = @import("std");
-const context = @import("../core/context.zig");
+const state = @import("../core/state.zig");
 const types = @import("../core/types.zig");
 const WorkflowStep = @import("workflow_step.zig");
 
@@ -40,13 +40,13 @@ pub const Workflow = struct {
 pub const WorkflowRegistry = struct {
     allocator: std.mem.Allocator,
     workflows: std.StringHashMap(Workflow),
-    context: *const context.Cli,
+    state: *const state.Cli,
 
-    pub fn init(allocator: std.mem.Allocator, ctx: *const context.Cli) WorkflowRegistry {
+    pub fn init(allocator: std.mem.Allocator, ctx: *const state.Cli) WorkflowRegistry {
         return WorkflowRegistry{
             .allocator = allocator,
             .workflows = std.StringHashMap(Workflow).init(allocator),
-            .context = ctx,
+            .state = ctx,
         };
     }
 
@@ -66,7 +66,7 @@ pub const WorkflowRegistry = struct {
         };
 
         // Notify start
-        try self.context.notification.send(.{
+        try self.state.notification.send(.{
             .title = "Workflow Started",
             .body = workflow.description,
             .level = .info,
@@ -78,19 +78,19 @@ pub const WorkflowRegistry = struct {
 
             // Show progress
             const progress = @as(f32, @floatFromInt(i)) / @as(f32, @floatFromInt(workflow.steps.len));
-            if (self.context.graphics.isAvailable()) {
-                try self.context.graphics.showProgress(progress);
+            if (self.state.graphics.isAvailable()) {
+                try self.state.graphics.showProgress(progress);
             }
 
-            if (self.context.verbose) {
-                self.context.verboseLog("Executing step {d}/{d}: {s}", .{ step_num, workflow.steps.len, step.name });
+            if (self.state.verbose) {
+                self.state.verboseLog("Executing step {d}/{d}: {s}", .{ step_num, workflow.steps.len, step.name });
             }
 
             // Execute step
             const result = step.execute_fn(self.allocator, step.context) catch |err| {
                 const error_msg = try std.fmt.allocPrint(self.allocator, "Step '{s}' failed: {}", .{ step.name, err });
 
-                try self.context.notification.send(.{
+                try self.state.notification.send(.{
                     .title = "Workflow Failed",
                     .body = error_msg,
                     .level = .err,
@@ -102,7 +102,7 @@ pub const WorkflowRegistry = struct {
             if (!result.success) {
                 const error_msg = result.error_message orelse "Unknown error";
 
-                try self.context.notification.send(.{
+                try self.state.notification.send(.{
                     .title = "Workflow Failed",
                     .body = error_msg,
                     .level = .err,
@@ -113,12 +113,12 @@ pub const WorkflowRegistry = struct {
         }
 
         // Complete progress
-        if (self.context.graphics.isAvailable()) {
-            try self.context.graphics.showProgress(1.0);
+        if (self.state.graphics.isAvailable()) {
+            try self.state.graphics.showProgress(1.0);
         }
 
         // Notify completion
-        try self.context.notification.send(.{
+        try self.state.notification.send(.{
             .title = "Workflow Completed",
             .body = workflow.description,
             .level = .success,

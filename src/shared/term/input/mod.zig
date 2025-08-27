@@ -36,13 +36,18 @@ pub const InputEvent = parser.InputEvent;
 pub const InputParser = parser.InputParser;
 
 // Additional low-level input module exports
-pub const key_mapping = @import("key_mapping.zig");
-pub const kitty_keyboard = @import("kitty_keyboard.zig");
+pub const key = @import("key.zig");
+pub const KeyMapping = key.KeyMapping;
+pub const Input = key.Input;
+pub const kitty = @import("kitty.zig");
+pub const KittyProtocol = kitty.KittyProtocol;
+pub const Kitty = kitty.Kitty;
 
-pub const cursor = @import("../control/cursor.zig");
+pub const cursor = @import("cursor.zig");
 pub const color_events = @import("color_events.zig");
 pub const focus = @import("focus.zig");
-pub const paste = @import("paste.zig");
+// Note: paste functionality has been consolidated into term/bracketed_paste.zig
+// pub const paste = @import("paste.zig");
 pub const mouse_events = @import("mouse_events.zig");
 pub const input_events = @import("input_events.zig");
 // Export mouse protocol module for higher-level imports

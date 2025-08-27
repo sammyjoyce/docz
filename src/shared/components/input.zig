@@ -615,7 +615,7 @@ pub const Input = struct {
 
         // Convert and queue events
         for (events) |event| {
-            const converted = try InputEvent.fromUnifiedEvent(self.allocator, event);
+            const converted = try InputEvent.fromEvent(self.allocator, event);
             self.queue_mutex.lock();
             try self.event_queue.append(converted);
             self.queue_mutex.unlock();

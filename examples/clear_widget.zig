@@ -6,7 +6,7 @@
 //! - Tooltip functionality
 //! - Keyboard interaction (ESC to close)
 //!
-//! Run with: zig build run-example -- clear_widget_demo
+//! Run with: zig build run-example -- clear_widget
 
 const std = @import("std");
 const clear_widget = @import("../src/shared/tui/widgets/core/clear.zig");

@@ -23,7 +23,7 @@ pub const OAUTH_REDIRECT_URI = "https://console.anthropic.com/oauth/code/callbac
 pub const OAUTH_SCOPES = "org:create_api_key user:profile user:inference";
 
 /// OAuth error types
-pub const OAuthError = error{
+pub const Error = error{
     NetworkError,
     AuthError,
     TokenExpired,
@@ -35,26 +35,26 @@ pub const OAuthError = error{
 };
 
 /// OAuth credentials - compatible with anthropic module
-pub const OAuthCredentials = struct {
+pub const Credentials = struct {
     type: []const u8, // Always "oauth"
     access_token: []const u8,
     refresh_token: []const u8,
     expires_at: i64, // Unix timestamp
 
     /// Check if the token is expired
-    pub fn isExpired(self: OAuthCredentials) bool {
+    pub fn isExpired(self: Credentials) bool {
         const now = std.time.timestamp();
         return now >= self.expires_at;
     }
 
     /// Check if the token will expire within the specified leeway (in seconds)
-    pub fn willExpireSoon(self: OAuthCredentials, leeway: i64) bool {
+    pub fn willExpireSoon(self: Credentials, leeway: i64) bool {
         const now = std.time.timestamp();
         return now + leeway >= self.expires_at;
     }
 
     /// Clean up allocated memory
-    pub fn deinit(self: OAuthCredentials, allocator: std.mem.Allocator) void {
+    pub fn deinit(self: Credentials, allocator: std.mem.Allocator) void {
         allocator.free(self.type);
         allocator.free(self.access_token);
         allocator.free(self.refresh_token);
@@ -76,7 +76,7 @@ pub const Pkce = struct {
 };
 
 /// OAuth provider configuration
-pub const OAuthProvider = struct {
+pub const Provider = struct {
     client_id: []const u8,
     authorization_url: []const u8,
     token_url: []const u8,
@@ -84,7 +84,7 @@ pub const OAuthProvider = struct {
     scopes: []const []const u8,
 
     /// Build authorization URL with PKCE parameters
-    pub fn buildAuthorizationUrl(self: OAuthProvider, allocator: std.mem.Allocator, pkce_params: Pkce) ![]u8 {
+    pub fn buildAuthorizationUrl(self: Provider, allocator: std.mem.Allocator, pkce_params: Pkce) ![]u8 {
         const scopes_joined = try std.mem.join(allocator, " ", self.scopes);
         defer allocator.free(scopes_joined);
 
@@ -124,7 +124,7 @@ pub fn generatePkceParams(allocator: std.mem.Allocator) !Pkce {
 /// Generate a cryptographically secure random code verifier
 fn generateCodeVerifier(allocator: std.mem.Allocator, length: usize) ![]u8 {
     if (length < 43 or length > 128) {
-        return OAuthError.InvalidFormat;
+        return Error.InvalidFormat;
     }
 
     // Generate random bytes
@@ -179,7 +179,7 @@ fn generateRandomState(allocator: std.mem.Allocator, length: usize) ![]u8 {
 /// Build OAuth authorization URL
 pub fn buildAuthorizationUrl(allocator: std.mem.Allocator, pkce_params: Pkce) ![]u8 {
     const scopes = [_][]const u8{ "org:create_api_key", "user:profile", "user:inference" };
-    const provider = OAuthProvider{
+    const provider = Provider{
         .client_id = OAUTH_CLIENT_ID,
         .authorization_url = OAUTH_AUTHORIZATION_URL,
         .token_url = OAUTH_TOKEN_ENDPOINT,
@@ -217,7 +217,7 @@ fn encodeFormData(allocator: std.mem.Allocator, fields: []const struct { key: []
 }
 
 /// Parse OAuth token response JSON
-fn parseTokenResponse(allocator: std.mem.Allocator, json_response: []const u8) !OAuthCredentials {
+fn parseTokenResponse(allocator: std.mem.Allocator, json_response: []const u8) !Credentials {
     const parsed = try std.json.parseFromSlice(std.json.Value, allocator, json_response, .{});
     defer parsed.deinit();
 
@@ -227,11 +227,11 @@ fn parseTokenResponse(allocator: std.mem.Allocator, json_response: []const u8) !
         std.log.err("OAuth error response: {s}", .{error_code});
 
         if (std.mem.eql(u8, error_code, "invalid_grant")) {
-            return OAuthError.InvalidGrant;
+            return Error.InvalidGrant;
         } else if (std.mem.eql(u8, error_code, "invalid_request")) {
-            return OAuthError.InvalidFormat;
+        return Error.InvalidFormat;
         } else {
-            return OAuthError.AuthError;
+            return Error.AuthError;
         }
     }
 
@@ -240,28 +240,28 @@ fn parseTokenResponse(allocator: std.mem.Allocator, json_response: []const u8) !
     // Extract required fields with proper error handling
     const access_token = obj.get("access_token") orelse {
         std.log.err("Missing access_token in OAuth response", .{});
-        return OAuthError.InvalidFormat;
+        return Error.InvalidFormat;
     };
 
     const refresh_token = obj.get("refresh_token") orelse {
         std.log.err("Missing refresh_token in OAuth response", .{});
-        return OAuthError.InvalidFormat;
+        return Error.InvalidFormat;
     };
 
     const expires_in = obj.get("expires_in") orelse {
         std.log.err("Missing expires_in in OAuth response", .{});
-        return OAuthError.InvalidFormat;
+        return Error.InvalidFormat;
     };
 
     if (access_token != .string or refresh_token != .string or expires_in != .integer) {
         std.log.err("Invalid field types in OAuth response", .{});
-        return OAuthError.InvalidFormat;
+        return Error.InvalidFormat;
     }
 
     // Calculate expiration timestamp
     const expires_at = std.time.timestamp() + expires_in.integer;
 
-    return OAuthCredentials{
+    return Credentials{
         .type = try allocator.dupe(u8, "oauth"),
         .access_token = try allocator.dupe(u8, access_token.string),
         .refresh_token = try allocator.dupe(u8, refresh_token.string),
@@ -270,7 +270,7 @@ fn parseTokenResponse(allocator: std.mem.Allocator, json_response: []const u8) !
 }
 
 /// Exchange authorization code for tokens using PKCE flow
-pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorization_code: []const u8, pkce_params: Pkce) !OAuthCredentials {
+pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorization_code: []const u8, pkce_params: Pkce) !Credentials {
     // Prepare form data for token exchange
     const fields = [_]struct { key: []const u8, value: []const u8 }{
         .{ .key = "grant_type", .value = "authorization_code" },
@@ -296,7 +296,7 @@ pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorization_code: [
     // Make POST request to token endpoint
     const response = http_client.post(OAUTH_TOKEN_ENDPOINT, &headers, form_data) catch |err| {
         std.log.err("Network error during OAuth token exchange: {any}", .{err});
-        return OAuthError.NetworkError;
+        return Error.NetworkError;
     };
     defer response.deinit();
 
@@ -310,7 +310,7 @@ pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorization_code: [
             _ = parseTokenResponse(allocator, response.body) catch {};
         }
 
-        return OAuthError.AuthError;
+        return Error.AuthError;
     }
 
     // Parse JSON response
@@ -318,7 +318,7 @@ pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorization_code: [
 }
 
 /// Refresh access token using refresh token
-pub fn refreshTokens(allocator: std.mem.Allocator, refresh_token: []const u8) !OAuthCredentials {
+pub fn refreshTokens(allocator: std.mem.Allocator, refresh_token: []const u8) !Credentials {
     // Prepare form data for token refresh
     const fields = [_]struct { key: []const u8, value: []const u8 }{
         .{ .key = "grant_type", .value = "refresh_token" },
@@ -342,7 +342,7 @@ pub fn refreshTokens(allocator: std.mem.Allocator, refresh_token: []const u8) !O
     // Make POST request to token endpoint
     const response = http_client.post(OAUTH_TOKEN_ENDPOINT, &headers, form_data) catch |err| {
         std.log.err("Network error during OAuth token refresh: {any}", .{err});
-        return OAuthError.NetworkError;
+        return Error.NetworkError;
     };
     defer response.deinit();
 
@@ -356,18 +356,18 @@ pub fn refreshTokens(allocator: std.mem.Allocator, refresh_token: []const u8) !O
             _ = parseTokenResponse(allocator, response.body) catch {};
         }
 
-        return OAuthError.AuthError;
+        return Error.AuthError;
     }
 
     // Parse JSON response
     return try parseTokenResponse(allocator, response.body);
 }
 
-pub fn parseCredentials(allocator: std.mem.Allocator, json_content: []const u8) !OAuthCredentials {
-    const parsed = try std.json.parseFromSlice(OAuthCredentials, allocator, json_content, .{});
+pub fn parseCredentials(allocator: std.mem.Allocator, json_content: []const u8) !Credentials {
+    const parsed = try std.json.parseFromSlice(Credentials, allocator, json_content, .{});
     defer parsed.deinit();
 
-    return OAuthCredentials{
+    return Credentials{
         .type = try allocator.dupe(u8, parsed.value.type),
         .access_token = try allocator.dupe(u8, parsed.value.access_token),
         .refresh_token = try allocator.dupe(u8, parsed.value.refresh_token),
@@ -375,7 +375,7 @@ pub fn parseCredentials(allocator: std.mem.Allocator, json_content: []const u8) 
     };
 }
 
-pub fn saveCredentials(allocator: std.mem.Allocator, file_path: []const u8, creds: OAuthCredentials) !void {
+pub fn saveCredentials(allocator: std.mem.Allocator, file_path: []const u8, creds: Credentials) !void {
     const json_content = try std.fmt.allocPrint(allocator, "{{\"type\":\"{s}\",\"access_token\":\"{s}\",\"refresh_token\":\"{s}\",\"expires_at\":{d}}}", .{ creds.type, creds.access_token, creds.refresh_token, creds.expires_at });
     defer allocator.free(json_content);
 
@@ -417,7 +417,7 @@ pub fn launchBrowser(url: []const u8) !void {
 }
 
 /// High-level OAuth setup function - simplified implementation without TUI
-pub fn setupOAuth(allocator: std.mem.Allocator) !OAuthCredentials {
+pub fn setupOAuth(allocator: std.mem.Allocator) !Credentials {
     std.log.info("🔐 Starting OAuth setup...", .{});
 
     // Generate PKCE parameters
@@ -444,7 +444,7 @@ pub fn setupOAuth(allocator: std.mem.Allocator) !OAuthCredentials {
     var buffer: [1024]u8 = undefined;
     const bytes_read = try stdin.readAll(buffer[0..]);
     if (bytes_read == 0) {
-        return OAuthError.AuthError;
+        return Error.AuthError;
     }
 
     const auth_code = std.mem.trim(u8, buffer[0..bytes_read], " \t\r\n");

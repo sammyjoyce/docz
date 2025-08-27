@@ -131,25 +131,25 @@ const json_schemas = @import("../shared/tools/json_schemas.zig");
 
 // File operation response
 pub fn createFileResponse(allocator: std.mem.Allocator, file_path: []const u8, content: []const u8) !std.json.Value {
-    const response = json_schemas.FileOperationResponse{
+    const response = json_schemas.FileOperation{
         .file_path = file_path,
         .content = content,
         .operation = "read",
         .size = content.len,
     };
 
-    return json_schemas.createFileOperationResponse(allocator, "file_tool", "read_file", response);
+    return json_schemas.createFileOperation(allocator, "file_tool", "read_file", response);
 }
 
 // Search response
 pub fn createSearchResponse(allocator: std.mem.Allocator, query: []const u8, results: []json_schemas.SearchResult) !std.json.Value {
-    const response = json_schemas.SearchResponse{
+    const response = json_schemas.Search{
         .query = query,
         .results = results,
         .total_matches = results.len,
     };
 
-    return json_schemas.createSearchResponse(allocator, "search_tool", "grep_search", response);
+    return json_schemas.createSearch(allocator, "search_tool", "grep_search", response);
 }
 ```
 
@@ -366,14 +366,14 @@ const json_schemas = @import("../shared/tools/json_schemas.zig");
 pub fn handleFileOperation(allocator: std.mem.Allocator, request: json_schemas.FileOperationRequest) !std.json.Value {
     const result = try performFileOperation(request);
 
-    const response = json_schemas.FileOperationResponse{
+    const response = json_schemas.FileOperation{
         .file_path = request.file_path,
         .content = result.content,
         .operation = @tagName(request.operation),
         .size = result.size,
     };
 
-    return json_schemas.createFileOperationResponse(allocator, "file_tool", "file_op", response);
+    return json_schemas.createFileOperation(allocator, "file_tool", "file_op", response);
 }
 ```
 

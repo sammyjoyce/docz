@@ -1,4 +1,4 @@
-//! Example tool implementation for test_agent.
+//! Tool implementation for test_agent.
 //! Demonstrates the new comptime reflection approach for JSON handling.
 //!
 //! # MIGRATION GUIDE: From Manual JSON Handling to Comptime Reflection

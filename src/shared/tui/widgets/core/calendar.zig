@@ -7,7 +7,7 @@ const term_ansi = @import("term_shared").ansi.color;
 const term_cursor = @import("term_shared").cursor;
 const term_mod = @import("term_shared");
 const shared = @import("../../../mod.zig");
-const terminal_cursor = shared.components.TerminalCursor;
+
 const input_mod = shared.components.input;
 const print = std.debug.print;
 

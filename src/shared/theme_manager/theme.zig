@@ -4,18 +4,18 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const ColorScheme = @import("color_scheme.zig").ColorScheme;
-const ThemeConfig = @import("theme_config.zig").ThemeConfig;
+const ThemeSettings = @import("theme_config.zig").ThemeSettings;
 const ThemeInheritance = @import("theme_inheritance.zig").ThemeInheritance;
-const SystemThemeDetector = @import("system_theme.zig").SystemThemeDetector;
+const SystemTheme = @import("system_theme.zig").SystemTheme;
 const ThemeValidator = @import("theme_validator.zig").ThemeValidator;
 
 pub const Theme = struct {
     allocator: std.mem.Allocator,
     themes: std.StringHashMap(*ColorScheme),
     currentTheme: ?*ColorScheme,
-    config: ThemeConfig,
-    inheritanceManager: *ThemeInheritance,
-    systemDetector: *SystemThemeDetector,
+    config: ThemeSettings,
+    inheritance: *ThemeInheritance,
+    systemTheme: *SystemTheme,
     validator: *ThemeValidator,
     configPath: []const u8,
     autoSave: bool,
@@ -33,9 +33,9 @@ pub const Theme = struct {
             .allocator = allocator,
             .themes = std.StringHashMap(*ColorScheme).init(allocator),
             .currentTheme = null,
-            .config = ThemeConfig.init(allocator),
-            .inheritanceManager = try ThemeInheritance.init(allocator),
-            .systemDetector = try SystemThemeDetector.init(),
+            .config = ThemeSettings.init(allocator),
+            .inheritance = try ThemeInheritance.init(allocator),
+            .systemTheme = try SystemTheme.init(),
             .validator = try ThemeValidator.init(allocator),
             .configPath = try getDefaultConfigPath(allocator),
             .autoSave = true,
@@ -75,8 +75,8 @@ pub const Theme = struct {
         self.themes.deinit();
 
         // Clean up managers
-        self.inheritanceManager.deinit();
-        self.systemDetector.deinit();
+        self.inheritance.deinit();
+        self.systemTheme.deinit();
         self.validator.deinit();
         self.config.deinit();
 
@@ -206,7 +206,7 @@ pub const Theme = struct {
 
     /// Apply system theme (light/dark mode)
     pub fn applySystemTheme(self: *Self) !void {
-        const isDark = try self.systemDetector.detectSystemTheme();
+        const isDark = try self.systemTheme.detectSystemTheme();
         const themeName = if (isDark) "dark" else "light";
         try self.switchTheme(themeName);
     }
@@ -215,7 +215,7 @@ pub const Theme = struct {
     pub fn createTheme(self: *Self, name: []const u8, baseTheme: ?[]const u8) !*ColorScheme {
         const theme = if (baseTheme) |base| blk: {
             const parent = self.themes.get(base) orelse return error.BaseThemeNotFound;
-            break :blk try self.inheritanceManager.createDerivedTheme(parent);
+            break :blk try self.inheritance.createDerivedTheme(parent);
         } else try ColorScheme.createEmpty(self.allocator);
 
         const nameCopy = try self.allocator.dupe(u8, name);

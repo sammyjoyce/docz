@@ -7,7 +7,7 @@ This document demonstrates common usage patterns for the specialized markdown CL
 ### Initial Setup
 ```json
 {
-  "tool": "document_transformer", 
+  "tool": "document", 
   "command": "create_from_template",
   "template_options": {
     "template_name": "documentation",
@@ -66,7 +66,7 @@ This document demonstrates common usage patterns for the specialized markdown CL
 ### Analyzing Current Structure
 ```json
 {
-  "tool": "document_io", 
+  "tool": "io", 
   "command": "get_workspace_tree",
   "directory_path": "/papers/"
 }
@@ -112,7 +112,7 @@ This document demonstrates common usage patterns for the specialized markdown CL
 ### Validating Citations and Links
 ```json
 {
-  "tool": "document_validator",
+  "tool": "validate",
   "command": "validate_links", 
   "file_paths": ["/papers/research-paper.md"]
 }
@@ -121,7 +121,7 @@ This document demonstrates common usage patterns for the specialized markdown CL
 ### Academic Formatting Validation
 ```json
 {
-  "tool": "document_validator",
+  "tool": "validate",
   "command": "full_validation",
   "file_paths": ["/papers/research-paper.md"],
   "output_format": "markdown"
@@ -133,7 +133,7 @@ This document demonstrates common usage patterns for the specialized markdown CL
 ### Creating Consistent Blog Post Structure
 ```json
 {
-  "tool": "document_transformer",
+  "tool": "document",
   "command": "create_from_template", 
   "template_options": {
     "template_name": "blog_post",
@@ -152,7 +152,7 @@ This document demonstrates common usage patterns for the specialized markdown CL
 ### Adding Navigation Links Between Posts
 ```json
 {
-  "tool": "document_validator",
+  "tool": "validate",
   "command": "add_link",
   "file_paths": ["/blog/part-1-getting-started.md"],
   "link_validation": {
@@ -182,7 +182,7 @@ This document demonstrates common usage patterns for the specialized markdown CL
 ### Converting to HTML with Custom Styling
 ```json
 {
-  "tool": "document_transformer",
+  "tool": "document",
   "command": "to_html",
   "conversion_options": {
     "input_path": "/docs/user-manual.md",
@@ -200,7 +200,7 @@ This document demonstrates common usage patterns for the specialized markdown CL
 ### Generating PDF for Distribution
 ```json
 {
-  "tool": "document_transformer", 
+  "tool": "document", 
   "command": "to_pdf",
   "conversion_options": {
     "input_path": "/docs/user-manual.md",
@@ -220,7 +220,7 @@ This document demonstrates common usage patterns for the specialized markdown CL
 ### Comprehensive Document Health Check
 ```json
 {
-  "tool": "document_validator",
+  "tool": "validate",
   "command": "full_validation",
   "file_paths": [
     "/docs/api-guide.md",
@@ -314,33 +314,33 @@ This document demonstrates common usage patterns for the specialized markdown CL
 ## Common Workflow Patterns
 
 ### 1. Document Creation Workflow
-1. `document_transformer` → Create from template
+1. `document` → Create from template
 2. `content_editor` → Add/organize sections  
 3. `content_editor` → Insert main content
 4. `content_editor` → Add structured data
-5. `document_validator` → Add references
-6. `document_validator` → Quality check
+5. `validate` → Add references
+6. `validate` → Quality check
 
 ### 2. Document Refactoring Workflow  
-1. `document_io` → Analyze current structure
+1. `io` → Analyze current structure
 2. `content_editor` → Reorganize sections
 3. `content_editor` → Update/move content blocks
 4. `content_editor` → Normalize formatting
-5. `document_validator` → Update references
-6. `document_validator` → Validate changes
+5. `validate` → Update references
+6. `validate` → Validate changes
 
 ### 3. Multi-Document Management
-1. `document_transformer` → Standardize structure
+1. `document` → Standardize structure
 2. `content_editor` → Sync metadata  
-3. `document_validator` → Cross-document references
+3. `validate` → Cross-document references
 4. `content_editor` → Consistent updates
-5. `document_validator` → Batch quality checks
+5. `validate` → Batch quality checks
 
 ### 4. Publishing Preparation
-1. `document_validator` → Final quality check
+1. `validate` → Final quality check
 2. `content_editor` → Final formatting pass
 3. `content_editor` → Generate final TOC
 4. `content_editor` → Update publication metadata
-5. `document_transformer` → Export to target formats
+5. `document` → Export to target formats
 
 These examples demonstrate how the specialized tools work together to handle complex markdown document workflows efficiently while maintaining quality and consistency.

@@ -4,11 +4,11 @@
 
 const std = @import("std");
 const caps_mod = @import("../capabilities.zig");
-const passthrough = @import("passthrough.zig");
-const color_mod = @import("../ansi/color.zig");
+const passthrough = @import("../ansi/passthrough.zig");
+const color_mod = @import("../color/mod.zig");
 
 pub const TermCaps = caps_mod.TermCaps;
-pub const RgbColor = color_mod.RgbColor;
+pub const RgbColor = color_mod.types.RgbColor;
 
 // ============================================================================
 // CURSOR STYLES AND SHAPES
@@ -578,245 +578,252 @@ pub fn setPointerShapeString(allocator: std.mem.Allocator, shape: PointerShape) 
 // ============================================================================
 
 /// Advanced cursor controller with modern terminal support
-pub const CursorController = struct {
-    state: CursorState,
-    writer: *std.Io.Writer,
-    caps: TermCaps,
-    supports_cursor_color: bool,
-    supports_cursor_shapes: bool,
-    supports_pointer_shapes: bool,
-    allocator: std.mem.Allocator,
+pub fn CursorControllerFor(comptime Writer: type) type {
+    return struct {
+        state: CursorState,
+        writer: Writer,
+        caps: TermCaps,
+        supports_cursor_color: bool,
+        supports_cursor_shapes: bool,
+        supports_pointer_shapes: bool,
+        allocator: std.mem.Allocator,
 
-    pub fn init(allocator: std.mem.Allocator, writer: *std.Io.Writer, caps: TermCaps) CursorController {
-        return CursorController{
-            .state = CursorState.init(allocator),
-            .writer = writer,
-            .caps = caps,
-            .supports_cursor_color = true, // Assume support by default
-            .supports_cursor_shapes = true,
-            .supports_pointer_shapes = false, // Less common
-            .allocator = allocator,
-        };
-    }
+        const Self = @This();
 
-    pub fn deinit(self: *CursorController) void {
-        self.state.deinit(self.allocator);
-    }
-
-    /// Move cursor to absolute position
-    pub fn moveTo(self: *CursorController, col: u16, row: u16) !void {
-        self.state.position = CursorPosition.init(col, row);
-        try cursorPosition(self.writer, self.caps, self.state.position.row, self.state.position.col);
-    }
-
-    /// Move cursor relative to current position
-    pub fn moveRelative(self: *CursorController, delta_col: i16, delta_row: i16) !void {
-        const current = self.state.position.to0Based();
-        const new_col = @as(u16, @intCast(@max(0, @as(i32, current.col) + delta_col)));
-        const new_row = @as(u16, @intCast(@max(0, @as(i32, current.row) + delta_row)));
-        try self.moveTo(new_col, new_row);
-    }
-
-    /// Move cursor up by n lines
-    pub fn moveUp(self: *CursorController, n: u16) !void {
-        if (n == 0) return;
-        try cursorUp(self.writer, self.caps, n);
-        self.state.position.row = @max(1, @as(i32, self.state.position.row) - @as(i32, n));
-    }
-
-    /// Move cursor down by n lines
-    pub fn moveDown(self: *CursorController, n: u16) !void {
-        if (n == 0) return;
-        try cursorDown(self.writer, self.caps, n);
-        self.state.position.row = self.state.position.row + n;
-    }
-
-    /// Move cursor right by n columns
-    pub fn moveRight(self: *CursorController, n: u16) !void {
-        if (n == 0) return;
-        try cursorForward(self.writer, self.caps, n);
-        self.state.position.col = self.state.position.col + n;
-    }
-
-    /// Move cursor left by n columns
-    pub fn moveLeft(self: *CursorController, n: u16) !void {
-        if (n == 0) return;
-        try cursorBackward(self.writer, self.caps, n);
-        self.state.position.col = @max(1, @as(i32, self.state.position.col) - @as(i32, n));
-    }
-
-    /// Move to beginning of current line
-    pub fn moveToLineStart(self: *CursorController) !void {
-        try cursorHorizontalAbsolute(self.writer, self.caps, 1);
-        self.state.position.col = 1;
-    }
-
-    /// Move to beginning of next line
-    pub fn moveToNextLine(self: *CursorController, n: u16) !void {
-        if (n == 0) return;
-        if (n == 1) {
-            try passthrough.writeWithPassthrough(self.writer, self.caps, "\x1b[E");
-        } else {
-            try cursorNextLine(self.writer, self.caps, n);
-        }
-        self.state.position.row = self.state.position.row + n;
-        self.state.position.col = 1;
-    }
-
-    /// Move to beginning of previous line
-    pub fn moveToPrevLine(self: *CursorController, n: u16) !void {
-        if (n == 0) return;
-        if (n == 1) {
-            try passthrough.writeWithPassthrough(self.writer, self.caps, "\x1b[F");
-        } else {
-            try cursorPreviousLine(self.writer, self.caps, n);
-        }
-        self.state.position.row = @max(1, @as(i32, self.state.position.row) - @as(i32, n));
-        self.state.position.col = 1;
-    }
-
-    /// Move to specific column on current row
-    pub fn moveToColumn(self: *CursorController, col: u16) !void {
-        try cursorHorizontalAbsolute(self.writer, self.caps, col + 1); // Convert to 1-based
-        self.state.position.col = col + 1;
-    }
-
-    /// Show or hide cursor
-    pub fn setVisible(self: *CursorController, visible: bool) !void {
-        self.state.visible = visible;
-        if (visible) {
-            try showCursor(self.writer, self.caps);
-        } else {
-            try hideCursor(self.writer, self.caps);
-        }
-    }
-
-    /// Set cursor shape if supported
-    pub fn setShape(self: *CursorController, shape: CursorStyle) !void {
-        if (!self.supports_cursor_shapes) return;
-
-        self.state.shape = shape;
-        try setCursorStyle(self.writer, self.caps, shape);
-    }
-
-    /// Set cursor color if supported
-    pub fn setColor(self: *CursorController, cursor_color: ?RgbColor) !void {
-        if (!self.supports_cursor_color) return;
-
-        self.state.color = cursor_color;
-        if (cursor_color) |c| {
-            // Set cursor color using OSC escape sequence
-            try self.writer.print("\x1b]12;#{:02x}{:02x}{:02x}\x1b\\", .{ c.r, c.g, c.b });
-        } else {
-            // Reset to default cursor color
-            try passthrough.writeWithPassthrough(self.writer, self.caps, "\x1b]112\x1b\\");
-        }
-    }
-
-    /// Set mouse pointer shape if supported
-    pub fn setPointerShape(self: *CursorController, shape: PointerShape) !void {
-        if (!self.supports_pointer_shapes) return;
-
-        try setPointerShapeDirect(self.writer, self.caps, self.allocator, shape);
-    }
-
-    /// Save current cursor position
-    pub fn savePosition(self: *CursorController) !void {
-        try saveCurrentCursorPosition(self.writer, self.caps);
-        try self.state.savePosition(self.allocator);
-    }
-
-    /// Restore saved cursor position
-    pub fn restorePosition(self: *CursorController) !void {
-        try restoreCurrentCursorPosition(self.writer, self.caps);
-        if (self.state.restorePosition()) |pos| {
-            self.state.position = pos;
-        }
-    }
-
-    /// Save cursor position using DEC sequence (more reliable)
-    pub fn saveDECPosition(self: *CursorController) !void {
-        try saveCursorDECSC(self.writer, self.caps);
-        try self.state.savePosition(self.allocator);
-    }
-
-    /// Restore cursor position using DEC sequence
-    pub fn restoreDECPosition(self: *CursorController) !void {
-        try restoreCursorDECRC(self.writer, self.caps);
-        if (self.state.restorePosition()) |pos| {
-            self.state.position = pos;
-        }
-    }
-
-    /// Request current cursor position from terminal
-    pub fn requestPosition(self: *CursorController) !void {
-        try requestCursorPositionReport(self.writer, self.caps);
-    }
-
-    /// Set cursor to specific tab stop
-    pub fn moveToTabStop(self: *CursorController, n: u16) !void {
-        if (n == 0) return;
-        try cursorHorizontalForwardTab(self.writer, self.caps, n);
-    }
-
-    /// Move backward to tab stop
-    pub fn moveToBackTabStop(self: *CursorController, n: u16) !void {
-        if (n == 0) return;
-        try cursorBackwardTab(self.writer, self.caps, n);
-    }
-
-    /// Get current cursor state (for serialization/debugging)
-    pub fn getState(self: *const CursorController) CursorState {
-        return self.state;
-    }
-
-    /// Restore cursor state from saved state
-    pub fn setState(self: *CursorController, new_state: CursorState) !void {
-        // Restore position
-        try self.moveTo(new_state.position.to0Based().col, new_state.position.to0Based().row);
-
-        // Restore visibility
-        try self.setVisible(new_state.visible);
-
-        // Restore shape if changed
-        if (new_state.shape != self.state.shape) {
-            try self.setShape(new_state.shape);
+        pub fn init(allocator: std.mem.Allocator, writer: Writer, caps: TermCaps) Self {
+            return Self{
+                .state = CursorState.init(allocator),
+                .writer = writer,
+                .caps = caps,
+                .supports_cursor_color = true, // Assume support by default
+                .supports_cursor_shapes = true,
+                .supports_pointer_shapes = false, // Less common
+                .allocator = allocator,
+            };
         }
 
-        // Restore color if changed
-        if (new_state.color != self.state.color) {
-            try self.setColor(new_state.color);
+        pub fn deinit(self: *Self) void {
+            self.state.deinit(self.allocator);
         }
 
-        self.state = new_state;
-    }
+        /// Move cursor to absolute position
+        pub fn moveTo(self: *Self, col: u16, row: u16) !void {
+            self.state.position = CursorPosition.init(col, row);
+            try cursorPosition(self.writer, self.caps, self.state.position.row, self.state.position.col);
+        }
 
-    /// Enable cursor blinking
-    pub fn enableBlinking(self: *CursorController) !void {
-        self.state.blink = true;
-        try enableBlinkingDirect(self.writer, self.caps);
-    }
+        /// Move cursor relative to current position
+        pub fn moveRelative(self: *Self, delta_col: i16, delta_row: i16) !void {
+            const current = self.state.position.to0Based();
+            const new_col = @as(u16, @intCast(@max(0, @as(i32, current.col) + delta_col)));
+            const new_row = @as(u16, @intCast(@max(0, @as(i32, current.row) + delta_row)));
+            try self.moveTo(new_col, new_row);
+        }
 
-    /// Disable cursor blinking
-    pub fn disableBlinking(self: *CursorController) !void {
-        self.state.blink = false;
-        try disableBlinkingDirect(self.writer, self.caps);
-    }
+        /// Move cursor up by n lines
+        pub fn moveUp(self: *Self, n: u16) !void {
+            if (n == 0) return;
+            try cursorUp(self.writer, self.caps, n);
+            self.state.position.row = @max(1, @as(i32, self.state.position.row) - @as(i32, n));
+        }
 
-    /// Reset cursor to terminal default
-    pub fn reset(self: *CursorController) !void {
-        try self.setVisible(true);
-        try self.setShape(.blinking_block_default);
-        try self.setColor(null);
-        try self.enableBlinking();
-        try self.moveTo(0, 0);
-    }
+        /// Move cursor down by n lines
+        pub fn moveDown(self: *Self, n: u16) !void {
+            if (n == 0) return;
+            try cursorDown(self.writer, self.caps, n);
+            self.state.position.row = self.state.position.row + n;
+        }
 
-    /// Flush any pending output to ensure cursor changes are visible
-    pub fn flush(self: *CursorController) !void {
-        try self.writer.flush();
-    }
-};
+        /// Move cursor right by n columns
+        pub fn moveRight(self: *Self, n: u16) !void {
+            if (n == 0) return;
+            try cursorForward(self.writer, self.caps, n);
+            self.state.position.col = self.state.position.col + n;
+        }
+
+        /// Move cursor left by n columns
+        pub fn moveLeft(self: *Self, n: u16) !void {
+            if (n == 0) return;
+            try cursorBackward(self.writer, self.caps, n);
+            self.state.position.col = @max(1, @as(i32, self.state.position.col) - @as(i32, n));
+        }
+
+        /// Move to beginning of current line
+        pub fn moveToLineStart(self: *Self) !void {
+            try cursorHorizontalAbsolute(self.writer, self.caps, 1);
+            self.state.position.col = 1;
+        }
+
+        /// Move to beginning of next line
+        pub fn moveToNextLine(self: *Self, n: u16) !void {
+            if (n == 0) return;
+            if (n == 1) {
+                try passthrough.writeWithPassthrough(self.writer, self.caps, "\x1b[E");
+            } else {
+                try cursorNextLine(self.writer, self.caps, n);
+            }
+            self.state.position.row = self.state.position.row + n;
+            self.state.position.col = 1;
+        }
+
+        /// Move to beginning of previous line
+        pub fn moveToPrevLine(self: *Self, n: u16) !void {
+            if (n == 0) return;
+            if (n == 1) {
+                try passthrough.writeWithPassthrough(self.writer, self.caps, "\x1b[F");
+            } else {
+                try cursorPreviousLine(self.writer, self.caps, n);
+            }
+            self.state.position.row = @max(1, @as(i32, self.state.position.row) - @as(i32, n));
+            self.state.position.col = 1;
+        }
+
+        /// Move to specific column on current row
+        pub fn moveToColumn(self: *Self, col: u16) !void {
+            try cursorHorizontalAbsolute(self.writer, self.caps, col + 1); // Convert to 1-based
+            self.state.position.col = col + 1;
+        }
+
+        /// Show or hide cursor
+        pub fn setVisible(self: *Self, visible: bool) !void {
+            self.state.visible = visible;
+            if (visible) {
+                try showCursor(self.writer, self.caps);
+            } else {
+                try hideCursor(self.writer, self.caps);
+            }
+        }
+
+        /// Set cursor shape if supported
+        pub fn setShape(self: *Self, shape: CursorStyle) !void {
+            if (!self.supports_cursor_shapes) return;
+
+            self.state.shape = shape;
+            try setCursorStyle(self.writer, self.caps, shape);
+        }
+
+        /// Set cursor color if supported
+        pub fn setColor(self: *Self, cursor_color: ?RgbColor) !void {
+            if (!self.supports_cursor_color) return;
+
+            self.state.color = cursor_color;
+            if (cursor_color) |c| {
+                // Set cursor color using OSC escape sequence
+                try self.writer.print("\x1b]12;#{:02x}{:02x}{:02x}\x1b\\", .{ c.r, c.g, c.b });
+            } else {
+                // Reset to default cursor color
+                try passthrough.writeWithPassthrough(self.writer, self.caps, "\x1b]112\x1b\\");
+            }
+        }
+
+        /// Set mouse pointer shape if supported
+        pub fn setPointerShape(self: *Self, shape: PointerShape) !void {
+            if (!self.supports_pointer_shapes) return;
+
+            try setPointerShapeDirect(self.writer, self.caps, self.allocator, shape);
+        }
+
+        /// Save current cursor position
+        pub fn savePosition(self: *Self) !void {
+            try saveCurrentCursorPosition(self.writer, self.caps);
+            try self.state.savePosition(self.allocator);
+        }
+
+        /// Restore saved cursor position
+        pub fn restorePosition(self: *Self) !void {
+            try restoreCurrentCursorPosition(self.writer, self.caps);
+            if (self.state.restorePosition()) |pos| {
+                self.state.position = pos;
+            }
+        }
+
+        /// Save cursor position using DEC sequence (more reliable)
+        pub fn saveDECPosition(self: *Self) !void {
+            try saveCursorDECSC(self.writer, self.caps);
+            try self.state.savePosition(self.allocator);
+        }
+
+        /// Restore cursor position using DEC sequence
+        pub fn restoreDECPosition(self: *Self) !void {
+            try restoreCursorDECRC(self.writer, self.caps);
+            if (self.state.restorePosition()) |pos| {
+                self.state.position = pos;
+            }
+        }
+
+        /// Request current cursor position from terminal
+        pub fn requestPosition(self: *Self) !void {
+            try requestCursorPositionReport(self.writer, self.caps);
+        }
+
+        /// Set cursor to specific tab stop
+        pub fn moveToTabStop(self: *Self, n: u16) !void {
+            if (n == 0) return;
+            try cursorHorizontalForwardTab(self.writer, self.caps, n);
+        }
+
+        /// Move backward to tab stop
+        pub fn moveToBackTabStop(self: *Self, n: u16) !void {
+            if (n == 0) return;
+            try cursorBackwardTab(self.writer, self.caps, n);
+        }
+
+        /// Get current cursor state (for serialization/debugging)
+        pub fn getState(self: *const Self) CursorState {
+            return self.state;
+        }
+
+        /// Restore cursor state from saved state
+        pub fn setState(self: *Self, new_state: CursorState) !void {
+            // Restore position
+            try self.moveTo(new_state.position.to0Based().col, new_state.position.to0Based().row);
+
+            // Restore visibility
+            try self.setVisible(new_state.visible);
+
+            // Restore shape if changed
+            if (new_state.shape != self.state.shape) {
+                try self.setShape(new_state.shape);
+            }
+
+            // Restore color if changed
+            if (new_state.color != self.state.color) {
+                try self.setColor(new_state.color);
+            }
+
+            self.state = new_state;
+        }
+
+        /// Enable cursor blinking
+        pub fn enableBlinking(self: *Self) !void {
+            self.state.blink = true;
+            try enableBlinkingDirect(self.writer, self.caps);
+        }
+
+        /// Disable cursor blinking
+        pub fn disableBlinking(self: *Self) !void {
+            self.state.blink = false;
+            try disableBlinkingDirect(self.writer, self.caps);
+        }
+
+        /// Reset cursor to terminal default
+        pub fn reset(self: *Self) !void {
+            try self.setVisible(true);
+            try self.setShape(.blinking_block_default);
+            try self.setColor(null);
+            try self.enableBlinking();
+            try self.moveTo(0, 0);
+        }
+
+        /// Flush any pending output to ensure cursor changes are visible
+        pub fn flush(self: *Self) !void {
+            try self.writer.flush();
+        }
+    };
+}
+
+// Provide a default type alias for common use
+pub const CursorController = CursorControllerFor(std.fs.File.Writer);
 
 // ============================================================================
 // CURSOR OPTIMIZATION SYSTEM

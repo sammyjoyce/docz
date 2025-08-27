@@ -2,7 +2,14 @@ const std = @import("std");
 
 /// Common shell integration interface
 /// Defines the standard operations that shell integration should support
-pub const ShellIntegration = struct {
+pub const ShellManager = struct {
+    /// Error set for shell integration operations
+    pub const Error = error{
+        Io,
+        Unsupported,
+        OutOfMemory,
+        InvalidParameter,
+    };
     /// Context for shell integration operations
     pub fn Context(comptime WriterType: type) type {
         return struct {
@@ -40,76 +47,76 @@ pub const ShellIntegration = struct {
     /// Prompt marking operations
     pub const PromptOps = struct {
         /// Mark the start of a shell prompt
-        markPromptStart: *const fn (ctx: Context) anyerror!void,
+        markPromptStart: *const fn (ctx: Context) Error!void,
 
         /// Mark the end of a shell prompt (start of user input)
-        markPromptEnd: *const fn (ctx: Context) anyerror!void,
+        markPromptEnd: *const fn (ctx: Context) Error!void,
 
         /// Mark prompt start with additional parameters
-        markPromptStartWithParams: *const fn (ctx: Context, params: []const []const u8) anyerror!void,
+        markPromptStartWithParams: *const fn (ctx: Context, params: []const []const u8) Error!void,
 
         /// Mark prompt end with additional parameters
-        markPromptEndWithParams: *const fn (ctx: Context, params: []const []const u8) anyerror!void,
+        markPromptEndWithParams: *const fn (ctx: Context, params: []const []const u8) Error!void,
     };
 
     /// Command tracking operations
     pub const CommandOps = struct {
         /// Mark the start of command execution
-        markCommandStart: *const fn (ctx: Context, command: []const u8, cwd: ?[]const u8) anyerror!void,
+        markCommandStart: *const fn (ctx: Context, command: []const u8, cwd: ?[]const u8) Error!void,
 
         /// Mark the end of command execution
-        markCommandEnd: *const fn (ctx: Context, command: []const u8, exit_code: i32, duration_ms: ?u64) anyerror!void,
+        markCommandEnd: *const fn (ctx: Context, command: []const u8, exit_code: i32, duration_ms: ?u64) Error!void,
 
         /// Mark command start with additional parameters
-        markCommandStartWithParams: *const fn (ctx: Context, command: []const u8, cwd: ?[]const u8, params: []const []const u8) anyerror!void,
+        markCommandStartWithParams: *const fn (ctx: Context, command: []const u8, cwd: ?[]const u8, params: []const []const u8) Error!void,
 
         /// Mark command end with additional parameters
-        markCommandEndWithParams: *const fn (ctx: Context, command: []const u8, exit_code: i32, duration_ms: ?u64, params: []const []const u8) anyerror!void,
+        markCommandEndWithParams: *const fn (ctx: Context, command: []const u8, exit_code: i32, duration_ms: ?u64, params: []const []const u8) Error!void,
     };
 
     /// Current directory tracking operations
     pub const DirectoryOps = struct {
         /// Set the current working directory
-        setWorkingDirectory: *const fn (ctx: Context, path: []const u8) anyerror!void,
+        setWorkingDirectory: *const fn (ctx: Context, path: []const u8) Error!void,
 
         /// Set remote host information
-        setRemoteHost: *const fn (ctx: Context, hostname: []const u8, username: ?[]const u8, port: ?u16) anyerror!void,
+        setRemoteHost: *const fn (ctx: Context, hostname: []const u8, username: ?[]const u8, port: ?u16) Error!void,
 
         /// Clear remote host information (back to local)
-        clearRemoteHost: *const fn (ctx: Context) anyerror!void,
+        clearRemoteHost: *const fn (ctx: Context) Error!void,
     };
 
     /// Semantic zone operations
     pub const SemanticOps = struct {
         /// Mark a semantic zone start
-        markZoneStart: *const fn (ctx: Context, zone_type: []const u8, name: ?[]const u8) anyerror!void,
+        markZoneStart: *const fn (ctx: Context, zone_type: []const u8, name: ?[]const u8) Error!void,
 
         /// Mark a semantic zone end
-        markZoneEnd: *const fn (ctx: Context, zone_type: []const u8) anyerror!void,
+        markZoneEnd: *const fn (ctx: Context, zone_type: []const u8) Error!void,
 
         /// Add an annotation to terminal output
-        addAnnotation: *const fn (ctx: Context, config: AnnotationConfig) anyerror!void,
+        addAnnotation: *const fn (ctx: Context, config: AnnotationConfig) Error!void,
 
         /// Clear all annotations
-        clearAnnotations: *const fn (ctx: Context) anyerror!void,
+        clearAnnotations: *const fn (ctx: Context) Error!void,
     };
 
     /// Notification operations
     pub const NotificationOps = struct {
         /// Request terminal attention/notification
-        requestAttention: *const fn (ctx: Context, message: ?[]const u8) anyerror!void,
+        requestAttention: *const fn (ctx: Context, message: ?[]const u8) Error!void,
 
         /// Set the terminal badge
-        setBadge: *const fn (ctx: Context, text: []const u8) anyerror!void,
+        setBadge: *const fn (ctx: Context, text: []const u8) Error!void,
 
         /// Clear the terminal badge
-        clearBadge: *const fn (ctx: Context) anyerror!void,
+        clearBadge: *const fn (ctx: Context) Error!void,
 
         /// Set alert on command completion
-        setAlertOnCompletion: *const fn (ctx: Context, config: AlertConfig) anyerror!void,
+        setAlertOnCompletion: *const fn (ctx: Context, config: AlertConfig) Error!void,
 
         /// Trigger a file download
-        triggerDownload: *const fn (ctx: Context, config: DownloadConfig) anyerror!void,
+        triggerDownload: *const fn (ctx: Context, config: DownloadConfig) Error!void,
     };
 
     /// Configuration for annotations
@@ -159,7 +166,7 @@ pub const ShellIntegration = struct {
 /// Convenience functions that work with any shell integration implementation
 pub const Convenience = struct {
     /// Initialize full shell integration for a given implementation
-    pub fn initFullIntegration(comptime WriterType: type, ctx: ShellIntegration.Context(WriterType), iface: ShellIntegration.Interface) !void {
+    pub fn initFullIntegration(comptime WriterType: type, ctx: ShellManager.Context(WriterType), iface: ShellManager.Interface) !void {
         // Set current user if supported
         if (iface.notification_ops.setBadge != undefined) {
             try iface.notification_ops.setBadge(ctx, "Shell Ready");
@@ -172,8 +179,8 @@ pub const Convenience = struct {
     /// Mark SSH session start
     pub fn startSshSession(
         comptime WriterType: type,
-        ctx: ShellIntegration.Context(WriterType),
-        iface: ShellIntegration.Interface,
+        ctx: ShellManager.Context(WriterType),
+        iface: ShellManager.Interface,
         hostname: []const u8,
         username: ?[]const u8,
     ) !void {
@@ -187,7 +194,7 @@ pub const Convenience = struct {
     }
 
     /// Mark SSH session end
-    pub fn endSshSession(comptime WriterType: type, ctx: ShellIntegration.Context(WriterType), iface: ShellIntegration.Interface) !void {
+    pub fn endSshSession(comptime WriterType: type, ctx: ShellManager.Context(WriterType), iface: ShellManager.Interface) !void {
         try iface.directory_ops.clearRemoteHost(ctx);
 
         if (iface.notification_ops.setBadge != undefined) {
@@ -198,8 +205,8 @@ pub const Convenience = struct {
     /// Execute a command with proper shell integration markers
     pub fn executeCommand(
         comptime WriterType: type,
-        ctx: ShellIntegration.Context(WriterType),
-        iface: ShellIntegration.Interface,
+        ctx: ShellManager.Context(WriterType),
+        iface: ShellManager.Interface,
         command: []const u8,
         cwd: ?[]const u8,
     ) !void {
@@ -209,8 +216,8 @@ pub const Convenience = struct {
     /// Complete a command with status
     pub fn completeCommand(
         comptime WriterType: type,
-        ctx: ShellIntegration.Context(WriterType),
-        iface: ShellIntegration.Interface,
+        ctx: ShellManager.Context(WriterType),
+        iface: ShellManager.Interface,
         command: []const u8,
         exit_code: i32,
         duration_ms: u64,

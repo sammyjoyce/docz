@@ -19,7 +19,7 @@ const canvas_engine = canvas;
 const term_sgr = term_mod.ansi.sgr;
 const theme_manager = @import("theme_manager");
 const Allocator = std.mem.Allocator;
-const UnifiedTerminal = terminal.UnifiedTerminal;
+const UnifiedTerminal = term_mod.term.Terminal;
 const Color = terminal.Color;
 const GraphicsManager = term_graphics.Graphics;
 const TermCaps = term_mod.capabilities.TermCaps;
@@ -182,14 +182,14 @@ pub const Renderer = struct {
 
     /// Style information for rendering
     pub const Style = struct {
-        fg_color: ?StyleColor = null,
-        bg_color: ?StyleColor = null,
+        fg_color: ?Style.Color = null,
+        bg_color: ?Style.Color = null,
         bold: bool = false,
         italic: bool = false,
         underline: bool = false,
         strikethrough: bool = false,
 
-        pub const StyleColor = union(enum) {
+        pub const Color = union(enum) {
             ansi: u8, // 0-15 ANSI colors
             palette: u8, // 0-255 palette colors
             rgb: RGB, // RGB truecolor
@@ -203,7 +203,7 @@ pub const Renderer = struct {
     };
 
     /// Alias for backward compatibility
-    pub const Color = Style.StyleColor;
+    pub const StyleColor = Style.Color;
 
     /// Render context for widget rendering operations
     pub const Render = struct {
@@ -683,7 +683,7 @@ pub const Renderer = struct {
     /// Initialize renderer with automatic capability detection
     pub fn init(allocator: Allocator) !*Renderer {
         const unified_terminal = try UnifiedTerminal.init(allocator);
-        const capabilities = unified_terminal.getCapabilities();
+        const capabilities = unified_terminal.caps;
         const render_tier = RenderTier.fromCapabilities(capabilities);
 
         const renderer = try allocator.create(Renderer);
@@ -706,7 +706,7 @@ pub const Renderer = struct {
     /// Initialize with explicit render tier (for testing or forced modes)
     pub fn initWithTier(allocator: Allocator, tier: RenderTier) !*Renderer {
         const unified_terminal = try UnifiedTerminal.init(allocator);
-        const capabilities = unified_terminal.getCapabilities();
+        const capabilities = unified_terminal.caps;
 
         const renderer = try allocator.create(Renderer);
         renderer.* = Renderer{
@@ -728,7 +728,7 @@ pub const Renderer = struct {
     /// Initialize with custom theme
     pub fn initWithTheme(allocator: Allocator, theme: *Theme) !*Renderer {
         const unified_terminal = try UnifiedTerminal.init(allocator);
-        const capabilities = unified_terminal.getCapabilities();
+        const capabilities = unified_terminal.caps;
         const render_tier = RenderTier.fromCapabilities(capabilities);
 
         const renderer = try allocator.create(Renderer);
@@ -825,8 +825,8 @@ pub const Renderer = struct {
     }
 
     /// Get information about current rendering capabilities
-    pub fn getRenderingInfo(self: *const Renderer) Info {
-        return Info{
+    pub fn getRenderingInfo(self: *const Renderer) Capabilities {
+        return Capabilities{
             .tier = self.render_tier,
             .supports_truecolor = self.capabilities.supportsTruecolor,
             .supports_256_color = self.capabilities.supportsTruecolor, // Use truecolor as proxy for 256 color
@@ -838,7 +838,7 @@ pub const Renderer = struct {
         };
     }
 
-    pub const Info = struct {
+    pub const Capabilities = struct {
         tier: RenderTier,
         supports_truecolor: bool,
         supports_256_color: bool,
@@ -848,7 +848,7 @@ pub const Renderer = struct {
         supports_synchronized: bool,
         terminal_name: []const u8,
 
-        pub fn print(self: Info, writer: anytype) !void {
+        pub fn print(self: Capabilities, writer: anytype) !void {
             try writer.print("Rendering Tier: {s}\n", .{self.tier.description()});
             try writer.print("Terminal: {s}\n", .{self.terminal_name});
             try writer.print("Features:\n");
@@ -884,7 +884,7 @@ pub const Renderer = struct {
     }
 
     /// Get terminal for direct access (for advanced use cases)
-    pub fn getTerminal(self: *Renderer) *UnifiedTerminal {
+    pub fn getTerminal(self: *Renderer) *term_mod.term.Terminal {
         return &self.terminal;
     }
 
@@ -1169,7 +1169,7 @@ pub const Renderer = struct {
     }
 
     /// Fill a rectangle
-    pub fn fillRect(self: *Renderer, ctx: Render, color: Style.StyleColor) !void {
+    pub fn fillRect(self: *Renderer, ctx: Render, color: Style.Color) !void {
         try self.applyStyleColor(color);
 
         for (0..ctx.bounds.height) |y| {
@@ -1183,7 +1183,7 @@ pub const Renderer = struct {
     }
 
     /// Apply style color
-    fn applyStyleColor(self: *Renderer, color: Style.StyleColor) !void {
+    fn applyStyleColor(self: *Renderer, color: Style.Color) !void {
         switch (color) {
             .ansi => |c| try self.terminal.setForegroundColor(.{ .ansi = c }),
             .palette => |c| try self.terminal.setForegroundColor(.{ .palette = c }),

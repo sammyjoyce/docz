@@ -4,15 +4,15 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const session = @import("session.zig");
-const term = @import("../shared/term/mod.zig");
+const term = @import("../shared/term_refactored/mod.zig");
 
 /// Main session browser interface with rich TUI features
 pub const SessionBrowser = struct {
     allocator: Allocator,
-    session_manager: *session.Session,
-    terminal: term.Terminal,
-    current_view: ViewType = .list,
-    selected_session: ?[]const u8 = null,
+    sessionManager: *session.SessionManager,
+    terminal: term.TerminalInterface,
+    currentView: ViewType = .list,
+    selectedSession: ?[]const u8 = null,
 
     /// Available view types for the session browser
     pub const ViewType = enum {
@@ -25,18 +25,18 @@ pub const SessionBrowser = struct {
     };
 
     /// Initialize the session browser
-    pub fn init(allocator: Allocator, session_manager: *session.Session) !SessionBrowser {
+    pub fn init(allocator: Allocator, sessionManager: *session.SessionManager) !SessionBrowser {
         return SessionBrowser{
             .allocator = allocator,
-            .session_manager = session_manager,
+            .sessionManager = sessionManager,
             .terminal = try term.Terminal.init(allocator),
         };
     }
 
     /// Deinitialize the session browser
     pub fn deinit(self: *SessionBrowser) void {
-        if (self.selected_session) |session_id| {
-            self.allocator.free(session_id);
+        if (self.selectedSession) |sessionId| {
+            self.allocator.free(sessionId);
         }
         self.terminal.deinit();
     }
@@ -111,40 +111,40 @@ pub const SessionBrowser = struct {
         try self.terminal.print("Active Sessions:", .{ .fg_color = .{ .ansi = 6 }, .bold = true });
 
         var y: i32 = 7;
-        var it = self.session_manager.active_sessions.iterator();
-        var session_count: usize = 0;
+        var it = self.sessionManager.activeSessions.iterator();
+        var sessionCount: usize = 0;
 
         while (it.next()) |entry| {
-            if (session_count >= 10) break; // Limit display for now
+            if (sessionCount >= 10) break; // Limit display for now
 
-            const session_data = entry.value_ptr.*;
+            const sessionData = entry.value_ptr.*;
             try self.terminal.moveTo(y, 2);
 
             // Session ID
-            try self.terminal.printf("📋 {s}", .{session_data.session_id}, .{ .fg_color = .{ .ansi = 7 }, .bold = true });
+            try self.terminal.printf("📋 {s}", .{sessionData.sessionId}, .{ .fg_color = .{ .ansi = 7 }, .bold = true });
 
             // Status indicator
             try self.terminal.moveTo(y, 45);
-            const status = if (session_data.is_active) "🟢 Active" else "🔴 Ended";
-            const status_color = if (session_data.is_active) term.Color{ .ansi = 2 } else term.Color{ .ansi = 1 };
-            try self.terminal.printf("{s}", .{status}, .{ .fg_color = status_color });
+            const status = if (sessionData.isActive) "🟢 Active" else "🔴 Ended";
+            const statusColor = if (sessionData.isActive) term.Color{ .ansi = 2 } else term.Color{ .ansi = 1 };
+            try self.terminal.printf("{s}", .{status}, .{ .fg_color = statusColor });
 
             // Message count
             try self.terminal.moveTo(y, 60);
-            try self.terminal.printf("💬 {} messages", .{session_data.messages_processed}, .{ .fg_color = .{ .ansi = 4 } });
+            try self.terminal.printf("💬 {} messages", .{sessionData.messagesProcessed}, .{ .fg_color = .{ .ansi = 4 } });
 
             // Duration
             try self.terminal.moveTo(y, 80);
-            const duration = session_data.getDuration();
-            const duration_str = try self.formatDuration(duration);
-            defer self.allocator.free(duration_str);
-            try self.terminal.printf("⏱️ {s}", .{duration_str}, .{ .fg_color = .{ .ansi = 5 } });
+            const duration = sessionData.getDuration();
+            const durationStr = try self.formatDuration(duration);
+            defer self.allocator.free(durationStr);
+            try self.terminal.printf("⏱️ {s}", .{durationStr}, .{ .fg_color = .{ .ansi = 5 } });
 
             y += 2;
-            session_count += 1;
+            sessionCount += 1;
         }
 
-        if (session_count == 0) {
+        if (sessionCount == 0) {
             try self.terminal.moveTo(7, 2);
             try self.terminal.print("No active sessions found.", .{ .fg_color = .{ .ansi = 3 } });
         }
@@ -170,17 +170,17 @@ pub const SessionBrowser = struct {
         try self.terminal.moveTo(5, 0);
         try self.terminal.print("Session Details:", .{ .fg_color = .{ .ansi = 6 }, .bold = true });
 
-        if (self.selected_session) |session_id| {
+        if (self.selectedSession) |sessionId| {
             try self.terminal.moveTo(7, 2);
-            try self.terminal.printf("Selected Session: {s}", .{session_id}, .{ .fg_color = .{ .ansi = 7 }, .bold = true });
+            try self.terminal.printf("Selected Session: {s}", .{sessionId}, .{ .fg_color = .{ .ansi = 7 }, .bold = true });
 
-            if (self.session_manager.getSession(session_id)) |session_data| {
+            if (self.sessionManager.getSession(sessionId)) |sessionData| {
                 try self.terminal.moveTo(9, 2);
-                try self.terminal.printf("Status: {s}", .{if (session_data.is_active) "Active" else "Ended"}, .{ .fg_color = .{ .ansi = if (session_data.is_active) 2 else 1 } });
+                try self.terminal.printf("Status: {s}", .{if (sessionData.isActive) "Active" else "Ended"}, .{ .fg_color = .{ .ansi = if (sessionData.isActive) 2 else 1 } });
                 try self.terminal.moveTo(10, 2);
-                try self.terminal.printf("Messages: {}", .{session_data.messages_processed}, .{ .fg_color = .{ .ansi = 4 } });
+                try self.terminal.printf("Messages: {}", .{sessionData.messagesProcessed}, .{ .fg_color = .{ .ansi = 4 } });
                 try self.terminal.moveTo(11, 2);
-                try self.terminal.printf("Tools Used: {}", .{session_data.tools_executed}, .{ .fg_color = .{ .ansi = 5 } });
+                try self.terminal.printf("Tools Used: {}", .{sessionData.toolsExecuted}, .{ .fg_color = .{ .ansi = 5 } });
             }
         } else {
             try self.terminal.moveTo(7, 2);
@@ -283,7 +283,7 @@ pub const SessionBrowser = struct {
 };
 
 /// Helper function to create and run session browser
-pub fn runSessionBrowser(allocator: Allocator, session_manager: *session.Session) !void {
+pub fn runSessionBrowser(allocator: Allocator, session_manager: *session.SessionManager) !void {
     var browser = try SessionBrowser.init(allocator, session_manager);
     defer browser.deinit();
     try browser.run();

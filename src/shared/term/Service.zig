@@ -6,6 +6,13 @@
 
 const std = @import("std");
 
+const passthrough = @import("ansi/passthrough.zig");
+const caps_mod = @import("capabilities.zig");
+const sgr = @import("ansi/sgr.zig");
+const cursor_mod = @import("control/cursor.zig");
+const screen_mod = @import("control/screen.zig");
+const hyperlink_mod = @import("ansi/hyperlink.zig");
+
 pub const TerminalError = error{
     Io,
     Unsupported,
@@ -27,61 +34,67 @@ pub const Style = struct {
 
 pub const Service = struct {
     /// Write raw bytes to the terminal
-    pub fn write(_: *Service, _writer: anytype, bytes: []const u8) TerminalError!void {
-        _ = _writer;
-        _ = bytes;
-        return TerminalError.Unsupported; // placeholder
+    pub fn write(_: *Service, writer: anytype, bytes: []const u8) TerminalError!void {
+        passthrough.writeWithPassthrough(writer, bytes) catch return TerminalError.Io;
     }
 
     /// Print formatted text using std.fmt
     pub fn printf(
         _: *Service,
-        _writer: anytype,
+        writer: anytype,
         comptime fmt: []const u8,
         args: anytype,
     ) TerminalError!void {
-        _ = _writer;
-        _ = fmt;
-        _ = args;
-        return TerminalError.Unsupported; // placeholder
+        var buf: [4096]u8 = undefined;
+        const formatted = std.fmt.bufPrint(&buf, fmt, args) catch return TerminalError.OutOfMemory;
+        writer.writeAll(formatted) catch return TerminalError.Io;
     }
 
     /// Apply a basic style
-    pub fn setStyle(_: *Service, _writer: anytype, _style: Style) TerminalError!void {
-        _ = _writer;
-        _ = _style;
-        return TerminalError.Unsupported; // placeholder
+    pub fn setStyle(_: *Service, writer: anytype, style: Style) TerminalError!void {
+        if (style.bold) {
+            sgr.bold(writer) catch return TerminalError.Io;
+        }
+        if (style.underline) {
+            sgr.underline(writer) catch return TerminalError.Io;
+        }
+        if (style.inverse) {
+            sgr.inverse(writer) catch return TerminalError.Io;
+        }
+        if (style.fg) |fg| {
+            sgr.setForegroundColor(writer, fg) catch return TerminalError.Io;
+        }
+        if (style.bg) |bg| {
+            sgr.setBackgroundColor(writer, bg) catch return TerminalError.Io;
+        }
     }
 
     /// Move the cursor to an absolute position
-    pub fn moveCursor(_: *Service, _writer: anytype, _cursor: Cursor) TerminalError!void {
-        _ = _writer;
-        _ = _cursor;
-        return TerminalError.Unsupported; // placeholder
+    pub fn moveCursor(_: *Service, writer: anytype, cursor: Cursor) TerminalError!void {
+        cursor_mod.cursorPosition(writer, cursor.y, cursor.x) catch return TerminalError.Io;
     }
 
     /// Clear the screen
-    pub fn clear(_: *Service, _writer: anytype) TerminalError!void {
-        _ = _writer;
-        return TerminalError.Unsupported; // placeholder
+    pub fn clear(_: *Service, writer: anytype) TerminalError!void {
+        screen_mod.Stateless.clearScreen(writer) catch return TerminalError.Io;
     }
 
     /// Get terminal size (may not be supported in all environments)
     pub fn getSize(_: *Service) TerminalError!Size {
-        return TerminalError.Unsupported; // placeholder
+        const size = caps_mod.getTerminalSize() catch return TerminalError.Unsupported;
+        return .{ .width = size.width, .height = size.height };
     }
 
     /// Create a hyperlink if supported (OSC-8), or print URL fallback
-    pub fn hyperlink(_: *Service, _writer: anytype, _url: []const u8, _text: []const u8) TerminalError!void {
-        _ = _writer;
-        _ = _url;
-        _ = _text;
-        return TerminalError.Unsupported; // placeholder
+    pub fn hyperlink(_: *Service, writer: anytype, url: []const u8, text: []const u8) TerminalError!void {
+        var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+        defer arena.deinit();
+        const alloc = arena.allocator();
+        hyperlink_mod.writeHyperlink(alloc, writer, url, text) catch return TerminalError.Io;
     }
 
     /// Flush any buffered output
-    pub fn flush(_: *Service, _writer: anytype) TerminalError!void {
-        _ = _writer;
-        return TerminalError.Unsupported; // placeholder
+    pub fn flush(_: *Service, writer: anytype) TerminalError!void {
+        writer.flush() catch return TerminalError.Io;
     }
 };

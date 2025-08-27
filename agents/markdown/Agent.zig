@@ -197,12 +197,12 @@ pub const Markdown = struct {
         _ = self;
         // Tool names are now registered in spec.zig
         return &.{
-            "document_io",
+            "io",
             "content_editor",
-            "document_validator",
-            "document_transformer",
-            "workflow_processor",
-            "file_manager",
+            "validate",
+            "document",
+            "workflow",
+            "file",
         };
     }
 };

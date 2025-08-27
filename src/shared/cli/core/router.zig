@@ -2,16 +2,16 @@
 //! Routes commands to appropriate handlers with pipeline support
 
 const std = @import("std");
-const context = @import("context.zig");
+const state = @import("state.zig");
 const types = @import("types.zig");
 const workflows = @import("../workflows/workflow_registry.zig");
 
 pub const CommandRouter = struct {
     allocator: std.mem.Allocator,
-    context: *const context.Cli,
+    state: *const state.Cli,
     workflow_registry: workflows.WorkflowRegistry,
 
-    pub fn init(allocator: std.mem.Allocator, ctx: *const context.Cli) !CommandRouter {
+    pub fn init(allocator: std.mem.Allocator, ctx: *const state.Cli) !CommandRouter {
         var workflow_registry = workflows.WorkflowRegistry.init(allocator, ctx);
 
         // Register common workflows
@@ -19,7 +19,7 @@ pub const CommandRouter = struct {
 
         return CommandRouter{
             .allocator = allocator,
-            .context = ctx,
+            .state = ctx,
             .workflow_registry = workflow_registry,
         };
     }
@@ -29,7 +29,7 @@ pub const CommandRouter = struct {
     }
 
     /// Execute a parsed command with pipeline support
-    pub fn execute(self: *CommandRouter, args: types.ArgsUnified) !types.CommandResult {
+    pub fn execute(self: *CommandRouter, args: types.Args) !types.CommandResult {
         // Check for pipeline syntax (e.g., "auth status | format json | clipboard")
         if (args.raw_message) |msg| {
             if (std.mem.indexOf(u8, msg, "|")) |_| {
@@ -61,7 +61,7 @@ pub const CommandRouter = struct {
     }
 
     /// Execute a command pipeline
-    fn executePipeline(self: *CommandRouter, args: types.ArgsUnified) !types.CommandResult {
+    fn executePipeline(self: *CommandRouter, args: types.Args) !types.CommandResult {
         if (args.raw_message) |msg| {
             const stages = std.mem.split(u8, msg, "|");
             var current_output: ?[]const u8 = null;
@@ -71,16 +71,16 @@ pub const CommandRouter = struct {
             while (stage_iter.next()) |stage| {
                 const trimmed_stage = std.mem.trim(u8, stage, " \t");
 
-                if (self.context.verbose) {
-                    self.context.verboseLog("Pipeline stage: {s}", .{trimmed_stage});
+                if (self.state.verbose) {
+                    self.state.verboseLog("Pipeline stage: {s}", .{trimmed_stage});
                 }
 
                 // Execute the stage (simplified - would need more sophisticated parsing)
                 if (std.mem.eql(u8, trimmed_stage, "clipboard")) {
                     if (current_output) |output| {
-                        if (self.context.hasFeature(.clipboard)) {
-                            try self.context.clipboard.copy(output);
-                            try self.context.notification.send(.{
+                        if (self.state.hasFeature(.clipboard)) {
+                            try self.state.clipboard.copy(output);
+                            try self.state.notification.send(.{
                                 .title = "Pipeline Result",
                                 .body = "Output copied to clipboard",
                                 .level = .success,
@@ -136,21 +136,21 @@ pub const CommandRouter = struct {
         return types.CommandResult.ok(command);
     }
 
-    fn executeChat(self: *CommandRouter, args: types.ArgsUnified) !types.CommandResult {
+    fn executeChat(self: *CommandRouter, args: types.Args) !types.CommandResult {
         _ = args;
 
         // For now, just return a placeholder
         // This would integrate with the existing chat functionality
-        try self.context.notification.send(.{
+        try self.state.notification.send(.{
             .title = "Chat Started",
-            .body = "Using enhanced CLI with terminal features",
+            .body = "Using CLI with terminal features",
             .level = .info,
         });
 
         return types.CommandResult.ok("Chat functionality would be implemented here");
     }
 
-    fn executeAuth(self: *CommandRouter, args: types.ArgsUnified) !types.CommandResult {
+    fn executeAuth(self: *CommandRouter, args: types.Args) !types.CommandResult {
         // Handle auth subcommands
         if (args.auth_subcommand) |subcmd| {
             switch (subcmd) {
@@ -163,10 +163,10 @@ pub const CommandRouter = struct {
         }
     }
 
-    fn executeAuthLogin(self: *CommandRouter, args: types.ArgsUnified) !types.CommandResult {
+    fn executeAuthLogin(self: *CommandRouter, args: types.Args) !types.CommandResult {
         _ = args;
 
-        try self.context.notification.send(.{
+        try self.state.notification.send(.{
             .title = "Authentication",
             .body = "Starting OAuth login flow",
             .level = .info,
@@ -175,11 +175,11 @@ pub const CommandRouter = struct {
         return types.CommandResult.ok("Auth login would be implemented here");
     }
 
-    fn executeAuthStatus(self: *CommandRouter, args: types.ArgsUnified) !types.CommandResult {
+    fn executeAuthStatus(self: *CommandRouter, args: types.Args) !types.CommandResult {
         _ = args;
 
-        // Show auth status with enhanced formatting
-        const status_text = if (self.context.hasFeature(.hyperlinks))
+        // Show auth status with formatting
+        const status_text = if (self.state.hasFeature(.hyperlinks))
             "Status: ✓ Authenticated (click to refresh)"
         else
             "Status: ✓ Authenticated";
@@ -187,10 +187,10 @@ pub const CommandRouter = struct {
         return types.CommandResult.ok(status_text);
     }
 
-    fn executeAuthRefresh(self: *CommandRouter, args: types.ArgsUnified) !types.CommandResult {
+    fn executeAuthRefresh(self: *CommandRouter, args: types.Args) !types.CommandResult {
         _ = args;
 
-        try self.context.notification.send(.{
+        try self.state.notification.send(.{
             .title = "Authentication",
             .body = "Refreshing authentication token",
             .level = .info,
@@ -199,13 +199,13 @@ pub const CommandRouter = struct {
         return types.CommandResult.ok("Auth token refreshed");
     }
 
-    fn executeInteractive(self: *CommandRouter, args: types.ArgsUnified) !types.CommandResult {
+    fn executeInteractive(self: *CommandRouter, args: types.Args) !types.CommandResult {
         _ = args;
 
-        if (self.context.hasFeature(.hyperlinks) or self.context.hasFeature(.mouse)) {
-            try self.context.notification.send(.{
+        if (self.state.hasFeature(.hyperlinks) or self.state.hasFeature(.mouse)) {
+            try self.state.notification.send(.{
                 .title = "Interactive Mode",
-                .body = "Enhanced terminal features available",
+                .body = "Terminal features available",
                 .level = .success,
             });
             return types.CommandResult.ok("Interactive mode with enhanced features");
@@ -214,7 +214,7 @@ pub const CommandRouter = struct {
         }
     }
 
-    fn executeHelp(self: *CommandRouter, args: types.ArgsUnified) !types.CommandResult {
+    fn executeHelp(self: *CommandRouter, args: types.Args) !types.CommandResult {
         _ = args;
 
         const help_text =
@@ -246,16 +246,16 @@ pub const CommandRouter = struct {
         try writer.writeAll(help_text);
 
         // Add feature list
-        if (self.context.hasFeature(.hyperlinks)) {
+        if (self.state.hasFeature(.hyperlinks)) {
             try writer.writeAll("  ✓ Hyperlinks supported\n");
         }
-        if (self.context.hasFeature(.clipboard)) {
+        if (self.state.hasFeature(.clipboard)) {
             try writer.writeAll("  ✓ Clipboard integration\n");
         }
-        if (self.context.hasFeature(.notifications)) {
+        if (self.state.hasFeature(.notifications)) {
             try writer.writeAll("  ✓ System notifications\n");
         }
-        if (self.context.hasFeature(.graphics)) {
+        if (self.state.hasFeature(.graphics)) {
             try writer.writeAll("  ✓ Enhanced graphics\n");
         }
 
@@ -263,12 +263,12 @@ pub const CommandRouter = struct {
         return types.CommandResult.ok(output);
     }
 
-    fn executeVersion(self: *CommandRouter, args: types.ArgsUnified) !types.CommandResult {
+    fn executeVersion(self: *CommandRouter, args: types.Args) !types.CommandResult {
         _ = args;
 
-        const capabilities = self.context.capabilities;
+        const capabilities = self.state.capabilities;
         const version_info = try std.fmt.allocPrint(self.allocator,
-            \\docz 1.0.0 - Enhanced CLI
+            \\docz 1.0.0 - CLI
             \\Terminal: {s}
             \\Features:
             \\  Hyperlinks: {s}
@@ -278,7 +278,7 @@ pub const CommandRouter = struct {
             \\  True Color: {s}
             \\  Mouse: {s}
         , .{
-            self.context.capabilitySummary(),
+            self.state.capabilitySummary(),
             if (capabilities.hyperlinks) "✓" else "✗",
             if (capabilities.clipboard) "✓" else "✗",
             if (capabilities.notifications) "✓" else "✗",
@@ -291,8 +291,8 @@ pub const CommandRouter = struct {
     }
 
     fn executeAuthStatusBasic(self: *CommandRouter) !types.CommandResult {
-        const status_text = if (self.context.hasFeature(.hyperlinks))
-            "✓ Authenticated (enhanced terminal)"
+        const status_text = if (self.state.hasFeature(.hyperlinks))
+            "✓ Authenticated (terminal)"
         else
             "✓ Authenticated";
 

@@ -45,10 +45,10 @@ pub const code_input = @import("code_input.zig");
 pub const runAuthTUI = runTUI;
 pub const setupOAuthWithTUI = oauth_wizard.setupOAuthWithTUI;
 pub const runOAuthWizard = oauth_wizard.runOAuthWizard;
-pub const setupOAuthWithAdvancedTUI = oauth_wizard_advanced.setupOAuthWithAdvancedTUI;
-pub const runAdvancedOAuthWizard = oauth_wizard_advanced.runOAuthWizardAdvanced;
-pub const setupOAuthWithUnifiedTUI = oauth_flow.setupOAuthWithTUI;
-pub const runUnifiedOAuthWizard = oauth_flow.runOAuthWizard;
+pub const setupOAuthWithAdvancedTUI = oauth_wizard_advanced.setupOAuthWithTUI;
+pub const runOAuthWizardPro = oauth_wizard_advanced.runOAuthWizard;
+pub const setupOAuthFlowWithTUI = oauth_flow.setupOAuthWithTUI;
+pub const runOAuthFlowWizard = oauth_flow.runOAuthWizard;
 pub const showAuthStatus = auth_status.display;
 pub const inputAuthCode = code_input.input;
 

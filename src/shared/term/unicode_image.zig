@@ -12,7 +12,7 @@
 /// defer img.deinit();
 /// // ... populate image with pixels ...
 ///
-/// const output = try UnicodeImageRenderer
+/// const output = try UnicodeImage
 ///     .init(allocator)
 ///     .width(32)
 ///     .height(16)
@@ -206,7 +206,7 @@ const PixelBlock = struct {
 };
 
 /// Unicode Image Renderer configuration and state
-pub const UnicodeImageRenderer = struct {
+pub const UnicodeImage = struct {
     output_width: u32 = 0,
     output_height: u32 = 0,
     threshold_level: u8 = 128, // Middle threshold for binary decisions
@@ -215,44 +215,44 @@ pub const UnicodeImageRenderer = struct {
     invert_colors: bool = false,
     allocator: std.mem.Allocator,
 
-    pub fn init(allocator: std.mem.Allocator) UnicodeImageRenderer {
-        return UnicodeImageRenderer{
+    pub fn init(allocator: std.mem.Allocator) UnicodeImage {
+        return UnicodeImage{
             .allocator = allocator,
         };
     }
 
-    pub fn width(self: UnicodeImageRenderer, w: u32) UnicodeImageRenderer {
+    pub fn width(self: UnicodeImage, w: u32) UnicodeImage {
         var new_self = self;
         new_self.output_width = w;
         return new_self;
     }
 
-    pub fn height(self: UnicodeImageRenderer, h: u32) UnicodeImageRenderer {
+    pub fn height(self: UnicodeImage, h: u32) UnicodeImage {
         var new_self = self;
         new_self.output_height = h;
         return new_self;
     }
 
-    pub fn symbolType(self: UnicodeImageRenderer, sym_type: SymbolType) UnicodeImageRenderer {
+    pub fn symbolType(self: UnicodeImage, sym_type: SymbolType) UnicodeImage {
         var new_self = self;
         new_self.symbol_type = sym_type;
         return new_self;
     }
 
-    pub fn threshold(self: UnicodeImageRenderer, threshold_val: u8) UnicodeImageRenderer {
+    pub fn threshold(self: UnicodeImage, threshold_val: u8) UnicodeImage {
         var new_self = self;
         new_self.threshold_level = threshold_val;
         return new_self;
     }
 
-    pub fn invertColors(self: UnicodeImageRenderer, invert: bool) UnicodeImageRenderer {
+    pub fn invertColors(self: UnicodeImage, invert: bool) UnicodeImage {
         var new_self = self;
         new_self.invert_colors = invert;
         return new_self;
     }
 
     /// Find the best matching block character for a given coverage pattern
-    fn findBestBlock(self: UnicodeImageRenderer, coverage: [4]bool) Block {
+    fn findBestBlock(self: UnicodeImage, coverage: [4]bool) Block {
         const blocks = self.symbol_type.getBlocks();
 
         // First try to find exact match
@@ -283,7 +283,7 @@ pub const UnicodeImageRenderer = struct {
     }
 
     /// Analyze a 2x2 pixel block and determine the best representation
-    fn analyzePixelBlock(self: UnicodeImageRenderer, block: PixelBlock) PixelBlock {
+    fn analyzePixelBlock(self: UnicodeImage, block: PixelBlock) PixelBlock {
         var result = block;
 
         // Determine which quadrants should be "on" based on luminance threshold
@@ -344,7 +344,7 @@ pub const UnicodeImageRenderer = struct {
     }
 
     /// Scale image to target dimensions
-    fn scaleImage(self: UnicodeImageRenderer, src: Image, target_width: u32, target_height: u32) !Image {
+    fn scaleImage(self: UnicodeImage, src: Image, target_width: u32, target_height: u32) !Image {
         var scaled = try Image.init(self.allocator, target_width, target_height);
 
         const scale_x = @as(f32, @floatFromInt(src.width)) / @as(f32, @floatFromInt(target_width));
@@ -364,7 +364,7 @@ pub const UnicodeImageRenderer = struct {
     }
 
     /// Render an image to Unicode block art
-    pub fn render(self: UnicodeImageRenderer, img: Image) ![]u8 {
+    pub fn render(self: UnicodeImage, img: Image) ![]u8 {
         // Determine output dimensions
         var render_width = self.output_width;
         var render_height = self.output_height;
@@ -432,7 +432,7 @@ pub const UnicodeImageRenderer = struct {
 
 /// Convenience function for quick rendering with default settings
 pub fn render(allocator: std.mem.Allocator, img: Image, width: u32, height: u32) ![]u8 {
-    const renderer = UnicodeImageRenderer.init(allocator).width(width).height(height);
+    const renderer = UnicodeImage.init(allocator).width(width).height(height);
     return renderer.render(img);
 }
 
@@ -472,7 +472,7 @@ test "Unicode image renderer basic functionality" {
     var test_img = try createTestImage(testing.allocator);
     defer test_img.deinit();
 
-    const renderer = UnicodeImageRenderer.init(testing.allocator);
+    const renderer = UnicodeImage.init(testing.allocator);
     const output = try renderer.width(16).height(16).render(test_img);
     defer testing.allocator.free(output);
 
@@ -484,7 +484,7 @@ test "Unicode image renderer basic functionality" {
 test "Block character matching" {
     const testing = std.testing;
 
-    const renderer = UnicodeImageRenderer.init(testing.allocator);
+    const renderer = UnicodeImage.init(testing.allocator);
 
     // Test exact match
     const upper_half = [4]bool{ true, true, false, false };

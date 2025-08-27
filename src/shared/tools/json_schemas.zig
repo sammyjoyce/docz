@@ -24,7 +24,7 @@ pub fn ToolResponse(comptime ResultType: type) type {
 
 /// Common response types for different tool categories
 /// File operation response
-pub const FileOperationResponse = struct {
+pub const FileOperation = struct {
     /// Path to the file that was operated on
     file_path: []const u8,
     /// Content of the file (for read operations)
@@ -49,7 +49,7 @@ pub const FileMetadata = struct {
 };
 
 /// Text processing response
-pub const TextProcessingResponse = struct {
+pub const TextProcessing = struct {
     /// Original text that was processed
     original: ?[]const u8 = null,
     /// Processed result text
@@ -85,7 +85,7 @@ pub const TextProcessingStats = struct {
 };
 
 /// Search response
-pub const SearchResponse = struct {
+pub const Search = struct {
     /// The search query used
     query: []const u8,
     /// Search results
@@ -119,7 +119,7 @@ pub const SearchOptions = struct {
 };
 
 /// Directory listing response
-pub const DirectoryResponse = struct {
+pub const Directory = struct {
     /// Path to the directory
     directory_path: []const u8,
     /// Directory entries
@@ -141,7 +141,7 @@ pub const DirectoryEntry = struct {
 };
 
 /// Validation response
-pub const ValidationResponse = struct {
+pub const Validation = struct {
     /// Whether validation passed
     is_valid: bool,
     /// Validation errors found
@@ -277,20 +277,20 @@ pub fn createErrorResponse(allocator: std.mem.Allocator, tool_name: []const u8, 
 }
 
 /// Create a file operation success response
-pub fn createFileOperationResponse(allocator: std.mem.Allocator, tool_name: []const u8, command: []const u8, response: FileOperationResponse) !json.Value {
-    const ResponseType = ToolResponse(FileOperationResponse);
+pub fn createFileOperation(allocator: std.mem.Allocator, tool_name: []const u8, command: []const u8, response: FileOperation) !json.Value {
+    const ResponseType = ToolResponse(FileOperation);
     return ResponseType.successWithCommand(allocator, tool_name, command, response);
 }
 
 /// Create a search response
-pub fn createSearchResponse(allocator: std.mem.Allocator, tool_name: []const u8, command: []const u8, response: SearchResponse) !json.Value {
-    const ResponseType = ToolResponse(SearchResponse);
+pub fn createSearch(allocator: std.mem.Allocator, tool_name: []const u8, command: []const u8, response: Search) !json.Value {
+    const ResponseType = ToolResponse(Search);
     return ResponseType.successWithCommand(allocator, tool_name, command, response);
 }
 
 /// Create a validation response
-pub fn createValidationResponse(allocator: std.mem.Allocator, tool_name: []const u8, command: []const u8, response: ValidationResponse) !json.Value {
-    const ResponseType = ToolResponse(ValidationResponse);
+pub fn createValidation(allocator: std.mem.Allocator, tool_name: []const u8, command: []const u8, response: Validation) !json.Value {
+    const ResponseType = ToolResponse(Validation);
     return ResponseType.successWithCommand(allocator, tool_name, command, response);
 }
 

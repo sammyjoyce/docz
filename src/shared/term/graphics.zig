@@ -240,7 +240,7 @@ pub const Graphics = struct {
                 const sample_x = (x * 2 * image.width) / width;
                 const sample_y = (y * 4 * image.height) / height;
 
-                // For now, use simple intensity-based blocks (could be enhanced with actual color sampling)
+                // For now, use simple intensity-based blocks (could be improved with actual color sampling)
                 const intensity = self.sampleIntensity(image, sample_x, sample_y);
                 const block_char = intensityToBlock(intensity);
 

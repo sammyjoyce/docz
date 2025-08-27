@@ -1,6 +1,6 @@
-//! Enhanced OAuth Wizard with Advanced TUI Features
+//! OAuth Wizard with TUI Features
 //!
-//! This enhanced version of the OAuth wizard integrates multiple advanced TUI components:
+//! This version of the OAuth wizard integrates multiple TUI components:
 //! - Modal system for dialogs and help screens
 //! - Smart input component with autocomplete and validation
 //! - Theme manager for consistent theming
@@ -26,14 +26,14 @@ const input_system = tui_mod.input;
 const canvas_engine = tui_mod.canvas_engine;
 const modal_system = @import("../../tui/widgets/modal.zig");
 const theme_manager = @import("../../theme_manager/mod.zig");
-const smart_input = @import("../../components/smart_input.zig");
+const input_component = @import("../../components/input_component.zig");
 
 // Import terminal capabilities
-const term = @import("../../term/mod.zig");
+const term = @import("../../term_refactored/mod.zig");
 const tui_mod = @import("../../tui/mod.zig");
 
 // Re-export types for convenience
-const AdvancedProgressBar = progress_mod.ProgressBar;
+const ProgressBar = progress_mod.ProgressBar;
 const Notification = notification_mod.Notification;
 const NotificationController = notification_mod.NotificationController;
 const TextInput = text_input.TextInput;
@@ -46,9 +46,9 @@ const CanvasEngine = canvas_engine.CanvasEngine;
 const Modal = modal_system.Modal;
 const ModalManager = modal_system.ModalManager;
 const ThemeManager = theme_manager.Theme;
-const InputField = smart_input.InputField;
+const InputField = input_component.InputField;
 
-/// Enhanced OAuth wizard states with rich metadata
+/// OAuth wizard states with rich metadata
 const WizardState = enum {
     initializing,
     checking_network,
@@ -158,7 +158,7 @@ const WizardState = enum {
     }
 };
 
-/// Enhanced metadata for each wizard state
+/// Metadata for each wizard state
 const StateMetadata = struct {
     icon: []const u8,
     title: []const u8,
@@ -226,21 +226,21 @@ const OAuthFlowDiagram = struct {
     }
 };
 
-/// OAuth wizard with enhanced TUI features
+/// OAuth wizard with TUI features
 pub const OAuthWizardPro = struct {
     const Self = @This();
 
     allocator: std.mem.Allocator,
     renderer: *Renderer,
     notification_controller: NotificationController,
-    progress_bar: AdvancedProgressBar,
+    progress_bar: ProgressBar,
     status_bar: StatusBar,
     canvas_engine: CanvasEngine,
     modal_manager: ModalManager,
     theme_manager: *ThemeManager,
 
-    // Enhanced input components
-    smart_input: ?InputField = null,
+    // Input components
+    input_component: ?InputField = null,
     api_key_input: ?InputField = null,
 
     // Terminal capabilities
@@ -269,7 +269,7 @@ pub const OAuthWizardPro = struct {
     network_active: bool = false,
     last_network_activity: i64 = 0,
 
-    // Enhanced features
+    // Features
     flow_diagram: OAuthFlowDiagram,
     shortcuts: KeyboardShortcuts,
     show_help: bool = false,
@@ -280,7 +280,7 @@ pub const OAuthWizardPro = struct {
 
         // Initialize components
         const notification_controller = NotificationController.init(allocator, renderer);
-        const progress_bar = try AdvancedProgressBar.init(allocator, "OAuth Setup", .gradient);
+        const progress_bar = try ProgressBar.init(allocator, "OAuth Setup", .gradient);
         var status_bar_instance = StatusBar.init(allocator, renderer);
 
         // Configure status bar
@@ -346,7 +346,7 @@ pub const OAuthWizardPro = struct {
         self.status_bar.deinit();
         self.canvas_engine.deinit();
         self.modal_manager.deinit();
-        if (self.smart_input) |*input| {
+        if (self.input_component) |*input| {
             input.deinit();
         }
         if (self.api_key_input) |*input| {
@@ -362,7 +362,7 @@ pub const OAuthWizardPro = struct {
     }
 
     /// Run the enhanced OAuth wizard
-    pub fn run(self: *Self) !oauth.OAuthCredentials {
+    pub fn run(self: *Self) !oauth.Credentials {
         // Clear screen and show initial setup
         try self.renderer.beginFrame();
         try self.clearScreen();
@@ -529,7 +529,7 @@ pub const OAuthWizardPro = struct {
             .padding = .{ .top = 1, .right = 2, .bottom = 1, .left = 2 },
         };
 
-        const header_text = "🔐 Enhanced Claude Pro/Max OAuth Setup Wizard";
+        const header_text = "🔐 OAuth Setup Wizard";
         try self.renderer.drawTextBox(ctx, header_text, box_style);
     }
 
@@ -717,10 +717,10 @@ pub const OAuthWizardPro = struct {
 
     /// Draw smart input for authorization code
     fn drawSmartCodeInput(self: *Self, y: u32) !void {
-        if (self.smart_input == null) {
+        if (self.input_component == null) {
             // Initialize smart input with validation
             const validation_fn = struct {
-                fn validate(code: []const u8) smart_input.ValidationResult {
+                fn validate(code: []const u8) input_component.ValidationResult {
                     if (code.len == 0) return .{ .isValid = true };
 
                     if (code.len < 10) {
@@ -742,20 +742,20 @@ pub const OAuthWizardPro = struct {
                 }
             }.validate;
 
-            self.smart_input = try InputField.init(self.allocator, .text, "Authorization Code", "Paste authorization code here...");
-            try self.smart_input.?.configure(.{
+            self.input_component = try InputField.init(self.allocator, .text, "Authorization Code", "Paste authorization code here...");
+            try self.input_component.?.configure(.{
                 .required = true,
                 .validator = validation_fn,
                 .width = 60,
             });
 
             // Set up autocomplete for common OAuth providers
-            const completion_items = try self.allocator.alloc(smart_input.CompletionItem, 3);
+            const completion_items = try self.allocator.alloc(input_component.CompletionItem, 3);
             completion_items[0] = .{ .text = "anthropic-", .description = "Anthropic OAuth code prefix" };
             completion_items[1] = .{ .text = "claude-", .description = "Claude service code prefix" };
             completion_items[2] = .{ .text = "auth-", .description = "Generic auth code prefix" };
 
-            try self.smart_input.?.setCompletionItems(completion_items);
+            try self.input_component.?.setCompletionItems(completion_items);
         }
 
         const terminal_size = tui_mod.getTerminalSize();
@@ -769,7 +769,7 @@ pub const OAuthWizardPro = struct {
 
         // Create a simple writer for the input field
         const writer = self.renderer.writer();
-        try self.smart_input.?.render(writer);
+        try self.input_component.?.render(writer);
     }
 
     /// Draw error modal
@@ -1073,7 +1073,7 @@ pub const OAuthWizardPro = struct {
     /// Handle smart code entry with enhanced features
     fn handleSmartCodeEntry(self: *Self) !?[]const u8 {
         // Clear any previous input
-        if (self.smart_input) |*input| {
+        if (self.input_component) |*input| {
             try input.setValue("");
         }
 
@@ -1088,7 +1088,7 @@ pub const OAuthWizardPro = struct {
                         // Handle special keys
                         switch (key_event.code) {
                             .enter => {
-                                if (self.smart_input) |input| {
+                                if (self.input_component) |input| {
                                     const code = input.getValue();
                                     if (code.len > 0) {
                                         const validation = input.validate();
@@ -1111,15 +1111,15 @@ pub const OAuthWizardPro = struct {
                             },
                             .tab => {
                                 // Handle completion
-                                if (self.smart_input) |*input| {
+                                if (self.input_component) |*input| {
                                     try input.handleInput('\t');
                                 }
                             },
                             else => {
                                 // Add character to input
-                                if (key_event.text.len > 0 and self.smart_input != null) {
+                                if (key_event.text.len > 0 and self.input_component != null) {
                                     for (key_event.text) |char| {
-                                        try self.smart_input.?.handleInput(char);
+                                        try self.input_component.?.handleInput(char);
                                     }
                                 }
                             },
@@ -1127,7 +1127,7 @@ pub const OAuthWizardPro = struct {
                     },
                     .paste => |paste_event| {
                         // Handle paste events
-                        if (self.smart_input) |*input| {
+                        if (self.input_component) |*input| {
                             try input.setValue(paste_event.text);
                         }
                     },
@@ -1213,7 +1213,7 @@ pub const OAuthWizardPro = struct {
     }
 
     /// Exchange code for tokens
-    fn exchangeCodeForTokens(self: *Self, code: []const u8) !oauth.OAuthCredentials {
+    fn exchangeCodeForTokens(self: *Self, code: []const u8) !oauth.Credentials {
         // TODO: Use the code parameter for actual token exchange
         _ = code;
         self.network_active = true;
@@ -1233,7 +1233,7 @@ pub const OAuthWizardPro = struct {
         try self.transitionTo(.complete);
 
         // Return placeholder credentials
-        return oauth.OAuthCredentials{
+        return oauth.Credentials{
             .type = try self.allocator.dupe(u8, "oauth"),
             .access_token = try self.allocator.dupe(u8, "placeholder_token"),
             .refresh_token = try self.allocator.dupe(u8, "placeholder_refresh"),
@@ -1301,8 +1301,8 @@ fn closeModalAction(modal: *Modal) anyerror!void {
     try modal.hide();
 }
 
-/// Convenience function to run the advanced OAuth wizard
-pub fn runOAuthWizardAdvanced(allocator: std.mem.Allocator, tm: *ThemeManager) !oauth.OAuthCredentials {
+/// Convenience function to run the OAuth wizard
+pub fn runOAuthWizard(allocator: std.mem.Allocator, tm: *ThemeManager) !oauth.Credentials {
     // Create renderer
     const renderer = try renderer_mod.createRenderer(allocator);
     defer renderer.deinit();
@@ -1314,7 +1314,7 @@ pub fn runOAuthWizardAdvanced(allocator: std.mem.Allocator, tm: *ThemeManager) !
     return try wizard.run();
 }
 
-/// Setup OAuth with advanced TUI experience
-pub fn setupOAuthWithAdvancedTUI(allocator: std.mem.Allocator, tm: *ThemeManager) !oauth.OAuthCredentials {
-    return try runOAuthWizardAdvanced(allocator, tm);
+/// Setup OAuth with TUI experience
+pub fn setupOAuthWithTUI(allocator: std.mem.Allocator, tm: *ThemeManager) !oauth.Credentials {
+    return try runOAuthWizard(allocator, tm);
 }

@@ -103,13 +103,13 @@ const file_tree = @import("../../src/shared/tui/widgets/core/file_tree.zig");
 const tabs = @import("../../src/shared/tui/widgets/core/tabs.zig");
 const tag_input = @import("../../src/shared/tui/widgets/core/tag_input.zig");
 const breadcrumb_trail = @import("../../src/shared/cli/components/base/breadcrumb_trail.zig");
-const agent_dashboard = @import("../../src/shared/tui/components/agent_dashboard.zig");
+const agent_dashboard = @import("../../src/shared/tui/components/agent_dashboard/mod.zig");
 
 // Markdown agent specific
 const markdown_tools = @import("tools/mod.zig");
 const ContentEditor = @import("tools/ContentEditor.zig");
-const DocumentValidator = @import("tools/DocumentValidator.zig");
-const document_transformer = @import("tools/document_transformer.zig");
+const Validate = @import("tools/validate.zig");
+const document_tool = @import("tools/document.zig");
 
 // Common utilities
 const fs = @import("common/fs.zig");

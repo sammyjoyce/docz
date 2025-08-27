@@ -1,4 +1,4 @@
-//! Unified OAuth Authentication Flow with Enhanced UX
+//! OAuth Authentication Flow with UX
 //!
 //! This module provides a comprehensive, production-ready OAuth authentication flow
 //! that combines the best features from existing implementations with progressive
@@ -27,7 +27,7 @@ const components_mod = @import("../../components/mod.zig");
 const notification_mod = @import("../../components/notification.zig");
 const progress_mod = @import("../../components/progress.zig");
 const input_mod = @import("../../components/input.zig");
-const smart_input_mod = @import("../../components/smart_input.zig");
+const input_component_mod = @import("../../components/input_component.zig");
 const theme_manager_mod = @import("../../theme_manager/mod.zig");
 
 // Import terminal capabilities and unified interface
@@ -52,7 +52,7 @@ const ProgressBar = progress_mod.ProgressBar;
 const ProgressConfig = progress_mod.ProgressConfig;
 const InputEvent = input_mod.InputEvent;
 const Key = input_mod.Key;
-const SmartInputField = smart_input_mod.InputField;
+const InputComponentField = input_component_mod.InputComponent;
 const ThemeManager = theme_manager_mod.ThemeManager;
 const CanvasEngine = canvas_engine.CanvasEngine;
 const Modal = modal_system.Modal;
@@ -230,7 +230,7 @@ const OAuthState = enum {
     }
 };
 
-/// Enhanced metadata for unified OAuth states
+/// Metadata for OAuth states
 const StateMetadata = struct {
     icon: []const u8,
     title: []const u8,
@@ -355,7 +355,7 @@ pub const OAuthFlow = struct {
     network_active: bool = false,
     last_network_activity: i64 = 0,
 
-    // Enhanced features
+    // Features
     flow_diagram: OAuthFlowDiagram,
     shortcuts: KeyboardShortcuts,
     show_help: bool = false,
@@ -382,7 +382,7 @@ pub const OAuthFlow = struct {
     dashboard: ?Dashboard = null,
 
     // Smart input components
-    smart_input: ?SmartInputField = null,
+    smart_input: ?InputComponentField = null,
 
     pub fn init(allocator: std.mem.Allocator, renderer: *AdaptiveRenderer, theme_manager: *ThemeManager) !Self {
         const start_time = std.time.timestamp();
@@ -494,7 +494,7 @@ pub const OAuthFlow = struct {
     }
 
     /// Run the unified OAuth flow
-    pub fn run(self: *Self) !oauth.OAuthCredentials {
+    pub fn run(self: *Self) !oauth.Credentials {
         // Show onboarding wizard
         try self.showOnboardingWizard();
 
@@ -605,7 +605,7 @@ pub const OAuthFlow = struct {
                 try self.renderer.writeText("╔" ++ top_border ++ "╗\n", header_color, false);
 
                 // Title line
-                const title = "🔐 Enhanced OAuth Setup Wizard";
+                const title = "🔐 OAuth Setup Wizard";
                 const title_padding = (size.width - title.len - 2) / 2;
                 const padding_str = try self.createRepeatedChar(" ", title_padding);
                 defer self.allocator.free(padding_str);
@@ -807,7 +807,7 @@ pub const OAuthFlow = struct {
         try self.renderer.writeText("╔" ++ top_border ++ "╗\n", header_color, false);
 
         // Title line
-        const title = "🔐 Unified OAuth Flow - Enhanced Authentication Setup";
+        const title = "🔐 OAuth Flow - Authentication Setup";
         const title_padding = (size.width - title.len - 2) / 2;
         const padding_str = try self.createRepeatedChar(" ", title_padding);
         defer self.allocator.free(padding_str);
@@ -1281,7 +1281,7 @@ pub const OAuthFlow = struct {
     }
 
     /// Exchange code for tokens
-    fn exchangeCodeForTokens(self: *Self, code: []const u8) !oauth.OAuthCredentials {
+    fn exchangeCodeForTokens(self: *Self, code: []const u8) !oauth.Credentials {
         _ = code;
         self.network_active = true;
         self.last_network_activity = std.time.timestamp();
@@ -1300,11 +1300,11 @@ pub const OAuthFlow = struct {
         try self.transitionTo(.completion);
 
         // Return placeholder credentials
-        return oauth.OAuthCredentials{
+        return oauth.Credentials{
             .type = try self.allocator.dupe(u8, "oauth"),
-            .access_token = try self.allocator.dupe(u8, "placeholder_token"),
-            .refresh_token = try self.allocator.dupe(u8, "placeholder_refresh"),
-            .expires_at = std.time.timestamp() + 3600,
+            .accessToken = try self.allocator.dupe(u8, "placeholder_token"),
+            .refreshToken = try self.allocator.dupe(u8, "placeholder_refresh"),
+            .expiresAt = std.time.timestamp() + 3600,
         };
     }
 
@@ -1343,7 +1343,7 @@ pub const OAuthFlow = struct {
 };
 
 /// Convenience function to run the OAuth wizard
-pub fn runOAuthWizard(allocator: std.mem.Allocator, renderer: *AdaptiveRenderer, theme_manager: *ThemeManager) !oauth.OAuthCredentials {
+pub fn runOAuthWizard(allocator: std.mem.Allocator, renderer: *AdaptiveRenderer, theme_manager: *ThemeManager) !oauth.Credentials {
     // Create and run OAuth wizard
     var wizard = try OAuthFlow.init(allocator, renderer, theme_manager);
     defer wizard.deinit();
@@ -1352,6 +1352,6 @@ pub fn runOAuthWizard(allocator: std.mem.Allocator, renderer: *AdaptiveRenderer,
 }
 
 /// Setup OAuth with TUI experience
-pub fn setupOAuthWithTUI(allocator: std.mem.Allocator, renderer: *AdaptiveRenderer, theme_manager: *ThemeManager) !oauth.OAuthCredentials {
+pub fn setupOAuthWithTUI(allocator: std.mem.Allocator, renderer: *AdaptiveRenderer, theme_manager: *ThemeManager) !oauth.Credentials {
     return try runOAuthWizard(allocator, renderer, theme_manager);
 }

@@ -1,4 +1,4 @@
-//! Smart Input Component
+//! Input Component
 //!
 //! An adaptive text input component that provides progressive enhancement
 //! based on terminal capabilities, including autocomplete, syntax highlighting,
@@ -20,8 +20,8 @@ const Color = term.Color;
 const Point = term.Point;
 const Rect = term.Rect;
 
-/// Smart input enhancement features
-pub const SmartFeature = packed struct {
+/// Input enhancement features
+pub const Feature = packed struct {
     autocomplete: bool = true,
     syntaxHighlighting: bool = true,
     multiLine: bool = false,
@@ -51,10 +51,10 @@ pub const SuggestionProvider = *const fn (input: []const u8, allocator: std.mem.
 /// Callback type for validators
 pub const Validator = *const fn (input: []const u8) Validation;
 
-/// Smart input configuration
-pub const SmartConfig = struct {
+/// Input configuration
+pub const Config = struct {
     placeholder: ?[]const u8 = null,
-    features: SmartFeature = .{},
+    features: Feature = .{},
     suggestionProvider: ?SuggestionProvider = null,
     validator: ?Validator = null,
     maxLength: ?u32 = null,
@@ -62,13 +62,13 @@ pub const SmartConfig = struct {
     maxWidth: ?u32 = null,
 };
 
-/// Smart input component
-pub const SmartInput = struct {
+/// Input component
+pub const InputComponent = struct {
     const Self = @This();
 
     allocator: std.mem.Allocator,
     state: ComponentState,
-    config: SmartConfig,
+    config: Config,
 
     // Input state
     buffer: std.ArrayList(u8),
@@ -103,7 +103,7 @@ pub const SmartInput = struct {
         .update = update,
     };
 
-    pub fn create(allocator: std.mem.Allocator, config: SmartConfig) !*Component {
+    pub fn create(allocator: std.mem.Allocator, config: Config) !*Component {
         const self = try allocator.create(Self);
         self.* = Self{
             .allocator = allocator,

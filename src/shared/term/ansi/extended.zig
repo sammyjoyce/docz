@@ -1,26 +1,176 @@
 const std = @import("std");
 
-// Color management system with comprehensive terminal support
-// Supports 16-color, 256-color, and true color (RGB) with conversion algorithms
+// Extended CellBuffer implementation with modern terminal features
+// Supports hyperlinks, combining characters, modern styling, and buffer operations
 
-/// Color interface - all terminal colors implement this
+/// Hyperlink representation in terminal cells
+pub const Link = struct {
+    url: []const u8 = "",
+    params: []const u8 = "",
+
+    pub fn isEmpty(self: Link) bool {
+        return self.url.len == 0 and self.params.len == 0;
+    }
+
+    pub fn equal(self: Link, other: Link) bool {
+        return std.mem.eql(u8, self.url, other.url) and
+            std.mem.eql(u8, self.params, other.params);
+    }
+
+    pub fn reset(self: *Link) void {
+        self.url = "";
+        self.params = "";
+    }
+};
+
+/// Text attribute mask for efficient attribute storage
+pub const AttrMask = packed struct {
+    bold: bool = false,
+    faint: bool = false,
+    italic: bool = false,
+    slow_blink: bool = false,
+    rapid_blink: bool = false,
+    reverse: bool = false,
+    conceal: bool = false,
+    strikethrough: bool = false,
+
+    pub fn isEmpty(self: AttrMask) bool {
+        const val: u8 = @bitCast(self);
+        return val == 0;
+    }
+
+    pub fn contains(self: AttrMask, attr: AttrMask) bool {
+        const self_val: u8 = @bitCast(self);
+        const attr_val: u8 = @bitCast(attr);
+        return (self_val & attr_val) == attr_val;
+    }
+};
+
+/// Underline styles following ANSI standards
+pub const UnderlineStyle = enum(u8) {
+    none = 0,
+    single = 1,
+    double = 2,
+    curly = 3,
+    dotted = 4,
+    dashed = 5,
+};
+
+/// Enhanced style system with underline colors and styles
+pub const Style = struct {
+    fg: ?Color = null,
+    bg: ?Color = null,
+    ul: ?Color = null, // Underline color
+    attrs: AttrMask = .{},
+    ul_style: UnderlineStyle = .none,
+
+    pub fn isEmpty(self: Style) bool {
+        return self.fg == null and
+            self.bg == null and
+            self.ul == null and
+            self.attrs.isEmpty() and
+            self.ul_style == .none;
+    }
+
+    pub fn equal(self: Style, other: Style) bool {
+        return colorEqual(self.fg, other.fg) and
+            colorEqual(self.bg, other.bg) and
+            colorEqual(self.ul, other.ul) and
+            std.meta.eql(self.attrs, other.attrs) and
+            self.ul_style == other.ul_style;
+    }
+
+    pub fn reset(self: *Style) void {
+        self.fg = null;
+        self.bg = null;
+        self.ul = null;
+        self.attrs = .{};
+        self.ul_style = .none;
+    }
+
+    /// Check if style only has attributes that don't affect space appearance
+    pub fn isClear(self: Style) bool {
+        return self.ul_style == .none and
+            !self.attrs.reverse and
+            !self.attrs.conceal and
+            self.fg == null and
+            self.bg == null and
+            self.ul == null;
+    }
+
+    // Builder pattern methods for styling
+    pub fn bold(self: Style, enabled: bool) Style {
+        var result = self;
+        result.attrs.bold = enabled;
+        return result;
+    }
+
+    pub fn italic(self: Style, enabled: bool) Style {
+        var result = self;
+        result.attrs.italic = enabled;
+        return result;
+    }
+
+    pub fn underline(self: Style, enabled: bool) Style {
+        var result = self;
+        result.ul_style = if (enabled) .single else .none;
+        return result;
+    }
+
+    pub fn underlineStyle(self: Style, style: UnderlineStyle) Style {
+        var result = self;
+        result.ul_style = style;
+        return result;
+    }
+
+    pub fn foreground(self: Style, color: Color) Style {
+        var result = self;
+        result.fg = color;
+        return result;
+    }
+
+    pub fn background(self: Style, color: Color) Style {
+        var result = self;
+        result.bg = color;
+        return result;
+    }
+
+    pub fn underlineColor(self: Style, color: Color) Style {
+        var result = self;
+        result.ul = color;
+        return result;
+    }
+};
+
+/// Enhanced color system supporting various color types
 pub const Color = union(enum) {
     basic: BasicColor,
-    indexed: IndexedColor,
+    indexed: u8, // 0-255
     rgb: RGBColor,
-    hex: HexColor,
 
-    pub fn toRgb(self: Color) RGBColor {
-        return switch (self) {
-            .basic => |c| c.toRgb(),
-            .indexed => |c| c.toRgb(),
-            .rgb => |c| c,
-            .hex => |c| c.toRgb(),
+    pub fn equal(self: ?Color, other: ?Color) bool {
+        if (self == null and other == null) return true;
+        if (self == null or other == null) return false;
+
+        const s = self.?;
+        const o = other.?;
+
+        return switch (s) {
+            .basic => |c| o == .basic and o.basic == c,
+            .indexed => |c| o == .indexed and o.indexed == c,
+            .rgb => |c| o == .rgb and
+                o.rgb.r == c.r and
+                o.rgb.g == c.g and
+                o.rgb.b == c.b,
         };
     }
 };
 
-/// ANSI 3-bit or 4-bit color with values 0-15
+fn colorEqual(a: ?Color, b: ?Color) bool {
+    return Color.equal(a, b);
+}
+
+/// Basic ANSI colors (0-15)
 pub const BasicColor = enum(u8) {
     black = 0,
     red = 1,
@@ -38,722 +188,615 @@ pub const BasicColor = enum(u8) {
     bright_magenta = 13,
     bright_cyan = 14,
     bright_white = 15,
-
-    pub fn toRgb(self: BasicColor) RGBColor {
-        return ansi16ToRgb(@intFromEnum(self));
-    }
 };
 
-/// ANSI 256 (8-bit) color with values 0-255
-pub const IndexedColor = struct {
-    index: u8,
-
-    pub fn init(index: u8) IndexedColor {
-        return IndexedColor{ .index = index };
-    }
-
-    pub fn toRgb(self: IndexedColor) RGBColor {
-        return ansi256ToRgb(self.index);
-    }
-
-    pub fn toBasic(self: IndexedColor) BasicColor {
-        return @enumFromInt(ANSI256_TO_16[self.index]);
-    }
-
-    /// Convert to basic color using enhanced algorithm
-    pub fn toBasicEnhanced(self: IndexedColor) BasicColor {
-        return @enumFromInt(ANSI256_TO_16_ENHANCED[self.index]);
-    }
-};
-
-/// 24-bit RGB color
+/// RGB color representation
 pub const RGBColor = struct {
     r: u8,
     g: u8,
     b: u8,
+};
 
-    pub fn init(r: u8, g: u8, b: u8) RGBColor {
-        return RGBColor{ .r = r, .g = g, .b = b };
+/// Enhanced terminal cell with hyperlinks and combining characters
+pub const Cell = struct {
+    /// Main rune of the cell (0 = empty)
+    rune: u21 = 0,
+    /// Combining characters for complex grapheme clusters
+    comb: ?[]const u21 = null,
+    /// Display width (0, 1, or 2)
+    width: u8 = 0,
+    /// Cell styling
+    style: Style = .{},
+    /// Hyperlink information
+    link: Link = .{},
+
+    /// Blank cell (space character)
+    pub const BLANK = Cell{ .rune = ' ', .width = 1 };
+
+    /// Empty cell (zero width, used for wide character placeholders)
+    pub const EMPTY = Cell{};
+
+    pub fn isEmpty(self: Cell) bool {
+        return self.rune == 0 and self.width == 0 and (self.comb == null or self.comb.?.len == 0);
     }
 
-    pub fn fromHex(hex: u32) RGBColor {
-        return RGBColor{
-            .r = @intCast((hex >> 16) & 0xFF),
-            .g = @intCast((hex >> 8) & 0xFF),
-            .b = @intCast(hex & 0xFF),
+    pub fn equal(self: Cell, other: Cell) bool {
+        return self.rune == other.rune and
+            self.width == other.width and
+            runesEqual(self.comb, other.comb) and
+            self.style.equal(other.style) and
+            self.link.equal(other.link);
+    }
+
+    pub fn reset(self: *Cell) void {
+        self.rune = 0;
+        self.comb = null;
+        self.width = 0;
+        self.style.reset();
+        self.link.reset();
+    }
+
+    /// Check if cell is a clear space (space with no visible attributes)
+    pub fn isClear(self: Cell) bool {
+        return self.rune == ' ' and
+            (self.comb == null or self.comb.?.len == 0) and
+            self.width == 1 and
+            self.style.isClear() and
+            self.link.isEmpty();
+    }
+
+    /// Create a blank cell with the same style
+    pub fn makeBlank(self: Cell) Cell {
+        return Cell{
+            .rune = ' ',
+            .width = 1,
+            .style = self.style,
+            .link = self.link,
         };
     }
 
-    pub fn toHex(self: RGBColor) u32 {
-        return (@as(u32, self.r) << 16) | (@as(u32, self.g) << 8) | @as(u32, self.b);
+    /// Clone the cell
+    pub fn clone(self: Cell, allocator: std.mem.Allocator) !Cell {
+        var result = self;
+        if (self.comb) |comb| {
+            result.comb = try allocator.dupe(u21, comb);
+        }
+        return result;
     }
 
-    pub fn toIndexed(self: RGBColor) IndexedColor {
-        return IndexedColor.init(convert256(self));
+    /// Get string representation of the cell content
+    pub fn toString(self: Cell, allocator: std.mem.Allocator) ![]u8 {
+        if (self.rune == 0) return try allocator.dupe(u8, "");
+
+        var result = std.ArrayList(u8).init(allocator);
+        defer result.deinit();
+
+        // Add main rune
+        var utf8_buf: [4]u8 = undefined;
+        const len = std.unicode.utf8Encode(self.rune, &utf8_buf) catch return try allocator.dupe(u8, "");
+        try result.appendSlice(utf8_buf[0..len]);
+
+        // Add combining characters
+        if (self.comb) |comb| {
+            for (comb) |c| {
+                const comb_len = std.unicode.utf8Encode(c, &utf8_buf) catch continue;
+                try result.appendSlice(utf8_buf[0..comb_len]);
+            }
+        }
+
+        return try result.toOwnedSlice();
     }
 
-    pub fn toBasic(self: RGBColor) BasicColor {
-        return self.toIndexed().toBasic();
+    /// Append runes to the cell (for combining characters)
+    pub fn append(self: *Cell, allocator: std.mem.Allocator, runes: []const u21) !void {
+        if (runes.len == 0) return;
+
+        if (self.rune == 0 and runes.len > 0) {
+            self.rune = runes[0];
+            if (runes.len == 1) return;
+
+            if (runes.len > 1) {
+                self.comb = try allocator.dupe(u21, runes[1..]);
+            }
+        } else {
+            // Append to combining characters
+            var new_comb = std.ArrayList(u21).init(allocator);
+            defer new_comb.deinit();
+
+            if (self.comb) |existing| {
+                try new_comb.appendSlice(existing);
+                allocator.free(existing);
+            }
+
+            try new_comb.appendSlice(runes);
+            self.comb = try new_comb.toOwnedSlice();
+        }
+    }
+};
+
+fn runesEqual(a: ?[]const u21, b: ?[]const u21) bool {
+    if (a == null and b == null) return true;
+    if (a == null or b == null) return false;
+
+    const slice_a = a.?;
+    const slice_b = b.?;
+
+    if (slice_a.len != slice_b.len) return false;
+
+    for (slice_a, slice_b) |ra, rb| {
+        if (ra != rb) return false;
     }
 
-    /// Convert to basic color using enhanced algorithm
-    pub fn toBasicEnhanced(self: RGBColor) BasicColor {
-        return convert16Enhanced(self);
+    return true;
+}
+
+/// Rectangle for clipping operations
+pub const Rectangle = struct {
+    x: usize,
+    y: usize,
+    width: usize,
+    height: usize,
+
+    pub fn contains(self: Rectangle, x: usize, y: usize) bool {
+        return x >= self.x and x < self.x + self.width and
+            y >= self.y and y < self.y + self.height;
     }
 
-    /// Convert to 256-color using enhanced algorithm
-    pub fn toIndexedEnhanced(self: RGBColor) IndexedColor {
-        return IndexedColor.init(convert256(self));
-    }
+    pub fn intersection(self: Rectangle, other: Rectangle) ?Rectangle {
+        const left = @max(self.x, other.x);
+        const top = @max(self.y, other.y);
+        const right = @min(self.x + self.width, other.x + other.width);
+        const bottom = @min(self.y + self.height, other.y + other.height);
 
-    pub fn distanceSquared(self: RGBColor, other: RGBColor) u32 {
-        const dr = @as(i32, self.r) - @as(i32, other.r);
-        const dg = @as(i32, self.g) - @as(i32, other.g);
-        const db = @as(i32, self.b) - @as(i32, other.b);
-        return @intCast(dr * dr + dg * dg + db * db);
-    }
+        if (left >= right or top >= bottom) return null;
 
-    /// Perceptual distance calculation for better color matching
-    pub fn perceptualDistance(self: RGBColor, other: RGBColor) f32 {
-        const self_lab = ColorLab{
-            .r = @as(f32, @floatFromInt(self.r)) / 255.0,
-            .g = @as(f32, @floatFromInt(self.g)) / 255.0,
-            .b = @as(f32, @floatFromInt(self.b)) / 255.0,
+        return Rectangle{
+            .x = left,
+            .y = top,
+            .width = right - left,
+            .height = bottom - top,
         };
-        const other_lab = ColorLab{
-            .r = @as(f32, @floatFromInt(other.r)) / 255.0,
-            .g = @as(f32, @floatFromInt(other.g)) / 255.0,
-            .b = @as(f32, @floatFromInt(other.b)) / 255.0,
+    }
+};
+
+/// Line in the terminal buffer
+pub const Line = struct {
+    cells: []Cell,
+    allocator: std.mem.Allocator,
+
+    pub fn init(allocator: std.mem.Allocator, line_width: usize) !Line {
+        const cells = try allocator.alloc(Cell, line_width);
+        for (cells) |*cell| {
+            cell.* = Cell.EMPTY;
+        }
+        return Line{ .cells = cells, .allocator = allocator };
+    }
+
+    pub fn deinit(self: *Line) void {
+        // Free combining characters in cells
+        for (self.cells) |*cell| {
+            if (cell.comb) |comb| {
+                self.allocator.free(comb);
+            }
+        }
+        self.allocator.free(self.cells);
+    }
+
+    pub fn width(self: Line) usize {
+        return self.cells.len;
+    }
+
+    pub fn at(self: Line, x: usize) ?*Cell {
+        if (x >= self.cells.len) return null;
+        return &self.cells[x];
+    }
+
+    pub fn setCell(self: *Line, x: usize, cell: Cell) !bool {
+        if (x >= self.cells.len) return false;
+
+        const target = &self.cells[x];
+
+        // Clean up old cell
+        if (target.comb) |old_comb| {
+            self.allocator.free(old_comb);
+        }
+
+        // Copy new cell
+        target.* = cell;
+
+        // Handle wide characters
+        if (cell.width > 1) {
+            // Mark continuation cells as empty
+            var j: usize = 1;
+            while (j < cell.width and x + j < self.cells.len) : (j += 1) {
+                if (self.cells[x + j].comb) |old_comb| {
+                    self.allocator.free(old_comb);
+                }
+                self.cells[x + j] = Cell.EMPTY;
+            }
+        }
+
+        return true;
+    }
+
+    /// Get string representation of the line
+    pub fn toString(self: Line, allocator: std.mem.Allocator) ![]u8 {
+        var result = std.ArrayList(u8).init(allocator);
+        defer result.deinit();
+
+        for (self.cells) |cell| {
+            if (cell.isEmpty()) {
+                continue;
+            } else {
+                const cell_str = try cell.toString(allocator);
+                defer allocator.free(cell_str);
+                try result.appendSlice(cell_str);
+            }
+        }
+
+        // Trim trailing spaces
+        while (result.items.len > 0 and result.items[result.items.len - 1] == ' ') {
+            _ = result.pop();
+        }
+
+        return try result.toOwnedSlice();
+    }
+};
+
+/// Enhanced buffer with advanced operations
+pub const Buffer = struct {
+    lines: []Line,
+    width: usize,
+    height: usize,
+    allocator: std.mem.Allocator,
+
+    pub fn init(allocator: std.mem.Allocator, buffer_width: usize, buffer_height: usize) !Buffer {
+        const lines = try allocator.alloc(Line, buffer_height);
+        errdefer allocator.free(lines);
+
+        for (lines, 0..) |*line_ptr, i| {
+            line_ptr.* = Line.init(allocator, buffer_width) catch |err| {
+                // Cleanup on error
+                for (lines[0..i]) |*cleanup_line| {
+                    cleanup_line.deinit();
+                }
+                return err;
+            };
+        }
+
+        return Buffer{
+            .lines = lines,
+            .width = buffer_width,
+            .height = buffer_height,
+            .allocator = allocator,
         };
-        return self_lab.perceptualDistance(other_lab);
     }
 
-    /// Delta E color difference calculation
-    pub fn deltaE(self: RGBColor, other: RGBColor) f32 {
-        const self_lab = ColorLab{
-            .r = @as(f32, @floatFromInt(self.r)) / 255.0,
-            .g = @as(f32, @floatFromInt(self.g)) / 255.0,
-            .b = @as(f32, @floatFromInt(self.b)) / 255.0,
+    pub fn deinit(self: *Buffer) void {
+        for (self.lines) |*line_ptr| {
+            line_ptr.deinit();
+        }
+        self.allocator.free(self.lines);
+    }
+
+    pub fn line(self: *Buffer, y: usize) ?*Line {
+        if (y >= self.height) return null;
+        return &self.lines[y];
+    }
+
+    pub fn cell(self: *Buffer, x: usize, y: usize) ?*Cell {
+        const target_line = self.line(y) orelse return null;
+        return target_line.at(x);
+    }
+
+    pub fn setCell(self: *Buffer, x: usize, y: usize, new_cell: Cell) !bool {
+        const target_line = self.line(y) orelse return false;
+        return try target_line.setCell(x, new_cell);
+    }
+
+    pub fn bounds(self: Buffer) Rectangle {
+        return Rectangle{
+            .x = 0,
+            .y = 0,
+            .width = self.width,
+            .height = self.height,
         };
-        const other_lab = ColorLab{
-            .r = @as(f32, @floatFromInt(other.r)) / 255.0,
-            .g = @as(f32, @floatFromInt(other.g)) / 255.0,
-            .b = @as(f32, @floatFromInt(other.b)) / 255.0,
-        };
-        return self_lab.deltaE(other_lab);
+    }
+
+    /// Resize buffer maintaining content where possible
+    pub fn resize(self: *Buffer, new_width: usize, new_height: usize) !void {
+        if (new_width == 0 or new_height == 0) {
+            // Clean up existing
+            for (self.lines) |*line_ptr| {
+                line_ptr.deinit();
+            }
+            self.allocator.free(self.lines);
+            self.lines = &[_]Line{};
+            self.width = 0;
+            self.height = 0;
+            return;
+        }
+
+        // Create new lines
+        const new_lines = try self.allocator.alloc(Line, new_height);
+        errdefer self.allocator.free(new_lines);
+
+        for (new_lines, 0..) |*line_ptr, i| {
+            line_ptr.* = Line.init(self.allocator, new_width) catch |err| {
+                // Cleanup on error
+                for (new_lines[0..i]) |*cleanup_line| {
+                    cleanup_line.deinit();
+                }
+                return err;
+            };
+        }
+
+        // Copy existing content
+        const copy_height = @min(self.height, new_height);
+        const copy_width = @min(self.width, new_width);
+
+        for (0..copy_height) |y| {
+            for (0..copy_width) |x| {
+                if (self.cell(x, y)) |old_cell| {
+                    _ = try new_lines[y].setCell(x, old_cell.*);
+                }
+            }
+        }
+
+        // Replace old lines
+        for (self.lines) |*line_ptr| {
+            line_ptr.deinit();
+        }
+        self.allocator.free(self.lines);
+
+        self.lines = new_lines;
+        self.width = new_width;
+        self.height = new_height;
+    }
+
+    /// Fill rectangle with given cell
+    pub fn fillRect(self: *Buffer, rect: Rectangle, fill_cell: Cell) !void {
+        const clipped = rect.intersection(self.bounds()) orelse return;
+
+        for (clipped.y..clipped.y + clipped.height) |y| {
+            for (clipped.x..clipped.x + clipped.width) |x| {
+                _ = try self.setCell(x, y, fill_cell);
+            }
+        }
+    }
+
+    /// Clear rectangle to blank cells
+    pub fn clearRect(self: *Buffer, rect: Rectangle) !void {
+        try self.fillRect(rect, Cell.BLANK);
+    }
+
+    /// Insert lines at given position within rectangle rect_bounds
+    pub fn insertLines(self: *Buffer, y: usize, n: usize, fill_cell: Cell, rect_bounds: Rectangle) !void {
+        if (n == 0 or y < rect_bounds.y or y >= rect_bounds.y + rect_bounds.height) return;
+
+        // Limit insertion to available space
+        const max_lines = (rect_bounds.y + rect_bounds.height) - y;
+        const lines_to_insert = @min(n, max_lines);
+
+        // Move existing lines down
+        var i = rect_bounds.y + rect_bounds.height - 1;
+        while (i >= y + lines_to_insert) : (i -= 1) {
+            if (i < lines_to_insert) break;
+
+            // Move cells within horizontal rect_bounds
+            for (rect_bounds.x..rect_bounds.x + rect_bounds.width) |x| {
+                if (self.cell(x, i - lines_to_insert)) |source_cell| {
+                    _ = try self.setCell(x, i, source_cell.*);
+                }
+            }
+
+            if (i == 0) break;
+        }
+
+        // Fill new lines
+        for (y..y + lines_to_insert) |row| {
+            for (rect_bounds.x..rect_bounds.x + rect_bounds.width) |x| {
+                _ = try self.setCell(x, row, fill_cell);
+            }
+        }
+    }
+
+    /// Delete lines at given position within rectangle rect_bounds
+    pub fn deleteLines(self: *Buffer, y: usize, n: usize, fill_cell: Cell, rect_bounds: Rectangle) !void {
+        if (n == 0 or y < rect_bounds.y or y >= rect_bounds.y + rect_bounds.height) return;
+
+        // Limit deletion to available space
+        const max_lines = (rect_bounds.y + rect_bounds.height) - y;
+        const lines_to_delete = @min(n, max_lines);
+
+        // Move lines up
+        for (y..rect_bounds.y + rect_bounds.height - lines_to_delete) |dst_y| {
+            const src_y = dst_y + lines_to_delete;
+            for (rect_bounds.x..rect_bounds.x + rect_bounds.width) |x| {
+                if (self.cell(x, src_y)) |source_cell| {
+                    _ = try self.setCell(x, dst_y, source_cell.*);
+                }
+            }
+        }
+
+        // Fill bottom lines
+        const fill_start = rect_bounds.y + rect_bounds.height - lines_to_delete;
+        for (fill_start..rect_bounds.y + rect_bounds.height) |row| {
+            for (rect_bounds.x..rect_bounds.x + rect_bounds.width) |x| {
+                _ = try self.setCell(x, row, fill_cell);
+            }
+        }
+    }
+
+    /// Insert cells at given position within rect_bounds
+    pub fn insertCells(self: *Buffer, x: usize, y: usize, n: usize, fill_cell: Cell, rect_bounds: Rectangle) !void {
+        if (n == 0 or !rect_bounds.contains(x, y)) return;
+
+        const line_obj = self.line(y) orelse return;
+
+        // Limit insertion to line rect_bounds
+        const max_cells = (rect_bounds.x + rect_bounds.width) - x;
+        const cells_to_insert = @min(n, max_cells);
+
+        // Move existing cells right
+        var i = rect_bounds.x + rect_bounds.width - 1;
+        while (i >= x + cells_to_insert) : (i -= 1) {
+            if (i < cells_to_insert) break;
+
+            if (line_obj.at(i - cells_to_insert)) |source_cell| {
+                _ = try line_obj.setCell(i, source_cell.*);
+            }
+
+            if (i == 0) break;
+        }
+
+        // Fill new cells
+        for (x..x + cells_to_insert) |col| {
+            _ = try line_obj.setCell(col, fill_cell);
+        }
+    }
+
+    /// Delete cells at given position within rect_bounds
+    pub fn deleteCells(self: *Buffer, x: usize, y: usize, n: usize, fill_cell: Cell, rect_bounds: Rectangle) !void {
+        if (n == 0 or !rect_bounds.contains(x, y)) return;
+
+        const line_obj = self.line(y) orelse return;
+
+        // Limit deletion to available space
+        const max_cells = (rect_bounds.x + rect_bounds.width) - x;
+        const cells_to_delete = @min(n, max_cells);
+
+        // Move cells left
+        for (x..rect_bounds.x + rect_bounds.width - cells_to_delete) |dst_x| {
+            const src_x = dst_x + cells_to_delete;
+            if (line_obj.at(src_x)) |source_cell| {
+                _ = try line_obj.setCell(dst_x, source_cell.*);
+            }
+        }
+
+        // Fill remaining cells
+        const fill_start = rect_bounds.x + rect_bounds.width - cells_to_delete;
+        for (fill_start..rect_bounds.x + rect_bounds.width) |col| {
+            _ = try line_obj.setCell(col, fill_cell);
+        }
+    }
+
+    /// Get string representation of the buffer
+    pub fn toString(self: Buffer, allocator: std.mem.Allocator) ![]u8 {
+        var result = std.ArrayList(u8).init(allocator);
+        defer result.deinit();
+
+        for (self.lines, 0..) |line_obj, i| {
+            const line_str = try line_obj.toString(allocator);
+            defer allocator.free(line_str);
+
+            try result.appendSlice(line_str);
+            if (i < self.lines.len - 1) {
+                try result.appendSlice("\r\n");
+            }
+        }
+
+        return try result.toOwnedSlice();
     }
 };
 
-/// Hex color string support
-pub const HexColor = struct {
-    hex: u32,
-
-    pub fn init(hex: u32) HexColor {
-        return HexColor{ .hex = hex };
-    }
-
-    pub fn parseFromString(hex_str: []const u8) !HexColor {
-        const clean = if (hex_str.len > 0 and hex_str[0] == '#') hex_str[1..] else hex_str;
-        if (clean.len != 6) return error.InvalidHexColor;
-
-        const hex = std.fmt.parseInt(u32, clean, 16) catch return error.InvalidHexColor;
-        return HexColor.init(hex);
-    }
-
-    pub fn toRgb(self: HexColor) RGBColor {
-        return RGBColor.fromHex(self.hex);
-    }
-
-    pub fn toString(self: HexColor, allocator: std.mem.Allocator) ![]u8 {
-        return std.fmt.allocPrint(allocator, "#{x:0>6}", .{self.hex});
-    }
-};
-
-/// Enhanced color conversion: 24-bit RGB to xterm 256-color palette
-/// Uses sophisticated algorithm with better color matching
-/// Based on tmux/colour.c implementation with perceptual improvements
-pub fn convert256(rgb: RGBColor) u8 {
-    // Convert to normalized 0-1 range for calculations
-    const r_norm = @as(f32, @floatFromInt(rgb.r)) / 255.0;
-    const g_norm = @as(f32, @floatFromInt(rgb.g)) / 255.0;
-    const b_norm = @as(f32, @floatFromInt(rgb.b)) / 255.0;
-
-    const r = @as(f32, @floatFromInt(rgb.r));
-    const g = @as(f32, @floatFromInt(rgb.g));
-    const b = @as(f32, @floatFromInt(rgb.b));
-
-    // 6-level color cube values: 0x00, 0x5f, 0x87, 0xaf, 0xd7, 0xff
-    // These are: 0, 95, 135, 175, 215, 255 in decimal
-    const q2c = [6]f32{ 0x00, 0x5f, 0x87, 0xaf, 0xd7, 0xff };
-
-    // Map RGB to 6x6x6 cube using enhanced algorithm
-    const qr = to6CubeEnhanced(r);
-    const cr = q2c[qr];
-    const qg = to6CubeEnhanced(g);
-    const cg = q2c[qg];
-    const qb = to6CubeEnhanced(b);
-    const cb = q2c[qb];
-
-    // Calculate cube color index
-    const ci: u8 = @intCast(36 * qr + 6 * qg + qb);
-
-    // If exact match, return early
-    if (cr == r and cg == g and cb == b) {
-        return 16 + ci;
-    }
-
-    // Work out the closest grey (average of RGB)
-    const grey_avg = @as(i32, @intFromFloat((r + g + b) / 3.0));
-    var grey_idx: u8 = 0;
-    if (grey_avg > 238) {
-        grey_idx = 23;
-    } else {
-        grey_idx = @intCast(@max(0, @divTrunc(grey_avg - 3, 10)));
-    }
-    const grey: f32 = @floatFromInt(8 + (10 * @as(i32, grey_idx)));
-
-    // Enhanced color distance calculation using perceptual weighting
-    // This provides better visual results than simple RGB distance
-    const cube_color = ColorLab{ .r = cr / 255.0, .g = cg / 255.0, .b = cb / 255.0 };
-    const grey_color = ColorLab{ .r = grey / 255.0, .g = grey / 255.0, .b = grey / 255.0 };
-    const original = ColorLab{ .r = r_norm, .g = g_norm, .b = b_norm };
-
-    const cube_distance = original.perceptualDistance(cube_color);
-    const grey_distance = original.perceptualDistance(grey_color);
-
-    if (cube_distance <= grey_distance) {
-        return 16 + ci;
-    } else {
-        return 232 + grey_idx;
-    }
+/// Convenience constructors
+pub fn newCell(rune: u21, style: Style) Cell {
+    return Cell{ .rune = rune, .width = if (rune == ' ') 1 else calculateWidth(rune), .style = style };
 }
 
-/// Enhanced 6-cube mapping with better threshold handling
-/// Based on optimized color conversion implementation
-fn to6CubeEnhanced(v: f32) usize {
-    if (v < 48.0) return 0;
-    if (v < 115.0) return 1;
-    const result = (v - 35.0) / 40.0;
-    return @min(5, @as(usize, @intFromFloat(@max(0.0, result))));
+pub fn newCellWithLink(rune: u21, style: Style, link: Link) Cell {
+    return Cell{
+        .rune = rune,
+        .width = if (rune == ' ') 1 else calculateWidth(rune),
+        .style = style,
+        .link = link,
+    };
 }
 
-/// Color representation in normalized RGB space for perceptual calculations
-const ColorLab = struct {
-    r: f32,
-    g: f32,
-    b: f32,
+// Placeholder for width calculation - would use proper wcwidth implementation
+fn calculateWidth(rune: u21) u8 {
+    // Simplified width calculation
+    if (rune < 0x20) return 0; // Control characters
+    if (rune == 0x7F) return 0; // DEL
+    if (rune >= 0x1100 and rune <= 0x115F) return 2; // Hangul Jamo
+    if (rune >= 0x2E80 and rune <= 0x9FFF) return 2; // CJK
+    if (rune >= 0xA960 and rune <= 0xA97F) return 2; // Hangul Jamo Extended-A
+    if (rune >= 0xAC00 and rune <= 0xD7AF) return 2; // Hangul Syllables
+    if (rune >= 0xF900 and rune <= 0xFAFF) return 2; // CJK Compatibility Ideographs
+    if (rune >= 0xFE10 and rune <= 0xFE19) return 2; // Vertical forms
+    if (rune >= 0xFE30 and rune <= 0xFE6F) return 2; // CJK Compatibility Forms
+    if (rune >= 0xFF00 and rune <= 0xFF60) return 2; // Fullwidth Forms
+    if (rune >= 0xFFE0 and rune <= 0xFFE6) return 2; // Fullwidth Forms
 
-    /// Calculate perceptual distance using weighted RGB distance
-    /// This approximates perceptual color difference better than simple Euclidean distance
-    /// Based on color science research - human eye is more sensitive to green changes
-    pub fn perceptualDistance(self: ColorLab, other: ColorLab) f32 {
-        const dr = self.r - other.r;
-        const dg = self.g - other.g;
-        const db = self.b - other.b;
-
-        // Perceptual weighting factors based on human visual sensitivity
-        // Green channel gets higher weight as human eye is most sensitive to green
-        const r_weight: f32 = 0.30;
-        const g_weight: f32 = 0.59; // Higher weight for green
-        const b_weight: f32 = 0.11;
-
-        return @sqrt(r_weight * dr * dr + g_weight * dg * dg + b_weight * db * db);
-    }
-
-    /// Alternative distance calculation using CIE Delta E approximation
-    /// This provides even better perceptual accuracy for critical applications
-    pub fn deltaE(self: ColorLab, other: ColorLab) f32 {
-        // Simple Delta E approximation using weighted RGB
-        const dr = self.r - other.r;
-        const dg = self.g - other.g;
-        const db = self.b - other.b;
-
-        // More sophisticated perceptual model
-        const r_mean = (self.r + other.r) / 2.0;
-        const delta_r_weight = 2.0 + r_mean;
-        const delta_g_weight = 4.0;
-        const delta_b_weight = 2.0 + (1.0 - r_mean);
-
-        return @sqrt(delta_r_weight * dr * dr + delta_g_weight * dg * dg + delta_b_weight * db * db);
-    }
-};
-
-/// Convert RGB color to 16-color ANSI palette using enhanced algorithm
-/// Using improved color mapping algorithms
-pub fn convert16Enhanced(rgb: RGBColor) BasicColor {
-    // First convert to 256-color palette
-    const c256 = convert256(rgb);
-
-    // Use enhanced 256-to-16 mapping table
-    return @enumFromInt(ANSI256_TO_16_ENHANCED[c256]);
+    return 1;
 }
 
-/// Convert ANSI 256 color to RGB
-fn ansi256ToRgb(index: u8) RGBColor {
-    return ANSI256_PALETTE[index];
-}
-
-/// Convert ANSI 16 color to RGB
-fn ansi16ToRgb(index: u8) RGBColor {
-    if (index > 15) return RGBColor.init(0, 0, 0);
-    return ANSI256_PALETTE[index];
-}
-
-// Complete ANSI 256-color palette with accurate RGB values from xterm specification
-// This matches the exact values used by xterm and other terminal emulators
-const ANSI256_PALETTE = [256]RGBColor{
-    // Standard colors (0-15) - these are the basic ANSI colors
-    RGBColor.init(0x00, 0x00, 0x00), // 0: Black
-    RGBColor.init(0x80, 0x00, 0x00), // 1: Red
-    RGBColor.init(0x00, 0x80, 0x00), // 2: Green
-    RGBColor.init(0x80, 0x80, 0x00), // 3: Yellow
-    RGBColor.init(0x00, 0x00, 0x80), // 4: Blue
-    RGBColor.init(0x80, 0x00, 0x80), // 5: Magenta
-    RGBColor.init(0x00, 0x80, 0x80), // 6: Cyan
-    RGBColor.init(0xC0, 0xC0, 0xC0), // 7: White
-    RGBColor.init(0x80, 0x80, 0x80), // 8: Bright Black (Dark Gray)
-    RGBColor.init(0xFF, 0x00, 0x00), // 9: Bright Red
-    RGBColor.init(0x00, 0xFF, 0x00), // 10: Bright Green
-    RGBColor.init(0xFF, 0xFF, 0x00), // 11: Bright Yellow
-    RGBColor.init(0x00, 0x00, 0xFF), // 12: Bright Blue
-    RGBColor.init(0xFF, 0x00, 0xFF), // 13: Bright Magenta
-    RGBColor.init(0x00, 0xFF, 0xFF), // 14: Bright Cyan
-    RGBColor.init(0xFF, 0xFF, 0xFF), // 15: Bright White
-
-    // 6×6×6 color cube (16-231) - 216 colors total
-    // These values match exactly the xterm 256-color palette
-    RGBColor.init(0x00, 0x00, 0x00),
-    RGBColor.init(0x00, 0x00, 0x5F),
-    RGBColor.init(0x00, 0x00, 0x87),
-    RGBColor.init(0x00, 0x00, 0xAF),
-    RGBColor.init(0x00, 0x00, 0xD7),
-    RGBColor.init(0x00, 0x00, 0xFF),
-    RGBColor.init(0x00, 0x5F, 0x00),
-    RGBColor.init(0x00, 0x5F, 0x5F),
-    RGBColor.init(0x00, 0x5F, 0x87),
-    RGBColor.init(0x00, 0x5F, 0xAF),
-    RGBColor.init(0x00, 0x5F, 0xD7),
-    RGBColor.init(0x00, 0x5F, 0xFF),
-    RGBColor.init(0x00, 0x87, 0x00),
-    RGBColor.init(0x00, 0x87, 0x5F),
-    RGBColor.init(0x00, 0x87, 0x87),
-    RGBColor.init(0x00, 0x87, 0xAF),
-    RGBColor.init(0x00, 0x87, 0xD7),
-    RGBColor.init(0x00, 0x87, 0xFF),
-    RGBColor.init(0x00, 0xAF, 0x00),
-    RGBColor.init(0x00, 0xAF, 0x5F),
-    RGBColor.init(0x00, 0xAF, 0x87),
-    RGBColor.init(0x00, 0xAF, 0xAF),
-    RGBColor.init(0x00, 0xAF, 0xD7),
-    RGBColor.init(0x00, 0xAF, 0xFF),
-    RGBColor.init(0x00, 0xD7, 0x00),
-    RGBColor.init(0x00, 0xD7, 0x5F),
-    RGBColor.init(0x00, 0xD7, 0x87),
-    RGBColor.init(0x00, 0xD7, 0xAF),
-    RGBColor.init(0x00, 0xD7, 0xD7),
-    RGBColor.init(0x00, 0xD7, 0xFF),
-    RGBColor.init(0x00, 0xFF, 0x00),
-    RGBColor.init(0x00, 0xFF, 0x5F),
-    RGBColor.init(0x00, 0xFF, 0x87),
-    RGBColor.init(0x00, 0xFF, 0xAF),
-    RGBColor.init(0x00, 0xFF, 0xD7),
-    RGBColor.init(0x00, 0xFF, 0xFF),
-    RGBColor.init(0x5F, 0x00, 0x00),
-    RGBColor.init(0x5F, 0x00, 0x5F),
-    RGBColor.init(0x5F, 0x00, 0x87),
-    RGBColor.init(0x5F, 0x00, 0xAF),
-    RGBColor.init(0x5F, 0x00, 0xD7),
-    RGBColor.init(0x5F, 0x00, 0xFF),
-    RGBColor.init(0x5F, 0x5F, 0x00),
-    RGBColor.init(0x5F, 0x5F, 0x5F),
-    RGBColor.init(0x5F, 0x5F, 0x87),
-    RGBColor.init(0x5F, 0x5F, 0xAF),
-    RGBColor.init(0x5F, 0x5F, 0xD7),
-    RGBColor.init(0x5F, 0x5F, 0xFF),
-    RGBColor.init(0x5F, 0x87, 0x00),
-    RGBColor.init(0x5F, 0x87, 0x5F),
-    RGBColor.init(0x5F, 0x87, 0x87),
-    RGBColor.init(0x5F, 0x87, 0xAF),
-    RGBColor.init(0x5F, 0x87, 0xD7),
-    RGBColor.init(0x5F, 0x87, 0xFF),
-    RGBColor.init(0x5F, 0xAF, 0x00),
-    RGBColor.init(0x5F, 0xAF, 0x5F),
-    RGBColor.init(0x5F, 0xAF, 0x87),
-    RGBColor.init(0x5F, 0xAF, 0xAF),
-    RGBColor.init(0x5F, 0xAF, 0xD7),
-    RGBColor.init(0x5F, 0xAF, 0xFF),
-    RGBColor.init(0x5F, 0xD7, 0x00),
-    RGBColor.init(0x5F, 0xD7, 0x5F),
-    RGBColor.init(0x5F, 0xD7, 0x87),
-    RGBColor.init(0x5F, 0xD7, 0xAF),
-    RGBColor.init(0x5F, 0xD7, 0xD7),
-    RGBColor.init(0x5F, 0xD7, 0xFF),
-    RGBColor.init(0x5F, 0xFF, 0x00),
-    RGBColor.init(0x5F, 0xFF, 0x5F),
-    RGBColor.init(0x5F, 0xFF, 0x87),
-    RGBColor.init(0x5F, 0xFF, 0xAF),
-    RGBColor.init(0x5F, 0xFF, 0xD7),
-    RGBColor.init(0x5F, 0xFF, 0xFF),
-    RGBColor.init(0x87, 0x00, 0x00),
-    RGBColor.init(0x87, 0x00, 0x5F),
-    RGBColor.init(0x87, 0x00, 0x87),
-    RGBColor.init(0x87, 0x00, 0xAF),
-    RGBColor.init(0x87, 0x00, 0xD7),
-    RGBColor.init(0x87, 0x00, 0xFF),
-    RGBColor.init(0x87, 0x5F, 0x00),
-    RGBColor.init(0x87, 0x5F, 0x5F),
-    RGBColor.init(0x87, 0x5F, 0x87),
-    RGBColor.init(0x87, 0x5F, 0xAF),
-    RGBColor.init(0x87, 0x5F, 0xD7),
-    RGBColor.init(0x87, 0x5F, 0xFF),
-    RGBColor.init(0x87, 0x87, 0x00),
-    RGBColor.init(0x87, 0x87, 0x5F),
-    RGBColor.init(0x87, 0x87, 0x87),
-    RGBColor.init(0x87, 0x87, 0xAF),
-    RGBColor.init(0x87, 0x87, 0xD7),
-    RGBColor.init(0x87, 0x87, 0xFF),
-    RGBColor.init(0x87, 0xAF, 0x00),
-    RGBColor.init(0x87, 0xAF, 0x5F),
-    RGBColor.init(0x87, 0xAF, 0x87),
-    RGBColor.init(0x87, 0xAF, 0xAF),
-    RGBColor.init(0x87, 0xAF, 0xD7),
-    RGBColor.init(0x87, 0xAF, 0xFF),
-    RGBColor.init(0x87, 0xD7, 0x00),
-    RGBColor.init(0x87, 0xD7, 0x5F),
-    RGBColor.init(0x87, 0xD7, 0x87),
-    RGBColor.init(0x87, 0xD7, 0xAF),
-    RGBColor.init(0x87, 0xD7, 0xD7),
-    RGBColor.init(0x87, 0xD7, 0xFF),
-    RGBColor.init(0x87, 0xFF, 0x00),
-    RGBColor.init(0x87, 0xFF, 0x5F),
-    RGBColor.init(0x87, 0xFF, 0x87),
-    RGBColor.init(0x87, 0xFF, 0xAF),
-    RGBColor.init(0x87, 0xFF, 0xD7),
-    RGBColor.init(0x87, 0xFF, 0xFF),
-    RGBColor.init(0xAF, 0x00, 0x00),
-    RGBColor.init(0xAF, 0x00, 0x5F),
-    RGBColor.init(0xAF, 0x00, 0x87),
-    RGBColor.init(0xAF, 0x00, 0xAF),
-    RGBColor.init(0xAF, 0x00, 0xD7),
-    RGBColor.init(0xAF, 0x00, 0xFF),
-    RGBColor.init(0xAF, 0x5F, 0x00),
-    RGBColor.init(0xAF, 0x5F, 0x5F),
-    RGBColor.init(0xAF, 0x5F, 0x87),
-    RGBColor.init(0xAF, 0x5F, 0xAF),
-    RGBColor.init(0xAF, 0x5F, 0xD7),
-    RGBColor.init(0xAF, 0x5F, 0xFF),
-    RGBColor.init(0xAF, 0x87, 0x00),
-    RGBColor.init(0xAF, 0x87, 0x5F),
-    RGBColor.init(0xAF, 0x87, 0x87),
-    RGBColor.init(0xAF, 0x87, 0xAF),
-    RGBColor.init(0xAF, 0x87, 0xD7),
-    RGBColor.init(0xAF, 0x87, 0xFF),
-    RGBColor.init(0xAF, 0xAF, 0x00),
-    RGBColor.init(0xAF, 0xAF, 0x5F),
-    RGBColor.init(0xAF, 0xAF, 0x87),
-    RGBColor.init(0xAF, 0xAF, 0xAF),
-    RGBColor.init(0xAF, 0xAF, 0xD7),
-    RGBColor.init(0xAF, 0xAF, 0xFF),
-    RGBColor.init(0xAF, 0xD7, 0x00),
-    RGBColor.init(0xAF, 0xD7, 0x5F),
-    RGBColor.init(0xAF, 0xD7, 0x87),
-    RGBColor.init(0xAF, 0xD7, 0xAF),
-    RGBColor.init(0xAF, 0xD7, 0xD7),
-    RGBColor.init(0xAF, 0xD7, 0xFF),
-    RGBColor.init(0xAF, 0xFF, 0x00),
-    RGBColor.init(0xAF, 0xFF, 0x5F),
-    RGBColor.init(0xAF, 0xFF, 0x87),
-    RGBColor.init(0xAF, 0xFF, 0xAF),
-    RGBColor.init(0xAF, 0xFF, 0xD7),
-    RGBColor.init(0xAF, 0xFF, 0xFF),
-    RGBColor.init(0xD7, 0x00, 0x00),
-    RGBColor.init(0xD7, 0x00, 0x5F),
-    RGBColor.init(0xD7, 0x00, 0x87),
-    RGBColor.init(0xD7, 0x00, 0xAF),
-    RGBColor.init(0xD7, 0x00, 0xD7),
-    RGBColor.init(0xD7, 0x00, 0xFF),
-    RGBColor.init(0xD7, 0x5F, 0x00),
-    RGBColor.init(0xD7, 0x5F, 0x5F),
-    RGBColor.init(0xD7, 0x5F, 0x87),
-    RGBColor.init(0xD7, 0x5F, 0xAF),
-    RGBColor.init(0xD7, 0x5F, 0xD7),
-    RGBColor.init(0xD7, 0x5F, 0xFF),
-    RGBColor.init(0xD7, 0x87, 0x00),
-    RGBColor.init(0xD7, 0x87, 0x5F),
-    RGBColor.init(0xD7, 0x87, 0x87),
-    RGBColor.init(0xD7, 0x87, 0xAF),
-    RGBColor.init(0xD7, 0x87, 0xD7),
-    RGBColor.init(0xD7, 0x87, 0xFF),
-    RGBColor.init(0xD7, 0xAF, 0x00),
-    RGBColor.init(0xD7, 0xAF, 0x5F),
-    RGBColor.init(0xD7, 0xAF, 0x87),
-    RGBColor.init(0xD7, 0xAF, 0xAF),
-    RGBColor.init(0xD7, 0xAF, 0xD7),
-    RGBColor.init(0xD7, 0xAF, 0xFF),
-    RGBColor.init(0xD7, 0xD7, 0x00),
-    RGBColor.init(0xD7, 0xD7, 0x5F),
-    RGBColor.init(0xD7, 0xD7, 0x87),
-    RGBColor.init(0xD7, 0xD7, 0xAF),
-    RGBColor.init(0xD7, 0xD7, 0xD7),
-    RGBColor.init(0xD7, 0xD7, 0xFF),
-    RGBColor.init(0xD7, 0xFF, 0x00),
-    RGBColor.init(0xD7, 0xFF, 0x5F),
-    RGBColor.init(0xD7, 0xFF, 0x87),
-    RGBColor.init(0xD7, 0xFF, 0xAF),
-    RGBColor.init(0xD7, 0xFF, 0xD7),
-    RGBColor.init(0xD7, 0xFF, 0xFF),
-    RGBColor.init(0xFF, 0x00, 0x00),
-    RGBColor.init(0xFF, 0x00, 0x5F),
-    RGBColor.init(0xFF, 0x00, 0x87),
-    RGBColor.init(0xFF, 0x00, 0xAF),
-    RGBColor.init(0xFF, 0x00, 0xD7),
-    RGBColor.init(0xFF, 0x00, 0xFF),
-    RGBColor.init(0xFF, 0x5F, 0x00),
-    RGBColor.init(0xFF, 0x5F, 0x5F),
-    RGBColor.init(0xFF, 0x5F, 0x87),
-    RGBColor.init(0xFF, 0x5F, 0xAF),
-    RGBColor.init(0xFF, 0x5F, 0xD7),
-    RGBColor.init(0xFF, 0x5F, 0xFF),
-    RGBColor.init(0xFF, 0x87, 0x00),
-    RGBColor.init(0xFF, 0x87, 0x5F),
-    RGBColor.init(0xFF, 0x87, 0x87),
-    RGBColor.init(0xFF, 0x87, 0xAF),
-    RGBColor.init(0xFF, 0x87, 0xD7),
-    RGBColor.init(0xFF, 0x87, 0xFF),
-    RGBColor.init(0xFF, 0xAF, 0x00),
-    RGBColor.init(0xFF, 0xAF, 0x5F),
-    RGBColor.init(0xFF, 0xAF, 0x87),
-    RGBColor.init(0xFF, 0xAF, 0xAF),
-    RGBColor.init(0xFF, 0xAF, 0xD7),
-    RGBColor.init(0xFF, 0xAF, 0xFF),
-    RGBColor.init(0xFF, 0xD7, 0x00),
-    RGBColor.init(0xFF, 0xD7, 0x5F),
-    RGBColor.init(0xFF, 0xD7, 0x87),
-    RGBColor.init(0xFF, 0xD7, 0xAF),
-    RGBColor.init(0xFF, 0xD7, 0xD7),
-    RGBColor.init(0xFF, 0xD7, 0xFF),
-    RGBColor.init(0xFF, 0xFF, 0x00),
-    RGBColor.init(0xFF, 0xFF, 0x5F),
-    RGBColor.init(0xFF, 0xFF, 0x87),
-    RGBColor.init(0xFF, 0xFF, 0xAF),
-    RGBColor.init(0xFF, 0xFF, 0xD7),
-    RGBColor.init(0xFF, 0xFF, 0xFF),
-
-    // 24 greyscale colors (232-255) - evenly distributed grays
-    RGBColor.init(0x08, 0x08, 0x08),
-    RGBColor.init(0x12, 0x12, 0x12),
-    RGBColor.init(0x1C, 0x1C, 0x1C),
-    RGBColor.init(0x26, 0x26, 0x26),
-    RGBColor.init(0x30, 0x30, 0x30),
-    RGBColor.init(0x3A, 0x3A, 0x3A),
-    RGBColor.init(0x44, 0x44, 0x44),
-    RGBColor.init(0x4E, 0x4E, 0x4E),
-    RGBColor.init(0x58, 0x58, 0x58),
-    RGBColor.init(0x62, 0x62, 0x62),
-    RGBColor.init(0x6C, 0x6C, 0x6C),
-    RGBColor.init(0x76, 0x76, 0x76),
-    RGBColor.init(0x80, 0x80, 0x80),
-    RGBColor.init(0x8A, 0x8A, 0x8A),
-    RGBColor.init(0x94, 0x94, 0x94),
-    RGBColor.init(0x9E, 0x9E, 0x9E),
-    RGBColor.init(0xA8, 0xA8, 0xA8),
-    RGBColor.init(0xB2, 0xB2, 0xB2),
-    RGBColor.init(0xBC, 0xBC, 0xBC),
-    RGBColor.init(0xC6, 0xC6, 0xC6),
-    RGBColor.init(0xD0, 0xD0, 0xD0),
-    RGBColor.init(0xDA, 0xDA, 0xDA),
-    RGBColor.init(0xE4, 0xE4, 0xE4),
-    RGBColor.init(0xEE, 0xEE, 0xEE),
-};
-
-// Mapping from ANSI 256 colors to 16 colors - original implementation
-const ANSI256_TO_16 = [256]u8{
-    0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
-    0,  4,  4,  4,  12, 12, 2,  6,  4,  4,  12, 12, 2,  2,  6,  4,
-    12, 12, 2,  2,  2,  6,  12, 12, 10, 10, 10, 10, 14, 12, 10, 10,
-    10, 10, 10, 14, 1,  5,  4,  4,  12, 12, 3,  8,  4,  4,  12, 12,
-    2,  2,  6,  4,  12, 12, 2,  2,  2,  6,  12, 12, 10, 10, 10, 10,
-    14, 12, 10, 10, 10, 10, 10, 14, 1,  1,  5,  4,  12, 12, 1,  1,
-    5,  4,  12, 12, 3,  3,  8,  4,  12, 12, 2,  2,  2,  6,  12, 12,
-    10, 10, 10, 10, 14, 12, 10, 10, 10, 10, 10, 14, 1,  1,  1,  5,
-    12, 12, 1,  1,  1,  5,  12, 12, 1,  1,  1,  5,  12, 12, 3,  3,
-    3,  7,  12, 12, 10, 10, 10, 10, 14, 12, 10, 10, 10, 10, 10, 14,
-    9,  9,  9,  9,  13, 12, 9,  9,  9,  9,  13, 12, 9,  9,  9,  9,
-    13, 12, 9,  9,  9,  9,  13, 12, 11, 11, 11, 11, 7,  12, 10, 10,
-    10, 10, 10, 14, 9,  9,  9,  9,  9,  13, 9,  9,  9,  9,  9,  13,
-    9,  9,  9,  9,  9,  13, 9,  9,  9,  9,  9,  13, 9,  9,  9,  9,
-    9,  13, 11, 11, 11, 11, 11, 15, 0,  0,  0,  0,  0,  0,  8,  8,
-    8,  8,  8,  8,  7,  7,  7,  7,  7,  7,  15, 15, 15, 15, 15, 15,
-};
-
-// Enhanced mapping from ANSI 256 colors to 16 colors based on terminal standards
-// This provides more accurate color mapping with better visual results
-const ANSI256_TO_16_ENHANCED = [256]u8{
-    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, // Standard colors 0-15
-    0, 4, 4, 4, 12, 12, 2, 6, 4, 4, 12, 12, 2, 2, 6, 4, // 16-31
-    12, 12, 2, 2, 2, 6, 12, 12, 10, 10, 10, 10, 14, 12, 10, 10, // 32-47
-    10, 10, 10, 14, 1, 5, 4, 4, 12, 12, 3, 8, 4, 4, 12, 12, // 48-63
-    2, 2, 6, 4, 12, 12, 2, 2, 2, 6, 12, 12, 10, 10, 10, 10, // 64-79
-    14, 12, 10, 10, 10, 10, 10, 14, 1, 1, 5, 4, 12, 12, 1, 1, // 80-95
-    5, 4, 12, 12, 3, 3, 8, 4, 12, 12, 2, 2, 2, 6, 12, 12, // 96-111
-    10, 10, 10, 10, 14, 12, 10, 10, 10, 10, 10, 14, 1, 1, 1, 5, // 112-127
-    12, 12, 1, 1, 1, 5, 12, 12, 1, 1, 1, 5, 12, 12, 3, 3, // 128-143
-    3, 7, 12, 12, 10, 10, 10, 10, 14, 12, 10, 10, 10, 10, 10, 14, // 144-159
-    9, 9, 9, 9, 13, 12, 9, 9, 9, 9, 13, 12, 9, 9, 9, 9, // 160-175
-    13, 12, 9, 9, 9, 9, 13, 12, 11, 11, 11, 11, 7, 12, 10, 10, // 176-191
-    10, 10, 10, 14, 9, 9, 9, 9, 9, 13, 9, 9, 9, 9, 9, 13, // 192-207
-    9, 9, 9, 9, 9, 13, 9, 9, 9, 9, 9, 13, 9, 9, 9, 9, // 208-223
-    9, 13, 11, 11, 11, 11, 11, 15, 0, 0, 0, 0, 0, 0, 8, 8, // 224-239
-    8, 8, 8, 8, 7, 7, 7, 7, 7, 7, 15, 15, 15, 15, 15, 15, // 240-255 (greys)
-};
-
-/// Additional convenience functions for color manipulation
-/// Find the closest ANSI color to a given RGB color using enhanced algorithm
-pub fn findClosestAnsiColor(rgb: RGBColor) BasicColor {
-    return convert16Enhanced(rgb);
-}
-
-/// Find the closest 256-color palette entry to a given RGB color
-pub fn findClosest256Color(rgb: RGBColor) IndexedColor {
-    return IndexedColor.init(convert256(rgb));
-}
-
-/// Get the RGB representation of any ANSI 256-color index
-pub fn ansiColorToRgb(index: u8) RGBColor {
-    return ANSI256_PALETTE[index];
-}
-
-/// Check if a color is in the standard 16-color ANSI range
-pub fn isStandardAnsiColor(index: u8) bool {
-    return index <= 15;
-}
-
-/// Check if a color is in the 6x6x6 color cube range
-pub fn isColorCubeColor(index: u8) bool {
-    return index >= 16 and index <= 231;
-}
-
-/// Check if a color is in the grayscale range
-pub fn isGrayscaleColor(index: u8) bool {
-    return index >= 232 and index <= 255;
-}
-
-/// Extract RGB components from 6x6x6 color cube position
-pub fn colorCubeToRgb(r: u3, g: u3, b: u3) RGBColor {
-    const cube_values = [6]u8{ 0x00, 0x5F, 0x87, 0xAF, 0xD7, 0xFF };
-    return RGBColor.init(cube_values[r], cube_values[g], cube_values[b]);
-}
-
-/// Convert RGB to 6x6x6 color cube coordinates
-pub fn rgbToColorCube(rgb: RGBColor) struct { r: u3, g: u3, b: u3 } {
-    const r = to6CubeEnhanced(@floatFromInt(rgb.r));
-    const g = to6CubeEnhanced(@floatFromInt(rgb.g));
-    const b = to6CubeEnhanced(@floatFromInt(rgb.b));
-    return .{ .r = @intCast(r), .g = @intCast(g), .b = @intCast(b) };
-}
-
-// Tests for basic functionality
-test "color conversion" {
-    const testing = std.testing;
-
-    // Test RGB color creation
-    const red = RGBColor.init(255, 0, 0);
-    try testing.expect(red.r == 255);
-    try testing.expect(red.g == 0);
-    try testing.expect(red.b == 0);
-
-    // Test hex conversion
-    const hex_red = red.toHex();
-    try testing.expect(hex_red == 0xFF0000);
-
-    // Test RGB from hex
-    const from_hex = RGBColor.fromHex(0xFF0000);
-    try testing.expect(from_hex.r == 255);
-    try testing.expect(from_hex.g == 0);
-    try testing.expect(from_hex.b == 0);
-
-    // Test 256-color conversion
-    const indexed_red = red.toIndexed();
-    try testing.expect(indexed_red.index == 196); // Red in 256-color palette
-
-    // Test basic color conversion
-    const basic_red = red.toBasic();
-    try testing.expect(basic_red == .bright_red);
-}
-
-test "enhanced color conversion" {
-    const testing = std.testing;
-
-    // Test enhanced 256-color conversion
-    const purple = RGBColor.init(128, 0, 128);
-    const purple_256 = convert256(purple);
-    try testing.expect(purple_256 > 15); // Should be in extended palette
-
-    // Test enhanced 16-color conversion
-    const purple_16 = convert16Enhanced(purple);
-    try testing.expect(purple_16 == .magenta);
-
-    // Test perceptual distance calculation
-    const red = RGBColor.init(255, 0, 0);
-    const dark_red = RGBColor.init(200, 0, 0);
-    const distance = red.perceptualDistance(dark_red);
-    try testing.expect(distance > 0.0);
-}
-
-test "hex color parsing" {
+// Tests
+test "cell with combining characters" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test parsing with #
-    const hex1 = try HexColor.parseFromString("#FF0000");
-    const rgb1 = hex1.toRgb();
-    try testing.expect(rgb1.r == 255 and rgb1.g == 0 and rgb1.b == 0);
+    var cell = Cell{ .rune = 'e', .width = 1 };
+    try cell.append(allocator, &[_]u21{0x301}); // Combining acute accent
+    defer if (cell.comb) |comb| allocator.free(comb);
 
-    // Test parsing without #
-    const hex2 = try HexColor.parseFromString("00FF00");
-    const rgb2 = hex2.toRgb();
-    try testing.expect(rgb2.r == 0 and rgb2.g == 255 and rgb2.b == 0);
-
-    // Test string output
-    const hex_str = try hex1.toString(allocator);
-    defer allocator.free(hex_str);
-    try testing.expectEqualStrings("#ff0000", hex_str);
+    try testing.expect(cell.rune == 'e');
+    try testing.expect(cell.comb != null);
+    try testing.expect(cell.comb.?.len == 1);
+    try testing.expect(cell.comb.?[0] == 0x301);
 }
 
-test "color palette accuracy" {
+test "hyperlink support" {
     const testing = std.testing;
 
-    // Test that standard ANSI colors are correctly mapped
-    try testing.expect(ANSI256_PALETTE[0].r == 0x00 and ANSI256_PALETTE[0].g == 0x00 and ANSI256_PALETTE[0].b == 0x00); // Black
-    try testing.expect(ANSI256_PALETTE[1].r == 0x80 and ANSI256_PALETTE[1].g == 0x00 and ANSI256_PALETTE[1].b == 0x00); // Red
-    try testing.expect(ANSI256_PALETTE[15].r == 0xFF and ANSI256_PALETTE[15].g == 0xFF and ANSI256_PALETTE[15].b == 0xFF); // White
+    const link = Link{ .url = "https://example.com", .params = "id=test" };
+    const cell = newCellWithLink('A', .{}, link);
 
-    // Test color cube boundaries
-    try testing.expect(ANSI256_PALETTE[16].r == 0x00); // Start of cube
-    try testing.expect(ANSI256_PALETTE[231].b == 0xFF); // End of cube
-
-    // Test grayscale ramp
-    try testing.expect(ANSI256_PALETTE[232].r == 0x08); // Darkest gray
-    try testing.expect(ANSI256_PALETTE[255].r == 0xEE); // Lightest gray
+    try testing.expect(cell.rune == 'A');
+    try testing.expect(std.mem.eql(u8, cell.link.url, "https://example.com"));
+    try testing.expect(std.mem.eql(u8, cell.link.params, "id=test"));
 }
 
-test "color utility functions" {
+test "buffer operations" {
     const testing = std.testing;
+    const allocator = testing.allocator;
 
-    // Test color range detection
-    try testing.expect(isStandardAnsiColor(5));
-    try testing.expect(!isStandardAnsiColor(16));
-    try testing.expect(isColorCubeColor(100));
-    try testing.expect(!isColorCubeColor(15));
-    try testing.expect(isGrayscaleColor(240));
-    try testing.expect(!isGrayscaleColor(100));
+    var buffer = try Buffer.init(allocator, 10, 5);
+    defer buffer.deinit();
 
-    // Test color cube conversion
-    const cube_color = colorCubeToRgb(5, 5, 5); // Maximum intensity
-    try testing.expect(cube_color.r == 0xFF and cube_color.g == 0xFF and cube_color.b == 0xFF);
+    // Set some content
+    _ = try buffer.setCell(2, 2, newCell('X', .{}));
 
-    // Test RGB to color cube conversion
-    const white = RGBColor.init(255, 255, 255);
-    const cube_coords = rgbToColorCube(white);
-    try testing.expect(cube_coords.r == 5 and cube_coords.g == 5 and cube_coords.b == 5);
+    // Test bounds
+    const buf_bounds = buffer.bounds();
+    try testing.expect(buf_bounds.width == 10);
+    try testing.expect(buf_bounds.height == 5);
+
+    // Test cell retrieval
+    const retrieved = buffer.cell(2, 2).?;
+    try testing.expect(retrieved.rune == 'X');
+}
+
+test "line insert and delete operations" {
+    const testing = std.testing;
+    const allocator = testing.allocator;
+
+    var buffer = try Buffer.init(allocator, 10, 10);
+    defer buffer.deinit();
+
+    // Fill with test content
+    for (0..10) |y| {
+        for (0..10) |x| {
+            _ = try buffer.setCell(x, y, newCell(@as(u21, @intCast('A' + y)), .{}));
+        }
+    }
+
+    // Insert 2 lines at position 3
+    const rect_bounds = Rectangle{ .x = 0, .y = 0, .width = 10, .height = 10 };
+    try buffer.insertLines(3, 2, Cell.BLANK, rect_bounds);
+
+    // Check that line that was at position 3 is now at position 5
+    const cell_at_5 = buffer.cell(0, 5).?;
+    try testing.expect(cell_at_5.rune == @as(u21, @intCast('A' + 3)));
 }

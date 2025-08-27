@@ -625,7 +625,7 @@ pub const DashboardMode = struct {
     pub const GraphicsMode = enum {
         kitty_graphics, // Full Kitty graphics protocol
         sixel_graphics, // Sixel graphics support
-        unicode_enhanced, // Unicode blocks with wide char support
+        unicode_blocks, // Unicode blocks with wide char support
         ascii_fallback, // Basic ASCII art
         text_only, // Text-only mode
     };
@@ -652,7 +652,7 @@ pub const DashboardMode = struct {
     /// Detect the best dashboard rendering mode for current terminal
     pub fn detect(caps: TermCaps) DashboardMode {
         return DashboardMode{
-            .graphics = if (caps.supportsKittyGraphics) .kitty_graphics else if (caps.supportsSixel) .sixel_graphics else if (caps.supportsUnicode) .unicode_enhanced else .ascii_fallback,
+            .graphics = if (caps.supportsKittyGraphics) .kitty_graphics else if (caps.supportsSixel) .sixel_graphics else if (caps.supportsUnicode) .unicode_blocks else .ascii_fallback,
             .colors = if (caps.supportsTrueColor) .truecolor else if (caps.supports256Color) .palette_256 else .ansi_16,
             .interactions = if (caps.supportsSgrPixelMouse) .full_mouse else if (caps.supportsSgrMouse) .basic_mouse else .keyboard_only,
             .notifications = if (caps.supportsNotifyOsc9) .system else .terminal,
@@ -707,7 +707,7 @@ pub const DashboardTerminal = struct {
         switch (self.mode.graphics) {
             .kitty_graphics => try self.renderChartKitty(data, bounds, style),
             .sixel_graphics => try self.renderChartSixel(data, bounds, style),
-            .unicode_enhanced => try self.renderChartUnicode(data, bounds, style),
+            .unicode_blocks => try self.renderChartUnicode(data, bounds, style),
             .ascii_fallback => try self.renderChartAscii(data, bounds, style),
             .text_only => try self.renderChartText(data, bounds, style),
         }

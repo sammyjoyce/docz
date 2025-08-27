@@ -18,21 +18,21 @@ pub const AuthError = error{
 
 /// Authentication methods supported by the system
 pub const AuthMethod = enum {
-    api_key,
+    apiKey,
     oauth,
     none,
 };
 
 /// Generic authentication credentials
 pub const AuthCredentials = union(AuthMethod) {
-    api_key: []const u8,
-    oauth: oauth.OAuthCredentials,
+    apiKey: []const u8,
+    oauth: oauth.Credentials,
     none: void,
 
     /// Check if credentials are valid/not expired
     pub fn isValid(self: AuthCredentials) bool {
         return switch (self) {
-            .api_key => |key| key.len > 0,
+            .apiKey => |key| key.len > 0,
             .oauth => |creds| !creds.isExpired(),
             .none => false,
         };
@@ -41,7 +41,7 @@ pub const AuthCredentials = union(AuthMethod) {
     /// Get the authentication method type
     pub fn getMethod(self: AuthCredentials) AuthMethod {
         return switch (self) {
-            .api_key => .api_key,
+            .apiKey => .apiKey,
             .oauth => .oauth,
             .none => .none,
         };
@@ -50,7 +50,7 @@ pub const AuthCredentials = union(AuthMethod) {
     /// Free any allocated memory in credentials
     pub fn deinit(self: AuthCredentials, allocator: std.mem.Allocator) void {
         switch (self) {
-            .api_key => |key| allocator.free(key),
+            .apiKey => |key| allocator.free(key),
             .oauth => |creds| creds.deinit(allocator),
             .none => {},
         }
@@ -61,14 +61,14 @@ pub const AuthCredentials = union(AuthMethod) {
 pub const AuthClient = struct {
     allocator: std.mem.Allocator,
     credentials: AuthCredentials,
-    credentials_path: ?[]const u8,
+    credentialsPath: ?[]const u8,
 
     /// Initialize an authentication client with given credentials
     pub fn init(allocator: std.mem.Allocator, credentials: AuthCredentials) AuthClient {
         return AuthClient{
             .allocator = allocator,
             .credentials = credentials,
-            .credentials_path = null,
+            .credentialsPath = null,
         };
     }
 
@@ -76,19 +76,19 @@ pub const AuthClient = struct {
     pub fn initWithPath(
         allocator: std.mem.Allocator,
         credentials: AuthCredentials,
-        credentials_path: []const u8,
+        credentialsPath: []const u8,
     ) !AuthClient {
         return AuthClient{
             .allocator = allocator,
             .credentials = credentials,
-            .credentials_path = try allocator.dupe(u8, credentials_path),
+            .credentialsPath = try allocator.dupe(u8, credentialsPath),
         };
     }
 
     /// Clean up the auth client
     pub fn deinit(self: *AuthClient) void {
         self.credentials.deinit(self.allocator);
-        if (self.credentials_path) |path| {
+        if (self.credentialsPath) |path| {
             self.allocator.free(path);
         }
     }
@@ -103,7 +103,7 @@ pub const AuthClient = struct {
         switch (self.credentials) {
             .oauth => |creds| {
                 if (creds.willExpireSoon(300)) { // 5 minute buffer
-                    const new_creds = oauth.refreshTokens(self.allocator, creds.refresh_token) catch |err| {
+                    const newCreds = oauth.refreshTokens(self.allocator, creds.refreshToken) catch |err| {
                         std.log.err("Failed to refresh OAuth tokens: {}", .{err});
                         return AuthError.AuthenticationFailed;
                     };
@@ -112,17 +112,17 @@ pub const AuthClient = struct {
                     creds.deinit(self.allocator);
 
                     // Update with new credentials
-                    self.credentials = AuthCredentials{ .oauth = new_creds };
+                    self.credentials = AuthCredentials{ .oauth = newCreds };
 
                     // Save updated credentials if path is available
-                    if (self.credentials_path) |path| {
+                    if (self.credentialsPath) |path| {
                         saveCredentials(self.allocator, path, self.credentials) catch |err| {
                             std.log.warn("Failed to save refreshed credentials: {}", .{err});
                         };
                     }
                 }
             },
-            .api_key, .none => {}, // No refresh needed
+            .apiKey, .none => {}, // No refresh needed
         }
     }
 };
@@ -130,11 +130,11 @@ pub const AuthClient = struct {
 /// Create an authentication client from available sources
 pub fn createClient(allocator: std.mem.Allocator) AuthError!AuthClient {
     // Try OAuth first
-    const oauth_path = "claude_oauth_creds.json";
-    if (loadCredentials(allocator, oauth_path)) |credentials| {
+    const oauthPath = "claude_oauth_creds.json";
+    if (loadCredentials(allocator, oauthPath)) |credentials| {
         if (credentials.isValid()) {
             std.log.info("Using OAuth authentication", .{});
-            return AuthClient.initWithPath(allocator, credentials, oauth_path) catch |err| {
+            return AuthClient.initWithPath(allocator, credentials, oauthPath) catch |err| {
                 credentials.deinit(allocator);
                 return err;
             };
@@ -143,41 +143,41 @@ pub fn createClient(allocator: std.mem.Allocator) AuthError!AuthClient {
     } else |_| {}
 
     // Try API key from environment
-    if (std.process.getEnvVarOwned(allocator, "ANTHROPIC_API_KEY")) |api_key| {
-        if (api_key.len > 0) {
+    if (std.process.getEnvVarOwned(allocator, "ANTHROPIC_API_KEY")) |apiKey| {
+        if (apiKey.len > 0) {
             // Validate and sanitize the API key
-            if (std.unicode.utf8ValidateSlice(api_key)) {
+            if (std.unicode.utf8ValidateSlice(apiKey)) {
                 // Sanitize the API key by replacing any control characters
-                const sanitized_key = try allocator.alloc(u8, api_key.len);
-                var valid_len: usize = 0;
-                for (api_key) |c| {
+                const sanitizedKey = try allocator.alloc(u8, apiKey.len);
+                var validLen: usize = 0;
+                for (apiKey) |c| {
                     if (c >= 32 and c != 127) { // Printable ASCII range (excluding DEL)
-                        sanitized_key[valid_len] = c;
-                        valid_len += 1;
+                        sanitizedKey[validLen] = c;
+                        validLen += 1;
                     }
                 }
 
-                if (valid_len == 0) {
+                if (validLen == 0) {
                     std.log.err("ANTHROPIC_API_KEY contains only invalid characters", .{});
-                    allocator.free(api_key);
-                    allocator.free(sanitized_key);
+                    allocator.free(apiKey);
+                    allocator.free(sanitizedKey);
                     return AuthError.InvalidAPIKey;
                 }
 
                 // Use the sanitized key
-                const final_key = if (valid_len < api_key.len) try allocator.realloc(sanitized_key, valid_len) else sanitized_key;
-                allocator.free(api_key);
+                const finalKey = if (validLen < apiKey.len) try allocator.realloc(sanitizedKey, validLen) else sanitizedKey;
+                allocator.free(apiKey);
 
                 std.log.info("Using API key authentication", .{});
-                const credentials = AuthCredentials{ .api_key = final_key };
+                const credentials = AuthCredentials{ .apiKey = finalKey };
                 return AuthClient.init(allocator, credentials);
             } else {
                 std.log.err("ANTHROPIC_API_KEY contains invalid UTF-8 characters", .{});
-                allocator.free(api_key);
+                allocator.free(apiKey);
                 return AuthError.InvalidAPIKey;
             }
         } else {
-            allocator.free(api_key);
+            allocator.free(apiKey);
         }
     } else |_| {}
 
@@ -186,8 +186,8 @@ pub fn createClient(allocator: std.mem.Allocator) AuthError!AuthClient {
 }
 
 /// Load authentication credentials from file
-pub fn loadCredentials(allocator: std.mem.Allocator, file_path: []const u8) AuthError!AuthCredentials {
-    const file = std.fs.cwd().openFile(file_path, .{}) catch |err| switch (err) {
+pub fn loadCredentials(allocator: std.mem.Allocator, filePath: []const u8) AuthError!AuthCredentials {
+    const file = std.fs.cwd().openFile(filePath, .{}) catch |err| switch (err) {
         error.FileNotFound => return AuthError.FileNotFound,
         else => return AuthError.FileNotFound,
     };
@@ -199,8 +199,8 @@ pub fn loadCredentials(allocator: std.mem.Allocator, file_path: []const u8) Auth
     defer allocator.free(contents);
 
     // Try to parse as OAuth credentials
-    if (oauth.parseCredentials(allocator, contents)) |oauth_creds| {
-        return AuthCredentials{ .oauth = oauth_creds };
+    if (oauth.parseCredentials(allocator, contents)) |oauthCreds| {
+        return AuthCredentials{ .oauth = oauthCreds };
     } else |_| {}
 
     // Could add other credential types here (API key files, etc.)
@@ -211,16 +211,16 @@ pub fn loadCredentials(allocator: std.mem.Allocator, file_path: []const u8) Auth
 /// Save authentication credentials to file
 pub fn saveCredentials(
     allocator: std.mem.Allocator,
-    file_path: []const u8,
+    filePath: []const u8,
     credentials: AuthCredentials,
 ) AuthError!void {
     switch (credentials) {
         .oauth => |creds| {
-            oauth.saveCredentials(allocator, file_path, creds) catch {
+            oauth.saveCredentials(allocator, filePath, creds) catch {
                 return AuthError.InvalidFormat;
             };
         },
-        .api_key => {
+        .apiKey => {
             // Could save API key to file if needed
             return AuthError.InvalidFormat;
         },

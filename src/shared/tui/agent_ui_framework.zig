@@ -265,7 +265,7 @@ pub const OAuthIntegration = struct {
     }
 
     /// Run complete OAuth flow with UI integration
-    pub fn runOAuthFlow(self: *OAuthIntegration, ui_patterns: *StandardUIPatterns) !oauth_mod.OAuthCredentials {
+    pub fn runOAuthFlow(self: *OAuthIntegration, ui_patterns: *StandardUIPatterns) !oauth_mod.Credentials {
         // Show initial setup notification
         try ui_patterns.showNotification(.info, "OAuth Setup", "Starting authentication flow...");
 

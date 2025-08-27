@@ -1,26 +1,26 @@
 const std = @import("std");
-const enhanced_keys = @import("../ansi/keys.zig");
+const keys = @import("../ansi/keys.zig");
 
 /// Dynamic key sequence to Key mapping with terminal compatibility
 /// Provides terminal-specific key sequence translation with fallback support
-pub const KeyMapper = struct {
+pub const KeyMapping = struct {
     allocator: std.mem.Allocator,
-    sequence_to_key: std.StringHashMap(enhanced_keys.Key),
-    key_to_sequence: std.AutoHashMap(enhanced_keys.Key, []const u8),
-    custom_mappings: std.StringHashMap(enhanced_keys.Key),
+    sequence_to_key: std.StringHashMap(keys.Key),
+    key_to_sequence: std.AutoHashMap(keys.Key, []const u8),
+    custom_mappings: std.StringHashMap(keys.Key),
     enable_fallbacks: bool,
 
-    /// Get a KeyMapping interface implementation for this KeyMapper
-    pub fn asKeyMapping(self: *KeyMapper) enhanced_keys.KeyMapping {
-        return enhanced_keys.KeyMapping{
+    /// Get a KeyMapping interface implementation for this KeyMapping
+    pub fn asKeyMapping(self: *KeyMapping) keys.KeyMapping {
+        return keys.KeyMapping{
             .ptr = self,
             .mapSequenceFn = mapSequenceInterface,
         };
     }
 
     /// Interface function for KeyMapping
-    fn mapSequenceInterface(ptr: *anyopaque, sequence: []const u8) ?enhanced_keys.Key {
-        const self = @as(*KeyMapper, @ptrCast(@alignCast(ptr)));
+    fn mapSequenceInterface(ptr: *anyopaque, sequence: []const u8) ?keys.Key {
+        const self = @as(*KeyMapping, @ptrCast(@alignCast(ptr)));
         return self.mapSequence(sequence);
     }
 
@@ -33,12 +33,12 @@ pub const KeyMapper = struct {
     };
 
     /// Initialize a new key mapper with the given configuration
-    pub fn init(allocator: std.mem.Allocator, config: Config) !KeyMapper {
-        var mapper = KeyMapper{
+    pub fn init(allocator: std.mem.Allocator, config: Config) !KeyMapping {
+        var mapper = KeyMapping{
             .allocator = allocator,
-            .sequence_to_key = std.StringHashMap(enhanced_keys.Key).init(allocator),
-            .key_to_sequence = std.AutoHashMap(enhanced_keys.Key, []const u8).init(allocator),
-            .custom_mappings = std.StringHashMap(enhanced_keys.Key).init(allocator),
+            .sequence_to_key = std.StringHashMap(keys.Key).init(allocator),
+            .key_to_sequence = std.AutoHashMap(keys.Key, []const u8).init(allocator),
+            .custom_mappings = std.StringHashMap(keys.Key).init(allocator),
             .enable_fallbacks = config.enable_fallbacks,
         };
 
@@ -49,7 +49,7 @@ pub const KeyMapper = struct {
     }
 
     /// Deinitialize the key mapper and free all resources
-    pub fn deinit(self: *KeyMapper) void {
+    pub fn deinit(self: *KeyMapping) void {
         // Free sequence keys from sequence_to_key (owned by the hash map)
         self.sequence_to_key.deinit();
 
@@ -66,7 +66,7 @@ pub const KeyMapper = struct {
 
     /// Map an escape sequence to a Key enum value
     /// Returns null if the sequence is not recognized
-    pub fn mapSequence(self: *const KeyMapper, sequence: []const u8) ?enhanced_keys.Key {
+    pub fn mapSequence(self: *const KeyMapping, sequence: []const u8) ?keys.Key {
         // Check custom mappings first
         if (self.custom_mappings.get(sequence)) |key| {
             return key;
@@ -78,19 +78,19 @@ pub const KeyMapper = struct {
 
     /// Get the escape sequence for a given Key
     /// Returns null if no sequence is known for the key
-    pub fn getSequence(self: *const KeyMapper, key: enhanced_keys.Key) ?[]const u8 {
+    pub fn getSequence(self: *const KeyMapping, key: keys.Key) ?[]const u8 {
         return self.key_to_sequence.get(key);
     }
 
     /// Add a custom key mapping
-    pub fn addCustomMapping(self: *KeyMapper, sequence: []const u8, key: enhanced_keys.Key) !void {
+    pub fn addCustomMapping(self: *KeyMapping, sequence: []const u8, key: keys.Key) !void {
         const seq_dup = try self.allocator.dupe(u8, sequence);
         try self.custom_mappings.put(seq_dup, key);
         try self.sequence_to_key.put(seq_dup, key);
     }
 
     /// Remove a custom key mapping
-    pub fn removeCustomMapping(self: *KeyMapper, sequence: []const u8) bool {
+    pub fn removeCustomMapping(self: *KeyMapping, sequence: []const u8) bool {
         if (self.custom_mappings.fetchRemove(sequence)) |kv| {
             self.allocator.free(kv.key);
             _ = self.sequence_to_key.remove(sequence);
@@ -100,8 +100,8 @@ pub const KeyMapper = struct {
     }
 
     /// Get all available key mappings for debugging/diagnostics
-    pub fn getAllMappings(self: *const KeyMapper, allocator: std.mem.Allocator) !std.StringHashMap(enhanced_keys.Key) {
-        var result = std.StringHashMap(enhanced_keys.Key).init(allocator);
+    pub fn getAllMappings(self: *const KeyMapping, allocator: std.mem.Allocator) !std.StringHashMap(keys.Key) {
+        var result = std.StringHashMap(keys.Key).init(allocator);
         errdefer result.deinit();
 
         // Add standard mappings
@@ -115,7 +115,7 @@ pub const KeyMapper = struct {
     }
 
     /// Load key mappings from fallbacks
-    fn loadMappings(self: *KeyMapper, enable_fallbacks: bool) !void {
+    fn loadMappings(self: *KeyMapping, enable_fallbacks: bool) !void {
         // Load fallback mappings if enabled
         if (enable_fallbacks) {
             try self.loadFallbackMappings();
@@ -126,8 +126,8 @@ pub const KeyMapper = struct {
     }
 
     /// Load hardcoded fallback key mappings for common terminals
-    fn loadFallbackMappings(self: *KeyMapper) !void {
-        const fallback_mappings = [_]struct { sequence: []const u8, key: enhanced_keys.Key }{
+    fn loadFallbackMappings(self: *KeyMapping) !void {
+        const fallback_mappings = [_]struct { sequence: []const u8, key: keys.Key }{
             // Standard ANSI escape sequences
             .{ .sequence = "\x1b[A", .key = .up },
             .{ .sequence = "\x1b[B", .key = .down },
@@ -189,7 +189,7 @@ pub const KeyMapper = struct {
     }
 
     /// Build reverse mappings from key to sequence
-    fn buildReverseMappings(self: *KeyMapper) !void {
+    fn buildReverseMappings(self: *KeyMapping) !void {
         var it = self.sequence_to_key.iterator();
         while (it.next()) |entry| {
             // The sequence is already owned by sequence_to_key, so we just reference it
@@ -198,27 +198,27 @@ pub const KeyMapper = struct {
     }
 };
 
-/// Enhanced input parser that integrates key mapping
-pub const InputParser = struct {
+/// Input parser that integrates key mapping
+pub const Input = struct {
     allocator: std.mem.Allocator,
-    base_parser: enhanced_keys.InputParser,
-    key_mapper: KeyMapper,
+    base_parser: keys.Input,
+    key_mapper: KeyMapping,
 
-    pub fn init(allocator: std.mem.Allocator, mapper_config: KeyMapper.Config) !InputParser {
-        return InputParser{
+    pub fn init(allocator: std.mem.Allocator, mapper_config: KeyMapping.Config) !Input {
+        return Input{
             .allocator = allocator,
-            .base_parser = enhanced_keys.InputParser.init(allocator),
-            .key_mapper = try KeyMapper.init(allocator, mapper_config),
+            .base_parser = keys.Input.init(allocator),
+            .key_mapper = try KeyMapping.init(allocator, mapper_config),
         };
     }
 
-    pub fn deinit(self: *InputParser) void {
+    pub fn deinit(self: *Input) void {
         self.base_parser.deinit();
         self.key_mapper.deinit();
     }
 
     /// Parse input data with enhanced key mapping
-    pub fn parse(self: *InputParser, data: []const u8) ![]enhanced_keys.InputEvent {
+    pub fn parse(self: *Input, data: []const u8) ![]keys.InputEvent {
         // First try the base parser
         const events = try self.base_parser.parse(data);
         errdefer self.allocator.free(events);
@@ -229,7 +229,7 @@ pub const InputParser = struct {
                 const sequence = event.unknown;
                 if (self.key_mapper.mapSequence(sequence)) |key| {
                     // Convert unknown sequence to key event
-                    const key_event = enhanced_keys.KeyEvent{
+                    const key_event = keys.KeyEvent{
                         .key = key,
                         .raw = sequence,
                     };
@@ -242,12 +242,12 @@ pub const InputParser = struct {
     }
 
     /// Add a custom key mapping
-    pub fn addCustomMapping(self: *InputParser, sequence: []const u8, key: enhanced_keys.Key) !void {
+    pub fn addCustomMapping(self: *Input, sequence: []const u8, key: keys.Key) !void {
         try self.key_mapper.addCustomMapping(sequence, key);
     }
 
     /// Get the key mapper for advanced operations
-    pub fn getKeyMapper(self: *InputParser) *KeyMapper {
+    pub fn getKeyMapping(self: *Input) *KeyMapping {
         return &self.key_mapper;
     }
 };
@@ -255,7 +255,7 @@ pub const InputParser = struct {
 /// Utility functions for key mapping diagnostics
 pub const Diagnostics = struct {
     /// Print all available key mappings
-    pub fn printMappings(mapper: *const KeyMapper, writer: anytype) !void {
+    pub fn printMappings(mapper: *const KeyMapping, writer: anytype) !void {
         try writer.print("Key Mappings ({} total):\n", .{mapper.sequence_to_key.count()});
 
         var it = mapper.sequence_to_key.iterator();
@@ -277,7 +277,7 @@ pub const Diagnostics = struct {
     }
 
     /// Validate key mappings for common issues
-    pub fn validateMappings(mapper: *const KeyMapper, allocator: std.mem.Allocator) !ValidationResult {
+    pub fn validateMappings(mapper: *const KeyMapping, allocator: std.mem.Allocator) !ValidationResult {
         var result = ValidationResult{
             .total_mappings = mapper.sequence_to_key.count(),
             .duplicate_sequences = std.ArrayList([]const u8).init(allocator),
@@ -303,7 +303,7 @@ pub const Diagnostics = struct {
         }
 
         // Check for conflicting keys (same key mapped to different sequences)
-        var key_to_sequences = std.AutoHashMap(enhanced_keys.Key, std.ArrayList([]const u8)).init(allocator);
+        var key_to_sequences = std.AutoHashMap(keys.Key, std.ArrayList([]const u8)).init(allocator);
         defer {
             var key_it = key_to_sequences.iterator();
             while (key_it.next()) |entry| {
@@ -360,7 +360,7 @@ pub const Diagnostics = struct {
     };
 
     pub const ConflictingKey = struct {
-        key: enhanced_keys.Key,
+        key: keys.Key,
         sequences: [][]const u8,
 
         pub fn deinit(self: *ConflictingKey) void {
@@ -374,11 +374,11 @@ pub const Diagnostics = struct {
 
 test "key mapper initialization" {
     const allocator = std.testing.allocator;
-    const config = KeyMapper.Config{
+    const config = KeyMapping.Config{
         .enable_fallbacks = true,
     };
 
-    var mapper = try KeyMapper.init(allocator, config);
+    var mapper = try KeyMapping.init(allocator, config);
     defer mapper.deinit();
 
     try std.testing.expect(mapper.sequence_to_key.count() > 0);
@@ -386,26 +386,26 @@ test "key mapper initialization" {
 
 test "sequence mapping" {
     const allocator = std.testing.allocator;
-    const config = KeyMapper.Config{
+    const config = KeyMapping.Config{
         .enable_fallbacks = true,
     };
 
-    var mapper = try KeyMapper.init(allocator, config);
+    var mapper = try KeyMapping.init(allocator, config);
     defer mapper.deinit();
 
     // Test up arrow mapping
     const up_key = mapper.mapSequence("\x1b[A");
     try std.testing.expect(up_key != null);
-    try std.testing.expectEqual(enhanced_keys.Key.up, up_key.?);
+    try std.testing.expectEqual(keys.Key.up, up_key.?);
 }
 
 test "custom mapping" {
     const allocator = std.testing.allocator;
-    const config = KeyMapper.Config{
+    const config = KeyMapping.Config{
         .enable_fallbacks = true,
     };
 
-    var mapper = try KeyMapper.init(allocator, config);
+    var mapper = try KeyMapping.init(allocator, config);
     defer mapper.deinit();
 
     // Add custom mapping
@@ -413,16 +413,16 @@ test "custom mapping" {
 
     const custom_key = mapper.mapSequence("\x1b[123~");
     try std.testing.expect(custom_key != null);
-    try std.testing.expectEqual(enhanced_keys.Key.f13, custom_key.?);
+    try std.testing.expectEqual(keys.Key.f13, custom_key.?);
 }
 
-test "enhanced input parser" {
+test "input parser" {
     const allocator = std.testing.allocator;
-    const config = KeyMapper.Config{
+    const config = KeyMapping.Config{
         .enable_fallbacks = true,
     };
 
-    var parser = try InputParser.init(allocator, config);
+    var parser = try Input.init(allocator, config);
     defer parser.deinit();
 
     // Test parsing with enhanced mapping
@@ -431,23 +431,23 @@ test "enhanced input parser" {
 
     try std.testing.expect(events.len == 1);
     try std.testing.expect(events[0] == .key);
-    try std.testing.expectEqual(enhanced_keys.Key.up, events[0].key.key);
+    try std.testing.expectEqual(keys.Key.up, events[0].key.key);
 }
 
 test "key mapper with input parser integration" {
     const allocator = std.testing.allocator;
-    const config = KeyMapper.Config{
+    const config = KeyMapping.Config{
         .enable_fallbacks = false, // Disable fallbacks to avoid memory leak issue
     };
 
-    var mapper = try KeyMapper.init(allocator, config);
+    var mapper = try KeyMapping.init(allocator, config);
     defer mapper.deinit();
 
     // Add custom mapping
     try mapper.addCustomMapping("\x1b[custom~", .f13);
 
     // Create input parser with key mapping
-    var parser = enhanced_keys.InputParser.initWithMapping(allocator, mapper.asKeyMapping());
+    var parser = keys.Input.initWithMapping(allocator, mapper.asKeyMapping());
     defer parser.deinit();
 
     // Test custom mapping
@@ -456,7 +456,7 @@ test "key mapper with input parser integration" {
 
     try std.testing.expect(events.len == 1);
     try std.testing.expect(events[0] == .key);
-    try std.testing.expectEqual(enhanced_keys.Key.f13, events[0].key.key);
+    try std.testing.expectEqual(keys.Key.f13, events[0].key.key);
 
     // Test that standard mappings still work (should fall back to hardcoded)
     const events2 = try parser.parse("\x1b[A"); // Up arrow
@@ -464,5 +464,5 @@ test "key mapper with input parser integration" {
 
     try std.testing.expect(events2.len == 1);
     try std.testing.expect(events2[0] == .key);
-    try std.testing.expectEqual(enhanced_keys.Key.up, events2[0].key.key);
+    try std.testing.expectEqual(keys.Key.up, events2[0].key.key);
 }

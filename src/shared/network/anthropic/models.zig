@@ -10,33 +10,33 @@ pub const Message = struct {
 };
 
 /// OAuth credentials stored to disk
-pub const OAuthCredentials = struct {
+pub const Credentials = struct {
     type: []const u8, // Always "oauth"
-    access_token: []const u8,
-    refresh_token: []const u8,
-    expires_at: i64, // Unix timestamp
+    accessToken: []const u8,
+    refreshToken: []const u8,
+    expiresAt: i64, // Unix timestamp
 
-    pub fn isExpired(self: OAuthCredentials) bool {
+    pub fn isExpired(self: Credentials) bool {
         const now = std.time.timestamp();
-        return now >= self.expires_at;
+        return now >= self.expiresAt;
     }
 
-    pub fn willExpireSoon(self: OAuthCredentials, leeway: i64) bool {
+    pub fn willExpireSoon(self: Credentials, leeway: i64) bool {
         const now = std.time.timestamp();
-        return now + leeway >= self.expires_at;
+        return now + leeway >= self.expiresAt;
     }
 };
 
 /// PKCE parameters for OAuth flow
 pub const Pkce = struct {
-    code_verifier: []const u8,
-    code_challenge: []const u8,
+    codeVerifier: []const u8,
+    codeChallenge: []const u8,
     state: []const u8,
 
     /// Clean up allocated memory
     pub fn deinit(self: Pkce, allocator: std.mem.Allocator) void {
-        allocator.free(self.code_verifier);
-        allocator.free(self.code_challenge);
+        allocator.free(self.codeVerifier);
+        allocator.free(self.codeChallenge);
         allocator.free(self.state);
     }
 };
@@ -44,24 +44,24 @@ pub const Pkce = struct {
 /// Authentication methods supported
 pub const AuthMethod = union(enum) {
     api_key: []const u8,
-    oauth: OAuthCredentials,
+    oauth: Credentials,
 };
 
 /// OAuth provider configuration
-pub const OAuthProvider = struct {
+pub const Provider = struct {
     client_id: []const u8,
     authorization_url: []const u8,
     token_url: []const u8,
     redirect_uri: []const u8,
     scopes: []const []const u8,
 
-    pub fn buildAuthURL(self: OAuthProvider, allocator: std.mem.Allocator, pkce_params: Pkce) ![]u8 {
-        const scopes_joined = try std.mem.join(allocator, " ", self.scopes);
-        defer allocator.free(scopes_joined);
+    pub fn buildAuthURL(self: Provider, allocator: std.mem.Allocator, pkceParams: Pkce) ![]u8 {
+        const scopesJoined = try std.mem.join(allocator, " ", self.scopes);
+        defer allocator.free(scopesJoined);
         return try std.fmt.allocPrint(
             allocator,
             "{s}?client_id={s}&response_type=code&redirect_uri={s}&scope={s}&code_challenge={s}&code_challenge_method=S256&state={s}",
-            .{ self.authorization_url, self.client_id, self.redirect_uri, scopes_joined, pkce_params.code_challenge, pkce_params.state },
+            .{ self.authorization_url, self.client_id, self.redirect_uri, scopesJoined, pkceParams.codeChallenge, pkceParams.state },
         );
     }
 };
@@ -225,8 +225,8 @@ pub const CompletionResponse = struct {
 };
 
 pub const Usage = struct {
-    input_tokens: u32 = 0,
-    output_tokens: u32 = 0,
+    inputTokens: u32 = 0,
+    outputTokens: u32 = 0,
 };
 
 pub const Complete = struct {

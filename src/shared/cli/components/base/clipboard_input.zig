@@ -2,17 +2,17 @@
 //! Input field that can copy/paste from system clipboard when supported
 
 const std = @import("std");
-const context = @import("../../core/context.zig");
+const state = @import("../../core/state.zig");
 
 pub const ClipboardInput = struct {
-    context: *context.Cli,
+    state: *state.Cli,
     prompt: []const u8,
     placeholder: ?[]const u8 = null,
     auto_copy_result: bool = false,
 
-    pub fn init(ctx: *context.Cli, prompt: []const u8) ClipboardInput {
+    pub fn init(ctx: *state.Cli, prompt: []const u8) ClipboardInput {
         return ClipboardInput{
-            .context = ctx,
+            .state = ctx,
             .prompt = prompt,
         };
     }
@@ -34,7 +34,7 @@ pub const ClipboardInput = struct {
         }
 
         // Add clipboard hints if available
-        if (self.context.hasFeature(.clipboard)) {
+        if (self.state.hasFeature(.clipboard)) {
             try writer.print(" [Ctrl+V to paste]");
         }
 
@@ -64,9 +64,9 @@ pub const ClipboardInput = struct {
             }
 
             // Copy result to clipboard if requested and available
-            if (self.auto_copy_result and self.context.hasFeature(.clipboard)) {
-                try self.context.clipboard.copy(trimmed);
-                try self.context.notification.send(.{
+            if (self.auto_copy_result and self.state.hasFeature(.clipboard)) {
+                try self.state.clipboard.copy(trimmed);
+                try self.state.notification.send(.{
                     .title = "Copied to Clipboard",
                     .body = "Input copied for reuse",
                     .level = .info,
@@ -83,7 +83,7 @@ pub const ClipboardInput = struct {
     pub fn displayWithCopyAction(self: *ClipboardInput, writer: anytype, text: []const u8) !void {
         try writer.print("{s}", .{text});
 
-        if (self.context.hasFeature(.clipboard)) {
+        if (self.state.hasFeature(.clipboard)) {
             try writer.print("\n\nPress 'c' to copy to clipboard");
 
             // This would wait for user input to copy

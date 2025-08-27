@@ -1,4 +1,4 @@
-//! Comprehensive dashboard demo showcasing all enhanced TUI features
+//! Comprehensive dashboard demo showcasing all TUI features
 //!
 //! This demo demonstrates:
 //! - Dashboard layout with multiple widgets
@@ -345,10 +345,10 @@ pub const DashboardDemo = struct {
             .bounds = tui.Bounds.init(0, 1, terminal_size.width, terminal_size.height - 3),
         };
 
-        // This would need a proper renderer - for now we'll create a simple one
-        var simple_renderer = SimpleRenderer.init(self.terminal.getTerminal());
+        // This would need a proper renderer - for now we'll create a basic one
+        var renderer = Renderer.init(self.terminal.getTerminal());
 
-        try self.dashboard.render(&simple_renderer.renderer, ctx);
+        try self.dashboard.render(&renderer.renderer, ctx);
     }
 
     fn renderStatusBar(self: *Self, terminal_size: tui.TerminalSize) !void {
@@ -466,8 +466,8 @@ pub const DashboardDemo = struct {
     }
 };
 
-// Simple renderer implementation for the demo
-const SimpleRenderer = struct {
+// Basic renderer implementation for the demo
+const Renderer = struct {
     terminal: *terminal_mod.Terminal,
     renderer: tui.Renderer,
 

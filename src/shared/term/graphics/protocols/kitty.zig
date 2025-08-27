@@ -93,7 +93,7 @@ pub const KittyRenderer = struct {
 
         // Action: transmit and display
         try control_data.appendSlice("a=T");
-        
+
         // Format
         try std.fmt.format(control_data.writer(), ",f={d}", .{
             switch (image.format) {
@@ -138,7 +138,7 @@ pub const KittyRenderer = struct {
         // Send chunks
         const chunk_size = 4096;
         var offset: usize = 0;
-        
+
         while (offset < encoded.len) {
             const chunk_end = @min(offset + chunk_size, encoded.len);
             const chunk = encoded[offset..chunk_end];
@@ -149,7 +149,7 @@ pub const KittyRenderer = struct {
             defer seq.deinit();
 
             try seq.appendSlice("\x1b_G");
-            
+
             if (offset == 0) {
                 // First chunk includes control data
                 try seq.appendSlice(control_data.items);
@@ -166,7 +166,7 @@ pub const KittyRenderer = struct {
             try seq.appendSlice("\x1b\\");
 
             try passthrough.writeWithPassthrough(writer, caps, seq.items);
-            
+
             offset = chunk_end;
         }
     }
@@ -217,11 +217,11 @@ pub const KittyRenderer = struct {
         // Simple zlib compression implementation
         // In production, use a proper zlib library
         var compressed = std.ArrayList(u8).init(self.allocator);
-        
+
         // For now, return a copy (no actual compression)
         // TODO: Implement actual zlib compression
         try compressed.appendSlice(data);
-        
+
         return compressed.toOwnedSlice();
     }
 };
@@ -231,7 +231,7 @@ pub const KittyAnimation = struct {
     frames: []const Image,
     frame_delays: []const u32, // Milliseconds
     loop_count: u32 = 0, // 0 = infinite
-    
+
     pub fn render(
         self: KittyAnimation,
         renderer: *KittyRenderer,

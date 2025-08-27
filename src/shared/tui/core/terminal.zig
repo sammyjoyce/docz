@@ -1,14 +1,14 @@
-/// Advanced Terminal Features Integration Module
-/// Combines all the enhanced terminal capabilities with modern terminal features
-/// Provides a unified interface for advanced TUI/CLI applications
+/// Terminal Integration Module
+/// Combines all terminal capabilities with modern features
+/// Provides interface for TUI/CLI applications
 /// Compatible with Zig 0.15.1
 const std = @import("std");
 const term_shared = @import("term_shared");
 
 pub const cellbuf = term_shared.cellbuf;
-// TODO: Implement advanced cursor optimizer
+// TODO: Implement cursor optimizer
 // pub const cursor_optimizer = @import("../../term/control/cursor.zig").CursorOptimizer;
-// TODO: Implement enhanced input handler
+// TODO: Implement input handler
 // pub const input_handler = @import("input/input_handler.zig");
 // TODO: Implement editor
 // pub const editor = @import("editor.zig");
@@ -27,7 +27,7 @@ pub const AttrMask = cellbuf.AttrMask;
 // pub const OptimizerOptions = cursor_optimizer.OptimizerOptions;
 
 // TODO: Implement input handler types
-// pub const EnhancedInputParser = input_handler.EnhancedInputParser;
+// pub const InputParser = input_handler.InputParser;
 // pub const Event = input_handler.Event;
 // pub const KeyEvent = input_handler.KeyEvent;
 // pub const PasteEvent = input_handler.PasteEvent;
@@ -36,9 +36,9 @@ pub const AttrMask = cellbuf.AttrMask;
 // TODO: Implement editor types
 // pub const EditorCommand = editor.EditorCommand;
 
-/// Comprehensive terminal manager combining all advanced features
-/// TODO: Implement advanced terminal features
-pub const AdvancedTerminal = struct {
+/// Comprehensive terminal manager combining all features
+/// TODO: Implement terminal features
+pub const Terminal = struct {
     allocator: std.mem.Allocator,
     buffer: CellBuffer,
     width: usize,
@@ -48,7 +48,7 @@ pub const AdvancedTerminal = struct {
 
     const Self = @This();
 
-    /// Initialize advanced terminal with automatic size detection
+    /// Initialize terminal with automatic size detection
     pub fn init(allocator: std.mem.Allocator, app_name: []const u8) !Self {
         _ = app_name;
 
@@ -293,22 +293,22 @@ pub const Attrs = struct {
 };
 
 // Tests
-test "advanced terminal initialization" {
+test "terminal initialization" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    var terminal = try AdvancedTerminal.init(allocator, "xterm");
+    var terminal = try Terminal.init(allocator, "xterm");
     defer terminal.deinit();
 
     try testing.expect(terminal.width > 0);
     try testing.expect(terminal.height > 0);
 }
 
-test "advanced terminal text writing and rendering" {
+test "terminal text writing and rendering" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    var terminal = try AdvancedTerminal.init(allocator, "xterm");
+    var terminal = try Terminal.init(allocator, "xterm");
     defer terminal.deinit();
 
     // Write some text
@@ -327,7 +327,7 @@ test "input event parsing integration" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    var terminal = try AdvancedTerminal.init(allocator, "xterm");
+    var terminal = try Terminal.init(allocator, "xterm");
     defer terminal.deinit();
 
     const events = try terminal.parseInput("hello");
@@ -348,7 +348,7 @@ test "cursor movement optimization" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    var terminal = try AdvancedTerminal.init(allocator, "xterm");
+    var terminal = try Terminal.init(allocator, "xterm");
     defer terminal.deinit();
 
     const movement = try terminal.moveCursorTo(10, 5);

@@ -1,5 +1,5 @@
 //! Interactive CLI components
-//! Enhanced command palette and autocomplete functionality
+//! Command palette and autocomplete functionality
 
 pub const completion = @import("completion.zig");
 pub const command_palette = @import("command_palette.zig");

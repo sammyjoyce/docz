@@ -181,35 +181,35 @@ pub const FuzzyMatcher = struct {
     }
 };
 
-/// Enhanced completion engine with terminal capabilities
+/// Completion engine with terminal capabilities
 pub const CompletionEngine = struct {
     items: std.ArrayList(CompletionItem),
-    filtered_items: std.ArrayList(CompletionItem),
-    selected_index: usize,
+    filteredItems: std.ArrayList(CompletionItem),
+    selectedIndex: usize,
     matcher: FuzzyMatcher,
     caps: term_caps.TermCaps,
     allocator: Allocator,
-    show_previews: bool,
-    show_icons: bool,
-    show_thumbnails: bool,
+    showPreviews: bool,
+    showIcons: bool,
+    showThumbnails: bool,
 
     pub fn init(allocator: Allocator) !CompletionEngine {
         return CompletionEngine{
             .items = std.ArrayList(CompletionItem).init(allocator),
-            .filtered_items = std.ArrayList(CompletionItem).init(allocator),
-            .selected_index = 0,
+            .filteredItems = std.ArrayList(CompletionItem).init(allocator),
+            .selectedIndex = 0,
             .matcher = FuzzyMatcher{},
             .caps = term_caps.getTermCaps(),
             .allocator = allocator,
-            .show_previews = true,
-            .show_icons = true,
-            .show_thumbnails = true,
+            .showPreviews = true,
+            .showIcons = true,
+            .showThumbnails = true,
         };
     }
 
     pub fn deinit(self: *CompletionEngine) void {
         self.items.deinit();
-        self.filtered_items.deinit();
+        self.filteredItems.deinit();
     }
 
     pub fn addItem(self: *CompletionEngine, item: CompletionItem) !void {
@@ -224,66 +224,66 @@ pub const CompletionEngine = struct {
 
     /// Filter items based on query with fuzzy matching
     pub fn filter(self: *CompletionEngine, query: []const u8) !void {
-        self.filtered_items.clearRetainingCapacity();
+        self.filteredItems.clearRetainingCapacity();
 
         for (self.items.items) |item| {
             var scored_item = item;
             scored_item.score = self.matcher.score(query, item.text);
             if (scored_item.score > 0.0) {
-                try self.filtered_items.append(scored_item);
+                try self.filteredItems.append(scored_item);
             }
         }
 
         // Sort by score descending
-        std.mem.sort(CompletionItem, self.filtered_items.items, {}, struct {
+        std.mem.sort(CompletionItem, self.filteredItems.items, {}, struct {
             pub fn lessThan(_: void, a: CompletionItem, b: CompletionItem) bool {
                 return a.score > b.score;
             }
         }.lessThan);
 
         // Reset selection
-        self.selected_index = 0;
+        self.selectedIndex = 0;
     }
 
     pub fn selectNext(self: *CompletionEngine) void {
-        if (self.filtered_items.items.len > 0) {
-            self.selected_index = (self.selected_index + 1) % self.filtered_items.items.len;
+        if (self.filteredItems.items.len > 0) {
+            self.selectedIndex = (self.selectedIndex + 1) % self.filteredItems.items.len;
         }
     }
 
     pub fn selectPrev(self: *CompletionEngine) void {
-        if (self.filtered_items.items.len > 0) {
-            self.selected_index = if (self.selected_index == 0)
-                self.filtered_items.items.len - 1
+        if (self.filteredItems.items.len > 0) {
+            self.selectedIndex = if (self.selectedIndex == 0)
+                self.filteredItems.items.len - 1
             else
-                self.selected_index - 1;
+                self.selectedIndex - 1;
         }
     }
 
     pub fn getSelected(self: CompletionEngine) ?CompletionItem {
-        if (self.selected_index < self.filtered_items.items.len) {
-            return self.filtered_items.items[self.selected_index];
+        if (self.selectedIndex < self.filteredItems.items.len) {
+            return self.filteredItems.items[self.selectedIndex];
         }
         return null;
     }
 
     pub fn configureDisplay(self: *CompletionEngine, previews: bool, icons: bool, thumbnails: bool) void {
-        self.show_previews = previews;
-        self.show_icons = icons;
-        self.show_thumbnails = thumbnails;
+        self.showPreviews = previews;
+        self.showIcons = icons;
+        self.showThumbnails = thumbnails;
     }
 
-    /// Render completion popup with advanced terminal features including previews
+    /// Render completion popup with terminal features including previews
     pub fn render(self: CompletionEngine, writer: anytype) !void {
-        if (self.filtered_items.items.len == 0) return;
+        if (self.filteredItems.items.len == 0) return;
 
-        const max_items = @min(self.filtered_items.items.len, 10);
+        const max_items = @min(self.filteredItems.items.len, 10);
         const selected_item = self.getSelected();
-        const show_preview_panel = self.show_previews and selected_item != null and selected_item.?.has_preview;
+        const showPreviewPanel = self.showPreviews and selected_item != null and selected_item.?.has_preview;
 
         // Calculate layout dimensions
-        const main_width: u32 = if (show_preview_panel) 50 else 70;
-        const preview_width: u32 = if (show_preview_panel) 40 else 0;
+        const main_width: u32 = if (showPreviewPanel) 50 else 70;
+        const preview_width: u32 = if (showPreviewPanel) 40 else 0;
         const total_height = max_items + 2;
 
         // Save cursor position
@@ -299,7 +299,7 @@ pub const CompletionEngine = struct {
         try self.renderMainPanel(writer, max_items, main_width);
 
         // Render preview panel if enabled and available
-        if (show_preview_panel) {
+        if (showPreviewPanel) {
             try self.renderPreviewPanel(writer, selected_item.?, preview_width, total_height);
         }
 
@@ -324,7 +324,7 @@ pub const CompletionEngine = struct {
             try term_ansi.setForeground256(writer, self.caps, 12);
         }
 
-        try writer.writeAll("┌─ Enhanced Completions ");
+        try writer.writeAll("┌─ Completions ");
 
         // Add capability indicators
         const indicators = [_]struct { bool, []const u8 }{
@@ -348,8 +348,8 @@ pub const CompletionEngine = struct {
         try writer.writeAll("┐\n");
 
         // Render completion items
-        for (self.filtered_items.items[0..max_items], 0..) |item, i| {
-            try self.renderCompletionItem(writer, item, i == self.selected_index, panel_width);
+        for (self.filteredItems.items[0..max_items], 0..) |item, i| {
+            try self.renderCompletionItem(writer, item, i == self.selectedIndex, panel_width);
         }
 
         // Close main panel
@@ -361,7 +361,7 @@ pub const CompletionEngine = struct {
         try term_ansi.resetStyle(writer, self.caps);
     }
 
-    /// Render a single completion item with enhanced features
+    /// Render a single completion item with features
     fn renderCompletionItem(self: CompletionEngine, writer: anytype, item: CompletionItem, is_selected: bool, panel_width: u32) !void {
         try writer.writeAll("│");
 
@@ -380,7 +380,7 @@ pub const CompletionEngine = struct {
         }
 
         // Icon if available and enabled
-        if (self.show_icons and item.icon != null) {
+        if (self.showIcons and item.icon != null) {
             try writer.print(" {s}", .{item.icon.?});
         } else {
             try writer.writeAll("  ");
@@ -567,7 +567,7 @@ pub const CompletionEngine = struct {
 
     /// Clear the completion popup from screen
     pub fn clear(self: CompletionEngine, writer: anytype) !void {
-        const max_items = @min(self.filtered_items.items.len, 10);
+        const max_items = @min(self.filteredItems.items.len, 10);
         if (max_items == 0) return;
 
         // Save current position
@@ -587,7 +587,7 @@ pub const CompletionEngine = struct {
 
 /// Predefined completion sets for common use cases
 pub const CompletionSets = struct {
-    /// CLI commands completion with enhanced features
+    /// CLI commands completion with features
     pub fn getCliCommands(allocator: Allocator) ![]CompletionItem {
         const commands = [_]CompletionItem{
             CompletionItem.init("chat")
@@ -667,7 +667,7 @@ pub const CompletionSets = struct {
         return result;
     }
 
-    /// Model names completion with enhanced metadata
+    /// Model names completion with metadata
     pub fn getModelNames(allocator: Allocator) ![]CompletionItem {
         const models = [_]CompletionItem{
             CompletionItem.init("claude-3-5-sonnet-20241022")

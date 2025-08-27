@@ -5,7 +5,7 @@
 const std = @import("std");
 const BrailleCanvas = @import("braille.zig").BrailleCanvas;
 // UnicodeImageRenderer is not implemented yet, so we'll handle block rendering directly
-// const UnicodeImageRenderer = @import("../term/unicode_image_renderer.zig");
+// const UnicodeImageRenderer = @import("../term/unicode_image.zig");
 
 // Use the existing modules that are available via the term module
 const Color = @import("term_shared").ansi.color.Color;

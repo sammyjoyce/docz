@@ -7,9 +7,9 @@
 pub const progress = @import("progress.zig");
 pub const notification = @import("notification.zig");
 pub const base = @import("base.zig");
-// ui_context temporarily disabled until aligned with base API
-// pub const ui_context = @import("ui_context.zig");
-// pub const smart_input = @import("smart_input.zig");
+// ui temporarily disabled until aligned with base API
+// pub const ui = @import("ui.zig");
+// pub const input_component = @import("input_component.zig");
 pub const input = @import("input.zig");
 
 // Re-export main types for convenience
@@ -62,24 +62,24 @@ pub const Animation = base.Animation;
 pub const Render = base.Render;
 
 // UI Context exports (disabled for now)
-// pub const UI = ui_context.UI;
-// pub const UIMode = ui_context.UIMode;
-// pub const NotificationComponent = ui_context.NotificationComponent;
-// pub const BorderStyle = ui_context.BorderStyle;
-// pub const BorderChars = ui_context.BorderChars;
-// pub const createTextStyle = ui_context.createTextStyle;
-// pub const drawBorder = ui_context.drawBorder;
-// pub const centerText = ui_context.centerText;
+// pub const UI = ui.UI;
+// pub const UIMode = ui.UIMode;
+// pub const NotificationComponent = ui.NotificationComponent;
+// pub const BorderStyle = ui.BorderStyle;
+// pub const BorderChars = ui.BorderChars;
+// pub const createTextStyle = ui.createTextStyle;
+// pub const drawBorder = ui.drawBorder;
+// pub const centerText = ui.centerText;
 
 // Component implementations
 pub const ProgressBar = progress.ProgressBar;
-// pub const SmartInput = smart_input.SmartInput;
-// pub const SmartConfig = smart_input.SmartConfig;
-// pub const SmartFeature = smart_input.SmartFeature;
-// pub const Suggestion = smart_input.Suggestion;
-// pub const Validation = smart_input.Validation;
-// pub const SuggestionProvider = smart_input.SuggestionProvider;
-// pub const Validator = smart_input.Validator;
+// pub const InputComponent = input_component.InputComponent;
+// pub const Config = input_component.Config;
+// pub const Feature = input_component.Feature;
+// pub const Suggestion = input_component.Suggestion;
+// pub const Validation = input_component.Validation;
+// pub const SuggestionProvider = input_component.SuggestionProvider;
+// pub const Validator = input_component.Validator;
 
 // Terminal wrapper components removed (use term_shared directly or presenters)
 

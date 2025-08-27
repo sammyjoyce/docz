@@ -182,7 +182,7 @@ pub const Test = struct {
         _ = self;
         // Tool names are now registered in spec.zig
         return &.{
-            "exampleTool",
+            "tool",
         };
     }
 };

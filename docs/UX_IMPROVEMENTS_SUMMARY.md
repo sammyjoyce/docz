@@ -200,7 +200,7 @@ const token = try oauth.authenticateWithTerminal();
 
 ### Notification System
 ```zig
-const notifications = try NotificationManager.init(allocator);
+const notifications = try Notification.init(allocator);
 
 // Show success message
 try notifications.toast(.{

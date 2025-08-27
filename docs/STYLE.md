@@ -296,7 +296,7 @@ Zig has specific naming conventions that we follow strictly:
 
 - **snake_case** for file names that represent namespaces:
   ```
-  file_manager.zig    // A namespace module
+  file.zig    // A namespace module
   string_utils.zig    // Utility namespace
   ```
 

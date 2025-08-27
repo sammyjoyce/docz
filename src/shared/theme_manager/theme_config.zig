@@ -3,7 +3,7 @@
 
 const std = @import("std");
 
-pub const ThemeConfig = struct {
+pub const ThemeSettings = struct {
     allocator: std.mem.Allocator,
     currentTheme: []const u8,
     autoSwitchSystemTheme: bool,
@@ -28,7 +28,7 @@ pub const ThemeConfig = struct {
 
     const Self = @This();
 
-    pub fn init(allocator: std.mem.Allocator) Self {
+    pub fn init(allocator: std.mem.Allocator) ThemeSettings {
         return .{
             .allocator = allocator,
             .currentTheme = "default",
@@ -109,9 +109,9 @@ pub const ThemeConfig = struct {
         return buffer.toOwnedSlice();
     }
 
-    pub fn fromZon(allocator: std.mem.Allocator, content: []const u8) !Self {
+    pub fn fromZon(allocator: std.mem.Allocator, content: []const u8) !ThemeSettings {
         _ = content;
         // TODO: Implement ZON parsing
-        return Self.init(allocator);
+        return ThemeSettings.init(allocator);
     }
 };

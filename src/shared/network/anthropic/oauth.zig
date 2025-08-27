@@ -1,7 +1,7 @@
 //! OAuth helpers for Anthropic client
 
 const std = @import("std");
-const curl = @import("../curl.zig");
+const curl = @import("curl_shared");
 const models = @import("models.zig");
 
 pub const OAUTH_CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e";
@@ -10,11 +10,11 @@ pub const OAUTH_TOKEN_ENDPOINT = "https://console.anthropic.com/v1/oauth/token";
 pub const OAUTH_REDIRECT_URI = "https://console.anthropic.com/oauth/code/callback";
 pub const OAUTH_SCOPES = "org:create_api_key user:profile user:inference";
 
-const OAuthCredentials = models.OAuthCredentials;
+const Credentials = models.Credentials;
 const Pkce = models.Pkce;
 const Error = models.Error;
 
-pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorization_code: []const u8, pkce_params: Pkce) !OAuthCredentials {
+pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorizationCode: []const u8, pkceParams: Pkce) !Credentials {
     std.log.info("🔄 Exchanging authorization code for OAuth tokens...", .{});
 
     var client = curl.HTTPClient.init(allocator) catch |err| {
@@ -23,9 +23,9 @@ pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorization_code: [
     };
     defer client.deinit();
 
-    var code_parts = std.mem.splitSequence(u8, authorization_code, "#");
-    const code = code_parts.next() orelse authorization_code;
-    const state = code_parts.next() orelse "";
+    var codeParts = std.mem.splitSequence(u8, authorizationCode, "#");
+    const code = codeParts.next() orelse authorizationCode;
+    const state = codeParts.next() orelse "";
 
     const body = try std.fmt.allocPrint(allocator,
         \\{{
@@ -36,7 +36,7 @@ pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorization_code: [
         \\  "redirect_uri": "{s}",
         \\  "code_verifier": "{s}"
         \\}}
-    , .{ code, state, OAUTH_CLIENT_ID, OAUTH_REDIRECT_URI, pkce_params.code_verifier });
+    , .{ code, state, OAUTH_CLIENT_ID, OAUTH_REDIRECT_URI, pkceParams.codeVerifier });
     defer allocator.free(body);
 
     std.log.debug("Sending OAuth token request with JSON body: {s}", .{body});
@@ -105,19 +105,19 @@ pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorization_code: [
     defer parsed.deinit();
 
     const now = std.time.timestamp();
-    const expires_at = now + parsed.value.expires_in;
+    const expiresAt = now + parsed.value.expires_in;
 
     std.log.info("✅ OAuth tokens received successfully!", .{});
 
-    return OAuthCredentials{
+    return Credentials{
         .type = try allocator.dupe(u8, "oauth"),
-        .access_token = try allocator.dupe(u8, parsed.value.access_token),
-        .refresh_token = try allocator.dupe(u8, parsed.value.refresh_token),
-        .expires_at = expires_at,
+        .accessToken = try allocator.dupe(u8, parsed.value.access_token),
+        .refreshToken = try allocator.dupe(u8, parsed.value.refresh_token),
+        .expiresAt = expiresAt,
     };
 }
 
-pub fn refreshTokens(allocator: std.mem.Allocator, refresh_token: []const u8) !OAuthCredentials {
+pub fn refreshTokens(allocator: std.mem.Allocator, refreshToken: []const u8) !Credentials {
     std.log.info("🔄 Refreshing OAuth tokens...", .{});
 
     var client = curl.HTTPClient.init(allocator) catch |err| {
@@ -132,7 +132,7 @@ pub fn refreshTokens(allocator: std.mem.Allocator, refresh_token: []const u8) !O
         \\  "refresh_token": "{s}",
         \\  "client_id": "{s}"
         \\}}
-    , .{ refresh_token, OAUTH_CLIENT_ID });
+    , .{ refreshToken, OAUTH_CLIENT_ID });
     defer allocator.free(body);
 
     const headers = [_]curl.Header{
@@ -191,20 +191,20 @@ pub fn refreshTokens(allocator: std.mem.Allocator, refresh_token: []const u8) !O
     defer parsed.deinit();
 
     const now = std.time.timestamp();
-    const expires_at = now + parsed.value.expires_in;
+    const expiresAt = now + parsed.value.expires_in;
 
     std.log.info("✅ OAuth tokens refreshed successfully!", .{});
 
-    return OAuthCredentials{
+    return Credentials{
         .type = try allocator.dupe(u8, "oauth"),
-        .access_token = try allocator.dupe(u8, parsed.value.access_token),
-        .refresh_token = try allocator.dupe(u8, parsed.value.refresh_token),
-        .expires_at = expires_at,
+        .accessToken = try allocator.dupe(u8, parsed.value.access_token),
+        .refreshToken = try allocator.dupe(u8, parsed.value.refresh_token),
+        .expiresAt = expiresAt,
     };
 }
 
-pub fn loadOAuthCredentials(allocator: std.mem.Allocator, file_path: []const u8) !?OAuthCredentials {
-    const file = std.fs.cwd().openFile(file_path, .{}) catch |err| switch (err) {
+pub fn loadOAuthCredentials(allocator: std.mem.Allocator, filePath: []const u8) !?Credentials {
+    const file = std.fs.cwd().openFile(filePath, .{}) catch |err| switch (err) {
         error.FileNotFound => return null,
         else => return err,
     };
@@ -213,51 +213,51 @@ pub fn loadOAuthCredentials(allocator: std.mem.Allocator, file_path: []const u8)
     const contents = try file.readToEndAlloc(allocator, 16 * 1024);
     defer allocator.free(contents);
 
-    const parsed = try std.json.parseFromSlice(OAuthCredentials, allocator, contents, .{});
+    const parsed = try std.json.parseFromSlice(Credentials, allocator, contents, .{});
     defer parsed.deinit();
 
-    return OAuthCredentials{
+    return Credentials{
         .type = try allocator.dupe(u8, parsed.value.type),
-        .access_token = try allocator.dupe(u8, parsed.value.access_token),
-        .refresh_token = try allocator.dupe(u8, parsed.value.refresh_token),
-        .expires_at = parsed.value.expires_at,
+        .accessToken = try allocator.dupe(u8, parsed.value.access_token),
+        .refreshToken = try allocator.dupe(u8, parsed.value.refresh_token),
+        .expiresAt = parsed.value.expires_at,
     };
 }
 
-pub fn saveOAuthCredentials(allocator: std.mem.Allocator, file_path: []const u8, creds: OAuthCredentials) !void {
-    const json_content = try std.fmt.allocPrint(allocator, "{\"type\":\"{s}\",\"access_token\":\"{s}\",\"refresh_token\":\"{s}\",\"expires_at\":{}}", .{ creds.type, creds.access_token, creds.refresh_token, creds.expires_at });
-    defer allocator.free(json_content);
+pub fn saveOAuthCredentials(allocator: std.mem.Allocator, filePath: []const u8, creds: Credentials) !void {
+    const jsonContent = try std.fmt.allocPrint(allocator, "{\"type\":\"{s}\",\"access_token\":\"{s}\",\"refresh_token\":\"{s}\",\"expires_at\":{}}", .{ creds.type, creds.access_token, creds.refresh_token, creds.expires_at });
+    defer allocator.free(jsonContent);
 
-    const file = try std.fs.cwd().createFile(file_path, .{ .mode = 0o600 });
+    const file = try std.fs.cwd().createFile(filePath, .{ .mode = 0o600 });
     defer file.close();
 
-    try file.writeAll(json_content);
+    try file.writeAll(jsonContent);
 }
 
-pub fn extractCodeFromCallbackUrl(allocator: std.mem.Allocator, callback_url: []const u8) ![]u8 {
-    const url = try std.URI.parse(callback_url);
+pub fn extractCodeFromCallbackUrl(allocator: std.mem.Allocator, callbackUrl: []const u8) ![]u8 {
+    const url = try std.URI.parse(callbackUrl);
 
-    if (url.query) |query_component| {
-        const query_str = switch (query_component) {
+    if (url.query) |queryComponent| {
+        const queryStr = switch (queryComponent) {
             .percent_encoded => |str| str,
             .raw => |str| str,
         };
-        if (std.mem.indexOf(u8, query_str, "code=")) |start| {
-            const code_start = start + 5;
-            const code_end = std.mem.indexOf(u8, query_str[code_start..], "&") orelse query_str.len - code_start;
-            return try allocator.dupe(u8, query_str[code_start .. code_start + code_end]);
+        if (std.mem.indexOf(u8, queryStr, "code=")) |start| {
+            const codeStart = start + 5;
+            const codeEnd = std.mem.indexOf(u8, queryStr[codeStart..], "&") orelse queryStr.len - codeStart;
+            return try allocator.dupe(u8, queryStr[codeStart .. codeStart + codeEnd]);
         }
     }
 
-    if (url.fragment) |fragment_component| {
-        const fragment_str = switch (fragment_component) {
+    if (url.fragment) |fragmentComponent| {
+        const fragmentStr = switch (fragmentComponent) {
             .percent_encoded => |str| str,
             .raw => |str| str,
         };
-        if (std.mem.indexOf(u8, fragment_str, "code=")) |start| {
-            const code_start = start + 5;
-            const code_end = std.mem.indexOf(u8, fragment_str[code_start..], "&") orelse fragment_str.len - code_start;
-            return try allocator.dupe(u8, fragment_str[code_start .. code_start + code_end]);
+        if (std.mem.indexOf(u8, fragmentStr, "code=")) |start| {
+            const codeStart = start + 5;
+            const codeEnd = std.mem.indexOf(u8, fragmentStr[codeStart..], "&") orelse fragmentStr.len - codeStart;
+            return try allocator.dupe(u8, fragmentStr[codeStart .. codeStart + codeEnd]);
         }
     }
 
@@ -287,10 +287,12 @@ pub fn launchBrowser(url: []const u8) !void {
 
 pub fn waitForOAuthCallback(allocator: std.mem.Allocator, port: u16) ![]const u8 {
     std.log.info("Starting OAuth callback server on port {}...", .{port});
+
     const address = std.net.Address.parseIp4("127.0.0.1", port) catch |err| {
         std.log.err("Failed to parse callback server address: {}", .{err});
         return Error.InvalidPort;
     };
+
     var server = address.listen(.{}) catch |err| {
         std.log.err("Failed to start callback server on port {}: {}", .{ port, err });
         return Error.NetworkError;
@@ -307,10 +309,10 @@ pub fn waitForOAuthCallback(allocator: std.mem.Allocator, port: u16) ![]const u8
         };
         defer connection.stream.close();
 
-        var reader_buffer: [8192]u8 = undefined;
-        var reader = connection.stream.reader(&reader_buffer);
+        var readerBuffer: [8192]u8 = undefined;
+        var reader = connection.stream.reader(&readerBuffer);
 
-        const request_line = reader.interface.takeDelimiterExclusive('\n') catch |err| switch (err) {
+        const requestLine = reader.interface.takeDelimiterExclusive('\n') catch |err| switch (err) {
             error.EndOfStream => {
                 std.log.warn("Unexpected end of stream while reading request line", .{});
                 continue;
@@ -325,13 +327,13 @@ pub fn waitForOAuthCallback(allocator: std.mem.Allocator, port: u16) ![]const u8
             },
         };
 
-        const request_line_trimmed = std.mem.trim(u8, request_line, " \t\r\n");
-        var request_parts = std.mem.splitSequence(u8, request_line_trimmed, " ");
-        const method = request_parts.next() orelse {
+        const requestLineTrimmed = std.mem.trim(u8, requestLine, " \t\r\n");
+        var requestParts = std.mem.splitSequence(u8, requestLineTrimmed, " ");
+        const method = requestParts.next() orelse {
             sendHTTPError(&connection.stream, 400, "Invalid request format") catch {};
             continue;
         };
-        const path_and_query = request_parts.next() orelse {
+        const pathAndQuery = requestParts.next() orelse {
             sendHTTPError(&connection.stream, 400, "Invalid request format") catch {};
             continue;
         };
@@ -341,28 +343,28 @@ pub fn waitForOAuthCallback(allocator: std.mem.Allocator, port: u16) ![]const u8
             continue;
         }
 
-        std.log.debug("Received OAuth callback request: GET {s}", .{path_and_query});
-        const query_start = std.mem.indexOf(u8, path_and_query, "?");
-        if (query_start == null) {
+        std.log.debug("Received OAuth callback request: GET {s}", .{pathAndQuery});
+        const queryStart = std.mem.indexOf(u8, pathAndQuery, "?");
+        if (queryStart == null) {
             sendHTTPError(&connection.stream, 400, "No query parameters in OAuth callback") catch {};
             continue;
         }
 
-        const query_string = path_and_query[query_start.? + 1 ..];
+        const queryString = pathAndQuery[queryStart.? + 1 ..];
 
-        if (std.mem.indexOf(u8, query_string, "error=")) |_| {
-            const error_code = extractQueryParam(query_string, "error") orelse "unknown_error";
-            const error_desc = extractQueryParam(query_string, "error_description");
-            sendOAuthErrorResponse(&connection.stream, error_code, error_desc) catch {};
-            return handleOAuthError(allocator, error_code, error_desc);
+        if (std.mem.indexOf(u8, queryString, "error=")) |_| {
+            const errorCode = extractQueryParam(queryString, "error") orelse "unknown_error";
+            const errorDesc = extractQueryParam(queryString, "error_description");
+            sendOAuthErrorResponse(&connection.stream, errorCode, errorDesc) catch {};
+            return handleOAuthError(allocator, errorCode, errorDesc);
         }
 
-        if (extractQueryParam(query_string, "code")) |auth_code| {
+        if (extractQueryParam(queryString, "code")) |authCode| {
             sendOAuthSuccessResponse(&connection.stream) catch |err| {
                 std.log.warn("Failed to send success response to browser: {}", .{err});
             };
             std.log.info("✅ Authorization code received successfully!", .{});
-            return allocator.dupe(u8, auth_code);
+            return allocator.dupe(u8, authCode);
         } else {
             sendHTTPError(&connection.stream, 400, "Authorization code not found in OAuth callback") catch {};
             continue;
@@ -370,28 +372,28 @@ pub fn waitForOAuthCallback(allocator: std.mem.Allocator, port: u16) ![]const u8
     }
 }
 
-fn sendHTTPError(stream: *std.net.Stream, status_code: u16, message: []const u8) !void {
-    const status_text = switch (status_code) {
+fn sendHTTPError(stream: *std.net.Stream, statusCode: u16, message: []const u8) !void {
+    const statusText = switch (statusCode) {
         400 => "Bad Request",
         404 => "Not Found",
         405 => "Method Not Allowed",
         500 => "Internal Server Error",
         else => "Error",
     };
-    var response_buffer: [1024]u8 = undefined;
-    var writer_buffer: [1024]u8 = undefined;
-    const response = try std.fmt.bufPrint(&response_buffer, "HTTP/1.1 {} {s}\r\n" ++
+    var responseBuffer: [1024]u8 = undefined;
+    var writerBuffer: [1024]u8 = undefined;
+    const response = try std.fmt.bufPrint(&responseBuffer, "HTTP/1.1 {} {s}\r\n" ++
         "Content-Type: text/plain\r\n" ++
         "Connection: close\r\n" ++
         "\r\n" ++
-        "{s}\r\n", .{ status_code, status_text, message });
-    var stream_writer = stream.writer(&writer_buffer);
-    const writer_interface = &stream_writer.interface;
-    try writer_interface.writeAll(response);
+        "{s}\r\n", .{ statusCode, statusText, message });
+    var streamWriter = stream.writer(&writerBuffer);
+    const writerInterface = &streamWriter.interface;
+    try writerInterface.writeAll(response);
 }
 
 fn sendOAuthSuccessResponse(stream: *std.net.Stream) !void {
-    const html_content = "<!DOCTYPE html>\n" ++
+    const htmlContent = "<!DOCTYPE html>\n" ++
         "<html><head><title>Authorization Successful</title>" ++
         "<style>body{font-family:Arial,sans-serif;max-width:600px;margin:50px auto;text-align:center;background:#f5f5f5;padding:20px}" ++
         ".success{color:#28a745;font-size:24px;margin:20px 0}" ++
@@ -400,23 +402,23 @@ fn sendOAuthSuccessResponse(stream: *std.net.Stream) !void {
         "<div class='message'>You can now close this browser tab and return to your terminal.</div>" ++
         "<div class='message'>The OAuth setup will continue automatically.</div></body></html>";
 
-    var response_buffer: [2048]u8 = undefined;
-    var writer_buffer: [2048]u8 = undefined;
-    const response = try std.fmt.bufPrint(&response_buffer, "HTTP/1.1 200 OK\r\n" ++
+    var responseBuffer: [2048]u8 = undefined;
+    var writerBuffer: [2048]u8 = undefined;
+    const response = try std.fmt.bufPrint(&responseBuffer, "HTTP/1.1 200 OK\r\n" ++
         "Content-Type: text/html\r\n" ++
         "Content-Length: {}\r\n" ++
         "Connection: close\r\n" ++
         "\r\n" ++
-        "{s}", .{ html_content.len, html_content });
-    var stream_writer = stream.writer(&writer_buffer);
-    const writer_interface = &stream_writer.interface;
-    try writer_interface.writeAll(response);
+        "{s}", .{ htmlContent.len, htmlContent });
+    var streamWriter = stream.writer(&writerBuffer);
+    const writerInterface = &streamWriter.interface;
+    try writerInterface.writeAll(response);
 }
 
-fn sendOAuthErrorResponse(stream: *std.net.Stream, error_code: []const u8, error_description: ?[]const u8) !void {
-    var html_buffer: [2048]u8 = undefined;
-    const description = error_description orelse "No additional details provided.";
-    const html_content = try std.fmt.bufPrint(&html_buffer, "<!DOCTYPE html>\n" ++
+fn sendOAuthErrorResponse(stream: *std.net.Stream, errorCode: []const u8, errorDescription: ?[]const u8) !void {
+    var htmlBuffer: [2048]u8 = undefined;
+    const description = errorDescription orelse "No additional details provided.";
+    const htmlContent = try std.fmt.bufPrint(&htmlBuffer, "<!DOCTYPE html>\n" ++
         "<html><head><title>Authorization Error</title>" ++
         "<style>body{{font-family:Arial,sans-serif;max-width:600Dpx;margin:50px auto;text-align:center;background:#f5f5f5;padding:20px}}" ++
         ".error{{color:#dc3545;font-size:24px;margin:20px 0}}" ++
@@ -425,53 +427,53 @@ fn sendOAuthErrorResponse(stream: *std.net.Stream, error_code: []const u8, error
         "<body><div class='error'>❌ Authorization Failed</div>" ++
         "<div class='message'><strong>Error:</strong> {s}</div>" ++
         "<div class='message'>{s}</div>" ++
-        "<div class='message'>Please close this tab and try the authorization again.</div></body></html>", .{ error_code, description });
+        "<div class='message'>Please close this tab and try the authorization again.</div></body></html>", .{ errorCode, description });
 
-    var response_buffer: [3072]u8 = undefined;
-    var writer_buffer: [3072]u8 = undefined;
-    const response = try std.fmt.bufPrint(&response_buffer, "HTTP/1.1 400 Bad Request\r\n" ++
+    var responseBuffer: [3072]u8 = undefined;
+    var writerBuffer: [3072]u8 = undefined;
+    const response = try std.fmt.bufPrint(&responseBuffer, "HTTP/1.1 400 Bad Request\r\n" ++
         "Content-Type: text/html\r\n" ++
         "Content-Length: {}\r\n" ++
         "Connection: close\r\n" ++
         "\r\n" ++
-        "{s}", .{ html_content.len, html_content });
-    var stream_writer = stream.writer(&writer_buffer);
-    const writer_interface = &stream_writer.interface;
-    try writer_interface.writeAll(response);
+        "{s}", .{ htmlContent.len, htmlContent });
+    var streamWriter = stream.writer(&writerBuffer);
+    const writerInterface = &streamWriter.interface;
+    try writerInterface.writeAll(response);
 }
 
-fn extractQueryParam(query_string: []const u8, param_name: []const u8) ?[]const u8 {
-    const search_key = std.fmt.allocPrint(std.heap.page_allocator, "{s}=", .{param_name}) catch return null;
-    defer std.heap.page_allocator.free(search_key);
-    const param_start = std.mem.indexOf(u8, query_string, search_key) orelse return null;
-    const value_start = param_start + search_key.len;
-    const value_end = std.mem.indexOfScalarPos(u8, query_string, value_start, '&') orelse query_string.len;
-    if (value_end <= value_start) return null;
-    return query_string[value_start..value_end];
+fn extractQueryParam(queryString: []const u8, paramName: []const u8) ?[]const u8 {
+    const searchKey = std.fmt.allocPrint(std.heap.page_allocator, "{s}=", .{paramName}) catch return null;
+    defer std.heap.page_allocator.free(searchKey);
+    const paramStart = std.mem.indexOf(u8, queryString, searchKey) orelse return null;
+    const valueStart = paramStart + searchKey.len;
+    const valueEnd = std.mem.indexOfScalarPos(u8, queryString, valueStart, '&') orelse queryString.len;
+    if (valueEnd <= valueStart) return null;
+    return queryString[valueStart..valueEnd];
 }
 
-pub fn validateState(received_state: []const u8, expected_state: []const u8) bool {
-    return std.mem.eql(u8, received_state, expected_state);
+pub fn validateState(receivedState: []const u8, expectedState: []const u8) bool {
+    return std.mem.eql(u8, receivedState, expectedState);
 }
 
-pub fn handleOAuthError(allocator: std.mem.Allocator, error_code: []const u8, error_description: ?[]const u8) Error {
-    std.log.err("OAuth error: {s}", .{error_code});
-    if (error_description) |desc| {
+pub fn handleOAuthError(allocator: std.mem.Allocator, errorCode: []const u8, errorDescription: ?[]const u8) Error {
+    std.log.err("OAuth error: {s}", .{errorCode});
+    if (errorDescription) |desc| {
         std.log.err("Description: {s}", .{desc});
     }
-    if (std.mem.eql(u8, error_code, "invalid_grant")) {
+    if (std.mem.eql(u8, errorCode, "invalid_grant")) {
         std.log.err("🔄 Your authorization has expired or been revoked.", .{});
         std.log.err("   Please run OAuth setup again: --oauth", .{});
         return Error.InvalidGrant;
-    } else if (std.mem.eql(u8, error_code, "invalid_request")) {
+    } else if (std.mem.eql(u8, errorCode, "invalid_request")) {
         std.log.err("⚠️  Invalid OAuth request. This may be a client issue.", .{});
         std.log.err("   Try running OAuth setup again: --oauth", .{});
         return Error.AuthError;
-    } else if (std.mem.eql(u8, error_code, "access_denied")) {
+    } else if (std.mem.eql(u8, errorCode, "access_denied")) {
         std.log.err("🚫 Authorization was denied.", .{});
         std.log.err("   Please authorize the application to continue.", .{});
         return Error.AuthError;
-    } else if (std.mem.eql(u8, error_code, "server_error")) {
+    } else if (std.mem.eql(u8, errorCode, "server_error")) {
         std.log.err("🔧 Server error occurred. Please try again later.", .{});
         return Error.NetworkError;
     }
@@ -479,17 +481,17 @@ pub fn handleOAuthError(allocator: std.mem.Allocator, error_code: []const u8, er
     return Error.AuthError;
 }
 
-pub fn validateCredentialsFile(file_path: []const u8) bool {
-    const file = std.fs.cwd().openFile(file_path, .{}) catch return false;
+pub fn validateCredentialsFile(filePath: []const u8) bool {
+    const file = std.fs.cwd().openFile(filePath, .{}) catch return false;
     defer file.close();
     const stat = file.stat() catch return false;
     return stat.size > 0;
 }
 
-pub fn cleanupCredentials(allocator: std.mem.Allocator, file_path: []const u8) !void {
-    if (validateCredentialsFile(file_path)) {
-        std.log.info("Removing invalid OAuth credentials file: {s}", .{file_path});
-        std.fs.cwd().deleteFile(file_path) catch |err| {
+pub fn cleanupCredentials(allocator: std.mem.Allocator, filePath: []const u8) !void {
+    if (validateCredentialsFile(filePath)) {
+        std.log.info("Removing invalid OAuth credentials file: {s}", .{filePath});
+        std.fs.cwd().deleteFile(filePath) catch |err| {
             std.log.warn("Failed to cleanup credentials file: {}", .{err});
         };
     }

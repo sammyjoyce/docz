@@ -209,7 +209,7 @@
         // Specific tools provided (for documentation)
         .provided_tools = .{
             .{
-                .name = "document_io",
+                .name = "io",
                 .description = "Read files, search content, and explore workspace structure",
                 .category = "document_processing",
                 .parameters = "file_path:string, pattern:string, recursive:bool",
@@ -221,25 +221,25 @@
                 .parameters = "file_path:string, operation:string, content:string",
             },
             .{
-                .name = "document_validator",
+                .name = "validate",
                 .description = "Validate document quality, structure, and compliance",
                 .category = "validation",
                 .parameters = "file_path:string, checks:string[], strict:bool",
             },
             .{
-                .name = "document_transformer",
+                .name = "document",
                 .description = "Create new documents, convert formats, and apply templates",
                 .category = "transformation",
                 .parameters = "source_path:string, target_path:string, template:string",
             },
             .{
-                .name = "workflow_processor",
+                .name = "workflow",
                 .description = "Execute complex multi-step workflows and batch operations",
                 .category = "workflow_processing",
                 .parameters = "workflow:string, files:string[], options:object",
             },
             .{
-                .name = "file_manager",
+                .name = "file",
                 .description = "Manage files and directories in the workspace",
                 .category = "file_management",
                 .parameters = "operation:string, path:string, target:string",

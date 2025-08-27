@@ -279,7 +279,7 @@ pub const Notification = struct {
                 else => null, // No background for limited terminals
             },
             .text_color = switch (strategy) {
-                .rich_text, .full_graphics, .enhanced_ansi => color_scheme.text orelse unified.Colors.WHITE,
+                .rich_text, .full_graphics, .ansi256 => color_scheme.text orelse unified.Colors.WHITE,
                 .basic_ascii => null, // Use default terminal colors
                 .fallback => null,
             },
@@ -358,7 +358,7 @@ pub const Notification = struct {
         // Icon
         if (self.config.show_icons) {
             const icon_text = switch (strategy) {
-                .rich_text, .full_graphics, .enhanced_ansi => notification_type.icon(),
+                .rich_text, .full_graphics, .ansi256 => notification_type.icon(),
                 else => notification_type.asciiIcon(),
             };
             try self.bridge.print(icon_text, unified.Style{ .fg_color = notification_type.color() });

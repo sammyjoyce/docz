@@ -148,7 +148,7 @@ const render = @import("render_shared");
 const components = @import("components_shared");
 
 // Advanced UI components
-const smart_input = @import("../../src/shared/components/smart_input.zig");
+const input_component = @import("../../src/shared/components/input_component.zig");
 const split_pane = @import("../../src/shared/tui/widgets/core/split_pane.zig");
 const file_tree = tui.widgets.core.file_tree;
 const modal = @import("../../src/shared/tui/widgets/modal.zig");
@@ -159,8 +159,8 @@ const canvas_engine = canvas_mod;
 // Markdown agent specific
 const markdown_tools = @import("tools/mod.zig");
 const ContentEditor = @import("tools/ContentEditor.zig");
-const DocumentValidator = @import("tools/DocumentValidator.zig");
-const document_transformer = @import("tools/document_transformer.zig");
+const Validate = @import("tools/validate.zig");
+const document_tool = @import("tools/document.zig");
 
 // Common utilities
 const fs = @import("common/fs.zig");
@@ -523,7 +523,7 @@ pub const MarkdownEditor = struct {
     content_editor: *ContentEditor,
 
     /// Document validator
-    validator: *DocumentValidator,
+    validator: *Validate,
 
     /// Auto-completion engine
     auto_completer: *AutoCompletionEngine,
@@ -953,7 +953,7 @@ pub const MarkdownEditor = struct {
         self.content_editor = try ContentEditor.init(self.allocator);
 
         // Initialize validator
-        self.validator = try DocumentValidator.init(self.allocator);
+        self.validator = try Validate.init(self.allocator);
 
         // Initialize auto-completion engine with markdown suggestions
         self.auto_completer = try AutoCompletionEngine.init(self.allocator);
@@ -989,7 +989,7 @@ pub const MarkdownEditor = struct {
     fn setupMarkdownAutoComplete(self: *Self) !void {
         _ = self;
         // Add markdown-specific suggestions to the auto-completer
-        const markdown_suggestions = [_]smart_input.Suggestion{
+        const markdown_suggestions = [_]input_component.Suggestion{
             .{ .text = "# ", .description = "Heading 1", .icon = "📄" },
             .{ .text = "## ", .description = "Heading 2", .icon = "📄" },
             .{ .text = "### ", .description = "Heading 3", .icon = "📄" },

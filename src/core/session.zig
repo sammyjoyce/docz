@@ -41,7 +41,7 @@ pub const SessionType = enum {
     /// Shared session with collaboration support
     shared,
     /// Read-only session for review and analysis
-    read_only,
+    readOnly,
 };
 
 /// Session state hierarchy levels
@@ -56,25 +56,25 @@ pub const StateLevel = enum {
 /// Session configuration with comprehensive options
 pub const SessionConfig = struct {
     /// Session type
-    session_type: SessionType = .interactive,
+    sessionType: SessionType = .interactive,
     /// Enable persistence
-    enable_persistence: bool = true,
+    enablePersistence: bool = true,
     /// Enable encryption
-    enable_encryption: bool = false,
+    enableEncryption: bool = false,
     /// Enable compression
-    enable_compression: bool = true,
+    enableCompression: bool = true,
     /// Enable checkpoints
-    enable_checkpoints: bool = true,
+    enableCheckpoints: bool = true,
     /// Checkpoint interval in seconds
-    checkpoint_interval: u32 = 300,
+    checkpointInterval: u32 = 300,
     /// Maximum session duration in seconds
-    max_duration: u32 = 3600,
+    maxDuration: u32 = 3600,
     /// Maximum state size in bytes
-    max_state_size: u64 = 10 * 1024 * 1024, // 10MB
+    maxStateSize: u64 = 10 * 1024 * 1024, // 10MB
     /// Enable audit logging
-    enable_audit: bool = true,
+    enableAudit: bool = true,
     /// Enable collaboration features
-    enable_collaboration: bool = false,
+    enableCollaboration: bool = false,
     /// Session title
     title: []const u8 = "AI Agent Session",
     /// Session description
@@ -108,11 +108,11 @@ pub const SessionConfig = struct {
 
 /// Access Control List entry
 pub const ACLEntry = struct {
-    user_id: []const u8,
+    userId: []const u8,
     permissions: []const Permission,
-    granted_by: []const u8,
-    granted_at: i64,
-    expires_at: ?i64 = null,
+    grantedBy: []const u8,
+    grantedAt: i64,
+    expiresAt: ?i64 = null,
 
     pub const Permission = enum {
         read,
@@ -141,7 +141,7 @@ pub const SessionState = struct {
     /// State snapshots for undo/redo
     snapshots: std.ArrayList(StateSnapshot),
     /// Current snapshot index
-    current_snapshot: usize = 0,
+    currentSnapshot: usize = 0,
     /// State variables
     variables: std.StringHashMap([]const u8),
     /// State metadata
@@ -233,25 +233,25 @@ pub const SessionState = struct {
     pub fn createSnapshot(self: *SessionState, description: []const u8) !void {
         const snapshot = try StateSnapshot.create(self.allocator, self, description);
         try self.snapshots.append(snapshot);
-        self.current_snapshot = self.snapshots.items.len - 1;
+        self.currentSnapshot = self.snapshots.items.len - 1;
     }
 
     /// Undo to previous snapshot
     pub fn undo(self: *SessionState) !bool {
-        if (self.current_snapshot == 0) return false;
+        if (self.currentSnapshot == 0) return false;
 
-        self.current_snapshot -= 1;
-        const snapshot = &self.snapshots.items[self.current_snapshot];
+        self.currentSnapshot -= 1;
+        const snapshot = &self.snapshots.items[self.currentSnapshot];
         try snapshot.restore(self);
         return true;
     }
 
     /// Redo to next snapshot
     pub fn redo(self: *SessionState) !bool {
-        if (self.current_snapshot >= self.snapshots.items.len - 1) return false;
+        if (self.currentSnapshot >= self.snapshots.items.len - 1) return false;
 
-        self.current_snapshot += 1;
-        const snapshot = &self.snapshots.items[self.current_snapshot];
+        self.currentSnapshot += 1;
+        const snapshot = &self.snapshots.items[self.currentSnapshot];
         try snapshot.restore(self);
         return true;
     }
@@ -295,14 +295,14 @@ pub const StateSnapshot = struct {
     timestamp: i64,
     description: []const u8,
     /// Serialized state data
-    state_data: []const u8,
+    stateData: []const u8,
 
     /// Create snapshot from current state
     pub fn create(allocator: Allocator, state: *SessionState, description: []const u8) !StateSnapshot {
-        const desc_copy = try allocator.dupe(u8, description);
+        const descCopy = try allocator.dupe(u8, description);
 
         // Serialize current state
-        const state_json = .{
+        const stateJson = .{
             .version = state.version,
             .global = state.global,
             .session = state.session,
@@ -313,26 +313,26 @@ pub const StateSnapshot = struct {
             .metadata = state.metadata,
         };
 
-        const serialized = try json.stringifyAlloc(allocator, state_json, .{ .whitespace = true });
+        const serialized = try json.stringifyAlloc(allocator, stateJson, .{ .whitespace = true });
 
         return StateSnapshot{
             .allocator = allocator,
             .timestamp = time.timestamp(),
-            .description = desc_copy,
-            .state_data = serialized,
+            .description = descCopy,
+            .stateData = serialized,
         };
     }
 
     /// Deinitialize snapshot
     pub fn deinit(self: *StateSnapshot) void {
         self.allocator.free(self.description);
-        self.allocator.free(self.state_data);
+        self.allocator.free(self.stateData);
     }
 
     /// Restore state from snapshot
     pub fn restore(self: *StateSnapshot, state: *SessionState) !void {
         // Parse serialized state
-        const parsed = try json.parseFromSlice(json.Value, self.allocator, self.state_data, .{});
+        const parsed = try json.parseFromSlice(json.Value, self.allocator, self.stateData, .{});
         defer parsed.deinit();
 
         const root = parsed.value.object;
@@ -427,136 +427,136 @@ pub const StateSnapshot = struct {
     }
 };
 
-/// Session data structure with enhanced features
-pub const SessionData = struct {
+/// Session data structure
+pub const Session = struct {
     allocator: Allocator,
     /// Unique session identifier
-    session_id: []const u8,
+    sessionId: []const u8,
     /// Session configuration
     config: SessionConfig,
     /// Session state
     state: SessionState,
     /// Start time
-    start_time: i64,
+    startTime: i64,
     /// Last activity time
-    last_activity: i64,
+    lastActivity: i64,
     /// End time (if session ended)
-    end_time: ?i64 = null,
+    endTime: ?i64 = null,
     /// Session is active
-    is_active: bool = true,
+    isActive: bool = true,
     /// Conversation history
-    conversation_history: std.ArrayList(ConversationEntry),
+    conversationHistory: std.ArrayList(ConversationEntry),
     /// Command history with search
-    command_history: std.ArrayList(CommandEntry),
+    commandHistory: std.ArrayList(CommandEntry),
     /// Session statistics
     stats: SessionStats,
     /// Performance metrics
     performance: PerformanceMetrics,
     /// Encryption key (if encrypted)
-    encryption_key: ?[32]u8 = null,
+    encryptionKey: ?[32]u8 = null,
     /// Session lock status
-    is_locked: bool = false,
+    isLocked: bool = false,
     /// Lock owner
-    lock_owner: ?[]const u8 = null,
+    lockOwner: ?[]const u8 = null,
     /// Collaborators (for shared sessions)
     collaborators: std.ArrayList(Collaborator),
     /// Audit log
-    audit_log: std.ArrayList(AuditEntry),
+    auditLog: std.ArrayList(AuditEntry),
 
     /// Initialize session data
-    pub fn init(allocator: Allocator, session_id: []const u8, config: SessionConfig) !SessionData {
-        const id_copy = try allocator.dupe(u8, session_id);
-        var session_config = config;
+    pub fn init(allocator: Allocator, sessionId: []const u8, config: SessionConfig) !Session {
+        const idCopy = try allocator.dupe(u8, sessionId);
+        var sessionConfig = config;
         // Deep copy config to avoid ownership issues
-        session_config.acl = try allocator.alloc(ACLEntry, config.acl.items.len);
+        sessionConfig.acl = try allocator.alloc(ACLEntry, config.acl.items.len);
         for (config.acl.items, 0..) |entry, i| {
-            session_config.acl.items[i] = .{
-                .user_id = try allocator.dupe(u8, entry.user_id),
+            sessionConfig.acl.items[i] = .{
+                .userId = try allocator.dupe(u8, entry.userId),
                 .permissions = try allocator.dupe(ACLEntry.Permission, entry.permissions),
-                .granted_by = try allocator.dupe(u8, entry.granted_by),
-                .granted_at = entry.granted_at,
-                .expires_at = entry.expires_at,
+                .grantedBy = try allocator.dupe(u8, entry.grantedBy),
+                .grantedAt = entry.grantedAt,
+                .expiresAt = entry.expiresAt,
             };
         }
 
-        var metadata_copy = std.StringHashMap([]const u8).init(allocator);
+        var metadataCopy = std.StringHashMap([]const u8).init(allocator);
         var it = config.metadata.iterator();
         while (it.next()) |entry| {
             const key = try allocator.dupe(u8, entry.key_ptr.*);
             const value = try allocator.dupe(u8, entry.value_ptr.*);
-            try metadata_copy.put(key, value);
+            try metadataCopy.put(key, value);
         }
-        session_config.metadata = metadata_copy;
+        sessionConfig.metadata = metadataCopy;
 
         const now = time.timestamp();
 
-        return SessionData{
+        return Session{
             .allocator = allocator,
-            .session_id = id_copy,
-            .config = session_config,
+            .sessionId = idCopy,
+            .config = sessionConfig,
             .state = try SessionState.init(allocator),
-            .start_time = now,
-            .last_activity = now,
-            .conversation_history = std.ArrayList(ConversationEntry).init(allocator),
-            .command_history = std.ArrayList(CommandEntry).init(allocator),
+            .startTime = now,
+            .lastActivity = now,
+            .conversationHistory = std.ArrayList(ConversationEntry).init(allocator),
+            .commandHistory = std.ArrayList(CommandEntry).init(allocator),
             .stats = SessionStats{},
             .performance = PerformanceMetrics{},
             .collaborators = std.ArrayList(Collaborator).init(allocator),
-            .audit_log = std.ArrayList(AuditEntry).init(allocator),
+            .auditLog = std.ArrayList(AuditEntry).init(allocator),
         };
     }
 
     /// Deinitialize session data
-    pub fn deinit(self: *SessionData) void {
-        self.allocator.free(self.session_id);
+    pub fn deinit(self: *Session) void {
+        self.allocator.free(self.sessionId);
         self.config.deinit();
         self.state.deinit();
 
-        for (self.conversation_history.items) |*entry| {
+        for (self.conversationHistory.items) |*entry| {
             entry.deinit();
         }
-        self.conversation_history.deinit();
+        self.conversationHistory.deinit();
 
-        for (self.command_history.items) |*entry| {
+        for (self.commandHistory.items) |*entry| {
             entry.deinit();
         }
-        self.command_history.deinit();
+        self.commandHistory.deinit();
 
         for (self.collaborators.items) |*collab| {
             collab.deinit();
         }
         self.collaborators.deinit();
 
-        for (self.audit_log.items) |*entry| {
+        for (self.auditLog.items) |*entry| {
             entry.deinit();
         }
-        self.audit_log.deinit();
+        self.auditLog.deinit();
 
-        if (self.lock_owner) |owner| {
+        if (self.lockOwner) |owner| {
             self.allocator.free(owner);
         }
     }
 
     /// Add conversation entry
-    pub fn addConversationEntry(self: *SessionData, role: anytype, content: []const u8, metadata: ?json.Value) !void {
+    pub fn addConversationEntry(self: *Session, role: anytype, content: []const u8, metadata: ?json.Value) !void {
         const entry = ConversationEntry{
             .timestamp = time.timestamp(),
             .role = role,
             .content = try self.allocator.dupe(u8, content),
             .metadata = metadata,
         };
-        try self.conversation_history.append(entry);
-        self.stats.messages_processed += 1;
-        self.last_activity = time.timestamp();
+        try self.conversationHistory.append(entry);
+        self.stats.messagesProcessed += 1;
+        self.lastActivity = time.timestamp();
 
         // Audit log
-        if (self.config.enable_audit) {
-            try self.addAuditEntry(.conversation_added, "Conversation entry added", null);
+        if (self.config.enableAudit) {
+            try self.addAuditEntry(.conversationAdded, "Conversation entry added", null);
         }
     }
 
     /// Add command entry to history
-    pub fn addCommandEntry(self: *SessionData, command: []const u8, args: ?[]const u8, result: ?[]const u8, success: bool) !void {
+    pub fn addCommandEntry(self: *Session, command: []const u8, args: ?[]const u8, result: ?[]const u8, success: bool) !void {
         const entry = CommandEntry{
             .timestamp = time.timestamp(),
             .command = try self.allocator.dupe(u8, command),
@@ -564,24 +564,24 @@ pub const SessionData = struct {
             .result = if (result) |r| try self.allocator.dupe(u8, r) else null,
             .success = success,
         };
-        try self.command_history.append(entry);
-        self.stats.commands_executed += 1;
-        self.last_activity = time.timestamp();
+        try self.commandHistory.append(entry);
+        self.stats.commandsExecuted += 1;
+        self.lastActivity = time.timestamp();
 
         // Audit log
-        if (self.config.enable_audit) {
+        if (self.config.enableAudit) {
             const details = try fmt.allocPrint(self.allocator, "Command: {s}, Success: {}", .{ command, success });
             defer self.allocator.free(details);
-            try self.addAuditEntry(.command_executed, details, null);
+            try self.addAuditEntry(.commandExecuted, details, null);
         }
     }
 
     /// Search command history
-    pub fn searchCommandHistory(self: *SessionData, query: []const u8) ![]const CommandEntry {
+    pub fn searchCommandHistory(self: *Session, query: []const u8) ![]const CommandEntry {
         var results = std.ArrayList(CommandEntry).init(self.allocator);
         defer results.deinit();
 
-        for (self.command_history.items) |entry| {
+        for (self.commandHistory.items) |entry| {
             if (mem.indexOf(u8, entry.command, query) != null) {
                 try results.append(entry);
             } else if (entry.args) |args| {
@@ -595,96 +595,96 @@ pub const SessionData = struct {
     }
 
     /// Add collaborator (for shared sessions)
-    pub fn addCollaborator(self: *SessionData, user_id: []const u8, permissions: []const ACLEntry.Permission) !void {
-        if (self.config.session_type != .shared) {
+    pub fn addCollaborator(self: *Session, userId: []const u8, permissions: []const ACLEntry.Permission) !void {
+        if (self.config.sessionType != .shared) {
             return SessionError.InvalidSessionType;
         }
 
         const collab = Collaborator{
-            .user_id = try self.allocator.dupe(u8, user_id),
+            .userId = try self.allocator.dupe(u8, userId),
             .permissions = try self.allocator.dupe(ACLEntry.Permission, permissions),
-            .joined_at = time.timestamp(),
+            .joinedAt = time.timestamp(),
         };
         try self.collaborators.append(collab);
 
         // Audit log
-        if (self.config.enable_audit) {
-            const details = try fmt.allocPrint(self.allocator, "Collaborator added: {s}", .{user_id});
+        if (self.config.enableAudit) {
+            const details = try fmt.allocPrint(self.allocator, "Collaborator added: {s}", .{userId});
             defer self.allocator.free(details);
-            try self.addAuditEntry(.collaborator_added, details, user_id);
+            try self.addAuditEntry(.collaboratorAdded, details, userId);
         }
     }
 
     /// Remove collaborator
-    pub fn removeCollaborator(self: *SessionData, user_id: []const u8) !void {
+    pub fn removeCollaborator(self: *Session, userId: []const u8) !void {
         for (self.collaborators.items, 0..) |collab, i| {
-            if (mem.eql(u8, collab.user_id, user_id)) {
-                var collab_to_remove = self.collaborators.orderedRemove(i);
-                collab_to_remove.deinit();
+            if (mem.eql(u8, collab.userId, userId)) {
+                var collabToRemove = self.collaborators.orderedRemove(i);
+                collabToRemove.deinit();
                 break;
             }
         }
 
         // Audit log
-        if (self.config.enable_audit) {
-            const details = try fmt.allocPrint(self.allocator, "Collaborator removed: {s}", .{user_id});
+        if (self.config.enableAudit) {
+            const details = try fmt.allocPrint(self.allocator, "Collaborator removed: {s}", .{userId});
             defer self.allocator.free(details);
-            try self.addAuditEntry(.collaborator_removed, details, user_id);
+            try self.addAuditEntry(.collaboratorRemoved, details, userId);
         }
     }
 
     /// Lock session
-    pub fn lock(self: *SessionData, owner: []const u8) !void {
-        if (self.is_locked) {
+    pub fn lock(self: *Session, owner: []const u8) !void {
+        if (self.isLocked) {
             return SessionError.SessionLocked;
         }
 
-        self.is_locked = true;
-        self.lock_owner = try self.allocator.dupe(u8, owner);
+        self.isLocked = true;
+        self.lockOwner = try self.allocator.dupe(u8, owner);
 
         // Audit log
-        if (self.config.enable_audit) {
+        if (self.config.enableAudit) {
             const details = try fmt.allocPrint(self.allocator, "Session locked by: {s}", .{owner});
             defer self.allocator.free(details);
-            try self.addAuditEntry(.session_locked, details, owner);
+            try self.addAuditEntry(.sessionLocked, details, owner);
         }
     }
 
     /// Unlock session
-    pub fn unlock(self: *SessionData, owner: []const u8) !void {
-        if (!self.is_locked) return;
-        if (self.lock_owner) |lock_owner| {
-            if (!mem.eql(u8, lock_owner, owner)) {
+    pub fn unlock(self: *Session, owner: []const u8) !void {
+        if (!self.isLocked) return;
+        if (self.lockOwner) |lockOwner| {
+            if (!mem.eql(u8, lockOwner, owner)) {
                 return SessionError.AccessDenied;
             }
         }
 
-        self.is_locked = false;
-        self.allocator.free(self.lock_owner.?);
-        self.lock_owner = null;
+        self.isLocked = false;
+        self.allocator.free(self.lockOwner.?);
+        self.lockOwner = null;
 
         // Audit log
-        if (self.config.enable_audit) {
+        if (self.config.enableAudit) {
             const details = try fmt.allocPrint(self.allocator, "Session unlocked by: {s}", .{owner});
             defer self.allocator.free(details);
-            try self.addAuditEntry(.session_unlocked, details, owner);
+            try self.addAuditEntry(.sessionUnlocked, details, owner);
         }
     }
 
     /// Check if user has permission
-    pub fn hasPermission(self: *SessionData, user_id: []const u8, permission: ACLEntry.Permission) bool {
+    pub fn hasPermission(self: *Session, userId: []const u8, permission: ACLEntry.Permission) bool {
         // Owner always has all permissions
-        if (mem.eql(u8, self.config.owner, user_id)) {
+        if (mem.eql(u8, self.config.owner, userId)) {
             return true;
         }
 
         // Check ACL
         for (self.config.acl.items) |entry| {
-            if (mem.eql(u8, entry.user_id, user_id)) {
+            if (mem.eql(u8, entry.userId, userId)) {
                 // Check if permission is granted and not expired
                 for (entry.permissions) |p| {
                     if (p == permission) {
-                        if (entry.expires_at) |expires| {
+                        if (entry.expiresAt) |expires| {
                             if (time.timestamp() > expires) {
                                 return false; // Permission expired
                             }
@@ -696,9 +696,9 @@ pub const SessionData = struct {
         }
 
         // Check collaborator permissions for shared sessions
-        if (self.config.session_type == .shared) {
+        if (self.config.sessionType == .shared) {
             for (self.collaborators.items) |collab| {
-                if (mem.eql(u8, collab.user_id, user_id)) {
+                if (mem.eql(u8, collab.userId, userId)) {
                     for (collab.permissions) |p| {
                         if (p == permission) {
                             return true;
@@ -712,44 +712,44 @@ pub const SessionData = struct {
     }
 
     /// Add audit entry
-    pub fn addAuditEntry(self: *SessionData, event_type: AuditEventType, details: []const u8, user_id: ?[]const u8) !void {
+    pub fn addAuditEntry(self: *Session, eventType: AuditEventType, details: []const u8, userId: ?[]const u8) !void {
         const entry = AuditEntry{
             .timestamp = time.timestamp(),
-            .event_type = event_type,
-            .user_id = if (user_id) |uid| try self.allocator.dupe(u8, uid) else null,
+            .eventType = eventType,
+            .userId = if (userId) |uid| try self.allocator.dupe(u8, uid) else null,
             .details = try self.allocator.dupe(u8, details),
-            .ip_address = null, // Would be populated in real implementation
-            .user_agent = null, // Would be populated in real implementation
+            .ipAddress = null, // Would be populated in real implementation
+            .userAgent = null, // Would be populated in real implementation
         };
-        try self.audit_log.append(entry);
+        try self.auditLog.append(entry);
     }
 
     /// Get session duration in seconds
-    pub fn getDuration(self: *SessionData) i64 {
-        const end_time = self.end_time orelse time.timestamp();
-        return end_time - self.start_time;
+    pub fn getDuration(self: *Session) i64 {
+        const endTime = self.endTime orelse time.timestamp();
+        return endTime - self.startTime;
     }
 
     /// Check if session is expired
-    pub fn isExpired(self: *SessionData) bool {
+    pub fn isExpired(self: *Session) bool {
         const duration = self.getDuration();
-        return @as(u64, @intCast(duration)) > self.config.max_duration;
+        return @as(u64, @intCast(duration)) > self.config.maxDuration;
     }
 
     /// End session
-    pub fn endSession(self: *SessionData) void {
-        self.is_active = false;
-        self.end_time = time.timestamp();
-        self.last_activity = self.end_time.?;
+    pub fn endSession(self: *Session) void {
+        self.isActive = false;
+        self.endTime = time.timestamp();
+        self.lastActivity = self.endTime.?;
 
         // Audit log
-        if (self.config.enable_audit) {
-            self.addAuditEntry(.session_ended, "Session ended", null) catch {};
+        if (self.config.enableAudit) {
+            self.addAuditEntry(.sessionEnded, "Session ended", null) catch {};
         }
     }
 
     /// Update performance metrics
-    pub fn updatePerformanceMetrics(self: *SessionData) void {
+    pub fn updatePerformanceMetrics(self: *Session) void {
         self.performance.update();
     }
 };
@@ -792,54 +792,54 @@ pub const CommandEntry = struct {
 
 /// Collaborator information for shared sessions
 pub const Collaborator = struct {
-    user_id: []const u8,
+    userId: []const u8,
     permissions: []const ACLEntry.Permission,
-    joined_at: i64,
+    joinedAt: i64,
 
     /// Deinitialize collaborator
     pub fn deinit(self: *Collaborator, allocator: Allocator) void {
-        allocator.free(self.user_id);
+        allocator.free(self.userId);
         allocator.free(self.permissions);
     }
 };
 
 /// Audit event types
 pub const AuditEventType = enum {
-    session_created,
-    session_loaded,
-    session_saved,
-    session_ended,
-    session_locked,
-    session_unlocked,
-    conversation_added,
-    command_executed,
-    state_modified,
-    collaborator_added,
-    collaborator_removed,
-    permission_granted,
-    permission_revoked,
-    security_violation,
+    sessionCreated,
+    sessionLoaded,
+    sessionSaved,
+    sessionEnded,
+    sessionLocked,
+    sessionUnlocked,
+    conversationAdded,
+    commandExecuted,
+    stateModified,
+    collaboratorAdded,
+    collaboratorRemoved,
+    permissionGranted,
+    permissionRevoked,
+    securityViolation,
 };
 
 /// Audit log entry
 pub const AuditEntry = struct {
     timestamp: i64,
-    event_type: AuditEventType,
-    user_id: ?[]const u8 = null,
+    eventType: AuditEventType,
+    userId: ?[]const u8 = null,
     details: []const u8,
-    ip_address: ?[]const u8 = null,
-    user_agent: ?[]const u8 = null,
+    ipAddress: ?[]const u8 = null,
+    userAgent: ?[]const u8 = null,
 
     /// Deinitialize audit entry
     pub fn deinit(self: *AuditEntry, allocator: Allocator) void {
-        if (self.user_id) |uid| {
+        if (self.userId) |uid| {
             allocator.free(uid);
         }
         allocator.free(self.details);
-        if (self.ip_address) |ip| {
+        if (self.ipAddress) |ip| {
             allocator.free(ip);
         }
-        if (self.user_agent) |ua| {
+        if (self.userAgent) |ua| {
             allocator.free(ua);
         }
     }
@@ -848,116 +848,116 @@ pub const AuditEntry = struct {
 /// Session statistics with enhanced metrics
 pub const SessionStats = struct {
     /// Total messages processed
-    messages_processed: u64 = 0,
+    messagesProcessed: u64 = 0,
     /// Total commands executed
-    commands_executed: u64 = 0,
+    commandsExecuted: u64 = 0,
     /// Total tools executed
-    tools_executed: u64 = 0,
+    toolsExecuted: u64 = 0,
     /// Total tokens used
-    total_tokens: u64 = 0,
+    totalTokens: u64 = 0,
     /// Input tokens
-    input_tokens: u64 = 0,
+    inputTokens: u64 = 0,
     /// Output tokens
-    output_tokens: u64 = 0,
+    outputTokens: u64 = 0,
     /// Authentication attempts
-    auth_attempts: u64 = 0,
+    authAttempts: u64 = 0,
     /// Authentication failures
-    auth_failures: u64 = 0,
+    authFailures: u64 = 0,
     /// State snapshots created
-    snapshots_created: u64 = 0,
+    snapshotsCreated: u64 = 0,
     /// Undo operations performed
-    undo_operations: u64 = 0,
+    undoOperations: u64 = 0,
     /// Redo operations performed
-    redo_operations: u64 = 0,
+    redoOperations: u64 = 0,
     /// Checkpoints created
-    checkpoints_created: u64 = 0,
+    checkpointsCreated: u64 = 0,
     /// Recovery operations performed
-    recovery_operations: u64 = 0,
+    recoveryOperations: u64 = 0,
     /// Last activity timestamp
-    last_activity: i64 = 0,
+    lastActivity: i64 = 0,
     /// Average response time in nanoseconds
-    average_response_time: i64 = 0,
+    averageResponseTime: i64 = 0,
     /// Last response time
-    last_response_time: i64 = 0,
+    lastResponseTime: i64 = 0,
     /// Error count
-    error_count: u64 = 0,
+    errorCount: u64 = 0,
     /// Average session duration
-    average_session_duration: f64 = 0,
+    averageSessionDuration: f64 = 0,
 
     /// Update statistics with new session data
-    pub fn updateWithSession(self: *SessionStats, session: *SessionData) void {
-        self.messages_processed = session.conversation_history.items.len;
-        self.commands_executed = session.command_history.items.len;
-        self.last_activity = session.last_activity;
+    pub fn updateWithSession(self: *SessionStats, session: *Session) void {
+        self.messagesProcessed = session.conversationHistory.items.len;
+        self.commandsExecuted = session.commandHistory.items.len;
+        self.lastActivity = session.lastActivity;
     }
 
     /// Record response time
-    pub fn recordResponseTime(self: *SessionStats, response_time_ns: i64) void {
-        self.last_response_time = response_time_ns;
+    pub fn recordResponseTime(self: *SessionStats, responseTimeNs: i64) void {
+        self.lastResponseTime = responseTimeNs;
         // Update rolling average
-        if (self.average_response_time == 0) {
-            self.average_response_time = response_time_ns;
+        if (self.averageResponseTime == 0) {
+            self.averageResponseTime = responseTimeNs;
         } else {
-            self.average_response_time = (self.average_response_time + response_time_ns) / 2;
+            self.averageResponseTime = (self.averageResponseTime + responseTimeNs) / 2;
         }
     }
 
     /// Record token usage
-    pub fn recordTokenUsage(self: *SessionStats, input_tokens: u64, output_tokens: u64) void {
-        self.input_tokens += input_tokens;
-        self.output_tokens += output_tokens;
-        self.total_tokens += input_tokens + output_tokens;
+    pub fn recordTokenUsage(self: *SessionStats, inputTokens: u64, outputTokens: u64) void {
+        self.inputTokens += inputTokens;
+        self.outputTokens += outputTokens;
+        self.totalTokens += inputTokens + outputTokens;
     }
 
     /// Record authentication attempt
     pub fn recordAuthAttempt(self: *SessionStats, success: bool) void {
-        self.auth_attempts += 1;
+        self.authAttempts += 1;
         if (!success) {
-            self.auth_failures += 1;
+            self.authFailures += 1;
         }
     }
 
     /// Record error
     pub fn recordError(self: *SessionStats) void {
-        self.error_count += 1;
+        self.errorCount += 1;
     }
 
     /// Get success rate as percentage
     pub fn getAuthSuccessRate(self: *SessionStats) f64 {
-        if (self.auth_attempts == 0) return 100.0;
-        const success_count = self.auth_attempts - self.auth_failures;
-        return @as(f64, @floatFromInt(success_count)) / @as(f64, @floatFromInt(self.auth_attempts)) * 100.0;
+        if (self.authAttempts == 0) return 100.0;
+        const successCount = self.authAttempts - self.authFailures;
+        return @as(f64, @floatFromInt(successCount)) / @as(f64, @floatFromInt(self.authAttempts)) * 100.0;
     }
 };
 
 /// Performance metrics for monitoring agent performance
 pub const PerformanceMetrics = struct {
-    render_time_ms: f64 = 0,
-    response_time_ms: f64 = 0,
-    memory_usage_mb: f64 = 0,
-    cpu_usage_percent: f64 = 0,
-    cache_hit_rate: f64 = 0,
-    last_updated: i64 = 0,
+    renderTimeMs: f64 = 0,
+    responseTimeMs: f64 = 0,
+    memoryUsageMb: f64 = 0,
+    cpuUsagePercent: f64 = 0,
+    cacheHitRate: f64 = 0,
+    lastUpdated: i64 = 0,
 
     /// Update metrics with current values
     pub fn update(self: *PerformanceMetrics) void {
-        self.last_updated = time.timestamp();
+        self.lastUpdated = time.timestamp();
         // In a real implementation, these would be measured from system
         // For now, we'll set some placeholder values
-        self.memory_usage_mb = 50.0; // Placeholder
-        self.cpu_usage_percent = 15.0; // Placeholder
-        self.cache_hit_rate = 85.0; // Placeholder
+        self.memoryUsageMb = 50.0; // Placeholder
+        self.cpuUsagePercent = 15.0; // Placeholder
+        self.cacheHitRate = 85.0; // Placeholder
     }
 
     /// Record render time
-    pub fn recordRenderTime(self: *PerformanceMetrics, render_time_ms: f64) void {
-        self.render_time_ms = render_time_ms;
+    pub fn recordRenderTime(self: *PerformanceMetrics, renderTimeMs: f64) void {
+        self.renderTimeMs = renderTimeMs;
         self.update();
     }
 
     /// Record response time
-    pub fn recordResponseTime(self: *PerformanceMetrics, response_time_ms: f64) void {
-        self.response_time_ms = response_time_ms;
+    pub fn recordResponseTime(self: *PerformanceMetrics, responseTimeMs: f64) void {
+        self.responseTimeMs = responseTimeMs;
         self.update();
     }
 
@@ -971,161 +971,161 @@ pub const PerformanceMetrics = struct {
             \\  CPU Usage: {d:.1}%
             \\  Cache Hit Rate: {d:.1}%
         , .{
-            self.render_time_ms,
-            self.response_time_ms,
-            self.memory_usage_mb,
-            self.cpu_usage_percent,
-            self.cache_hit_rate,
+            self.renderTimeMs,
+            self.responseTimeMs,
+            self.memoryUsageMb,
+            self.cpuUsagePercent,
+            self.cacheHitRate,
         });
     }
 };
 
 /// Session manager for persistence and lifecycle management
-pub const Session = struct {
+pub const SessionManager = struct {
     allocator: Allocator,
-    sessions_dir: []const u8,
-    checkpoints_dir: []const u8,
-    history_dir: []const u8,
-    active_sessions: std.StringHashMap(*SessionData),
+    sessionsDir: []const u8,
+    checkpointsDir: []const u8,
+    historyDir: []const u8,
+    activeSessions: std.StringHashMap(*Session),
     stats: SessionStats,
     /// Encryption key for session encryption
-    master_key: ?[32]u8 = null,
+    masterKey: ?[32]u8 = null,
     /// Compression enabled
-    compression_enabled: bool = true,
+    compressionEnabled: bool = true,
 
     /// Initialize session manager
-    pub fn init(allocator: Allocator, sessions_dir: []const u8, enable_encryption: bool) !*Session {
-        const manager = try allocator.create(Session);
-        manager.* = Session{
+    pub fn init(allocator: Allocator, sessionsDir: []const u8, enableEncryption: bool) !*SessionManager {
+        const manager = try allocator.create(SessionManager);
+        manager.* = SessionManager{
             .allocator = allocator,
-            .sessions_dir = try allocator.dupe(u8, sessions_dir),
-            .checkpoints_dir = try fmt.allocPrint(allocator, "{s}/checkpoints", .{sessions_dir}),
-            .history_dir = try fmt.allocPrint(allocator, "{s}/history", .{sessions_dir}),
-            .active_sessions = std.StringHashMap(*SessionData).init(allocator),
+            .sessionsDir = try allocator.dupe(u8, sessionsDir),
+            .checkpointsDir = try fmt.allocPrint(allocator, "{s}/checkpoints", .{sessionsDir}),
+            .historyDir = try fmt.allocPrint(allocator, "{s}/history", .{sessionsDir}),
+            .activeSessions = std.StringHashMap(*Session).init(allocator),
             .stats = SessionStats{},
-            .compression_enabled = true,
+            .compressionEnabled = true,
         };
 
         // Generate master key if encryption is enabled
-        if (enable_encryption) {
-            crypto.random.bytes(&manager.master_key.?);
+        if (enableEncryption) {
+            crypto.random.bytes(&manager.masterKey.?);
         }
 
         // Create directories
-        try fs.cwd().makePath(sessions_dir);
-        try fs.cwd().makePath(manager.checkpoints_dir);
-        try fs.cwd().makePath(manager.history_dir);
+        try fs.cwd().makePath(sessionsDir);
+        try fs.cwd().makePath(manager.checkpointsDir);
+        try fs.cwd().makePath(manager.historyDir);
 
         return manager;
     }
 
     /// Deinitialize session manager
-    pub fn deinit(self: *Session) void {
-        self.allocator.free(self.sessions_dir);
-        self.allocator.free(self.checkpoints_dir);
-        self.allocator.free(self.history_dir);
+    pub fn deinit(self: *SessionManager) void {
+        self.allocator.free(self.sessionsDir);
+        self.allocator.free(self.checkpointsDir);
+        self.allocator.free(self.historyDir);
 
-        var it = self.active_sessions.iterator();
+        var it = self.activeSessions.iterator();
         while (it.next()) |entry| {
             self.allocator.free(entry.key_ptr.*);
             entry.value_ptr.*.deinit();
             self.allocator.destroy(entry.value_ptr.*);
         }
-        self.active_sessions.deinit();
+        self.activeSessions.deinit();
     }
 
     /// Create a new session
-    pub fn createSession(self: *Session, session_id: []const u8, config: SessionConfig) !*SessionData {
-        const session = try self.allocator.create(SessionData);
-        session.* = try SessionData.init(self.allocator, session_id, config);
+    pub fn createSession(self: *SessionManager, sessionId: []const u8, config: SessionConfig) !*Session {
+        const session = try self.allocator.create(Session);
+        session.* = try Session.init(self.allocator, sessionId, config);
 
-        const key = try self.allocator.dupe(u8, session_id);
-        try self.active_sessions.put(key, session);
+        const key = try self.allocator.dupe(u8, sessionId);
+        try self.activeSessions.put(key, session);
 
         self.stats.updateWithSession(session);
 
         // Audit log
-        if (config.enable_audit) {
-            try session.addAuditEntry(.session_created, "Session created", config.owner);
+        if (config.enableAudit) {
+            try session.addAuditEntry(.sessionCreated, "Session created", config.owner);
         }
 
         return session;
     }
 
     /// Get existing session
-    pub fn getSession(self: *Session, session_id: []const u8) ?*SessionData {
-        return self.active_sessions.get(session_id);
+    pub fn getSession(self: *SessionManager, sessionId: []const u8) ?*Session {
+        return self.activeSessions.get(sessionId);
     }
 
     /// Save session to disk
-    pub fn saveSession(self: *Session, session: *SessionData) !void {
-        if (!session.config.enable_persistence) return;
+    pub fn saveSession(self: *SessionManager, session: *Session) !void {
+        if (!session.config.enablePersistence) return;
 
-        const filename = try fmt.allocPrint(self.allocator, "{s}/{s}.json", .{ self.sessions_dir, session.session_id });
+        const filename = try fmt.allocPrint(self.allocator, "{s}/{s}.json", .{ self.sessionsDir, session.sessionId });
         defer self.allocator.free(filename);
 
         // Create basic session JSON
-        const session_json = json.Value{
+        const sessionJson = json.Value{
             .object = .{
-                .session_id = json.Value{ .string = session.session_id },
-                .start_time = json.Value{ .integer = session.start_time },
-                .last_activity = json.Value{ .integer = session.last_activity },
-                .is_active = json.Value{ .bool = session.is_active },
+                .sessionId = json.Value{ .string = session.sessionId },
+                .startTime = json.Value{ .integer = session.startTime },
+                .lastActivity = json.Value{ .integer = session.lastActivity },
+                .isActive = json.Value{ .bool = session.isActive },
             },
         };
 
         // Serialize to string
-        const serialized = try json.stringifyAlloc(self.allocator, session_json, .{ .whitespace = true });
+        const serialized = try json.stringifyAlloc(self.allocator, sessionJson, .{ .whitespace = true });
         defer self.allocator.free(serialized);
 
         // Encrypt if needed
-        var encrypted_data = serialized;
-        if (self.master_key) |key| {
-            encrypted_data = try self.encryptData(serialized, key);
+        var encryptedData = serialized;
+        if (self.masterKey) |key| {
+            encryptedData = try self.encryptData(serialized, key);
         }
-        defer if (encrypted_data.ptr != serialized.ptr) self.allocator.free(encrypted_data);
+        defer if (encryptedData.ptr != serialized.ptr) self.allocator.free(encryptedData);
 
         // Compress if needed
-        var compressed_data = encrypted_data;
-        if (self.compression_enabled) {
-            compressed_data = try self.compressData(encrypted_data);
+        var compressedData = encryptedData;
+        if (self.compressionEnabled) {
+            compressedData = try self.compressData(encryptedData);
         }
-        defer if (compressed_data.ptr != encrypted_data.ptr) self.allocator.free(compressed_data);
+        defer if (compressedData.ptr != encryptedData.ptr) self.allocator.free(compressedData);
 
         // Write to file
         const file = try fs.cwd().createFile(filename, .{});
         defer file.close();
 
-        try file.writeAll(compressed_data);
+        try file.writeAll(compressedData);
 
         // Audit log
-        if (session.config.enable_audit) {
-            try session.addAuditEntry(.session_saved, "Session saved to disk", session.config.owner);
+        if (session.config.enableAudit) {
+            try session.addAuditEntry(.sessionSaved, "Session saved to disk", session.config.owner);
         }
     }
 
     /// Create checkpoint
-    pub fn createCheckpoint(self: *Session, session: *SessionData, description: []const u8) !void {
-        if (!session.config.enable_checkpoints) return;
+    pub fn createCheckpoint(self: *SessionManager, session: *Session, description: []const u8) !void {
+        if (!session.config.enableCheckpoints) return;
 
         const timestamp = time.timestamp();
-        const checkpoint_id = try fmt.allocPrint(self.allocator, "{s}_{x}", .{ session.session_id, timestamp });
-        defer self.allocator.free(checkpoint_id);
+        const checkpointId = try fmt.allocPrint(self.allocator, "{s}_{x}", .{ session.sessionId, timestamp });
+        defer self.allocator.free(checkpointId);
 
-        const filename = try fmt.allocPrint(self.allocator, "{s}/{s}.json", .{ self.checkpoints_dir, checkpoint_id });
+        const filename = try fmt.allocPrint(self.allocator, "{s}/{s}.json", .{ self.checkpointsDir, checkpointId });
         defer self.allocator.free(filename);
 
         // Create basic checkpoint data
-        const checkpoint_data = json.Value{
+        const checkpointData = json.Value{
             .object = .{
-                .session_id = json.Value{ .string = session.session_id },
-                .checkpoint_id = json.Value{ .string = checkpoint_id },
+                .sessionId = json.Value{ .string = session.sessionId },
+                .checkpointId = json.Value{ .string = checkpointId },
                 .timestamp = json.Value{ .integer = timestamp },
                 .description = json.Value{ .string = description },
             },
         };
 
-        const serialized = try json.stringifyAlloc(self.allocator, checkpoint_data, .{ .whitespace = true });
+        const serialized = try json.stringifyAlloc(self.allocator, checkpointData, .{ .whitespace = true });
         defer self.allocator.free(serialized);
 
         const file = try fs.cwd().createFile(filename, .{});
@@ -1133,63 +1133,63 @@ pub const Session = struct {
 
         try file.writeAll(serialized);
 
-        session.stats.checkpoints_created += 1;
+        session.stats.checkpointsCreated += 1;
 
         // Audit log
-        if (session.config.enable_audit) {
+        if (session.config.enableAudit) {
             const details = try fmt.allocPrint(self.allocator, "Checkpoint created: {s}", .{description});
             defer self.allocator.free(details);
-            try session.addAuditEntry(.state_modified, details, session.config.owner);
+            try session.addAuditEntry(.stateModified, details, session.config.owner);
         }
     }
 
     /// End a session
-    pub fn endSession(self: *Session, session_id: []const u8) !void {
-        if (self.active_sessions.getEntry(session_id)) |entry| {
+    pub fn endSession(self: *SessionManager, sessionId: []const u8) !void {
+        if (self.activeSessions.getEntry(sessionId)) |entry| {
             entry.value_ptr.*.endSession();
 
             // Save final state
             try self.saveSession(entry.value_ptr.*);
 
             // Create final checkpoint if enabled
-            if (entry.value_ptr.*.config.enable_checkpoints) {
+            if (entry.value_ptr.*.config.enableCheckpoints) {
                 try self.createCheckpoint(entry.value_ptr.*, "Session ended");
             }
         }
     }
 
     /// Get session statistics
-    pub fn getStats(self: *Session) SessionStats {
+    pub fn getStats(self: *SessionManager) SessionStats {
         return self.stats;
     }
 
     /// Clean up old sessions and checkpoints
-    pub fn cleanupOldSessions(self: *Session, max_age_days: u32) !void {
-        const cutoff_time = time.timestamp() - (@as(i64, max_age_days) * 24 * 60 * 60);
+    pub fn cleanupOldSessions(self: *SessionManager, maxAgeDays: u32) !void {
+        const cutoffTime = time.timestamp() - (@as(i64, maxAgeDays) * 24 * 60 * 60);
 
         // Clean sessions
-        try self.cleanupDirectory(self.sessions_dir, cutoff_time);
+        try self.cleanupDirectory(self.sessionsDir, cutoffTime);
         // Clean checkpoints
-        try self.cleanupDirectory(self.checkpoints_dir, cutoff_time);
+        try self.cleanupDirectory(self.checkpointsDir, cutoffTime);
         // Clean history
-        try self.cleanupDirectory(self.history_dir, cutoff_time);
+        try self.cleanupDirectory(self.historyDir, cutoffTime);
     }
 
     /// List available sessions
-    pub fn listSessions(self: *Session) ![]const []const u8 {
-        var sessions = std.ArrayList([]const u8).init(self.allocator);
+    pub fn listSessions(self: *SessionManager) ![]const []const u8 {
+        var sessions = std.array_list.Managed([]const u8).init(self.allocator);
         defer sessions.deinit();
 
-        var dir = try fs.cwd().openDir(self.sessions_dir, .{ .iterate = true });
+        var dir = try fs.cwd().openDir(self.sessionsDir, .{ .iterate = true });
         defer dir.close();
 
         var it = dir.iterate();
         while (try it.next()) |entry| {
             if (entry.kind == .file and mem.endsWith(u8, entry.name, ".json")) {
                 // Remove .json extension
-                const name_len = mem.indexOf(u8, entry.name, ".json") orelse entry.name.len;
-                const session_name = try self.allocator.dupe(u8, entry.name[0..name_len]);
-                try sessions.append(session_name);
+                const nameLen = mem.indexOf(u8, entry.name, ".json") orelse entry.name.len;
+                const sessionName = try self.allocator.dupe(u8, entry.name[0..nameLen]);
+                try sessions.append(sessionName);
             }
         }
 
@@ -1197,7 +1197,7 @@ pub const Session = struct {
     }
 
     /// Helper functions for data processing
-    fn compressData(self: *Session, data: []const u8) ![]const u8 {
+    fn compressData(self: *SessionManager, data: []const u8) ![]const u8 {
         // Simple RLE compression for demonstration
         // In a real implementation, you'd use a proper compression library
         var compressed = std.ArrayList(u8).init(self.allocator);
@@ -1221,7 +1221,7 @@ pub const Session = struct {
         return compressed.toOwnedSlice();
     }
 
-    fn decompressData(self: *Session, data: []const u8) ![]const u8 {
+    fn decompressData(self: *SessionManager, data: []const u8) ![]const u8 {
         var decompressed = std.ArrayList(u8).init(self.allocator);
         defer decompressed.deinit();
 
@@ -1241,7 +1241,7 @@ pub const Session = struct {
         return decompressed.toOwnedSlice();
     }
 
-    fn encryptData(self: *Session, data: []const u8, key: [32]u8) ![]const u8 {
+    fn encryptData(self: *SessionManager, data: []const u8, key: [32]u8) ![]const u8 {
         // Simple XOR encryption for demonstration
         // In a real implementation, you'd use proper encryption
         var encrypted = try self.allocator.alloc(u8, data.len);
@@ -1251,34 +1251,35 @@ pub const Session = struct {
         return encrypted;
     }
 
-    fn decryptData(self: *Session, data: []const u8, key: [32]u8) ![]const u8 {
+    fn decryptData(self: *SessionManager, data: []const u8, key: [32]u8) ![]const u8 {
         // XOR is symmetric
         return self.encryptData(data, key);
     }
 
-    fn createSessionJson(self: *Session, session: *SessionData) !json.Value {
+    fn createSessionJson(self: *SessionManager, session: *Session) !json.Value {
+        _ = self;
         return json.Value{
             .object = .{
-                .session_id = json.Value{ .string = session.session_id },
-                .start_time = json.Value{ .integer = session.start_time },
-                .last_activity = json.Value{ .integer = session.last_activity },
-                .is_active = json.Value{ .bool = session.is_active },
+                .sessionId = json.Value{ .string = session.sessionId },
+                .startTime = json.Value{ .integer = session.startTime },
+                .lastActivity = json.Value{ .integer = session.lastActivity },
+                .isActive = json.Value{ .bool = session.isActive },
             },
         };
     }
 
-    fn cleanupDirectory(self: *Session, dir_path: []const u8, cutoff_time: i64) !void {
-        var dir = fs.cwd().openDir(dir_path, .{ .iterate = true }) catch return;
+    fn cleanupDirectory(self: *SessionManager, dirPath: []const u8, cutoffTime: i64) !void {
+        var dir = fs.cwd().openDir(dirPath, .{ .iterate = true }) catch return;
         defer dir.close();
 
         var it = dir.iterate();
         while (try it.next()) |entry| {
             if (entry.kind == .file and mem.endsWith(u8, entry.name, ".json")) {
-                const filepath = try fmt.allocPrint(self.allocator, "{s}/{s}", .{ dir_path, entry.name });
+                const filepath = try fmt.allocPrint(self.allocator, "{s}/{s}", .{ dirPath, entry.name });
                 defer self.allocator.free(filepath);
 
                 const stat = try fs.cwd().statFile(filepath);
-                if (stat.mtime < cutoff_time) {
+                if (stat.mtime < cutoffTime) {
                     try fs.cwd().deleteFile(filepath);
                 }
             }
@@ -1300,56 +1301,56 @@ pub const SessionHelpers = struct {
         var config = SessionConfig.init(allocator);
         config.title = try allocator.dupe(u8, title);
         config.owner = try allocator.dupe(u8, owner);
-        config.session_type = .interactive;
-        config.enable_persistence = true;
-        config.enable_checkpoints = true;
-        config.enable_audit = true;
+        config.sessionType = .interactive;
+        config.enablePersistence = true;
+        config.enableCheckpoints = true;
+        config.enableAudit = true;
         return config;
     }
 
     /// Create a rich session configuration with TUI support
     pub fn createRichConfig(allocator: Allocator, title: []const u8, owner: []const u8) SessionConfig {
         var config = createBasicConfig(allocator, title, owner);
-        config.enable_collaboration = true;
-        config.enable_encryption = true;
-        config.enable_compression = true;
+        config.enableCollaboration = true;
+        config.enableEncryption = true;
+        config.enableCompression = true;
         return config;
     }
 
     /// Create a CLI-only session configuration
     pub fn createCliConfig(allocator: Allocator, title: []const u8, owner: []const u8) SessionConfig {
         var config = createBasicConfig(allocator, title, owner);
-        config.enable_collaboration = false;
-        config.enable_checkpoints = false;
+        config.enableCollaboration = false;
+        config.enableCheckpoints = false;
         return config;
     }
 
     /// Create a shared session configuration
     pub fn createSharedConfig(allocator: Allocator, title: []const u8, owner: []const u8) SessionConfig {
         var config = createBasicConfig(allocator, title, owner);
-        config.session_type = .shared;
-        config.enable_collaboration = true;
-        config.enable_encryption = true;
+        config.sessionType = .shared;
+        config.enableCollaboration = true;
+        config.enableEncryption = true;
         return config;
     }
 
     /// Create a read-only session configuration
     pub fn createReadOnlyConfig(allocator: Allocator, title: []const u8, owner: []const u8) SessionConfig {
         var config = createBasicConfig(allocator, title, owner);
-        config.session_type = .read_only;
-        config.enable_persistence = false;
-        config.enable_checkpoints = false;
+        config.sessionType = .readOnly;
+        config.enablePersistence = false;
+        config.enableCheckpoints = false;
         return config;
     }
 
     /// Create a temporary session configuration
     pub fn createTemporaryConfig(allocator: Allocator, title: []const u8, owner: []const u8) SessionConfig {
         var config = createBasicConfig(allocator, title, owner);
-        config.session_type = .temporary;
-        config.enable_persistence = false;
-        config.enable_checkpoints = false;
-        config.enable_audit = false;
-        config.max_duration = 3600; // 1 hour
+        config.sessionType = .temporary;
+        config.enablePersistence = false;
+        config.enableCheckpoints = false;
+        config.enableAudit = false;
+        config.maxDuration = 3600; // 1 hour
         return config;
     }
 };

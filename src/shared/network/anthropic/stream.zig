@@ -3,7 +3,7 @@
 //! for the Anthropic API client.
 
 const std = @import("std");
-const sse = @import("../sse.zig");
+const sse = @import("sse_shared");
 
 // ============================== Error Definitions ==============================
 

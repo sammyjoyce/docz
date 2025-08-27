@@ -5,7 +5,7 @@ const wcwidth = @import("wcwidth.zig");
 /// Unicode version detection and compatibility system
 /// Provides comprehensive Unicode version detection, feature detection,
 /// and runtime testing capabilities for terminal Unicode support
-pub const UnicodeDetector = struct {
+pub const Unicode = struct {
     allocator: std.mem.Allocator,
     capabilities: UnicodeCapabilities = .{},
     // Query system functionality is now integrated into caps.zig
@@ -442,8 +442,6 @@ pub const UnicodeDetector = struct {
 
     /// Check if current locale is CJK
     fn isCJKLocale(self: *Self) !bool {
-        _ = self;
-
         const env_map = try std.process.getEnvMap(self.allocator);
         defer env_map.deinit();
 
@@ -574,18 +572,18 @@ test "Unicode version detection" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    var detector = UnicodeDetector.init(allocator);
+    var detector = Unicode.init(allocator);
     try detector.detectStaticUnicodeVersion();
 
     // Should detect at least Unicode 5.0
-    try testing.expect(@intFromEnum(detector.capabilities.unicode_version) >= @intFromEnum(UnicodeDetector.UnicodeVersion.unicode_5_0));
+    try testing.expect(@intFromEnum(detector.capabilities.unicode_version) >= @intFromEnum(Unicode.UnicodeVersion.unicode_5_0));
 }
 
 test "Unicode version comparison" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    var detector = UnicodeDetector.init(allocator);
+    var detector = Unicode.init(allocator);
     detector.capabilities.detected_unicode_major = 12;
     detector.capabilities.detected_unicode_minor = 1;
 
@@ -598,7 +596,7 @@ test "wcwidth options generation" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    var detector = UnicodeDetector.init(allocator);
+    var detector = Unicode.init(allocator);
     detector.capabilities.ambiguous_width_mode = .wide;
     detector.capabilities.variation_selector_support = true;
     detector.capabilities.wcwidth_accuracy = .extended;

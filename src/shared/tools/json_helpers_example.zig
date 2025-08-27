@@ -140,7 +140,7 @@ pub fn fileOperationTool(allocator: std.mem.Allocator, params: std.json.Value) t
             const content = try file.readToEndAlloc(allocator, 1024 * 1024);
             const stat = try file.stat();
 
-            break :blk tools_mod.json_schemas.FileOperationResponse{
+            break :blk tools_mod.json_schemas.FileOperation{
                 .file_path = try allocator.dupe(u8, request.file_path),
                 .content = content,
                 .operation = "read",
@@ -157,7 +157,7 @@ pub fn fileOperationTool(allocator: std.mem.Allocator, params: std.json.Value) t
             }
 
             const stat = try file.stat();
-            break :blk tools_mod.json_schemas.FileOperationResponse{
+            break :blk tools_mod.json_schemas.FileOperation{
                 .file_path = try allocator.dupe(u8, request.file_path),
                 .operation = "write",
                 .size = stat.size,
@@ -168,7 +168,7 @@ pub fn fileOperationTool(allocator: std.mem.Allocator, params: std.json.Value) t
     };
 
     // Use structured response helper
-    return tools_mod.json_schemas.createFileOperationResponse(allocator, "file_operation", @tagName(request.operation), result);
+    return tools_mod.json_schemas.createFileOperation(allocator, "file_operation", @tagName(request.operation), result);
 }
 
 // Example 6: Search tool with structured response
@@ -188,14 +188,14 @@ pub fn searchTool(allocator: std.mem.Allocator, params: std.json.Value) tools_mo
         .context = "This is context around the match",
     });
 
-    const search_response = tools_mod.json_schemas.SearchResponse{
+    const search_response = tools_mod.json_schemas.Search{
         .query = try allocator.dupe(u8, request.query),
         .results = try results.toOwnedSlice(),
         .total_matches = results.items.len,
         .options = request.options,
     };
 
-    return tools_mod.json_schemas.createSearchResponse(allocator, "search", "search_content", search_response);
+    return tools_mod.json_schemas.createSearch(allocator, "search", "search_content", search_response);
 }
 
 // Example 7: Validation tool with structured response
@@ -220,7 +220,7 @@ pub fn validationTool(allocator: std.mem.Allocator, params: std.json.Value) tool
 
     const is_valid = errors.items.len == 0;
 
-    const validation_response = tools_mod.json_schemas.ValidationResponse{
+    const validation_response = tools_mod.json_schemas.Validation{
         .is_valid = is_valid,
         .errors = if (errors.items.len > 0) try errors.toOwnedSlice() else null,
         .warnings = if (warnings.items.len > 0) try warnings.toOwnedSlice() else null,
@@ -232,5 +232,5 @@ pub fn validationTool(allocator: std.mem.Allocator, params: std.json.Value) tool
         },
     };
 
-    return tools_mod.json_schemas.createValidationResponse(allocator, "validation", "validate_content", validation_response);
+    return tools_mod.json_schemas.createValidation(allocator, "validation", "validate_content", validation_response);
 }

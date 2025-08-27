@@ -1,4 +1,4 @@
-//! Legacy example tool implementation for template agent.
+//! Legacy tool implementation for template agent.
 //!
 //! ⚠️  DEPRECATED: This file demonstrates the OLD tool pattern using raw strings.
 //! For new tools, use the JSON-based pattern shown in tools/mod.zig instead.

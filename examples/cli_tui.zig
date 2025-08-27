@@ -54,7 +54,7 @@ fn showUsage() !void {
         \\CLI/TUI Demonstration
         \\=====================
         \\
-        \\Usage: cli_tui_demo [MODE]
+        \\Usage: cli_tui [MODE]
         \\
         \\Modes:
         \\  cli   - CLI-only demonstration with graphics dashboard
@@ -72,9 +72,9 @@ fn showUsage() !void {
         \\• Layout engine with flexible component positioning
         \\
         \\Example:
-        \\  cli_tui_demo cli dashboard
-        \\  cli_tui_demo tui
-        \\  cli_tui_demo both
+        \\  cli_tui cli dashboard
+        \\  cli_tui tui
+        \\  cli_tui both
         \\
     );
     try stdout.flush();
@@ -197,7 +197,7 @@ fn runIntegratedDemo(allocator: Allocator) !void {
     var cli_instance = try CLI.init(allocator);
     defer cli_instance.deinit();
 
-    const cli_args = [_][]const u8{ "cli_tui_demo", "dashboard" };
+    const cli_args = [_][]const u8{ "cli_tui", "dashboard" };
     _ = try cli_instance.run(&cli_args);
 
     try stdout.writeAll("\n\nPress Enter to continue to TUI demonstration...\n");

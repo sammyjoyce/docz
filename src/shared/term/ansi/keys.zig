@@ -370,7 +370,7 @@ pub const Key = struct {
     mod: KeyMod = .{},
     /// Key code (special key or character)
     code: u21,
-    /// Shifted code for enhanced keyboard protocols
+    /// Shifted code for keyboard protocols
     shifted_code: u21 = 0,
     /// Base code for international keyboards (US layout equivalent)
     base_code: u21 = 0,

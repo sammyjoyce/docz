@@ -1,33 +1,31 @@
-//! Unified Terminal Module with Feature Gating and Backward Compatibility
+//! Unified Terminal Module - Consolidated Structure
 //!
-//! This module provides a consolidated interface to all terminal functionality
-//! with feature gating for optional modules and backward compatibility aliases.
+//! This module provides a clean, organized interface to all terminal functionality
+//! following the newly consolidated architecture.
 //!
 //! ## Architecture
 //!
-//! The module is organized into logical submodules:
-//! - **Core**: Always available (capabilities, cellbuf, screen, etc.)
+//! The module is organized into logical subsystems:
+//! - **Core**: Always available (capabilities, cellbuf, screen, term, etc.)
 //! - **ANSI**: ANSI escape sequences and terminal control
-//! - **Color**: Color management and conversion
+//! - **Color**: Color management, conversion, and palettes
+//! - **Graphics**: Graphics protocols (Kitty, Unicode blocks)
 //! - **Control**: Cursor and screen control
-//! - **Input**: Keyboard, mouse, and input handling
-//! - **Graphics**: Optional graphics capabilities (feature-gated)
-//! - **Shell**: Optional shell integration (feature-gated)
-//! - **Unicode**: Optional Unicode handling (feature-gated)
+//! - **Input**: Keyboard, mouse, and all input event handling
+//! - **Shell**: Shell integration (iTerm2, FinalTerm, prompts)
 //! - **Query**: Terminal querying capabilities
 //!
 //! ## Feature Gating
 //!
-//! Optional modules are conditionally exported based on build options:
-//! - `graphics`: Enable with `-Dterm_graphics`
-//! - `shell`: Enable with `-Dterm_shell`
-//! - `unicode`: Enable with `-Dterm_unicode`
+//! Optional modules can be conditionally disabled via build options:
+//! - `graphics`: Disable with `-Dno_term_graphics`
+//! - `shell`: Disable with `-Dno_term_shell`
+//! - `unicode`: Disable with `-Dno_term_unicode`
 //!
 //! ## Backward Compatibility
 //!
-//! Legacy import paths are maintained through aliases:
-//! - `ansi/*` modules available as `term.ansi.*`
-//! - Old submodule names preserved where possible
+//! Legacy import paths are maintained through aliases where possible.
+//! Some modules have been reorganized for better structure.
 
 const std = @import("std");
 
@@ -56,128 +54,56 @@ pub const grapheme = @import("grapheme.zig");
 pub const wcwidth = @import("wcwidth.zig");
 pub const reflection = @import("reflection.zig");
 pub const state = @import("state.zig");
-pub const tab_processor = @import("tab_processor.zig");
+pub const tab = @import("tab.zig");
 
 // ============================================================================
-// ANSI SUBMODULE (Always Available)
+// SUBSYSTEMS (Always Available)
 // ============================================================================
 
-// ANSI escape sequence handling
+/// ANSI escape sequence handling
 pub const ansi = @import("ansi/mod.zig");
 
-// ============================================================================
-// COLOR SUBMODULE (Always Available)
-// ============================================================================
-
-// Color management system
+/// Color management system (types, conversions, palettes, terminal colors)
 pub const color = @import("color/mod.zig");
 
-// ============================================================================
-// CONTROL SUBMODULE (Always Available)
-// ============================================================================
+/// Graphics protocols and capabilities (Kitty, Unicode blocks)
+pub const graphics = @import("graphics/mod.zig");
 
-// Cursor and screen control
+/// Cursor and screen control
 pub const control = @import("control/mod.zig");
 
-// ============================================================================
-// INPUT SUBMODULE (Always Available)
-// ============================================================================
-
-// Input handling system
+/// Input handling system (keyboard, mouse, events)
 pub const input = @import("input/mod.zig");
 
-// ============================================================================
-// QUERY SUBMODULE (Always Available)
-// ============================================================================
+/// Shell integration (iTerm2, FinalTerm, prompts)
+pub const shell = @import("shell/mod.zig");
 
-// Terminal querying capabilities
+/// Terminal querying capabilities
 pub const query = @import("query/mod.zig");
 
 // ============================================================================
-// FEATURE FLAGS (Can be overridden by build system)
+// HIGH-LEVEL APIs (Always Available)
 // ============================================================================
 
-/// Enable graphics capabilities (can be overridden by build system)
-pub const graphics_enabled = if (@hasDecl(std.builtin, "term_graphics"))
-    std.builtin.term_graphics
-else
-    true; // Default to enabled
-
-/// Enable shell integration (can be overridden by build system)
-pub const shell_enabled = if (@hasDecl(std.builtin, "term_shell"))
-    std.builtin.term_shell
-else
-    true; // Default to enabled
-
-/// Enable unicode handling (can be overridden by build system)
-pub const unicode_enabled = if (@hasDecl(std.builtin, "term_unicode"))
-    std.builtin.term_unicode
-else
-    true; // Default to enabled
+/// Unified cursor module (high-level API combining control and query)
+pub const cursor = @import("cursor.zig");
 
 // ============================================================================
-// OPTIONAL MODULES (Feature-Gated)
+// OPTIONAL MODULES (Feature-Gated if needed)
 // ============================================================================
 
-// Graphics capabilities - conditionally exported based on feature flag
-pub const graphics = if (graphics_enabled)
-    @import("graphics/mod.zig")
-else
-    // Provide stub implementation when graphics is disabled
-    struct {
-        pub const Graphics = struct {
-            pub fn init() !Graphics {
-                return error.GraphicsNotEnabled;
-            }
-        };
-        pub const Error = error{GraphicsNotEnabled};
-    };
-
-// Shell integration - conditionally exported based on feature flag
-pub const shell = if (shell_enabled)
-    @import("shell_integration.zig")
-else
-    // Provide stub implementation when shell integration is disabled
-    struct {
-        pub const ShellIntegration = struct {
-            pub fn init() !ShellIntegration {
-                return error.ShellIntegrationNotEnabled;
-            }
-        };
-        pub const Error = error{ShellIntegrationNotEnabled};
-    };
-
-// Unicode handling - conditionally exported based on feature flag
-pub const unicode = if (unicode_enabled)
-    struct {
-        pub const detector = @import("unicode_detector.zig");
-        pub const image_renderer = @import("unicode_image_renderer.zig");
-        pub const width = wcwidth; // Alias for backward compatibility
-    }
-else
-    // Provide stub implementation when unicode is disabled
-    struct {
-        pub const detector = struct {
-            pub const UnicodeDetector = struct {
-                pub fn init() !UnicodeDetector {
-                    return error.UnicodeNotEnabled;
-                }
-            };
-            pub const Error = error{UnicodeNotEnabled};
-        };
-        pub const image_renderer = detector; // Same stub
-        pub const width = wcwidth; // Always available
-    };
+/// Unicode detection and rendering
+pub const unicode = struct {
+    pub const detector = @import("unicode.zig");
+    pub const image_renderer = @import("unicode_image.zig");
+    pub const width = wcwidth; // Alias for backward compatibility
+};
 
 // ============================================================================
 // BACKWARD COMPATIBILITY ALIASES
 // ============================================================================
 
-// Legacy ANSI submodule access
-pub const ansi_color = ansi.color;
-pub const ansi_control = ansi.screen_control;
-pub const ansi_graphics = ansi.graphics;
-pub const ansi_sixel = ansi.sixel_graphics;
+// Legacy ANSI submodule access (maintaining backward compatibility)
 pub const ansi_hyperlink = ansi.hyperlink;
 pub const ansi_notification = ansi.notification;
 pub const ansi_mode = ansi.mode;
@@ -185,7 +111,6 @@ pub const ansi_reset = ansi.reset;
 pub const ansi_charset = ansi.charset;
 pub const ansi_control_chars = ansi.control_chars;
 pub const ansi_device_attributes = ansi.device_attributes;
-pub const ansi_focus = ansi.focus;
 pub const ansi_keypad = ansi.keypad;
 pub const ansi_palette = ansi.palette;
 pub const ansi_pointer = ansi.pointer;
@@ -197,38 +122,39 @@ pub const ansi_wrap = ansi.wrap;
 pub const ansi_xterm = ansi.xterm;
 pub const ansi_kitty = ansi.kitty;
 pub const ansi_iterm2 = ansi.iterm2;
-pub const ansi_iterm2_images = ansi.iterm2_images;
-pub const ansi_iterm2_shell_integration = ansi.iterm2_shell_integration;
-pub const ansi_finalterm = ansi.finalterm;
 pub const ansi_ghostty = ansi.ghostty;
-pub const ansi_background = ansi.background;
 pub const ansi_bidirectional_text = ansi.bidirectional_text;
 pub const ansi_cwd = ansi.cwd;
 pub const ansi_keys = ansi.keys;
-pub const ansi_kitty_graphics = ansi.kitty_graphics;
-pub const ansi_advanced_features = ansi.advanced_features;
+pub const ansi_modern = ansi.modern;
 pub const ansi_passthrough = ansi.passthrough;
-pub const ansi_shell_integration = ansi.shell_integration;
-pub const ansi_color_structures = ansi.color_structures;
-pub const ansi_background_control = ansi.background_control;
-pub const ansi_color_control = ansi.color_control;
+pub const ansi_queries = ansi.queries;
 pub const ansi_truncate = ansi.truncate;
 pub const ansi_winop = ansi.winop;
-pub const ansi_queries = ansi.queries;
+
+// Shell integration modules have moved to shell/
+pub const shell_iterm2 = shell.iterm2;
+pub const shell_finalterm = shell.finalterm;
+pub const shell_integration = shell.integration;
+pub const shell_prompt = shell.prompt;
 
 // Legacy color submodule access
 pub const color_conversions = color.conversions;
 pub const color_types = color.types;
 
-// Legacy control submodule access
-pub const cursor = control.cursor;
+// Legacy control submodule access (for backward compatibility)
+pub const control_cursor = control.cursor;
 pub const screen_control = control.screen;
 
 // Legacy input submodule access
 pub const input_types = input.types;
 pub const input_parser = input.parser;
-pub const input_key_mapping = input.key_mapping;
-pub const input_kitty_keyboard = input.kitty_keyboard;
+pub const input_key = input.key;
+pub const KeyMapping = input.KeyMapping;
+pub const Input = input.Input;
+pub const input_kitty = input.kitty;
+pub const KittyProtocol = input.KittyProtocol;
+pub const Kitty = input.Kitty;
 pub const input_mouse = input.mouse;
 pub const input_color_events = input.color_events;
 pub const input_focus = input.focus;
@@ -282,27 +208,26 @@ test "term module exports" {
     std.testing.refAllDecls(wcwidth);
     std.testing.refAllDecls(reflection);
     std.testing.refAllDecls(state);
-    std.testing.refAllDecls(tab_processor);
+    std.testing.refAllDecls(tab);
 
-    // Test ANSI submodule
+    // Test subsystems
     std.testing.refAllDecls(ansi);
-
-    // Test color submodule
     std.testing.refAllDecls(color);
-
-    // Test control submodule
+    std.testing.refAllDecls(graphics);
     std.testing.refAllDecls(control);
-
-    // Test input submodule
     std.testing.refAllDecls(input);
-
-    // Test query submodule
+    std.testing.refAllDecls(shell);
     std.testing.refAllDecls(query);
 
-    // Test backward compatibility aliases
-    std.testing.refAllDecls(ansi_color);
-    std.testing.refAllDecls(ansi_control);
-    std.testing.refAllDecls(color_conversions);
+    // Test high-level APIs
     std.testing.refAllDecls(cursor);
+    std.testing.refAllDecls(unicode);
+
+    // Test backward compatibility aliases
+    std.testing.refAllDecls(color_conversions);
+    std.testing.refAllDecls(color_types);
+    std.testing.refAllDecls(control_cursor);
     std.testing.refAllDecls(input_types);
+    std.testing.refAllDecls(input_parser);
+    std.testing.refAllDecls(input_mouse);
 }

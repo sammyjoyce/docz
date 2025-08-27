@@ -18,10 +18,7 @@ pub const Stream = models.Stream;
 pub const Complete = models.Complete;
 pub const CompletionResponse = models.CompletionResponse;
 pub const Usage = models.Usage;
-pub const OAuthCredentials = models.OAuthCredentials;
+pub const Credentials = models.Credentials;
 pub const Pkce = models.Pkce;
-
-// Legacy full implementation remains in ../anthropic.zig during transition
-pub const legacy = @import("../anthropic.zig");
 
 // Note: explicit re-exports should be added incrementally as the split progresses.

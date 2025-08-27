@@ -16,7 +16,7 @@ pub const RenderStrategy = enum {
     full_graphics, // Kitty graphics with full capabilities
     sixel_graphics, // Sixel graphics support
     rich_text, // Truecolor with Unicode
-    enhanced_ansi, // 256 colors with basic Unicode
+    ansi256, // 256 colors with basic Unicode
     basic_ascii, // 16 colors, ASCII only
     fallback, // Minimal ANSI support
 
@@ -24,14 +24,14 @@ pub const RenderStrategy = enum {
         if (caps.supportsKittyGraphics) return .full_graphics;
         if (caps.supportsSixel) return .sixel_graphics;
         if (caps.supportsTruecolor) return .rich_text;
-        if (caps.supports256Color) return .enhanced_ansi;
+        if (caps.supports256Color) return .ansi256;
         if (caps.supportsColor) return .basic_ascii;
         return .fallback;
     }
 
     pub fn supportsColor(self: RenderStrategy) bool {
         return switch (self) {
-            .full_graphics, .sixel_graphics, .rich_text, .enhanced_ansi, .basic_ascii => true,
+            .full_graphics, .sixel_graphics, .rich_text, .ansi256, .basic_ascii => true,
             .fallback => false,
         };
     }
@@ -46,7 +46,7 @@ pub const RenderStrategy = enum {
     pub fn colorCount(self: RenderStrategy) u32 {
         return switch (self) {
             .full_graphics, .sixel_graphics, .rich_text => 16_777_216, // 24-bit
-            .enhanced_ansi => 256,
+            .ansi256 => 256,
             .basic_ascii => 16,
             .fallback => 0,
         };

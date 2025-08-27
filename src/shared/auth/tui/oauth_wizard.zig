@@ -30,7 +30,7 @@ const term = @import("../../term/mod.zig");
 const tui_mod = @import("../../tui/mod.zig");
 
 // Re-export types for convenience
-const AdvancedProgressBar = progress_mod.ProgressBar;
+const ProgressBar = progress_mod.ProgressBar;
 const Notification = notification_mod.Notification;
 const NotificationController = notification_mod.NotificationController;
 const TextInput = text_input.TextInput;
@@ -40,7 +40,7 @@ const Renderer = renderer_mod.Renderer;
 const Bounds = tui_mod.Bounds;
 const Point = tui_mod.Point;
 
-/// Enhanced OAuth wizard states with rich metadata
+/// OAuth wizard states with rich metadata
 const WizardState = enum {
     initializing,
     checking_network,
@@ -161,7 +161,7 @@ pub const OAuthWizard = struct {
     allocator: std.mem.Allocator,
     renderer: *Renderer,
     notification_controller: NotificationController,
-    progress_bar: AdvancedProgressBar,
+    progress_bar: ProgressBar,
     status_bar: StatusBar,
     text_input: ?TextInput = null,
 
@@ -196,7 +196,7 @@ pub const OAuthWizard = struct {
 
         // Initialize components
         const notification_controller = NotificationController.init(allocator, renderer);
-        const progress_bar = try AdvancedProgressBar.init(allocator, "OAuth Setup", .gradient);
+        const progress_bar = try ProgressBar.init(allocator, "OAuth Setup", .gradient);
         var status_bar_instance = StatusBar.init(allocator, renderer);
 
         // Configure status bar
@@ -254,7 +254,7 @@ pub const OAuthWizard = struct {
     }
 
     /// Run the OAuth wizard
-    pub fn run(self: *Self) !oauth.OAuthCredentials {
+    pub fn run(self: *Self) !oauth.Credentials {
         // Clear screen and show initial setup
         try self.renderer.beginFrame();
         try self.clearScreen();
@@ -806,7 +806,7 @@ pub const OAuthWizard = struct {
     }
 
     /// Exchange code for tokens
-    fn exchangeCodeForTokens(self: *Self, code: []const u8) !oauth.OAuthCredentials {
+    fn exchangeCodeForTokens(self: *Self, code: []const u8) !oauth.Credentials {
         // TODO: Use the code parameter for actual token exchange
         _ = code;
         self.network_active = true;
@@ -826,11 +826,11 @@ pub const OAuthWizard = struct {
         try self.transitionTo(.complete);
 
         // Return placeholder credentials
-        return oauth.OAuthCredentials{
+        return oauth.Credentials{
             .type = try self.allocator.dupe(u8, "oauth"),
-            .access_token = try self.allocator.dupe(u8, "placeholder_token"),
-            .refresh_token = try self.allocator.dupe(u8, "placeholder_refresh"),
-            .expires_at = std.time.timestamp() + 3600,
+            .accessToken = try self.allocator.dupe(u8, "placeholder_token"),
+            .refreshToken = try self.allocator.dupe(u8, "placeholder_refresh"),
+            .expiresAt = std.time.timestamp() + 3600,
         };
     }
 
@@ -1000,7 +1000,7 @@ pub const OAuthWizard = struct {
 };
 
 /// Convenience function to run the OAuth wizard
-pub fn runOAuthWizard(allocator: std.mem.Allocator) !oauth.OAuthCredentials {
+pub fn runOAuthWizard(allocator: std.mem.Allocator) !oauth.Credentials {
     // Create renderer
     const renderer = try renderer_mod.createRenderer(allocator);
     defer renderer.deinit();
@@ -1013,6 +1013,6 @@ pub fn runOAuthWizard(allocator: std.mem.Allocator) !oauth.OAuthCredentials {
 }
 
 /// Setup OAuth with TUI experience
-pub fn setupOAuthWithTUI(allocator: std.mem.Allocator) !oauth.OAuthCredentials {
+pub fn setupOAuthWithTUI(allocator: std.mem.Allocator) !oauth.Credentials {
     return try runOAuthWizard(allocator);
 }

@@ -212,7 +212,7 @@ fn renderUnicodeChart(renderer: *Renderer, chart: Chart, config: ChartConfig, wr
         .sparkline => try renderSparkline(renderer, chart, config, writer),
         else => {
             try writer.writeAll("[Chart type not yet implemented for Unicode rendering]\n");
-            try renderDataTable(chart, writer);
+            try renderTable(chart, writer);
         },
     }
 }
@@ -227,7 +227,7 @@ fn renderAsciiChart(renderer: *Renderer, chart: Chart, config: ChartConfig, writ
         .bar => try renderAsciiBarChart(renderer, chart, config, dimensions, min_max, writer),
         else => {
             try writer.writeAll("[Chart type not yet implemented for ASCII rendering]\n");
-            try renderDataTable(chart, writer);
+            try renderTable(chart, writer);
         },
     }
 }
@@ -462,8 +462,8 @@ fn renderLegend(renderer: *Renderer, chart: Chart, config: ChartConfig, writer: 
     }
 }
 
-/// Render data as table (fallback)
-fn renderDataTable(chart: Chart, writer: anytype) !void {
+/// Render as table (fallback)
+fn renderTable(chart: Chart, writer: anytype) !void {
     try writer.writeAll("\nData Table:\n");
 
     // Headers
@@ -499,7 +499,7 @@ fn setChartColor(renderer: *Renderer, color: Color, writer: anytype) !void {
     const caps = term_mod.capabilities.getTermCaps();
 
     switch (renderer.render_tier) {
-        .ultra, .enhanced => {
+        .ultra, .rich => {
             switch (color) {
                 .rgb => |rgb| try term_sgr.setForegroundRgb(writer, caps, rgb.r, rgb.g, rgb.b),
                 .ansi => |ansi| {

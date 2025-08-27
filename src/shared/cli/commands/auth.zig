@@ -20,7 +20,7 @@ pub const AuthError = error{
     NetworkError,
     TokenExpired,
     ConfigurationError,
-    OAuthError,
+    Error,
 };
 
 pub const AuthStatus = struct {
@@ -162,7 +162,7 @@ pub const AuthCommands = struct {
             progress.setProgress(step[0]);
             try progress.render(self.writer);
 
-            _ = try self.notification_manager.notifyProgress(
+            _ = try self.notificationManager.notifyProgress(
                 "Token Refresh",
                 step[1],
                 step[0],
@@ -174,7 +174,7 @@ pub const AuthCommands = struct {
         try progress.clear(self.writer);
 
         try self.renderSuccessMessage("Token refreshed successfully!");
-        _ = try self.notification_manager.notify(.success, "Authentication", "Token refreshed successfully");
+        _ = try self.notificationManager.notify(.success, "Authentication", "Token refreshed successfully");
     }
 
     /// Logout and clear credentials
@@ -208,7 +208,7 @@ pub const AuthCommands = struct {
 
         try self.clearCredentials();
         try self.renderSuccessMessage("Successfully logged out!");
-        _ = try self.notification_manager.notify(.info, "Authentication", "Logged out successfully");
+        _ = try self.notificationManager.notify(.info, "Authentication", "Logged out successfully");
     }
 
     /// Interactive authentication setup wizard

@@ -3,10 +3,10 @@
 
 const std = @import("std");
 const components = @import("../components/mod.zig");
-const cli_mod = @import("cli/mod.zig");
+const cli_mod = @import("mod.zig");
 
 // Core CLI functionality
-pub const EnhancedParser = cli_mod.EnhancedParser;
+pub const Parser = cli_mod.parser.Parser;
 pub const ParsedArgs = cli_mod.ParsedArgs;
 pub const CliError = cli_mod.CliError;
 pub const parseArgs = cli_mod.parseArgs;
@@ -14,7 +14,7 @@ pub const parseAndHandle = cli_mod.parseAndHandle;
 
 // Module re-exports
 pub const core = cli_mod.core;
-pub const enhanced = cli_mod.enhanced;
+pub const legacy = cli_mod.parser;
 pub const types = cli_mod.types;
 pub const commands = cli_mod.commands;
 pub const interactive = cli_mod.interactive;

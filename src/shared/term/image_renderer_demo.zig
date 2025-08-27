@@ -1,7 +1,7 @@
 /// Demo of the Unicode Image Renderer
 /// Showcases how to use the new image renderer functionality
 const std = @import("std");
-const renderer_mod = @import("unicode_image_renderer.zig");
+const renderer_mod = @import("unicode_image.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};

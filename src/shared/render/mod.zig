@@ -132,7 +132,7 @@ pub const renderChart = chart_mod.renderChart;
 // pub const highlightCode = syntax_highlighter.highlightCode;
 
 // Demo and utilities
-// pub const runDemo = @import("../../examples/adaptive_demo.zig").runDemo; // disabled in library builds
+// pub const runDemo = @import("../../examples/adaptive.zig").runDemo; // disabled in library builds
 
 /// Convenience function to create a renderer with automatic capability detection
 pub fn createRenderer(allocator: std.mem.Allocator) !*Renderer {
@@ -179,7 +179,7 @@ pub const RendererAPI = struct {
         return @import("components/Chart.zig").renderChart(self.renderer, chart);
     }
 
-    pub fn getRenderingInfo(self: *const RendererAPI) Renderer.Info {
+    pub fn getRenderingInfo(self: *const RendererAPI) Renderer.Capabilities {
         return self.renderer.getRenderingInfo();
     }
 

@@ -11,7 +11,7 @@ const BUILD_CONFIG = struct {
         const CLI_ZON = "src/shared/cli/cli.zon";
         const TERMCAPS_ZON = "src/shared/term/caps.zon";
         const ANSI_ZON = "src/shared/term/ansi.zon";
-        const ANTHROPIC_ZIG = "src/shared/network/anthropic.zig";
+        const ANTHROPIC_ZIG = "src/shared/network/anthropic/mod.zig";
         const TOOLS_ZIG = "src/shared/tools/mod.zig";
         const ENGINE_ZIG = "src/core/engine.zig";
         const CONFIG_ZIG = "src/core/config.zig";
@@ -23,6 +23,7 @@ const BUILD_CONFIG = struct {
         const CLI_ZIG = "src/shared/cli/mod.zig";
         const AUTH_ZIG = "src/shared/auth/mod.zig";
         const OAUTH_CALLBACK_SERVER_ZIG = "src/shared/auth/oauth/callback_server.zig";
+        const EXAMPLE_OAUTH_CALLBACK = "examples/oauth_callback.zig";
         const TUI_ZIG = "src/shared/tui/mod.zig";
         const SCAFFOLD_TOOL = "src/tools/agent_scaffold.zig";
     };
@@ -623,7 +624,9 @@ const BuildContext = struct {
     };
 
     fn init(b: *std.Build) !BuildContext {
-        const selected_agent = b.option([]const u8, "agent", "Agent to build (e.g. 'markdown')") orelse BUILD_CONFIG.DEFAULT_AGENT;
+        // Check if we're running tests - if so, use a dummy agent
+        const is_test = b.args != null and b.args.?.len > 0 and std.mem.eql(u8, b.args.?[0], "test");
+        const selected_agent = if (is_test) "test_agent" else b.option([]const u8, "agent", "Agent to build (e.g. 'markdown')") orelse BUILD_CONFIG.DEFAULT_AGENT;
         const agent_dir = try std.fmt.allocPrint(b.allocator, "agents/{s}", .{selected_agent});
 
         return BuildContext{
@@ -762,7 +765,7 @@ const ModuleBuilder = struct {
             _ = std.fs.cwd().openFile(file_path, .{}) catch |err| {
                 switch (err) {
                     error.FileNotFound => {
-                    try result.errors.append(.{
+                        try result.errors.append(.{
                             .field = "required_file",
                             .message = try std.fmt.allocPrint(self.ctx.b.allocator, "Missing required file: {s}", .{file}),
                         });
@@ -1102,6 +1105,9 @@ const ModuleBuilder = struct {
     fn createSharedModules(self: ModuleBuilder) SharedModules {
         // Always create anthropic module - it will be a stub when network access is disabled
         const anthropic = self.createModule(BUILD_CONFIG.PATHS.ANTHROPIC_ZIG);
+        // Provide sibling network modules to the anthropic submodule as named imports
+        anthropic.addImport("curl_shared", self.createModule("src/shared/network/curl.zig"));
+        anthropic.addImport("sse_shared", self.createModule("src/shared/network/sse.zig"));
 
         const tools = self.createModule(BUILD_CONFIG.PATHS.TOOLS_ZIG);
         tools.addImport("anthropic_shared", anthropic);
@@ -1111,6 +1117,7 @@ const ModuleBuilder = struct {
         // Auth module is only needed when network access is available
         const auth = self.createModule(BUILD_CONFIG.PATHS.AUTH_ZIG);
         auth.addImport("anthropic_shared", anthropic);
+        auth.addImport("curl_shared", self.createModule("src/shared/network/curl.zig"));
 
         // JSON reflection module for comptime JSON processing
         // Provides utilities for compile-time JSON schema validation and processing
@@ -1229,6 +1236,10 @@ const ModuleBuilder = struct {
         modules.json_reflection = self.createModule("src/shared/json_reflection/mod.zig");
         // Always include anthropic module (will be stub when network access disabled)
         modules.anthropic = self.createModule(BUILD_CONFIG.PATHS.ANTHROPIC_ZIG);
+        if (modules.anthropic) |anthropic| {
+            anthropic.addImport("curl_shared", self.createModule("src/shared/network/curl.zig"));
+            anthropic.addImport("sse_shared", self.createModule("src/shared/network/sse.zig"));
+        }
 
         // Always include new core modules for enhanced UX
         modules.agent_interface = self.createModule(BUILD_CONFIG.PATHS.AGENT_INTERFACE_ZIG);
@@ -1286,7 +1297,7 @@ const ModuleBuilder = struct {
             if (modules.tools) |tools| {
                 modules.engine.?.addImport("tools_shared", tools);
             }
-            
+
             // Add dependencies for interactive session
             if (modules.interactive_session) |session| {
                 if (modules.auth) |auth| {
@@ -1420,6 +1431,10 @@ const ModuleBuilder = struct {
             // Fallback: include all modules if no manifest
             std.log.info("🔧 Building with all modules (no manifest found)", .{});
             modules.anthropic = self.createModule(BUILD_CONFIG.PATHS.ANTHROPIC_ZIG);
+            if (modules.anthropic) |anthropic| {
+                anthropic.addImport("curl_shared", self.createModule("src/shared/network/curl.zig"));
+                anthropic.addImport("sse_shared", self.createModule("src/shared/network/sse.zig"));
+            }
             modules.auth = self.createModule(BUILD_CONFIG.PATHS.AUTH_ZIG);
             modules.json_reflection = self.createModule("src/shared/json_reflection/mod.zig");
             modules.oauth_callback_server = self.createModule(BUILD_CONFIG.PATHS.OAUTH_CALLBACK_SERVER_ZIG);
@@ -1513,8 +1528,6 @@ const ModuleBuilder = struct {
         if (shared.agent_main) |agent_main| entry.addImport("agent_main", agent_main);
         if (shared.agent_base) |agent_base| entry.addImport("agent_base", agent_base);
         // Skip oauth callback server in minimal builds
-
-
 
         const spec = self.createModule(self.ctx.agent_paths.spec);
         if (shared.engine) |engine| spec.addImport("core_engine", engine);
@@ -1980,6 +1993,8 @@ fn applyFeatureFlagsToExecutable(_: *std.Build.Step.Compile, manifest: AgentMani
 }
 
 pub fn build(b: *std.Build) !void {
+
+
     // Initialize agent registry
     var registry = AgentRegistry.init(b.allocator);
     defer registry.deinit();
@@ -1990,8 +2005,8 @@ pub fn build(b: *std.Build) !void {
     const list_agents = b.option(bool, "list-agents", "List all available agents") orelse false;
     const validate_agents = b.option(bool, "validate-agents", "Validate all agents") orelse false;
     const all_agents = b.option(bool, "all-agents", "Build all available agents") orelse false;
-    const scaffold_agent = b.option(bool, "scaffold-agent", "Scaffold a new agent") orelse false;
     const agents_list = b.option([]const u8, "agents", "Comma-separated list of agents to build") orelse "";
+    const scaffold_agent = b.option(bool, "scaffold-agent", "Scaffold a new agent") orelse false;
     const optimize_binary = b.option(bool, "optimize-binary", "Enable manifest-driven binary optimization") orelse true;
 
     // Handle special build modes
@@ -2040,6 +2055,8 @@ pub fn build(b: *std.Build) !void {
         }
     }.make;
 
+
+
     // Note: scaffold-agent is handled via command line options in the main build function
 
     // Normal single agent build
@@ -2082,6 +2099,11 @@ pub fn build(b: *std.Build) !void {
         std.log.info("✅ Build configured for agent '{s}' v{s}", .{ m.agent.name, m.agent.version });
         std.log.info("   📦 Binary size optimized based on manifest capabilities", .{});
     }
+
+
+
+
+
 }
 
 // ============================================================================
@@ -2690,13 +2712,35 @@ fn setupDemoTargets(ctx: BuildContext, shared_modules: ConditionalSharedModules)
         session_demo_step.dependOn(&session_run.step);
     }
 
-    // OAuth flow demo
-    if (shared_modules.oauth_callback_server) |oauth| {
+    // OAuth flow demo (use example entrypoint)
+    {
         const oauth_demo_step = ctx.b.step("demo-oauth", "Run OAuth callback server demo");
-        const oauth_exe = ctx.b.addExecutable(.{
-            .name = "oauth-demo",
-            .root_module = oauth,
+        const oauth_module = ctx.b.addModule("oauth_demo_mod", .{
+            .root_source_file = ctx.b.path(BUILD_CONFIG.PATHS.EXAMPLE_OAUTH_CALLBACK),
+            .target = ctx.target,
+            .optimize = ctx.optimize,
         });
+
+        // Provide imports expected by auth/oauth and network modules
+        if (shared_modules.auth) |auth| oauth_module.addImport("auth_shared", auth);
+        if (shared_modules.anthropic) |anth| oauth_module.addImport("anthropic_shared", anth);
+        oauth_module.addImport("network_shared", ctx.b.addModule("network_shared", .{
+            .root_source_file = ctx.b.path("src/shared/network/mod.zig"),
+            .target = ctx.target,
+            .optimize = ctx.optimize,
+        }));
+        oauth_module.addImport("curl_shared", ctx.b.addModule("curl_shared", .{
+            .root_source_file = ctx.b.path("src/shared/network/curl.zig"),
+            .target = ctx.target,
+            .optimize = ctx.optimize,
+        }));
+        oauth_module.addImport("sse_shared", ctx.b.addModule("sse_shared", .{
+            .root_source_file = ctx.b.path("src/shared/network/sse.zig"),
+            .target = ctx.target,
+            .optimize = ctx.optimize,
+        }));
+
+        const oauth_exe = ctx.b.addExecutable(.{ .name = "oauth-demo", .root_module = oauth_module });
         linkSystemDependencies(oauth_exe);
         const oauth_run = ctx.b.addRunArtifact(oauth_exe);
         oauth_demo_step.dependOn(&oauth_run.step);
@@ -2731,7 +2775,7 @@ fn setupExampleTargets(ctx: BuildContext, shared_modules: ConditionalSharedModul
     // Stylize demo - demonstrates the new styling system
     const stylize_demo_step = ctx.b.step("example-stylize", "Run stylize trait system demo");
     const stylize_module = ctx.b.addModule("stylize_demo", .{
-        .root_source_file = ctx.b.path("examples/stylize_demo.zig"),
+        .root_source_file = ctx.b.path("examples/stylize.zig"),
         .target = ctx.target,
         .optimize = ctx.optimize,
     });
@@ -2750,7 +2794,7 @@ fn setupExampleTargets(ctx: BuildContext, shared_modules: ConditionalSharedModul
     // Tabs demo - demonstrates the tabs widget system
     const tabs_demo_step = ctx.b.step("example-tabs", "Run tabs widget comprehensive demo");
     const tabs_module = ctx.b.addModule("tabs_demo", .{
-        .root_source_file = ctx.b.path("examples/tabs_demo.zig"),
+        .root_source_file = ctx.b.path("examples/tabs.zig"),
         .target = ctx.target,
         .optimize = ctx.optimize,
     });
@@ -2770,7 +2814,7 @@ fn setupExampleTargets(ctx: BuildContext, shared_modules: ConditionalSharedModul
     // Typing animation demo - demonstrates the typing animation system
     const typing_demo_step = ctx.b.step("run-typing-demo", "Run typing animation comprehensive demo");
     const typing_module = ctx.b.addModule("typing_animation_demo", .{
-        .root_source_file = ctx.b.path("examples/typing_animation_demo.zig"),
+        .root_source_file = ctx.b.path("examples/typing_animation.zig"),
         .target = ctx.target,
         .optimize = ctx.optimize,
     });
@@ -2790,7 +2834,7 @@ fn setupExampleTargets(ctx: BuildContext, shared_modules: ConditionalSharedModul
     // Multi-resolution canvas demo - demonstrates the unified canvas API
     const canvas_demo_step = ctx.b.step("example-multi-resolution-canvas", "Run multi-resolution canvas demo");
     const canvas_module = ctx.b.addModule("multi_resolution_canvas_demo", .{
-        .root_source_file = ctx.b.path("examples/multi_resolution_canvas_demo.zig"),
+        .root_source_file = ctx.b.path("examples/multi_resolution_canvas.zig"),
         .target = ctx.target,
         .optimize = ctx.optimize,
     });
@@ -2837,7 +2881,6 @@ fn setupTestSuite(ctx: BuildContext, api_module: *std.Build.Module) void {
     linkSystemDependencies(tests);
     const tests_run = ctx.b.addRunArtifact(tests);
     tests_step.dependOn(&tests_run.step);
-    ctx.b.getInstallStep().dependOn(tests_step);
 }
 
 fn setupFormatting(ctx: BuildContext) void {

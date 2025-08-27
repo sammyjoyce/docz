@@ -97,7 +97,7 @@ pub const BaseResponse = struct {
     /// Whether the operation succeeded
     success: bool,
     /// Name of the tool that executed
-    tool: []const u8 = "document_io",
+    tool: []const u8 = "io",
     /// Name of the command executed
     command: []const u8,
     /// Error message if success is false
@@ -116,7 +116,7 @@ pub const ReadFileRequest = struct {
 pub const ReadFileResponse = struct {
     /// Base response fields
     success: bool,
-    tool: []const u8 = "document_io",
+    tool: []const u8 = "io",
     command: []const u8 = "read_file",
     error_message: ?[]const u8 = null,
 
@@ -152,7 +152,7 @@ pub const ReadMultipleRequest = struct {
 pub const ReadMultipleResponse = struct {
     /// Base response fields
     success: bool,
-    tool: []const u8 = "document_io",
+    tool: []const u8 = "io",
     command: []const u8 = "read_multiple",
     error_message: ?[]const u8 = null,
 
@@ -180,7 +180,7 @@ pub const ReadSectionRequest = struct {
 pub const ReadSectionResponse = struct {
     /// Base response fields
     success: bool,
-    tool: []const u8 = "document_io",
+    tool: []const u8 = "io",
     command: []const u8 = "read_section",
     error_message: ?[]const u8 = null,
 
@@ -218,7 +218,7 @@ pub const SearchOptions = struct {
 pub const SearchContentResponse = struct {
     /// Base response fields
     success: bool,
-    tool: []const u8 = "document_io",
+    tool: []const u8 = "io",
     command: []const u8 = "search_content",
     error_message: ?[]const u8 = null,
 
@@ -250,7 +250,7 @@ pub const FindReferencesRequest = struct {
 pub const FindReferencesResponse = struct {
     /// Base response fields
     success: bool,
-    tool: []const u8 = "document_io",
+    tool: []const u8 = "io",
     command: []const u8 = "find_references",
     error_message: ?[]const u8 = null,
 
@@ -290,7 +290,7 @@ pub const ListDirectoryRequest = struct {
 pub const ListDirectoryResponse = struct {
     /// Base response fields
     success: bool,
-    tool: []const u8 = "document_io",
+    tool: []const u8 = "io",
     command: []const u8 = "list_directory",
     error_message: ?[]const u8 = null,
 
@@ -320,7 +320,7 @@ pub const FindFilesRequest = struct {
 pub const FindFilesResponse = struct {
     /// Base response fields
     success: bool,
-    tool: []const u8 = "document_io",
+    tool: []const u8 = "io",
     command: []const u8 = "find_files",
     error_message: ?[]const u8 = null,
 
@@ -340,7 +340,7 @@ pub const GetWorkspaceTreeRequest = struct {
 pub const GetWorkspaceTreeResponse = struct {
     /// Base response fields
     success: bool,
-    tool: []const u8 = "document_io",
+    tool: []const u8 = "io",
     command: []const u8 = "get_workspace_tree",
     error_message: ?[]const u8 = null,
 

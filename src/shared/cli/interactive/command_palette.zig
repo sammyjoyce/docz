@@ -595,7 +595,7 @@ pub const CommandPalette = struct {
     }
 
     /// Input with basic completion
-    pub fn enhancedInput(
+    pub fn input(
         allocator: Allocator,
         prompt_text: []const u8,
         writer: anytype,

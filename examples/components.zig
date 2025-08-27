@@ -4,16 +4,16 @@
 //! component-based architecture, and shared UI components with progressive enhancement.
 
 const std = @import("std");
-const shared = @import("../src/shared/components/ui_context.zig");
+const shared = @import("../src/shared/components/ui.zig");
 const progress = @import("../src/shared/components/progress.zig");
-const smart_input = @import("../src/shared/components/smart_input.zig");
+const input_component = @import("../src/shared/components/input_component.zig");
 
 const UI = shared.UI;
 const UIMode = shared.UIMode;
 const Component = shared.Component;
 const NotificationLevel = shared.NotificationLevel;
 const ProgressBar = progress.ProgressBar;
-const SmartInput = smart_input.SmartInput;
+const InputComponent = input_component.InputComponent;
 
 /// Demo showcasing UI capabilities
 pub const UIDemo = struct {
@@ -204,28 +204,28 @@ pub const UIDemo = struct {
         try self.uiContext.terminal.printf("  • Syntax highlighting (if supported)\n", .{}, null);
         try self.uiContext.terminal.printf("  •  component architecture\n\n", .{}, null);
 
-        const input_component = try SmartInput.create(self.allocator, .{
+        const inputComp = try InputComponent.create(self.allocator, .{
             .placeholder = "Type 'hello' or 'git' for suggestions...",
             .features = .{
                 .autocomplete = true,
                 .syntaxHighlighting = true,
                 .liveValidation = true,
             },
-            .suggestionProvider = smart_input.defaultSuggestionProvider,
-            .validator = smart_input.defaultValidator,
+            .suggestionProvider = input_component.defaultSuggestionProvider,
+            .validator = input_component.defaultValidator,
         });
 
         // Position the input component
-        input_component.setBounds(shared.Rect{ .x = 2, .y = 8, .width = 60, .height = 5 });
+        inputComp.setBounds(shared.Rect{ .x = 2, .y = 8, .width = 60, .height = 5 });
 
         // Render the input component
         const ctx = self.uiContext.createRender(shared.Rect{ .x = 0, .y = 0, .width = 80, .height = 24 });
-        try input_component.render(ctx);
+        try inputComp.render(ctx);
 
         try self.uiContext.terminal.printf("\n\n(This is a visual demo - actual input handling requires event loop integration)\n", .{}, shared.createTextStyle(shared.Color{ .rgb = .{ .r = 255, .g = 255, .b = 0 } }, false));
 
-        input_component.deinit();
-        self.allocator.destroy(input_component);
+        inputComp.deinit();
+        self.allocator.destroy(inputComp);
 
         try self.uiContext.terminal.printf("\nPress Enter to continue...", .{}, shared.createTextStyle(shared.Color{ .rgb = .{ .r = 255, .g = 255, .b = 0 } }, false));
         try self.waitForEnter();

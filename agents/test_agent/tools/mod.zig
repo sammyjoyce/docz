@@ -4,8 +4,8 @@
 const std = @import("std");
 const tools_mod = @import("tools_shared");
 
-// Example Tool Implementation
-pub const Example = @import("example_tool.zig");
+// Tool Implementation
+pub const Tool = @import("tool.zig");
 
 /// Test tool function demonstrating the new json_reflection approach.
 /// This replaces manual ObjectMap building with type-safe structs.
@@ -78,9 +78,9 @@ pub fn calculator(allocator: std.mem.Allocator, params: std.json.Value) tools_mo
     return try std.json.parseFromSlice(std.json.Value, allocator, response_json, .{});
 }
 
-/// Example tool that demonstrates the standardized tool pattern
-pub fn exampleTool(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.ToolError!std.json.Value {
-    return Example.execute(allocator, params);
+/// Tool that demonstrates the standardized tool pattern
+pub fn tool(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.ToolError!std.json.Value {
+    return Tool.execute(allocator, params);
 }
 
 // Tool Registry for this agent
@@ -88,8 +88,8 @@ pub const ToolRegistry = struct {
     pub const TOOLS = .{
         .test_tool = testTool,
         .calculator = calculator,
-        .example_tool = exampleTool,
-        .complex_example = Example.complexExecute,
+        .tool = tool,
+        .complex = Tool.complexExecute,
     };
 };
 

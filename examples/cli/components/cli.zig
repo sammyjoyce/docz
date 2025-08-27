@@ -3,13 +3,13 @@
 
 const std = @import("std");
 const unified_terminal = @import("../core/unified_terminal.zig");
-const graphics_dashboard = @import("../dashboard/graphics_dashboard.zig");
+const graphics_mod = @import("../dashboard/graphics.zig");
 
 const Allocator = std.mem.Allocator;
 const Terminal = unified_terminal.Terminal;
 const Color = unified_terminal.Color;
-const GraphicsDashboard = graphics_dashboard.GraphicsDashboard;
-const DashboardConfig = graphics_dashboard.DashboardConfig;
+const GraphicsDashboard = graphics_mod.GraphicsDashboard;
+const DashboardConfig = graphics_mod.DashboardConfig;
 
 /// Cli with graphics capabilities and progressive enhancement
 pub const Cli = struct {

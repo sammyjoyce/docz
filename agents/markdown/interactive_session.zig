@@ -67,7 +67,7 @@ const notification_system = @import("../../src/shared/tui/components/notificatio
 const progress_tracker = @import("../../src/shared/tui/components/progress_tracker.zig");
 
 // Advanced UI components
-const smart_input = @import("../../src/shared/components/smart_input.zig");
+const input_component = @import("../../src/shared/components/input_component.zig");
 const split_pane = @import("../../src/shared/tui/widgets/core/split_pane.zig");
 const file_tree = @import("../../src/shared/tui/widgets/core/file_tree.zig");
 const modal = @import("../../src/shared/tui/widgets/modal.zig");
@@ -78,8 +78,8 @@ const canvas_engine = canvas_mod;
 // Markdown agent specific
 const markdown_tools = @import("tools/mod.zig");
 const ContentEditor = @import("tools/ContentEditor.zig");
-const DocumentValidator = @import("tools/DocumentValidator.zig");
-const document_transformer = @import("tools/document_transformer.zig");
+const Validate = @import("tools/validate.zig");
+const document_tool = @import("tools/document.zig");
 const enhanced_editor = @import("markdown_editor.zig");
 
 // Common utilities
@@ -117,7 +117,7 @@ pub const InteractiveSessionConfig = struct {
     notification_config: NotificationConfig = .{},
 
     /// Theme and appearance
-    theme_config: ThemeConfig = .{},
+    theme_config: ThemeSettings = .{},
 
     /// Performance settings
     performance_config: PerformanceConfig = .{},
@@ -332,7 +332,7 @@ pub const SessionConfig = struct {
 /// Input configuration
 pub const InputConfig = struct {
     /// Enable smart input
-    smart_input: bool = true,
+    input_component: bool = true,
 
     /// Enable auto-completion
     auto_completion: bool = true,
@@ -387,7 +387,7 @@ pub const NotificationPosition = enum {
 };
 
 /// Theme configuration
-pub const ThemeConfig = struct {
+pub const ThemeSettings = struct {
     /// Theme name
     name: []const u8 = "dark",
 

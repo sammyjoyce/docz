@@ -78,11 +78,11 @@ pub fn displayStatusCLI(allocator: std.mem.Allocator) !void {
                 std.debug.print("Run 'docz auth refresh' to renew tokens\n");
             } else {
                 std.debug.print("✅ OAuth authentication active (Claude Pro/Max)\n");
-                const time_to_expire = creds.expires_at - std.time.timestamp();
-                std.debug.print("Expires in: {} seconds\n", .{time_to_expire});
+                const timeToExpire = creds.expiresAt - std.time.timestamp();
+                std.debug.print("Expires in: {} seconds\n", .{timeToExpire});
             }
         },
-        .api_key => {
+        .apiKey => {
             std.debug.print("✅ API key authentication active\n");
         },
         .none => {

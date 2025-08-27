@@ -45,7 +45,7 @@ pub const ToolMetadata = struct {
 };
 
 /// JSON-based tool function signature for more structured tools
-pub const JSONToolFunction = *const fn (allocator: std.mem.Allocator, params: std.json.Value) ToolError!std.json.Value;
+pub const JsonToolFunction = *const fn (allocator: std.mem.Allocator, params: std.json.Value) ToolError!std.json.Value;
 
 /// Comptime reflection utilities for tool registration
 pub const ToolReflection = struct {
@@ -428,10 +428,10 @@ fn oracleTool(allocator: std.mem.Allocator, input: []const u8) ToolError![]u8 {
 }
 
 /// Helper to create a ToolFn wrapper for JSON-based tools
-pub fn createJsonToolWrapper(jsonFunc: JSONToolFunction) ToolFn {
+pub fn createJsonToolWrapper(jsonFunc: JsonToolFunction) ToolFn {
     // Store the function in a global variable to avoid lifetime issues
     const StoredFunction = struct {
-        var func: JSONToolFunction = undefined;
+        var func: JsonToolFunction = undefined;
     };
     StoredFunction.func = jsonFunc;
 
@@ -452,7 +452,7 @@ pub fn createJsonToolWrapper(jsonFunc: JSONToolFunction) ToolFn {
 }
 
 /// Helper to register a JSON-based tool
-pub fn registerJsonTool(registry: *Registry, name: []const u8, description: []const u8, jsonFunc: JSONToolFunction, agentName: []const u8) !void {
+pub fn registerJsonTool(registry: *Registry, name: []const u8, description: []const u8, jsonFunc: JsonToolFunction, agentName: []const u8) !void {
     const wrappedFunction = createJsonToolWrapper(jsonFunc);
     const metadata = ToolMetadata{
         .name = name,
@@ -470,12 +470,12 @@ pub fn registerJsonToolWithRequiredFields(
     registry: *Registry,
     name: []const u8,
     description: []const u8,
-    jsonFunc: JSONToolFunction,
+    jsonFunc: JsonToolFunction,
     agentName: []const u8,
     required_fields: []const []const u8,
 ) !void {
     const Stored = struct {
-        var func: JSONToolFunction = undefined;
+        var func: JsonToolFunction = undefined;
         var req: []const []const u8 = &[_][]const u8{};
     };
     Stored.func = jsonFunc;

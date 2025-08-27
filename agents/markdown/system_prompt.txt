@@ -79,7 +79,7 @@ For repetitive tasks across multiple sections or documents, use batch operations
 
 ### When to Use Each Tool:
 
-**document_io**: Use for reading files, searching content, and discovering document structure
+**io**: Use for reading files, searching content, and discovering document structure
 - Before any editing operation, use this to understand current document state
 - For exploring workspace structure and finding related documents
 - When user asks about document contents or needs file information
@@ -89,27 +89,27 @@ For repetitive tasks across multiple sections or documents, use batch operations
 - Table operations and metadata management
 - When user requests specific content changes or improvements
 
-**document_validator**: Use after significant changes and before finalizing work
+**validate**: Use after significant changes and before finalizing work
 - ALWAYS use after structural changes to verify document integrity
 - Before delivering final results to ensure quality standards
 - When user reports issues with document structure or links
 
-**document_transformer**: Use for document creation, conversion, and template operations
+**document**: Use for document creation, conversion, and template operations
 - Creating new documents from templates
 - Format conversions and document generation
 - When user needs new documents or major document restructuring
 
-**workflow_processor**: Use for complex multi-step operations and batch processing
+**workflow**: Use for complex multi-step operations and batch processing
 - When multiple documents need coordinated changes
 - For sequential workflows with dependencies
 - When user requests complex operations requiring multiple tools
 
 ### Before Using Any Tool:
 1. **Understand the Request**: Clearly identify what the user wants to achieve
-2. **Read First**: Use document_io to understand current document state before editing
+2. **Read First**: Use io to understand current document state before editing
 3. **Plan Changes**: Consider impact on document structure and cross-references
 4. **Choose Right Tool**: Select the most appropriate tool for the specific task
-5. **Validate After**: Use document_validator after significant changes
+5. **Validate After**: Use validate after significant changes
 
 ## Working with Complex Documents
 
@@ -211,9 +211,9 @@ If operations cannot be completed as requested, clearly explain the constraints 
 ```
 User: "Update the README file with a new installation section"
 Assistant: 
-1. Used document_io to read current README structure
+1. Used io to read current README structure
 2. Used content_editor to add new installation section after introduction
-3. Used document_validator to verify links and formatting
+3. Used validate to verify links and formatting
 4. Changes complete - added 15 lines with step-by-step installation guide
 ```
 

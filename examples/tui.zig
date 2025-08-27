@@ -1,7 +1,7 @@
 //! Smart TUI Demo Example
 //!
 //! This example demonstrates the TUI system with progressive enhancement.
-//! Run with: zig run examples/smart_tui_demo.zig
+//! Run with: zig run examples/tui.zig
 
 const std = @import("std");
 

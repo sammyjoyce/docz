@@ -318,10 +318,10 @@ pub fn cliIntegration(comptime ContextType: type) type {
 }
 
 // Note: The original promptStart, promptEnd, commandStart, commandEnd functions
-// are still available for backwards compatibility. The new enhanced functions
+// are still available for backwards compatibility. The new functions
 // provide additional functionality while maintaining the same interface.
 
-// Enhanced convenience constants with configurable terminator
+// Convenience constants with configurable terminator
 const PROMPT_START_TEMPLATE = "\x1b]133;A";
 const COMMAND_START_TEMPLATE = "\x1b]133;B";
 const COMMAND_EXECUTED_TEMPLATE = "\x1b]133;C";
@@ -338,7 +338,7 @@ comptime {
 }
 
 /// FinalTerm shell integration interface implementation
-pub const FinalTermInterface = integration.ShellIntegration.Interface{
+pub const FinalTermInterface = integration.ShellManager.Interface{
     .name = "FinalTerm",
     .getCapabilities = getCapabilities,
     .prompt_ops = .{
@@ -386,36 +386,36 @@ fn getCapabilities() integration.ShellIntegration.TermCaps {
     };
 }
 
-fn markPromptStartInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType)) !void {
+fn markPromptStartInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType)) integration.ShellIntegration.Error!void {
     _ = _ctx;
     // FinalTerm doesn't support prompt start
 }
 
-fn markPromptEndInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType)) !void {
+fn markPromptEndInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType)) integration.ShellIntegration.Error!void {
     _ = _ctx;
     // FinalTerm doesn't support prompt end
 }
 
-fn markPromptStartWithParamsInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType), _params: []const []const u8) !void {
+fn markPromptStartWithParamsInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType), _params: []const []const u8) integration.ShellIntegration.Error!void {
     _ = _ctx;
     _ = _params;
     // FinalTerm doesn't support prompt parameters
 }
 
-fn markPromptEndWithParamsInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType), _params: []const []const u8) !void {
+fn markPromptEndWithParamsInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType), _params: []const []const u8) integration.ShellIntegration.Error!void {
     _ = _ctx;
     _ = _params;
     // FinalTerm doesn't support prompt parameters
 }
 
-fn markCommandStartInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType), _command: []const u8, _cwd: ?[]const u8) !void {
+fn markCommandStartInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType), _command: []const u8, _cwd: ?[]const u8) integration.ShellIntegration.Error!void {
     _ = _ctx;
     _ = _command;
     _ = _cwd;
     // FinalTerm doesn't support command start
 }
 
-fn markCommandEndInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType), _command: []const u8, _exit_code: i32, _duration_ms: ?u64) !void {
+fn markCommandEndInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType), _command: []const u8, _exit_code: i32, _duration_ms: ?u64) integration.ShellIntegration.Error!void {
     _ = _ctx;
     _ = _command;
     _ = _exit_code;
@@ -423,7 +423,7 @@ fn markCommandEndInterface(comptime WriterType: type, _ctx: integration.ShellInt
     // FinalTerm doesn't support command end
 }
 
-fn markCommandStartWithParamsInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType), _command: []const u8, _cwd: ?[]const u8, _params: []const []const u8) !void {
+fn markCommandStartWithParamsInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType), _command: []const u8, _cwd: ?[]const u8, _params: []const []const u8) integration.ShellIntegration.Error!void {
     _ = _ctx;
     _ = _command;
     _ = _cwd;
@@ -431,7 +431,7 @@ fn markCommandStartWithParamsInterface(comptime WriterType: type, _ctx: integrat
     // FinalTerm doesn't support command parameters
 }
 
-fn markCommandEndWithParamsInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType), _command: []const u8, _exit_code: i32, _duration_ms: ?u64, _params: []const []const u8) !void {
+fn markCommandEndWithParamsInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType), _command: []const u8, _exit_code: i32, _duration_ms: ?u64, _params: []const []const u8) integration.ShellIntegration.Error!void {
     _ = _ctx;
     _ = _command;
     _ = _exit_code;
@@ -440,14 +440,14 @@ fn markCommandEndWithParamsInterface(comptime WriterType: type, _ctx: integratio
     // FinalTerm doesn't support command parameters
 }
 
-fn setWorkingDirectoryInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType), _path: []const u8) !void {
+fn setWorkingDirectoryInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType), _path: []const u8) integration.ShellIntegration.Error!void {
     _ = _ctx;
     _ = _path;
     // FinalTerm doesn't support working directory tracking directly
     // This could be implemented using OSC 7 if supported by the terminal
 }
 
-fn setRemoteHostInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType), _hostname: []const u8, _username: ?[]const u8, _port: ?u16) !void {
+fn setRemoteHostInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType), _hostname: []const u8, _username: ?[]const u8, _port: ?u16) integration.ShellIntegration.Error!void {
     _ = _ctx;
     _ = _hostname;
     _ = _username;
@@ -455,59 +455,59 @@ fn setRemoteHostInterface(comptime WriterType: type, _ctx: integration.ShellInte
     // FinalTerm doesn't support remote host tracking
 }
 
-fn clearRemoteHostInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType)) !void {
+fn clearRemoteHostInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType)) integration.ShellIntegration.Error!void {
     _ = _ctx;
     // FinalTerm doesn't support remote host tracking
 }
 
-fn markZoneStartInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType), _zone_type: []const u8, _name: ?[]const u8) !void {
+fn markZoneStartInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType), _zone_type: []const u8, _name: ?[]const u8) integration.ShellIntegration.Error!void {
     _ = _ctx;
     _ = _zone_type;
     _ = _name;
     // FinalTerm doesn't support semantic zones
 }
 
-fn markZoneEndInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType), _zone_type: []const u8) !void {
+fn markZoneEndInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType), _zone_type: []const u8) integration.ShellIntegration.Error!void {
     _ = _ctx;
     _ = _zone_type;
     // FinalTerm doesn't support semantic zones
 }
 
-fn addAnnotationInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType), _config: integration.ShellIntegration.AnnotationConfig) !void {
+fn addAnnotationInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType), _config: integration.ShellIntegration.AnnotationConfig) integration.ShellIntegration.Error!void {
     _ = _ctx;
     _ = _config;
     // FinalTerm doesn't support annotations
 }
 
-fn clearAnnotationsInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType)) !void {
+fn clearAnnotationsInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType)) integration.ShellIntegration.Error!void {
     _ = _ctx;
     // FinalTerm doesn't support annotations
 }
 
-fn requestAttentionInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType), _message: ?[]const u8) !void {
+fn requestAttentionInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType), _message: ?[]const u8) integration.ShellIntegration.Error!void {
     _ = _ctx;
     _ = _message;
     // FinalTerm doesn't support notifications
 }
 
-fn setBadgeInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType), _text: []const u8) !void {
+fn setBadgeInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType), _text: []const u8) integration.ShellIntegration.Error!void {
     _ = _ctx;
     _ = _text;
     // FinalTerm doesn't support badges
 }
 
-fn clearBadgeInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType)) !void {
+fn clearBadgeInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType)) integration.ShellIntegration.Error!void {
     _ = _ctx;
     // FinalTerm doesn't support badges
 }
 
-fn setAlertOnCompletionInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType), _config: integration.ShellIntegration.AlertConfig) !void {
+fn setAlertOnCompletionInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType), _config: integration.ShellIntegration.AlertConfig) integration.ShellIntegration.Error!void {
     _ = _ctx;
     _ = _config;
     // FinalTerm doesn't support alerts
 }
 
-fn triggerDownloadInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType), _config: integration.ShellIntegration.DownloadConfig) !void {
+fn triggerDownloadInterface(comptime WriterType: type, _ctx: integration.ShellIntegration.Context(WriterType), _config: integration.ShellIntegration.DownloadConfig) integration.ShellIntegration.Error!void {
     _ = _ctx;
     _ = _config;
     // FinalTerm doesn't support downloads
@@ -517,7 +517,7 @@ fn triggerDownloadInterface(comptime WriterType: type, _ctx: integration.ShellIn
 // TESTS
 // ============================================================================
 
-test "enhanced finalterm sequences" {
+test "finalterm sequences" {
     const testing = std.testing;
     const allocator = testing.allocator;
 

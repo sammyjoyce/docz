@@ -7,14 +7,14 @@ const builtin = @import("builtin");
 const term = @import("term_shared");
 
 pub const Theme = @import("theme.zig").Theme;
-pub const ThemeConfig = @import("theme_config.zig").ThemeConfig;
+pub const ThemeSettings = @import("theme_config.zig").ThemeSettings;
 pub const ColorScheme = @import("color_scheme.zig").ColorScheme;
 pub const Color = @import("color.zig").Color;
 pub const Colors = @import("color.zig").Colors;
 pub const ThemeInheritance = @import("theme_inheritance.zig").ThemeInheritance;
 pub const ThemeEditor = @import("theme_editor.zig").ThemeEditor;
 pub const ThemeExporter = @import("theme_exporter.zig").ThemeExporter;
-pub const SystemThemeDetector = @import("system_theme.zig").SystemThemeDetector;
+pub const SystemTheme = @import("system_theme.zig").SystemTheme;
 pub const Accessibility = @import("accessibility.zig").Accessibility;
 pub const ColorBlindness = @import("color_blindness.zig").ColorBlindness;
 pub const ThemeValidator = @import("theme_validator.zig").ThemeValidator;
@@ -40,8 +40,8 @@ pub const Quick = struct {
 
     /// Auto-detect and apply system theme
     pub fn applySystemTheme(manager: *Theme) !void {
-        const detector = SystemThemeDetector.init();
-        const isDark = try detector.detectSystemTheme();
+        const systemTheme = SystemTheme.init();
+        const isDark = try systemTheme.detectSystemTheme();
         const themeName = if (isDark) "dark" else "light";
         try manager.switchTheme(themeName);
     }

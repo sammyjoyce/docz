@@ -37,13 +37,13 @@ pub const WorkflowResult = struct {
     error_message: ?[]const u8 = null,
 };
 
-/// Main entry point for workflow processing operations
+/// Main entry point for workflow operations
 pub fn execute(allocator: std.mem.Allocator, params: json.Value) !json.Value {
     return executeInternal(allocator, params) catch |err| {
         var result = json.ObjectMap.init(allocator);
         try result.put("success", json.Value{ .bool = false });
         try result.put("error", json.Value{ .string = @errorName(err) });
-        try result.put("tool", json.Value{ .string = "workflow_processor" });
+        try result.put("tool", json.Value{ .string = "workflow" });
         return json.Value{ .object = result };
     };
 }
@@ -283,7 +283,7 @@ fn executeBatchOperation(allocator: std.mem.Allocator, file_path: []const u8, op
 fn buildWorkflowResponse(allocator: std.mem.Allocator, mode: []const u8, workflow_result: WorkflowResult, total_duration: u64) !json.Value {
     var result = json.ObjectMap.init(allocator);
     try result.put("success", json.Value{ .bool = workflow_result.success });
-    try result.put("tool", json.Value{ .string = "workflow_processor" });
+    try result.put("tool", json.Value{ .string = "workflow" });
     try result.put("mode", json.Value{ .string = mode });
     try result.put("completed_steps", json.Value{ .integer = @intCast(workflow_result.completed_steps) });
     try result.put("failed_steps", json.Value{ .integer = @intCast(workflow_result.failed_steps) });

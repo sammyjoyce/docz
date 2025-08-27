@@ -2,8 +2,8 @@
 //! Canonical dashboard lives here. Keep this barrel minimal and valid.
 
 // Main dashboard exports (canonical)
-pub const Dashboard = @import("AdaptiveDashboard.zig").AdaptiveDashboard;
-pub const DashboardConfig = @import("AdaptiveDashboard.zig").DashboardConfig;
+pub const Dashboard = @import("Dashboard.zig").Dashboard;
+pub const DashboardConfig = @import("Dashboard.zig").DashboardConfig;
 
 // Theme helpers available today
 pub const DashboardTheme = @import("theme.zig").DashboardTheme;

@@ -31,13 +31,13 @@ pub const Command = enum {
     }
 };
 
-/// Main entry point for document transformation operations
+/// Main entry point for document operations
 pub fn execute(allocator: std.mem.Allocator, params: json.Value) !json.Value {
     return executeInternal(allocator, params) catch |err| {
         var result = json.ObjectMap.init(allocator);
         try result.put("success", json.Value{ .bool = false });
         try result.put("error", json.Value{ .string = @errorName(err) });
-        try result.put("tool", json.Value{ .string = "document_transformer" });
+        try result.put("tool", json.Value{ .string = "document" });
         return json.Value{ .object = result };
     };
 }
@@ -117,7 +117,7 @@ fn createFromTemplate(allocator: std.mem.Allocator, params: json.ObjectMap) !jso
 
     var result = json.ObjectMap.init(allocator);
     try result.put("success", json.Value{ .bool = true });
-    try result.put("tool", json.Value{ .string = "document_transformer" });
+    try result.put("tool", json.Value{ .string = "document" });
     try result.put("command", json.Value{ .string = "createFromTemplate" });
     try result.put("template", json.Value{ .string = template_name });
     try result.put("output_file", json.Value{ .string = output_path });
@@ -142,7 +142,7 @@ fn listTemplates(allocator: std.mem.Allocator, params: json.ObjectMap) !json.Val
 
     var result = json.ObjectMap.init(allocator);
     try result.put("success", json.Value{ .bool = true });
-    try result.put("tool", json.Value{ .string = "document_transformer" });
+    try result.put("tool", json.Value{ .string = "document" });
     try result.put("command", json.Value{ .string = "listTemplates" });
     try result.put("templates", json.Value{ .array = templates_array });
 
@@ -171,7 +171,7 @@ fn saveAsTemplate(allocator: std.mem.Allocator, params: json.ObjectMap) !json.Va
 
     var result = json.ObjectMap.init(allocator);
     try result.put("success", json.Value{ .bool = true });
-    try result.put("tool", json.Value{ .string = "document_transformer" });
+    try result.put("tool", json.Value{ .string = "document" });
     try result.put("command", json.Value{ .string = "saveAsTemplate" });
     try result.put("source_file", json.Value{ .string = source_file });
     try result.put("template_path", json.Value{ .string = template_path });
@@ -246,7 +246,7 @@ fn convertToHtml(allocator: std.mem.Allocator, params: json.ObjectMap) !json.Val
 
     var result = json.ObjectMap.init(allocator);
     try result.put("success", json.Value{ .bool = true });
-    try result.put("tool", json.Value{ .string = "document_transformer" });
+    try result.put("tool", json.Value{ .string = "document" });
     try result.put("command", json.Value{ .string = "toHtml" });
     try result.put("input_file", json.Value{ .string = input_path });
     try result.put("output_file", json.Value{ .string = output_path });
@@ -263,7 +263,7 @@ fn convertToPdf(allocator: std.mem.Allocator, params: json.ObjectMap) !json.Valu
 
     var result = json.ObjectMap.init(allocator);
     try result.put("success", json.Value{ .bool = false });
-    try result.put("tool", json.Value{ .string = "document_transformer" });
+    try result.put("tool", json.Value{ .string = "document" });
     try result.put("command", json.Value{ .string = "toPdf" });
     try result.put("input_file", json.Value{ .string = input_path });
     try result.put("output_file", json.Value{ .string = output_path });

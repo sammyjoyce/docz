@@ -26,13 +26,13 @@ pub const Command = enum {
     }
 };
 
-/// Main entry point for file manager operations
+/// Main entry point for file operations
 pub fn execute(allocator: std.mem.Allocator, params: json.Value) !json.Value {
     return executeInternal(allocator, params) catch |err| {
         var result = json.ObjectMap.init(allocator);
         try result.put("success", json.Value{ .bool = false });
         try result.put("error", json.Value{ .string = @errorName(err) });
-        try result.put("tool", json.Value{ .string = "file_manager" });
+        try result.put("tool", json.Value{ .string = "file" });
         return json.Value{ .object = result };
     };
 }
@@ -76,7 +76,7 @@ fn createFile(allocator: std.mem.Allocator, params: json.ObjectMap) !json.Value 
         } else if (std.mem.eql(u8, if_exists, "skip")) {
             var result = json.ObjectMap.init(allocator);
             try result.put("success", json.Value{ .bool = true });
-            try result.put("tool", json.Value{ .string = "file_manager" });
+            try result.put("tool", json.Value{ .string = "file" });
             try result.put("command", json.Value{ .string = "create_file" });
             try result.put("file_path", json.Value{ .string = file_path });
             try result.put("skipped", json.Value{ .bool = true });
@@ -96,7 +96,7 @@ fn createFile(allocator: std.mem.Allocator, params: json.ObjectMap) !json.Value 
 
     var result = json.ObjectMap.init(allocator);
     try result.put("success", json.Value{ .bool = true });
-    try result.put("tool", json.Value{ .string = "file_manager" });
+    try result.put("tool", json.Value{ .string = "file" });
     try result.put("command", json.Value{ .string = "create_file" });
     try result.put("file_path", json.Value{ .string = file_path });
     try result.put("size", json.Value{ .integer = @intCast(template_content.len) });
@@ -127,7 +127,7 @@ fn createDirectory(allocator: std.mem.Allocator, params: json.ObjectMap) !json.V
         if (info.is_dir) {
             var result = json.ObjectMap.init(allocator);
             try result.put("success", json.Value{ .bool = true });
-            try result.put("tool", json.Value{ .string = "file_manager" });
+            try result.put("tool", json.Value{ .string = "file" });
             try result.put("command", json.Value{ .string = "create_directory" });
             try result.put("directory_path", json.Value{ .string = directory_path });
             try result.put("already_existed", json.Value{ .bool = true });
@@ -142,7 +142,7 @@ fn createDirectory(allocator: std.mem.Allocator, params: json.ObjectMap) !json.V
 
     var result = json.ObjectMap.init(allocator);
     try result.put("success", json.Value{ .bool = true });
-    try result.put("tool", json.Value{ .string = "file_manager" });
+    try result.put("tool", json.Value{ .string = "file" });
     try result.put("command", json.Value{ .string = "create_directory" });
     try result.put("directory_path", json.Value{ .string = directory_path });
     try result.put("recursive", json.Value{ .bool = recursive });
@@ -185,7 +185,7 @@ fn copyFile(allocator: std.mem.Allocator, params: json.ObjectMap) !json.Value {
 
     var result = json.ObjectMap.init(allocator);
     try result.put("success", json.Value{ .bool = true });
-    try result.put("tool", json.Value{ .string = "file_manager" });
+    try result.put("tool", json.Value{ .string = "file" });
     try result.put("command", json.Value{ .string = "copy_file" });
     try result.put("source_path", json.Value{ .string = source_path });
     try result.put("destination_path", json.Value{ .string = destination_path });
@@ -230,7 +230,7 @@ fn moveFile(allocator: std.mem.Allocator, params: json.ObjectMap) !json.Value {
 
     var result = json.ObjectMap.init(allocator);
     try result.put("success", json.Value{ .bool = true });
-    try result.put("tool", json.Value{ .string = "file_manager" });
+    try result.put("tool", json.Value{ .string = "file" });
     try result.put("command", json.Value{ .string = "move_file" });
     try result.put("source_path", json.Value{ .string = source_path });
     try result.put("destination_path", json.Value{ .string = destination_path });
@@ -260,7 +260,7 @@ fn deleteFile(allocator: std.mem.Allocator, params: json.ObjectMap) !json.Value 
 
     var result = json.ObjectMap.init(allocator);
     try result.put("success", json.Value{ .bool = true });
-    try result.put("tool", json.Value{ .string = "file_manager" });
+    try result.put("tool", json.Value{ .string = "file" });
     try result.put("command", json.Value{ .string = "delete_file" });
     try result.put("file_path", json.Value{ .string = file_path });
     try result.put("deleted_size", json.Value{ .integer = @intCast(file_metadata.size) });
@@ -307,7 +307,7 @@ fn deleteDirectory(allocator: std.mem.Allocator, params: json.ObjectMap) !json.V
 
     var result = json.ObjectMap.init(allocator);
     try result.put("success", json.Value{ .bool = true });
-    try result.put("tool", json.Value{ .string = "file_manager" });
+    try result.put("tool", json.Value{ .string = "file" });
     try result.put("command", json.Value{ .string = "delete_directory" });
     try result.put("directory_path", json.Value{ .string = directory_path });
     try result.put("recursive", json.Value{ .bool = recursive });

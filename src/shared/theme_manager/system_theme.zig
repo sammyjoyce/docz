@@ -4,14 +4,14 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-pub const SystemThemeDetector = struct {
+pub const SystemTheme = struct {
     allocator: std.mem.Allocator,
     cached_theme: ?bool, // true = dark, false = light
     last_check_time: i64,
 
     const Self = @This();
 
-    pub fn init() !*SystemThemeDetector {
+    pub fn init() !*SystemTheme {
         const allocator = std.heap.page_allocator;
         const self = try allocator.create(Self);
         self.* = .{

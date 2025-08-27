@@ -381,14 +381,14 @@ pub const AgentLauncher = struct {
         try self.add_recent_agent(options.agent_name);
 
         // Execute agent (placeholder)
-        try self.execute_agent_simple(agent_info, options);
+        try self.execute_agent(agent_info, options);
 
         // Update statistics (completion)
         try self.update_agent_stats(options.agent_name, false, 0, options.session_type, null);
     }
 
-    /// Execute the actual agent (simplified)
-    pub fn execute_agent_simple(self: *Self, agent_info: @import("agent_registry.zig").Agent, options: LaunchOptions) !void {
+    /// Execute the actual agent
+    pub fn execute_agent(self: *Self, agent_info: @import("agent_registry.zig").Agent, options: LaunchOptions) !void {
         _ = self;
 
         std.debug.print("Launching agent: {s} v{s}\n", .{ agent_info.name, agent_info.version });
