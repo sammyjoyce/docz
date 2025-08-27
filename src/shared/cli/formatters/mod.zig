@@ -6,7 +6,7 @@ pub const formatter = @import("formatter.zig");
 pub const rich = @import("rich.zig");
 
 // Main formatter export (using formatter by default)
-pub const CliFormatter = formatter.CliFormatter;
+pub const Formatter = formatter.Formatter;
 
 // Alternative formatters
-pub const RichCliFormatter = rich.CliFormatter;
+pub const RichFormatter = rich.Formatter;

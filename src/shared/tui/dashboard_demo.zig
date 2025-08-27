@@ -616,4 +616,4 @@ pub fn main() !void {
 }
 
 // Export for use as a module
-pub const DEMO = DashboardDemo;
+pub const demo = DashboardDemo;

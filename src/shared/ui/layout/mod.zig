@@ -7,32 +7,32 @@ pub const Constraints = struct {
     min: Size = .{ .w = 0, .h = 0 },
     max: Size = .{ .w = 0xffffffff, .h = 0xffffffff },
 
-    pub fn constrain(self: Constraints, s: Size) Size {
-        const w1 = if (s.w < self.min.w) self.min.w else s.w;
-        const h1 = if (s.h < self.min.h) self.min.h else s.h;
-        const w2 = if (w1 > self.max.w) self.max.w else w1;
-        const h2 = if (h1 > self.max.h) self.max.h else h1;
-        return .{ .w = w2, .h = h2 };
+    pub fn constrain(self: Constraints, size: Size) Size {
+        const minConstrainedWidth = if (size.w < self.min.w) self.min.w else size.w;
+        const minConstrainedHeight = if (size.h < self.min.h) self.min.h else size.h;
+        const finalWidth = if (minConstrainedWidth > self.max.w) self.max.w else minConstrainedWidth;
+        const finalHeight = if (minConstrainedHeight > self.max.h) self.max.h else minConstrainedHeight;
+        return .{ .w = finalWidth, .h = finalHeight };
     }
 };
 
 // Simple helpers for common flows (stubs for now)
 pub fn measureRow(children: []const Size, spacing: u32) Size {
-    var w: u32 = if (children.len == 0) 0 else (spacing * (children.len - 1));
-    var h: u32 = 0;
-    for (children) |c| {
-        w += c.w;
-        if (c.h > h) h = c.h;
+    var width: u32 = if (children.len == 0) 0 else (spacing * (children.len - 1));
+    var height: u32 = 0;
+    for (children) |child| {
+        width += child.w;
+        if (child.h > height) height = child.h;
     }
-    return .{ .w = w, .h = h };
+    return .{ .w = width, .h = height };
 }
 
 pub fn measureColumn(children: []const Size, spacing: u32) Size {
-    var w: u32 = 0;
-    var h: u32 = if (children.len == 0) 0 else (spacing * (children.len - 1));
-    for (children) |c| {
-        if (c.w > w) w = c.w;
-        h += c.h;
+    var width: u32 = 0;
+    var height: u32 = if (children.len == 0) 0 else (spacing * (children.len - 1));
+    for (children) |child| {
+        if (child.w > width) width = child.w;
+        height += child.h;
     }
-    return .{ .w = w, .h = h };
+    return .{ .w = width, .h = height };
 }

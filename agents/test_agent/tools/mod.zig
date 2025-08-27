@@ -5,7 +5,7 @@ const std = @import("std");
 const toolsMod = @import("tools_shared");
 
 // Tool Implementation
-pub const Tool = @import("tool.zig");
+pub const Tool = @import("Tool.zig");
 
 /// Test tool function demonstrating the new json_reflection approach.
 /// This replaces manual ObjectMap building with type-safe structs.
@@ -85,7 +85,7 @@ pub fn tool(allocator: std.mem.Allocator, params: std.json.Value) toolsMod.ToolE
 
 // Tool Registry for this agent
 pub const ToolRegistry = struct {
-    pub const TOOLS = .{
+    pub const tools = .{
         .test_tool = testTool,
         .calculator = calculator,
         .tool = tool,

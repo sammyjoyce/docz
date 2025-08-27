@@ -14,32 +14,32 @@ pub const BreadcrumbItem = struct {
     clickable: bool = false,
 };
 
-pub const BreadcrumbTrail = struct {
+pub const Breadcrumb = struct {
     allocator: Allocator,
     caps: term_caps.TermCaps,
     items: std.ArrayList(BreadcrumbItem),
     separator: []const u8,
-    widthMax: usize,
+    maxWidth: usize,
 
-    pub fn init(allocator: Allocator) BreadcrumbTrail {
-        return BreadcrumbTrail{
+    pub fn init(allocator: Allocator) Breadcrumb {
+        return Breadcrumb{
             .allocator = allocator,
             .caps = term_caps.getTermCaps(),
             .items = std.ArrayList(BreadcrumbItem).init(allocator),
             .separator = " > ",
-            .widthMax = 80,
+            .maxWidth = 80,
         };
     }
 
-    pub fn deinit(self: *BreadcrumbTrail) void {
+    pub fn deinit(self: *Breadcrumb) void {
         self.items.deinit();
     }
 
-    pub fn addItem(self: *BreadcrumbTrail, item: BreadcrumbItem) !void {
+    pub fn addItem(self: *Breadcrumb, item: BreadcrumbItem) !void {
         try self.items.append(item);
     }
 
-    pub fn addPath(self: *BreadcrumbTrail, label: []const u8, path: []const u8) !void {
+    pub fn addPath(self: *Breadcrumb, label: []const u8, path: []const u8) !void {
         try self.addItem(BreadcrumbItem{
             .label = label,
             .path = path,
@@ -47,17 +47,17 @@ pub const BreadcrumbTrail = struct {
         });
     }
 
-    pub fn addLabel(self: *BreadcrumbTrail, label: []const u8) !void {
+    pub fn addLabel(self: *Breadcrumb, label: []const u8) !void {
         try self.addItem(BreadcrumbItem{
             .label = label,
         });
     }
 
-    pub fn clear(self: *BreadcrumbTrail) void {
+    pub fn clear(self: *Breadcrumb) void {
         self.items.clearRetainingCapacity();
     }
 
-    pub fn render(self: *BreadcrumbTrail, writer: anytype) !void {
+    pub fn render(self: *Breadcrumb, writer: anytype) !void {
         if (self.items.items.len == 0) return;
 
         // Home icon
@@ -117,7 +117,7 @@ pub const BreadcrumbTrail = struct {
         try writer.writeAll("\n");
     }
 
-    pub fn getTotalLength(self: BreadcrumbTrail) usize {
+    pub fn getTotalLength(self: Breadcrumb) usize {
         if (self.items.items.len == 0) return 0;
 
         var total: usize = 2; // Home icon

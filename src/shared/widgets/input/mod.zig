@@ -1,7 +1,7 @@
 const std = @import("std");
 const ui = @import("../../ui/mod.zig");
 const renderCtx = @import("../../render/mod.zig");
-const draw = @import("Draw.zig");
+const draw = @import("draw.zig");
 
 pub const Input = struct {
     allocator: std.mem.Allocator,

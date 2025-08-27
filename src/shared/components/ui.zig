@@ -420,7 +420,7 @@ pub const BorderStyle = struct {
     }
 };
 
-pub const BorderChars = struct {
+pub const BorderCharacters = struct {
     topLeft: []const u8,
     topRight: []const u8,
     bottomLeft: []const u8,

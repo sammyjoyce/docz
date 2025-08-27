@@ -104,16 +104,16 @@ fn runDashboardDemo(demo_dashboard: *dashboard.Dashboard, tier: dashboard.Dashbo
 
     // Display capability-specific features
     switch (tier) {
-        .ultra_enhanced => {
-            std.debug.print("🌟 ULTRA ENHANCED MODE - Kitty Graphics & Advanced Features\n", .{});
+        .high => {
+            std.debug.print("🌟 HIGH CAPABILITY MODE - Kitty Graphics & Advanced Features\n", .{});
             std.debug.print("  ✓ Kitty Graphics Protocol with WebGL-like shaders\n", .{});
             std.debug.print("  ✓ 24-bit truecolor with smooth gradients\n", .{});
             std.debug.print("  ✓ Pixel-precision mouse tracking\n", .{});
             std.debug.print("  ✓ Hardware-accelerated animations\n", .{});
             std.debug.print("  ✓ Alpha blending and layer compositing\n", .{});
         },
-        .enhanced => {
-            std.debug.print("✨ ENHANCED MODE - Sixel Graphics & Rich Features\n", .{});
+        .rich => {
+            std.debug.print("✨ RICH MODE - Sixel Graphics & Rich Features\n", .{});
             std.debug.print("  ✓ Sixel graphics with optimized palettes\n", .{});
             std.debug.print("  ✓ Dithered color blending\n", .{});
             std.debug.print("  ✓ SGR mouse tracking\n", .{});
@@ -167,13 +167,13 @@ fn demonstrateProgressiveEnhancement(tier: dashboard.DashboardEngine.CapabilityT
     const memory_usage = 62.5 + @as(f64, @floatFromInt(frame)) * 3.2;
 
     switch (tier) {
-        .ultra_enhanced => {
+        .high => {
             // Simulate Kitty graphics output
             std.debug.print("    🎨 [Kitty Graphics] Smooth antialiased line chart: CPU {d:.1}%\n", .{cpu_usage});
             std.debug.print("    🌈 [Truecolor] RGB({d},{d},{d}) gradient area chart\n", .{ @as(u8, @intFromFloat(cpu_usage * 2.5)), @as(u8, @intFromFloat(100 - cpu_usage)), 200 });
             std.debug.print("    🖱️  [Pixel Mouse] Hover coordinates: ({d}, {d})\n", .{ frame * 15 + 120, frame * 8 + 45 });
         },
-        .enhanced => {
+        .rich => {
             // Simulate Sixel output with Unicode enhancement
             std.debug.print("    🎭 [Sixel] Dithered chart with optimized palette\n", .{});
             std.debug.print("    ▓▓▒▒░░ [Unicode] Block progression: {d:.0}% complete\n", .{cpu_usage});
@@ -219,8 +219,8 @@ fn simulateInteraction(demo_dashboard: *dashboard.Dashboard, tier: dashboard.Das
     const consumed = try demo_dashboard.handleInput(mouse_event);
     if (consumed) {
         switch (tier) {
-            .ultra_enhanced => std.debug.print("    🖱️  Pixel-precise hover: Chart tooltip activated\n", .{}),
-            .enhanced, .standard => std.debug.print("    🖱️  Mouse hover: Chart region highlighted\n", .{}),
+            .high => std.debug.print("    🖱️  Pixel-precise hover: Chart tooltip activated\n", .{}),
+            .rich, .standard => std.debug.print("    🖱️  Mouse hover: Chart region highlighted\n", .{}),
             .minimal => std.debug.print("    ⌨️  Keyboard navigation: Selected chart region\n", .{}),
         }
     }
@@ -242,7 +242,7 @@ fn showCapabilitySummary(tier: dashboard.DashboardEngine.CapabilityTier) !void {
     std.debug.print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n", .{});
 
     switch (tier) {
-        .ultra_enhanced => {
+        .high => {
             std.debug.print("🌟 ULTRA ENHANCED FEATURES DEMONSTRATED:\n", .{});
             std.debug.print("  📊 Advanced Charts: WebGL-quality line charts with antialiasing\n", .{});
             std.debug.print("  🎨 Graphics: Kitty protocol with full image rendering\n", .{});
@@ -251,7 +251,7 @@ fn showCapabilitySummary(tier: dashboard.DashboardEngine.CapabilityTier) !void {
             std.debug.print("  ⚡ Performance: Hardware-accelerated 60fps rendering\n", .{});
             std.debug.print("  🎭 Effects: Alpha blending and multi-layer composition\n", .{});
         },
-        .enhanced => {
+        .rich => {
             std.debug.print("✨ ENHANCED FEATURES DEMONSTRATED:\n", .{});
             std.debug.print("  📊 Charts: Sixel graphics with optimized palettes\n", .{});
             std.debug.print("  🎨 Graphics: High-quality bitmap rendering\n", .{});

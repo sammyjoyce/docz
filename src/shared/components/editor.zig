@@ -8,20 +8,20 @@ const defaultEditor = "nano";
 
 /// Editor option function type
 /// Returns additional arguments and whether the path is included in those args
-pub const OptionFn = fn (editor_name: []const u8, filename: []const u8) OptionResult;
+pub const OptionFunction = fn (editorName: []const u8, filename: []const u8) Result;
 
-pub const OptionResult = struct {
+pub const Result = struct {
     args: []const []const u8,
     pathInArgs: bool,
 };
 
 /// Option for opening file at specific line number
-pub const LineOption = struct {
+pub const LinePosition = struct {
     line: u32,
 
-    pub fn apply(self: LineOption) OptionFn {
+    pub fn apply(self: LinePosition) OptionFunction {
         const S = struct {
-            fn optionFn(editorName: []const u8, filename: []const u8) OptionResult {
+            fn optionFn(editorName: []const u8, filename: []const u8) Result {
                 const line = self.line;
                 const lineNumber = if (line < 1) 1 else line;
 
@@ -30,11 +30,11 @@ pub const LineOption = struct {
 
                 for (plusLineEditors) |editor| {
                     if (std.mem.eql(u8, editorName, editor)) {
-                        const arg = std.fmt.allocPrint(std.heap.page_allocator, "+{d}", .{lineNumber}) catch return OptionResult{
+                        const arg = std.fmt.allocPrint(std.heap.page_allocator, "+{d}", .{lineNumber}) catch return Result{
                             .args = &[_][]const u8{},
                             .pathInArgs = false,
                         };
-                        return OptionResult{
+                        return Result{
                             .args = &[_][]const u8{arg},
                             .pathInArgs = false,
                         };
@@ -43,17 +43,17 @@ pub const LineOption = struct {
 
                 // VS Code with --goto
                 if (std.mem.eql(u8, editorName, "code")) {
-                    const arg = std.fmt.allocPrint(std.heap.page_allocator, "{s}:{d}", .{ filename, lineNumber }) catch return OptionResult{
+                    const arg = std.fmt.allocPrint(std.heap.page_allocator, "{s}:{d}", .{ filename, lineNumber }) catch return Result{
                         .args = &[_][]const u8{},
                         .pathInArgs = false,
                     };
-                    return OptionResult{
+                    return Result{
                         .args = &[_][]const u8{ "--goto", arg },
                         .pathInArgs = true,
                     };
                 }
 
-                return OptionResult{
+                return Result{
                     .args = &[_][]const u8{},
                     .pathInArgs = false,
                 };
@@ -65,18 +65,18 @@ pub const LineOption = struct {
 };
 
 /// Option for opening file at end of line
-pub const EndLineOption = struct {
-    pub fn apply(_: EndLineOption) OptionFn {
+pub const EndLinePosition = struct {
+    pub fn apply(_: EndLinePosition) OptionFunction {
         const S = struct {
-            fn optionFn(editorName: []const u8, _: []const u8) OptionResult {
+            fn optionFn(editorName: []const u8, _: []const u8) Result {
                 if (std.mem.eql(u8, editorName, "vim") or std.mem.eql(u8, editorName, "nvim")) {
-                    return OptionResult{
+                    return Result{
                         .args = &[_][]const u8{"+norm! $"},
                         .pathInArgs = false,
                     };
                 }
 
-                return OptionResult{
+                return Result{
                     .args = &[_][]const u8{},
                     .pathInArgs = false,
                 };
@@ -92,14 +92,14 @@ pub const Command = struct {
     allocator: std.mem.Allocator,
     appName: []const u8,
     path: []const u8,
-    options: std.ArrayListUnmanaged(OptionFn),
+    options: std.ArrayListUnmanaged(OptionFunction),
 
     pub fn init(allocator: std.mem.Allocator, appName: []const u8, path: []const u8) Command {
         return Command{
             .allocator = allocator,
             .appName = appName,
             .path = path,
-            .options = std.ArrayListUnmanaged(OptionFn){},
+            .options = std.ArrayListUnmanaged(OptionFunction){},
         };
     }
 
@@ -108,13 +108,13 @@ pub const Command = struct {
     }
 
     pub fn lineNumber(self: *Command, line: u32) !*Command {
-        const option = LineOption{ .line = line };
+        const option = LinePosition{ .line = line };
         try self.options.append(self.allocator, option.apply());
         return self;
     }
 
     pub fn endOfLine(self: *Command) !*Command {
-        const option = EndLineOption{};
+        const option = EndLinePosition{};
         try self.options.append(self.allocator, option.apply());
         return self;
     }
@@ -230,7 +230,7 @@ pub fn getDefaultEditor() []const u8 {
 
 // Tests
 test "line number option" {
-    const option = LineOption{ .line = 42 };
+    const option = LinePosition{ .line = 42 };
     const option_fn = option.apply();
 
     const result = option_fn("vim", "test.txt");
@@ -240,7 +240,7 @@ test "line number option" {
 }
 
 test "VS Code line option" {
-    const option = LineOption{ .line = 10 };
+    const option = LinePosition{ .line = 10 };
     const option_fn = option.apply();
 
     const result = option_fn("code", "test.txt");
@@ -251,7 +251,7 @@ test "VS Code line option" {
 }
 
 test "unsupported editor line option" {
-    const option = LineOption{ .line = 5 };
+    const option = LinePosition{ .line = 5 };
     const option_fn = option.apply();
 
     const result = option_fn("unknown_editor", "test.txt");
@@ -260,7 +260,7 @@ test "unsupported editor line option" {
 }
 
 test "end of line option" {
-    const option = EndLineOption{};
+    const option = EndLinePosition{};
     const option_fn = option.apply();
 
     const result = option_fn("vim", "test.txt");

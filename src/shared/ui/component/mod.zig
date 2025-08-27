@@ -43,22 +43,22 @@ fn deinitImpl(comptime T: type) fn (*anyopaque, std.mem.Allocator) void {
 
 fn measureImpl(comptime T: type) fn (*anyopaque, layout.Constraints) layout.Size {
     return struct {
-        fn f(ptr: *anyopaque, c: layout.Constraints) layout.Size {
+        fn f(ptr: *anyopaque, constraints: layout.Constraints) layout.Size {
             const self: *T = @ptrCast(@alignCast(ptr));
-            if (@hasDecl(T, "measure")) return self.measure(c);
-            return .{ .w = c.max.w, .h = c.max.h };
+            if (@hasDecl(T, "measure")) return self.measure(constraints);
+            return .{ .w = constraints.max.w, .h = constraints.max.h };
         }
     }.f;
 }
 
 fn layoutImpl(comptime T: type) fn (*anyopaque, layout.Rect) void {
     return struct {
-        fn f(ptr: *anyopaque, r: layout.Rect) void {
+        fn f(ptr: *anyopaque, rect: layout.Rect) void {
             const self: *T = @ptrCast(@alignCast(ptr));
             if (@hasDecl(T, "layout")) {
-                self.layout(r);
+                self.layout(rect);
             } else {
-                _ = r;
+                _ = rect;
             }
         }
     }.f;
@@ -76,10 +76,10 @@ fn renderImpl(comptime T: type) fn (*anyopaque, *render_pkg.Context) anyerror!vo
 
 fn eventImpl(comptime T: type) fn (*anyopaque, event.Event) Component.Invalidate {
     return struct {
-        fn f(ptr: *anyopaque, ev: event.Event) Component.Invalidate {
+        fn f(ptr: *anyopaque, eventData: event.Event) Component.Invalidate {
             const self: *T = @ptrCast(@alignCast(ptr));
-            if (@hasDecl(T, "event")) return self.event(ev);
-            _ = ev;
+            if (@hasDecl(T, "event")) return self.event(eventData);
+            _ = eventData;
             return .none;
         }
     }.f;

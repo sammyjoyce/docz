@@ -12,7 +12,7 @@
 //! - Integration with callback server for seamless authorization flow
 
 const std = @import("std");
-pub const callback_server = @import("callback_server.zig");
+pub const callbackServer = @import("CallbackServer.zig");
 const curl = @import("../mod.zig").curl;
 
 // Re-export OAuth constants and types from anthropic
@@ -481,9 +481,9 @@ pub fn setupOAuth(allocator: std.mem.Allocator) !Credentials {
 }
 
 // Re-export callback server types and functions for convenience
-pub const Server = callback_server.Server;
-pub const Config = callback_server.Config;
-pub const Result = callback_server.Result;
-pub const runCallbackServer = callback_server.runCallbackServer;
-pub const integrateWithWizard = callback_server.integrateWithWizard;
-pub const completeOAuthFlow = callback_server.completeOAuthFlow;
+pub const Server = callbackServer.Server;
+pub const Config = callbackServer.Config;
+pub const Result = callbackServer.Result;
+pub const runCallbackServer = callbackServer.runCallbackServer;
+pub const integrateWithWizard = callbackServer.integrateWithWizard;
+pub const completeOAuthFlow = callbackServer.completeOAuthFlow;

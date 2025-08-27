@@ -4,135 +4,135 @@ const ui = @import("../../ui/mod.zig");
 const mod = @import("mod.zig");
 
 /// Draw a featureful ASCII table with optional title, borders, alignments.
-pub fn table(ctx: *render.Context, rect: ui.layout.Rect, tbl: *const mod.Table) !void {
-    if (rect.w == 0 or rect.h == 0) return;
-    const headers = tbl.headers;
-    const rows = tbl.rows;
-    const cols: usize = if (headers.len > 0) headers.len else if (rows.len > 0) rows[0].len else 0;
-    if (cols == 0) return;
+pub fn table(context: *render.Context, rectangle: ui.layout.Rect, tableData: *const mod.Table) !void {
+    if (rectangle.w == 0 or rectangle.h == 0) return;
+    const headers = tableData.headers;
+    const rows = tableData.rows;
+    const columnCount: usize = if (headers.len > 0) headers.len else if (rows.len > 0) rows[0].len else 0;
+    if (columnCount == 0) return;
 
-    const totalW: u32 = rect.w;
-    var widthsBuf: [64]u16 = undefined;
+    const totalWidth: u32 = rectangle.w;
+    var widthsBuffer: [64]u16 = undefined;
     var widthsSlice: []u16 = undefined;
-    if (tbl.columnWidths) |w| {
-        widthsSlice = @constCast(w);
+    if (tableData.columnWidths) |widths| {
+        widthsSlice = @constCast(widths);
     } else {
-        widthsSlice = if (cols <= widthsBuf.len) widthsBuf[0..cols] else try ctx.surface.toString; // will never reach
-        try calculateWidths(widthsSlice, headers, rows, totalW);
+        widthsSlice = if (columnCount <= widthsBuffer.len) widthsBuffer[0..columnCount] else try context.surface.toString; // will never reach
+        try calculateWidths(widthsSlice, headers, rows, totalWidth);
     }
 
-    var y: i32 = rect.y;
+    var y: i32 = rectangle.y;
     // Title
-    if (tbl.title) |title| {
-        try writeClipped(ctx, rect, rect.x, y, title);
+    if (tableData.title) |title| {
+        try writeClipped(context, rectangle, rectangle.x, y, title);
         y += 1;
     }
 
     // Borders and header
     if (headers.len > 0) {
-        try drawHorizontalBorder(ctx, rect, y, widthsSlice, '+', '-');
+        try drawHorizontalBorder(context, rectangle, y, widthsSlice, '+', '-');
         y += 1;
-        try drawRow(ctx, rect, y, widthsSlice, headers, tbl.columnAlignments);
+        try drawRow(context, rectangle, y, widthsSlice, headers, tableData.columnAlignments);
         y += 1;
-        try drawHorizontalBorder(ctx, rect, y, widthsSlice, '+', '-');
+        try drawHorizontalBorder(context, rectangle, y, widthsSlice, '+', '-');
         y += 1;
     }
 
     // Data rows
     for (rows) |row| {
-        if (y >= rect.y + @as(i32, @intCast(rect.h))) break;
-        try drawRow(ctx, rect, y, widthsSlice, row, tbl.columnAlignments);
+        if (y >= rectangle.y + @as(i32, @intCast(rectangle.h))) break;
+        try drawRow(context, rectangle, y, widthsSlice, row, tableData.columnAlignments);
         y += 1;
     }
 
     // Bottom border if header existed
-    if (headers.len > 0 and y < rect.y + @as(i32, @intCast(rect.h))) {
-        try drawHorizontalBorder(ctx, rect, y, widthsSlice, '+', '-');
+    if (headers.len > 0 and y < rectangle.y + @as(i32, @intCast(rectangle.h))) {
+        try drawHorizontalBorder(context, rectangle, y, widthsSlice, '+', '-');
     }
 }
 
-fn calculateWidths(buf: []u16, headers: []const []const u8, rows: []const []const []const u8, totalW: u32) !void {
+fn calculateWidths(buffer: []u16, headers: []const []const u8, rows: []const []const []const u8, totalWidth: u32) !void {
     // compute content widths
-    const cols = buf.len;
-    var sum: u32 = 0;
-    for (buf, 0..) |*w, i| {
-        var mw: u32 = 0;
-        if (i < headers.len) mw = @max(mw, @as(u32, @intCast(headers[i].len)));
+    const columnCount = buffer.len;
+    var totalSum: u32 = 0;
+    for (buffer, 0..) |*width, columnIndex| {
+        var maxWidth: u32 = 0;
+        if (columnIndex < headers.len) maxWidth = @max(maxWidth, @as(u32, @intCast(headers[columnIndex].len)));
         for (rows) |row| {
-            if (i < row.len) mw = @max(mw, @as(u32, @intCast(row[i].len)));
+            if (columnIndex < row.len) maxWidth = @max(maxWidth, @as(u32, @intCast(row[columnIndex].len)));
         }
         // add padding 2 inside cell
-        mw += 2;
-        w.* = @intCast(mw);
-        sum += mw;
+        maxWidth += 2;
+        width.* = @intCast(maxWidth);
+        totalSum += maxWidth;
     }
-    if (sum == 0) return;
-    // scale down proportionally if wider than totalW - (cols+1) borders
-    const borderW: u32 = cols + 1;
-    const maxContent = if (totalW > borderW) totalW - borderW else totalW;
-    if (sum > maxContent) {
+    if (totalSum == 0) return;
+    // scale down proportionally if wider than totalWidth - (columnCount+1) borders
+    const borderWidth: u32 = columnCount + 1;
+    const maxContent = if (totalWidth > borderWidth) totalWidth - borderWidth else totalWidth;
+    if (totalSum > maxContent) {
         // fallback: set equal widths
-        const each: u32 = maxContent / @as(u32, @intCast(cols));
-        for (buf) |*w| w.* = @intCast(each);
+        const eachWidth: u32 = maxContent / @as(u32, @intCast(columnCount));
+        for (buffer) |*width| width.* = @intCast(eachWidth);
     }
 }
 
-fn drawHorizontalBorder(ctx: *render.Context, rect: ui.layout.Rect, y: i32, widths: []const u16, corner: u8, horiz: u8) !void {
-    var x: i32 = rect.x;
-    if (x >= rect.x + @as(i32, @intCast(rect.w))) return;
-    try ctx.putChar(x, y, corner);
+fn drawHorizontalBorder(context: *render.Context, rectangle: ui.layout.Rect, y: i32, widths: []const u16, cornerChar: u8, horizontalChar: u8) !void {
+    var x: i32 = rectangle.x;
+    if (x >= rectangle.x + @as(i32, @intCast(rectangle.w))) return;
+    try context.putChar(x, y, cornerChar);
     x += 1;
-    for (widths, 0..) |w, i| {
-        var j: u32 = 0;
-        while (j < w and x < rect.x + @as(i32, @intCast(rect.w))) : (j += 1) {
-            try ctx.putChar(x, y, horiz);
+    for (widths, 0..) |width, columnIndex| {
+        var charIndex: u32 = 0;
+        while (charIndex < width and x < rectangle.x + @as(i32, @intCast(rectangle.w))) : (charIndex += 1) {
+            try context.putChar(x, y, horizontalChar);
             x += 1;
         }
-        if (i + 1 < widths.len and x < rect.x + @as(i32, @intCast(rect.w))) {
-            try ctx.putChar(x, y, '+');
+        if (columnIndex + 1 < widths.len and x < rectangle.x + @as(i32, @intCast(rectangle.w))) {
+            try context.putChar(x, y, '+');
             x += 1;
         }
     }
-    if (x < rect.x + @as(i32, @intCast(rect.w))) try ctx.putChar(x, y, corner);
+    if (x < rectangle.x + @as(i32, @intCast(rectangle.w))) try context.putChar(x, y, cornerChar);
 }
 
-fn drawRow(ctx: *render.Context, rect: ui.layout.Rect, y: i32, widths: []const u16, cells: []const []const u8, aligns: ?[]const mod.Alignment) !void {
-    var x: i32 = rect.x;
-    try ctx.putChar(x, y, '|');
+fn drawRow(context: *render.Context, rectangle: ui.layout.Rect, y: i32, widths: []const u16, cells: []const []const u8, alignments: ?[]const mod.Alignment) !void {
+    var x: i32 = rectangle.x;
+    try context.putChar(x, y, '|');
     x += 1;
-    for (cells, 0..) |cell, i| {
-        const w = widths[i];
-        const innerW: i32 = @as(i32, @intCast(w));
-        const text = alignTrunc(cell, @intCast(w), if (aligns) |a| a[i] else .left);
-        var j: usize = 0;
-        while (j < text.len and (x < rect.x + @as(i32, @intCast(rect.w)))) : (j += 1) {
-            try ctx.putChar(x, y, text[j]);
+    for (cells, 0..) |cell, cellIndex| {
+        const width = widths[cellIndex];
+        const innerWidth: i32 = @as(i32, @intCast(width));
+        const text = alignTruncate(cell, @intCast(width), if (alignments) |aligns| aligns[cellIndex] else .left);
+        var textIndex: usize = 0;
+        while (textIndex < text.len and (x < rectangle.x + @as(i32, @intCast(rectangle.w)))) : (textIndex += 1) {
+            try context.putChar(x, y, text[textIndex]);
             x += 1;
         }
-        if (x < rect.x + @as(i32, @intCast(rect.w))) {
-            try ctx.putChar(x, y, '|');
+        if (x < rectangle.x + @as(i32, @intCast(rectangle.w))) {
+            try context.putChar(x, y, '|');
             x += 1;
         }
-        _ = innerW; // reserved for more precise padding if needed
+        _ = innerWidth; // reserved for more precise padding if needed
     }
 }
 
-fn alignTrunc(text: []const u8, width: u16, a: mod.Alignment) []const u8 {
+fn alignTruncate(text: []const u8, width: u16, alignment: mod.Alignment) []const u8 {
     // Produce a temporary aligned string in stack buffer; for now, just left pad/trunc.
     // Because we cannot allocate here, we pad/truncate by selecting a slice or by using a static temp.
     // Simplified: return a slice of a static buffer per call is unsafe; instead, left-align by truncation,
     // then rely on cell writer to fill spaces since widths include padding.
-    _ = a;
+    _ = alignment;
     if (text.len >= width) return text[0..width];
     // Create a left-aligned padded view using a static space buffer if needed (omitted); callers rely on width including padding.
     return text;
 }
 
-fn writeClipped(ctx: *render.Context, rect: ui.layout.Rect, x0: i32, y: i32, s: []const u8) !void {
-    var x = x0;
-    var i: usize = 0;
-    while (i < s.len and x < rect.x + @as(i32, @intCast(rect.w))) : (i += 1) {
-        if (x >= rect.x and y >= rect.y and y < rect.y + @as(i32, @intCast(rect.h))) try ctx.putChar(x, y, s[i]);
+fn writeClipped(context: *render.Context, rectangle: ui.layout.Rect, startX: i32, y: i32, text: []const u8) !void {
+    var x = startX;
+    var textIndex: usize = 0;
+    while (textIndex < text.len and x < rectangle.x + @as(i32, @intCast(rectangle.w))) : (textIndex += 1) {
+        if (x >= rectangle.x and y >= rectangle.y and y < rectangle.y + @as(i32, @intCast(rectangle.h))) try context.putChar(x, y, text[textIndex]);
         x += 1;
     }
 }
@@ -144,12 +144,12 @@ test "drawTable draws header, borders and one row (golden)" {
         surface.deinit(allocator);
         allocator.destroy(surface);
     }
-    var ctx = render.Context.init(surface, null);
-    var t = mod.Table.init(allocator);
-    t.headers = &[_][]const u8{ "H1", "H2" };
-    const row0 = [_][]const u8{ "A", "B" };
-    t.rows = &[_][]const []const u8{row0[0..]};
-    try table(&ctx, .{ .x = 0, .y = 0, .w = 22, .h = 5 }, &t);
+    var context = render.Context.init(surface, null);
+    var testTable = mod.Table.init(allocator);
+    testTable.headers = &[_][]const u8{ "H1", "H2" };
+    const firstRow = [_][]const u8{ "A", "B" };
+    testTable.rows = &[_][]const []const u8{firstRow[0..]};
+    try table(&context, .{ .x = 0, .y = 0, .w = 22, .h = 5 }, &testTable);
     const dump = try surface.toString(allocator);
     defer allocator.free(dump);
     // We accept structure presence rather than exact chars due to spacing simplification

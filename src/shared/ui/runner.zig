@@ -6,25 +6,25 @@ const render = @import("../render/mod.zig");
 /// layering (lives in ui/, can import both ui and render).
 pub fn renderToMemory(
     allocator: std.mem.Allocator,
-    mr: *render.MemoryRenderer,
-    comp: ui.component.Component,
+    memoryRenderer: *render.MemoryRenderer,
+    component: ui.component.Component,
 ) ![]render.DirtySpan {
     // Prepare back buffer and context
     // Clear happens inside renderer
-    var ctx = render.Context.init(mr.back, null);
+    var context = render.Context.init(memoryRenderer.back, null);
 
     // Basic measure/layout: fill available space for now
-    const dim = mr.size();
-    const cons = ui.layout.Constraints{ .max = .{ .w = dim.w, .h = dim.h } };
-    _ = comp.vtable.measure(comp.ptr, cons);
-    comp.vtable.layout(comp.ptr, .{ .x = 0, .y = 0, .w = dim.w, .h = dim.h });
-    try comp.vtable.render(comp.ptr, &ctx);
+    const dimensions = memoryRenderer.size();
+    const constraints = ui.layout.Constraints{ .max = .{ .w = dimensions.w, .h = dimensions.h } };
+    _ = component.vtable.measure(component.ptr, constraints);
+    component.vtable.layout(component.ptr, .{ .x = 0, .y = 0, .w = dimensions.w, .h = dimensions.h });
+    try component.vtable.render(component.ptr, &context);
 
     // Diff back vs front and swap
-    const spans = try render.diff_surface.computeDirtySpans(allocator, mr.front, mr.back);
-    const tmp = mr.front;
-    mr.front = mr.back;
-    mr.back = tmp;
+    const spans = try render.diff_surface.computeDirtySpans(allocator, memoryRenderer.front, memoryRenderer.back);
+    const temporary = memoryRenderer.front;
+    memoryRenderer.front = memoryRenderer.back;
+    memoryRenderer.back = temporary;
     return spans;
 }
 
@@ -32,18 +32,18 @@ pub fn renderToMemory(
 /// measure+layout pass and then delegates paint to the renderer.
 pub fn renderToTerminal(
     allocator: std.mem.Allocator,
-    tr: *render.TermRenderer,
-    comp: ui.component.Component,
+    termRenderer: *render.TermRenderer,
+    component: ui.component.Component,
 ) ![]render.DirtySpan {
-    const dim = tr.size();
-    const cons = ui.layout.Constraints{ .max = .{ .w = dim.w, .h = dim.h } };
-    _ = comp.vtable.measure(comp.ptr, cons);
-    comp.vtable.layout(comp.ptr, .{ .x = 0, .y = 0, .w = dim.w, .h = dim.h });
-    const spans = try tr.renderWith(struct {
-        fn paint(ctx: *render.Context) !void {
-            // The captured comp is immutable; use pointer from outer scope
-            // We cannot capture comp by reference in comptime; call through closure pattern
-            return comp.vtable.render(comp.ptr, ctx);
+    const dimensions = termRenderer.size();
+    const constraints = ui.layout.Constraints{ .max = .{ .w = dimensions.w, .h = dimensions.h } };
+    _ = component.vtable.measure(component.ptr, constraints);
+    component.vtable.layout(component.ptr, .{ .x = 0, .y = 0, .w = dimensions.w, .h = dimensions.h });
+    const spans = try termRenderer.renderWith(struct {
+        fn paint(context: *render.Context) !void {
+            // The captured component is immutable; use pointer from outer scope
+            // We cannot capture component by reference in comptime; call through closure pattern
+            return component.vtable.render(component.ptr, context);
         }
     }.paint);
     _ = allocator; // unused; kept for symmetry with renderToMemory

@@ -97,7 +97,7 @@ pub const MenuItem = struct {
         };
     }
 
-    pub fn withHelpURL(self: MenuItem, url: []const u8) MenuItem {
+    pub fn withHelpUrl(self: MenuItem, url: []const u8) MenuItem {
         return MenuItem{
             .key = self.key,
             .label = self.label,

@@ -136,12 +136,12 @@ pub fn createSeries(name: []const u8, values: []const f64, color: ?base.Color, s
 
 /// Helper to create common colors
 pub const Colors = struct {
-    pub const BLUE = base.Color.init(31, 119, 180);
-    pub const ORANGE = base.Color.init(255, 127, 14);
-    pub const GREEN = base.Color.init(44, 160, 44);
-    pub const RED = base.Color.init(214, 39, 40);
-    pub const PURPLE = base.Color.init(148, 103, 189);
-    pub const BROWN = base.Color.init(140, 86, 75);
-    pub const PINK = base.Color.init(227, 119, 194);
-    pub const GRAY = base.Color.init(127, 127, 127);
+    pub const blue = base.Color.init(31, 119, 180);
+    pub const orange = base.Color.init(255, 127, 14);
+    pub const green = base.Color.init(44, 160, 44);
+    pub const red = base.Color.init(214, 39, 40);
+    pub const purple = base.Color.init(148, 103, 189);
+    pub const brown = base.Color.init(140, 86, 75);
+    pub const pink = base.Color.init(227, 119, 194);
+    pub const gray = base.Color.init(127, 127, 127);
 };

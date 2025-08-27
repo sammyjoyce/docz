@@ -15,7 +15,7 @@ pub const File = @import("file.zig");
 
 // Official Tool Registry
 pub const ToolRegistry = struct {
-    pub const TOOLS = .{
+    pub const tools = .{
         .io = Io,
         .content_editor = ContentEditor,
         .validate = Validate,
@@ -27,7 +27,7 @@ pub const ToolRegistry = struct {
 
 // Extended Tool Registry (includes official + additional tools)
 pub const ExtendedToolRegistry = struct {
-    pub const TOOLS = .{
+    pub const tools = .{
         .io = Io,
         .content_editor = ContentEditor,
         .validate = Validate,

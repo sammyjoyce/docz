@@ -590,7 +590,7 @@ pub const Clear = struct {
     }
 
     /// Get z-index for layering
-    pub fn getZIndex(self: *const Clear) i32 {
+    pub fn getZAxisIndex(self: *const Clear) i32 {
         return self.config.z_index;
     }
 

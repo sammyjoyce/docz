@@ -503,7 +503,7 @@ pub fn createTable(allocator: std.mem.Allocator, headers: [][]const u8, data: []
 }
 
 /// Create a table from CSV-like data
-pub fn createTableFromCSV(allocator: std.mem.Allocator, csv_data: []const u8, has_header: bool) !DataTable {
+pub fn createTableFromCsv(allocator: std.mem.Allocator, csv_data: []const u8, has_header: bool) !DataTable {
     var lines = std.mem.split(u8, csv_data, "\n");
 
     // Parse header

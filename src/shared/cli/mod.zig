@@ -16,9 +16,9 @@ pub const Core = struct {
 };
 
 // Main exports
-pub const CliApp = Core.app.CliApp;
+pub const App = Core.app.App;
 pub const Cli = Core.state.Cli;
-pub const CliError = Core.types.CliError;
+pub const Error = Core.types.Error;
 pub const Config = Core.types.Config;
 pub const CommandResult = Core.types.CommandResult;
 

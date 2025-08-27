@@ -1,5 +1,5 @@
 const std = @import("std");
-const draw = @import("Draw.zig");
+const draw = @import("draw.zig");
 const renderCtx = @import("../../render/mod.zig");
 const ui = @import("../../ui/mod.zig");
 
@@ -17,27 +17,27 @@ pub const Notification = struct {
         return ui.component.wrap(@TypeOf(self.*), self);
     }
 
-    pub fn measure(self: *Notification, c: ui.layout.Constraints) ui.layout.Size {
+    pub fn measure(self: *Notification, constraints: ui.layout.Constraints) ui.layout.Size {
         _ = self;
-        const w = c.max.w;
-        const h: u32 = if (c.max.h >= 2) 2 else 1;
-        return .{ .w = w, .h = h };
+        const width = constraints.max.w;
+        const height: u32 = if (constraints.max.h >= 2) 2 else 1;
+        return .{ .w = width, .h = height };
     }
 
-    pub fn layout(self: *Notification, rect: ui.layout.Rect) void {
+    pub fn layout(self: *Notification, rectangle: ui.layout.Rect) void {
         _ = self;
-        _ = rect; // No-op for now
+        _ = rectangle; // No-op for now
     }
 
-    pub fn render(self: *Notification, ctx: *renderCtx.Context) !void {
-        // For now, render at origin; higher-level layout to provide rect soon
-        const r = draw.Rect{ .x = 0, .y = 0, .w = 40, .h = 3 };
-        try draw.notification(ctx, r, self.severity, self.title, self.message);
+    pub fn render(self: *Notification, context: *renderCtx.Context) !void {
+        // For now, render at origin; higher-level layout to provide rectangle soon
+        const rectangle = draw.Rectangle{ .x = 0, .y = 0, .w = 40, .h = 3 };
+        try draw.notification(context, rectangle, self.severity, self.title, self.message);
     }
 
-    pub fn event(self: *Notification, ev: ui.event.Event) ui.component.Component.Invalidate {
+    pub fn event(self: *Notification, inputEvent: ui.event.Event) ui.component.Component.Invalidate {
         _ = self;
-        _ = ev;
+        _ = inputEvent;
         return .none;
     }
 };

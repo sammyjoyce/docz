@@ -30,7 +30,7 @@ pub const FileOperation = struct {
     /// Content of the file (for read operations)
     content: ?[]const u8 = null,
     /// File metadata
-    metadata: ?FileInfo = null,
+    metadata: ?FileMetadata = null,
     /// Operation result (e.g., "created", "updated", "deleted")
     operation: ?[]const u8 = null,
     /// Size of the file in bytes
@@ -40,7 +40,7 @@ pub const FileOperation = struct {
 };
 
 /// File metadata structure
-pub const FileInfo = struct {
+pub const FileMetadata = struct {
     size: u64,
     modified: i128,
     isFile: bool,
@@ -369,8 +369,8 @@ pub fn getObject(value: json.Value) ?json.ObjectMap {
     };
 }
 
-/// Convert FileInfo to JSON value
-pub fn fileInfoToJson(allocator: std.mem.Allocator, metadata: FileInfo) !json.Value {
+/// Convert FileMetadata to JSON value
+pub fn fileMetadataToJson(allocator: std.mem.Allocator, metadata: FileMetadata) !json.Value {
     var object = json.ObjectMap.init(allocator);
     try object.put("size", json.Value{ .integer = @intCast(metadata.size) });
     try object.put("modified", json.Value{ .integer = metadata.modified });

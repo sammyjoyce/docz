@@ -105,24 +105,24 @@ pub const UXConfig = struct {
 
 /// Universal keyboard shortcuts that work across all agents
 pub const UniversalShortcuts = struct {
-    pub const QUIT = "Ctrl+Q";
-    pub const QUIT_ALT = "Ctrl+C";
-    pub const HELP = "F1";
-    pub const HELP_ALT = "?";
-    pub const COMMAND_PALETTE = "Ctrl+P";
-    pub const COMMAND_PALETTE_ALT = "Ctrl+Shift+P";
-    pub const SAVE_SESSION = "Ctrl+S";
-    pub const LOAD_SESSION = "Ctrl+O";
-    pub const TOGGLE_DASHBOARD = "Ctrl+D";
-    pub const TOGGLE_FILE_BROWSER = "Ctrl+Shift+E";
-    pub const TOGGLE_HELP = "Ctrl+H";
-    pub const NEXT_PANEL = "Ctrl+Tab";
-    pub const PREV_PANEL = "Ctrl+Shift+Tab";
-    pub const FOCUS_COMMAND = "Ctrl+L";
-    pub const CLEAR_SCREEN = "Ctrl+Shift+C";
-    pub const ZOOM_IN = "Ctrl+=";
-    pub const ZOOM_OUT = "Ctrl+-";
-    pub const RESET_ZOOM = "Ctrl+0";
+    pub const quit = "Ctrl+Q";
+    pub const quitAlt = "Ctrl+C";
+    pub const help = "F1";
+    pub const helpAlt = "?";
+    pub const commandPalette = "Ctrl+P";
+    pub const commandPaletteAlt = "Ctrl+Shift+P";
+    pub const saveSession = "Ctrl+S";
+    pub const loadSession = "Ctrl+O";
+    pub const toggleDashboard = "Ctrl+D";
+    pub const toggleFileBrowser = "Ctrl+Shift+E";
+    pub const toggleHelp = "Ctrl+H";
+    pub const nextPanel = "Ctrl+Tab";
+    pub const prevPanel = "Ctrl+Shift+Tab";
+    pub const focusCommand = "Ctrl+L";
+    pub const clearScreen = "Ctrl+Shift+C";
+    pub const zoomIn = "Ctrl+=";
+    pub const zoomOut = "Ctrl+-";
+    pub const resetZoom = "Ctrl+0";
 };
 
 /// Command definition for the shared command system

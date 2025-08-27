@@ -349,11 +349,11 @@ pub const Logos = struct {
         \\└─────────────────┘
     ;
 
-    pub const SPINNER_FRAMES = [_][]const u8{
+    pub const spinnerFrames = [_][]const u8{
         "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏",
     };
 
-    pub const LOADING_FRAMES = [_][]const u8{
+    pub const loadingFrames = [_][]const u8{
         "[    ]",
         "[■   ]",
         "[■■  ]",

@@ -1,8 +1,8 @@
 const std = @import("std");
 const Painter = @import("painter.zig").Painter;
 const surface = @import("surface.zig");
-const diff_surface = @import("diff_surface.zig");
-const diff_coalesce = @import("diff_coalesce.zig");
+const diffSurface = @import("diff_surface.zig");
+const diffCoalesce = @import("diff_coalesce.zig");
 const term = @import("term_shared");
 
 /// Terminal renderer: renders to a back buffer, diffs vs front, and applies
@@ -66,7 +66,7 @@ pub const Terminal = struct {
     }
 
     /// Render using a provided paint callback; applies diff to the terminal.
-    pub fn renderWith(self: *Terminal, paint: *const fn (*Painter) anyerror!void) ![]diff_surface.DirtySpan {
+    pub fn renderWith(self: *Terminal, paint: *const fn (*Painter) anyerror!void) ![]diffSurface.Span {
         // Render into back buffer, compute spans, swap
         const spans = try self.mem.renderWith(paint);
         // Apply to terminal: dump the new front snapshot and write spans
@@ -74,30 +74,30 @@ pub const Terminal = struct {
         errdefer self.allocator.free(snap);
         // Frame-level sync for reduced flicker
         if (self.opts.enableSyncOutput) self.screen.beginSync() catch {};
-        const apply_err = blk: {
+        const applyErr = blk: {
             if (self.opts.coalesceRects) {
-                const rects = try diff_coalesce.coalesceSpansToRects(self.allocator, spans);
+                const rects = try diffCoalesce.coalesceSpansToRects(self.allocator, spans);
                 defer self.allocator.free(rects);
                 break :blk self.applyRects(rects, snap);
             } else {
                 break :blk self.applySpans(spans, snap);
             }
         };
-        if (self.opts.enable_sync_output) self.screen.endSync() catch {};
-        try apply_err;
+        if (self.opts.enableSyncOutput) self.screen.endSync() catch {};
+        try applyErr;
         return spans;
     }
 
-    fn applySpans(self: *Terminal, spans: []const diff_surface.DirtySpan, snapshot: []const u8) !void {
+    fn applySpans(self: *Terminal, spans: []const diffSurface.Span, snapshot: []const u8) !void {
         const dim = self.size();
 
         inline for (.{}) |_| {} // silence unused inline for style parity
 
-        const writer_ptr = self.out_writer;
-        const has_custom = writer_ptr != null;
-        const writer = if (has_custom) writer_ptr.? else undefined;
+        const writerPtr = self.outWriter;
+        const hasCustom = writerPtr != null;
+        const writer = if (hasCustom) writerPtr.? else undefined;
 
-        if (self.opts.batch_writes) {
+        if (self.opts.batchWrites) {
             var out = std.array_list.Managed(u8).init(self.allocator);
             defer out.deinit();
             for (spans) |s| {
@@ -114,7 +114,7 @@ pub const Terminal = struct {
                     try out.appendSlice(snapshot[start..end]);
                 }
             }
-            if (has_custom) {
+            if (hasCustom) {
                 try writer.*.writeAll(out.items);
             } else {
                 try self.stdout.writeAll(out.items);
@@ -148,7 +148,7 @@ pub const Terminal = struct {
         }
     }
 
-    fn applyRects(self: *Terminal, rects: []const diff_coalesce.DirtyRect, snapshot: []const u8) !void {
+    fn applyRects(self: *Terminal, rects: []const diffCoalesce.Rect, snapshot: []const u8) !void {
         const dim = self.size();
         const writer_ptr = self.out_writer;
         const has_custom = writer_ptr != null;

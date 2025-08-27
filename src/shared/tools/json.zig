@@ -3,7 +3,7 @@
 //! and eliminate boilerplate code.
 
 const std = @import("std");
-const toolsMod = @import("mod.zig");
+const tools = @import("mod.zig");
 
 /// Parse and validate a tool request from JSON into a struct.
 /// Uses comptime reflection to automatically parse JSON fields into struct fields.
@@ -23,15 +23,15 @@ const toolsMod = @import("mod.zig");
 /// ```
 pub fn parseToolRequest(comptime T: type, jsonValue: std.json.Value) !T {
     if (jsonValue != .object) {
-        return toolsMod.ToolError.InvalidInput;
+        return tools.ToolError.InvalidInput;
     }
 
     const object = jsonValue.object;
     var result: T = undefined;
 
     // Use comptime reflection to iterate over struct fields
-    const information = @typeInfo(T).@"struct";
-    inline for (information.fields) |field| {
+    const structInfo = @typeInfo(T).@"struct";
+    inline for (structInfo.fields) |field| {
         const fieldName = field.name;
 
         // Check if field is required (no default value)
@@ -39,7 +39,7 @@ pub fn parseToolRequest(comptime T: type, jsonValue: std.json.Value) !T {
 
         const jsonField = object.get(fieldName) orelse {
             if (isRequired) {
-                return toolsMod.ToolError.MissingParameter;
+                return tools.ToolError.MissingParameter;
             }
             continue;
         };
@@ -118,13 +118,13 @@ pub fn createErrorResponse(allocator: std.mem.Allocator, err: anyerror, message:
 /// ```
 pub fn validateRequiredFields(comptime T: type, jsonValue: std.json.Value) !void {
     if (jsonValue != .object) {
-        return toolsMod.ToolError.InvalidInput;
+        return tools.ToolError.InvalidInput;
     }
 
     const object = jsonValue.object;
-    const information = @typeInfo(T).@"struct";
+    const structInfo = @typeInfo(T).@"struct";
 
-    inline for (information.fields) |field| {
+    inline for (structInfo.fields) |field| {
         const fieldName = field.name;
 
         // Check if field is required (no default value)
@@ -132,7 +132,7 @@ pub fn validateRequiredFields(comptime T: type, jsonValue: std.json.Value) !void
 
         if (isRequired) {
             if (object.get(fieldName) == null) {
-                return toolsMod.ToolError.MissingParameter;
+                return tools.ToolError.MissingParameter;
             }
         }
     }
@@ -158,11 +158,11 @@ fn parseJsonValue(comptime T: type, jsonValue: std.json.Value) !T {
 
     switch (info) {
         .bool => {
-            if (jsonValue != .bool) return toolsMod.ToolError.InvalidInput;
+            if (jsonValue != .bool) return tools.ToolError.InvalidInput;
             return jsonValue.bool;
         },
         .int => {
-            if (jsonValue != .integer) return toolsMod.ToolError.InvalidInput;
+            if (jsonValue != .integer) return tools.ToolError.InvalidInput;
             return @intCast(jsonValue.integer);
         },
         .float => {
@@ -171,23 +171,23 @@ fn parseJsonValue(comptime T: type, jsonValue: std.json.Value) !T {
             } else if (jsonValue == .float) {
                 return @floatCast(jsonValue.float);
             } else {
-                return toolsMod.ToolError.InvalidInput;
+                return tools.ToolError.InvalidInput;
             }
         },
         .pointer => |ptr_info| {
-            if (ptr_info.size != .slice) return toolsMod.ToolError.InvalidInput;
-            if (ptr_info.child != u8) return toolsMod.ToolError.InvalidInput;
+            if (ptr_info.size != .slice) return tools.ToolError.InvalidInput;
+            if (ptr_info.child != u8) return tools.ToolError.InvalidInput;
 
-            if (jsonValue != .string) return toolsMod.ToolError.InvalidInput;
+            if (jsonValue != .string) return tools.ToolError.InvalidInput;
             return jsonValue.string;
         },
         .@"struct" => {
-            if (jsonValue != .object) return toolsMod.ToolError.InvalidInput;
+            if (jsonValue != .object) return tools.ToolError.InvalidInput;
             return try parseStructFromJson(T, jsonValue);
         },
         .@"union" => {
             // For now, only support tagged unions with string tags
-            if (jsonValue != .object) return toolsMod.ToolError.InvalidInput;
+            if (jsonValue != .object) return tools.ToolError.InvalidInput;
             return try parseUnionFromJson(T, jsonValue);
         },
         .optional => |opt_info| {
@@ -197,7 +197,7 @@ fn parseJsonValue(comptime T: type, jsonValue: std.json.Value) !T {
             return try parseJsonValue(opt_info.child, jsonValue);
         },
         .array => |arr_info| {
-            if (jsonValue != .array) return toolsMod.ToolError.InvalidInput;
+            if (jsonValue != .array) return tools.ToolError.InvalidInput;
             const jsonArray = jsonValue.array;
 
             var result: T = undefined;
@@ -209,7 +209,7 @@ fn parseJsonValue(comptime T: type, jsonValue: std.json.Value) !T {
             return result;
         },
         else => {
-            return toolsMod.ToolError.InvalidInput;
+            return tools.ToolError.InvalidInput;
         },
     }
 }
@@ -219,14 +219,14 @@ fn parseStructFromJson(comptime T: type, jsonValue: std.json.Value) !T {
     const object = jsonValue.object;
     var result: T = undefined;
 
-    const information = @typeInfo(T).@"struct";
-    inline for (information.fields) |field| {
+    const structInfo = @typeInfo(T).@"struct";
+    inline for (structInfo.fields) |field| {
         const fieldName = field.name;
         const isRequired = !field.is_comptime and field.default_value_ptr == null;
 
         const jsonField = object.get(fieldName) orelse {
             if (isRequired) {
-                return toolsMod.ToolError.MissingParameter;
+                return tools.ToolError.MissingParameter;
             }
             continue;
         };
@@ -243,21 +243,21 @@ fn parseUnionFromJson(comptime T: type, jsonValue: std.json.Value) !T {
     const object = jsonValue.object;
 
     // Look for a "type" field to determine the union variant
-    const typeField = object.get("type") orelse return toolsMod.ToolError.InvalidInput;
-    if (typeField != .string) return toolsMod.ToolError.InvalidInput;
+    const typeField = object.get("type") orelse return tools.ToolError.InvalidInput;
+    if (typeField != .string) return tools.ToolError.InvalidInput;
 
     const typeName = typeField.string;
     const info = @typeInfo(T).@"union";
 
     inline for (info.fields) |field| {
         if (std.mem.eql(u8, field.name, typeName)) {
-            const valueField = object.get("value") orelse return toolsMod.ToolError.InvalidInput;
+            const valueField = object.get("value") orelse return tools.ToolError.InvalidInput;
             const parsedValue = try parseJsonValue(field.type, valueField);
             return @unionInit(T, field.name, parsedValue);
         }
     }
 
-    return toolsMod.ToolError.InvalidInput;
+    return tools.ToolError.InvalidInput;
 }
 
 /// Convert any value to a JSON Value
@@ -273,7 +273,7 @@ fn valueToJsonValue(value: anytype, allocator: std.mem.Allocator) !std.json.Valu
             if (ptr_info.size == .slice and ptr_info.child == u8) {
                 return std.json.Value{ .string = value };
             }
-            return toolsMod.ToolError.InvalidInput;
+            return tools.ToolError.InvalidInput;
         },
         .@"struct" => {
             var object = std.json.ObjectMap.init(allocator);
@@ -307,7 +307,7 @@ fn valueToJsonValue(value: anytype, allocator: std.mem.Allocator) !std.json.Valu
             }
         },
         else => {
-            return toolsMod.ToolError.InvalidInput;
+            return tools.ToolError.InvalidInput;
         },
     }
 }

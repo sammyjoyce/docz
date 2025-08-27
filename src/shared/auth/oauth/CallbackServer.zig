@@ -113,14 +113,14 @@ pub const Server = struct {
                 mutex: std.Thread.Mutex,
                 condition: std.Thread.Condition,
                 value: ?T,
-                has_value: bool,
+                hasValue: bool,
 
                 pub fn init() @This() {
                     return .{
                         .mutex = .{},
                         .condition = .{},
                         .value = null,
-                        .has_value = false,
+                        .hasValue = false,
                     };
                 }
 
@@ -129,7 +129,7 @@ pub const Server = struct {
                     defer self.mutex.unlock();
 
                     self.value = value;
-                    self.has_value = true;
+                    self.hasValue = true;
                     self.condition.signal();
                 }
 
@@ -137,13 +137,13 @@ pub const Server = struct {
                     self.mutex.lock();
                     defer self.mutex.unlock();
 
-                    while (!self.has_value) {
+                    while (!self.hasValue) {
                         self.condition.wait(&self.mutex);
                     }
 
                     const result = self.value;
                     self.value = null;
-                    self.has_value = false;
+                    self.hasValue = false;
                     return result;
                 }
 
@@ -151,10 +151,10 @@ pub const Server = struct {
                     self.mutex.lock();
                     defer self.mutex.unlock();
 
-                    if (self.has_value) {
+                    if (self.hasValue) {
                         const result = self.value;
                         self.value = null;
-                        self.has_value = false;
+                        self.hasValue = false;
                         return result;
                     }
                     return null;
@@ -586,11 +586,11 @@ pub const Server = struct {
             print("{s}{s}", .{ ansi.cursor.restore, ansi.erase.toEndOfLine });
 
             // Show animated spinner
-            const spinner_chars = [_][]const u8{ "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏" };
-            const spinner_idx = @as(usize, @intCast(@mod(now, spinner_chars.len)));
+            const spinnerChars = [_][]const u8{ "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏" };
+            const spinnerIdx = @as(usize, @intCast(@mod(now, spinnerChars.len)));
 
             print("{s}{s} Server Status: {s}Listening on port {d}{s} | ", .{
-                spinner_chars[spinner_idx],
+                spinnerChars[spinnerIdx],
                 ansi.fg.cyan,
                 ansi.fg.white,
                 self.config.port,

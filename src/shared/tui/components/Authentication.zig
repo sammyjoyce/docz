@@ -22,7 +22,7 @@ pub const Authentication = struct {
         self.allocator.destroy(self);
     }
 
-    pub fn authenticateCLI(self: *Authentication) !void {
+    pub fn authenticateCli(self: *Authentication) !void {
         _ = self;
         // CLI authentication flow
         // Implementation here...

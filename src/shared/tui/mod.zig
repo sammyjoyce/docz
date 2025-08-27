@@ -99,12 +99,12 @@ pub const createDashboard = dashboard.createDashboard;
 // Agent interface functions are available in the separate agent_interface module
 
 // Global initialization functions
-pub fn initTUI(allocator: std.mem.Allocator) !void {
+pub fn initTui(allocator: std.mem.Allocator) !void {
     try base.init(allocator);
     try dashboard.init(allocator);
 }
 
-pub fn deinitTUI() void {
+pub fn deinitTui() void {
     dashboard.deinit();
     base.deinit();
 }

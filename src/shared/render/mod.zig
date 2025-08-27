@@ -88,11 +88,11 @@ pub const Graphics = term_mod.graphics.Graphics;
 
 // Diff rendering module
 pub const diff = @import("diff.zig");
-pub const diff_surface = @import("diff_surface.zig");
-pub const DirtySpan = diff_surface.DirtySpan;
-pub const diff_coalesce = @import("diff_coalesce.zig");
-pub const DirtyRect = diff_coalesce.DirtyRect;
-pub const coalesceSpansToRects = diff_coalesce.coalesceSpansToRects;
+pub const diffSurface = @import("diff_surface.zig");
+pub const DiffSpan = diffSurface.Span;
+pub const diffCoalesce = @import("diff_coalesce.zig");
+pub const DiffRect = diffCoalesce.Rect;
+pub const coalesceSpansToRects = diffCoalesce.coalesceSpansToRects;
 pub const Memory = @import("memory.zig").Memory;
 pub const Terminal = @import("terminal.zig").Terminal;
 pub const Scheduler = @import("scheduler.zig").Scheduler;
@@ -224,8 +224,8 @@ test "rendering system" {
     var api = try RendererAPI.init(testing.allocator);
     defer api.deinit();
 
-    const api_info = api.getCapabilities();
-    try testing.expect(api_info.tier != .minimal or api_info.tier == .minimal); // Any tier is valid
+    const apiInfo = api.getCapabilities();
+    try testing.expect(apiInfo.tier != .minimal or apiInfo.tier == .minimal); // Any tier is valid
 
     // Test component rendering
     const progress = Progress{

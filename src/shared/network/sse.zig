@@ -12,8 +12,8 @@
 
 const std = @import("std");
 
-/// Specialized error types for SSE parsing operations
-pub const SSEError = error{
+/// Specialized error types for Server-Sent Events parsing operations
+pub const ServerSentEventError = error{
     /// Invalid SSE field format or content
     InvalidField,
     /// Event exceeds maximum allowed size
@@ -28,8 +28,8 @@ pub const SSEError = error{
     BufferOverflow,
 } || std.mem.Allocator.Error;
 
-/// SSE event field types as defined in the specification
-pub const SSEField = enum {
+/// Server-Sent Event field types as defined in the specification
+pub const ServerSentEventField = enum {
     data,
     event,
     id,
@@ -38,7 +38,7 @@ pub const SSEField = enum {
     unknown,
 
     /// Parse field name from line to determine field type
-    pub fn fromString(field_name: []const u8) SSEField {
+    pub fn fromString(field_name: []const u8) ServerSentEventField {
         if (std.mem.eql(u8, field_name, "data")) return .data;
         if (std.mem.eql(u8, field_name, "event")) return .event;
         if (std.mem.eql(u8, field_name, "id")) return .id;
@@ -47,8 +47,8 @@ pub const SSEField = enum {
     }
 };
 
-/// Structured SSE event representation
-pub const SSEEvent = struct {
+/// Structured Server-Sent Event representation
+pub const ServerSentEvent = struct {
     /// Event type (from 'event:' field), null for default events
     event_type: ?[]const u8 = null,
 
@@ -65,8 +65,8 @@ pub const SSEEvent = struct {
     has_data: bool = false,
 
     /// Create a copy of this event with allocated memory
-    pub fn clone(self: *const SSEEvent, allocator: std.mem.Allocator) !SSEEvent {
-        var cloned = SSEEvent{
+    pub fn clone(self: *const ServerSentEvent, allocator: std.mem.Allocator) !ServerSentEvent {
+        var cloned = ServerSentEvent{
             .retry_interval = self.retry_interval,
             .has_data = self.has_data,
         };
@@ -87,7 +87,7 @@ pub const SSEEvent = struct {
     }
 
     /// Free memory allocated by clone()
-    pub fn deinit(self: *SSEEvent, allocator: std.mem.Allocator) void {
+    pub fn deinit(self: *ServerSentEvent, allocator: std.mem.Allocator) void {
         if (self.event_type) |event_type| {
             allocator.free(event_type);
             self.event_type = null;
@@ -163,7 +163,7 @@ pub const SSEEventBuilder = struct {
     }
 
     /// Add data line to current event with newline handling
-    pub fn addDataLine(self: *SSEEventBuilder, dataLine: []const u8) SSEError!void {
+    pub fn addDataLine(self: *SSEEventBuilder, dataLine: []const u8) ServerSentEventError!void {
         if (self.hasData) {
             try self.dataBuffer.append('\n'); // Multi-line data separator
         }
@@ -172,15 +172,15 @@ pub const SSEEventBuilder = struct {
     }
 
     /// Set retry interval with validation
-    pub fn setRetryInterval(self: *SSEEventBuilder, retry_str: []const u8, config: *const SSEConfig) SSEError!void {
+    pub fn setRetryInterval(self: *SSEEventBuilder, retry_str: []const u8, config: *const SSEConfig) ServerSentEventError!void {
         const retry_value = std.fmt.parseInt(u32, std.mem.trim(u8, retry_str, " \t"), 10) catch {
             std.log.warn("Invalid retry interval format: '{s}', ignoring", .{retry_str});
-            return SSEError.InvalidRetryInterval;
+            return ServerSentEventError.InvalidRetryInterval;
         };
 
         if (retry_value < config.minRetryInterval or retry_value > config.maxRetryInterval) {
             std.log.warn("Retry interval {} seconds out of range ({}-{}), ignoring", .{ retry_value, config.minRetryInterval, config.maxRetryInterval });
-            return SSEError.InvalidRetryInterval;
+            return ServerSentEventError.InvalidRetryInterval;
         }
 
         self.retry_interval = retry_value;
@@ -188,8 +188,8 @@ pub const SSEEventBuilder = struct {
     }
 
     /// Build SSEEvent from current state
-    pub fn buildEvent(self: *const SSEEventBuilder) SSEEvent {
-        return SSEEvent{
+    pub fn buildEvent(self: *const SSEEventBuilder) ServerSentEvent {
+        return ServerSentEvent{
             .event_type = self.event_type,
             .event_id = self.event_id,
             .data = self.dataBuffer.items,
@@ -212,7 +212,7 @@ pub const SSEEventBuilder = struct {
 /// - id: field_value (event identifier)
 /// - retry: field_value (reconnection time in milliseconds)
 /// - :comment (ignored per specification)
-pub fn processSseLine(line: []const u8, eventState: *SSEEventBuilder, config: *const SSEConfig) SSEError!?SSEField {
+pub fn processServerSentEventLine(line: []const u8, eventState: *SSEEventBuilder, config: *const SSEConfig) ServerSentEventError!?ServerSentEventField {
     if (line.len == 0) return null; // Skip empty lines - these typically separate events
 
     // Handle comment lines (start with ':')
@@ -236,7 +236,7 @@ pub fn processSseLine(line: []const u8, eventState: *SSEEventBuilder, config: *c
     else
         line[fieldValueStart..];
 
-    const fieldType = SSEField.fromString(fieldName);
+    const fieldType = ServerSentEventField.fromString(fieldName);
 
     // Process SSE fields according to specification
     switch (fieldType) {
@@ -250,7 +250,7 @@ pub fn processSseLine(line: []const u8, eventState: *SSEEventBuilder, config: *c
             const requiredCapacity = eventState.dataBuffer.items.len + fieldValue.len + 1; // +1 for potential newline
             if (requiredCapacity > config.maxEventSize) {
                 std.log.warn("SSE data would exceed maximum event size, truncating to prevent memory issues", .{});
-                return SSEError.EventTooLarge;
+                return ServerSentEventError.EventTooLarge;
             }
 
             try eventState.addDataLine(fieldValue);
@@ -287,9 +287,9 @@ pub fn processSseLines(
     data: []const u8,
     eventState: *SSEEventBuilder,
     config: *const SSEConfig,
-    events: *std.array_list.Managed(SSEEvent),
+    events: *std.array_list.Managed(ServerSentEvent),
     allocator: std.mem.Allocator,
-) SSEError!void {
+) ServerSentEventError!void {
     var lineIterator = std.mem.splitScalar(u8, data, '\n');
     var lineCount: usize = 0;
 
@@ -297,7 +297,7 @@ pub fn processSseLines(
         lineCount += 1;
 
         // Process line and check for field type
-        _ = processSseLine(line, eventState, config) catch |err| {
+        _ = processServerSentEventLine(line, eventState, config) catch |err| {
             std.log.warn("Error processing SSE line {}: {}", .{ lineCount, err });
             continue; // Continue processing other lines
         };
@@ -335,7 +335,7 @@ pub fn parseSseData(
     data: []const u8,
     allocator: std.mem.Allocator,
     config: ?SSEConfig,
-) SSEError![]SSEEvent {
+) ServerSentEventError![]ServerSentEvent {
     const sseConfig = config orelse SSEConfig{};
     var eventState = SSEEventBuilder.init(allocator);
     defer eventState.deinit();
@@ -370,12 +370,12 @@ pub fn createTestConfig() SSEConfig {
 
 // ==================== Tests ====================
 
-test "SSE field type parsing" {
-    try std.testing.expectEqual(SSEField.data, SSEField.fromString("data"));
-    try std.testing.expectEqual(SSEField.event, SSEField.fromString("event"));
-    try std.testing.expectEqual(SSEField.id, SSEField.fromString("id"));
-    try std.testing.expectEqual(SSEField.retry, SSEField.fromString("retry"));
-    try std.testing.expectEqual(SSEField.unknown, SSEField.fromString("unknown"));
+test "Server-Sent Event field type parsing" {
+    try std.testing.expectEqual(ServerSentEventField.data, ServerSentEventField.fromString("data"));
+    try std.testing.expectEqual(ServerSentEventField.event, ServerSentEventField.fromString("event"));
+    try std.testing.expectEqual(ServerSentEventField.id, ServerSentEventField.fromString("id"));
+    try std.testing.expectEqual(ServerSentEventField.retry, ServerSentEventField.fromString("retry"));
+    try std.testing.expectEqual(ServerSentEventField.unknown, ServerSentEventField.fromString("unknown"));
 }
 
 test "SSE event state management" {
@@ -421,27 +421,27 @@ test "SSE line processing" {
     const config = createTestConfig();
 
     // Test data line
-    const dataField = try processSseLine("data: Hello World", &eventState, &config);
-    try std.testing.expectEqual(SSEField.data, dataField.?);
+    const dataField = try processServerSentEventLine("data: Hello World", &eventState, &config);
+    try std.testing.expectEqual(ServerSentEventField.data, dataField.?);
     try std.testing.expectEqualStrings("Hello World", eventState.dataBuffer.items);
 
     // Test event line
-    const eventField = try processSseLine("event: message", &eventState, &config);
-    try std.testing.expectEqual(SSEField.event, eventField.?);
+    const eventField = try processServerSentEventLine("event: message", &eventState, &config);
+    try std.testing.expectEqual(ServerSentEventField.event, eventField.?);
     try std.testing.expectEqualStrings("message", eventState.event_type.?);
 
     // Test ID line
-    const idField = try processSseLine("id: 123", &eventState, &config);
-    try std.testing.expectEqual(SSEField.id, idField.?);
+    const idField = try processServerSentEventLine("id: 123", &eventState, &config);
+    try std.testing.expectEqual(ServerSentEventField.id, idField.?);
     try std.testing.expectEqualStrings("123", eventState.event_id.?);
 
     // Test retry line
-    _ = try processSseLine("retry: 30", &eventState, &config);
+    _ = try processServerSentEventLine("retry: 30", &eventState, &config);
     try std.testing.expectEqual(@as(u32, 30), eventState.retry_interval.?);
 
     // Test comment line
-    const commentField = try processSseLine(": This is a comment", &eventState, &config);
-    try std.testing.expectEqual(SSEField.comment, commentField.?);
+    const commentField = try processServerSentEventLine(": This is a comment", &eventState, &config);
+    try std.testing.expectEqual(ServerSentEventField.comment, commentField.?);
 }
 
 test "SSE multi-line data parsing" {

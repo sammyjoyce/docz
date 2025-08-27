@@ -105,7 +105,7 @@ pub const AttrMask = packed struct {
         return asInt == 0;
     }
 
-    pub fn eql(self: AttrMask, other: AttrMask) bool {
+    pub fn equals(self: AttrMask, other: AttrMask) bool {
         const selfInt: u8 = @bitCast(self);
         const otherInt: u8 = @bitCast(other);
         return selfInt == otherInt;
@@ -119,7 +119,7 @@ pub const Color = union(enum) {
     ansi256: u8, // 0-255 extended palette
     rgb: struct { r: u8, g: u8, b: u8 },
 
-    pub fn eql(self: Color, other: Color) bool {
+    pub fn equals(self: Color, other: Color) bool {
         return switch (self) {
             .default => other == .default,
             .ansi => |c| other == .ansi and other.ansi == c,
@@ -168,7 +168,7 @@ pub const Link = struct {
         return self.url == null and self.params == null;
     }
 
-    pub fn eql(self: Link, other: Link) bool {
+    pub fn equals(self: Link, other: Link) bool {
         const urlMatch = blk: {
             if (self.url == null and other.url == null) break :blk true;
             if (self.url == null or other.url == null) break :blk false;
@@ -198,11 +198,11 @@ pub const Style = struct {
     attrs: AttrMask = .{},
     ulStyle: UnderlineStyle = .none,
 
-    pub fn eql(self: Style, other: Style) bool {
-        return self.fg.eql(other.fg) and
-            self.bg.eql(other.bg) and
-            self.ulColor.eql(other.ulColor) and
-            self.attrs.eql(other.attrs) and
+    pub fn equals(self: Style, other: Style) bool {
+        return self.fg.equals(other.fg) and
+            self.bg.equals(other.bg) and
+            self.ulColor.equals(other.ulColor) and
+            self.attrs.equals(other.attrs) and
             self.ulStyle == other.ulStyle;
     }
 
@@ -340,7 +340,7 @@ pub const Cell = struct {
             self.width == 1 and self.style.isEmpty() and self.link.isEmpty();
     }
 
-    pub fn eql(self: Cell, other: Cell) bool {
+    pub fn equals(self: Cell, other: Cell) bool {
         const combMatch = blk: {
             if (self.comb == null and other.comb == null) break :blk true;
             if (self.comb == null or other.comb == null) break :blk false;
@@ -353,8 +353,8 @@ pub const Cell = struct {
 
         return self.rune == other.rune and
             self.width == other.width and
-            self.style.eql(other.style) and
-            self.link.eql(other.link) and
+            self.style.equals(other.style) and
+            self.link.equals(other.link) and
             combMatch;
     }
 
@@ -750,7 +750,7 @@ pub const CellBuffer = struct {
         } else {
             // Differential rendering - only changed cells
             for (self.cells, 0..) |cell, idx| {
-                if (!cell.eql(self.previousCells[idx])) {
+                if (!cell.equals(self.previousCells[idx])) {
                     const x = idx % self.width;
                     const y = idx / self.width;
                     try diffs.append(.{ .x = x, .y = y, .cell = cell });

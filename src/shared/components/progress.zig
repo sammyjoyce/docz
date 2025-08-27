@@ -59,7 +59,7 @@ pub const Color = union(enum) {
 };
 
 /// Terminal capabilities for adaptive rendering
-pub const TermCaps = struct {
+pub const TerminalCapabilities = struct {
     supportsTruecolor: bool = false,
     supportsUnicode: bool = false,
     supportsKittyGraphics: bool = false,
@@ -68,7 +68,7 @@ pub const TermCaps = struct {
     supportsWideChars: bool = false,
 
     /// Detect terminal capabilities
-    pub fn detect() TermCaps {
+    pub fn detect() TerminalCapabilities {
         // This would normally detect actual terminal capabilities
         // For now, return conservative defaults that can be expanded
         return .{
@@ -124,7 +124,7 @@ pub const Progress = struct {
     /// Show percentage text
     showPercentage: bool = true,
     /// Show estimated time of arrival
-    showEta: bool = false,
+    showEstimatedTimeArrival: bool = false,
     /// Show processing rate (bytes/sec, items/sec, etc.)
     showRate: bool = false,
     /// Start time for ETA calculation
@@ -215,7 +215,7 @@ pub const Progress = struct {
     }
 
     /// Get estimated time remaining in seconds
-    pub fn getETA(self: *const Progress) ?i64 {
+    pub fn getEstimatedTimeArrival(self: *const Progress) ?i64 {
         if (self.startTime == null or self.value <= 0.01) return null;
 
         const elapsed = std.time.timestamp() - self.startTime.?;
@@ -263,7 +263,7 @@ pub const Progress = struct {
 /// Helper functions for progress bar rendering
 pub const Helper = struct {
     /// HSV to RGB conversion for color effects
-    pub fn hsvToRgb(h: f32, s: f32, v: f32) Color {
+    pub fn hueToRgbColor(h: f32, s: f32, v: f32) Color {
         const c = v * s;
         const x = c * (1.0 - @abs(@mod(h / 60.0, 2.0) - 1.0));
         const m = v - c;
@@ -448,13 +448,13 @@ pub const Bar = struct {
 /// Comprehensive progress bar renderer with multiple styles
 pub const Renderer = struct {
     allocator: Allocator,
-    caps: TermCaps,
+    caps: TerminalCapabilities,
 
     /// Initialize renderer
     pub fn init(allocator: Allocator) Renderer {
         return Renderer{
             .allocator = allocator,
-            .caps = TermCaps.detect(),
+            .caps = TerminalCapabilities.detect(),
         };
     }
 
@@ -597,7 +597,7 @@ pub const Renderer = struct {
             if (is_filled) {
                 // Rainbow gradient based on position
                 const hue = pos * 120.0; // Green to red range
-                const rgb = Helper.hsvToRgb(120.0 - hue, 0.8, 1.0);
+                const rgb = Helper.hueToRgbColor(120.0 - hue, 0.8, 1.0);
                 switch (rgb) {
                     .rgb => |r| try writer.print("\x1b[38;2;{d};{d};{d}m█\x1b[0m", .{ r.r, r.g, r.b }),
                     else => try writer.writeAll("█"),
@@ -626,7 +626,7 @@ pub const Renderer = struct {
             if (is_filled) {
                 // HSV rainbow based on position
                 const hue = pos * 360.0;
-                const rgb = Helper.hsvToRgb(hue, 0.8, 1.0);
+                const rgb = Helper.hueToRgbColor(hue, 0.8, 1.0);
                 switch (rgb) {
                     .rgb => |r| try writer.print("\x1b[38;2;{d};{d};{d}m█\x1b[0m", .{ r.r, r.g, r.b }),
                     else => try writer.writeAll("█"),
@@ -721,7 +721,7 @@ pub const Renderer = struct {
 
             if (self.caps.supports_truecolor) {
                 const hue = (@as(f32, @floatFromInt(i)) / @as(f32, @floatFromInt(num_circles))) * 360.0;
-                const rgb = Helper.hsvToRgb(hue, 0.8, 1.0);
+                const rgb = Helper.hueToRgbColor(hue, 0.8, 1.0);
                 switch (rgb) {
                     .rgb => |r| try writer.print("\x1b[38;2;{d};{d};{d}m{s}\x1b[0m ", .{ r.r, r.g, r.b, if (circle_level >= circles.len) circles[circles.len - 1] else circles[circle_level] }),
                     else => try writer.print("{s} ", .{if (circle_level >= circles.len) circles[circles.len - 1] else circles[circle_level]}),
@@ -779,7 +779,7 @@ pub const Renderer = struct {
 
             if (self.caps.supports_truecolor) {
                 const progress_color = value * 120.0; // Green to yellow range
-                const rgb = Helper.hsvToRgb(progress_color, 0.8, 1.0);
+                const rgb = Helper.hueToRgbColor(progress_color, 0.8, 1.0);
                 switch (rgb) {
                     .rgb => |r| try writer.print("\x1b[38;2;{d};{d};{d}m{s}\x1b[0m", .{ r.r, r.g, r.b, bars[@min(bar_idx, bars.len - 1)] }),
                     else => try writer.writeAll(bars[@min(bar_idx, bars.len - 1)]),
@@ -851,8 +851,8 @@ pub const Renderer = struct {
         }
 
         // ETA
-        if (data.show_eta) {
-            if (data.getETA()) |eta_seconds| {
+        if (data.showEstimatedTimeArrival) {
+            if (data.getEstimatedTimeArrival()) |eta_seconds| {
                 const eta_minutes = eta_seconds / 60;
                 const eta_remaining_seconds = eta_seconds % 60;
                 if (eta_minutes > 0) {
@@ -898,7 +898,7 @@ pub const Adapter = struct {
         try data.setProgress(self.value);
         data.label = if (self.label) |l| try allocator.dupe(u8, l) else null;
         data.show_percentage = self.percentage;
-        data.show_eta = self.eta;
+        data.showEstimatedTimeArrival = self.eta;
         data.color = self.color;
         data.background_color = self.background_color;
         return data;
@@ -949,7 +949,7 @@ pub fn renderProgressData(renderer: anytype, data: *Progress) !void {
     const render_shared = @import("render_shared");
     const SharedRenderer = render_shared.Renderer;
     _ = @as(*SharedRenderer, @ptrCast(renderer));
-    const key = cacheKey("progress_data_{d}_{?s}_{}_{}_{}", .{ data.value, data.label, data.show_percentage, data.show_eta, data.show_rate });
+    const key = cacheKey("progress_data_{d}_{?s}_{}_{}_{}", .{ data.value, data.label, data.show_percentage, data.showEstimatedTimeArrival, data.show_rate });
 
     if (renderer.cache.get(key, renderer.render_tier)) |cached| {
         try renderer.terminal.writeText(cached);
@@ -1000,8 +1000,8 @@ pub const AnimatedProgress = struct {
         try self.data.setProgress(new_value);
 
         // Calculate ETA if enabled
-        if (self.data.show_eta) {
-            // ETA is calculated automatically in Progress.getETA()
+        if (self.data.showEstimatedTimeArrival) {
+            // ETA is calculated automatically in Progress.getEstimatedTimeArrival()
         }
 
         // Clear line and render updated progress
