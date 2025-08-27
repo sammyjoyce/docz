@@ -9,7 +9,8 @@ const Allocator = std.mem.Allocator;
 // File tree widget
 const file_tree_mod = @import("tui_shared").widgets.core.file_tree;
 const focus_mod = @import("tui_shared").core.input;
-const components = @import("components_shared");
+const shared = @import("../../mod.zig");
+const components = shared.components;
 const mouse_mod = components.input.Mouse;
 const term_ansi = @import("term_shared").ansi.color;
 

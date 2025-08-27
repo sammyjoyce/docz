@@ -34,7 +34,8 @@ const unified = term_mod.unified;
 const caps = term_mod.caps;
 
 // Network and auth for monitoring
-const anthropic = @import("../../network/anthropic.zig");
+const shared = @import("../../mod.zig");
+const anthropic = shared.Network.anthropic;
 const auth = @import("../../auth/core/mod.zig");
 
 /// Main dashboard configuration

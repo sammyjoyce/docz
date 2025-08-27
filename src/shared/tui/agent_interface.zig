@@ -46,16 +46,16 @@ const term = @import("term_shared");
 const auth = @import("auth_shared");
 const render = @import("render_shared");
 const theme_manager = @import("../theme_manager/mod.zig");
-const network = @import("../network/mod.zig");
+const shared = @import("../mod.zig");
+const network = shared.Network;
 const tools_mod = @import("tools_shared");
-const components = @import("components_shared");
 
 // Re-export CliOptions from engine to avoid duplication
 pub const CliOptions = engine.CliOptions;
 
 // Terminal abstractions
 const screen_manager = @import("../term/screen_manager.zig");
-const input_components = @import("components_shared");
+const input_components = shared.components;
 const mouse_mod = input_components.input.Mouse;
 
 // File tree widget
@@ -208,10 +208,10 @@ pub const FileBrowserState = struct {
     current_directory: []const u8 = "",
 
     /// Selected files in file browser
-    selected_files: std.ArrayList([]const u8) = undefined,
+    selected_files: std.array_list.Managed([]const u8) = undefined,
 
     /// Recent files list
-    recent_files: std.ArrayList([]const u8) = undefined,
+    recent_files: std.array_list.Managed([]const u8) = undefined,
 
     /// Bookmarks
     bookmarks: std.StringHashMap([]const u8) = undefined,
@@ -225,8 +225,8 @@ pub const FileBrowserState = struct {
     /// Initialize file browser state
     pub fn init(allocator: Allocator) FileBrowserState {
         return .{
-            .selected_files = std.ArrayList([]const u8).init(allocator),
-            .recent_files = std.ArrayList([]const u8).init(allocator),
+            .selected_files = std.array_list.Managed([]const u8).init(allocator),
+            .recent_files = std.array_list.Managed([]const u8).init(allocator),
             .bookmarks = std.StringHashMap([]const u8).init(allocator),
         };
     }
@@ -305,7 +305,7 @@ pub const SessionData = struct {
     start_time: i64 = 0,
     messages_processed: u64 = 0,
     tools_executed: u64 = 0,
-    conversation_history: std.ArrayList(ConversationEntry) = undefined,
+    conversation_history: std.array_list.Managed(ConversationEntry) = undefined,
     metadata: std.StringHashMap([]const u8) = undefined,
 };
 
@@ -715,7 +715,7 @@ pub const Agent = struct {
             .start_time = std.time.milliTimestamp(),
             .messages_processed = 0,
             .tools_executed = 0,
-            .conversation_history = std.ArrayList(ConversationEntry).init(self.allocator),
+            .conversation_history = std.array_list.Managed(ConversationEntry).init(self.allocator),
             .metadata = std.StringHashMap([]const u8).init(self.allocator),
         };
 

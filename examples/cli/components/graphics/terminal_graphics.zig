@@ -15,7 +15,7 @@
 
 const std = @import("std");
 const unified = @import("../../../src/shared/term/unified.zig");
-const capabilities = @import("../../../src/shared/term/caps.zig");
+const capabilities = @import("../../../src/shared/term/capabilities.zig");
 const terminal_abstraction = @import("../../core/terminal_abstraction.zig");
 
 const Allocator = std.mem.Allocator;

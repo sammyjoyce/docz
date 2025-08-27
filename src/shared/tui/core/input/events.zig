@@ -1,7 +1,8 @@
 //! Enhanced event handling system for TUI components
 //! Uses the unified input system from @src/shared/input for comprehensive input support
 const std = @import("std");
-const unified_input = @import("components_shared").input;
+const shared = @import("../../../mod.zig");
+const unified_input = shared.components.input;
 
 // Re-export unified input types
 pub const InputEvent = unified_input.Event;

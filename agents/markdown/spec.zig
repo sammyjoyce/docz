@@ -2,7 +2,7 @@
 
 const std = @import("std");
 const engine = @import("core_engine");
-const impl = @import("Agent.zig");
+const impl = @import("agent.zig");
 const tools_mod = @import("tools_shared");
 
 fn buildSystemPromptImpl(allocator: std.mem.Allocator, options: engine.CliOptions) ![]const u8 {

@@ -6,8 +6,9 @@ const std = @import("std");
 const term_ansi = @import("term_shared").ansi.color;
 const term_cursor = @import("term_shared").ansi.cursor;
 const term_mod = @import("term_shared");
-const terminal_cursor = @import("components_shared").TerminalCursor;
-const input_mod = @import("components_shared").input;
+const shared = @import("../../../mod.zig");
+const terminal_cursor = shared.components.TerminalCursor;
+const input_mod = shared.components.input;
 const print = std.debug.print;
 
 /// Date representation

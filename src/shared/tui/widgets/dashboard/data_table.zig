@@ -7,7 +7,6 @@ const renderer_mod = @import("../../core/renderer.zig");
 const bounds_mod = @import("../../core/bounds.zig");
 const events_mod = @import("../../core/events.zig");
 const tui_mod = @import("../../mod.zig");
-const clipboard_mod = tui_mod.term.ansi.clipboard;
 const terminal_mod = tui_mod.term.unified;
 
 const Renderer = renderer_mod.Renderer;
@@ -36,6 +35,8 @@ pub const DataTable = struct {
     // Clipboard integration
     clipboard_enabled: bool,
     last_copied_data: ?[]u8 = null,
+    // Cached renderer pointer to enable clipboard ops during input events
+    renderer: ?*Renderer = null,
 
     pub const Config = struct {
         title: ?[]const u8 = null,
@@ -184,6 +185,7 @@ pub const DataTable = struct {
 
     pub fn render(self: *Self, renderer: *Renderer, ctx: RenderContext) !void {
         self.bounds = ctx.bounds;
+        self.renderer = renderer;
 
         var current_y: u32 = ctx.bounds.y;
 
@@ -533,8 +535,10 @@ pub const DataTable = struct {
         const data = try self.getSelectionData(selection);
         defer self.allocator.free(data);
 
-        // Use OSC 52 to copy to system clipboard
-        try clipboard_mod.writeClipboard(self.allocator, .system, data);
+        // Use renderer clipboard API if available
+        if (self.renderer) |r| {
+            r.copyToClipboard(data) catch {};
+        }
 
         // Cache the data locally
         if (self.last_copied_data) |old_data| {
@@ -551,7 +555,9 @@ pub const DataTable = struct {
         const cell = self.rows[pos.y][pos.x];
         if (!cell.copyable) return;
 
-        try clipboard_mod.writeClipboard(self.allocator, .system, cell.value);
+        if (self.renderer) |r| {
+            r.copyToClipboard(cell.value) catch {};
+        }
 
         if (self.last_copied_data) |old_data| {
             self.allocator.free(old_data);
@@ -561,21 +567,11 @@ pub const DataTable = struct {
 
     fn requestPaste(self: *Self) !void {
         if (!self.clipboard_enabled) return;
-
-        // Request clipboard content via OSC 52
-        const data = clipboard_mod.readClipboard(self.allocator, .system) catch |err| switch (err) {
-            error.ClipboardUnavailable => {
-                // Fall back to local cache
-                if (self.last_copied_data) |cached| {
-                    try self.handlePaste(cached);
-                }
-                return;
-            },
-            else => return err,
-        };
-        defer self.allocator.free(data);
-
-        try self.handlePaste(data);
+        // Renderer does not support reading clipboard; rely on paste input events.
+        // As a small helper, fall back to local last_copied_data cache if present.
+        if (self.last_copied_data) |cached| {
+            try self.handlePaste(cached);
+        }
     }
 
     fn getSelectionData(self: *Self, selection: Selection) ![]u8 {

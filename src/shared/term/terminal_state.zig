@@ -88,7 +88,9 @@ pub fn getSize(fd: std.posix.fd_t) !struct { width: u16, height: u16 } {
 /// Read password without local echo
 pub fn readPassword(fd: std.posix.fd_t, allocator: std.mem.Allocator, max_size: usize) ![]u8 {
     const old_state = try getState(fd);
-    defer setState(fd, &old_state) catch {};
+    defer setState(fd, &old_state) catch |err| {
+        std.log.warn("Failed to restore terminal state after password input: {any}", .{err});
+    };
 
     // Disable echo
     const raw_state = try makeRaw(fd);

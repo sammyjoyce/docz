@@ -3,7 +3,7 @@ const term_shared = @import("term_shared");
 const Cell = term_shared.cellbuf.Cell;
 const Style = term_shared.cellbuf.Style;
 const Color = term_shared.cellbuf.Color;
-const CellBuffer = @import("../../term/cellbuf.zig").CellBuffer;
+const CellBuffer = term_shared.cellbuf.CellBuffer;
 const Rectangle = term_shared.cellbuf.Rectangle;
 
 /// Statistics for tracking rendering performance

@@ -1,12 +1,12 @@
 const std = @import("std");
 const testing = std.testing;
 const BorderMerger = @import("BorderMerger").BorderMerger;
-const Point = @import("Bounds").Point;
+const Point = @import("BorderMerger").Point;
 
 test "BorderMerger initialization and cleanup" {
     const allocator = testing.allocator;
 
-    var merger = BorderMerger.init(allocator);
+    var merger = try BorderMerger.init(allocator);
     defer merger.deinit();
 
     try testing.expect(merger.widgets.items.len == 0);
@@ -16,7 +16,7 @@ test "BorderMerger initialization and cleanup" {
 test "BorderMerger widget registration" {
     const allocator = testing.allocator;
 
-    var merger = BorderMerger.init(allocator);
+    var merger = try BorderMerger.init(allocator);
     defer merger.deinit();
 
     const widget = BorderMerger.WidgetBoundary{
@@ -32,7 +32,7 @@ test "BorderMerger widget registration" {
 test "BorderMerger detects horizontal adjacency" {
     const allocator = testing.allocator;
 
-    var merger = BorderMerger.init(allocator);
+    var merger = try BorderMerger.init(allocator);
     defer merger.deinit();
 
     // Two widgets side by side
@@ -56,7 +56,7 @@ test "BorderMerger detects horizontal adjacency" {
 test "BorderMerger detects vertical adjacency" {
     const allocator = testing.allocator;
 
-    var merger = BorderMerger.init(allocator);
+    var merger = try BorderMerger.init(allocator);
     defer merger.deinit();
 
     // Two widgets stacked vertically
@@ -80,7 +80,7 @@ test "BorderMerger detects vertical adjacency" {
 test "BorderMerger junction type determination" {
     const allocator = testing.allocator;
 
-    var merger = BorderMerger.init(allocator);
+    var merger = try BorderMerger.init(allocator);
     defer merger.deinit();
 
     // Create a T-junction with three widgets
@@ -129,7 +129,7 @@ test "BorderMerger character mapping for different styles" {
 test "BorderMerger clear functionality" {
     const allocator = testing.allocator;
 
-    var merger = BorderMerger.init(allocator);
+    var merger = try BorderMerger.init(allocator);
     defer merger.deinit();
 
     const widget = BorderMerger.WidgetBoundary{
@@ -149,7 +149,7 @@ test "BorderMerger clear functionality" {
 test "BorderMerger complex grid layout" {
     const allocator = testing.allocator;
 
-    var merger = BorderMerger.init(allocator);
+    var merger = try BorderMerger.init(allocator);
     defer merger.deinit();
 
     // Create a 2x2 grid

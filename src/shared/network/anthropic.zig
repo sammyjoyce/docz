@@ -12,14 +12,14 @@ pub const Message = struct {
     content: []const u8,
 };
 
-/// OAuth configuration constants
+// OAuth configuration constants
 pub const OAUTH_CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e";
 pub const OAUTH_AUTHORIZATION_URL = "https://claude.ai/oauth/authorize";
 pub const OAUTH_TOKEN_ENDPOINT = "https://console.anthropic.com/v1/oauth/token";
 pub const OAUTH_REDIRECT_URI = "https://console.anthropic.com/oauth/code/callback";
 pub const OAUTH_SCOPES = "org:create_api_key user:profile user:inference";
 
-/// OAuth credentials stored to disk
+// OAuth credentials stored to disk
 pub const OAuthCredentials = struct {
     type: []const u8, // Always "oauth"
     access_token: []const u8,
@@ -39,7 +39,7 @@ pub const OAuthCredentials = struct {
     }
 };
 
-/// PKCE parameters for OAuth flow
+// PKCE parameters for OAuth flow
 pub const PkceParams = struct {
     code_verifier: []const u8,
     code_challenge: []const u8,
@@ -53,79 +53,7 @@ pub const PkceParams = struct {
     }
 };
 
-/// Generate PKCE parameters with cryptographically secure random values
-pub fn generatePkceParams(allocator: std.mem.Allocator) !PkceParams {
-    // Generate random code verifier (43-128 characters)
-    const verifier_length = 64; // Use 64 characters for good entropy
-    const code_verifier = try generateCodeVerifier(allocator, verifier_length);
 
-    // Generate code challenge by SHA256 hashing and base64url encoding
-    const code_challenge = try generateCodeChallenge(allocator, code_verifier);
-
-    // Generate random state parameter (32 characters)
-    const state = try generateRandomState(allocator, 32);
-
-    return PkceParams{
-        .code_verifier = code_verifier,
-        .code_challenge = code_challenge,
-        .state = state,
-    };
-}
-
-/// Generate a cryptographically secure random code verifier
-fn generateCodeVerifier(allocator: std.mem.Allocator, length: usize) ![]u8 {
-    if (length < 43 or length > 128) {
-        return error.InvalidLength;
-    }
-
-    // Generate random bytes
-    const randomBytes = try allocator.alloc(u8, length);
-    defer allocator.free(randomBytes);
-    std.crypto.random.bytes(randomBytes);
-
-    // Convert to valid PKCE characters (alphanumeric + -._~)
-    const VALID_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
-    const verifier = try allocator.alloc(u8, length);
-
-    for (randomBytes, 0..) |byte, i| {
-        verifier[i] = VALID_CHARS[byte % VALID_CHARS.len];
-    }
-
-    return verifier;
-}
-
-/// Generate code challenge by SHA256 hashing and base64url encoding the verifier
-fn generateCodeChallenge(allocator: std.mem.Allocator, codeVerifier: []const u8) ![]u8 {
-    // SHA256 hash the verifier
-    var hasher = std.crypto.hash.sha2.Sha256.init(.{});
-    hasher.update(codeVerifier);
-    const hash = hasher.finalResult();
-
-    // Base64url encode the hash
-    const encodedSize = std.base64.url_safe_no_pad.Encoder.calcSize(hash.len);
-    const challenge = try allocator.alloc(u8, encodedSize);
-    _ = std.base64.url_safe_no_pad.Encoder.encode(challenge, &hash);
-
-    return challenge;
-}
-
-/// Generate a cryptographically secure random state parameter
-fn generateRandomState(allocator: std.mem.Allocator, length: usize) ![]u8 {
-    // Generate random bytes
-    const randomBytes = try allocator.alloc(u8, length);
-    defer allocator.free(randomBytes);
-    std.crypto.random.bytes(randomBytes);
-
-    // Convert to URL-safe characters
-    const VALID_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
-    const state = try allocator.alloc(u8, length);
-
-    for (randomBytes, 0..) |byte, i| {
-        state[i] = VALID_CHARS[byte % VALID_CHARS.len];
-    }
-
-    return state;
-}
 
 /// Authentication methods supported
 pub const AuthMethod = union(enum) {
@@ -1196,21 +1124,7 @@ fn processSSELine(line: []const u8, event_state: *sse.SSEEventState, sse_config:
     _ = try sse.processSSELine(line, event_state, sse_config);
 }
 
-// ================== OAuth Implementation ==================
 
-/// Build OAuth authorization URL with default provider
-pub fn buildAuthorizationUrl(allocator: std.mem.Allocator, pkce_params: PkceParams) ![]u8 {
-    const scopes = [_][]const u8{ "org:create_api_key", "user:profile", "user:inference" };
-    const provider = OAuthProvider{
-        .client_id = OAUTH_CLIENT_ID,
-        .authorization_url = OAUTH_AUTHORIZATION_URL,
-        .token_url = OAUTH_TOKEN_ENDPOINT,
-        .redirect_uri = OAUTH_REDIRECT_URI,
-        .scopes = &scopes,
-    };
-
-    return try provider.buildAuthURL(allocator, pkce_params);
-}
 
 /// Exchange authorization code for tokens
 pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorization_code: []const u8, pkce_params: PkceParams) !OAuthCredentials {
@@ -1446,8 +1360,8 @@ pub fn saveOAuthCredentials(allocator: std.mem.Allocator, file_path: []const u8,
     try file.writeAll(json_content);
 }
 
-/// Parse authorization code from callback URL (handles fragments)
-pub fn parseAuthorizationCode(allocator: std.mem.Allocator, callback_url: []const u8) ![]const u8 {
+/// Extract authorization code from OAuth callback URL
+pub fn extractCodeFromCallbackUrl(allocator: std.mem.Allocator, callback_url: []const u8) ![]u8 {
     // Parse URL and extract code parameter
     const url = try std.URI.parse(callback_url);
 

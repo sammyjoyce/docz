@@ -106,7 +106,8 @@ const table_mod = @import("components/table.zig");
 const chart_mod = @import("components/chart.zig");
 
 // Progress exports from shared components (avoid cross-module duplication)
-const shared_components = @import("components_shared");
+const shared = @import("../mod.zig");
+const shared_components = shared.components;
 pub const Progress = shared_components.AdaptiveProgress;
 pub const renderProgress = shared_components.progress.renderProgress;
 pub const AnimatedProgress = shared_components.AnimatedProgress;

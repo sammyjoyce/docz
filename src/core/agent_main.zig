@@ -5,12 +5,12 @@
 //! Theme and UX framework integration is available through optional imports.
 
 const std = @import("std");
-const engine = @import("engine.zig");
+const engine = @import("engine_shared");
 const cli = @import("cli_shared");
-const session = @import("session.zig");
-const auth = @import("../shared/auth/core/mod.zig");
-const agent_base = @import("agent_base.zig");
-const interactive_session = @import("interactive_session.zig");
+const session = @import("interactive_session");
+const auth = @import("auth_shared");
+const agent_base = @import("agent_base");
+const interactive_session = @import("interactive_session");
 
 const CliOptions = engine.CliOptions;
 

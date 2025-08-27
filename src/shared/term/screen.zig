@@ -257,7 +257,9 @@ pub const Screen = struct {
     pub fn resize(self: *Screen, width: u32, height: u32) void {
         self.screen_bounds = types.BoundsU32.init(0, 0, width, height);
         // Mark entire screen as dirty since everything might need repositioning
-        self.markDirty(self.screen_bounds) catch {};
+        self.markDirty(self.screen_bounds) catch |err| {
+            std.log.warn("Failed to mark screen dirty during resize: {any}", .{err});
+        };
     }
 
     /// Set tab configuration for text rendering

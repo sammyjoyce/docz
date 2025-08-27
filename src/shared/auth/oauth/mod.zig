@@ -1,10 +1,19 @@
 //! OAuth authentication implementation for DocZ
 //!
-//! This module provides a clean interface to OAuth functionality while delegating
-//! to the anthropic module for actual OAuth operations to avoid module conflicts.
+//! This module provides a complete OAuth 2.0 implementation with PKCE support,
+//! including proper HTTP requests to the OAuth token endpoint for exchanging
+//! authorization codes and refreshing access tokens.
+//!
+//! Features:
+//! - PKCE (Proof Key for Code Exchange) for enhanced security
+//! - Real HTTP POST requests to OAuth token endpoint
+//! - Proper JSON response parsing and error handling
+//! - Token expiration management
+//! - Integration with callback server for seamless authorization flow
 
 const std = @import("std");
 pub const callback_server = @import("callback_server.zig");
+const curl = @import("network_shared").curl;
 
 // Re-export OAuth constants and types from anthropic
 pub const OAUTH_CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e";
@@ -181,48 +190,177 @@ pub fn buildAuthorizationUrl(allocator: std.mem.Allocator, pkce_params: PkcePara
     return try provider.buildAuthorizationUrl(allocator, pkce_params);
 }
 
-/// Exchange authorization code for tokens using PKCE flow
-/// NOTE: This is a stub implementation. For real token exchange,
-/// integrate with an HTTP client to make requests to the OAuth token endpoint.
-pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorization_code: []const u8, pkce_params: PkceParams) !OAuthCredentials {
-    // TODO: Implement real HTTP request to OAuth token endpoint
-    // This would typically involve:
-    // 1. Making a POST request to OAUTH_TOKEN_ENDPOINT
-    // 2. Sending form data with grant_type, code, redirect_uri, code_verifier, client_id
-    // 3. Parsing the JSON response for access_token, refresh_token, expires_in
-    // 4. Converting expires_in to expires_at timestamp
+/// Helper function to encode form data for OAuth requests
+fn encodeFormData(allocator: std.mem.Allocator, fields: []const struct { key: []const u8, value: []const u8 }) ![]u8 {
+    var form_data = std.ArrayList(u8).init(allocator);
+    defer form_data.deinit();
 
-    _ = authorization_code;
-    _ = pkce_params;
+    for (fields, 0..) |field, i| {
+        if (i > 0) {
+            try form_data.appendSlice("&");
+        }
 
-    // Return stub credentials for now
+        // URL encode key
+        const encoded_key = try std.Uri.percentEncode(allocator, field.key);
+        defer allocator.free(encoded_key);
+        try form_data.appendSlice(encoded_key);
+
+        try form_data.appendSlice("=");
+
+        // URL encode value
+        const encoded_value = try std.Uri.percentEncode(allocator, field.value);
+        defer allocator.free(encoded_value);
+        try form_data.appendSlice(encoded_value);
+    }
+
+    return form_data.toOwnedSlice();
+}
+
+/// Parse OAuth token response JSON
+fn parseTokenResponse(allocator: std.mem.Allocator, json_response: []const u8) !OAuthCredentials {
+    const parsed = try std.json.parseFromSlice(std.json.Value, allocator, json_response, .{});
+    defer parsed.deinit();
+
+    // Check if response contains an error
+    if (parsed.value.object.get("error")) |error_field| {
+        const error_code = error_field.string;
+        std.log.err("OAuth error response: {s}", .{error_code});
+
+        if (std.mem.eql(u8, error_code, "invalid_grant")) {
+            return OAuthError.InvalidGrant;
+        } else if (std.mem.eql(u8, error_code, "invalid_request")) {
+            return OAuthError.InvalidFormat;
+        } else {
+            return OAuthError.AuthError;
+        }
+    }
+
+    const obj = parsed.value.object;
+
+    // Extract required fields with proper error handling
+    const access_token = obj.get("access_token") orelse {
+        std.log.err("Missing access_token in OAuth response", .{});
+        return OAuthError.InvalidFormat;
+    };
+
+    const refresh_token = obj.get("refresh_token") orelse {
+        std.log.err("Missing refresh_token in OAuth response", .{});
+        return OAuthError.InvalidFormat;
+    };
+
+    const expires_in = obj.get("expires_in") orelse {
+        std.log.err("Missing expires_in in OAuth response", .{});
+        return OAuthError.InvalidFormat;
+    };
+
+    if (access_token != .string or refresh_token != .string or expires_in != .integer) {
+        std.log.err("Invalid field types in OAuth response", .{});
+        return OAuthError.InvalidFormat;
+    }
+
+    // Calculate expiration timestamp
+    const expires_at = std.time.timestamp() + expires_in.integer;
+
     return OAuthCredentials{
         .type = try allocator.dupe(u8, "oauth"),
-        .access_token = try allocator.dupe(u8, "stub_access_token"),
-        .refresh_token = try allocator.dupe(u8, "stub_refresh_token"),
-        .expires_at = std.time.timestamp() + 3600, // 1 hour from now
+        .access_token = try allocator.dupe(u8, access_token.string),
+        .refresh_token = try allocator.dupe(u8, refresh_token.string),
+        .expires_at = expires_at,
     };
 }
 
-/// Refresh access token using refresh token
-/// NOTE: This is a stub implementation. For real token refresh,
-/// integrate with an HTTP client to make requests to the OAuth token endpoint.
-pub fn refreshTokens(allocator: std.mem.Allocator, refresh_token: []const u8) !OAuthCredentials {
-    // TODO: Implement real HTTP request to OAuth token endpoint
-    // This would typically involve:
-    // 1. Making a POST request to OAUTH_TOKEN_ENDPOINT
-    // 2. Sending form data with grant_type=refresh_token, refresh_token, client_id
-    // 3. Parsing the JSON response for new tokens and expiration
-
-    _ = refresh_token;
-
-    // Return stub credentials for now
-    return OAuthCredentials{
-        .type = try allocator.dupe(u8, "oauth"),
-        .access_token = try allocator.dupe(u8, "stub_access_token"),
-        .refresh_token = try allocator.dupe(u8, "stub_refresh_token"),
-        .expires_at = std.time.timestamp() + 3600, // 1 hour from now
+/// Exchange authorization code for tokens using PKCE flow
+pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorization_code: []const u8, pkce_params: PkceParams) !OAuthCredentials {
+    // Prepare form data for token exchange
+    const fields = [_]struct { key: []const u8, value: []const u8 }{
+        .{ .key = "grant_type", .value = "authorization_code" },
+        .{ .key = "code", .value = authorization_code },
+        .{ .key = "redirect_uri", .value = OAUTH_REDIRECT_URI },
+        .{ .key = "code_verifier", .value = pkce_params.code_verifier },
+        .{ .key = "client_id", .value = OAUTH_CLIENT_ID },
     };
+
+    const form_data = try encodeFormData(allocator, &fields);
+    defer allocator.free(form_data);
+
+    // Initialize HTTP client
+    var http_client = try curl.HTTPClient.init(allocator);
+    defer http_client.deinit();
+
+    // Prepare headers
+    const headers = [_]curl.Header{
+        .{ .name = "Content-Type", .value = "application/x-www-form-urlencoded" },
+        .{ .name = "Accept", .value = "application/json" },
+    };
+
+    // Make POST request to token endpoint
+    const response = http_client.post(OAUTH_TOKEN_ENDPOINT, &headers, form_data) catch |err| {
+        std.log.err("Network error during OAuth token exchange: {any}", .{err});
+        return OAuthError.NetworkError;
+    };
+    defer response.deinit();
+
+    // Check for successful response
+    if (response.status_code != 200) {
+        std.log.err("OAuth token exchange failed with status: {d}", .{response.status_code});
+        std.log.err("Response body: {s}", .{response.body});
+
+        // Try to parse error response
+        if (std.mem.indexOf(u8, response.body, "error")) |_| {
+            _ = parseTokenResponse(allocator, response.body) catch {};
+        }
+
+        return OAuthError.AuthError;
+    }
+
+    // Parse JSON response
+    return try parseTokenResponse(allocator, response.body);
+}
+
+/// Refresh access token using refresh token
+pub fn refreshTokens(allocator: std.mem.Allocator, refresh_token: []const u8) !OAuthCredentials {
+    // Prepare form data for token refresh
+    const fields = [_]struct { key: []const u8, value: []const u8 }{
+        .{ .key = "grant_type", .value = "refresh_token" },
+        .{ .key = "refresh_token", .value = refresh_token },
+        .{ .key = "client_id", .value = OAUTH_CLIENT_ID },
+    };
+
+    const form_data = try encodeFormData(allocator, &fields);
+    defer allocator.free(form_data);
+
+    // Initialize HTTP client
+    var http_client = try curl.HTTPClient.init(allocator);
+    defer http_client.deinit();
+
+    // Prepare headers
+    const headers = [_]curl.Header{
+        .{ .name = "Content-Type", .value = "application/x-www-form-urlencoded" },
+        .{ .name = "Accept", .value = "application/json" },
+    };
+
+    // Make POST request to token endpoint
+    const response = http_client.post(OAUTH_TOKEN_ENDPOINT, &headers, form_data) catch |err| {
+        std.log.err("Network error during OAuth token refresh: {any}", .{err});
+        return OAuthError.NetworkError;
+    };
+    defer response.deinit();
+
+    // Check for successful response
+    if (response.status_code != 200) {
+        std.log.err("OAuth token refresh failed with status: {d}", .{response.status_code});
+        std.log.err("Response body: {s}", .{response.body});
+
+        // Try to parse error response
+        if (std.mem.indexOf(u8, response.body, "error")) |_| {
+            _ = parseTokenResponse(allocator, response.body) catch {};
+        }
+
+        return OAuthError.AuthError;
+    }
+
+    // Parse JSON response
+    return try parseTokenResponse(allocator, response.body);
 }
 
 pub fn parseCredentials(allocator: std.mem.Allocator, json_content: []const u8) !OAuthCredentials {
@@ -238,7 +376,7 @@ pub fn parseCredentials(allocator: std.mem.Allocator, json_content: []const u8) 
 }
 
 pub fn saveCredentials(allocator: std.mem.Allocator, file_path: []const u8, creds: OAuthCredentials) !void {
-    const json_content = try std.fmt.allocPrint(allocator, "{{\"type\":\"{s}\",\"access_token\":\"{s}\",\"refresh_token\":\"{s}\",\"expires_at\":{}}}", .{ creds.type, creds.access_token, creds.refresh_token, creds.expires_at });
+    const json_content = try std.fmt.allocPrint(allocator, "{{\"type\":\"{s}\",\"access_token\":\"{s}\",\"refresh_token\":\"{s}\",\"expires_at\":{d}}}", .{ creds.type, creds.access_token, creds.refresh_token, creds.expires_at });
     defer allocator.free(json_content);
 
     const file = try std.fs.cwd().createFile(file_path, .{ .mode = 0o600 });
@@ -299,7 +437,7 @@ pub fn setupOAuth(allocator: std.mem.Allocator) !OAuthCredentials {
     };
 
     std.log.info("After authorization, you'll be redirected to a URL containing the authorization code.", .{});
-    std.log.info("Enter the authorization code from the redirect URL:");
+    std.log.info("Enter the authorization code from the redirect URL:", .{});
 
     // Read authorization code from stdin
     const stdin = std.fs.File.stdin();

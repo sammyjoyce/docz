@@ -1,8 +1,8 @@
 //! Enhanced mouse event handling for TUI applications
 //! Provides pixel-precise mouse tracking and rich interaction support
 const std = @import("std");
-const unified_input = @import("components_shared").input;
-const tui_mod = @import("../../mod.zig");
+const shared = @import("../../../mod.zig");
+const unified_input = shared.components.input;
 const term_mouse = unified_input;
 const caps_mod = @import("term_shared").capabilities;
 

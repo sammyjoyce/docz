@@ -5,12 +5,16 @@ const std = @import("std");
 
 // For now, provide basic utilities
 pub fn printVersion() void {
-    const stdout = std.fs.File.stdout().writer();
-    stdout.print("DocZ v0.1.0\n", .{}) catch {};
+    var stdout_buffer: [4096]u8 = undefined;
+    var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+    stdout_writer.print("DocZ v0.1.0\n", .{}) catch {};
+    stdout_writer.flush() catch {};
 }
 
 pub fn printHelp() void {
-    const stdout = std.fs.File.stdout().writer();
-    stdout.print("DocZ - Elegant terminal AI assistant\n", .{}) catch {};
-    stdout.print("Run 'docz --help' for detailed usage information.\n", .{}) catch {};
+    var stdout_buffer: [4096]u8 = undefined;
+    var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+    stdout_writer.print("DocZ - Elegant terminal AI assistant\n", .{}) catch {};
+    stdout_writer.print("Run 'docz --help' for detailed usage information.\n", .{}) catch {};
+    stdout_writer.flush() catch {};
 }

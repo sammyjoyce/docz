@@ -6,7 +6,7 @@
 
 const std = @import("std");
 const unified = @import("../../src/shared/term/unified.zig");
-const caps = @import("../../src/shared/term/caps.zig");
+const caps = @import("../../src/shared/term/capabilities.zig");
 
 /// Unified terminal abstraction that all CLI components should use
 pub const TerminalAbstraction = struct {

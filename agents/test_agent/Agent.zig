@@ -164,7 +164,7 @@ pub const Test = struct {
             return try std.fmt.allocPrint(self.allocator, "{d:0>4}-{d:0>2}-{d:0>2}", .{
                 yearDay.year,
                 @intFromEnum(monthDay.month),
-                monthDay.dayIndex + 1,
+                monthDay.day_of_month,
             });
         } else if (std.mem.eql(u8, varName, "max_operations")) {
             return try std.fmt.allocPrint(self.allocator, "{d}", .{self.config.maxOperations});

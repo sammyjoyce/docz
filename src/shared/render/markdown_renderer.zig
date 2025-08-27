@@ -8,6 +8,7 @@ const RenderMode = adaptive_renderer.RenderTier;
 const Color = term_shared.ansi.color.Color;
 const BasicColor = term_shared.ansi.color.BasicColor;
 const RGBColor = term_shared.ansi.color.RGBColor;
+const hyperlink = term_shared.ansi.hyperlink;
 
 /// Options for markdown rendering
 pub const MarkdownOptions = struct {
@@ -592,10 +593,8 @@ pub const MarkdownRenderer = struct {
         if (self.options.enable_hyperlinks and self.capabilities != null and
             self.capabilities.?.supportsHyperlinkOsc8)
         {
-            // OSC 8 hyperlink format: ESC ] 8 ; ; URL ST TEXT ESC ] 8 ; ; ST
-            try self.output.appendSlice("\x1b]8;;");
-            try self.output.appendSlice(url);
-            try self.output.appendSlice("\x07");
+            const writer = self.output.writer();
+            try hyperlink.startHyperlink(writer, self.capabilities.?, url, "");
 
             if (self.color_scheme.link_color) |color| {
                 try self.applyColor(color);
@@ -605,7 +604,7 @@ pub const MarkdownRenderer = struct {
                 try self.resetStyle();
             }
 
-            try self.output.appendSlice("\x1b]8;;\x07");
+            try hyperlink.endHyperlink(writer, self.capabilities.?);
         } else {
             // Fallback format
             if (self.color_scheme.link_color) |color| {

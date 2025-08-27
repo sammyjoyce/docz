@@ -35,7 +35,7 @@ pub fn parseToolRequest(comptime T: type, json_value: std.json.Value) !T {
         const field_name = field.name;
 
         // Check if field is required (no default value)
-        const is_required = !field.is_comptime and field.default_value == null;
+        const is_required = !field.is_comptime and field.default_value_ptr == null;
 
         const json_field = obj.get(field_name) orelse {
             if (is_required) {
@@ -58,12 +58,10 @@ pub fn parseToolRequest(comptime T: type, json_value: std.json.Value) !T {
 /// Example:
 /// ```zig
 /// const result = .{ .data = "processed", .count = 42 };
-/// const response = try createSuccessResponse(result);
+/// const response = try createSuccessResponse(allocator, result);
 /// // Returns: {"success": true, "result": {"data": "processed", "count": 42}}
 /// ```
-pub fn createSuccessResponse(result: anytype) ![]u8 {
-    const allocator = std.heap.page_allocator; // TODO: Pass allocator as parameter
-
+pub fn createSuccessResponse(allocator: std.mem.Allocator, result: anytype) ![]u8 {
     var response_obj = std.json.ObjectMap.init(allocator);
     defer response_obj.deinit();
 
@@ -73,7 +71,10 @@ pub fn createSuccessResponse(result: anytype) ![]u8 {
     var response = std.json.Value{ .object = response_obj };
     defer response.deinit();
 
-    return try std.json.stringifyAlloc(allocator, response, .{});
+    var buffer = std.ArrayList(u8).initCapacity(allocator, 1024);
+    defer buffer.deinit();
+    try response.stringify(.{}, buffer.writer());
+    return buffer.toOwnedSlice();
 }
 
 /// Create a standard error response with the given error and message.
@@ -81,12 +82,10 @@ pub fn createSuccessResponse(result: anytype) ![]u8 {
 ///
 /// Example:
 /// ```zig
-/// const response = try createErrorResponse(error.FileNotFound, "File does not exist");
+/// const response = try createErrorResponse(allocator, error.FileNotFound, "File does not exist");
 /// // Returns: {"success": false, "error": "FileNotFound", "message": "File does not exist"}
 /// ```
-pub fn createErrorResponse(err: anyerror, message: []const u8) ![]u8 {
-    const allocator = std.heap.page_allocator; // TODO: Pass allocator as parameter
-
+pub fn createErrorResponse(allocator: std.mem.Allocator, err: anyerror, message: []const u8) ![]u8 {
     var response_obj = std.json.ObjectMap.init(allocator);
     defer response_obj.deinit();
 
@@ -99,7 +98,10 @@ pub fn createErrorResponse(err: anyerror, message: []const u8) ![]u8 {
     var response = std.json.Value{ .object = response_obj };
     defer response.deinit();
 
-    return try std.json.stringifyAlloc(allocator, response, .{});
+    var buffer = std.ArrayList(u8).initCapacity(allocator, 1024);
+    defer buffer.deinit();
+    try response.stringify(.{}, buffer.writer());
+    return buffer.toOwnedSlice();
 }
 
 /// Validate that all required fields are present in the JSON value.
@@ -126,7 +128,7 @@ pub fn validateRequiredFields(comptime T: type, json_value: std.json.Value) !voi
         const field_name = field.name;
 
         // Check if field is required (no default value)
-        const is_required = !field.is_comptime and field.default_value == null;
+        const is_required = !field.is_comptime and field.default_value_ptr == null;
 
         if (is_required) {
             if (obj.get(field_name) == null) {
@@ -142,10 +144,9 @@ pub fn validateRequiredFields(comptime T: type, json_value: std.json.Value) !voi
 /// Example:
 /// ```zig
 /// const config = @import("config.zon");
-/// const json_config = try convertZonToJson(config.my_config);
+/// const json_config = try convertZonToJson(allocator, config.my_config);
 /// ```
-pub fn convertZonToJson(zon_data: anytype) !std.json.Value {
-    const allocator = std.heap.page_allocator; // TODO: Pass allocator as parameter
+pub fn convertZonToJson(allocator: std.mem.Allocator, zon_data: anytype) !std.json.Value {
     return try valueToJsonValue(zon_data, allocator);
 }
 
@@ -221,7 +222,7 @@ fn parseStructFromJson(comptime T: type, json_value: std.json.Value) !T {
     const info = @typeInfo(T).@"struct";
     inline for (info.fields) |field| {
         const field_name = field.name;
-        const is_required = !field.is_comptime and field.default_value == null;
+        const is_required = !field.is_comptime and field.default_value_ptr == null;
 
         const json_field = obj.get(field_name) orelse {
             if (is_required) {

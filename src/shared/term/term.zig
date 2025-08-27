@@ -9,7 +9,7 @@ const caps_mod = @import("capabilities.zig");
 const ansi_color = @import("ansi/colors.zig");
 const ansi_cursor = @import("ansi/cursor.zig");
 const ansi_mode = @import("ansi/mode.zig");
-const ansi_graphics = @import("ansi/graphics.zig");
+const ansi_graphics = @import("ansi/ansi_graphics.zig");
 const ansi_clipboard = @import("ansi/clipboard.zig");
 const ansi_hyperlinks = @import("ansi/hyperlink.zig");
 const ansi_notifications = @import("ansi/notification.zig");
@@ -565,7 +565,9 @@ pub const Scoped = struct {
     }
 
     pub fn deinit(self: *Scoped) void {
-        ansi_cursor.restoreCursor(self.terminal.writer, self.terminal.caps) catch {};
+        ansi_cursor.restoreCursor(self.terminal.writer, self.terminal.caps) catch |err| {
+            std.log.warn("Failed to restore cursor in scoped terminal cleanup: {any}", .{err});
+        };
     }
 };
 

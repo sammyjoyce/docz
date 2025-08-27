@@ -2,7 +2,7 @@
 /// Implements sophisticated cursor movement algorithms to minimize terminal escape sequences
 /// Compatible with Zig 0.15.1 and follows proper error handling patterns
 const std = @import("std");
-const ansi = @import("ansi/mod.zig");
+const ansi = @import("mod.zig");
 
 /// Tab stop manager for optimizing horizontal cursor movement
 pub const TabStops = struct {

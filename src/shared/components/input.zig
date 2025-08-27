@@ -9,7 +9,8 @@
 //!   term/input/ (primitives) → components/input.zig (interface) → cli/tui (implementations)
 
 const std = @import("std");
-const term_mod = @import("term_shared");
+const shared = @import("../mod.zig");
+const term_mod = shared.term;
 const parser = term_mod.input.parser;
 const types = term_mod.input.types;
 const caps = term_mod.caps;
@@ -23,7 +24,7 @@ pub const MouseButton = types.MouseButton;
 pub const MouseAction = types.MouseAction;
 
 // Re-export mouse types from low-level module
-const mouse_mod = @import("term_shared").input.mouse;
+const mouse_mod = shared.term.input.mouse;
 pub const MouseMode = mouse_mod.MouseMode;
 pub const MouseModifiers = mouse_mod.MouseModifiers;
 pub const MouseParser = mouse_mod.MouseParser;

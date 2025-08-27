@@ -2,14 +2,15 @@
 //! Uses terminal capabilities from @src/term for user experience
 
 const std = @import("std");
-const components = @import("components_shared");
 const completion = @import("completion.zig");
 const term_shared = @import("term_shared");
 const term_ansi = term_shared.ansi.color;
 const term_cursor = term_shared.ansi.cursor;
 const term_screen = term_shared.ansi.screen;
 const term_hyperlink = term_shared.ansi.hyperlink;
-const term_notification = term_shared.ansi.notification;
+// Prefer presenter-based notifications over direct ANSI
+const presenters = @import("../presenters/mod.zig");
+const notif = @import("../notifications.zig");
 const term_clipboard = term_shared.ansi.clipboard;
 const term_graphics = term_shared.ansi.graphics;
 const term_caps = term_shared.caps;
@@ -317,11 +318,7 @@ pub const CommandPalette = struct {
         for (shortcuts, 0..) |shortcut, i| {
             if (i > 0) try writer.writeAll("  ");
 
-            if (self.caps.supportsHyperlinks()) {
-                try term_hyperlink.writeHyperlink(writer, self.allocator, self.caps, shortcut[0], "");
-            } else {
-                try writer.writeAll(shortcut[0]);
-            }
+            try writer.writeAll(shortcut[0]);
             try writer.writeAll(" ");
             try writer.writeAll(shortcut[1]);
         }
@@ -470,18 +467,15 @@ pub const CommandPalette = struct {
         try term_clipboard.writeClipboard(writer, self.allocator, self.caps, text);
     }
 
-    /// Send test notification using OSC 9
+    /// Send a test notification using the CLI presenter
     fn sendTestNotification(self: *CommandPalette) !void {
-        if (!self.caps.supportsNotifications()) {
-            return error.NotificationsNotSupported;
-        }
-
-        // For demo purposes, we'll create a dummy writer
-        var dummy_buffer = std.ArrayList(u8).init(self.allocator);
-        defer dummy_buffer.deinit();
-
-        const writer = dummy_buffer.writer();
-        try term_notification.writeNotification(writer, self.allocator, self.caps, "DocZ Command Palette - Test Notification!");
+        var n = notif.Notification.init(
+            "DocZ Command Palette",
+            "Test Notification!",
+            .info,
+            notif.NotificationConfiguration{},
+        );
+        try presenters.notification.display(self.allocator, &n, true);
     }
 
     /// Run the enhanced command palette with advanced terminal features

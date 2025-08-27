@@ -7,7 +7,7 @@ const std = @import("std");
 const mod = @import("mod.zig");
 const engine_mod = @import("engine.zig");
 const line_chart_mod = @import("line_chart.zig");
-const term_caps = @import("../../term/caps.zig");
+const term_caps = @import("../../term/capabilities.zig");
 
 /// Fluent dashboard builder with progressive enhancement
 pub const DashboardBuilder = struct {

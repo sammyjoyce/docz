@@ -1,4 +1,4 @@
-const caps_mod = @import("../caps.zig");
+const caps_mod = @import("../capabilities.zig");
 const passthrough = @import("passthrough.zig");
 
 pub const TermCaps = caps_mod.TermCaps;

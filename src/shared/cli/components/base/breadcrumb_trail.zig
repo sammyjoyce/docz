@@ -2,7 +2,6 @@
 //! Shows navigation path with clickable links
 
 const std = @import("std");
-const components = @import("components_shared");
 const term_shared = @import("term_shared");
 const term_ansi = term_shared.ansi.color;
 const term_caps = term_shared.caps;

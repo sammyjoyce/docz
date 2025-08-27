@@ -7,10 +7,10 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 
 // Use unified session and auth modules
-const session = @import("session.zig");
-const auth = @import("../shared/auth/core/mod.zig");
-const anthropic = @import("../shared/network/anthropic.zig");
-const agent_main = @import("agent_main.zig");
+const session = @import("interactive_session");
+const auth = @import("auth_shared");
+const anthropic = @import("anthropic_shared");
+const agent_main = @import("agent_main");
 
 /// Base agent structure with common functionality.
 /// Agents can embed this struct or use composition to inherit base functionality.

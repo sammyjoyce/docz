@@ -29,13 +29,35 @@ Phase 0 has been successfully completed, establishing the foundation for the mul
 - ✅ Legacy CLI components quarantined under `src/shared/cli/legacy/` with deprecation notices
 - ✅ Build system supports selective agent compilation with feature-gated shared modules
 
-### Remaining Work
-**Phase 1 - Ready to Begin:**
-- Rename agent files to `agent.zig` in `agents/markdown`, `agents/test_agent`, and template
-- Update imports in `spec.zig` and interactive modules
-- Move legacy dashboard to examples or remove, updating all references
+### Phase 1 - COMPLETED (Aug 27 2025)
+Phase 1 has been successfully completed, focusing on naming standardization, dashboard consolidation, and codebase-wide compatibility fixes. The following tasks were accomplished:
 
-**Phase 2 - Consolidation:**
+**Completed Tasks:**
+- ✅ All agent files renamed from `Agent.zig` to `agent.zig` in `agents/markdown`, `agents/test_agent`, and template
+- ✅ Dashboard consolidation completed - old `src/shared/tui/components/Dashboard.zig` removed and all references updated to use canonical dashboard at `src/shared/tui/components/dashboard/Dashboard.zig`
+- ✅ Major import path fixes throughout the codebase:
+  - `caps.zig` → `capabilities.zig`
+  - `editor.zig` commented out where necessary
+  - `graphics.zig` → `ansi_graphics.zig`
+  - Updated all spec.zig and interactive modules to reference new agent.zig files
+- ✅ Zig 0.15.1 compatibility fixes applied across the entire codebase:
+  - ArrayList API updates (unmanaged arrays)
+  - Date formatting fixes
+  - JSON serialization improvements
+  - Removed deprecated `usingnamespace` usage
+  - Updated async/await patterns to new std.Io APIs
+- ✅ Build system now working properly for both markdown and test_agent agents
+- ✅ All imports updated and verified to work with new file naming conventions
+- ✅ Agent validation and build processes tested successfully
+
+**Quick Wins Achieved:**
+- ✅ Agents build and run via `zig build -Dagent=markdown run -- "…"` and `zig build -Dagent=test_agent run -- "…"`
+- ✅ No references to old `src/shared/tui/components/Dashboard.zig` remain in shared code
+- ✅ All agent files consistently use `agent.zig` naming convention
+- ✅ Zig 0.15.1 compatibility fully achieved across all modules
+
+### Remaining Work
+**Phase 2 - Ready to Begin:**
 - Route all notifications via `components/notification.zig`
 - Update CLI hyperlinks to use ANSI layer
 - Refactor TUI progress to render shared model
@@ -134,9 +156,12 @@ Phase 0 — COMPLETED (Aug 27 2025)
 - ✅ Add deprecation banners to legacy CLI files and exclude from default barrel exports.
 - ✅ Document plan and publish acceptance criteria.
 
-Phase 1 — Naming + Dashboards
-- Rename agent files to `agent.zig` in `agents/markdown`, `agents/test_agent`, and template; update imports in `spec.zig` and any `interactive_*` modules.
-- Move `src/shared/tui/components/Dashboard.zig` to `examples/tui_adaptive_dashboard_legacy.zig` (or remove) and update references to use the canonical dashboard.
+Phase 1 — COMPLETED (Aug 27 2025)
+- ✅ Rename agent files to `agent.zig` in `agents/markdown`, `agents/test_agent`, and template; update imports in `spec.zig` and any `interactive_*` modules.
+- ✅ Move `src/shared/tui/components/Dashboard.zig` to `examples/tui_adaptive_dashboard_legacy.zig` (or remove) and update references to use the canonical dashboard.
+- ✅ Apply Zig 0.15.1 compatibility fixes throughout the codebase (ArrayList API, date formatting, JSON serialization, etc.).
+- ✅ Fix major import paths (caps.zig → capabilities.zig, graphics.zig → ansi_graphics.zig, etc.).
+- ✅ Verify build system works properly for both markdown and test_agent agents.
 
 Phase 2 — Consolidation
 - Notifications: route all high‑level usage via `components/notification.zig`; keep ANSI as low‑level encoder.
@@ -173,17 +198,115 @@ Phase 3 — Sub‑modules + Services
 - Decide on canonical dashboard and move the other into examples or delete.
 
 ## Next Steps
-Phase 1 is now ready to begin. The groundwork from Phase 0 provides a solid foundation for the naming standardization and dashboard consolidation.
+Phase 2 is now ready to begin. The successful completion of Phase 1 provides a solid foundation for notification consolidation, hyperlink standardization, and progress model unification.
 
-**Immediate Actions for Phase 1:**
-- Rename agent files to `agent.zig` in `agents/markdown`, `agents/test_agent`, and template
-- Update all imports in `spec.zig` and any `interactive_*` modules to reference the new file names
-- Move `src/shared/tui/components/Dashboard.zig` to `examples/tui_adaptive_dashboard_legacy.zig` (or remove) and update all references to use the canonical dashboard at `src/shared/tui/components/dashboard/Dashboard.zig`
-- Run `zig build validate-agents` and `zig build -Dagent=markdown run -- "test"` to verify Phase 1 changes
+**Immediate Actions for Phase 2:**
+- Route all high-level notification usage via `components/notification.zig`; keep ANSI as low-level encoder
+- Update CLI hyperlinks to use ANSI layer instead of re-implementing OSC-8 sequences
+- Refactor TUI progress to render the shared model from `components/progress.zig`
+- Run `zig build validate-agents` and test notification/hyperlinks/progress functionality
 
 **Acceptance Criteria Reminder:**
-- Agents build and run via `zig build -Dagent=markdown run -- "…"`.
-- No references to `src/shared/tui/components/Dashboard.zig` remain in shared code.
+- Grep shows no direct OSC-8 implementations outside `term/ansi/hyperlink.zig`
+- All progress usage originates from `components/progress.zig` types
+- All notifications route through `components/notification.zig` data model
 
-This document has been updated to clearly outline completed work and next steps for Phase 1 implementation.
+This document has been updated to clearly outline completed work and next steps for Phase 2 implementation.
 
+## Additional Phases (4–8)
+
+Phase 4 — Terminal Primitives Unification
+- Replace all usages of `components/terminal_writer.zig` and `components/terminal_cursor.zig` with `term/writer.zig` and `term/cursor.zig`.
+- Keep temporary re-exports for one milestone; remove duplicate component files after cutover.
+- Ensure CLI/TUI never emit raw ANSI directly; go through `term/*` primitives.
+
+Phase 5 — Hyperlinks and Color Pipeline
+- Hyperlinks: centralize OSC-8 creation in `term/ansi/hyperlink.zig`; migrate `cli/utils/hyperlinks.zig` to call into it.
+- Color: consolidate all conversion/distance/palette logic under `term/ansi/color/*` with a `mod.zig` barrel; deprecate strays such as `color_conversion*.zig`, `color_converter.zig`, `structured_colors.zig`, `palette.zig`, `color_distance.zig`.
+- Update renderers and TUI widgets to consume the unified color API.
+
+Phase 6 — Auth/Network Service Separation
+- Extract UI-free services:
+  - `auth/core/Service.zig` with methods: `loadCredentials`, `saveCredentials`, `loginUrl`, `exchangeCode`, `refresh`, `status`.
+  - `network/Service.zig` with methods: `request`, `stream`, `sse`, `download`.
+- Move Anthropic client into `network/clients/Anthropic.zig` (typed requests/responses over `network/Service`).
+- Convert `auth/cli/*` and `auth/tui/*` into presenters orchestrating the services; no file I/O or HTTP in UI layers.
+
+Phase 7 — Theme Consolidation
+- Merge `theme_manager/*` into `theme/*` with a clear split:
+  - Runtime: `theme/*.zig` (Theme, ColorScheme, selection).
+  - Dev tools: `theme/dev/*.zig` (editor, validator, generator) behind `-Dtheme-dev`.
+- Update all imports and delete old `theme_manager/*` after migration.
+
+Phase 8 — Cleanup and Documentation
+- Remove legacy modules and temporary re-exports introduced during migration.
+- Add `src/shared/ARCHITECTURE.md` documenting module boundaries, layering rules, and import constraints.
+- Update `AGENTS.md` references to new shared APIs; run full build matrix.
+
+### Acceptance Criteria (Phases 4–8)
+- Phase 4
+  - `rg -n "components/terminal_(writer|cursor)"` returns no matches in non-legacy code.
+  - CLI/TUI build only against `term/writer.zig` and `term/cursor.zig`.
+- Phase 5
+  - All hyperlinks are produced via `term/ansi/hyperlink.zig` (no custom OSC-8 builders elsewhere).
+  - Single consolidated color API under `term/ansi/color/*`; duplicate color files removed.
+- Phase 6
+  - `auth/core` and `network/*` compile with no UI imports; presenters call services through typed interfaces.
+  - Network and auth errors use precise error sets (`NetworkError`, `AuthError`).
+- Phase 7
+  - Non-dev modules import only `theme/*` runtime APIs; dev tools compile only with `-Dtheme-dev`.
+  - `theme_manager/*` deleted without breaking builds.
+- Phase 8
+  - No legacy imports or re-exports remain; `src/shared/ARCHITECTURE.md` exists and matches the final structure.
+  - CI import-boundary checks and feature-flag builds pass.
+
+## Layering Rules and CI Gates
+- Input layering:
+  - Raw parsing lives only in `term/input/*`.
+  - High-level buffering/focus in `components/input.zig`.
+  - TUI routing/dispatch in `tui/core/input/*` (no parsing).
+- UI must not directly import `term/ansi/*`; use `term/{writer,cursor}` and `render/*` or dedicated presenters.
+- Charts/tables engines live in `render/components/*`; TUI widgets are thin shells around them.
+- Add CI checks to forbid disallowed imports (e.g., `tui/* -> term/ansi/*`).
+
+### Build/Feature Flags
+- `-Dshared-tui`, `-Dshared-cli`, `-Dshared-auth` — conditional inclusion of shared subsystems.
+- `-Denable-legacy-cli` — gates legacy CLI under `cli/legacy/*` only.
+- `-Dtheme-dev` — includes theme dev tools.
+
+### Import-Boundary CI Check
+- Command: `zig build check-imports` (non-strict by default; set `CI_STRICT_IMPORTS=1` to fail on violations)
+- Script: `scripts/check_imports.sh` enforces layering rules (e.g., `tui/*` must not import `term/ansi/*` or `term/input/*`, `components/*` must not import `term/ansi/*`).
+- Output: warns on deprecated `components/terminal_{writer,cursor}.zig` references to aid Phase 4.
+
+## Old → New Mapping Summary
+- Terminal primitives: `components/terminal_writer.zig`, `components/terminal_cursor.zig` → `term/writer.zig`, `term/cursor.zig`.
+- Input parsing: remove from `tui/core/input/*`; depend on `components/input.zig` + `term/input/*`.
+- Notifications/Progress: `cli/notifications.zig`, `tui/notifications.zig` → presenters over `components/notification.zig` and `components/progress.zig`.
+- Charts/Tables: logic consolidates in `render/components/{chart,table}.zig`; TUI widgets consume engines.
+- Hyperlinks: `cli/utils/hyperlinks.zig` → `term/ansi/hyperlink.zig`.
+- Color pipeline: fold disparate files into `term/ansi/color/*` with a barrel export.
+- Auth/Network: UI flows call services (`auth/core/Service.zig`, `network/Service.zig`), typed clients under `network/clients/*`.
+
+## Service Interfaces (Draft)
+```zig
+// network/Service.zig
+pub const NetworkError = error{ Timeout, Connection, BadStatus, Decode, Canceled };
+pub const Service = struct {
+    pub fn request(alloc: Allocator, req: Request) NetworkError!Response {};
+    pub fn stream(alloc: Allocator, req: Request, on_chunk: *const fn([]const u8) void) NetworkError!void {};
+    pub fn sse(alloc: Allocator, req: Request, on_event: *const fn(Event) void) NetworkError!void {};
+    pub fn download(alloc: Allocator, req: Request, path: []const u8) NetworkError!void {};
+};
+
+// auth/core/Service.zig
+pub const AuthError = error{ InvalidCredentials, Storage, Network, Timeout };
+pub const Service = struct {
+    pub fn loadCredentials(alloc: Allocator) AuthError!Credentials {};
+    pub fn saveCredentials(creds: Credentials) AuthError!void {};
+    pub fn loginUrl(state: []const u8) AuthError![]const u8 {};
+    pub fn exchangeCode(code: []const u8) AuthError!Credentials {};
+    pub fn refresh(creds: Credentials) AuthError!Credentials {};
+    pub fn status(creds: Credentials) AuthError!Status {};
+};
+```

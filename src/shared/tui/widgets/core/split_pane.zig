@@ -13,10 +13,10 @@ const events = @import("../../core/events.zig");
 const mouse_mod = @import("../../core/input/mouse.zig");
 const focus_mod = @import("../../core/input/focus.zig");
 const constraint_solver = @import("../../core/constraint_solver.zig");
-const term_ansi = @import("../../../term/ansi/color.zig");
-const term_cursor = @import("../../../term/ansi/cursor.zig");
+// Use top-level term cursor API instead of ansi submodule
+const term_cursor = @import("../../../term/cursor.zig");
 const term_mod = @import("../../../term/mod.zig");
-const term_caps = @import("../../../term/caps.zig");
+const term_caps = @import("../../../term/capabilities.zig");
 const input_mod = @import("../../../components/input.zig");
 
 // Type aliases for convenience

@@ -7,7 +7,7 @@
 //! - Automatically handles built-in commands (help, version, auth, etc.)
 
 const std = @import("std");
-const agent_main = @import("core_agent_main");
+const agent_main = @import("agent_main");
 const spec = @import("spec.zig");
 
 pub fn main() !void {

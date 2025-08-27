@@ -2,7 +2,7 @@
 const std = @import("std");
 const widgets = @import("../src/shared/tui/widgets/mod.zig");
 const Bounds = @import("../src/shared/tui/core/bounds.zig").Bounds;
-const TermCaps = @import("../src/shared/term/caps.zig").TermCaps;
+const TermCaps = @import("../src/shared/term/capabilities.zig").TermCaps;
 const events = @import("../src/shared/tui/core/events.zig");
 
 pub fn main() !void {

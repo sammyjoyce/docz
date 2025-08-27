@@ -98,7 +98,8 @@ pub const NotificationHandler = struct {
         if (!self.enabled) return;
 
         const caps = term_mod.capabilities.getTermCaps();
-        const stdout = std.fs.File.stdout().writer();
+        var stdout_buffer: [4096]u8 = undefined;
+        var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
 
         if (caps.supportsNotifyOsc9) {
             // Use system notification (OSC 9) via term module
@@ -108,15 +109,17 @@ pub const NotificationHandler = struct {
                 try std.fmt.allocPrint(std.heap.page_allocator, "{s}", .{title});
             defer std.heap.page_allocator.free(notification_text);
 
-            try term_mod.ansi.notification.writeNotification(stdout, std.heap.page_allocator, caps, notification_text);
+            try term_mod.ansi.notification.writeNotification(stdout_writer.any(), std.heap.page_allocator, caps, notification_text);
         } else {
             // Fallback to console output with proper formatting
             if (message) |msg| {
-                try stdout.print("ℹ {s}: {s}\n", .{ title, msg });
+                try stdout_writer.print("ℹ {s}: {s}\n", .{ title, msg });
             } else {
-                try stdout.print("ℹ {s}\n", .{title});
+                try stdout_writer.print("ℹ {s}\n", .{title});
             }
         }
+
+        try stdout_writer.flush();
     }
 };
 

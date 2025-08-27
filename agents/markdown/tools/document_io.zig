@@ -61,7 +61,7 @@
 
 const std = @import("std");
 const json = std.json;
-const json_reflection = @import("../../../src/shared/json_reflection.zig");
+const json_reflection = @import("../../../src/shared/json_reflection/mod.zig");
 const fs = @import("../common/fs.zig");
 const text = @import("../common/text.zig");
 const link = @import("../common/link.zig");

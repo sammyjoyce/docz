@@ -289,24 +289,26 @@ pub const Parser = struct {
     }
 
     fn handleAuthCommand(self: *Parser, subcommand: types.AuthSubcommand) !void {
-        const stdout = std.fs.File.stdout().writer();
+        var stdout_buffer: [4096]u8 = undefined;
+        var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
         switch (subcommand) {
             .login => {
-                try stdout.print("{s}{s}🔐 Starting authentication...{s}{s}\n", .{ self.formatter.colors.bold, self.formatter.colors.primary, self.formatter.colors.reset, self.formatter.colors.reset });
+                try stdout_writer.print("{s}{s}🔐 Starting authentication...{s}{s}\n", .{ self.formatter.colors.bold, self.formatter.colors.primary, self.formatter.colors.reset, self.formatter.colors.reset });
                 // Authentication logic would go here
-                try stdout.print("{s}✅ Please complete authentication in your browser{s}\n", .{ self.formatter.colors.success, self.formatter.colors.reset });
+                try stdout_writer.print("{s}✅ Please complete authentication in your browser{s}\n", .{ self.formatter.colors.success, self.formatter.colors.reset });
             },
             .status => {
-                try stdout.print("{s}{s}📊 Authentication Status{s}{s}\n", .{ self.formatter.colors.bold, self.formatter.colors.primary, self.formatter.colors.reset, self.formatter.colors.reset });
+                try stdout_writer.print("{s}{s}📊 Authentication Status{s}{s}\n", .{ self.formatter.colors.bold, self.formatter.colors.primary, self.formatter.colors.reset, self.formatter.colors.reset });
                 // Status check logic would go here
-                try stdout.print("{s}✅ Authenticated{s}\n", .{ self.formatter.colors.success, self.formatter.colors.reset });
+                try stdout_writer.print("{s}✅ Authenticated{s}\n", .{ self.formatter.colors.success, self.formatter.colors.reset });
             },
             .refresh => {
-                try stdout.print("{s}{s}🔄 Refreshing authentication...{s}{s}\n", .{ self.formatter.colors.bold, self.formatter.colors.primary, self.formatter.colors.reset, self.formatter.colors.reset });
+                try stdout_writer.print("{s}{s}🔄 Refreshing authentication...{s}{s}\n", .{ self.formatter.colors.bold, self.formatter.colors.primary, self.formatter.colors.reset, self.formatter.colors.reset });
                 // Refresh logic would go here
-                try stdout.print("{s}✅ Authentication refreshed{s}\n", .{ self.formatter.colors.success, self.formatter.colors.reset });
+                try stdout_writer.print("{s}✅ Authentication refreshed{s}\n", .{ self.formatter.colors.success, self.formatter.colors.reset });
             },
         }
+        try stdout_writer.flush();
     }
 
     pub fn printError(self: *Parser, err: CliError, context: ?[]const u8) !void {

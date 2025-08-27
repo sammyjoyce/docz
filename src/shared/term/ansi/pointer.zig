@@ -157,7 +157,9 @@ pub fn pointerShapeGuard(comptime WriterType: type) type {
         pub fn deinit(self: *Self) void {
             if (self.original_shape != null) {
                 // Try to restore, but ignore errors since we're cleaning up
-                self.restore() catch {};
+                self.restore() catch |err| {
+                    std.log.warn("Failed to restore pointer shape in cleanup: {any}", .{err});
+                };
             }
         }
     };

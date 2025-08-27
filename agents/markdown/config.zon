@@ -1,6 +1,6 @@
 .{
     .agent_config = .{
-        .agent_info = .{
+        .agentInfo = .{
             .name = "Markdown Architect Pro",
             .version = "2.0.0",
             .description = "Enterprise-grade markdown systems architect & quality guardian",
@@ -8,40 +8,40 @@
         },
 
         .defaults = .{
-            .max_concurrent_operations = 10,
-            .default_timeout_ms = 30000,
-            .enable_debug_logging = false,
-            .enable_verbose_output = false,
+            .maxConcurrentOperations = 10,
+            .defaultTimeoutMs = 30000,
+            .enableDebugLogging = false,
+            .enableVerboseOutput = false,
         },
 
         .features = .{
-            .enable_custom_tools = true,
-            .enable_file_operations = true,
-            .enable_network_access = true,
-            .enable_system_commands = false,
+            .enableCustomTools = true,
+            .enableFileOperations = true,
+            .enableNetworkAccess = true,
+            .enableSystemCommands = false,
         },
 
         .limits = .{
-            .max_input_size = 1048576, // 1MB
-            .max_output_size = 1048576, // 1MB
-            .max_processing_time_ms = 60000,
+            .maxInputSize = 1048576, // 1MB
+            .maxOutputSize = 1048576, // 1MB
+            .maxProcessingTimeMs = 60000,
         },
 
         .model = .{
-            .default_model = "claude-3-sonnet-20240229",
-            .max_tokens = 4096,
+            .defaultModel = "claude-3-sonnet-20240229",
+            .maxTokens = 4096,
             .temperature = 0.7,
-            .stream_responses = true,
+            .streamResponses = true,
         },
     },
 
     // Agent-specific configuration fields
-    .text_wrap_width = 80,
-    .heading_style = "atx",
-    .list_style = "dash",
-    .code_fence_style = "backtick",
-    .table_alignment = "auto",
-    .front_matter_format = "yaml",
-    .toc_style = "github",
-    .link_style = "reference",
+    .textWrapWidth = 80,
+    .headingStyle = "atx",
+    .listStyle = "dash",
+    .codeFenceStyle = "backtick",
+    .tableAlignment = "auto",
+    .frontMatterFormat = "yaml",
+    .tocStyle = "github",
+    .linkStyle = "reference",
 }

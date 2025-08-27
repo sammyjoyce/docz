@@ -145,7 +145,7 @@ pub const Particle = struct {
 pub const ParticleEmitter = struct {
     allocator: std.mem.Allocator,
     particles: std.ArrayList(Particle),
-    position: Point2D,
+    position: Particle.Point2D,
     emit_rate: f32 = 1.0, // particles per second
     time_accumulator: f32 = 0.0,
     active: bool = true,
@@ -172,7 +172,7 @@ pub const ParticleEmitter = struct {
     };
 
     /// Initialize particle emitter
-    pub fn init(allocator: std.mem.Allocator, position: Point2D) !ParticleEmitter {
+    pub fn init(allocator: std.mem.Allocator, position: Particle.Point2D) !ParticleEmitter {
         return ParticleEmitter{
             .allocator = allocator,
             .particles = std.ArrayList(Particle).init(allocator),
@@ -239,7 +239,7 @@ pub const ParticleEmitter = struct {
     }
 
     /// Set emitter position
-    pub fn setPosition(self: *ParticleEmitter, position: Point2D) void {
+    pub fn setPosition(self: *ParticleEmitter, position: Particle.Point2D) void {
         self.position = position;
     }
 
@@ -309,7 +309,7 @@ pub const TypingAnimation = struct {
     pub fn init(allocator: std.mem.Allocator, text: []const u8) !TypingAnimation {
         if (text.len == 0) return TypingAnimationError.InvalidText;
 
-        var target_text = try allocator.dupe(u8, text);
+        const target_text = try allocator.dupe(u8, text);
         errdefer allocator.free(target_text);
 
         var display_text = try std.ArrayList(u8).initCapacity(allocator, text.len);
@@ -479,7 +479,10 @@ pub const TypingAnimation = struct {
             for (self.sound_trigger_chars) |trigger_char| {
                 if (char == trigger_char) {
                     // Terminal bell
-                    std.io.getStdOut().writer().writeByte(0x07) catch {};
+                    var stdout_buffer: [1]u8 = undefined;
+                    var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+                    stdout_writer.writeByte(0x07) catch {};
+                    stdout_writer.flush() catch {};
                     break;
                 }
             }

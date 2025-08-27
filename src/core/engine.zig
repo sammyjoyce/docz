@@ -62,8 +62,8 @@ fn mapAuthError(err: auth.AuthError) anthropic.Error {
 /// Initialize Anthropic client using the auth system
 fn initAnthropicClient(allocator: std.mem.Allocator) !anthropic.AnthropicClient {
     // Try to create auth client using available methods
-    const auth_client = auth.createClient(allocator) catch |err| {
-        std.log.err("Failed to initialize authentication: {}", .{err});
+    var auth_client = auth.createClient(allocator) catch |err| {
+        std.log.err("Failed to initialize authentication: {any}", .{err});
         return mapAuthError(err);
     };
     defer auth_client.deinit();
@@ -73,9 +73,10 @@ fn initAnthropicClient(allocator: std.mem.Allocator) !anthropic.AnthropicClient 
         .api_key => |api_key| {
             return try anthropic.AnthropicClient.init(allocator, api_key);
         },
-        .oauth => |oauth_creds| {
+        .oauth => |creds| {
             const credentials_path = "claude_oauth_creds.json";
-            return try anthropic.AnthropicClient.initWithOAuth(allocator, oauth_creds, credentials_path);
+            // Use the OAuth credentials directly (no conversion needed since they're the same type)
+            return try anthropic.AnthropicClient.initWithOAuth(allocator, creds, credentials_path);
         },
         .none => {
             std.log.err("No authentication method available - network access disabled for this agent.", .{});
@@ -86,7 +87,8 @@ fn initAnthropicClient(allocator: std.mem.Allocator) !anthropic.AnthropicClient 
 
 /// Start OAuth flow using the auth system
 pub fn setupOAuth(allocator: std.mem.Allocator) !void {
-    const credentials = try auth.oauth.setupOAuth(allocator);
+    // Use enhanced flow with local callback server for better UX
+    const credentials = try auth.oauth.completeOAuthFlow(allocator);
     defer credentials.deinit(allocator);
 
     std.log.info("✅ OAuth setup completed successfully!", .{});
@@ -137,7 +139,7 @@ fn flushAllOutputs() !void {
     if (stdoutWriterInitialized) {
         const stdout = &stdoutWriter.interface;
         stdout.flush() catch |err| {
-            std.log.warn("Failed to flush stdout after streaming: {}", .{err});
+            std.log.warn("Failed to flush stdout after streaming: {any}", .{err});
         };
     }
 
@@ -145,7 +147,7 @@ fn flushAllOutputs() !void {
         if (outputWriter) |*writer| {
             const fileWriter = &writer.interface;
             fileWriter.flush() catch |err| {
-                std.log.warn("Failed to flush output file: {}", .{err});
+                std.log.warn("Failed to flush output file: {any}", .{err});
             };
         }
         if (globalOutputFile) |file| {
@@ -161,14 +163,14 @@ fn onToken(chunk: []const u8) void {
     initStdoutWriter();
     const stdout = &stdoutWriter.interface;
     stdout.writeAll(chunk) catch |err| {
-        std.log.err("Failed to write streaming output to stdout: {}", .{err});
+        std.log.err("Failed to write streaming output to stdout: {any}", .{err});
     };
 
     if (outputWriterInitialized) {
         if (outputWriter) |*writer| {
             const fileWriter = &writer.interface;
             fileWriter.writeAll(chunk) catch |err| {
-                std.log.err("Failed to write streaming output to file: {}", .{err});
+                std.log.err("Failed to write streaming output to file: {any}", .{err});
             };
         }
     }
@@ -178,14 +180,14 @@ fn writeCompleteResponse(content: []const u8) void {
     initStdoutWriter();
     const stdout = &stdoutWriter.interface;
     stdout.writeAll(content) catch |err| {
-        std.log.err("Failed to write complete response to stdout: {}", .{err});
+        std.log.err("Failed to write complete response to stdout: {any}", .{err});
     };
 
     if (outputWriterInitialized) {
         if (outputWriter) |*writer| {
             const fileWriter = &writer.interface;
             fileWriter.writeAll(content) catch |err| {
-                std.log.err("Failed to write complete response to file: {}", .{err});
+                std.log.err("Failed to write complete response to file: {any}", .{err});
             };
         }
     }
@@ -227,12 +229,12 @@ pub fn runWithOptions(allocator: std.mem.Allocator, options: CliOptions, spec: A
         if (options.options.input) |inputFile| {
             if (!std.mem.eql(u8, inputFile, "-")) {
                 const file = std.fs.cwd().openFile(inputFile, .{}) catch |err| {
-                    std.log.err("Failed to open input file '{s}': {}", .{ inputFile, err });
+                    std.log.err("Failed to open input file '{s}': {any}", .{ inputFile, err });
                     return err;
                 };
                 defer file.close();
                 const content = file.readToEndAlloc(allocator, 1024 * 1024) catch |err| {
-                    std.log.err("Failed to read input file '{s}': {}", .{ inputFile, err });
+                    std.log.err("Failed to read input file '{s}': {any}", .{ inputFile, err });
                     return err;
                 };
                 break :blk content;
@@ -274,7 +276,7 @@ pub fn runWithOptions(allocator: std.mem.Allocator, options: CliOptions, spec: A
             mutableResponse.deinit(allocator);
         }
         writeCompleteResponse(response.content);
-        std.log.info("Completion: {} input tokens, {} output tokens", .{ response.usage.input_tokens, response.usage.output_tokens });
+        std.log.info("Completion: {d} input tokens, {d} output tokens", .{ response.usage.input_tokens, response.usage.output_tokens });
 
         const costCalculator = anthropic.CostCalculator.init(client.isOAuthSession());
         if (!client.isOAuthSession()) {

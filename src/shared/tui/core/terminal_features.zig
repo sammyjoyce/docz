@@ -3,8 +3,9 @@
 /// Provides a unified interface for advanced TUI/CLI applications
 /// Compatible with Zig 0.15.1
 const std = @import("std");
+const term_shared = @import("term_shared");
 
-pub const cellbuf = @import("../../term/cellbuf.zig");
+pub const cellbuf = term_shared.cellbuf;
 // TODO: Implement advanced cursor optimizer
 // pub const cursor_optimizer = @import("ansi/cursor_optimizer.zig");
 // TODO: Implement enhanced input handler

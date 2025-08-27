@@ -5,8 +5,10 @@ const Bounds = @import("../../core/bounds.zig").Bounds;
 const Color = @import("../../themes/default.zig").Color;
 const Box = @import("../../themes/default.zig").Box;
 const tui_mod = @import("../../mod.zig");
+const renderer_mod = @import("../../core/renderer.zig");
 const TermCaps = tui_mod.TermCaps;
-const clipboard_mod = tui_mod.term.ansi.clipboard;
+// Clipboard integration via OSC 52 is temporarily disabled in widgets to
+// remove direct ANSI dependencies; wire through renderer presenters instead.
 
 /// Enhanced text input field with clipboard support
 pub const TextInput = struct {
@@ -22,6 +24,7 @@ pub const TextInput = struct {
     max_length: ?usize,
     is_focused: bool,
     caps: TermCaps,
+    renderer: ?*renderer_mod.Renderer = null,
 
     pub fn init(allocator: std.mem.Allocator, bounds: Bounds, caps: TermCaps) TextInput {
         return TextInput{
@@ -42,6 +45,11 @@ pub const TextInput = struct {
 
     pub fn deinit(self: *TextInput) void {
         self.content.deinit();
+    }
+
+    /// Provide a renderer to enable clipboard operations
+    pub fn setRenderer(self: *TextInput, r: *renderer_mod.Renderer) void {
+        self.renderer = r;
     }
 
     pub fn setPlaceholder(self: *TextInput, placeholder: []const u8) void {
@@ -197,27 +205,35 @@ pub const TextInput = struct {
         }
     }
 
-    /// Copy selected text to clipboard using OSC 52
+    /// Copy selected text using the renderer clipboard API when available
     pub fn copySelection(self: *TextInput) !void {
-        if (self.getSelectedText()) |text| {
-            try clipboard_mod.setClipboard(text, self.caps);
+        const sel = self.getSelectedText() orelse return;
+        if (self.renderer) |r| {
+            const caps = r.getCapabilities();
+            if (caps.supportsClipboardOsc52) {
+                try r.copyToClipboard(sel);
+            }
         }
     }
 
-    /// Cut selected text to clipboard
+    /// Cut selected text (copy then delete)
     pub fn cutSelection(self: *TextInput) !void {
-        if (self.getSelectedText()) |text| {
-            try clipboard_mod.setClipboard(text, self.caps);
+        try self.copySelection();
+        self.deleteSelection();
+    }
+
+    /// Paste text from clipboard (renderer read not yet supported). No-op.
+    pub fn paste(self: *TextInput) !void {
+        _ = self;
+        return;
+    }
+
+    /// Helper: handle pasted content from input events (bracketed paste)
+    pub fn pasteFromEvent(self: *TextInput, content: []const u8) !void {
+        if (self.hasSelection()) {
             self.deleteSelection();
         }
-    }
-
-    /// Paste text from clipboard using OSC 52
-    pub fn paste(self: *TextInput) !void {
-        if (try clipboard_mod.getClipboard(self.caps)) |text| {
-            defer self.content.allocator.free(text);
-            try self.insertText(text);
-        }
+        try self.insertText(content);
     }
 
     /// Handle common keyboard shortcuts

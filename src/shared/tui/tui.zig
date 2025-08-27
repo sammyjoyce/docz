@@ -46,7 +46,6 @@ const print = std.debug.print;
 
 // Import terminal capabilities
 const caps_mod = @import("term/capabilities.zig");
-const mode = @import("term/ansi/mode.zig");
 
 // Legacy components that are still in this file (to be extracted later)
 // These maintain backward compatibility while we transition to the modular structure

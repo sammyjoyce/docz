@@ -9,13 +9,14 @@
 //! - Clipboard integration and hyperlink support
 
 const std = @import("std");
-const shared_components = @import("components_shared");
+const shared = @import("../../mod.zig");
+const shared_components = shared.components;
 const term_shared = @import("term_shared");
 const unified = term_shared.unified;
 const terminal_bridge = @import("../core/terminal_bridge.zig");
 const components = @import("../../components/mod.zig");
-const notification = @import("../notifications.zig");
-const input = @import("components_shared").input;
+const presenters = @import("../presenters/mod.zig");
+const input = shared.components.input;
 
 /// Demo configuration
 const DemoConfig = struct {
@@ -248,20 +249,20 @@ fn runProgressDemo(bridge: *terminal_bridge.TerminalBridge) !void {
 /// Demonstrate enhanced notification system
 fn runNotificationDemo(bridge: *terminal_bridge.TerminalBridge) !void {
     try bridge.print("═══ Enhanced Notification Demo ═══\n\n", terminal_bridge.Styles.HIGHLIGHT);
-
-    const notification_config = notification.NotificationConfig{
-        .enable_system_notifications = true,
-        .show_timestamp = true,
-        .show_icons = true,
-        .enable_clipboard_actions = true,
-        .enable_hyperlinks = true,
+    // Presenter-based notifications: build shared Notification models and render via presenter
+    const notif_config = components.NotificationConfiguration{
+        .enableSystemNotifications = true,
+        .showTimestamp = true,
+        .showIcons = true,
+        .enableClipboardActions = true,
+        .enableHyperlinks = true,
     };
 
-    var notifications = notification.Notification.init(bridge, notification_config);
+    const use_unicode = bridge.getRenderStrategy().supportsColor();
+    var sent_count: usize = 0;
 
-    // Demonstrate different notification types
-    const notification_demos = [_]struct {
-        type: notification.NotificationType,
+    const demos = [_]struct {
+        type: components.NotificationType,
         title: []const u8,
         message: []const u8,
     }{
@@ -272,37 +273,23 @@ fn runNotificationDemo(bridge: *terminal_bridge.TerminalBridge) !void {
         .{ .type = .critical, .title = "Critical", .message = "This requires immediate attention!" },
     };
 
-    for (notification_demos) |demo| {
-        try bridge.printf("Showing {s} notification...\n", .{@tagName(demo.type)}, null);
-        try notifications.show(demo.type, demo.title, demo.message);
+    for (demos) |demo_item| {
+        try bridge.printf("Showing {s} notification...\n", .{@tagName(demo_item.type)}, null);
+        var n = components.Notification.init(demo_item.title, demo_item.message, demo_item.type, notif_config);
+        try presenters.notification.display(bridge.allocator, &n, use_unicode);
+        sent_count += 1;
         try bridge.print("\n", null);
         std.time.sleep(1_000_000_000); // 1 second delay
     }
 
-    // Demonstrate notification with actions
-    try bridge.print("Showing notification with actions...\n", null);
-    const actions = [_]notification.NotificationAction{
-        .{
-            .label = "Copy Error Code",
-            .action = .{ .copy_text = "ERR_DEMO_001" },
-        },
-        .{
-            .label = "View Documentation",
-            .action = .{ .open_url = "https://github.com/example/docs" },
-        },
-        .{
-            .label = "Retry Operation",
-            .action = .{ .execute_command = "retry --force" },
-        },
-    };
-
-    try notifications.showWithActions(.@"error", "Network Timeout", "Failed to connect to remote server", &actions);
+    // Demonstrate progress notification via presenter
+    try bridge.print("Showing progress notification...\n", null);
+    var prog = components.Notification.initProgress("Downloading", "Fetching data...", 0.65, notif_config);
+    try presenters.notification.display(bridge.allocator, &prog, use_unicode);
+    sent_count += 1;
 
     try bridge.print("\n", null);
-
-    // Show notification statistics
-    const stats = notifications.getStats();
-    try bridge.printf("📊 Notifications sent: {d}\n\n", .{stats.total_count}, terminal_bridge.Styles.INFO);
+    try bridge.printf("📊 Notifications sent: {d}\n\n", .{sent_count}, terminal_bridge.Styles.INFO);
 }
 
 /// Demonstrate smart input components

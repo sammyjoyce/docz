@@ -1,5 +1,5 @@
 const std = @import("std");
-const caps = @import("caps.zig");
+const caps = @import("capabilities.zig");
 const wcwidth = @import("wcwidth.zig");
 
 /// Unicode version detection and compatibility system

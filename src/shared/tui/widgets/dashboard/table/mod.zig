@@ -37,7 +37,9 @@ pub const DataTableImpl = struct {
     bounds: base.Bounds = base.Bounds.init(0, 0, 0, 0),
 
     // Clipboard integration
-    clipboard_manager: ?clipboard.ClipboardManager = null,
+    clipboard_manager: ?clipboard.Clipboard = null,
+    // Cached renderer pointer for clipboard actions
+    renderer: ?*renderer_mod.Renderer = null,
 
     /// Initialize table with headers and configuration
     pub fn init(allocator: std.mem.Allocator, headers: [][]const u8, config: base.Config) !Self {
@@ -57,7 +59,7 @@ pub const DataTableImpl = struct {
         var table = try init(allocator, headers, config);
 
         if (config.clipboard_enabled) {
-            table.clipboard_manager = clipboard.ClipboardManager.init(allocator, terminal_caps);
+            table.clipboard_manager = clipboard.Clipboard.init(allocator, terminal_caps);
         }
 
         return table;
@@ -343,6 +345,7 @@ pub const DataTableImpl = struct {
         if (self.clipboard_manager == null) return;
 
         try self.clipboard_manager.?.copySelection(
+            self.renderer,
             self.state.selection.?,
             self.headers,
             self.rows,
@@ -356,6 +359,7 @@ pub const DataTableImpl = struct {
         if (self.clipboard_manager == null) return;
 
         try self.clipboard_manager.?.copySelection(
+            self.renderer,
             self.state.selection.?,
             self.headers,
             self.rows,
@@ -378,6 +382,7 @@ pub const DataTableImpl = struct {
     /// Simple render method for basic usage (advanced rendering would be in a separate renderer module)
     pub fn render(self: *Self, renderer: *renderer_mod.Renderer, ctx: renderer_mod.RenderContext) !void {
         self.bounds = ctx.bounds;
+        self.renderer = renderer;
 
         // This is a simplified render implementation
         // In a full implementation, this would delegate to a separate renderer module

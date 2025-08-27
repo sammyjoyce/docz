@@ -212,7 +212,9 @@ pub fn createBuildModules(
     optimize: std.builtin.OptimizeMode,
 ) !*std.Build.Module {
     const agent_module = b.createModule(.{
-        .root_source_file = b.path(b.fmt("{s}/main.zig", .{config.agent_path})),
+        .root_module = b.createModule(.{
+            .root_source_file = b.path(b.fmt("{s}/main.zig", .{config.agent_path})),
+        }),
         .target = target,
         .optimize = optimize,
     });
@@ -221,7 +223,9 @@ pub fn createBuildModules(
     const interface_path = "src/shared/tui/agent_interface.zig";
 
     const interface_module = b.createModule(.{
-        .root_source_file = b.path(interface_path),
+        .root_module = b.createModule(.{
+            .root_source_file = b.path(interface_path),
+        }),
         .target = target,
         .optimize = optimize,
     });
@@ -230,7 +234,9 @@ pub fn createBuildModules(
     // Add required core modules
     if (config.manifest.modules.core.config) {
         const config_module = b.createModule(.{
-            .root_source_file = b.path("src/core/config.zig"),
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/core/config.zig"),
+            }),
             .target = target,
             .optimize = optimize,
         });
@@ -239,7 +245,9 @@ pub fn createBuildModules(
 
     if (config.manifest.modules.core.engine) {
         const engine_module = b.createModule(.{
-            .root_source_file = b.path("src/core/engine.zig"),
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/core/engine.zig"),
+            }),
             .target = target,
             .optimize = optimize,
         });
@@ -249,7 +257,9 @@ pub fn createBuildModules(
     // Add required shared modules
     if (config.manifest.modules.shared.cli) {
         const cli_module = b.createModule(.{
-            .root_source_file = b.path("src/shared/cli/mod.zig"),
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/shared/cli/mod.zig"),
+            }),
             .target = target,
             .optimize = optimize,
         });
@@ -258,7 +268,9 @@ pub fn createBuildModules(
 
     if (config.manifest.modules.shared.tui) {
         const tui_module = b.createModule(.{
-            .root_source_file = b.path("src/shared/tui/mod.zig"),
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/shared/tui/mod.zig"),
+            }),
             .target = target,
             .optimize = optimize,
         });
@@ -269,7 +281,9 @@ pub fn createBuildModules(
     for (config.manifest.modules.custom.paths) |custom_path| {
         const full_path = b.fmt("{s}/{s}/mod.zig", .{ config.agent_path, custom_path });
         const custom_module = b.createModule(.{
-            .root_source_file = b.path(full_path),
+            .root_module = b.createModule(.{
+                .root_source_file = b.path(full_path),
+            }),
             .target = target,
             .optimize = optimize,
         });

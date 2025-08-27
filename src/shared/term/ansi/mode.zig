@@ -67,12 +67,16 @@ pub fn enableSgrMouse(writer: anytype, caps: TermCaps) !void {
     try writeMode(writer, true, 1006, true, caps);
     // XTerm recommends also enabling normal mouse tracking so that some
     // terminals will emit events; libraries can layer specifics on top.
-    try writeMode(writer, true, 1000, true, caps) catch {};
+    try writeMode(writer, true, 1000, true, caps) catch |err| {
+        std.log.warn("Failed to enable normal mouse tracking: {any}", .{err});
+    };
 }
 pub fn disableSgrMouse(writer: anytype, caps: TermCaps) !void {
     if (!caps.supportsSgrMouse) return error.Unsupported;
     // Disable in reverse order
-    try writeMode(writer, true, 1000, false, caps) catch {};
+    try writeMode(writer, true, 1000, false, caps) catch |err| {
+        std.log.warn("Failed to disable normal mouse tracking: {any}", .{err});
+    };
     try writeMode(writer, true, 1006, false, caps);
 }
 
@@ -134,13 +138,17 @@ pub fn enableMouseTracking(writer: anytype, protocol: MouseProtocol, caps: TermC
             if (!caps.supportsSgrMouse) return error.Unsupported;
             try writeMode(writer, true, 1006, true, caps);
             // XTerm recommends also enabling normal mouse tracking
-            try writeMode(writer, true, 1000, true, caps) catch {};
+            try writeMode(writer, true, 1000, true, caps) catch |err| {
+                std.log.warn("Failed to enable normal mouse tracking for SGR: {any}", .{err});
+            };
         },
         .sgr_pixels => {
             if (!caps.supportsSgrPixelMouse) return error.Unsupported;
             try writeMode(writer, true, 1016, true, caps);
             try writeMode(writer, true, 1006, true, caps);
-            try writeMode(writer, true, 1000, true, caps) catch {};
+            try writeMode(writer, true, 1000, true, caps) catch |err| {
+                std.log.warn("Failed to enable normal mouse tracking for SGR pixels: {any}", .{err});
+            };
         },
         .utf8 => {
             if (!caps.supportsUtf8Mouse) return error.Unsupported;
@@ -157,12 +165,25 @@ pub fn enableMouseTracking(writer: anytype, protocol: MouseProtocol, caps: TermC
 
 pub fn disableMouseTracking(writer: anytype, caps: TermCaps) !void {
     // Disable all mouse modes in reverse order of preference
-    try writeMode(writer, true, 1016, false, caps) catch {}; // SGR pixel
-    try writeMode(writer, true, 1006, false, caps) catch {}; // SGR
-    try writeMode(writer, true, 1005, false, caps) catch {}; // UTF-8
-    try writeMode(writer, true, 1015, false, caps) catch {}; // URXVT
-    try writeMode(writer, true, 1003, false, caps) catch {}; // Any event
-    try writeMode(writer, true, 1002, false, caps) catch {}; // Button event
-    try writeMode(writer, true, 1000, false, caps) catch {}; // Normal
-    try writeMode(writer, true, 9, false, caps) catch {}; // X10
+    try writeMode(writer, true, 1016, false, caps) catch |err| {
+        std.log.warn("Failed to disable SGR pixel mouse tracking: {any}", .{err});
+    }; // SGR pixel
+    try writeMode(writer, true, 1006, false, caps) catch |err| {
+        std.log.warn("Failed to disable SGR mouse tracking: {any}", .{err});
+    }; // SGR
+    try writeMode(writer, true, 1005, false, caps) catch |err| {
+        std.log.warn("Failed to disable UTF-8 mouse tracking: {any}", .{err});
+    }; // UTF-8
+    try writeMode(writer, true, 1015, false, caps) catch |err| {
+        std.log.warn("Failed to disable URXVT mouse tracking: {any}", .{err});
+    }; // URXVT
+    try writeMode(writer, true, 1003, false, caps) catch |err| {
+        std.log.warn("Failed to disable any event mouse tracking: {any}", .{err});
+    }; // Any event
+    try writeMode(writer, true, 1002, false, caps) catch |err| {
+        std.log.warn("Failed to disable button event mouse tracking: {any}", .{err});
+    }; // Button event
+    try writeMode(writer, true, 1000, false, caps) catch |err| {
+        std.log.warn("Failed to disable normal mouse tracking: {any}", .{err});
+    }; // Normal
 }

@@ -3,8 +3,7 @@
 //! while maintaining backward compatibility with basic terminals.
 
 const std = @import("std");
-const components = @import("components_shared");
-const input = components.input;
+const input = term_shared.input;
 const term_shared = @import("term_shared");
 const term_ansi = term_shared.ansi.color;
 const term_cursor = term_shared.ansi.cursor;
@@ -426,7 +425,7 @@ pub const SelectMenu = struct {
         }
 
         if (self.use_hyperlinks and item.hyperlink != null) {
-            try hyperlinks.writeHyperlink(writer, self.caps, item.hyperlink.?, item.display_text);
+            try term_shared.ansi.hyperlink.writeHyperlink(writer, self.allocator, self.caps, item.hyperlink.?, item.display_text);
         } else {
             try writer.writeAll(item.display_text);
         }

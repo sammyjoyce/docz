@@ -27,7 +27,7 @@ pub fn loadWithDefaults(
     defer file.close();
 
     // Read file content with null terminator
-    const content = file.deprecatedReader().readAllAlloc(allocator, 1024 * 1024) catch |err| {
+    const content = file.readToEndAlloc(allocator, 1024 * 1024) catch |err| {
         std.log.warn("Failed to read config file {s}: {any}, using defaults", .{ path, err });
         return defaults;
     };
@@ -115,7 +115,7 @@ pub fn createValidatedAgentConfig(name: []const u8, description: []const u8, aut
     // Validate the created config
     validateAgentConfig(config) catch |err| {
         std.log.err("Invalid default configuration: {any}", .{err});
-        @panic("Default configuration validation failed");
+        std.log.err("Default configuration validation failed", .{});
     };
 
     return config;

@@ -20,7 +20,7 @@ pub const Size = struct {
 };
 
 // Re-export Rect as BoundsI16 for backward compatibility
-pub const Rect = @import("../../types.zig").BoundsI16;
+pub const Rect = @import("shared_types").BoundsI16;
 
 /// Style information for rendering
 pub const Style = struct {
@@ -433,7 +433,7 @@ pub const InputEvent = union(enum) {
     };
 
     // Re-export unified types for backward compatibility
-    pub const MouseEvent = @import("../../types.zig").MouseEvent;
+    pub const MouseEvent = @import("shared_types").MouseEvent;
 
     pub const Key = enum {
         char,
@@ -465,11 +465,11 @@ pub const InputEvent = union(enum) {
     };
 
     // Re-export unified types for backward compatibility
-    pub const Modifiers = @import("../../types.zig").Modifiers;
+    pub const Modifiers = @import("shared_types").Modifiers;
 
     // Re-export unified types for backward compatibility
-    pub const MouseButton = @import("../../types.zig").MouseButton;
-    pub const MouseAction = @import("../../types.zig").MouseAction;
+    pub const MouseButton = @import("shared_types").MouseButton;
+    pub const MouseAction = @import("shared_types").MouseAction;
 };
 
 /// Theme system for consistent styling
@@ -1189,7 +1189,9 @@ pub const UnifiedRenderer = struct {
         if (!self.needs_redraw) return;
 
         try self.renderer.beginFrame();
-        defer self.renderer.endFrame() catch {};
+        defer self.renderer.endFrame() catch |err| {
+            std.log.warn("Failed to end render frame: {any}", .{err});
+        };
 
         // Clear screen
         const screen_bounds = Bounds{ .x = 0, .y = 0, .width = 80, .height = 24 }; // Default, should be configurable

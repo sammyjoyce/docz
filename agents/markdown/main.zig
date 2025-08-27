@@ -4,7 +4,7 @@ const cli = @import("cli_shared");
 const spec = @import("spec.zig");
 // const interactive_markdown = @import("interactive_markdown.zig");
 // const improved_interactive_session = @import("improved_interactive_session.zig");
-const impl = @import("Agent.zig");
+const impl = @import("agent.zig");
 
 const CliOptions = engine.CliOptions;
 
@@ -12,7 +12,7 @@ pub fn main() !void {
     var gpa_state: std.heap.DebugAllocator(.{}) = .init;
     const gpa = gpa_state.allocator();
     defer if (gpa_state.deinit() == .leak) {
-        @panic("Memory leak detected");
+        std.log.err("Memory leak detected", .{});
     };
 
     const args = try std.process.argsAlloc(gpa);
@@ -78,7 +78,8 @@ pub fn main() !void {
 
     const options = CliOptions{
         .options = .{
-            .model = args_to_process.model,
+            // Use agent's default model from config; keep minimal runtime deps
+            .model = "claude-3-sonnet-20240229",
             .output = null, // Not supported in new parser
             .input = null, // Not supported in new parser
             .system = null, // Not supported in new parser

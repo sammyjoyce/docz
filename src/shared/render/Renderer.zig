@@ -38,7 +38,7 @@ pub const Renderer = struct {
     theme: Theme,
 
     // Widget system support
-    widgets: std.ArrayList(*Widget),
+    widgets: std.array_list.Managed(*Widget),
     focused_widget: ?*Widget,
     needs_redraw: bool,
 
@@ -426,7 +426,7 @@ pub const Renderer = struct {
     /// Container widget for composition
     pub const Container = struct {
         /// Child widgets
-        children: std.ArrayList(*Widget),
+        children: std.array_list.Managed(*Widget),
 
         /// Layout direction
         direction: enum { horizontal, vertical } = .vertical,
@@ -455,7 +455,7 @@ pub const Renderer = struct {
 
         pub fn init(allocator: std.mem.Allocator) Container {
             return .{
-                .children = std.ArrayList(*Widget).init(allocator),
+                .children = std.array_list.Managed(*Widget).init(allocator),
                 .allocator = allocator,
             };
         }
@@ -682,20 +682,20 @@ pub const Renderer = struct {
 
     /// Initialize renderer with automatic capability detection
     pub fn init(allocator: Allocator) !*Renderer {
-        const terminal = try UnifiedTerminal.init(allocator);
-        const capabilities = terminal.getCapabilities();
+        const unified_terminal = try UnifiedTerminal.init(allocator);
+        const capabilities = unified_terminal.getCapabilities();
         const render_tier = RenderTier.fromCapabilities(capabilities);
 
         const renderer = try allocator.create(Renderer);
         renderer.* = Renderer{
             .allocator = allocator,
-            .terminal = terminal,
+            .terminal = unified_terminal,
             .capabilities = capabilities,
             .render_tier = render_tier,
             .graphics_manager = null, // Initialize on demand
-            .cache = RenderCache.init(allocator),
+            .cache = Cache.init(allocator),
             .theme = try theme_manager.ColorScheme.createDark(allocator),
-            .widgets = std.ArrayList(*Widget).init(allocator),
+            .widgets = std.array_list.Managed(*Widget).init(allocator),
             .focused_widget = null,
             .needs_redraw = true,
         };
@@ -705,19 +705,19 @@ pub const Renderer = struct {
 
     /// Initialize with explicit render tier (for testing or forced modes)
     pub fn initWithTier(allocator: Allocator, tier: RenderTier) !*Renderer {
-        const terminal = try UnifiedTerminal.init(allocator);
-        const capabilities = terminal.getCapabilities();
+        const unified_terminal = try UnifiedTerminal.init(allocator);
+        const capabilities = unified_terminal.getCapabilities();
 
         const renderer = try allocator.create(Renderer);
         renderer.* = Renderer{
             .allocator = allocator,
-            .terminal = terminal,
+            .terminal = unified_terminal,
             .capabilities = capabilities,
             .render_tier = tier,
             .graphics_manager = null,
-            .cache = RenderCache.init(allocator),
+            .cache = Cache.init(allocator),
             .theme = try theme_manager.ColorScheme.createDark(allocator),
-            .widgets = std.ArrayList(*Widget).init(allocator),
+            .widgets = std.array_list.Managed(*Widget).init(allocator),
             .focused_widget = null,
             .needs_redraw = true,
         };
@@ -727,20 +727,20 @@ pub const Renderer = struct {
 
     /// Initialize with custom theme
     pub fn initWithTheme(allocator: Allocator, theme: *Theme) !*Renderer {
-        const terminal = try UnifiedTerminal.init(allocator);
-        const capabilities = terminal.getCapabilities();
+        const unified_terminal = try UnifiedTerminal.init(allocator);
+        const capabilities = unified_terminal.getCapabilities();
         const render_tier = RenderTier.fromCapabilities(capabilities);
 
         const renderer = try allocator.create(Renderer);
         renderer.* = Renderer{
             .allocator = allocator,
-            .terminal = terminal,
+            .terminal = unified_terminal,
             .capabilities = capabilities,
             .render_tier = render_tier,
             .graphics_manager = null,
-            .cache = RenderCache.init(allocator),
+            .cache = Cache.init(allocator),
             .theme = theme,
-            .widgets = std.ArrayList(*Widget).init(allocator),
+            .widgets = std.array_list.Managed(*Widget).init(allocator),
             .focused_widget = null,
             .needs_redraw = true,
         };

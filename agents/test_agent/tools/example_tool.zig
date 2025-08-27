@@ -305,11 +305,8 @@ pub fn execute(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.T
     const RequestMapper = json_reflection.generateJsonMapper(Request);
 
     // Deserialize JSON to struct - this replaces all manual field extraction
-    const parsed_request = RequestMapper.fromJson(allocator, params) catch
+    const request = RequestMapper.fromJson(allocator, params) catch
         return tools_mod.ToolError.MalformedJSON;
-    defer parsed_request.deinit();
-
-    const request = parsed_request.value;
 
     // ============================================================================
     // PARAMETER VALIDATION
@@ -321,7 +318,7 @@ pub fn execute(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.T
     }
 
     // Validate optional parameters
-    const options = request.options orelse .{};
+    const options = request.options orelse @as(@TypeOf(request.options.?), .{ .uppercase = false, .repeat = 1, .prefix = null });
     if (options.repeat == 0 or options.repeat > 10) {
         return tools_mod.ToolError.InvalidInput;
     }
@@ -340,7 +337,7 @@ pub fn execute(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.T
     // Build the result
     var result_builder = std.ArrayList(u8).initCapacity(allocator, total_capacity) catch
         return tools_mod.ToolError.OutOfMemory;
-    defer result_builder.deinit();
+    defer result_builder.deinit(allocator);
 
     var i: u32 = 0;
     while (i < options.repeat) : (i += 1) {

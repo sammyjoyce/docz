@@ -52,3 +52,6 @@ pub const formatters = @import("formatters/mod.zig");
 pub const utils = @import("utils/mod.zig");
 pub const workflows = @import("workflows/mod.zig");
 // pub const themes = @import("themes/mod.zig");
+
+// Presenters are optional; excluded in minimal builds to avoid cross-module imports
+// pub const presenters = @import("presenters/mod.zig");

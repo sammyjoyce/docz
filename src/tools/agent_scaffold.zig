@@ -178,8 +178,8 @@ fn processTemplateVariables(
     description: []const u8,
     author: []const u8,
 ) anyerror![]const u8 {
-    var result = std.ArrayList(u8).initCapacity(allocator, content.len) catch return ScaffoldAgentError.OutOfMemory;
-    defer result.deinit(allocator);
+    var result = std.array_list.Managed(u8).initCapacity(allocator, content.len) catch return ScaffoldAgentError.OutOfMemory;
+    defer result.deinit();
 
     // Convert agent name to different cases
     const agentNameUpper = try toUpperCase(allocator, agentName);
@@ -370,8 +370,8 @@ fn generateAgentManifestZon(
     defer allocator.free(agentId);
 
     // Build the manifest content manually to avoid formatting issues
-    var manifestBuf = std.ArrayList(u8).initCapacity(allocator, 4096) catch return error.OutOfMemory;
-    defer manifestBuf.deinit(allocator);
+    var manifestBuf = std.array_list.Managed(u8).initCapacity(allocator, 4096) catch return error.OutOfMemory;
+    defer manifestBuf.deinit();
 
     try manifestBuf.appendSlice(allocator, ".{\n");
     try manifestBuf.appendSlice(allocator, "    // ============================================================================\n");
@@ -689,8 +689,8 @@ fn generateAgentManifestZon(
 
 /// toKebabCase converts a string to kebab-case
 fn toKebabCase(allocator: std.mem.Allocator, input: []const u8) anyerror![]const u8 {
-    var result = std.ArrayList(u8).initCapacity(allocator, input.len * 2) catch return ScaffoldAgentError.OutOfMemory;
-    defer result.deinit(allocator);
+    var result = std.array_list.Managed(u8).initCapacity(allocator, input.len * 2) catch return ScaffoldAgentError.OutOfMemory;
+    defer result.deinit();
 
     for (input, 0..) |c, i| {
         if (std.ascii.isUpper(c) and i > 0) {
@@ -707,7 +707,7 @@ pub fn main() !void {
     var gpaState: std.heap.DebugAllocator(.{}) = .init;
     const generalPurposeAllocator = gpaState.allocator();
     defer if (gpaState.deinit() == .leak) {
-        @panic("Memory leak detected");
+        std.log.err("Memory leak detected", .{});
     };
 
     const arguments = try std.process.argsAlloc(generalPurposeAllocator);
@@ -754,7 +754,7 @@ pub fn main() !void {
                 std.process.exit(1);
             },
             else => {
-                std.debug.print("Error: Failed to create agent '{s}': {}\n", .{ agentName, err });
+                std.debug.print("Error: Failed to create agent '{s}': {any}\n", .{ agentName, err });
                 std.process.exit(1);
             },
         }

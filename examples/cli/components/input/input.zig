@@ -12,7 +12,7 @@
 
 const std = @import("std");
 const terminal_mod = @import("../../../src/shared/term/terminal_mod.zig");
-const capabilities = @import("../../../src/shared/term/caps.zig");
+const capabilities = @import("../../../src/shared/term/capabilities.zig");
 const terminal_abstraction = @import("../../core/terminal_abstraction.zig");
 
 // Input handling

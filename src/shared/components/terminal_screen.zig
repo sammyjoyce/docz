@@ -4,7 +4,6 @@
 
 const std = @import("std");
 const term_screen = @import("../term/screen.zig");
-const ansi_screen = @import("../term/ansi/screen.zig");
 
 /// Re-export screen types for convenience
 pub const Control = term_screen.Control;
@@ -13,11 +12,7 @@ pub const Component = term_screen.Component;
 pub const Screen = term_screen.Screen;
 pub const TermCaps = term_screen.TermCaps;
 
-/// Re-export ANSI functions for direct access
-pub const clearScreenToEnd = ansi_screen.clearScreenToEnd;
-pub const clearScreenToStart = ansi_screen.clearScreenToStart;
-pub const clearScreenAll = ansi_screen.clearScreenAll;
-pub const clearLineAll = ansi_screen.clearLineAll;
+// ANSI-specific helpers removed from components to avoid direct dependency.
 
 /// TerminalScreen provides high-level terminal screen functionality
 /// Wraps the low-level term/screen.zig with additional convenience methods

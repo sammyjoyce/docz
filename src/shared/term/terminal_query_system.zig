@@ -1,5 +1,5 @@
 const std = @import("std");
-const caps = @import("caps.zig");
+const caps = @import("capabilities.zig");
 
 /// Simple terminal query system for testing
 pub const TerminalQuerySystem = struct {

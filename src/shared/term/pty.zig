@@ -283,13 +283,19 @@ pub const PtyInstance = struct {
     pub fn deinit(self: *PtyInstance) void {
         // Restore original terminal settings if saved
         if (self.original_termios) |config| {
-            termios.restoreMode(self.slave_fd, config) catch {};
+            termios.restoreMode(self.slave_fd, config) catch |err| {
+                std.log.warn("Failed to restore terminal mode in PTY cleanup: {any}", .{err});
+            };
         }
 
         // Terminate process if running
         if (self.process) |*proc| {
-            _ = proc.kill() catch {};
-            _ = proc.wait() catch {};
+            _ = proc.kill() catch |err| {
+                std.log.warn("Failed to kill PTY process: {any}", .{err});
+            };
+            _ = proc.wait() catch |err| {
+                std.log.warn("Failed to wait for PTY process: {any}", .{err});
+            };
 
             // Close ConPTY handle on Windows
             if (builtin.target.os.tag == .windows) {

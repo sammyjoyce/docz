@@ -12,12 +12,14 @@
 //! - Multiple display styles (minimal, detailed, system)
 
 const std = @import("std");
-const components = @import("components_shared");
+const shared = @import("../mod.zig");
+const components = shared.components;
 const term_shared = @import("term_shared");
 const unified = term_shared.unified;
 const terminal_bridge = @import("./core/terminal_bridge.zig");
 const components_shared = @import("./components/mod.zig");
 const notification = components_shared.notification;
+const presenters = @import("presenters/mod.zig");
 
 // Re-export base types for convenience
 pub const NotificationType = notification.NotificationType;
@@ -579,6 +581,50 @@ pub const NotificationManager = struct {
         try self.bridge.print(" │\n", null);
     }
 };
+
+/// Thin wrapper: display a base notification via CLI presenter
+pub fn displaySimple(
+    allocator: std.mem.Allocator,
+    n: *const notification.BaseNotification,
+    use_unicode: bool,
+) !void {
+    // Map BaseNotification to shared Notification structure if types are aligned
+    // The BaseNotification is compatible with components/notification.Notification fields
+    // We cast through pointer to avoid copy; safe if layout matches. Safer: reconstruct.
+    const SharedNotification = shared.components.Notification;
+
+    var reconstructed = SharedNotification{
+        .title = n.title,
+        .message = n.message,
+        .notification_type = n.notification_type,
+        .timestamp = n.timestamp,
+        .config = .{
+            .enableSystemNotifications = n.config.enableSystemNotifications,
+            .enableSound = n.config.enableSound,
+            .autoDismissMs = n.config.autoDismissMs,
+            .showTimestamp = n.config.showTimestamp,
+            .showIcons = n.config.showIcons,
+            .maxWidth = n.config.maxWidth,
+            .padding = n.config.padding,
+            .enableClipboardActions = n.config.enableClipboardActions,
+            .enableHyperlinks = n.config.enableHyperlinks,
+        },
+        .actions = n.actions,
+        .priority = .normal,
+        .persistent = n.persistent,
+        .progress = n.progress,
+    };
+
+    try presenters.notification.display(allocator, &reconstructed, use_unicode);
+}
+
+/// Thin wrapper: display progress using CLI presenter
+pub fn displayProgressSimple(
+    data: *const shared.components.ProgressData,
+    width: u32,
+) !void {
+    try presenters.progress.render(data, width);
+}
 
 /// Styling configuration for notification boxes
 const BoxStyle = struct {

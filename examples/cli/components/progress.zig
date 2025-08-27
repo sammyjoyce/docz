@@ -13,7 +13,7 @@ const std = @import("std");
 
 // Core terminal capabilities
 const terminal_mod = @import("../../../src/shared/term/terminal_mod.zig");
-const caps_mod = @import("../../../src/shared/term/caps.zig");
+const caps_mod = @import("../../../src/shared/term/capabilities.zig");
 
 // Features that were previously unused
 // const kitty_proto = @import("../../../src/shared/term/ansi/kitty.zig");

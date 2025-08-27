@@ -336,7 +336,10 @@ pub const TerminalCursor = struct {
 
     /// Helper function to print formatted string
     fn print(comptime fmt: []const u8, args: anytype) void {
-        std.io.getStdOut().writer().print(fmt, args) catch {};
+        var stdout_buffer: [4096]u8 = undefined;
+        var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+        stdout_writer.print(fmt, args) catch {};
+        stdout_writer.flush() catch {};
     }
 };
 

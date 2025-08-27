@@ -105,6 +105,9 @@ pub const CommandHistory = utils.CommandHistory;
 
 // Terminal capabilities - accessed through term_shared dependency
 
+// Presenters (adapters from shared headless models to TUI renderer)
+pub const presenters = @import("presenters/mod.zig");
+
 // Factory functions
 pub const createRenderer = renderer.createRenderer;
 pub const createDashboard = dashboard.createDashboard;

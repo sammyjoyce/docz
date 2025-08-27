@@ -10,8 +10,8 @@ pub const Base = struct {
     pub const HyperlinkMenu = @import("base/hyperlink_menu.zig").HyperlinkMenu;
     pub const ClipboardInput = @import("base/clipboard_input.zig").ClipboardInput;
     pub const Panel = @import("base/info_panel.zig");
-    const shared_components = @import("components_shared");
-    pub const StatusIndicator = shared_components.StatusIndicator;
+    // StatusIndicator removed - not available within CLI module boundary
+    // pub const StatusIndicator = ...;
     pub const BreadcrumbTrail = @import("base/breadcrumb_trail.zig");
     pub const Clipboard = @import("base/clipboard.zig");
     // pub const InputManager = @import("base/input_manager.zig"); // Temporarily disabled due to module conflict
@@ -27,7 +27,7 @@ pub const NotificationManager = Base.NotificationManager;
 // Legacy compatibility
 pub const SelectMenu = Base.SelectMenu;
 pub const Panel = Base.Panel;
-pub const StatusIndicator = Base.StatusIndicator;
+// pub const StatusIndicator = Base.StatusIndicator; // Removed - not available within CLI module boundary
 pub const BreadcrumbTrail = Base.BreadcrumbTrail;
 pub const Clipboard = Base.Clipboard;
 // pub const InputManager = Base.InputManager; // Temporarily disabled due to module conflict

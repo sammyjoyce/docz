@@ -8,7 +8,7 @@
 
 const std = @import("std");
 const engine_mod = @import("engine.zig");
-const term_caps = @import("../../term/caps.zig");
+const term_caps = @import("../../term/capabilities.zig");
 const graphics_manager = @import("../../term/graphics_manager.zig");
 const color_palette = @import("../../term/color_palette.zig");
 const enhanced_mouse = @import("../../term/mouse.zig");
@@ -329,7 +329,7 @@ pub const LineChart = struct {
         // 4. Encode as Kitty graphics protocol image
         // 5. Output to terminal
 
-        std.debug.print("[Kitty WebGL Line Chart - {} series]\n", .{self.series.items.len});
+        std.debug.print("[Kitty WebGL Line Chart - {d} series]\n", .{self.series.items.len});
     }
 
     fn renderSixelOptimized(self: *LineChart, bounds: Bounds) !void {
@@ -382,8 +382,10 @@ pub const LineChart = struct {
         }
 
         // Render to output
-        const writer = std.io.getStdOut().writer();
-        try canvas.render(writer);
+        var stdout_buffer: [4096]u8 = undefined;
+        var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+        try canvas.render(stdout_writer.any());
+        try stdout_writer.flush();
     }
 
     fn renderASCIIAdaptive(self: *LineChart, bounds: Bounds) !void {

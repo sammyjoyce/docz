@@ -1,11 +1,51 @@
 //! Geometric bounds and positioning for TUI components
-//! Re-exports types from the shared types module
+//! Types for bounds and points
 
 const std = @import("std");
 
-// Re-export types for backward compatibility
-pub const Bounds = @import("../../types.zig").BoundsU32;
-pub const Point = @import("../../types.zig").PointU32;
+// Point in 2D space with u32 coordinates (for screen/cell coordinates)
+pub const Point = struct {
+    x: u32,
+    y: u32,
+
+    pub fn init(x: u32, y: u32) Point {
+        return Point{ .x = x, .y = y };
+    }
+};
+
+// Rectangular bounds with u32 coordinates (for screen/cell coordinates)
+pub const Bounds = struct {
+    x: u32,
+    y: u32,
+    width: u32,
+    height: u32,
+
+    pub fn init(x: u32, y: u32, width: u32, height: u32) Bounds {
+        return Bounds{
+            .x = x,
+            .y = y,
+            .width = width,
+            .height = height,
+        };
+    }
+};
+
+// Rectangular bounds with i16/u16 coordinates (for rendering coordinates)
+pub const BoundsI16 = struct {
+    x: i16,
+    y: i16,
+    width: u16,
+    height: u16,
+
+    pub fn init(x: i16, y: i16, width: u16, height: u16) BoundsI16 {
+        return BoundsI16{
+            .x = x,
+            .y = y,
+            .width = width,
+            .height = height,
+        };
+    }
+};
 
 /// Terminal size information
 pub const TerminalSize = struct {

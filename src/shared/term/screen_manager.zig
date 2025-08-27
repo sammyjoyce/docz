@@ -108,7 +108,9 @@ pub const Screen = struct {
 
         // Restore screen state on cleanup if requested
         if (self.restore_on_exit) {
-            self.restoreAll() catch {};
+            self.restoreAll() catch |err| {
+                std.log.warn("Failed to restore screen state on cleanup: {any}", .{err});
+            };
         }
     }
 
@@ -186,7 +188,7 @@ pub const Screen = struct {
 
     /// Move cursor to specific position (1-based coordinates)
     pub fn moveCursor(self: Self, row: u16, col: u16) !void {
-        const sequence = try std.fmt.allocPrint(self.allocator, "\x1b[{};{}H", .{ row, col });
+        const sequence = try std.fmt.allocPrint(self.allocator, "\x1b[{d};{d}H", .{ row, col });
         defer self.allocator.free(sequence);
         try self.sendSequence(sequence);
     }
@@ -201,7 +203,7 @@ pub const Screen = struct {
         if (lines == 1) {
             try self.sendSequence(ScreenSequences.SCROLL_UP);
         } else {
-            const sequence = try std.fmt.allocPrint(self.allocator, "\x1b[{}S", .{lines});
+            const sequence = try std.fmt.allocPrint(self.allocator, "\x1b[{d}S", .{lines});
             defer self.allocator.free(sequence);
             try self.sendSequence(sequence);
         }
@@ -212,7 +214,7 @@ pub const Screen = struct {
         if (lines == 1) {
             try self.sendSequence(ScreenSequences.SCROLL_DOWN);
         } else {
-            const sequence = try std.fmt.allocPrint(self.allocator, "\x1b[{}T", .{lines});
+            const sequence = try std.fmt.allocPrint(self.allocator, "\x1b[{d}T", .{lines});
             defer self.allocator.free(sequence);
             try self.sendSequence(sequence);
         }
@@ -337,7 +339,9 @@ pub const ScreenGuard = struct {
     }
 
     pub fn deinit(self: Self) void {
-        self.manager.restoreFromTUI() catch {};
+        self.manager.restoreFromTUI() catch |err| {
+            std.log.warn("Failed to restore screen from TUI mode: {any}", .{err});
+        };
     }
 };
 

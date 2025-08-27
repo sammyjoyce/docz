@@ -18,6 +18,8 @@ const BUILD_CONFIG = struct {
         const AGENT_INTERFACE_ZIG = "src/shared/tui/agent_interface.zig";
         const AGENT_DASHBOARD_ZIG = "src/shared/tui/components/agent_dashboard.zig";
         const INTERACTIVE_SESSION_ZIG = "src/core/interactive_session.zig";
+        const AGENT_MAIN_ZIG = "src/core/agent_main.zig";
+        const AGENT_BASE_ZIG = "src/core/agent_base.zig";
         const CLI_ZIG = "src/shared/cli/mod.zig";
         const AUTH_ZIG = "src/shared/auth/mod.zig";
         const OAUTH_CALLBACK_SERVER_ZIG = "src/shared/auth/oauth/callback_server.zig";
@@ -236,12 +238,13 @@ const AgentRegistry = struct {
     }
 
     fn getAllAgents(self: *AgentRegistry) ![]AgentInfo {
-        var agents_list = try std.ArrayList(AgentInfo).initCapacity(self.allocator, self.agents.count());
+        var agents_list = try std.array_list.Managed(AgentInfo).initCapacity(self.allocator, self.agents.count());
+        defer agents_list.deinit();
         var it = self.agents.iterator();
         while (it.next()) |entry| {
-            try agents_list.append(self.allocator, entry.value_ptr.*);
+            try agents_list.append(entry.value_ptr.*);
         }
-        return agents_list.toOwnedSlice(self.allocator);
+        return agents_list.toOwnedSlice();
     }
 
     fn validateAgent(self: *AgentRegistry, agent_name: []const u8) !bool {
@@ -262,10 +265,10 @@ const AgentRegistry = struct {
 
         // Check for required files
         const required_files = [_][]const u8{ "main.zig", "spec.zig" };
-        var missing_files = try std.ArrayList([]const u8).initCapacity(self.allocator, 4);
+        var missing_files = try std.array_list.Managed([]const u8).initCapacity(self.allocator, 4);
         defer {
             for (missing_files.items) |file| self.allocator.free(file);
-            missing_files.deinit(self.allocator);
+            missing_files.deinit();
         }
 
         for (required_files) |file| {
@@ -275,7 +278,7 @@ const AgentRegistry = struct {
             _ = std.fs.cwd().openFile(file_path, .{}) catch |err| {
                 switch (err) {
                     error.FileNotFound => {
-                        try missing_files.append(self.allocator, try self.allocator.dupe(u8, file));
+                        try missing_files.append(try self.allocator.dupe(u8, file));
                     },
                     else => return err,
                 }
@@ -653,8 +656,8 @@ const ValidationWarning = struct {
 
 const ValidationResult = struct {
     is_valid: bool,
-    errors: std.ArrayList(ValidationError),
-    warnings: std.ArrayList(ValidationWarning),
+    errors: std.array_list.Managed(ValidationError),
+    warnings: std.array_list.Managed(ValidationWarning),
     allocator: std.mem.Allocator,
 
     fn deinit(self: *ValidationResult) void {
@@ -662,12 +665,12 @@ const ValidationResult = struct {
             // self.allocator.free(err.field);  // field is a literal string constant, don't free
             self.allocator.free(err.message);
         }
-        self.errors.deinit(self.allocator);
+        self.errors.deinit();
         for (self.warnings.items) |warn| {
             // self.allocator.free(warn.field);  // field is a literal string constant, don't free
             self.allocator.free(warn.message);
         }
-        self.warnings.deinit(self.allocator);
+        self.warnings.deinit();
     }
 };
 
@@ -728,8 +731,8 @@ const ModuleBuilder = struct {
 
         var result = ValidationResult{
             .is_valid = true,
-            .errors = try std.ArrayList(ValidationError).initCapacity(self.ctx.b.allocator, 4),
-            .warnings = try std.ArrayList(ValidationWarning).initCapacity(self.ctx.b.allocator, 4),
+            .errors = try std.array_list.Managed(ValidationError).initCapacity(self.ctx.b.allocator, 4),
+            .warnings = try std.array_list.Managed(ValidationWarning).initCapacity(self.ctx.b.allocator, 4),
             .allocator = self.ctx.b.allocator,
         };
         errdefer result.deinit();
@@ -738,7 +741,7 @@ const ModuleBuilder = struct {
         var agent_dir = std.fs.cwd().openDir(agent_path, .{}) catch |err| {
             switch (err) {
                 error.FileNotFound => {
-                    try result.errors.append(self.ctx.b.allocator, .{
+                    try result.errors.append(.{
                         .field = "directory",
                         .message = try std.fmt.allocPrint(self.ctx.b.allocator, "Agent directory '{s}' not found", .{agent_path}),
                     });
@@ -759,7 +762,7 @@ const ModuleBuilder = struct {
             _ = std.fs.cwd().openFile(file_path, .{}) catch |err| {
                 switch (err) {
                     error.FileNotFound => {
-                        try result.errors.append(self.ctx.b.allocator, .{
+                    try result.errors.append(.{
                             .field = "required_file",
                             .message = try std.fmt.allocPrint(self.ctx.b.allocator, "Missing required file: {s}", .{file}),
                         });
@@ -792,7 +795,7 @@ const ModuleBuilder = struct {
         };
 
         if (agent_zig_exists == false and agent_zig_lower_exists == false) {
-            try result.errors.append(self.ctx.b.allocator, .{
+            try result.errors.append(.{
                 .field = "agent_file",
                 .message = try self.ctx.b.allocator.dupe(u8, "Either Agent.zig or agent.zig is required"),
             });
@@ -816,7 +819,7 @@ const ModuleBuilder = struct {
             _ = std.fs.cwd().openFile(file_path, .{}) catch |err| {
                 switch (err) {
                     error.FileNotFound => {
-                        try result.warnings.append(self.ctx.b.allocator, .{
+                        try result.warnings.append(.{
                             .field = file.name,
                             .message = try std.fmt.allocPrint(self.ctx.b.allocator, "Missing {s}", .{file.description}),
                         });
@@ -831,7 +834,7 @@ const ModuleBuilder = struct {
             if (info.manifest) |*manifest| {
                 try self.validateManifest(manifest, &result);
             } else {
-                try result.warnings.append(self.ctx.b.allocator, .{
+                try result.warnings.append(.{
                     .field = "manifest",
                     .message = try self.ctx.b.allocator.dupe(u8, "No manifest file found"),
                 });
@@ -845,7 +848,7 @@ const ModuleBuilder = struct {
     fn validateManifest(self: ModuleBuilder, manifest: *const AgentManifest, result: *ValidationResult) !void {
         // Validate agent info
         if (std.mem.eql(u8, manifest.agent.name, "")) {
-            try result.errors.append(self.ctx.b.allocator, .{
+            try result.errors.append(.{
                 .field = "agent.name",
                 .message = try self.ctx.b.allocator.dupe(u8, "Agent name cannot be empty"),
             });
@@ -853,7 +856,7 @@ const ModuleBuilder = struct {
         }
 
         if (std.mem.eql(u8, manifest.agent.version, "")) {
-            try result.errors.append(self.ctx.b.allocator, .{
+            try result.errors.append(.{
                 .field = "agent.version",
                 .message = try self.ctx.b.allocator.dupe(u8, "Agent version cannot be empty"),
             });
@@ -862,7 +865,7 @@ const ModuleBuilder = struct {
 
         // Validate dependencies
         if (std.mem.eql(u8, manifest.dependencies.zig_version, "")) {
-            try result.warnings.append(self.ctx.b.allocator, .{
+            try result.warnings.append(.{
                 .field = "dependencies.zig_version",
                 .message = try self.ctx.b.allocator.dupe(u8, "Zig version not specified"),
             });
@@ -870,7 +873,7 @@ const ModuleBuilder = struct {
 
         // Validate build configuration
         if (std.mem.eql(u8, manifest.build.artifacts.binary_name, "")) {
-            try result.warnings.append(self.ctx.b.allocator, .{
+            try result.warnings.append(.{
                 .field = "build.artifacts.binary_name",
                 .message = try self.ctx.b.allocator.dupe(u8, "Binary name not specified"),
             });
@@ -1020,7 +1023,7 @@ const ModuleBuilder = struct {
 
         // Check for required files
         const required_files = [_][]const u8{ "main.zig", "spec.zig" };
-        var missing_files = try std.ArrayList([]const u8).initCapacity(self.ctx.b.allocator, 4);
+        var missing_files = try std.array_list.Managed([]const u8).initCapacity(self.ctx.b.allocator, 4);
         defer missing_files.deinit(self.ctx.b.allocator);
 
         for (required_files) |file| {
@@ -1030,7 +1033,7 @@ const ModuleBuilder = struct {
             _ = std.fs.cwd().openFile(file_path, .{}) catch |err| {
                 switch (err) {
                     error.FileNotFound => {
-                        try missing_files.append(self.ctx.b.allocator, try self.ctx.b.allocator.dupe(u8, file));
+                        try missing_files.append(try self.ctx.b.allocator.dupe(u8, file));
                     },
                     else => return err,
                 }
@@ -1072,16 +1075,16 @@ const ModuleBuilder = struct {
     }
 
     /// Get list of all available agent names
-    fn getAllAgentNames(self: ModuleBuilder) !std.ArrayList([]const u8) {
+    fn getAllAgentNames(self: ModuleBuilder) !std.array_list.Managed([]const u8) {
         var agents_dir = try std.fs.cwd().openDir("agents", .{ .iterate = true });
         defer agents_dir.close();
 
-        var agent_names = try std.ArrayList([]const u8).initCapacity(self.ctx.b.allocator, 4);
+        var agent_names = try std.array_list.Managed([]const u8).initCapacity(self.ctx.b.allocator, 4);
         var it = agents_dir.iterate();
 
         while (try it.next()) |entry| {
             if (entry.kind == .directory and !std.mem.eql(u8, entry.name, "_template")) {
-                try agent_names.append(self.ctx.b.allocator, try self.ctx.b.allocator.dupe(u8, entry.name));
+                try agent_names.append(try self.ctx.b.allocator.dupe(u8, entry.name));
             }
         }
 
@@ -1120,6 +1123,7 @@ const ModuleBuilder = struct {
 
         // Terminal capability module aggregator shared across CLI and TUI
         const term = self.createModule("src/shared/term/mod.zig");
+        term.addImport("shared_types", self.createModule("src/shared/types.zig"));
 
         const engine = self.createModule(BUILD_CONFIG.PATHS.ENGINE_ZIG);
         engine.addImport("anthropic_shared", anthropic);
@@ -1142,6 +1146,20 @@ const ModuleBuilder = struct {
         interactive_session.addImport("cli_shared", self.createModule(BUILD_CONFIG.PATHS.CLI_ZIG));
         interactive_session.addImport("auth_shared", auth);
 
+        const agent_main = self.createModule(BUILD_CONFIG.PATHS.AGENT_MAIN_ZIG);
+        agent_main.addImport("config_shared", config);
+        agent_main.addImport("engine_shared", engine);
+        agent_main.addImport("tools_shared", tools);
+
+        const agent_base = self.createModule(BUILD_CONFIG.PATHS.AGENT_BASE_ZIG);
+        agent_base.addImport("config_shared", config);
+        agent_base.addImport("engine_shared", engine);
+        agent_base.addImport("tools_shared", tools);
+        agent_base.addImport("interactive_session", interactive_session);
+        agent_base.addImport("auth_shared", auth);
+        agent_base.addImport("anthropic_shared", anthropic);
+        agent_base.addImport("agent_main", agent_main);
+
         // CLI depends on terminal capabilities
         const cli = self.createModule(BUILD_CONFIG.PATHS.CLI_ZIG);
         cli.addImport("term_shared", term);
@@ -1149,6 +1167,7 @@ const ModuleBuilder = struct {
         // TUI depends on terminal capabilities
         const tui = self.createModule(BUILD_CONFIG.PATHS.TUI_ZIG);
         tui.addImport("term_shared", term);
+        tui.addImport("shared_types", self.createModule("src/shared/types.zig"));
 
         // Theme manager module
         const theme_manager = self.createModule("src/shared/theme_manager/mod.zig");
@@ -1170,6 +1189,8 @@ const ModuleBuilder = struct {
             .agent_interface = agent_interface,
             .agent_dashboard = agent_dashboard,
             .interactive_session = interactive_session,
+            .agent_main = agent_main,
+            .agent_base = agent_base,
             .oauth_callback_server = oauth_callback_server,
         };
     }
@@ -1192,6 +1213,8 @@ const ModuleBuilder = struct {
             .agent_interface = null,
             .agent_dashboard = null,
             .interactive_session = null,
+            .agent_main = null,
+            .agent_base = null,
             .oauth_callback_server = null,
         };
 
@@ -1209,17 +1232,43 @@ const ModuleBuilder = struct {
         // Always include new core modules for enhanced UX
         modules.agent_interface = self.createModule(BUILD_CONFIG.PATHS.AGENT_INTERFACE_ZIG);
         modules.interactive_session = self.createModule(BUILD_CONFIG.PATHS.INTERACTIVE_SESSION_ZIG);
-        
+        modules.agent_main = self.createModule(BUILD_CONFIG.PATHS.AGENT_MAIN_ZIG);
+        modules.agent_base = self.createModule(BUILD_CONFIG.PATHS.AGENT_BASE_ZIG);
+
         // Add dependencies for core modules
         if (modules.agent_interface) |interface| {
             interface.addImport("config_shared", modules.config.?);
             interface.addImport("engine_shared", modules.engine.?);
             interface.addImport("tools_shared", modules.tools.?);
         }
-        
+
         if (modules.interactive_session) |session| {
             session.addImport("engine_shared", modules.engine.?);
             session.addImport("config_shared", modules.config.?);
+        }
+
+        if (modules.agent_main) |agent_main| {
+            agent_main.addImport("config_shared", modules.config.?);
+            agent_main.addImport("engine_shared", modules.engine.?);
+            agent_main.addImport("tools_shared", modules.tools.?);
+        }
+
+        if (modules.agent_base) |agent_base| {
+            agent_base.addImport("config_shared", modules.config.?);
+            agent_base.addImport("engine_shared", modules.engine.?);
+            agent_base.addImport("tools_shared", modules.tools.?);
+            if (modules.interactive_session) |session| {
+                agent_base.addImport("interactive_session", session);
+            }
+            if (modules.auth) |auth| {
+                agent_base.addImport("auth_shared", auth);
+            }
+            if (modules.anthropic) |anthropic| {
+                agent_base.addImport("anthropic_shared", anthropic);
+            }
+            if (modules.agent_main) |agent_main| {
+                agent_base.addImport("agent_main", agent_main);
+            }
         }
 
         if (manifest) |*m| {
@@ -1277,11 +1326,12 @@ const ModuleBuilder = struct {
                 modules.tui = self.createModule(BUILD_CONFIG.PATHS.TUI_ZIG);
                 modules.theme_manager = self.createModule("src/shared/theme_manager/mod.zig");
                 modules.agent_dashboard = self.createModule(BUILD_CONFIG.PATHS.AGENT_DASHBOARD_ZIG);
-
+                // Include components for CLI and TUI functionality
                 // Add terminal dependencies
                 if (modules.term) |term| {
                     modules.cli.?.addImport("term_shared", term);
                     modules.tui.?.addImport("term_shared", term);
+                    modules.tui.?.addImport("shared_types", self.createModule("src/shared/types.zig"));
                     modules.theme_manager.?.addImport("term_shared", term);
                 }
 
@@ -1372,6 +1422,8 @@ const ModuleBuilder = struct {
             modules.components = self.createModule("src/shared/components/mod.zig");
             modules.theme_manager = self.createModule("src/shared/theme_manager/mod.zig");
             modules.agent_dashboard = self.createModule(BUILD_CONFIG.PATHS.AGENT_DASHBOARD_ZIG);
+            modules.agent_main = self.createModule(BUILD_CONFIG.PATHS.AGENT_MAIN_ZIG);
+            modules.agent_base = self.createModule(BUILD_CONFIG.PATHS.AGENT_BASE_ZIG);
 
             // Add all dependencies
             if (modules.anthropic) |anthropic| {
@@ -1390,6 +1442,7 @@ const ModuleBuilder = struct {
             if (modules.term) |term| {
                 modules.cli.?.addImport("term_shared", term);
                 modules.tui.?.addImport("term_shared", term);
+                modules.tui.?.addImport("shared_types", self.createModule("src/shared/types.zig"));
                 if (modules.theme_manager) |theme_manager| {
                     theme_manager.addImport("term_shared", term);
                 }
@@ -1449,6 +1502,8 @@ const ModuleBuilder = struct {
         if (shared.agent_interface) |interface| entry.addImport("agent_interface", interface);
         if (shared.agent_dashboard) |dashboard| entry.addImport("agent_dashboard", dashboard);
         if (shared.interactive_session) |session| entry.addImport("interactive_session", session);
+        if (shared.agent_main) |agent_main| entry.addImport("agent_main", agent_main);
+        if (shared.agent_base) |agent_base| entry.addImport("agent_base", agent_base);
         if (shared.oauth_callback_server) |oauth| entry.addImport("oauth_callback_server", oauth);
 
 
@@ -1468,9 +1523,9 @@ const ModuleBuilder = struct {
     fn createApiModule(self: ModuleBuilder) *std.Build.Module {
         // For testing, create a simple test module
         const test_module = self.ctx.b.addModule("border_merger_test", .{
+            .root_source_file = self.ctx.b.path("tests/border_merger_test.zig"),
             .target = self.ctx.target,
             .optimize = self.ctx.optimize,
-            .root_source_file = self.ctx.b.path("tests/border_merger_test.zig"),
         });
 
         // Add the modules that the test imports
@@ -1493,9 +1548,9 @@ const ModuleBuilder = struct {
             name;
 
         return self.ctx.b.addModule(module_name, .{
+            .root_source_file = self.ctx.b.path(path),
             .target = self.ctx.target,
             .optimize = self.ctx.optimize,
-            .root_source_file = self.ctx.b.path(path),
         });
     }
 
@@ -1559,6 +1614,8 @@ const SharedModules = struct {
     agent_interface: *std.Build.Module,
     agent_dashboard: *std.Build.Module,
     interactive_session: *std.Build.Module,
+    agent_main: *std.Build.Module,
+    agent_base: *std.Build.Module,
     oauth_callback_server: *std.Build.Module,
 };
 
@@ -1578,6 +1635,8 @@ const ConditionalSharedModules = struct {
     agent_interface: ?*std.Build.Module,
     agent_dashboard: ?*std.Build.Module,
     interactive_session: ?*std.Build.Module,
+    agent_main: ?*std.Build.Module,
+    agent_base: ?*std.Build.Module,
     oauth_callback_server: ?*std.Build.Module,
 };
 
@@ -1694,58 +1753,58 @@ fn parseDependenciesFromContent(allocator: std.mem.Allocator, manifest: *AgentMa
         const system_packages_section = dependencies_section[start..];
         // Simple parsing for array elements - this is a basic implementation
         // A more robust parser would handle nested structures better
-        var packages_list = try std.ArrayList([]const u8).initCapacity(allocator, 4);
-        defer packages_list.deinit(allocator);
+        var packages_list = try std.array_list.Managed([]const u8).initCapacity(allocator, 4);
+        defer packages_list.deinit();
 
         var search_pos: usize = 0;
         while (std.mem.indexOf(u8, system_packages_section[search_pos..], "\"")) |quote_start| {
             const quote_pos = search_pos + quote_start;
             const end_quote = std.mem.indexOf(u8, system_packages_section[quote_pos + 1 ..], "\"") orelse break;
             const package_name = system_packages_section[quote_pos + 1 .. quote_pos + 1 + end_quote];
-            try packages_list.append(allocator, try allocator.dupe(u8, package_name));
+            try packages_list.append(try allocator.dupe(u8, package_name));
             search_pos = quote_pos + end_quote + 2;
             if (search_pos >= system_packages_section.len) break;
         }
 
-        manifest.dependencies.external.system_packages = try packages_list.toOwnedSlice(allocator);
+        manifest.dependencies.external.system_packages = try packages_list.toOwnedSlice();
     }
 
     // Parse external dependencies - zig packages (similar to system packages)
     if (std.mem.indexOf(u8, dependencies_section, ".zig_packages = .{")) |start| {
         const zig_packages_section = dependencies_section[start..];
-        var packages_list = try std.ArrayList([]const u8).initCapacity(allocator, 4);
-        defer packages_list.deinit(allocator);
+        var packages_list = try std.array_list.Managed([]const u8).initCapacity(allocator, 4);
+        defer packages_list.deinit();
 
         var search_pos: usize = 0;
         while (std.mem.indexOf(u8, zig_packages_section[search_pos..], "\"")) |quote_start| {
             const quote_pos = search_pos + quote_start;
             const end_quote = std.mem.indexOf(u8, zig_packages_section[quote_pos + 1 ..], "\"") orelse break;
             const package_name = zig_packages_section[quote_pos + 1 .. quote_pos + 1 + end_quote];
-            try packages_list.append(allocator, try allocator.dupe(u8, package_name));
+            try packages_list.append(try allocator.dupe(u8, package_name));
             search_pos = quote_pos + end_quote + 2;
             if (search_pos >= zig_packages_section.len) break;
         }
 
-        manifest.dependencies.external.zig_packages = try packages_list.toOwnedSlice(allocator);
+        manifest.dependencies.external.zig_packages = try packages_list.toOwnedSlice();
     }
 
     // Parse optional features
     if (std.mem.indexOf(u8, dependencies_section, ".features = .{")) |start| {
         const features_section = dependencies_section[start..];
-        var features_list = try std.ArrayList([]const u8).initCapacity(allocator, 4);
-        defer features_list.deinit(allocator);
+        var features_list = try std.array_list.Managed([]const u8).initCapacity(allocator, 4);
+        defer features_list.deinit();
 
         var search_pos: usize = 0;
         while (std.mem.indexOf(u8, features_section[search_pos..], "\"")) |quote_start| {
             const quote_pos = search_pos + quote_start;
             const end_quote = std.mem.indexOf(u8, features_section[quote_pos + 1 ..], "\"") orelse break;
             const feature_name = features_section[quote_pos + 1 .. quote_pos + 1 + end_quote];
-            try features_list.append(allocator, try allocator.dupe(u8, feature_name));
+            try features_list.append(try allocator.dupe(u8, feature_name));
             search_pos = quote_pos + end_quote + 2;
             if (search_pos >= features_section.len) break;
         }
 
-        manifest.dependencies.optional.features = try features_list.toOwnedSlice(allocator);
+        manifest.dependencies.optional.features = try features_list.toOwnedSlice();
     }
 }
 
@@ -1757,20 +1816,20 @@ fn parseBuildFromContent(allocator: std.mem.Allocator, manifest: *AgentManifest,
     // Parse build targets
     if (std.mem.indexOf(u8, build_section, ".targets = .{")) |start| {
         const targets_section = build_section[start..];
-        var targets_list = try std.ArrayList([]const u8).initCapacity(allocator, 4);
-        defer targets_list.deinit(allocator);
+        var targets_list = try std.array_list.Managed([]const u8).initCapacity(allocator, 4);
+        defer targets_list.deinit();
 
         var search_pos: usize = 0;
         while (std.mem.indexOf(u8, targets_section[search_pos..], "\"")) |quote_start| {
             const quote_pos = search_pos + quote_start;
             const end_quote = std.mem.indexOf(u8, targets_section[quote_pos + 1 ..], "\"") orelse break;
             const target_name = targets_section[quote_pos + 1 .. quote_pos + 1 + end_quote];
-            try targets_list.append(allocator, try allocator.dupe(u8, target_name));
+            try targets_list.append(try allocator.dupe(u8, target_name));
             search_pos = quote_pos + end_quote + 2;
             if (search_pos >= targets_section.len) break;
         }
 
-        manifest.build.targets = try targets_list.toOwnedSlice(allocator);
+        manifest.build.targets = try targets_list.toOwnedSlice();
     }
 
     // Parse build options
@@ -1784,20 +1843,20 @@ fn parseBuildFromContent(allocator: std.mem.Allocator, manifest: *AgentManifest,
     // Parse custom flags
     if (std.mem.indexOf(u8, options_section, ".custom_flags = .{")) |start| {
         const flags_section = options_section[start..];
-        var flags_list = try std.ArrayList([]const u8).initCapacity(allocator, 4);
-        defer flags_list.deinit(allocator);
+        var flags_list = try std.array_list.Managed([]const u8).initCapacity(allocator, 4);
+        defer flags_list.deinit();
 
         var search_pos: usize = 0;
         while (std.mem.indexOf(u8, flags_section[search_pos..], "\"")) |quote_start| {
             const quote_pos = search_pos + quote_start;
             const end_quote = std.mem.indexOf(u8, flags_section[quote_pos + 1 ..], "\"") orelse break;
             const flag = flags_section[quote_pos + 1 .. quote_pos + 1 + end_quote];
-            try flags_list.append(allocator, try allocator.dupe(u8, flag));
+            try flags_list.append(try allocator.dupe(u8, flag));
             search_pos = quote_pos + end_quote + 2;
             if (search_pos >= flags_section.len) break;
         }
 
-        manifest.build.options.custom_flags = try flags_list.toOwnedSlice(allocator);
+        manifest.build.options.custom_flags = try flags_list.toOwnedSlice();
     }
 
     // Parse artifacts
@@ -1814,20 +1873,20 @@ fn parseBuildFromContent(allocator: std.mem.Allocator, manifest: *AgentManifest,
     // Parse include files
     if (std.mem.indexOf(u8, artifacts_section, ".include_files = .{")) |start| {
         const include_files_section = artifacts_section[start..];
-        var files_list = try std.ArrayList([]const u8).initCapacity(allocator, 4);
-        defer files_list.deinit(allocator);
+        var files_list = try std.array_list.Managed([]const u8).initCapacity(allocator, 4);
+        defer files_list.deinit();
 
         var search_pos: usize = 0;
         while (std.mem.indexOf(u8, include_files_section[search_pos..], "\"")) |quote_start| {
             const quote_pos = search_pos + quote_start;
             const end_quote = std.mem.indexOf(u8, include_files_section[quote_pos + 1 ..], "\"") orelse break;
             const file_name = include_files_section[quote_pos + 1 .. quote_pos + 1 + end_quote];
-            try files_list.append(allocator, try allocator.dupe(u8, file_name));
+            try files_list.append(try allocator.dupe(u8, file_name));
             search_pos = quote_pos + end_quote + 2;
             if (search_pos >= include_files_section.len) break;
         }
 
-        manifest.build.artifacts.include_files = try files_list.toOwnedSlice(allocator);
+        manifest.build.artifacts.include_files = try files_list.toOwnedSlice();
     }
 }
 
@@ -1839,20 +1898,20 @@ fn parseToolsFromContent(allocator: std.mem.Allocator, manifest: *AgentManifest,
     // Parse tool categories
     if (std.mem.indexOf(u8, tools_section, ".categories = .{")) |start| {
         const categories_section = tools_section[start..];
-        var categories_list = try std.ArrayList([]const u8).initCapacity(allocator, 4);
-        defer categories_list.deinit(allocator);
+        var categories_list = try std.array_list.Managed([]const u8).initCapacity(allocator, 4);
+        defer categories_list.deinit();
 
         var search_pos: usize = 0;
         while (std.mem.indexOf(u8, categories_section[search_pos..], "\"")) |quote_start| {
             const quote_pos = search_pos + quote_start;
             const end_quote = std.mem.indexOf(u8, categories_section[quote_pos + 1 ..], "\"") orelse break;
             const category_name = categories_section[quote_pos + 1 .. quote_pos + 1 + end_quote];
-            try categories_list.append(allocator, try allocator.dupe(u8, category_name));
+            try categories_list.append(try allocator.dupe(u8, category_name));
             search_pos = quote_pos + end_quote + 2;
             if (search_pos >= categories_section.len) break;
         }
 
-        manifest.tools.categories = try categories_list.toOwnedSlice(allocator);
+        manifest.tools.categories = try categories_list.toOwnedSlice();
     }
 
     // Find integration section
@@ -1948,6 +2007,33 @@ pub fn build(b: *std.Build) !void {
         return;
     }
 
+    // Add global build steps that work regardless of agent selection
+    const list_agents_step = b.step("list-agents", "List all available agents");
+    list_agents_step.makeFn = struct {
+        fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
+            _ = step;
+            _ = options;
+            var local_registry = AgentRegistry.init(std.heap.page_allocator);
+            defer local_registry.deinit();
+            try local_registry.discoverAgents();
+            try listAvailableAgents(&local_registry);
+        }
+    }.make;
+
+    const validate_agents_step = b.step("validate-agents", "Validate all agents");
+    validate_agents_step.makeFn = struct {
+        fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
+            _ = step;
+            _ = options;
+            var local_registry = AgentRegistry.init(std.heap.page_allocator);
+            defer local_registry.deinit();
+            try local_registry.discoverAgents();
+            try validateAllAgents(&local_registry);
+        }
+    }.make;
+
+    // Note: scaffold-agent is handled via command line options in the main build function
+
     // Normal single agent build
     const ctx = try BuildContext.init(b);
     const builder = ModuleBuilder.init(ctx, &registry);
@@ -1979,6 +2065,7 @@ pub fn build(b: *std.Build) !void {
     setupExampleTargets(ctx, shared_modules);
     setupTestSuite(ctx, api_module);
     setupFormatting(ctx);
+    setupImportBoundaryChecks(ctx);
     setupAgentCommands(ctx, builder);
     try setupReleaseBuilds(ctx, manifest);
 
@@ -2274,8 +2361,8 @@ fn copyTemplateFiles(allocator: std.mem.Allocator, agent_name: []const u8, descr
 
 /// Process template placeholders in content
 fn processTemplatePlaceholders(allocator: std.mem.Allocator, content: []const u8, agent_name: []const u8, description: []const u8, author: []const u8) ![]u8 {
-    var result = try std.ArrayList(u8).initCapacity(allocator, content.len);
-    defer result.deinit(allocator);
+    var result = try std.array_list.Managed(u8).initCapacity(allocator, content.len);
+    defer result.deinit();
 
     var i: usize = 0;
     while (i < content.len) {
@@ -2284,28 +2371,28 @@ fn processTemplatePlaceholders(allocator: std.mem.Allocator, content: []const u8
             const placeholder_end = placeholder_start + "{agent_name}".len;
 
             // Copy content before placeholder
-            try result.appendSlice(allocator, content[i .. i + placeholder_start]);
+            try result.appendSlice(content[i .. i + placeholder_start]);
 
             // Replace placeholder
-            try result.appendSlice(allocator, agent_name);
+            try result.appendSlice(agent_name);
 
             i += placeholder_end;
         } else if (std.mem.indexOf(u8, content[i..], "{agent_description}")) |placeholder_start| {
             const placeholder_end = placeholder_start + "{agent_description}".len;
 
-            try result.appendSlice(allocator, content[i .. i + placeholder_start]);
-            try result.appendSlice(allocator, description);
+            try result.appendSlice(content[i .. i + placeholder_start]);
+            try result.appendSlice(description);
             i += placeholder_end;
         } else if (std.mem.indexOf(u8, content[i..], "{agent_author}")) |placeholder_start| {
             const placeholder_end = placeholder_start + "{agent_author}".len;
 
-            try result.appendSlice(allocator, content[i .. i + placeholder_start]);
-            try result.appendSlice(allocator, author);
+            try result.appendSlice(content[i .. i + placeholder_start]);
+            try result.appendSlice(author);
             i += placeholder_end;
         } else if (std.mem.indexOf(u8, content[i..], "{current_date}")) |placeholder_start| {
             const placeholder_end = placeholder_start + "{current_date}".len;
 
-            try result.appendSlice(allocator, content[i .. i + placeholder_start]);
+            try result.appendSlice(content[i .. i + placeholder_start]);
 
             // Get current date
             const now = std.time.timestamp();
@@ -2321,16 +2408,16 @@ fn processTemplatePlaceholders(allocator: std.mem.Allocator, content: []const u8
             });
             defer allocator.free(date_str);
 
-            try result.appendSlice(allocator, date_str);
+            try result.appendSlice(date_str);
             i += placeholder_end;
         } else {
             // No more placeholders, copy rest of content
-            try result.appendSlice(allocator, content[i..]);
+            try result.appendSlice(content[i..]);
             break;
         }
     }
 
-    return result.toOwnedSlice(allocator);
+    return result.toOwnedSlice();
 }
 
 // ============================================================================
@@ -2354,7 +2441,7 @@ fn buildMultipleAgents(b: *std.Build, all_agents: bool, agents_list: []const u8)
         for (agent_names.items) |name| {
             b.allocator.free(name);
         }
-        agent_names.deinit(b.allocator);
+        agent_names.deinit();
     }
 
     if (agent_names.items.len == 0) {
@@ -2460,13 +2547,13 @@ fn buildMultipleAgents(b: *std.Build, all_agents: bool, agents_list: []const u8)
 }
 
 /// Get all agent names from registry (excluding template)
-fn getAllAgentNamesFromRegistry(registry: *AgentRegistry, allocator: std.mem.Allocator) !std.ArrayList([]const u8) {
-    var names = try std.ArrayList([]const u8).initCapacity(allocator, registry.agents.count());
+fn getAllAgentNamesFromRegistry(registry: *AgentRegistry, allocator: std.mem.Allocator) !std.array_list.Managed([]const u8) {
+    var names = try std.array_list.Managed([]const u8).initCapacity(allocator, registry.agents.count());
 
     var it = registry.agents.iterator();
     while (it.next()) |entry| {
         if (!entry.value_ptr.is_template) {
-            try names.append(allocator, try allocator.dupe(u8, entry.key_ptr.*));
+            try names.append(try allocator.dupe(u8, entry.key_ptr.*));
         }
     }
 
@@ -2474,15 +2561,15 @@ fn getAllAgentNamesFromRegistry(registry: *AgentRegistry, allocator: std.mem.All
 }
 
 // Parse comma-separated agent list
-fn parseAgentList(allocator: std.mem.Allocator, agents_list: []const u8) !std.ArrayList([]const u8) {
-    var agents = try std.ArrayList([]const u8).initCapacity(allocator, 4);
-    errdefer agents.deinit(allocator);
+fn parseAgentList(allocator: std.mem.Allocator, agents_list: []const u8) !std.array_list.Managed([]const u8) {
+    var agents = try std.array_list.Managed([]const u8).initCapacity(allocator, 4);
+    errdefer agents.deinit();
 
     var it = std.mem.splitSequence(u8, agents_list, ",");
     while (it.next()) |agent| {
         const trimmed = std.mem.trim(u8, agent, " \t");
         if (trimmed.len > 0) {
-            try agents.append(allocator, try allocator.dupe(u8, trimmed));
+            try agents.append(try allocator.dupe(u8, trimmed));
         }
     }
 
@@ -2610,10 +2697,10 @@ fn setupDemoTargets(ctx: BuildContext, shared_modules: ConditionalSharedModules)
     // Enhanced markdown editor demo (if markdown agent is selected)
     if (std.mem.eql(u8, ctx.selected_agent, "markdown")) {
         const editor_demo_step = ctx.b.step("demo-markdown-editor", "Run enhanced markdown editor demo");
-        const editor_module = ctx.b.addModule("enhanced_editor_demo", .{
+        const editor_module = ctx.b.addModule("markdown_editor_demo", .{
+            .root_source_file = ctx.b.path("agents/markdown/markdown_editor.zig"),
             .target = ctx.target,
             .optimize = ctx.optimize,
-            .root_source_file = ctx.b.path("agents/markdown/markdown_editor.zig"),
         });
 
         // Add necessary imports
@@ -2625,6 +2712,7 @@ fn setupDemoTargets(ctx: BuildContext, shared_modules: ConditionalSharedModules)
             .name = "markdown-editor-demo",
             .root_module = editor_module,
         });
+
         linkSystemDependencies(editor_exe);
         const editor_run = ctx.b.addRunArtifact(editor_exe);
         editor_demo_step.dependOn(&editor_run.step);
@@ -2635,9 +2723,9 @@ fn setupExampleTargets(ctx: BuildContext, shared_modules: ConditionalSharedModul
     // Stylize demo - demonstrates the new styling system
     const stylize_demo_step = ctx.b.step("example-stylize", "Run stylize trait system demo");
     const stylize_module = ctx.b.addModule("stylize_demo", .{
+        .root_source_file = ctx.b.path("examples/stylize_demo.zig"),
         .target = ctx.target,
         .optimize = ctx.optimize,
-        .root_source_file = ctx.b.path("examples/stylize_demo.zig"),
     });
 
     // Add necessary imports for the stylize demo
@@ -2654,9 +2742,9 @@ fn setupExampleTargets(ctx: BuildContext, shared_modules: ConditionalSharedModul
     // Tabs demo - demonstrates the tabs widget system
     const tabs_demo_step = ctx.b.step("example-tabs", "Run tabs widget comprehensive demo");
     const tabs_module = ctx.b.addModule("tabs_demo", .{
+        .root_source_file = ctx.b.path("examples/tabs_demo.zig"),
         .target = ctx.target,
         .optimize = ctx.optimize,
-        .root_source_file = ctx.b.path("examples/tabs_demo.zig"),
     });
 
     // Add necessary imports for the tabs demo
@@ -2674,9 +2762,9 @@ fn setupExampleTargets(ctx: BuildContext, shared_modules: ConditionalSharedModul
     // Typing animation demo - demonstrates the typing animation system
     const typing_demo_step = ctx.b.step("run-typing-demo", "Run typing animation comprehensive demo");
     const typing_module = ctx.b.addModule("typing_animation_demo", .{
+        .root_source_file = ctx.b.path("examples/typing_animation_demo.zig"),
         .target = ctx.target,
         .optimize = ctx.optimize,
-        .root_source_file = ctx.b.path("examples/typing_animation_demo.zig"),
     });
 
     // Add necessary imports for the typing animation demo
@@ -2694,9 +2782,9 @@ fn setupExampleTargets(ctx: BuildContext, shared_modules: ConditionalSharedModul
     // Multi-resolution canvas demo - demonstrates the unified canvas API
     const canvas_demo_step = ctx.b.step("example-multi-resolution-canvas", "Run multi-resolution canvas demo");
     const canvas_module = ctx.b.addModule("multi_resolution_canvas_demo", .{
+        .root_source_file = ctx.b.path("examples/multi_resolution_canvas_demo.zig"),
         .target = ctx.target,
         .optimize = ctx.optimize,
-        .root_source_file = ctx.b.path("examples/multi_resolution_canvas_demo.zig"),
     });
 
     // Add necessary imports for the canvas demo
@@ -2749,6 +2837,13 @@ fn setupFormatting(ctx: BuildContext) void {
     const fmt = ctx.b.addFmt(.{ .paths = &BUILD_CONFIG.PATHS.SOURCE_DIRS, .check = true });
     fmt_step.dependOn(&fmt.step);
     ctx.b.getInstallStep().dependOn(fmt_step);
+}
+
+fn setupImportBoundaryChecks(ctx: BuildContext) void {
+    const check_step = ctx.b.step("check-imports", "Check import layering boundaries");
+    const cmd = ctx.b.addSystemCommand(&.{ "bash", "scripts/check_imports.sh" });
+    check_step.dependOn(&cmd.step);
+    ctx.b.getInstallStep().dependOn(check_step);
 }
 
 fn setupReleaseBuilds(ctx: BuildContext, manifest: ?AgentManifest) !void {

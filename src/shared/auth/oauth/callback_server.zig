@@ -16,8 +16,28 @@ const oauth = @import("mod.zig");
 const print = std.debug.print;
 
 // Terminal rendering support
-const term = @import("term_shared");
-const ansi = term.ansi;
+// Minimal ANSI helpers (avoid dependency on terminal module in minimal builds)
+const ansi = struct {
+    pub const style = struct {
+        pub const bold = "\x1b[1m";
+        pub const reset = "\x1b[0m";
+    };
+    pub const fg = struct {
+        pub const gray = "\x1b[90m";
+        pub const white = "\x1b[97m";
+        pub const cyan = "\x1b[36m";
+        pub const blue = "\x1b[34m";
+        pub const green = "\x1b[32m";
+        pub const yellow = "\x1b[33m";
+    };
+    pub const cursor = struct {
+        pub const save = "\x1b7";
+        pub const restore = "\x1b8";
+    };
+    pub const erase = struct {
+        pub const toEndOfLine = "\x1b[0K";
+    };
+};
 
 /// Server configuration
 pub const ServerConfig = struct {
@@ -67,8 +87,8 @@ pub const CallbackServer = struct {
     server: ?std.net.Server = null,
 
     // State management
-    active_sessions: std.ArrayList(SessionInfo),
-    result_channel: Channel(AuthorizationResult),
+    active_sessions: std.array_list.Managed(SessionInfo),
+    result_channel: Channel.Channel(AuthorizationResult),
     shutdown_requested: std.atomic.Value(bool),
 
     // Status tracking
@@ -147,8 +167,8 @@ pub const CallbackServer = struct {
         return Self{
             .allocator = allocator,
             .config = config,
-            .active_sessions = std.ArrayList(SessionInfo).init(allocator),
-            .result_channel = Channel(AuthorizationResult).init(),
+            .active_sessions = std.array_list.Managed(SessionInfo).init(allocator),
+            .result_channel = Channel.Channel(AuthorizationResult).init(),
             .shutdown_requested = std.atomic.Value(bool).init(false),
             .start_time = std.time.timestamp(),
             .last_activity = std.time.timestamp(),
@@ -173,8 +193,7 @@ pub const CallbackServer = struct {
     /// Start the callback server
     pub fn start(self: *Self) !void {
         const address = try std.net.Address.parseIp("127.0.0.1", self.config.port);
-        self.server = try std.net.Server.init(.{});
-        try self.server.?.listen(address);
+        self.server = try std.net.Address.listen(address, .{});
 
         if (self.config.verbose) {
             print("🚀 OAuth callback server started on http://localhost:{d}\n", .{self.config.port});
@@ -255,7 +274,7 @@ pub const CallbackServer = struct {
                 return result;
             }
 
-            std.time.sleep(100_000_000); // 100ms
+            std.Thread.sleep(100_000_000); // 100ms
         }
 
         return oauth.OAuthError.AuthError; // Timeout
@@ -266,7 +285,7 @@ pub const CallbackServer = struct {
         while (!self.shutdown_requested.load(.seq_cst)) {
             const connection = self.server.?.accept() catch |err| {
                 if (err == error.SocketNotListening) break;
-                std.time.sleep(100_000_000); // 100ms retry
+                std.Thread.sleep(100_000_000); // 100ms retry
                 continue;
             };
 
@@ -309,7 +328,7 @@ pub const CallbackServer = struct {
 
         // Auto-close if configured
         if (self.config.auto_close) {
-            std.time.sleep(1_000_000_000); // 1 second delay
+            std.Thread.sleep(1_000_000_000); // 1 second delay
             self.shutdown_requested.store(true, .seq_cst);
         }
     }
@@ -340,7 +359,7 @@ pub const CallbackServer = struct {
         var error_description: ?[]const u8 = null;
 
         // Parse query parameters
-        var iter = std.mem.tokenize(u8, query, "&");
+        var iter = std.mem.tokenizeAny(u8, query, "&");
         while (iter.next()) |param| {
             const eq_pos = std.mem.indexOf(u8, param, "=") orelse continue;
             const key = param[0..eq_pos];
@@ -560,15 +579,15 @@ pub const CallbackServer = struct {
         while (!self.shutdown_requested.load(.seq_cst)) {
             const now = std.time.timestamp();
             const elapsed = now - self.start_time;
-            const minutes = elapsed / 60;
-            const seconds = elapsed % 60;
+            const minutes: i64 = @divTrunc(elapsed, 60);
+            const seconds: i64 = @mod(elapsed, 60);
 
             // Move to status line and clear it
             print("{s}{s}", .{ ansi.cursor.restore, ansi.erase.toEndOfLine });
 
             // Show animated spinner
             const spinner_chars = [_][]const u8{ "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏" };
-            const spinner_idx = @as(usize, @intCast(now % spinner_chars.len));
+            const spinner_idx = @as(usize, @intCast(@mod(now, spinner_chars.len)));
 
             print("{s}{s} Server Status: {s}Listening on port {d}{s} | ", .{
                 spinner_chars[spinner_idx],
@@ -591,7 +610,7 @@ pub const CallbackServer = struct {
                 ansi.style.reset,
             });
 
-            std.time.sleep(100_000_000); // 100ms update interval
+            std.Thread.sleep(100_000_000); // 100ms update interval
         }
 
         // Clear status line on shutdown
@@ -601,7 +620,7 @@ pub const CallbackServer = struct {
 
 /// URL decode helper
 fn urlDecode(allocator: std.mem.Allocator, encoded: []const u8) ![]u8 {
-    var decoded = try std.ArrayList(u8).initCapacity(allocator, encoded.len);
+    var decoded = try std.array_list.Managed(u8).initCapacity(allocator, encoded.len);
     defer decoded.deinit();
 
     var i: usize = 0;
@@ -655,13 +674,13 @@ pub fn runCallbackServer(
     print("\n{s}🔐 OAuth Authorization Required{s}\n", .{ ansi.style.bold, ansi.style.reset });
     print("{s}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━{s}\n\n", .{ ansi.fg.blue, ansi.style.reset });
 
-    print("Please visit this URL to authorize the application:\n\n");
+    print("Please visit this URL to authorize the application:\n\n", .{});
     print("{s}{s}{s}\n\n", .{ ansi.fg.cyan, updated_auth_url, ansi.style.reset });
 
     // Try to launch browser
     oauth.launchBrowser(updated_auth_url) catch {
         print("{s}⚠️  Could not launch browser automatically.{s}\n", .{ ansi.fg.yellow, ansi.style.reset });
-        print("Please copy and paste the URL above into your browser.\n\n");
+        print("Please copy and paste the URL above into your browser.\n\n", .{});
     };
 
     // Wait for callback
@@ -684,7 +703,7 @@ pub fn integrateWithWizard(
     try oauth.saveCredentials(allocator, "claude_oauth_creds.json", credentials);
 
     print("\n{s}✅ OAuth setup completed successfully!{s}\n", .{ ansi.fg.green, ansi.style.reset });
-    print("Your credentials have been saved securely.\n");
+    print("Your credentials have been saved securely.\n", .{});
 
     return credentials;
 }

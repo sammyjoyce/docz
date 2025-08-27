@@ -65,7 +65,7 @@ pub const AgentStats = struct {
     /// Favorite status
     is_favorite: bool = false,
     /// Launch history
-    launch_history: std.ArrayList(AgentStats.LaunchRecord),
+    launch_history: std.array_list.Managed(AgentStats.LaunchRecord),
 
     /// Individual launch record
     pub const LaunchRecord = struct {
@@ -133,7 +133,7 @@ pub const AgentLauncher = struct {
 
     // State management
     favorites: std.StringHashMap(void),
-    recent_agents: std.ArrayList([]const u8),
+    recent_agents: std.array_list.Managed([]const u8),
     agent_stats: std.StringHashMap(AgentStats),
     search_query: []const u8 = "",
     selected_category: ?[]const u8 = null,
@@ -152,7 +152,7 @@ pub const AgentLauncher = struct {
 
         // Load persistent data
         var favorites = std.StringHashMap(void).init(allocator);
-        var recent_agents = std.ArrayList([]const u8).init(allocator);
+        var recent_agents = std.array_list.Managed([]const u8).init(allocator);
         var agent_stats = std.StringHashMap(AgentStats).init(allocator);
 
         // Load favorites
@@ -238,26 +238,7 @@ pub const AgentLauncher = struct {
 
         // Get available agents
         const agents = try self.registry.getAllAgents();
-        defer {
-            // Free agent copies allocated by registry
-            for (agents) |agent| {
-                self.allocator.free(agent.name);
-                self.allocator.free(agent.description);
-                self.allocator.free(agent.version);
-                self.allocator.free(agent.author);
-
-                for (agent.tags) |tag| self.allocator.free(tag);
-                if (agent.tags.len > 0) self.allocator.free(agent.tags);
-
-                for (agent.capabilities) |cap| self.allocator.free(cap);
-                if (agent.capabilities.len > 0) self.allocator.free(agent.capabilities);
-
-                self.allocator.free(agent.configPath);
-                self.allocator.free(agent.entryPath);
-                agent.metadata.deinit();
-            }
-            self.allocator.free(agents);
-        }
+        defer self.allocator.free(agents); // Borrowed view; registry owns inner fields
 
         // Display agents in simple interactive mode
         try self.displayAgentMenu(agents);
@@ -269,25 +250,7 @@ pub const AgentLauncher = struct {
     /// Run batch mode launcher (list to stdout)
     pub fn runBatch(self: *Self) !void {
         const agents = try self.registry.getAllAgents();
-        defer {
-            for (agents) |agent| {
-                self.allocator.free(agent.name);
-                self.allocator.free(agent.description);
-                self.allocator.free(agent.version);
-                self.allocator.free(agent.author);
-
-                for (agent.tags) |tag| self.allocator.free(tag);
-                if (agent.tags.len > 0) self.allocator.free(agent.tags);
-
-                for (agent.capabilities) |cap| self.allocator.free(cap);
-                if (agent.capabilities.len > 0) self.allocator.free(agent.capabilities);
-
-                self.allocator.free(agent.configPath);
-                self.allocator.free(agent.entryPath);
-                agent.metadata.deinit();
-            }
-            self.allocator.free(agents);
-        }
+        defer self.allocator.free(agents); // Borrowed view; registry owns inner fields
 
         std.debug.print("Available Agents:\n", .{});
         std.debug.print("================\n", .{});
@@ -482,7 +445,7 @@ pub const AgentLauncher = struct {
             // Update stats
             var stats = self.agent_stats.getPtr(agent_name) orelse blk: {
                 const new_stats = AgentStats{
-                    .launch_history = std.ArrayList(AgentStats.LaunchRecord).init(self.allocator),
+                    .launch_history = std.array_list.Managed(AgentStats.LaunchRecord).init(self.allocator),
                 };
                 const key_copy = try self.allocator.dupe(u8, agent_name);
                 try self.agent_stats.put(key_copy, new_stats);
@@ -508,7 +471,7 @@ pub const AgentLauncher = struct {
 
         var stats = self.agent_stats.getPtr(name_copy) orelse blk: {
             const new_stats = AgentStats{
-                .launch_history = std.ArrayList(AgentStats.LaunchRecord).init(self.allocator),
+                .launch_history = std.array_list.Managed(AgentStats.LaunchRecord).init(self.allocator),
             };
             try self.agent_stats.put(name_copy, new_stats);
             break :blk self.agent_stats.getPtr(name_copy).?;
@@ -584,7 +547,7 @@ fn saveFavorites(allocator: Allocator, filepath: []const u8, favorites: *std.Str
     const file = try fs.cwd().createFile(filepath, .{});
     defer file.close();
 
-    var json_list = std.ArrayList(json.Value).init(allocator);
+    var json_list = std.array_list.Managed(json.Value).init(allocator);
     defer json_list.deinit();
 
     var it = favorites.iterator();
@@ -599,7 +562,7 @@ fn saveFavorites(allocator: Allocator, filepath: []const u8, favorites: *std.Str
     try file.writeAll(serialized);
 }
 
-fn loadRecentAgents(allocator: Allocator, filepath: []const u8, recent: *std.ArrayList([]const u8)) !void {
+fn loadRecentAgents(allocator: Allocator, filepath: []const u8, recent: *std.array_list.Managed([]const u8)) !void {
     const file = fs.cwd().openFile(filepath, .{}) catch return;
     defer file.close();
 
@@ -619,11 +582,11 @@ fn loadRecentAgents(allocator: Allocator, filepath: []const u8, recent: *std.Arr
     }
 }
 
-fn saveRecentAgents(allocator: Allocator, filepath: []const u8, recent: *std.ArrayList([]const u8)) !void {
+fn saveRecentAgents(allocator: Allocator, filepath: []const u8, recent: *std.array_list.Managed([]const u8)) !void {
     const file = try fs.cwd().createFile(filepath, .{});
     defer file.close();
 
-    var json_list = std.ArrayList(json.Value).init(allocator);
+    var json_list = std.array_list.Managed(json.Value).init(allocator);
     defer json_list.deinit();
 
     for (recent.items) |agent| {
@@ -655,7 +618,7 @@ fn loadAgentStats(allocator: Allocator, filepath: []const u8, stats: *std.String
 
         const agent_name = try allocator.dupe(u8, entry.key_ptr.*);
         var agent_stats = AgentStats{
-            .launch_history = std.ArrayList(AgentStats.LaunchRecord).init(allocator),
+            .launch_history = std.array_list.Managed(AgentStats.LaunchRecord).init(allocator),
         };
 
         const obj = entry.value_ptr.*.object;
@@ -715,7 +678,7 @@ fn saveAgentStats(allocator: Allocator, filepath: []const u8, stats: *std.String
         try agent_obj.put(try allocator.dupe(u8, "is_favorite"), json.Value{ .bool = agent_stats.is_favorite });
 
         // Save launch history
-        var history_arr = std.ArrayList(json.Value).init(allocator);
+        var history_arr = std.array_list.Managed(json.Value).init(allocator);
         defer history_arr.deinit();
 
         for (agent_stats.launch_history.items) |record| {

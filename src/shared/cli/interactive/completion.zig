@@ -2,7 +2,6 @@
 //! Leverages @src/term for rich terminal interactions
 
 const std = @import("std");
-const components = @import("components_shared");
 const term_shared = @import("term_shared");
 const term_ansi = term_shared.ansi.color;
 const term_cursor = term_shared.ansi.cursor;
@@ -416,7 +415,7 @@ pub const CompletionEngine = struct {
         }
 
         if (item.help_url) |url| {
-            try term_hyperlink.writeHyperlink(writer, self.allocator, self.caps, item.text, url);
+            try term_hyperlink.writeHyperlink(writer, self.allocator, self.caps, url, item.text);
         } else {
             try writer.writeAll(item.text);
         }

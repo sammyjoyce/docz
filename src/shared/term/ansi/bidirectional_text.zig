@@ -2,7 +2,7 @@
 /// Implements ECMA-48 and Unicode bidirectional text algorithms
 /// for proper rendering of right-to-left and mixed-direction text.
 const std = @import("std");
-const caps_mod = @import("../caps.zig");
+const caps_mod = @import("../capabilities.zig");
 const passthrough = @import("passthrough.zig");
 
 // Import the new Io.Writer type for Zig 0.15.1 compatibility

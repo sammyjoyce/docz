@@ -16,7 +16,8 @@ pub const caps = capabilities; // Alias for backward compatibility
 // Terminal management
 pub const cellbuf = @import("cellbuf.zig");
 pub const graphics = @import("graphics.zig");
-pub const editor = @import("editor.zig");
+// TODO: Implement terminal editor functionality
+// pub const editor = @import("editor.zig");
 pub const pty = @import("pty.zig");
 pub const writer = @import("writer.zig");
 pub const reader = @import("reader.zig");

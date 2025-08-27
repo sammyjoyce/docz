@@ -1,9 +1,32 @@
 const std = @import("std");
 const term = @import("term_shared");
 const CellBuffer = term.cellbuf.CellBuffer;
-const Point = @import("../../types.zig").PointU32;
-const Rect = @import("../../types.zig").BoundsI16;
-const BorderStyle = @import("../widgets/core/block.zig").BorderStyle;
+
+// Point in 2D space with u32 coordinates
+pub const Point = struct {
+    x: u32,
+    y: u32,
+};
+
+// Rectangular bounds with i16/u16 coordinates
+const Rect = struct {
+    x: i16,
+    y: i16,
+    width: u16,
+    height: u16,
+};
+
+/// Border style for the block
+pub const BorderStyle = enum {
+    none, // No border
+    single, // Single line border ─│┌┐└┘
+    double, // Double line border ═║╔╗╚╝
+    rounded, // Rounded corners ─│╭╮╰╯
+    thick, // Thick line border ━┃┏┓┗┛
+    dashed, // Dashed line border ╌╎
+    dotted, // Dotted line border ⋯⋮
+    ascii, // ASCII border -|+++
+};
 
 /// Border merger handles seamless connections between adjacent widgets
 pub const BorderMerger = struct {
@@ -34,22 +57,22 @@ pub const BorderMerger = struct {
         tee_right, // ├ ╠ ┣
     };
 
-    pub fn init(allocator: std.mem.Allocator) BorderMerger {
+    pub fn init(allocator: std.mem.Allocator) !BorderMerger {
         return .{
             .allocator = allocator,
-            .widgets = std.ArrayList(WidgetBoundary).init(allocator),
+            .widgets = try std.ArrayList(WidgetBoundary).initCapacity(allocator, 0),
             .merge_map = std.AutoHashMap(Point, JunctionType).init(allocator),
         };
     }
 
     pub fn deinit(self: *BorderMerger) void {
-        self.widgets.deinit();
+        self.widgets.deinit(self.allocator);
         self.merge_map.deinit();
     }
 
     /// Register a widget boundary for merging
     pub fn addWidget(self: *BorderMerger, boundary: WidgetBoundary) !void {
-        try self.widgets.append(boundary);
+        try self.widgets.append(self.allocator, boundary);
     }
 
     /// Calculate all junction points where borders should merge
@@ -66,16 +89,16 @@ pub const BorderMerger = struct {
     /// Find intersection points between two widget boundaries
     fn findIntersections(self: *BorderMerger, a: WidgetBoundary, b: WidgetBoundary) !void {
         // Check if widgets are adjacent horizontally
-        if (a.rect.x + a.rect.width == b.rect.x) {
+        if (a.rect.x + @as(i16, @intCast(a.rect.width)) == b.rect.x) {
             // Right edge of A meets left edge of B
             const y_start = @max(a.rect.y, b.rect.y);
-            const y_end = @min(a.rect.y + a.rect.height, b.rect.y + b.rect.height);
+            const y_end = @min(a.rect.y + @as(i16, @intCast(a.rect.height)), b.rect.y + @as(i16, @intCast(b.rect.height)));
 
             if (y_start < y_end) {
                 // They overlap vertically
                 var y = y_start;
                 while (y < y_end) : (y += 1) {
-                    const point = Point{ .x = b.rect.x, .y = y };
+                    const point = Point{ .x = @as(u32, @intCast(b.rect.x)), .y = @as(u32, @intCast(y)) };
                     const junction_type = self.determineJunctionType(point, a, b);
                     try self.merge_map.put(point, junction_type);
                 }
@@ -83,16 +106,16 @@ pub const BorderMerger = struct {
         }
 
         // Check if widgets are adjacent vertically
-        if (a.rect.y + a.rect.height == b.rect.y) {
+        if (a.rect.y + @as(i16, @intCast(a.rect.height)) == b.rect.y) {
             // Bottom edge of A meets top edge of B
             const x_start = @max(a.rect.x, b.rect.x);
-            const x_end = @min(a.rect.x + a.rect.width, b.rect.x + b.rect.width);
+            const x_end = @min(a.rect.x + @as(i16, @intCast(a.rect.width)), b.rect.x + @as(i16, @intCast(b.rect.width)));
 
             if (x_start < x_end) {
                 // They overlap horizontally
                 var x = x_start;
                 while (x < x_end) : (x += 1) {
-                    const point = Point{ .x = x, .y = b.rect.y };
+                    const point = Point{ .x = @as(u32, @intCast(x)), .y = @as(u32, @intCast(b.rect.y)) };
                     const junction_type = self.determineJunctionType(point, a, b);
                     try self.merge_map.put(point, junction_type);
                 }
@@ -107,17 +130,17 @@ pub const BorderMerger = struct {
     fn checkCornerIntersection(self: *BorderMerger, a: WidgetBoundary, b: WidgetBoundary) !void {
         // Check all four corners of each widget
         const corners_a = [_]Point{
-            .{ .x = a.rect.x, .y = a.rect.y }, // top-left
-            .{ .x = a.rect.x + a.rect.width - 1, .y = a.rect.y }, // top-right
-            .{ .x = a.rect.x, .y = a.rect.y + a.rect.height - 1 }, // bottom-left
-            .{ .x = a.rect.x + a.rect.width - 1, .y = a.rect.y + a.rect.height - 1 }, // bottom-right
+            .{ .x = @as(u32, @intCast(a.rect.x)), .y = @as(u32, @intCast(a.rect.y)) }, // top-left
+            .{ .x = @as(u32, @intCast(a.rect.x + @as(i16, @intCast(a.rect.width)) - 1)), .y = @as(u32, @intCast(a.rect.y)) }, // top-right
+            .{ .x = @as(u32, @intCast(a.rect.x)), .y = @as(u32, @intCast(a.rect.y + @as(i16, @intCast(a.rect.height)) - 1)) }, // bottom-left
+            .{ .x = @as(u32, @intCast(a.rect.x + @as(i16, @intCast(a.rect.width)) - 1)), .y = @as(u32, @intCast(a.rect.y + @as(i16, @intCast(a.rect.height)) - 1)) }, // bottom-right
         };
 
         const corners_b = [_]Point{
-            .{ .x = b.rect.x, .y = b.rect.y },
-            .{ .x = b.rect.x + b.rect.width - 1, .y = b.rect.y },
-            .{ .x = b.rect.x, .y = b.rect.y + b.rect.height - 1 },
-            .{ .x = b.rect.x + b.rect.width - 1, .y = b.rect.y + b.rect.height - 1 },
+            .{ .x = @as(u32, @intCast(b.rect.x)), .y = @as(u32, @intCast(b.rect.y)) },
+            .{ .x = @as(u32, @intCast(b.rect.x + @as(i16, @intCast(b.rect.width)) - 1)), .y = @as(u32, @intCast(b.rect.y)) },
+            .{ .x = @as(u32, @intCast(b.rect.x)), .y = @as(u32, @intCast(b.rect.y + @as(i16, @intCast(b.rect.height)) - 1)) },
+            .{ .x = @as(u32, @intCast(b.rect.x + @as(i16, @intCast(b.rect.width)) - 1)), .y = @as(u32, @intCast(b.rect.y + @as(i16, @intCast(b.rect.height)) - 1)) },
         };
 
         for (corners_a) |corner_a| {
@@ -143,45 +166,45 @@ pub const BorderMerger = struct {
         } = .{};
 
         // Check connections from widget A
-        if (point.x == a.rect.x + a.rect.width - 1 and
-            point.y >= a.rect.y and point.y < a.rect.y + a.rect.height)
+        if (point.x == @as(u32, @intCast(a.rect.x)) + @as(u32, @intCast(a.rect.width)) - 1 and
+            point.y >= @as(u32, @intCast(a.rect.y)) and point.y < @as(u32, @intCast(a.rect.y)) + @as(u32, @intCast(a.rect.height)))
         {
             connections.right = true;
         }
-        if (point.x == a.rect.x and
-            point.y >= a.rect.y and point.y < a.rect.y + a.rect.height)
+        if (point.x == @as(u32, @intCast(a.rect.x)) and
+            point.y >= @as(u32, @intCast(a.rect.y)) and point.y < @as(u32, @intCast(a.rect.y)) + @as(u32, @intCast(a.rect.height)))
         {
             connections.left = true;
         }
-        if (point.y == a.rect.y + a.rect.height - 1 and
-            point.x >= a.rect.x and point.x < a.rect.x + a.rect.width)
+        if (point.y == @as(u32, @intCast(a.rect.y)) + @as(u32, @intCast(a.rect.height)) - 1 and
+            point.x >= @as(u32, @intCast(a.rect.x)) and point.x < @as(u32, @intCast(a.rect.x)) + @as(u32, @intCast(a.rect.width)))
         {
             connections.bottom = true;
         }
-        if (point.y == a.rect.y and
-            point.x >= a.rect.x and point.x < a.rect.x + a.rect.width)
+        if (point.y == @as(u32, @intCast(a.rect.y)) and
+            point.x >= @as(u32, @intCast(a.rect.x)) and point.x < @as(u32, @intCast(a.rect.x)) + @as(u32, @intCast(a.rect.width)))
         {
             connections.top = true;
         }
 
         // Check connections from widget B
-        if (point.x == b.rect.x and
-            point.y >= b.rect.y and point.y < b.rect.y + b.rect.height)
+        if (point.x == @as(u32, @intCast(b.rect.x)) and
+            point.y >= @as(u32, @intCast(b.rect.y)) and point.y < @as(u32, @intCast(b.rect.y)) + @as(u32, @intCast(b.rect.height)))
         {
             connections.left = true;
         }
-        if (point.x == b.rect.x + b.rect.width - 1 and
-            point.y >= b.rect.y and point.y < b.rect.y + b.rect.height)
+        if (point.x == @as(u32, @intCast(b.rect.x)) + @as(u32, @intCast(b.rect.width)) - 1 and
+            point.y >= @as(u32, @intCast(b.rect.y)) and point.y < @as(u32, @intCast(b.rect.y)) + @as(u32, @intCast(b.rect.height)))
         {
             connections.right = true;
         }
-        if (point.y == b.rect.y and
-            point.x >= b.rect.x and point.x < b.rect.x + b.rect.width)
+        if (point.y == @as(u32, @intCast(b.rect.y)) and
+            point.x >= @as(u32, @intCast(b.rect.x)) and point.x < @as(u32, @intCast(b.rect.x)) + @as(u32, @intCast(b.rect.width)))
         {
             connections.top = true;
         }
-        if (point.y == b.rect.y + b.rect.height - 1 and
-            point.x >= b.rect.x and point.x < b.rect.x + b.rect.width)
+        if (point.y == @as(u32, @intCast(b.rect.y)) + @as(u32, @intCast(b.rect.height)) - 1 and
+            point.x >= @as(u32, @intCast(b.rect.x)) and point.x < @as(u32, @intCast(b.rect.x)) + @as(u32, @intCast(b.rect.width)))
         {
             connections.bottom = true;
         }

@@ -47,7 +47,7 @@ pub fn calculator(allocator: std.mem.Allocator, params: std.json.Value) tools_mo
     // Parse and validate the request using json_helpers
     const request = tools_mod.parseToolRequest(CalculatorRequest, params) catch |err| {
         // Return a proper error response
-        const error_msg = try tools_mod.createErrorResponse(err, "Invalid calculator request");
+        const error_msg = try tools_mod.createErrorResponse(allocator, err, "Invalid calculator request");
         defer allocator.free(error_msg);
         return std.json.parseFromSlice(std.json.Value, allocator, error_msg, .{});
     };

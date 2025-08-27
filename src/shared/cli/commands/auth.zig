@@ -10,7 +10,7 @@ const notification_manager = @import("../notifications.zig");
 const workflow_runner = @import("../workflows/workflow_runner.zig");
 const workflow_step = @import("../workflows/workflow_step.zig");
 const ProgressBar = @import("../components/mod.zig").ProgressBar;
-const SmartInput = @import("components_shared").SmartInput;
+// const SmartInput = @import("components_shared").SmartInput; // Commented out - SmartInput not available in shared components
 const SelectMenu = @import("../components/mod.zig").SelectMenu;
 const colors = @import("../themes/colors.zig");
 const Allocator = std.mem.Allocator;
@@ -263,11 +263,7 @@ pub const AuthCommands = struct {
 
             if (section[2]) |url| {
                 try self.writer.writeAll("   ");
-                if (self.caps.supportsHyperlinks()) {
-                    try term_hyperlink.writeHyperlink(self.writer, self.allocator, self.caps, "View Documentation →", url);
-                } else {
-                    try self.writer.print("Documentation: {s}", .{url});
-                }
+                try term_hyperlink.writeHyperlink(self.writer, self.allocator, self.caps, url, "View Documentation →");
             }
 
             try self.writer.writeAll("\n\n");

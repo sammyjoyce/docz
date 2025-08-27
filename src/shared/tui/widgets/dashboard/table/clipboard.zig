@@ -5,8 +5,8 @@
 const std = @import("std");
 const base = @import("base.zig");
 const selection = @import("selection.zig");
-const clipboard_ansi = @import("../../../../term/ansi/clipboard.zig");
 const terminal_mod = @import("../../../../term/unified.zig");
+const renderer_mod = @import("../../../../tui/core/renderer.zig");
 
 const Selection = base.Selection;
 const Cell = base.Cell;
@@ -34,6 +34,7 @@ pub const Clipboard = struct {
     /// Copy selected table data to clipboard with format detection
     pub fn copySelection(
         self: *Clipboard,
+        renderer: ?*renderer_mod.Renderer,
         selected: Selection,
         headers: [][]const u8,
         rows: [][]Cell,
@@ -48,11 +49,18 @@ pub const Clipboard = struct {
         }
         self.last_copied_data = try self.allocator.dupe(u8, data);
 
-        // Copy to system clipboard
-        if (self.terminal_caps.supportsClipboardOsc52) {
-            try self.copyToSystemClipboard(data);
+        // Use renderer clipboard API when supported; otherwise show fallback block.
+        if (renderer) |r| {
+            const caps = r.getCapabilities();
+            if (caps.supportsClipboardOsc52) {
+                r.copyToClipboard(data) catch |e| {
+                    _ = e;
+                    try self.showCopyFallback(data, format);
+                };
+            } else {
+                try self.showCopyFallback(data, format);
+            }
         } else {
-            // Fallback: display copy instructions
             try self.showCopyFallback(data, format);
         }
 
@@ -60,17 +68,24 @@ pub const Clipboard = struct {
     }
 
     /// Copy raw text to clipboard
-    pub fn copyText(self: *Clipboard, text: []const u8) !void {
-        if (self.terminal_caps.supportsClipboardOsc52) {
-            try self.copyToSystemClipboard(text);
-        } else {
-            try self.showCopyFallback(text, .plain_text);
+    pub fn copyText(self: *Clipboard, renderer: ?*renderer_mod.Renderer, text: []const u8) !void {
+        if (renderer) |r| {
+            const caps = r.getCapabilities();
+            if (caps.supportsClipboardOsc52) {
+                r.copyToClipboard(text) catch |e| {
+                    _ = e;
+                    try self.showCopyFallback(text, .plain_text);
+                };
+                return;
+            }
         }
+        try self.showCopyFallback(text, .plain_text);
     }
 
     /// Copy multiple formats at once (advanced clipboard managers support this)
     pub fn copyMultiFormat(
         self: *Clipboard,
+        renderer: ?*renderer_mod.Renderer,
         selected: Selection,
         headers: [][]const u8,
         rows: [][]Cell,
@@ -82,20 +97,20 @@ pub const Clipboard = struct {
             const data = try selection.SelectionManager.formatSelectedData(selected, headers, rows, self.allocator, format);
             defer self.allocator.free(data);
 
-            // For now, just copy the first supported format
-            // TODO: Implement multi-format clipboard support
-            if (self.terminal_caps.supportsClipboardOsc52) {
-                try self.copyToSystemClipboard(data);
-                break; // Stop after first successful copy
+            // For now, copy the first produced format if renderer supports clipboard
+            if (renderer) |r| {
+                const caps = r.getCapabilities();
+                if (caps.supportsClipboardOsc52) {
+                    r.copyToClipboard(data) catch {};
+                    return;
+                }
             }
         }
 
         // If no clipboard support, show fallback for plain text
-        if (!self.terminal_caps.supportsClipboardOsc52) {
-            const plain_data = try selection.SelectionManager.formatSelectedData(selected, headers, rows, self.allocator, .plain_text);
-            defer self.allocator.free(plain_data);
-            try self.showCopyFallback(plain_data, .plain_text);
-        }
+        const plain_data = try selection.SelectionManager.formatSelectedData(selected, headers, rows, self.allocator, .plain_text);
+        defer self.allocator.free(plain_data);
+        try self.showCopyFallback(plain_data, .plain_text);
     }
 
     /// Get information about the last copied data
@@ -110,15 +125,7 @@ pub const Clipboard = struct {
         return null;
     }
 
-    /// Copy data to system clipboard using OSC 52
-    fn copyToSystemClipboard(self: *Clipboard, data: []const u8) !void {
-        _ = self;
-
-        // Use the clipboard ANSI module for OSC 52 support
-        var stdout_buffer: [4096]u8 = undefined;
-        var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
-        try clipboard_ansi.copyToClipboard(&stdout_writer.interface, data);
-    }
+    // Removed OSC 52 direct copy during migration; use presenter/renderer pathways instead.
 
     /// Show fallback copy instructions when clipboard is not available
     fn showCopyFallback(self: *Clipboard, data: []const u8, format: ClipboardFormat) !void {

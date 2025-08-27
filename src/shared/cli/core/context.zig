@@ -187,11 +187,7 @@ pub const Hyperlink = struct {
     }
 
     pub fn writeLink(self: *Hyperlink, url: []const u8, text: []const u8) !void {
-        if (self.capabilities.hyperlinks) {
-            try ansi_hyperlink.writeHyperlink(self.terminal.writer, self.allocator, self.termCaps, url, text);
-        } else {
-            try self.terminal.printf("{s} ({s})", .{ text, url }, null);
-        }
+        try ansi_hyperlink.writeHyperlink(self.terminal.writer, self.allocator, self.termCaps, url, text);
     }
 
     pub fn isAvailable(self: *Hyperlink) bool {

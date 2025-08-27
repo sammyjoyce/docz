@@ -7,7 +7,6 @@ const renderer_mod = @import("../../core/renderer.zig");
 const bounds_mod = @import("../../core/bounds.zig");
 const events_mod = @import("../../core/events.zig");
 const terminal_mod = @import("../../../term/unified.zig");
-const notification_mod = @import("../../../term/ansi/notification.zig");
 
 const Renderer = renderer_mod.Renderer;
 const RenderContext = renderer_mod.RenderContext;
@@ -450,12 +449,8 @@ pub const StatusBar = struct {
 
         self.state.notification_count += 1;
 
-        // Try to send system notification if supported
-        if (self.config.show_notifications) {
-            notification_mod.systemNotification(message, level) catch {
-                // Fall back to in-terminal display only
-            };
-        }
+        // System notification disabled in favor of renderer-level presenters.
+        // In-terminal display will reflect the new state on next render.
     }
 
     pub fn clearNotification(self: *Self) void {

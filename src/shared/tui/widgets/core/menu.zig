@@ -351,7 +351,7 @@ pub const Menu = struct {
 
             // Label (with hyperlink if help URL is available)
             if (item.help_url) |url| {
-                try term_hyperlink.writeHyperlink(writer, self.caps, self.allocator, item.label, url);
+                try term_hyperlink.writeHyperlink(writer, self.allocator, self.caps, url, item.label);
             } else {
                 try writer.writeAll(item.label);
             }

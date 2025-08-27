@@ -157,7 +157,7 @@ pub const DashboardWidget = struct {
     };
 
     // Re-export unified types for backward compatibility
-    pub const Bounds = @import("../../../types.zig").BoundsU32;
+    pub const Bounds = @import("shared_types").BoundsU32;
 
     pub fn render(self: *DashboardWidget, render_pipeline: anytype) !void {
         if (!self.visible) return;
@@ -231,10 +231,10 @@ pub const InputEvent = union(enum) {
     };
 
     // Re-export unified types for backward compatibility
-    pub const MouseButton = @import("../../../types.zig").MouseButton;
+    pub const MouseButton = @import("shared_types").MouseButton;
 
     // Re-export unified types for backward compatibility
-    pub const MouseAction = @import("../../../types.zig").MouseAction;
+    pub const MouseAction = @import("shared_types").MouseAction;
 };
 
 // Builder API placeholder

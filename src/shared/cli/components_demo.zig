@@ -8,7 +8,7 @@ const Input = components.Input;
 const SelectMenu = components.SelectMenu;
 const ProgressBar = components.ProgressBar;
 const Panel = components.Panel;
-const StatusIndicator = components.StatusIndicator;
+// const StatusIndicator = components.StatusIndicator; // Disabled - not available in CLI module
 const BreadcrumbTrail = components.BreadcrumbTrail;
 
 pub fn main() !void {
@@ -27,7 +27,7 @@ pub fn main() !void {
     try demonstrateInfoPanel(allocator, stdout);
 
     // Test StatusIndicator
-    try demonstrateStatusIndicator(stdout);
+    // try demonstrateStatusIndicator(stdout); // Disabled - StatusIndicator not available in CLI module
 
     // Test BreadcrumbTrail
     try demonstrateBreadcrumbTrail(allocator, stdout);
@@ -62,21 +62,21 @@ fn demonstrateInfoPanel(allocator: std.mem.Allocator, writer: anytype) !void {
     try writer.writeAll("\n");
 }
 
-fn demonstrateStatusIndicator(writer: anytype) !void {
-    try writer.writeAll("🔄 StatusIndicator Demo:\n");
+// fn demonstrateStatusIndicator(writer: anytype) !void {
+//     try writer.writeAll("🔄 StatusIndicator Demo:\n");
 
-    var status = StatusIndicator.init(.loading, "Processing request...");
-    try status.render(writer);
-    try writer.writeAll("\n");
+//     var status = StatusIndicator.init(.loading, "Processing request...");
+//     try status.render(writer);
+//     try writer.writeAll("\n");
 
-    status.setStatus(.success, "Request completed successfully!");
-    try status.render(writer);
-    try writer.writeAll("\n");
+//     status.setStatus(.success, "Request completed successfully!");
+//     try status.render(writer);
+//     try writer.writeAll("\n");
 
-    status.setStatus(.@"error", "Connection failed");
-    try status.render(writer);
-    try writer.writeAll("\n\n");
-}
+//     status.setStatus(.@"error", "Connection failed");
+//     try status.render(writer);
+//     try writer.writeAll("\n\n");
+// }
 
 fn demonstrateBreadcrumbTrail(allocator: std.mem.Allocator, writer: anytype) !void {
     try writer.writeAll("🗺️ BreadcrumbTrail Demo:\n");

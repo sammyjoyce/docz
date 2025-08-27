@@ -21,16 +21,7 @@ pub const HyperlinkBuilder = struct {
 
     /// Write a hyperlink with automatic fallback to plain text if not supported
     pub fn writeLink(self: HyperlinkBuilder, writer: anytype, text: []const u8, url: []const u8) !void {
-        if (self.caps.supportsHyperlinks()) {
-            try term_hyperlink.writeHyperlink(writer, self.caps, self.allocator, text, url);
-        } else {
-            // Fallback: display as "text (url)" or just text if URL is too long
-            if (url.len > 50) {
-                try writer.print("{s}", .{text});
-            } else {
-                try writer.print("{s} ({s})", .{ text, url });
-            }
-        }
+        try term_hyperlink.writeHyperlink(writer, self.allocator, self.caps, url, text);
     }
 
     /// Create a documentation link for CLI options/commands
@@ -178,7 +169,7 @@ pub const LinkMenu = struct {
 
         try writer.writeAll("\n");
 
-        if (builder.caps.supportsHyperlinks()) {
+        if (builder.caps.supportsHyperlinkOsc8) {
             try writer.writeAll("💡 Tip: Click on the links above or Ctrl+Click to open in browser\n");
         } else {
             try writer.writeAll("💡 Tip: Copy and paste the URLs into your browser\n");

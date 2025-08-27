@@ -29,7 +29,8 @@ pub const paste = @import("paste.zig");
 pub const mouse = @import("mouse.zig");
 
 // Re-export input types from the input system
-const components = @import("components_shared");
+const shared = @import("../../../mod.zig");
+const components = shared.components;
 pub const input = components.input;
 pub const Key = input.Key;
 pub const Modifiers = input.Modifiers;
