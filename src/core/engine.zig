@@ -6,7 +6,7 @@ const std = @import("std");
 // These are wired by build.zig via named imports
 const anthropic = @import("anthropic_shared");
 const tools_mod = @import("tools_shared");
-// const auth = @import("auth_shared"); // Temporarily disabled for testing
+const auth = @import("auth_shared");
 
 pub const Message = anthropic.Message;
 
@@ -45,42 +45,66 @@ pub const AgentSpec = struct {
 };
 
 /// Map auth errors to anthropic errors
-fn mapAuthError(err: anyerror) anthropic.Error {
-    // Stub implementation - auth module not available
-    _ = err;
-    return anthropic.Error.AuthError;
+fn mapAuthError(err: auth.AuthError) anthropic.Error {
+    return switch (err) {
+        auth.AuthError.MissingAPIKey => anthropic.Error.MissingAPIKey,
+        auth.AuthError.InvalidAPIKey => anthropic.Error.AuthError,
+        auth.AuthError.InvalidCredentials => anthropic.Error.AuthError,
+        auth.AuthError.TokenExpired => anthropic.Error.TokenExpired,
+        auth.AuthError.AuthenticationFailed => anthropic.Error.AuthError,
+        auth.AuthError.NetworkError => anthropic.Error.NetworkError,
+        auth.AuthError.FileNotFound => anthropic.Error.AuthError,
+        auth.AuthError.InvalidFormat => anthropic.Error.AuthError,
+        auth.AuthError.OutOfMemory => anthropic.Error.OutOfMemory,
+    };
 }
 
-/// Initialize Anthropic client using the new auth system
+/// Initialize Anthropic client using the auth system
 fn initAnthropicClient(allocator: std.mem.Allocator) !anthropic.AnthropicClient {
-    // Stub implementation - auth module not available
-    _ = allocator;
-    std.log.err("No authentication method available - network access disabled for this agent.", .{});
-    return anthropic.Error.MissingAPIKey;
+    // Try to create auth client using available methods
+    const auth_client = auth.createClient(allocator) catch |err| {
+        std.log.err("Failed to initialize authentication: {}", .{err});
+        return mapAuthError(err);
+    };
+    defer auth_client.deinit();
+
+    // Create Anthropic client based on auth method
+    switch (auth_client.credentials) {
+        .api_key => |api_key| {
+            return try anthropic.AnthropicClient.init(allocator, api_key);
+        },
+        .oauth => |oauth_creds| {
+            const credentials_path = "claude_oauth_creds.json";
+            return try anthropic.AnthropicClient.initWithOAuth(allocator, oauth_creds, credentials_path);
+        },
+        .none => {
+            std.log.err("No authentication method available - network access disabled for this agent.", .{});
+            return anthropic.Error.MissingAPIKey;
+        },
+    }
 }
 
-/// Start OAuth flow using the new auth TUI system
+/// Start OAuth flow using the auth system
 pub fn setupOAuth(allocator: std.mem.Allocator) !void {
-    // Stub implementation - auth module not available
-    _ = allocator;
-    std.log.err("OAuth not available - network access disabled for this agent.", .{});
-    return error.AuthNotAvailable;
+    const credentials = try auth.oauth.setupOAuth(allocator);
+    defer credentials.deinit(allocator);
+
+    std.log.info("✅ OAuth setup completed successfully!", .{});
+    std.log.info("🔐 You can now use Claude Pro/Max features with your subscription.", .{});
 }
 
-/// Display current authentication status using the new auth system
+/// Display current authentication status using the auth system
 pub fn showAuthStatus(allocator: std.mem.Allocator) !void {
-    // Stub implementation - auth module not available
-    _ = allocator;
-    std.log.err("Auth status not available - network access disabled for this agent.", .{});
-    return error.AuthNotAvailable;
+    try auth.tui.showAuthStatus(allocator);
 }
 
-/// Refresh authentication tokens using the new auth system
+/// Refresh authentication tokens using the auth system
 pub fn refreshAuth(allocator: std.mem.Allocator) !void {
-    // Stub implementation - auth module not available
-    _ = allocator;
-    std.log.err("Auth refresh not available - network access disabled for this agent.", .{});
-    return error.AuthNotAvailable;
+    var client = try auth.createClient(allocator);
+    defer client.deinit();
+
+    try client.refresh();
+    std.log.info("✅ Authentication tokens refreshed successfully!", .{});
 }
 
 /// Global stdout writer with buffer for streaming output

@@ -137,12 +137,13 @@ else if (std.mem.eql(u8, var_name, "my_custom_var")) {
 ```
 
 #### Agent Methods
+
 ```zig
-pub fn init(allocator: Allocator, config: Config) Agent
-pub fn initFromConfig(allocator: Allocator) !Agent
-pub fn deinit(self: *Agent) void
-pub fn loadSystemPrompt(self: *Agent) ![]const u8
-pub fn processCustomOperation(self: *Agent, input: []const u8) ![]const u8
+pub fn init(allocator: Allocator, config: Config) TemplateAgent
+pub fn initFromConfig(allocator: Allocator) !TemplateAgent
+pub fn deinit(self: *TemplateAgent) void
+pub fn loadSystemPrompt(self: *TemplateAgent) ![]const u8
+pub fn processCustomOperation(self: *TemplateAgent, input: []const u8) ![]const u8
 ```
 
 ### 3. Tool Registration (`spec.zig`)

@@ -17,7 +17,7 @@ pub const AgentState = enum {
     unloaded,
 };
 
-/// Represents metadata for a single agent with enhanced lifecycle tracking.
+/// Represents metadata for a single agent with lifecycle tracking.
 pub const Agent = struct {
     /// Unique name of the agent.
     name: []const u8,
