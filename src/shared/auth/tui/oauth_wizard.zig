@@ -35,7 +35,7 @@ const Renderer = renderer_mod.Renderer;
 const RenderContext = renderer_mod.Render;
 const Bounds = bounds_mod.Bounds;
 const Point = bounds_mod.Point;
-const TermCaps = term_mod.TermCaps;
+
 
 /// Enhanced OAuth wizard states with rich metadata
 const WizardState = enum {
@@ -168,8 +168,7 @@ pub const OAuthWizard = struct {
     total_progress: f32,
     error_message: ?[]const u8,
 
-    // Terminal capabilities
-    caps: TermCaps,
+
 
     // Animation state
     animation_frame: u32 = 0,
@@ -180,7 +179,6 @@ pub const OAuthWizard = struct {
     last_network_activity: i64 = 0,
 
     pub fn init(allocator: std.mem.Allocator, renderer: *Renderer) !Self {
-        const caps = renderer.getCapabilities();
         const start_time = std.time.timestamp();
 
         // Initialize notification controller
@@ -211,7 +209,6 @@ pub const OAuthWizard = struct {
             .last_state_change = start_time,
             .total_progress = 0.0,
             .error_message = null,
-            .caps = caps,
         };
     }
 

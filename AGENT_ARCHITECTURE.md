@@ -405,7 +405,7 @@ zig build list-agents
 zig build validate-agents
 
 # Build multiple agents
-zig build -Dagents=markdown,test-agent
+zig build -Dagents=markdown,test_agent
 
 # Build all agents
 zig build -Dagents=all

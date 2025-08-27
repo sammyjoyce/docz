@@ -90,16 +90,16 @@ pub const Notification = struct {
     fn createBoxStyle(self: *Self, notification_type: NotificationType, strategy: terminal_bridge.RenderStrategy) BoxStyle {
         _ = self;
 
-        const base_color = notification_type.color();
+        const color_scheme = notification_base.ColorSchemes.getStandard(notification_type);
 
         return BoxStyle{
-            .border_color = base_color,
+            .border_color = color_scheme.border,
             .background_color = switch (strategy) {
-                .rich_text, .full_graphics => unified.Color{ .rgb = .{ .r = 20, .g = 20, .b = 20 } }, // Dark background
+                .rich_text, .full_graphics => color_scheme.background orelse unified.Color{ .rgb = .{ .r = 20, .g = 20, .b = 20 } },
                 else => null, // No background for limited terminals
             },
             .text_color = switch (strategy) {
-                .rich_text, .full_graphics, .enhanced_ansi => unified.Colors.WHITE,
+                .rich_text, .full_graphics, .enhanced_ansi => color_scheme.text orelse unified.Colors.WHITE,
                 .basic_ascii => null, // Use default terminal colors
                 .fallback => null,
             },
@@ -320,45 +320,9 @@ pub const Notification = struct {
     /// Play system bell with notification-type-specific patterns
     fn playSystemBell(self: *Self, notification_type: NotificationType) !void {
         const writer = self.bridge.writer();
+        const pattern = notification_base.SoundPatterns.getPattern(notification_type);
 
-        switch (notification_type) {
-            .info => {
-                // Single bell for info
-                try writer.writeAll("\x07");
-            },
-            .success => {
-                // Double bell for success
-                try writer.writeAll("\x07");
-                std.time.sleep(100 * std.time.ns_per_ms);
-                try writer.writeAll("\x07");
-            },
-            .warning => {
-                // Triple bell with pause for warning
-                try writer.writeAll("\x07");
-                std.time.sleep(150 * std.time.ns_per_ms);
-                try writer.writeAll("\x07");
-                std.time.sleep(150 * std.time.ns_per_ms);
-                try writer.writeAll("\x07");
-            },
-            .@"error" => {
-                // Rapid triple bell for errors
-                for (0..3) |_| {
-                    try writer.writeAll("\x07");
-                    std.time.sleep(50 * std.time.ns_per_ms);
-                }
-            },
-            .debug => {
-                // Subtle single bell for debug
-                try writer.writeAll("\x07");
-            },
-            .critical => {
-                // Urgent pattern: rapid bells
-                for (0..5) |_| {
-                    try writer.writeAll("\x07");
-                    std.time.sleep(30 * std.time.ns_per_ms);
-                }
-            },
-        }
+        try notification_base.SoundPatterns.playPattern(writer, pattern.pattern, pattern.duration_ms);
     }
 
     /// Get notification statistics
