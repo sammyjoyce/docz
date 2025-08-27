@@ -8,7 +8,7 @@ const std = @import("std");
 const agent_ui_framework = @import("../../src/shared/tui/agent_ui_framework.zig");
 const renderer_mod = @import("../../src/shared/tui/core/renderer.zig");
 const bounds_mod = @import("../../src/shared/tui/core/bounds.zig");
-const theme_manager_mod = @import("../../src/shared/theme_manager/mod.zig");
+const theme = @import("../../src/shared/theme/mod.zig");
 const input_system = @import("../../src/shared/components/input.zig");
 const markdown_renderer = @import("../../src/shared/render/markdown_renderer.zig");
 const diff_viewer = @import("../../examples/diff_viewer.zig");
@@ -22,7 +22,7 @@ const Renderer = renderer_mod.Renderer;
 const Render = renderer_mod.Render;
 const Style = renderer_mod.Style;
 const Bounds = renderer_mod.Bounds;
-const ThemeManager = theme_manager_mod.ThemeManager;
+const Theme = theme_manager_mod.Theme;
 const InputManager = input_system.InputManager;
 
 /// Interactive markdown session configuration
@@ -140,7 +140,7 @@ pub const InteractiveMarkdownSession = struct {
     allocator: std.mem.Allocator,
     config: InteractiveMarkdownConfig,
     renderer: *Renderer,
-    theme_manager: *ThemeManager,
+    theme_manager: *Theme,
     input_manager: InputManager,
 
     /// Core components
@@ -168,7 +168,7 @@ pub const InteractiveMarkdownSession = struct {
     pub fn init(allocator: std.mem.Allocator, config: InteractiveMarkdownConfig) !*Self {
         const session = try allocator.create(Self);
         const renderer = config.ui_config.renderer;
-        const theme_manager = config.ui_config.theme_manager;
+        const theme = config.ui_config.theme_manager;
 
         // Initialize input manager
         const input_manager = try InputManager.init(allocator);
@@ -462,7 +462,7 @@ pub const InteractiveMarkdownSession = struct {
             .height = 1,
         };
 
-        const theme = self.theme_manager.getCurrentTheme();
+        const theme = self.theme.getCurrentTheme();
 
         // Draw status bar background
         const bg_style = Style{
@@ -509,7 +509,7 @@ pub const InteractiveMarkdownSession = struct {
         };
 
         // Draw outline background
-        const theme = self.theme_manager.getCurrentTheme();
+        const theme = self.theme.getCurrentTheme();
         const bg_style = Style{
             .bg_color = theme.secondary,
             .fg_color = theme.foreground,
@@ -580,11 +580,11 @@ pub const InteractiveMarkdownSession = struct {
 pub const PreviewRenderer = struct {
     allocator: std.mem.Allocator,
     renderer: *Renderer,
-    theme_manager: *ThemeManager,
+    theme_manager: *Theme,
     cached_html: ?[]const u8 = null,
     scroll_offset: usize = 0,
 
-    pub fn init(allocator: std.mem.Allocator, renderer: *Renderer, theme_manager: *ThemeManager) !PreviewRenderer {
+    pub fn init(allocator: std.mem.Allocator, renderer: *Renderer, theme_manager: *Theme) !PreviewRenderer {
         return PreviewRenderer{
             .allocator = allocator,
             .renderer = renderer,
@@ -615,7 +615,7 @@ pub const PreviewRenderer = struct {
             try self.updateContent(content);
         }
 
-        const theme = self.theme_manager.getCurrentTheme();
+        const theme = self.theme.getCurrentTheme();
 
         // Draw preview border
         const border_style = Style{

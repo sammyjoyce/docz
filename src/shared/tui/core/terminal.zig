@@ -233,8 +233,8 @@ fn writeColorAndAttrs(writer: anytype, fg: cellbuf.Color, bg: cellbuf.Color, att
     if (attrs.bold) try writer.writeAll("\x1b[1m");
     if (attrs.faint) try writer.writeAll("\x1b[2m");
     if (attrs.italic) try writer.writeAll("\x1b[3m");
-    if (attrs.slow_blink) try writer.writeAll("\x1b[5m");
-    if (attrs.rapid_blink) try writer.writeAll("\x1b[6m");
+    if (attrs.slowBlink) try writer.writeAll("\x1b[5m");
+    if (attrs.rapidBlink) try writer.writeAll("\x1b[6m");
     if (attrs.reverse) try writer.writeAll("\x1b[7m");
     if (attrs.conceal) try writer.writeAll("\x1b[8m");
     if (attrs.strikethrough) try writer.writeAll("\x1b[9m");
@@ -278,18 +278,18 @@ pub const Colors = struct {
 // Convenience attribute combinations
 pub const Attrs = struct {
     pub const NONE = cellbuf.AttrMask{};
-    pub const BOLD = cellbuf.AttrMask{ .bold = true };
-    pub const FAINT = cellbuf.AttrMask{ .faint = true };
-    pub const ITALIC = cellbuf.AttrMask{ .italic = true };
-    pub const UNDERLINE = cellbuf.AttrMask{ .underline = true };
-    pub const SLOW_BLINK = cellbuf.AttrMask{ .slow_blink = true };
-    pub const RAPID_BLINK = cellbuf.AttrMask{ .rapid_blink = true };
-    pub const REVERSE = cellbuf.AttrMask{ .reverse = true };
-    pub const CONCEAL = cellbuf.AttrMask{ .conceal = true };
-    pub const STRIKETHROUGH = cellbuf.AttrMask{ .strikethrough = true };
+    pub const bold = cellbuf.AttrMask{ .bold = true };
+    pub const faint = cellbuf.AttrMask{ .faint = true };
+    pub const italic = cellbuf.AttrMask{ .italic = true };
+    pub const underline = cellbuf.AttrMask{ .underline = true };
+    pub const slowBlink = cellbuf.AttrMask{ .slowBlink = true };
+    pub const rapidBlink = cellbuf.AttrMask{ .rapidBlink = true };
+    pub const reverse = cellbuf.AttrMask{ .reverse = true };
+    pub const conceal = cellbuf.AttrMask{ .conceal = true };
+    pub const strikethrough = cellbuf.AttrMask{ .strikethrough = true };
 
-    pub const BOLD_UNDERLINE = cellbuf.AttrMask{ .bold = true, .underline = true };
-    pub const ITALIC_FAINT = cellbuf.AttrMask{ .italic = true, .faint = true };
+    pub const boldUnderline = cellbuf.AttrMask{ .bold = true, .underline = true };
+    pub const italicFaint = cellbuf.AttrMask{ .italic = true, .faint = true };
 };
 
 // Tests
@@ -312,7 +312,7 @@ test "terminal text writing and rendering" {
     defer terminal.deinit();
 
     // Write some text
-    const style = cellbuf.Style{ .fg = Colors.GREEN, .bg = Colors.default(), .attrs = Attrs.BOLD };
+    const style = cellbuf.Style{ .fg = Colors.GREEN, .bg = Colors.default(), .attrs = Attrs.bold };
     _ = try terminal.writeText(0, 0, "Hello, World!", style);
 
     // Test rendering to a buffer

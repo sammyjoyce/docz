@@ -2,7 +2,7 @@
 
 const std = @import("std");
 const ui = @import("../../ui/mod.zig");
-const render_ctx = @import("../../render/mod.zig");
+const renderCtx = @import("../../render/mod.zig");
 const draw = @import("Draw.zig");
 
 pub const Alignment = enum { left, center, right };
@@ -12,11 +12,11 @@ pub const Table = struct {
     headers: []const []const u8 = &[_][]const u8{},
     rows: []const []const []const u8 = &[_][]const []const u8{},
     title: ?[]const u8 = null,
-    column_widths: ?[]const u16 = null,
-    column_alignments: ?[]const Alignment = null,
+    columnWidths: ?[]const u16 = null,
+    columnAlignments: ?[]const Alignment = null,
     sortable: bool = false,
-    sort_column: ?u16 = null,
-    sort_ascending: bool = true,
+    sortColumn: ?u16 = null,
+    sortAscending: bool = true,
 
     pub fn init(allocator: std.mem.Allocator) Table {
         return .{ .allocator = allocator };
@@ -47,7 +47,7 @@ pub const Table = struct {
         _ = rect;
     }
 
-    pub fn render(self: *Table, ctx: *render_ctx.Context) !void {
+    pub fn render(self: *Table, ctx: *renderCtx.Context) !void {
         const rect = ui.layout.Rect{ .x = 0, .y = 0, .w = ctx.surface.size().w, .h = ctx.surface.size().h };
         try draw.table(ctx, rect, self);
     }
@@ -59,6 +59,6 @@ pub const Table = struct {
     }
 };
 
-fn rowsCount(rows: []const []const []const u8) usize {
+fn countRows(rows: []const []const []const u8) usize {
     return rows.len;
 }

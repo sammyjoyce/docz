@@ -18,11 +18,10 @@ test "progressBarInit" {
         .show_rate = false,
     };
 
-    const progress_component = try ProgressBar.create(allocator, config);
-    defer allocator.destroy(progress_component);
+    const progressComponent = try ProgressBar.create(allocator, config);
+    defer allocator.destroy(progressComponent);
 
-    // Access the ProgressBar impl
-    const progress = @as(*ProgressBar, @ptrCast(progress_component.impl));
+    const progress = @as(*ProgressBar, @ptrCast(progressComponent.impl));
 
     try std.testing.expectEqualSlices(u8, "Test Progress", progress.data.label.?);
 }
@@ -79,10 +78,10 @@ test "progressBarStyleConfig" {
             .show_rate = false,
         };
 
-        const progress_component = try ProgressBar.create(allocator, config);
-        defer allocator.destroy(progress_component);
+    const progressComponent = try ProgressBar.create(allocator, config);
+    defer allocator.destroy(progressComponent);
 
-        const progress = @as(*ProgressBar, @ptrCast(progress_component.impl));
+    const progress = @as(*ProgressBar, @ptrCast(progressComponent.impl));
 
         try std.testing.expectEqual(progress.config.style, style);
     }

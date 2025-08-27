@@ -7,23 +7,23 @@ const builtin = @import("builtin");
 const term = @import("term_shared");
 
 // Runtime exports - always available
-pub const Theme = @import("runtime/theme.zig").Theme;
+pub const Theme = @import("runtime/Theme.zig").Theme;
 pub const Settings = @import("runtime/config.zig").Settings;
-pub const ColorScheme = @import("runtime/color_scheme.zig").ColorScheme;
-pub const Color = @import("runtime/color.zig").Color;
-pub const Colors = @import("runtime/color.zig").Colors;
-pub const Inheritance = @import("runtime/inheritance.zig").Inheritance;
-pub const SystemTheme = @import("runtime/system_theme.zig").SystemTheme;
-pub const Accessibility = @import("runtime/accessibility.zig").Accessibility;
-pub const ColorBlindness = @import("runtime/color_blindness.zig").ColorBlindness;
-pub const Validator = @import("runtime/validator.zig").Validator;
-pub const Platform = @import("runtime/platform.zig").Platform;
+pub const ColorScheme = @import("runtime/ColorScheme.zig").ColorScheme;
+pub const Color = @import("runtime/Color.zig").Color;
+pub const Colors = @import("runtime/Color.zig").Colors;
+pub const Inheritance = @import("runtime/Inheritance.zig").Inheritance;
+pub const SystemTheme = @import("runtime/SystemTheme.zig").SystemTheme;
+pub const Accessibility = @import("runtime/Accessibility.zig").Accessibility;
+pub const ColorBlindness = @import("runtime/ColorBlindness.zig").ColorBlindness;
+pub const Validator = @import("runtime/Validator.zig").Validator;
+pub const Platform = @import("runtime/Platform.zig").Platform;
 
 // Development tools - exported when tools are included
-pub const Editor = @import("tools/editor.zig").Editor;
-pub const Exporter = @import("tools/exporter.zig").Exporter;
-pub const Development = @import("tools/development.zig").Development;
-pub const Generator = @import("tools/generator.zig").Generator;
+pub const Editor = @import("tools/Editor.zig").Editor;
+pub const Exporter = @import("tools/Exporter.zig").Exporter;
+pub const Development = @import("tools/Development.zig").Development;
+pub const Generator = @import("tools/Generator.zig").Generator;
 
 /// Initialize the global theme manager
 pub fn init(allocator: std.mem.Allocator) !*Theme {

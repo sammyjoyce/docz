@@ -2,7 +2,7 @@
 
 const std = @import("std");
 const ui = @import("../../ui/mod.zig");
-const render_ctx = @import("../../render/mod.zig");
+const renderCtx = @import("../../render/mod.zig");
 const draw = @import("Draw.zig");
 
 pub const Progress = struct {
@@ -31,7 +31,7 @@ pub const Progress = struct {
         _ = rect;
     }
 
-    pub fn render(self: *Progress, ctx: *render_ctx.Context) !void {
+    pub fn render(self: *Progress, ctx: *renderCtx.Context) !void {
         const rect = ui.layout.Rect{ .x = 0, .y = 0, .w = ctx.surface.size().w, .h = 1 };
         try draw.progress(ctx, rect, self.value, self.label);
     }
@@ -45,13 +45,13 @@ pub const Progress = struct {
 
 test "progress renders bar proportionally" {
     const allocator = std.testing.allocator;
-    var surface = try render_ctx.MemorySurface.init(allocator, 10, 1);
+    var surface = try renderCtx.MemorySurface.init(allocator, 10, 1);
     defer {
         surface.deinit(allocator);
         allocator.destroy(surface);
     }
 
-    var ctx = render_ctx.Context.init(surface, null);
+    var ctx = renderCtx.Context.init(surface, null);
     try draw.progress(&ctx, .{ .x = 0, .y = 0, .w = 10, .h = 1 }, 0.5, null);
     const dump = try surface.toString(allocator);
     defer allocator.free(dump);

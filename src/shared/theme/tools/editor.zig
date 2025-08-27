@@ -2,10 +2,10 @@
 //! Interactive color scheme editor with real-time preview
 
 const std = @import("std");
-const ColorScheme = @import("../runtime/color_scheme.zig").ColorScheme;
-const Color = @import("../runtime/color_scheme.zig").Color;
-const RGB = @import("../runtime/color_scheme.zig").RGB;
-const HSL = @import("../runtime/color_scheme.zig").HSL;
+const ColorScheme = @import("../runtime/ColorScheme.zig").ColorScheme;
+const Color = @import("../runtime/ColorScheme.zig").Color;
+const RGB = @import("../runtime/ColorScheme.zig").RGB;
+const HSL = @import("../runtime/ColorScheme.zig").HSL;
 
 pub const Editor = struct {
     allocator: std.mem.Allocator,

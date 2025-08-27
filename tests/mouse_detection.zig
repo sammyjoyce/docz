@@ -28,7 +28,7 @@ test "mouse query types are properly defined" {
     }
 }
 
-test "DECRQM query sequence generation" {
+test "decrqmQuerySequenceGeneration" {
     const allocator = testing.allocator;
 
     var querySystem = TerminalQuerySystem.init(allocator);
@@ -51,7 +51,7 @@ test "DECRQM query sequence generation" {
     }
 }
 
-test "DECRQM response parsing" {
+test "decrqm_response parsing" {
     const allocator = testing.allocator;
 
     var querySystem = TerminalQuerySystem.init(allocator);
@@ -221,7 +221,7 @@ test "mouse mode enable/disable sequences" {
     try testing.expect(std.mem.indexOf(u8, kittyOutput, "\x1b[?2031h") != null); // Kitty mouse
 }
 
-test "DECRQM status enum conversion" {
+test "decrqm_status enum conversion" {
     const test_cases = [_]struct {
         value: u8,
         expected: DECRQMStatus,

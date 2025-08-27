@@ -12,7 +12,7 @@ pub const selection = @import("selection.zig");
 pub const clipboard = @import("clipboard.zig");
 
 // Re-export commonly used types for convenience
-pub const Table = DataTableImpl;
+pub const Table = TableImpl;
 pub const DataTable = Table; // Backward compatibility alias
 pub const Config = base.Config;
 pub const Cell = base.Cell;
@@ -27,7 +27,7 @@ pub const InputEvent = union(enum) {
 };
 
 /// Main Table implementation that combines all modules
-pub const DataTableImpl = struct {
+pub const TableImpl = struct {
     const Self = @This();
 
     allocator: std.mem.Allocator,
@@ -105,42 +105,42 @@ pub const DataTableImpl = struct {
         switch (key.key) {
             .arrow_up => {
                 self.state.moveCursor(0, -1, row_count, col_count);
-                selection.SelectionManager.extendSelection(&self.state, key, row_count, col_count);
+                selection.Selection.extendTableSelection(&self.state, key, row_count, col_count);
                 return true;
             },
             .arrow_down => {
                 self.state.moveCursor(0, 1, row_count, col_count);
-                selection.SelectionManager.extendSelection(&self.state, key, row_count, col_count);
+                selection.Selection.extendTableSelection(&self.state, key, row_count, col_count);
                 return true;
             },
             .arrow_left => {
                 self.state.moveCursor(-1, 0, row_count, col_count);
-                selection.SelectionManager.extendSelection(&self.state, key, row_count, col_count);
+                selection.Selection.extendTableSelection(&self.state, key, row_count, col_count);
                 return true;
             },
             .arrow_right => {
                 self.state.moveCursor(1, 0, row_count, col_count);
-                selection.SelectionManager.extendSelection(&self.state, key, row_count, col_count);
+                selection.Selection.extendTableSelection(&self.state, key, row_count, col_count);
                 return true;
             },
             .home => {
                 self.state.cursor.x = 0;
-                selection.SelectionManager.extendSelection(&self.state, key, row_count, col_count);
+                selection.Selection.extendTableSelection(&self.state, key, row_count, col_count);
                 return true;
             },
             .end => {
                 self.state.cursor.x = @as(i32, @intCast(col_count)) - 1;
-                selection.SelectionManager.extendSelection(&self.state, key, row_count, col_count);
+                selection.Selection.extendTableSelection(&self.state, key, row_count, col_count);
                 return true;
             },
             .page_up => {
                 self.state.moveCursor(0, -10, row_count, col_count);
-                selection.SelectionManager.extendSelection(&self.state, key, row_count, col_count);
+                selection.Selection.extendTableSelection(&self.state, key, row_count, col_count);
                 return true;
             },
             .page_down => {
                 self.state.moveCursor(0, 10, row_count, col_count);
-                selection.SelectionManager.extendSelection(&self.state, key, row_count, col_count);
+                selection.Selection.extendTableSelection(&self.state, key, row_count, col_count);
                 return true;
             },
             .char => |c| {

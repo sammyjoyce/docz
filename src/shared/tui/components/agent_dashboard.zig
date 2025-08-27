@@ -31,10 +31,10 @@ const session = @import("../../core/session.zig");
 // Shared infrastructure
 const tui_dashboard = @import("../dashboard/Dashboard.zig");
 const dashboard_widgets = @import("../widgets/dashboard/mod.zig");
-const theme_manager = @import("../../theme/mod.zig");
+const theme = @import("../../theme/mod.zig");
 const cli_components = @import("../../cli/components/mod.zig");
 const term_mod = @import("../../term/mod.zig");
-const term = term_mod.unified;
+const term = term_mod.common;
 const caps = term_mod.caps;
 
 // Network and auth for monitoring
@@ -43,33 +43,33 @@ const anthropic = shared.Network.anthropic;
 const auth = @import("../../auth/core/mod.zig");
 
 /// Main dashboard configuration
-pub const DashboardConfig = struct {
+pub const Config = struct {
     /// Dashboard title
     title: []const u8 = "Agent Dashboard",
 
     /// Layout configuration
-    layout: LayoutConfig = .{},
+    layout: LayoutOptions = .{},
 
     /// Real-time monitoring settings
-    monitoring: MonitoringConfig = .{},
+    monitoring: Monitoring = .{},
 
     /// Theme configuration
     theme: Theme = .{},
 
     /// Panel-specific configurations
-    panels: PanelConfigSet = .{},
+    panels: Panels = .{},
 
     /// Performance settings
-    performance: PerformanceConfig = .{},
+    performance: Performance = .{},
 
     /// Keyboard shortcuts
-    shortcuts: ShortcutConfig = .{},
+    shortcuts: Shortcuts = .{},
 };
 
 /// Layout configuration for dashboard panels
-pub const LayoutConfig = struct {
+pub const LayoutOptions = struct {
     /// Default panel sizes (as percentage of screen)
-    default_panel_sizes: PanelSizes = .{},
+    default_panel_sizes: Sizes = .{},
 
     /// Enable resizable panels
     enable_resizable: bool = true,
@@ -85,7 +85,7 @@ pub const LayoutConfig = struct {
 };
 
 /// Panel size configuration
-pub const PanelSizes = struct {
+pub const Sizes = struct {
     /// Status panel height (lines)
     status_height: u16 = 3,
 
@@ -101,7 +101,7 @@ pub const PanelSizes = struct {
 };
 
 /// Real-time monitoring configuration
-pub const MonitoringConfig = struct {
+pub const Monitoring = struct {
     /// Enable API call tracking
     enable_api_tracking: bool = true,
 
@@ -173,25 +173,25 @@ pub const CustomColors = struct {
 };
 
 /// Panel-specific configurations
-pub const PanelConfigSet = struct {
+pub const Panels = struct {
     /// Status panel configuration
-    status: StatusPanelConfig = .{},
+    status: StatusPanelOptions = .{},
 
     /// Activity log configuration
-    activity_log: ActivityLogConfig = .{},
+    activity_log: ActivityLogOptions = .{},
 
     /// Performance metrics configuration
-    performance: PerformancePanelConfig = .{},
+    performance: PerformancePanelOptions = .{},
 
     /// Resource usage configuration
-    resources: ResourcePanelConfig = .{},
+    resources: ResourcePanelOptions = .{},
 
     /// Custom agent panels
-    custom: std.StringHashMap(PanelConfig) = undefined,
+    custom: std.StringHashMap(PanelOptions) = undefined,
 };
 
 /// Base panel configuration
-pub const PanelConfig = struct {
+pub const PanelOptions = struct {
     /// Panel title
     title: []const u8,
 
@@ -239,7 +239,7 @@ pub const SizeConstraints = struct {
 };
 
 /// Status panel configuration
-pub const StatusPanelConfig = struct {
+pub const StatusPanelOptions = struct {
     /// Show agent health status
     show_health: bool = true,
 
@@ -254,7 +254,7 @@ pub const StatusPanelConfig = struct {
 };
 
 /// Activity log configuration
-pub const ActivityLogConfig = struct {
+pub const ActivityLogOptions = struct {
     /// Maximum number of entries
     max_entries: usize = 100,
 
@@ -290,7 +290,7 @@ pub const LogFilter = struct {
 };
 
 /// Performance panel configuration
-pub const PerformancePanelConfig = struct {
+pub const PerformancePanelOptions = struct {
     /// Show API response times
     show_api_times: bool = true,
 
@@ -308,7 +308,7 @@ pub const PerformancePanelConfig = struct {
 };
 
 /// Resource panel configuration
-pub const ResourcePanelConfig = struct {
+pub const ResourcePanelOptions = struct {
     /// Show CPU usage
     show_cpu: bool = true,
 
@@ -334,7 +334,7 @@ pub const ChartType = enum {
 };
 
 /// Performance configuration
-pub const PerformanceConfig = struct {
+pub const Performance = struct {
     /// Enable animations
     enable_animations: bool = true,
 
@@ -352,7 +352,7 @@ pub const PerformanceConfig = struct {
 };
 
 /// Keyboard shortcuts configuration
-pub const ShortcutConfig = struct {
+pub const Shortcuts = struct {
     /// Quit dashboard
     QUIT: []const u8 = "q",
 
@@ -375,7 +375,7 @@ pub const AgentDashboard = struct {
     const Self = @This();
 
     allocator: Allocator,
-    config: DashboardConfig,
+    config: Config,
 
     // Core components
     base_agent: *base_agent.BaseAgent,
@@ -395,8 +395,8 @@ pub const AgentDashboard = struct {
     data_store: Data,
 
     // Theme and styling
-    theme_manager: *theme_manager.Theme,
-    current_theme: *theme_manager.ColorScheme,
+    theme_manager: *theme.Theme,
+    current_theme: *theme.ColorScheme,
 
     // State
     is_running: bool = false,
@@ -411,7 +411,7 @@ pub const AgentDashboard = struct {
         allocator: Allocator,
         agent_base_agent: *base_agent.BaseAgent,
         agent_config: config.AgentConfig,
-        dashboard_config: DashboardConfig,
+        dashboard_config: Config,
     ) !*Self {
         // Initialize terminal
         var terminal = try term.Terminal.init(allocator);
@@ -419,7 +419,7 @@ pub const AgentDashboard = struct {
         const render_level = tui_dashboard.RenderLevel.fromCapabilities(capabilities);
 
         // Get theme manager
-        const theme_mgr = try theme_manager.init(allocator);
+        const theme_mgr = try theme.init(allocator);
 
         // Apply theme configuration
         try applyThemeConfig(theme_mgr, dashboard_config.theme);
@@ -488,7 +488,7 @@ pub const AgentDashboard = struct {
         self.event_handler.deinit();
 
         // Clean up theme manager
-        self.theme_manager.deinit();
+        self.theme.deinit();
 
         // Restore terminal
         self.restoreTerminal() catch {};
@@ -699,10 +699,10 @@ pub const AgentDashboard = struct {
 pub const Layout = struct {
     allocator: Allocator,
     screen_size: term.Size,
-    config: LayoutConfig,
+    config: LayoutOptions,
     panel_bounds: std.StringHashMap(term.Rect),
 
-    pub fn init(allocator: Allocator, screen_size: term.Size, layout_config: LayoutConfig) !Layout {
+    pub fn init(allocator: Allocator, screen_size: term.Size, layout_config: LayoutOptions) !Layout {
         return .{
             .allocator = allocator,
             .screen_size = screen_size,
@@ -789,7 +789,7 @@ pub const PanelSet = struct {
     panels: std.StringHashMap(*Panel),
     panel_order: std.ArrayList([]const u8),
 
-    pub fn init(allocator: Allocator, panel_configs: PanelConfigSet) !PanelSet {
+    pub fn init(allocator: Allocator, panel_configs: Panels) !PanelSet {
         // panel_configs reserved for future custom panel initialization
         const manager = PanelSet{
             .allocator = allocator,
@@ -851,7 +851,7 @@ pub const PanelSet = struct {
         }
     }
 
-    pub fn render(self: *PanelSet, layout: Layout, terminal: term.Terminal, theme: *theme_manager.ColorScheme) !void {
+    pub fn render(self: *PanelSet, layout: Layout, terminal: term.Terminal, theme: *theme.ColorScheme) !void {
         var iter = self.panels.iterator();
         while (iter.next()) |entry| {
             const bounds = layout.getPanelBounds(entry.key) orelse continue;
@@ -868,7 +868,7 @@ pub const Panel = struct {
     impl: PanelImpl,
 
     /// Panel configuration
-    config: PanelConfig,
+    config: PanelOptions,
 
     /// Panel state
     visible: bool = true,
@@ -883,7 +883,7 @@ pub const Panel = struct {
         custom: *CustomPanel,
     };
 
-    pub fn init(panel_config: PanelConfig) Panel {
+    pub fn init(panel_config: PanelOptions) Panel {
         return .{
             .impl = undefined, // Set by specific panel types
             .config = panel_config,
@@ -920,7 +920,7 @@ pub const Panel = struct {
         self.last_update = now;
     }
 
-    pub fn render(self: *Panel, terminal: term.Terminal, bounds: term.Rect, theme: *theme_manager.ColorScheme) !void {
+    pub fn render(self: *Panel, terminal: term.Terminal, bounds: term.Rect, theme: *theme.ColorScheme) !void {
         if (!self.visible) return;
 
         switch (self.impl) {
@@ -958,7 +958,7 @@ pub const StatusPanel = struct {
         unknown,
     };
 
-    pub fn init(allocator: Allocator, status_config: StatusPanelConfig) !*StatusPanel {
+    pub fn init(allocator: Allocator, status_config: StatusPanelOptions) !*StatusPanel {
         _ = status_config; // Reserved for future configuration options
         const status_panel = try allocator.create(StatusPanel);
         status_panel.* = .{
@@ -996,7 +996,7 @@ pub const StatusPanel = struct {
         self.session_info = try std.fmt.allocPrint(self.allocator, "Session: {d}s", .{session_data.duration_seconds});
     }
 
-    pub fn render(self: *StatusPanel, terminal: term.Terminal, bounds: term.Rect, theme: *theme_manager.ColorScheme) !void {
+    pub fn render(self: *StatusPanel, terminal: term.Terminal, bounds: term.Rect, theme: *theme.ColorScheme) !void {
         // Render panel border
         try terminal.drawBorder(bounds, theme.border);
 
@@ -1038,9 +1038,9 @@ pub const ActivityLogPanel = struct {
     panel: Panel,
     entries: std.ArrayList(ActivityLogEntry),
     scroll_offset: usize = 0,
-    config: ActivityLogConfig,
+    config: ActivityLogOptions,
 
-    pub fn init(allocator: Allocator, activity_config: ActivityLogConfig) !*ActivityLogPanel {
+    pub fn init(allocator: Allocator, activity_config: ActivityLogOptions) !*ActivityLogPanel {
         const log_panel = try allocator.create(ActivityLogPanel);
         log_panel.* = .{
             .allocator = allocator,
@@ -1086,7 +1086,7 @@ pub const ActivityLogPanel = struct {
         log_data.entries.clearRetainingCapacity();
     }
 
-    pub fn render(self: *ActivityLogPanel, terminal: term.Terminal, bounds: term.Rect, theme: *theme_manager.ColorScheme) !void {
+    pub fn render(self: *ActivityLogPanel, terminal: term.Terminal, bounds: term.Rect, theme: *theme.ColorScheme) !void {
         // Render panel border and title
         try terminal.drawBorder(bounds, theme.border);
         try terminal.moveCursor(bounds.x + 2, bounds.y);
@@ -1177,10 +1177,10 @@ pub const ActivityLogPanel = struct {
 pub const PerformancePanel = struct {
     allocator: Allocator,
     panel: Panel,
-    config: PerformancePanelConfig,
+    config: PerformancePanelOptions,
     metrics: PerformanceMetrics = .{},
 
-    pub fn init(allocator: Allocator, performance_config: PerformancePanelConfig) !*PerformancePanel {
+    pub fn init(allocator: Allocator, performance_config: PerformancePanelOptions) !*PerformancePanel {
         const perf_panel = try allocator.create(PerformancePanel);
         perf_panel.* = .{
             .allocator = allocator,
@@ -1203,7 +1203,7 @@ pub const PerformancePanel = struct {
         self.metrics = perf_data.metrics;
     }
 
-    pub fn render(self: *PerformancePanel, terminal: term.Terminal, bounds: term.Rect, theme: *theme_manager.ColorScheme) !void {
+    pub fn render(self: *PerformancePanel, terminal: term.Terminal, bounds: term.Rect, theme: *theme.ColorScheme) !void {
         // Render panel border and title
         try terminal.drawBorder(bounds, theme.border);
         try terminal.moveCursor(bounds.x + 2, bounds.y);
@@ -1243,7 +1243,7 @@ pub const PerformancePanel = struct {
         }
     }
 
-    fn renderChart(self: *PerformancePanel, terminal: term.Terminal, bounds: term.Rect, start_y: u16, theme: *theme_manager.ColorScheme) !void {
+    fn renderChart(self: *PerformancePanel, terminal: term.Terminal, bounds: term.Rect, start_y: u16, theme: *theme.ColorScheme) !void {
         switch (self.config.chart_type) {
             .sparkline => {
                 // Simple sparkline representation
@@ -1291,10 +1291,10 @@ pub const PerformancePanel = struct {
 pub const ResourcePanel = struct {
     allocator: Allocator,
     panel: Panel,
-    config: ResourcePanelConfig,
+    config: ResourcePanelOptions,
     resources: ResourceUsage = .{},
 
-    pub fn init(allocator: Allocator, resource_config: ResourcePanelConfig) !*ResourcePanel {
+    pub fn init(allocator: Allocator, resource_config: ResourcePanelOptions) !*ResourcePanel {
         const res_panel = try allocator.create(ResourcePanel);
         res_panel.* = .{
             .allocator = allocator,
@@ -1317,7 +1317,7 @@ pub const ResourcePanel = struct {
         self.resources = res_data.usage;
     }
 
-    pub fn render(self: *ResourcePanel, terminal: term.Terminal, bounds: term.Rect, theme: *theme_manager.ColorScheme) !void {
+    pub fn render(self: *ResourcePanel, terminal: term.Terminal, bounds: term.Rect, theme: *theme.ColorScheme) !void {
         // Render panel border and title
         try terminal.drawBorder(bounds, theme.border);
         try terminal.moveCursor(bounds.x + 2, bounds.y);
@@ -1371,7 +1371,7 @@ pub const CustomPanel = struct {
     allocator: Allocator,
     panel: Panel,
     name: []const u8,
-    render_fn: ?*const fn (*CustomPanel, term.Terminal, term.Rect, *theme_manager.ColorScheme) anyerror!void = null,
+    render_fn: ?*const fn (*CustomPanel, term.Terminal, term.Rect, *theme.ColorScheme) anyerror!void = null,
     update_fn: ?*const fn (*CustomPanel, *Data) anyerror!void = null,
     input_fn: ?*const fn (*CustomPanel, term.Event) anyerror!bool = null,
 
@@ -1394,7 +1394,7 @@ pub const CustomPanel = struct {
         self.allocator.destroy(self);
     }
 
-    pub fn setRenderFunction(self: *CustomPanel, render_fn: *const fn (*CustomPanel, term.Terminal, term.Rect, *theme_manager.ColorScheme) anyerror!void) void {
+    pub fn setRenderFunction(self: *CustomPanel, render_fn: *const fn (*CustomPanel, term.Terminal, term.Rect, *theme.ColorScheme) anyerror!void) void {
         self.render_fn = render_fn;
     }
 
@@ -1412,7 +1412,7 @@ pub const CustomPanel = struct {
         }
     }
 
-    pub fn render(self: *CustomPanel, terminal: term.Terminal, bounds: term.Rect, theme: *theme_manager.ColorScheme) !void {
+    pub fn render(self: *CustomPanel, terminal: term.Terminal, bounds: term.Rect, theme: *theme.ColorScheme) !void {
         // Render panel border and title
         try terminal.drawBorder(bounds, theme.border);
         try terminal.moveCursor(bounds.x + 2, bounds.y);
@@ -1439,13 +1439,13 @@ pub const CustomPanel = struct {
 /// Dashboard monitor for real-time data collection
 pub const DashboardMonitor = struct {
     allocator: Allocator,
-    config: MonitoringConfig,
+    config: Monitoring,
     api_call_times: std.ArrayList(i64),
     token_usage: usize = 0,
     error_count: usize = 0,
     total_requests: usize = 0,
 
-    pub fn init(allocator: Allocator, monitor_config: MonitoringConfig) !DashboardMonitor {
+    pub fn init(allocator: Allocator, monitor_config: Monitoring) !DashboardMonitor {
         return .{
             .allocator = allocator,
             .config = monitor_config,
@@ -1668,10 +1668,10 @@ pub const ResourceUsage = struct {
 /// Event handler for dashboard input
 pub const EventHandler = struct {
     allocator: Allocator,
-    shortcuts: ShortcutConfig,
+    shortcuts: Shortcuts,
     key_bindings: std.HashMap([]const u8, *const fn (*AgentDashboard) anyerror!void),
 
-    pub fn init(allocator: Allocator, shortcuts: ShortcutConfig) !EventHandler {
+    pub fn init(allocator: Allocator, shortcuts: Shortcuts) !EventHandler {
         var handler = EventHandler{
             .allocator = allocator,
             .shortcuts = shortcuts,
@@ -1752,7 +1752,7 @@ pub const EventHandler = struct {
 };
 
 /// Apply theme configuration to theme manager
-fn applyThemeConfig(theme_mgr: *theme_manager.Theme, theme_config: Theme) !void {
+fn applyThemeConfig(theme_mgr: *theme.Theme, theme_config: Theme) !void {
     // Switch to specified theme
     if (!std.mem.eql(u8, theme_config.theme_name, "auto")) {
         try theme_mgr.switchTheme(theme_config.theme_name);
@@ -1774,7 +1774,7 @@ fn applyThemeConfig(theme_mgr: *theme_manager.Theme, theme_config: Theme) !void 
 
     // Apply custom colors
     if (theme_config.custom_colors) |custom_colors| {
-        const current_theme = theme_manager.getCurrentTheme();
+        const current_theme = theme.getCurrentTheme();
         if (custom_colors.background) |bg| {
             // Apply custom background
             _ = bg;
@@ -1789,7 +1789,7 @@ fn applyThemeConfig(theme_mgr: *theme_manager.Theme, theme_config: Theme) !void 
 }
 
 /// Create a default dashboard configuration
-pub fn createDefaultConfig(title: []const u8) DashboardConfig {
+pub fn createDefaultConfig(title: []const u8) Config {
     return .{
         .title = title,
         .layout = .{},
@@ -1821,7 +1821,7 @@ pub fn createCustomPanel(allocator: Allocator, name: []const u8) !*CustomPanel {
 pub fn addCustomPanelToDashboard(
     dashboard: *AgentDashboard,
     name: []const u8,
-    render_fn: ?*const fn (*CustomPanel, term.Terminal, term.Rect, *theme_manager.ColorScheme) anyerror!void,
+    render_fn: ?*const fn (*CustomPanel, term.Terminal, term.Rect, *theme.ColorScheme) anyerror!void,
     update_fn: ?*const fn (*CustomPanel, *Data) anyerror!void,
     input_fn: ?*const fn (*CustomPanel, term.Event) anyerror!bool,
 ) !void {

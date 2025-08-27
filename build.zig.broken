@@ -1337,13 +1337,13 @@ const ModuleBuilder = struct {
 
         // Special handling for markdown agent's enhanced editor
         if (std.mem.eql(u8, self.ctx.selected_agent, "markdown")) {
-            const enhanced_editor = self.createModule("agents/markdown/enhanced_markdown_editor.zig");
-            if (shared.cli) |cli| enhanced_editor.addImport("cli_shared", cli);
-            if (shared.tui) |tui| enhanced_editor.addImport("tui_shared", tui);
-            if (shared.tools) |tools| enhanced_editor.addImport("tools_shared", tools);
-            if (shared.term) |term| enhanced_editor.addImport("term_shared", term);
-            if (shared.config) |config| enhanced_editor.addImport("config_shared", config);
-            entry.addImport("enhanced_markdown_editor", enhanced_editor);
+            const markdown_editor = self.createModule("agents/markdown/markdown_editor.zig");
+            if (shared.cli) |cli| markdown_editor.addImport("cli_shared", cli);
+            if (shared.tui) |tui| markdown_editor.addImport("tui_shared", tui);
+            if (shared.tools) |tools| markdown_editor.addImport("tools_shared", tools);
+            if (shared.term) |term| markdown_editor.addImport("term_shared", term);
+            if (shared.config) |config| markdown_editor.addImport("config_shared", config);
+            entry.addImport("markdown_editor", markdown_editor);
         }
 
         const spec = self.createModule(self.ctx.agent_paths.spec);
@@ -2487,10 +2487,10 @@ fn setupDemoTargets(ctx: BuildContext, shared_modules: ConditionalSharedModules)
     // Enhanced markdown editor demo (if markdown agent is selected)
     if (std.mem.eql(u8, ctx.selected_agent, "markdown")) {
         const editor_demo_step = ctx.b.step("demo-markdown-editor", "Run enhanced markdown editor demo");
-        const editor_module = ctx.b.addModule("enhanced_editor_demo", .{
+        const editor_module = ctx.b.addModule("markdown_editor_demo", .{
             .target = ctx.target,
             .optimize = ctx.optimize,
-            .root_source_file = ctx.b.path("agents/markdown/enhanced_markdown_editor.zig"),
+            .root_source_file = ctx.b.path("agents/markdown/markdown_editor.zig"),
         });
 
         // Add necessary imports

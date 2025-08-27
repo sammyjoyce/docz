@@ -7,7 +7,7 @@ const std = @import("std");
 const term_shared = @import("term_shared");
 const term = term_shared.term;
 const graphics = term_shared.graphics;
-const theme_manager = @import("theme_manager");
+const theme = @import("../theme/mod.zig");
 
 const Terminal = term.Terminal;
 const Color = term.Color;
@@ -128,11 +128,11 @@ pub const Render = struct {
     theme: *Theme,
     frameTime: i64, // For animations
 
-    pub fn clipped(self: Render, clip_bounds: Rect) Render {
+    pub fn clipped(self: Render, clipBounds: Rect) Render {
         const intersection = if (self.clipRegion) |existing|
-            intersectRects(existing, clip_bounds)
+            intersectRects(existing, clipBounds)
         else
-            clip_bounds;
+            clipBounds;
 
         return Render{
             .terminal = self.terminal,
@@ -146,7 +146,7 @@ pub const Render = struct {
 };
 
 /// Theme system for consistent styling - now uses centralized theme manager
-pub const Theme = theme_manager.ColorScheme;
+pub const Theme = theme.ColorScheme;
 
 /// Base component interface using vtable pattern for polymorphism
 pub const Component = struct {
@@ -282,13 +282,13 @@ pub const Registry = struct {
     nextId: Id,
     theme: *Theme,
 
-    pub fn init(allocator: std.mem.Allocator, theme: *Theme) Self {
+    pub fn init(allocator: std.mem.Allocator, themePtr: *Theme) Self {
         return Self{
             .allocator = allocator,
             .components = std.ArrayList(*Component).init(allocator),
             .focusedComponent = null,
             .nextId = 1,
-            .theme = theme,
+            .theme = themePtr,
         };
     }
 

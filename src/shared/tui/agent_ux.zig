@@ -59,7 +59,7 @@ const welcome_screen_mod = @import("../tui/components/welcome_screen.zig");
 // Shared infrastructure
 const term = @import("../../term/mod.zig");
 const config_shared = @import("../../core/config.zig");
-const theme_manager = @import("../../theme/mod.zig");
+const theme = @import("../../theme/mod.zig");
 
 /// Configuration for the Agent UX framework
 pub const UXConfig = struct {
@@ -306,7 +306,7 @@ pub const AgentUX = struct {
     terminal_caps: term.caps.TermCaps,
 
     /// Theme manager
-    theme_mgr: *theme_manager.ThemeManager,
+    theme_mgr: *theme.Theme,
 
     /// Renderer system
     renderer: *tui.Renderer,
@@ -431,7 +431,7 @@ pub const AgentUX = struct {
         self.terminal_caps = term.caps.detectCaps(allocator);
 
         // Initialize theme manager
-        self.theme_mgr = try theme_manager.init(allocator);
+        self.theme_mgr = try theme.init(allocator);
 
         // Initialize renderer with adaptive quality
         const render_mode = try self.determineRenderMode();
@@ -669,7 +669,7 @@ pub const AgentUX = struct {
     }
 
     /// Get current terminal capabilities with progressive enhancement
-    pub fn getEnhancedCapabilities(self: *Self) term.caps.TermCaps {
+    pub fn getCapabilities(self: *Self) term.caps.TermCaps {
         var caps = self.terminal_caps;
 
         // Apply progressive enhancement based on configuration
@@ -781,7 +781,7 @@ pub const AgentUX = struct {
     }
 
     fn showGoodbyeScreen(self: *Self) !void {
-        // Simple goodbye message for now
+        // Goodbye message for now
         try self.renderer.writeText(0, 0, "Goodbye! Thanks for using " ++ self.config.agent_name ++ ".");
         std.time.sleep(2 * std.time.ns_per_s);
     }
@@ -809,7 +809,7 @@ pub const AgentUX = struct {
     }
 
     fn renderInteractive(self: *Self) !void {
-        const caps = self.getEnhancedCapabilities();
+        const caps = self.getCapabilities();
         const size = try bounds_mod.getTerminalSize();
 
         // Render main interface
@@ -957,7 +957,7 @@ pub const AgentUX = struct {
         return false;
     }
 
-    fn handleOnboardingInput(self: *Self, key: tui.KeyEvent) !void {
+    fn handleOnboardingInput(self: *Self, key: tui.Key) !void {
         switch (key.code) {
             .enter => try self.nextOnboardingStep(),
             'y', 'Y' => try self.nextOnboardingStep(),
@@ -966,13 +966,13 @@ pub const AgentUX = struct {
         }
     }
 
-    fn handleCommandInput(self: *Self, key: tui.KeyEvent) !void {
+    fn handleCommandInput(self: *Self, key: tui.Key) !void {
         // Would implement command input handling
         _ = self;
         _ = key;
     }
 
-    fn handleHelpInput(self: *Self, key: tui.KeyEvent) !void {
+    fn handleHelpInput(self: *Self, key: tui.Key) !void {
         switch (key.code) {
             .escape => {
                 self.state.help_visible = false;
@@ -982,7 +982,7 @@ pub const AgentUX = struct {
         }
     }
 
-    fn handleMouseEvent(self: *Self, mouse: tui.MouseEvent) !void {
+    fn handleMouseEvent(self: *Self, mouse: tui.Mouse) !void {
         // Handle mouse events for interactive components
         _ = self;
         _ = mouse;

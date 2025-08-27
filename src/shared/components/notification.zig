@@ -115,7 +115,7 @@ pub const Notification = struct {
     // Core notification data
     title: []const u8,
     message: []const u8,
-    notification_type: NotificationType,
+    notificationType: NotificationType,
     timestamp: i64,
     config: Config,
 
@@ -137,13 +137,13 @@ pub const Notification = struct {
     pub fn init(
         title: []const u8,
         message: []const u8,
-        notification_type: NotificationType,
+        notificationType: NotificationType,
         config: Config,
     ) Self {
         return Self{
             .title = title,
             .message = message,
-            .notification_type = notification_type,
+            .notificationType = notificationType,
             .timestamp = std.time.timestamp(),
             .config = config,
         };
@@ -153,14 +153,14 @@ pub const Notification = struct {
     pub fn initWithActions(
         title: []const u8,
         message: []const u8,
-        notification_type: NotificationType,
+        notificationType: NotificationType,
         config: Config,
         actions: []const Action,
     ) Self {
         return Self{
             .title = title,
             .message = message,
-            .notification_type = notification_type,
+            .notificationType = notificationType,
             .timestamp = std.time.timestamp(),
             .config = config,
             .actions = actions,
@@ -177,7 +177,7 @@ pub const Notification = struct {
         return Self{
             .title = title,
             .message = message,
-            .notification_type = .progress,
+            .notificationType = .progress,
             .timestamp = std.time.timestamp(),
             .config = config,
             .progress = std.math.clamp(progress, 0.0, 1.0),
@@ -197,12 +197,12 @@ pub const Notification = struct {
 
     /// Check if this is a progress notification
     pub fn isProgress(self: *const Self) bool {
-        return self.notification_type == .progress and self.progress != null;
+        return self.notificationType == .progress and self.progress != null;
     }
 
     /// Update progress value (only for progress notifications)
     pub fn updateProgress(self: *Self, progress: f32) void {
-        if (self.notification_type == .progress) {
+        if (self.notificationType == .progress) {
             self.progress = std.math.clamp(progress, 0.0, 1.0);
             self.timestamp = std.time.timestamp(); // Update timestamp
         }
@@ -223,10 +223,10 @@ pub const Notification = struct {
 
     /// Sanitize notification content for safe display
     pub fn sanitizeContent(self: *const Self, allocator: std.mem.Allocator) !struct { title: []u8, message: []u8 } {
-        const clean_title = try NotificationUtil.sanitizeText(allocator, self.title);
+        const clean_title = try Util.sanitizeText(allocator, self.title);
         errdefer allocator.free(clean_title);
 
-        const clean_message = try NotificationUtil.sanitizeText(allocator, self.message);
+        const clean_message = try Util.sanitizeText(allocator, self.message);
         errdefer allocator.free(clean_message);
 
         return .{ .title = clean_title, .message = clean_message };
@@ -264,7 +264,7 @@ pub const SystemNotification = struct {
 };
 
 /// Common sanitization and formatting utilities
-pub const NotificationUtil = struct {
+pub const Util = struct {
     /// Sanitize text by removing control characters
     pub fn sanitizeText(allocator: std.mem.Allocator, text: []const u8) ![]u8 {
         var out = std.ArrayList(u8).init(allocator);
@@ -288,14 +288,14 @@ pub const NotificationUtil = struct {
         message: []const u8,
         max_width: u32,
     ) !struct { formatted_title: []u8, formatted_message: []u8 } {
-        const clean_title = try NotificationUtil.sanitizeText(allocator, title);
+        const clean_title = try Util.sanitizeText(allocator, title);
         errdefer allocator.free(clean_title);
 
-        const clean_message = try NotificationUtil.sanitizeText(allocator, message);
+        const clean_message = try Util.sanitizeText(allocator, message);
         errdefer allocator.free(clean_message);
 
         // Word wrapping for message
-        const wrapped_message = try NotificationUtil.wordWrap(allocator, clean_message, max_width);
+        const wrapped_message = try Util.wordWrap(allocator, clean_message, max_width);
         errdefer allocator.free(wrapped_message);
 
         return .{
@@ -418,20 +418,20 @@ pub const NotificationUtil = struct {
 /// Common color schemes for notifications
 pub const ColorScheme = struct {
     /// Get the standard color scheme for a notification type
-    pub fn getStandard(notification_type: NotificationType) struct {
+    pub fn getStandard(notificationType: NotificationType) struct {
         border: term_shared.term.Color,
         background: ?term_shared.term.Color,
         text: ?term_shared.term.Color,
     } {
-        const base_color = notification_type.color();
+        const base_color = notificationType.color();
 
         return .{
             .border = base_color,
-            .background = switch (notification_type) {
+            .background = switch (notificationType) {
                 .critical => term_shared.term.Color{ .rgb = .{ .r = 20, .g = 20, .b = 20 } },
                 else => null,
             },
-            .text = switch (notification_type) {
+            .text = switch (notificationType) {
                 .info, .success, .warning, .@"error", .debug, .critical => term_shared.term.Colors.WHITE,
             },
         };
@@ -454,11 +454,11 @@ pub const ColorScheme = struct {
 /// Sound notification patterns
 pub const SoundPattern = struct {
     /// Get the appropriate sound pattern for a notification type
-    pub fn getPattern(notification_type: NotificationType) struct {
+    pub fn getPattern(notificationType: NotificationType) struct {
         pattern: []const u8,
         duration_ms: u32,
     } {
-        return switch (notification_type) {
+        return switch (notificationType) {
             .info => .{ .pattern = "\x07", .duration_ms = 100 },
             .success => .{ .pattern = "\x07\x07", .duration_ms = 150 },
             .warning => .{ .pattern = "\x07\x07\x07", .duration_ms = 200 },
@@ -493,7 +493,7 @@ test "notification sanitization" {
     const allocator = gpa.allocator();
 
     const dirty_text = "Hello\x1b[31m\x07World\x00Test";
-    const clean_text = try NotificationUtil.sanitizeText(allocator, dirty_text);
+    const clean_text = try Util.sanitizeText(allocator, dirty_text);
     defer allocator.free(clean_text);
 
     try std.testing.expectEqualStrings("HelloWorldTest", clean_text);
@@ -505,7 +505,7 @@ test "word wrapping" {
     const allocator = gpa.allocator();
 
     const long_text = "This is a very long message that should be wrapped";
-    const wrapped = try NotificationUtil.wordWrap(allocator, long_text, 20);
+    const wrapped = try Util.wordWrap(allocator, long_text, 20);
     defer allocator.free(wrapped);
 
     // Should contain newlines

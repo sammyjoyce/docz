@@ -86,10 +86,10 @@ pub const BrailleCanvas = struct {
     allocator: std.mem.Allocator,
     width: u32, // Character width
     height: u32, // Character height
-    dot_width: u32, // Total dot width (width * 2)
-    dot_height: u32, // Total dot height (height * 4)
-    buffer: []u8, // Dot buffer (dot_width * dot_height bits)
-    world_bounds: WorldBounds,
+    dotWidth: u32, // Total dot width (width * 2)
+    dotHeight: u32, // Total dot height (height * 4)
+    buffer: []u8, // Dot buffer (dotWidth * dotHeight bits)
+    worldBounds: WorldBounds,
 
     pub const WorldBounds = struct {
         min_x: f64 = 0.0,
@@ -99,20 +99,20 @@ pub const BrailleCanvas = struct {
     };
 
     /// Initialize a new Braille canvas
-    pub fn init(allocator: std.mem.Allocator, char_width: u32, char_height: u32) !*BrailleCanvas {
-        const dot_width = char_width * 2;
-        const dot_height = char_height * 4;
-        const buffer_size = (dot_width * dot_height + 7) / 8; // Round up to bytes
+    pub fn init(allocator: std.mem.Allocator, charWidth: u32, charHeight: u32) !*BrailleCanvas {
+        const dotWidth = charWidth * 2;
+        const dotHeight = charHeight * 4;
+        const bufferSize = (dotWidth * dotHeight + 7) / 8; // Round up to bytes
 
         const canvas = try allocator.create(BrailleCanvas);
         canvas.* = .{
             .allocator = allocator,
-            .width = char_width,
-            .height = char_height,
-            .dot_width = dot_width,
-            .dot_height = dot_height,
-            .buffer = try allocator.alloc(u8, buffer_size),
-            .world_bounds = .{},
+            .width = charWidth,
+            .height = charHeight,
+            .dotWidth = dotWidth,
+            .dotHeight = dotHeight,
+            .buffer = try allocator.alloc(u8, bufferSize),
+            .worldBounds = .{},
         };
 
         // Clear buffer
@@ -129,50 +129,50 @@ pub const BrailleCanvas = struct {
 
     /// Set world coordinate bounds for transformation
     pub fn setWorldBounds(self: *BrailleCanvas, bounds: WorldBounds) void {
-        self.world_bounds = bounds;
+        self.worldBounds = bounds;
     }
 
     /// Convert world coordinates to dot coordinates
-    pub fn worldToDot(self: *BrailleCanvas, world_x: f64, world_y: f64) struct { x: f64, y: f64 } {
-        const x_ratio = (world_x - self.world_bounds.min_x) / (self.world_bounds.max_x - self.world_bounds.min_x);
-        const y_ratio = (world_y - self.world_bounds.min_y) / (self.world_bounds.max_y - self.world_bounds.min_y);
+    pub fn worldToDot(self: *BrailleCanvas, worldX: f64, worldY: f64) struct { x: f64, y: f64 } {
+        const xRatio = (worldX - self.worldBounds.min_x) / (self.worldBounds.max_x - self.worldBounds.min_x);
+        const yRatio = (worldY - self.worldBounds.min_y) / (self.worldBounds.max_y - self.worldBounds.min_y);
 
         return .{
-            .x = x_ratio * @as(f64, @floatFromInt(self.dot_width - 1)),
-            .y = (1.0 - y_ratio) * @as(f64, @floatFromInt(self.dot_height - 1)), // Flip Y axis
+            .x = xRatio * @as(f64, @floatFromInt(self.dotWidth - 1)),
+            .y = (1.0 - yRatio) * @as(f64, @floatFromInt(self.dotHeight - 1)), // Flip Y axis
         };
     }
 
     /// Set a dot at the given world coordinates
-    pub fn setDotWorld(self: *BrailleCanvas, world_x: f64, world_y: f64) void {
-        const dot_pos = self.worldToDot(world_x, world_y);
-        self.setDot(@as(u32, @intFromFloat(dot_pos.x)), @as(u32, @intFromFloat(dot_pos.y)), true);
+    pub fn setDotWorld(self: *BrailleCanvas, worldX: f64, worldY: f64) void {
+        const dotPos = self.worldToDot(worldX, worldY);
+        self.setDot(@as(u32, @intFromFloat(dotPos.x)), @as(u32, @intFromFloat(dotPos.y)), true);
     }
 
     /// Set a dot at the given dot coordinates
-    pub fn setDot(self: *BrailleCanvas, dot_x: u32, dot_y: u32, value: bool) void {
-        if (dot_x >= self.dot_width or dot_y >= self.dot_height) return;
+    pub fn setDot(self: *BrailleCanvas, dotX: u32, dotY: u32, value: bool) void {
+        if (dotX >= self.dotWidth or dotY >= self.dotHeight) return;
 
-        const bit_index = dot_y * self.dot_width + dot_x;
-        const byte_index = bit_index / 8;
-        const bit_offset = @as(u3, @intCast(bit_index % 8));
+        const bitIndex = dotY * self.dotWidth + dotX;
+        const byteIndex = bitIndex / 8;
+        const bitOffset = @as(u3, @intCast(bitIndex % 8));
 
         if (value) {
-            self.buffer[byte_index] |= (@as(u8, 1) << bit_offset);
+            self.buffer[byteIndex] |= (@as(u8, 1) << bitOffset);
         } else {
-            self.buffer[byte_index] &= ~(@as(u8, 1) << bit_offset);
+            self.buffer[byteIndex] &= ~(@as(u8, 1) << bitOffset);
         }
     }
 
     /// Get a dot at the given dot coordinates
-    pub fn getDot(self: *BrailleCanvas, dot_x: u32, dot_y: u32) bool {
-        if (dot_x >= self.dot_width or dot_y >= self.dot_height) return false;
+    pub fn getDot(self: *BrailleCanvas, dotX: u32, dotY: u32) bool {
+        if (dotX >= self.dotWidth or dotY >= self.dotHeight) return false;
 
-        const bit_index = dot_y * self.dot_width + dot_x;
-        const byte_index = bit_index / 8;
-        const bit_offset = @as(u3, @intCast(bit_index % 8));
+        const bitIndex = dotY * self.dotWidth + dotX;
+        const byteIndex = bitIndex / 8;
+        const bitOffset = @as(u3, @intCast(bitIndex % 8));
 
-        return (self.buffer[byte_index] & (@as(u8, 1) << bit_offset)) != 0;
+        return (self.buffer[byteIndex] & (@as(u8, 1) << bitOffset)) != 0;
     }
 
     /// Clear the entire canvas
@@ -185,26 +185,26 @@ pub const BrailleCanvas = struct {
         const start = self.worldToDot(x0, y0);
         const end = self.worldToDot(x1, y1);
 
-        const x0_int = @as(i32, @intFromFloat(start.x));
-        const y0_int = @as(i32, @intFromFloat(start.y));
-        const x1_int = @as(i32, @intFromFloat(end.x));
-        const y1_int = @as(i32, @intFromFloat(end.y));
+        const x0Int = @as(i32, @intFromFloat(start.x));
+        const y0Int = @as(i32, @intFromFloat(start.y));
+        const x1Int = @as(i32, @intFromFloat(end.x));
+        const y1Int = @as(i32, @intFromFloat(end.y));
 
-        const dx: i32 = if (x1_int > x0_int) x1_int - x0_int else x0_int - x1_int;
-        const dy: i32 = if (y1_int > y0_int) y1_int - y0_int else y0_int - y1_int;
-        const sx: i32 = if (x0_int < x1_int) 1 else -1;
-        const sy: i32 = if (y0_int < y1_int) 1 else -1;
+        const dx: i32 = if (x1Int > x0Int) x1Int - x0Int else x0Int - x1Int;
+        const dy: i32 = if (y1Int > y0Int) y1Int - y0Int else y0Int - y1Int;
+        const sx: i32 = if (x0Int < x1Int) 1 else -1;
+        const sy: i32 = if (y0Int < y1Int) 1 else -1;
         var err = dx - dy;
 
-        var x = x0_int;
-        var y = y0_int;
+        var x = x0Int;
+        var y = y0Int;
 
         while (true) {
-            if (x >= 0 and y >= 0 and x < @as(i32, @intCast(self.dot_width)) and y < @as(i32, @intCast(self.dot_height))) {
+            if (x >= 0 and y >= 0 and x < @as(i32, @intCast(self.dotWidth)) and y < @as(i32, @intCast(self.dotHeight))) {
                 self.setDot(@as(u32, @intCast(x)), @as(u32, @intCast(y)), true);
             }
 
-            if (x == x1_int and y == y1_int) break;
+            if (x == x1Int and y == y1Int) break;
 
             const e2 = 2 * err;
             if (e2 > -@as(i32, dy)) {
@@ -242,8 +242,8 @@ pub const BrailleCanvas = struct {
 
         const x0 = @as(u32, @intFromFloat(@max(0, start.x)));
         const y0 = @as(u32, @intFromFloat(@max(0, start.y)));
-        const x1 = @as(u32, @intFromFloat(@min(@as(f64, @floatFromInt(self.dot_width)), end.x)));
-        const y1 = @as(u32, @intFromFloat(@min(@as(f64, @floatFromInt(self.dot_height)), end.y)));
+        const x1 = @as(u32, @intFromFloat(@min(@as(f64, @floatFromInt(self.dotWidth)), end.x)));
+        const y1 = @as(u32, @intFromFloat(@min(@as(f64, @floatFromInt(self.dotHeight)), end.y)));
 
         var py = y0;
         while (py < y1) : (py += 1) {
@@ -255,8 +255,8 @@ pub const BrailleCanvas = struct {
     }
 
     /// Draw a circle using Bresenham's circle algorithm
-    pub fn drawCircle(self: *BrailleCanvas, center_x: f64, center_y: f64, radius: f64) void {
-        const center = self.worldToDot(center_x, center_y);
+    pub fn drawCircle(self: *BrailleCanvas, centerX: f64, centerY: f64, radius: f64) void {
+        const center = self.worldToDot(centerX, centerY);
         const cx = @as(i32, @intFromFloat(center.x));
         const cy = @as(i32, @intFromFloat(center.y));
         const r = @as(i32, @intFromFloat(radius));
@@ -284,28 +284,28 @@ pub const BrailleCanvas = struct {
             const px8 = cx + x;
             const py8 = cy - y;
 
-            if (px1 >= 0 and py1 >= 0 and px1 < @as(i32, @intCast(self.dot_width)) and py1 < @as(i32, @intCast(self.dot_height))) {
+            if (px1 >= 0 and py1 >= 0 and px1 < @as(i32, @intCast(self.dotWidth)) and py1 < @as(i32, @intCast(self.dotHeight))) {
                 self.setDot(@as(u32, @intCast(px1)), @as(u32, @intCast(py1)), true);
             }
-            if (px2 >= 0 and py2 >= 0 and px2 < @as(i32, @intCast(self.dot_width)) and py2 < @as(i32, @intCast(self.dot_height))) {
+            if (px2 >= 0 and py2 >= 0 and px2 < @as(i32, @intCast(self.dotWidth)) and py2 < @as(i32, @intCast(self.dotHeight))) {
                 self.setDot(@as(u32, @intCast(px2)), @as(u32, @intCast(py2)), true);
             }
-            if (px3 >= 0 and py3 >= 0 and px3 < @as(i32, @intCast(self.dot_width)) and py3 < @as(i32, @intCast(self.dot_height))) {
+            if (px3 >= 0 and py3 >= 0 and px3 < @as(i32, @intCast(self.dotWidth)) and py3 < @as(i32, @intCast(self.dotHeight))) {
                 self.setDot(@as(u32, @intCast(px3)), @as(u32, @intCast(py3)), true);
             }
-            if (px4 >= 0 and py4 >= 0 and px4 < @as(i32, @intCast(self.dot_width)) and py4 < @as(i32, @intCast(self.dot_height))) {
+            if (px4 >= 0 and py4 >= 0 and px4 < @as(i32, @intCast(self.dotWidth)) and py4 < @as(i32, @intCast(self.dotHeight))) {
                 self.setDot(@as(u32, @intCast(px4)), @as(u32, @intCast(py4)), true);
             }
-            if (px5 >= 0 and py5 >= 0 and px5 < @as(i32, @intCast(self.dot_width)) and py5 < @as(i32, @intCast(self.dot_height))) {
+            if (px5 >= 0 and py5 >= 0 and px5 < @as(i32, @intCast(self.dotWidth)) and py5 < @as(i32, @intCast(self.dotHeight))) {
                 self.setDot(@as(u32, @intCast(px5)), @as(u32, @intCast(py5)), true);
             }
-            if (px6 >= 0 and py6 >= 0 and px6 < @as(i32, @intCast(self.dot_width)) and py6 < @as(i32, @intCast(self.dot_height))) {
+            if (px6 >= 0 and py6 >= 0 and px6 < @as(i32, @intCast(self.dotWidth)) and py6 < @as(i32, @intCast(self.dotHeight))) {
                 self.setDot(@as(u32, @intCast(px6)), @as(u32, @intCast(py6)), true);
             }
-            if (px7 >= 0 and py7 >= 0 and px7 < @as(i32, @intCast(self.dot_width)) and py7 < @as(i32, @intCast(self.dot_height))) {
+            if (px7 >= 0 and py7 >= 0 and px7 < @as(i32, @intCast(self.dotWidth)) and py7 < @as(i32, @intCast(self.dotHeight))) {
                 self.setDot(@as(u32, @intCast(px7)), @as(u32, @intCast(py7)), true);
             }
-            if (px8 >= 0 and py8 >= 0 and px8 < @as(i32, @intCast(self.dot_width)) and py8 < @as(i32, @intCast(self.dot_height))) {
+            if (px8 >= 0 and py8 >= 0 and px8 < @as(i32, @intCast(self.dotWidth)) and py8 < @as(i32, @intCast(self.dotHeight))) {
                 self.setDot(@as(u32, @intCast(px8)), @as(u32, @intCast(py8)), true);
             }
 
@@ -415,7 +415,7 @@ pub const BrailleCanvas = struct {
 
     /// Get canvas dimensions in dots
     pub fn getDotDimensions(self: *const BrailleCanvas) struct { width: u32, height: u32 } {
-        return .{ .width = self.dot_width, .height = self.dot_height };
+        return .{ .width = self.dotWidth, .height = self.dotHeight };
     }
 };
 
@@ -439,27 +439,27 @@ pub const Braille = struct {
     }
 
     /// Draw a grid with Braille dots
-    pub fn drawGrid(canvas: *BrailleCanvas, spacing_x: f64, spacing_y: f64) void {
-        const bounds = canvas.world_bounds;
+    pub fn drawGrid(canvas: *BrailleCanvas, spacingX: f64, spacingY: f64) void {
+        const bounds = canvas.worldBounds;
 
         // Vertical lines
         var x = bounds.min_x;
         while (x <= bounds.max_x) {
             canvas.drawLine(x, bounds.min_y, x, bounds.max_y);
-            x += spacing_x;
+            x += spacingX;
         }
 
         // Horizontal lines
         var y = bounds.min_y;
         while (y <= bounds.max_y) {
             canvas.drawLine(bounds.min_x, y, bounds.max_x, y);
-            y += spacing_y;
+            y += spacingY;
         }
     }
 
     /// Draw axes
     pub fn drawAxes(canvas: *BrailleCanvas) void {
-        const bounds = canvas.world_bounds;
+        const bounds = canvas.worldBounds;
 
         // X-axis
         canvas.drawLine(bounds.min_x, 0, bounds.max_x, 0);
@@ -492,13 +492,13 @@ test "Braille canvas" {
     defer canvas.deinit();
 
     // Test dimensions
-    const char_dims = canvas.getCharDimensions();
-    try testing.expect(char_dims.width == 10);
-    try testing.expect(char_dims.height == 5);
+    const charDims = canvas.getCharDimensions();
+    try testing.expect(charDims.width == 10);
+    try testing.expect(charDims.height == 5);
 
-    const dot_dims = canvas.getDotDimensions();
-    try testing.expect(dot_dims.width == 20); // 10 * 2
-    try testing.expect(dot_dims.height == 20); // 5 * 4
+    const dotDims = canvas.getDotDimensions();
+    try testing.expect(dotDims.width == 20); // 10 * 2
+    try testing.expect(dotDims.height == 20); // 5 * 4
 
     // Test dot setting
     canvas.setDot(5, 5, true);
@@ -511,9 +511,9 @@ test "Braille canvas" {
     canvas.setWorldBounds(.{ .min_x = 0, .max_x = 100, .min_y = 0, .max_y = 100 });
     canvas.setDotWorld(50, 50); // Center point
 
-    const center_dot_x = dot_dims.width / 2;
-    const center_dot_y = dot_dims.height / 2;
-    try testing.expect(canvas.getDot(center_dot_x, center_dot_y));
+    const centerDotX = dotDims.width / 2;
+    const centerDotY = dotDims.height / 2;
+    try testing.expect(canvas.getDot(centerDotX, centerDotY));
 }
 
 test "Braille drawing primitives" {

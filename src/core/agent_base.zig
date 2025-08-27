@@ -14,9 +14,9 @@ const agent_main = @import("agent_main");
 
 /// Base agent structure with common functionality.
 /// Agents can embed this struct or use composition to inherit base functionality.
-pub const BaseAgent = struct {
+pub const Agent = struct {
     allocator: Allocator,
-    sessionManager: ?*session.SessionManager = null,
+    sessionManager: ?*session.Sessions = null,
     authClient: ?*auth.AuthClient = null,
     sessionStats: session.SessionStats = .{},
 
@@ -39,9 +39,9 @@ pub const BaseAgent = struct {
         }
 
         // Clean up auth client
-        if (self.authClient) |client_ptr| {
-            client_ptr.deinit();
-            self.allocator.destroy(client_ptr);
+        if (self.authClient) |clientPtr| {
+            clientPtr.deinit();
+            self.allocator.destroy(clientPtr);
         }
 
         // Agents should override this if they have additional cleanup
@@ -155,7 +155,7 @@ pub const BaseAgent = struct {
         const sessionsDir = try std.fmt.allocPrint(self.allocator, "{s}/.docz/sessions", .{exePath});
         defer self.allocator.free(sessionsDir);
 
-        self.sessionManager = try session.SessionManager.init(self.allocator, sessionsDir, false);
+        self.sessionManager = try session.Sessions.init(self.allocator, sessionsDir, false);
         self.sessionStats.lastSessionStart = std.time.timestamp();
         self.sessionStats.totalSessions += 1;
 
@@ -206,9 +206,9 @@ pub const BaseAgent = struct {
             return error.AlreadyInitialized;
         }
 
-        const client_ptr = try self.allocator.create(auth.AuthClient);
-        client_ptr.* = try auth.createClient(self.allocator);
-        self.authClient = client_ptr;
+        const clientPtr = try self.allocator.create(auth.AuthClient);
+        clientPtr.* = try auth.createClient(self.allocator);
+        self.authClient = clientPtr;
         self.sessionStats.authAttempts += 1;
 
         std.log.info("🔐 Authentication initialized", .{});
@@ -258,13 +258,13 @@ pub const BaseAgent = struct {
         const credentials = try auth.oauth.setupOAuth(self.allocator);
 
         // Create new auth client with the credentials
-        if (self.authClient) |client_ptr| {
-            client_ptr.deinit();
+        if (self.authClient) |clientPtr| {
+            clientPtr.deinit();
         }
 
-        const client_ptr = try self.allocator.create(auth.AuthClient);
-        client_ptr.* = auth.AuthClient.init(self.allocator, auth.AuthCredentials{ .oauth = credentials });
-        self.authClient = client_ptr;
+        const clientPtr = try self.allocator.create(auth.AuthClient);
+        clientPtr.* = auth.AuthClient.init(self.allocator, auth.AuthCredentials{ .oauth = credentials });
+        self.authClient = clientPtr;
 
         std.log.info("✅ OAuth setup completed successfully!", .{});
     }
@@ -331,7 +331,7 @@ pub const BaseAgent = struct {
 
     /// Get the current active theme
     /// This provides easy access to theme colors for agents
-    pub fn getCurrentTheme(self: *Self) ?*agent_main.theme_manager.ColorScheme {
+    pub fn getCurrentTheme(self: *Self) ?*agent_main.theme.ColorScheme {
         _ = self; // Not currently used but available for future per-agent theme customization
         return agent_main.getCurrentTheme();
     }
@@ -380,35 +380,35 @@ pub const AgentError = error{
 
 /// Session helpers for easy integration
 pub const SessionHelpers = struct {
-    /// Create and start a basic session
-    pub fn startBasicSession(allocator: Allocator, title: []const u8) !*session.SessionManager {
+    /// Create and start a session
+    pub fn startSession(allocator: Allocator, title: []const u8) !*session.Sessions {
         _ = title; // Not used in current implementation
         const sessionsDir = try std.fmt.allocPrint(allocator, "{s}/.docz/sessions", .{std.fs.selfExePathAlloc(allocator)});
         defer allocator.free(sessionsDir);
 
-        const sessMgr = try session.SessionManager.init(allocator, sessionsDir);
+        const sessMgr = try session.Sessions.init(allocator, sessionsDir);
         _ = try sessMgr.createSession(try session.generateSessionId(allocator));
         return sessMgr;
     }
 
     /// Create and start a rich session with TUI
-    pub fn startRichSession(allocator: Allocator, title: []const u8) !*session.SessionManager {
+    pub fn startRichSession(allocator: Allocator, title: []const u8) !*session.Sessions {
         _ = title; // Not used in current implementation
         const sessionsDir = try std.fmt.allocPrint(allocator, "{s}/.docz/sessions", .{std.fs.selfExePathAlloc(allocator)});
         defer allocator.free(sessionsDir);
 
-        const sessMgr = try session.SessionManager.init(allocator, sessionsDir);
+        const sessMgr = try session.Sessions.init(allocator, sessionsDir);
         _ = try sessMgr.createSession(try session.generateSessionId(allocator));
         return sessMgr;
     }
 
     /// Create and start a CLI-only session
-    pub fn startCliSession(allocator: Allocator, title: []const u8) !*session.SessionManager {
+    pub fn startCliSession(allocator: Allocator, title: []const u8) !*session.Sessions {
         _ = title; // Not used in current implementation
         const sessionsDir = try std.fmt.allocPrint(allocator, "{s}/.docz/sessions", .{std.fs.selfExePathAlloc(allocator)});
         defer allocator.free(sessionsDir);
 
-        const sessMgr = try session.SessionManager.init(allocator, sessionsDir);
+        const sessMgr = try session.Sessions.init(allocator, sessionsDir);
         _ = try sessMgr.createSession(try session.generateSessionId(allocator));
         return sessMgr;
     }
@@ -556,11 +556,11 @@ pub const TemplateProcessor = struct {
         } else if (std.mem.eql(u8, varName, "system_commands_enabled")) {
             return try allocator.dupe(u8, if (cfg.features.enableSystemCommands) "enabled" else "disabled");
         } else if (std.mem.eql(u8, varName, "max_input_size")) {
-            return try std.fmt.allocPrint(allocator, "{d}", .{cfg.limits.maxInputSize});
+            return try std.fmt.allocPrint(allocator, "{d}", .{cfg.limits.inputSizeMax});
         } else if (std.mem.eql(u8, varName, "max_output_size")) {
-            return try std.fmt.allocPrint(allocator, "{d}", .{cfg.limits.maxOutputSize});
+            return try std.fmt.allocPrint(allocator, "{d}", .{cfg.limits.outputSizeMax});
         } else if (std.mem.eql(u8, varName, "max_processing_time")) {
-            return try std.fmt.allocPrint(allocator, "{d}", .{cfg.limits.maxProcessingTimeMs});
+            return try std.fmt.allocPrint(allocator, "{d}", .{cfg.limits.processingTimeMsMax});
         } else if (std.mem.eql(u8, varName, "current_date")) {
             const now = std.time.timestamp();
             const epochSeconds = std.time.epoch.EpochSeconds{ .secs = @intCast(now) };

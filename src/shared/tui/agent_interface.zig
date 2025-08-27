@@ -45,7 +45,7 @@ const cli = @import("cli_shared");
 const term = @import("term_shared");
 const auth = @import("auth_shared");
 const render = @import("render_shared");
-const theme_manager = @import("../theme/mod.zig");
+const theme = @import("../theme/mod.zig");
 const shared = @import("../mod.zig");
 const network = shared.Network;
 const tools_mod = @import("tools_shared");
@@ -377,7 +377,7 @@ pub const Agent = struct {
     terminal_caps: term.caps.TermCaps,
 
     /// Theme manager
-    theme_mgr: *theme_manager.ThemeManager,
+    theme_mgr: *theme.Theme,
 
     /// Renderer system
     renderer: *tui.Renderer,
@@ -459,7 +459,7 @@ pub const Agent = struct {
         self.terminal_caps = term.caps.detectCaps(allocator);
 
         // Initialize theme manager
-        self.theme_mgr = try theme_manager.init(allocator);
+        self.theme_mgr = try theme.init(allocator);
         try self.applyTheme();
 
         // Initialize renderer with adaptive quality
@@ -658,10 +658,10 @@ pub const Agent = struct {
     fn applyTheme(self: *Self) !void {
         if (std.mem.eql(u8, self.config.ui_settings.theme, "auto")) {
             // Auto-detect system theme
-            try theme_manager.Quick.applySystemTheme(self.theme_mgr);
+            try theme.Quick.applySystemTheme(self.theme_mgr);
         } else {
             // Apply specified theme
-            try theme_manager.Quick.switchTheme(
+            try theme.Quick.switchTheme(
                 self.theme_mgr,
                 self.config.ui_settings.theme,
             );

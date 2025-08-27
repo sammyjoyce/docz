@@ -226,10 +226,10 @@ pub const Template = struct {
     /// Errors: File access errors or template processing errors
     pub fn loadSystemPrompt(self: *Template) ![]const u8 {
         // Path to the system prompt template file
-        const prompt_path = "agents/_template/system_prompt.txt";
+        const promptPath = "agents/_template/system_prompt.txt";
 
         // Attempt to open the system prompt file
-        const file = std.fs.cwd().openFile(prompt_path, .{}) catch |err| {
+        const file = std.fs.cwd().openFile(promptPath, .{}) catch |err| {
             switch (err) {
                 error.FileNotFound => {
                     // Return a default prompt if the template file doesn't exist
@@ -279,10 +279,10 @@ pub const Template = struct {
                 // Find the closing brace
                 if (std.mem.indexOf(u8, template[i..], "}")) |end| {
                     // Extract variable name
-                    const var_name = template[i + 1 .. i + end];
+                    const varName = template[i + 1 .. i + end];
 
                     // Get the replacement value
-                    const replacement = try self.getTemplateVariableValue(var_name);
+                    const replacement = try self.getTemplateVariableValue(varName);
                     defer self.allocator.free(replacement);
 
                     // Append the replacement
@@ -367,15 +367,15 @@ pub const Template = struct {
         // ============================================================================
         // Add your custom template variables here
 
-        else if (std.mem.eql(u8, varName, "custom_feature_enabled")) {
+        else if (std.mem.eql(u8, varName, "customFeatureEnabled")) {
             return try self.allocator.dupe(u8, if (self.config.customFeatureEnabled) "enabled" else "disabled");
-        } else if (std.mem.eql(u8, varName, "max_custom_operations")) {
+        } else if (std.mem.eql(u8, varName, "maxCustomOperations")) {
             return try std.fmt.allocPrint(self.allocator, "{d}", .{self.config.maxCustomOperations});
-        } else if (std.mem.eql(u8, varName, "custom_timeout_seconds")) {
+        } else if (std.mem.eql(u8, varName, "customTimeoutSeconds")) {
             return try std.fmt.allocPrint(self.allocator, "{d}", .{self.config.customTimeoutSeconds});
-        } else if (std.mem.eql(u8, varName, "custom_message")) {
+        } else if (std.mem.eql(u8, varName, "customMessage")) {
             return try self.allocator.dupe(u8, self.config.customMessage);
-        } else if (std.mem.eql(u8, varName, "operation_count")) {
+        } else if (std.mem.eql(u8, varName, "operationCount")) {
             return try std.fmt.allocPrint(self.allocator, "{d}", .{self.operationCount});
         }
 

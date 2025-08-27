@@ -13,21 +13,21 @@ const hyperlink = term_shared.ansi.hyperlink;
 /// Options for markdown rendering
 pub const MarkdownOptions = struct {
     /// Maximum width for text wrapping
-    max_width: usize = 80,
+    maxWidth: usize = 80,
     /// Enable terminal color output
-    color_enabled: bool = true,
+    colorEnabled: bool = true,
     /// Render quality tier (affects visual elements)
-    quality_tier: RenderMode = .standard,
+    qualityTier: RenderMode = .standard,
     /// Enable hyperlinks (OSC 8) when supported
-    enable_hyperlinks: bool = true,
+    enableHyperlinks: bool = true,
     /// Indentation for nested elements
-    indent_size: usize = 2,
+    indentSize: usize = 2,
     /// Enable syntax highlighting in code blocks
-    enable_syntax_highlight: bool = true,
+    enableSyntaxHighlight: bool = true,
     /// Show line numbers in code blocks
-    show_line_numbers: bool = false,
+    showLineNumbers: bool = false,
     /// Table alignment padding
-    table_padding: usize = 1,
+    tablePadding: usize = 1,
 };
 
 /// Markdown element types for parsing
@@ -83,19 +83,19 @@ const MarkdownElement = union(enum) {
 
 /// Color scheme for different markdown elements based on quality tier
 const ColorScheme = struct {
-    heading_colors: [6]ColorUnion,
-    bold_color: ?ColorUnion,
-    italic_color: ?ColorUnion,
-    code_bg: ?ColorUnion,
-    code_fg: ?ColorUnion,
-    link_color: ?ColorUnion,
-    blockquote_color: ?ColorUnion,
-    table_border_color: ?ColorUnion,
+    headingColors: [6]ColorUnion,
+    boldColor: ?ColorUnion,
+    italicColor: ?ColorUnion,
+    codeBg: ?ColorUnion,
+    codeFg: ?ColorUnion,
+    linkColor: ?ColorUnion,
+    blockquoteColor: ?ColorUnion,
+    tableBorderColor: ?ColorUnion,
 
     pub fn getForTier(tier: RenderMode) ColorScheme {
         return switch (tier) {
             .rich => ColorScheme{
-                .heading_colors = [_]ColorUnion{
+                .headingColors = [_]ColorUnion{
                     ColorUnion{ .rgb = RGBColor{ .r = 255, .g = 107, .b = 107 } }, // H1 - bright red
                     ColorUnion{ .rgb = RGBColor{ .r = 255, .g = 193, .b = 107 } }, // H2 - bright orange
                     ColorUnion{ .rgb = RGBColor{ .r = 255, .g = 255, .b = 107 } }, // H3 - bright yellow
@@ -103,16 +103,16 @@ const ColorScheme = struct {
                     ColorUnion{ .rgb = RGBColor{ .r = 107, .g = 193, .b = 255 } }, // H5 - bright cyan
                     ColorUnion{ .rgb = RGBColor{ .r = 193, .g = 107, .b = 255 } }, // H6 - bright purple
                 },
-                .bold_color = ColorUnion{ .basic = .bright_white },
-                .italic_color = ColorUnion{ .basic = .bright_cyan },
-                .code_bg = ColorUnion{ .rgb = RGBColor{ .r = 40, .g = 40, .b = 40 } },
-                .code_fg = ColorUnion{ .rgb = RGBColor{ .r = 107, .g = 255, .b = 107 } },
-                .link_color = ColorUnion{ .rgb = RGBColor{ .r = 107, .g = 193, .b = 255 } },
-                .blockquote_color = ColorUnion{ .basic = .bright_black },
-                .table_border_color = ColorUnion{ .basic = .bright_blue },
+                .boldColor = ColorUnion{ .basic = .bright_white },
+                .italicColor = ColorUnion{ .basic = .bright_cyan },
+                .codeBg = ColorUnion{ .rgb = RGBColor{ .r = 40, .g = 40, .b = 40 } },
+                .codeFg = ColorUnion{ .rgb = RGBColor{ .r = 107, .g = 255, .b = 107 } },
+                .linkColor = ColorUnion{ .rgb = RGBColor{ .r = 107, .g = 193, .b = 255 } },
+                .blockquoteColor = ColorUnion{ .basic = .bright_black },
+                .tableBorderColor = ColorUnion{ .basic = .bright_blue },
             },
             .standard => ColorScheme{
-                .heading_colors = [_]ColorUnion{
+                .headingColors = [_]ColorUnion{
                     ColorUnion{ .basic = .bright_red },
                     ColorUnion{ .basic = .bright_yellow },
                     ColorUnion{ .basic = .bright_green },
@@ -120,16 +120,16 @@ const ColorScheme = struct {
                     ColorUnion{ .basic = .bright_blue },
                     ColorUnion{ .basic = .bright_magenta },
                 },
-                .bold_color = ColorUnion{ .basic = .bright_white },
-                .italic_color = ColorUnion{ .basic = .cyan },
-                .code_bg = null,
-                .code_fg = ColorUnion{ .basic = .green },
-                .link_color = ColorUnion{ .basic = .blue },
-                .blockquote_color = ColorUnion{ .basic = .bright_black },
-                .table_border_color = ColorUnion{ .basic = .blue },
+                .boldColor = ColorUnion{ .basic = .bright_white },
+                .italicColor = ColorUnion{ .basic = .cyan },
+                .codeBg = null,
+                .codeFg = ColorUnion{ .basic = .green },
+                .linkColor = ColorUnion{ .basic = .blue },
+                .blockquoteColor = ColorUnion{ .basic = .bright_black },
+                .tableBorderColor = ColorUnion{ .basic = .blue },
             },
             .compatible => ColorScheme{
-                .heading_colors = [_]ColorUnion{
+                .headingColors = [_]ColorUnion{
                     ColorUnion{ .basic = .red },
                     ColorUnion{ .basic = .yellow },
                     ColorUnion{ .basic = .green },
@@ -137,16 +137,16 @@ const ColorScheme = struct {
                     ColorUnion{ .basic = .blue },
                     ColorUnion{ .basic = .magenta },
                 },
-                .bold_color = null,
-                .italic_color = null,
-                .code_bg = null,
-                .code_fg = null,
-                .link_color = null,
-                .blockquote_color = null,
-                .table_border_color = null,
+                .boldColor = null,
+                .italicColor = null,
+                .codeBg = null,
+                .codeFg = null,
+                .linkColor = null,
+                .blockquoteColor = null,
+                .tableBorderColor = null,
             },
             .minimal => ColorScheme{
-                .heading_colors = [_]ColorUnion{
+                .headingColors = [_]ColorUnion{
                     ColorUnion{ .basic = .white },
                     ColorUnion{ .basic = .white },
                     ColorUnion{ .basic = .white },
@@ -154,13 +154,13 @@ const ColorScheme = struct {
                     ColorUnion{ .basic = .white },
                     ColorUnion{ .basic = .white },
                 },
-                .bold_color = null,
-                .italic_color = null,
-                .code_bg = null,
-                .code_fg = null,
-                .link_color = null,
-                .blockquote_color = null,
-                .table_border_color = null,
+                .boldColor = null,
+                .italicColor = null,
+                .codeBg = null,
+                .codeFg = null,
+                .linkColor = null,
+                .blockquoteColor = null,
+                .tableBorderColor = null,
             },
         };
     }
@@ -170,7 +170,7 @@ const ColorScheme = struct {
 pub const Markdown = struct {
     allocator: std.mem.Allocator,
     options: MarkdownOptions,
-    color_scheme: ColorScheme,
+    colorScheme: ColorScheme,
     output: std.ArrayList(u8),
     capabilities: ?caps_mod.TermCaps,
 
@@ -178,7 +178,7 @@ pub const Markdown = struct {
         return Markdown{
             .allocator = allocator,
             .options = options,
-            .color_scheme = ColorScheme.getForTier(options.quality_tier),
+            .colorScheme = ColorScheme.getForTier(options.qualityTier),
             .output = std.ArrayList(u8).init(allocator),
             .capabilities = null, // Can be set if terminal capabilities are known
         };
@@ -321,13 +321,13 @@ pub const Markdown = struct {
     }
 
     fn renderHeading(self: *Markdown, level: u8, text: []const u8) !void {
-        const color = if (self.options.color_enabled)
+        const color = if (self.options.colorEnabled)
             self.color_scheme.heading_colors[level - 1]
         else
             null;
 
         // Render heading decoration based on quality tier
-        switch (self.options.quality_tier) {
+        switch (self.options.qualityTier) {
             .rich, .standard => {
                 // Add spacing
                 try self.output.append('\n');
@@ -470,14 +470,14 @@ pub const Markdown = struct {
     }
 
     fn renderBold(self: *Markdown, text: []const u8) !void {
-        if (self.options.color_enabled and self.color_scheme.bold_color != null) {
+        if (self.options.colorEnabled and self.color_scheme.bold_color != null) {
             try self.applyStyle(.bold, true);
             if (self.color_scheme.bold_color) |color| {
                 try self.applyColor(color);
             }
         }
         try self.output.appendSlice(text);
-        if (self.options.color_enabled and self.color_scheme.bold_color != null) {
+        if (self.options.colorEnabled and self.color_scheme.bold_color != null) {
             try self.resetStyle();
         }
     }
@@ -496,7 +496,7 @@ pub const Markdown = struct {
     }
 
     fn renderInlineCode(self: *Markdown, code: []const u8) !void {
-        if (self.options.color_enabled) {
+        if (self.options.colorEnabled) {
             if (self.color_scheme.code_bg) |bg| {
                 try self.applyBackgroundColor(bg);
             }
@@ -562,7 +562,7 @@ pub const Markdown = struct {
                 try self.output.append(' ');
             }
 
-            if (self.options.show_line_numbers) {
+            if (self.options.showLineNumbers) {
                 try std.fmt.format(self.output.writer(), "{d:>4} ", .{line_num});
                 line_num += 1;
             }
@@ -590,7 +590,7 @@ pub const Markdown = struct {
     }
 
     fn renderLink(self: *Markdown, text: []const u8, url: []const u8) !void {
-        if (self.options.enable_hyperlinks and self.capabilities != null and
+        if (self.options.enableHyperlinks and self.capabilities != null and
             self.capabilities.?.supportsHyperlinkOsc8)
         {
             const writer = self.output.writer();
@@ -622,7 +622,7 @@ pub const Markdown = struct {
 
     fn renderListItem(self: *Markdown, ordered: bool, level: usize, index: ?usize, text: []const u8) !void {
         // Indentation
-        for (0..level * self.options.indent_size) |_| {
+        for (0..level * self.options.indentSize) |_| {
             try self.output.append(' ');
         }
 
@@ -678,7 +678,7 @@ pub const Markdown = struct {
             .minimal => "---",
         };
 
-        const width = @min(rule.len, self.options.max_width);
+        const width = @min(rule.len, self.options.maxWidth);
         try self.output.appendSlice(rule[0..width]);
         try self.output.appendSlice("\n\n");
     }
@@ -696,7 +696,7 @@ pub const Markdown = struct {
             try self.output.append('|');
 
             // Add padding
-            for (0..self.options.table_padding) |_| {
+            for (0..self.options.tablePadding) |_| {
                 try self.output.append(' ');
             }
 
@@ -710,7 +710,7 @@ pub const Markdown = struct {
             }
 
             // Add padding
-            for (0..self.options.table_padding) |_| {
+            for (0..self.options.tablePadding) |_| {
                 try self.output.append(' ');
             }
         }

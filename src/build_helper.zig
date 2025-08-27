@@ -22,7 +22,7 @@ pub const AgentManifest = struct {
         homepage: ?[]const u8 = null,
     },
     interface: struct {
-        tier: []const u8, // "simple", "standard", or "advanced"
+        tier: []const u8, // "minimal", "standard", or "full"
         version: []const u8,
     },
     capabilities: struct {
@@ -141,7 +141,7 @@ pub fn validateManifest(manifest: AgentManifest) !void {
     }
 
     // Validate interface tier
-    const valid_tiers = [_][]const u8{ "simple", "standard", "advanced" };
+    const valid_tiers = [_][]const u8{ "minimal", "standard", "full" };
     var tier_valid = false;
     for (valid_tiers) |tier| {
         if (std.mem.eql(u8, manifest.interface.tier, tier)) {

@@ -1,7 +1,7 @@
-//! Advanced Dashboard System Module
+//! Dashboard System Module
 //!
-//! Provides sophisticated data visualization components leveraging modern terminal
-//! capabilities including Kitty graphics, Sixel, 24-bit color, and input.
+//! Provides data visualization components leveraging terminal capabilities 
+//! including Kitty graphics, Sixel, 24-bit color, and input.
 
 const std = @import("std");
 const chart_line_mod = @import("chart/line.zig");
@@ -23,7 +23,7 @@ pub const Heatmap = struct {
     }
 };
 
-pub const DataGrid = table_mod.Table;
+pub const Grid = table_mod.Table;
 
 pub const Gauge = struct {
     pub fn init(allocator: std.mem.Allocator) !@This() {
@@ -40,22 +40,22 @@ pub const KPICard = struct {
 };
 
 // Core engine placeholder
-pub const DashboardEngine = struct {
+pub const Engine = struct {
     pub const CapabilityTier = enum { high, rich, standard, minimal };
 
-    pub fn init(allocator: std.mem.Allocator) !*DashboardEngine {
+    pub fn init(allocator: std.mem.Allocator) !*Engine {
         _ = allocator;
-        const engine = try std.heap.page_allocator.create(DashboardEngine);
+        const engine = try std.heap.page_allocator.create(Engine);
         engine.* = .{};
         return engine;
     }
 
-    pub fn render(self: *DashboardEngine, widgets: []const *DashboardWidget) !void {
+    pub fn render(self: *Engine, widgets: []const *DashboardWidget) !void {
         _ = self;
         _ = widgets;
     }
 
-    pub fn deinit(self: *DashboardEngine) void {
+    pub fn deinit(self: *Engine) void {
         std.heap.page_allocator.destroy(self);
     }
 };
@@ -63,7 +63,7 @@ pub const DashboardEngine = struct {
 // Dashboard container
 pub const Dashboard = struct {
     allocator: std.mem.Allocator,
-    engine: *DashboardEngine,
+    engine: *Engine,
     widgets: std.ArrayList(*DashboardWidget),
     layout: Layout,
     theme: Theme,
@@ -89,7 +89,7 @@ pub const Dashboard = struct {
         };
     };
 
-    pub fn init(allocator: std.mem.Allocator, engine: *DashboardEngine) !*Dashboard {
+    pub fn init(allocator: std.mem.Allocator, engine: *Engine) !*Dashboard {
         const dashboard = try allocator.create(Dashboard);
         dashboard.* = .{
             .allocator = allocator,
@@ -144,7 +144,7 @@ pub const DashboardWidget = struct {
         line_chart: *LineChart,
         bar_chart: *BarChart,
         heatmap: *Heatmap,
-        data_grid: *DataGrid,
+        data_grid: *Grid,
         gauge: *Gauge,
         sparkline: *Sparkline,
         kpi_card: *KPICard,
@@ -265,13 +265,13 @@ pub const DashboardBuilder = struct {
 
     pub fn build(self: *@This()) !*Dashboard {
         _ = self; // TODO: Use self for configuration
-        return try Dashboard.init(std.heap.page_allocator, try DashboardEngine.init(std.heap.page_allocator));
+        return try Dashboard.init(std.heap.page_allocator, try Engine.init(std.heap.page_allocator));
     }
 };
 
 // Factory functions
 pub fn createDashboard(allocator: std.mem.Allocator) !*Dashboard {
-    const engine = try DashboardEngine.init(allocator);
+    const engine = try Engine.init(allocator);
     return try Dashboard.init(allocator, engine);
 }
 

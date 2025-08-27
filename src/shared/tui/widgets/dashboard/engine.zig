@@ -1,7 +1,7 @@
-//! Advanced Dashboard Engine
+//! Dashboard Engine
 //!
-//! Leverages extensive terminal capabilities from @src/term to provide sophisticated
-//! data visualization and interactive dashboard components with progressive enhancement.
+//! Leverages terminal capabilities from @src/term to provide data visualization 
+//! and interactive dashboard components with progressive enhancement.
 
 const std = @import("std");
 const term_shared = @import("term_shared");
@@ -15,7 +15,7 @@ const terminal_graphics = term_shared.unicode.image_renderer;
 const LineChart = @import("chart/line.zig").LineChart;
 const BarChart = @import("chart/bar.zig").BarChart;
 const Sparkline = @import("sparkline.zig").Sparkline;
-const DataGrid = @import("table.zig").Table;
+const Grid = @import("table.zig").Table;
 const Heatmap = @import("mod.zig").Heatmap;
 const Gauge = @import("mod.zig").Gauge;
 const KPICard = @import("mod.zig").KPICard;
@@ -30,12 +30,12 @@ const Point = @import("../../core/bounds.zig").Point;
 
 // Import terminal types
 const tui_mod = @import("../../mod.zig");
-const terminal = tui_mod.term.unified;
+const terminal = tui_mod.term.common;
 
 /// Main dashboard engine coordinating all dashboard functionality
 pub const DashboardEngine = struct {
     allocator: std.mem.Allocator,
-    renderer: *AdaptiveRenderer,
+    renderer: *Renderer,
     capability_tier: CapabilityTier,
     layout_engine: *LayoutEngine,
     widget_factory: *WidgetFactory,
@@ -81,7 +81,7 @@ pub const DashboardEngine = struct {
 
         engine.* = .{
             .allocator = allocator,
-            .renderer = try AdaptiveRenderer.init(allocator, tier),
+            .renderer = try Renderer.init(allocator, tier),
             .capability_tier = tier,
             .layout_engine = try LayoutEngine.init(allocator),
             .widget_factory = try WidgetFactory.init(allocator, tier),
@@ -483,7 +483,7 @@ pub const Compositor = struct {
 };
 
 /// Adaptive renderer that selects optimal rendering strategy
-pub const AdaptiveRenderer = struct {
+pub const Renderer = struct {
     allocator: std.mem.Allocator,
     strategy: RenderingStrategy,
     graphics_manager: ?*graphics_manager.GraphicsManager,
@@ -496,8 +496,8 @@ pub const AdaptiveRenderer = struct {
         ascii_art: AsciiRenderer,
     };
 
-    pub fn init(allocator: std.mem.Allocator, tier: DashboardEngine.CapabilityTier) !*AdaptiveRenderer {
-        const renderer = try allocator.create(AdaptiveRenderer);
+    pub fn init(allocator: std.mem.Allocator, tier: DashboardEngine.CapabilityTier) !*Renderer {
+        const renderer = try allocator.create(Renderer);
 
         renderer.* = .{
             .allocator = allocator,
@@ -517,7 +517,7 @@ pub const AdaptiveRenderer = struct {
         return renderer;
     }
 
-    pub fn deinit(self: *AdaptiveRenderer) void {
+    pub fn deinit(self: *Renderer) void {
         self.color_manager.deinit();
         if (self.graphics_manager) |gm| {
             self.allocator.destroy(gm);
@@ -734,7 +734,7 @@ pub const WidgetFactory = struct {
     }
 
     fn createDataGrid(self: *WidgetFactory) !*DashboardWidget {
-        const grid = try self.allocator.create(DataGrid);
+        const grid = try self.allocator.create(Grid);
 
         // Create sample headers
         const headers = try self.allocator.alloc([]const u8, 3);
@@ -743,30 +743,29 @@ pub const WidgetFactory = struct {
         headers[2] = try self.allocator.dupe(u8, "Status");
 
         // Create sample rows
-        const rows = try self.allocator.alloc([]DataGrid.Cell, 3);
+        const rows = try self.allocator.alloc([]Grid.Cell, 3);
         for (rows, 0..) |*row, i| {
-            row.* = try self.allocator.alloc(DataGrid.Cell, 3);
-            row.*[0] = DataGrid.Cell{
+            row.* = try self.allocator.alloc(Grid.Cell, 3);
+            row.*[0] = Grid.Cell{
                 .value = try std.fmt.allocPrint(self.allocator, "Item {}", .{i + 1}),
                 .style = null,
                 .copyable = true,
                 .editable = false,
             };
-            row.*[1] = DataGrid.Cell{
-                .value = try std.fmt.allocPrint(self.allocator, "{d:.1}", .{@as(f64, @floatFromInt(i)) * 15.5}),
-                .style = null,
-                .copyable = true,
-                .editable = true,
+            row.*[1] = Grid.Cell{
+                .value = try std.fmt.allocPrint(self.allocator, "{}", .{@as(f32, @floatFromInt(i)) * 10.5}),
+                .style = &.{},
+                .highlight = false,
             };
-            row.*[2] = DataGrid.Cell{
-                .value = if (i % 2 == 0) try self.allocator.dupe(u8, "Active") else try self.allocator.dupe(u8, "Inactive"),
-                .style = if (i % 2 == 0) &DataGrid.Cell.CellStyle{
+            row.*[2] = Grid.Cell{
+                .value = try self.allocator.dupe(u8, if (i % 2 == 0) "Active" else "Inactive"),
+                .style = if (i % 2 == 0) &Grid.Cell.CellStyle{
                     .foregroundColor = &terminal.Color.green,
                     .backgroundColor = null,
                     .bold = false,
                     .italic = false,
                     .alignment = .left,
-                } else &DataGrid.Cell.CellStyle{
+                } else &Grid.Cell.CellStyle{
                     .foregroundColor = &terminal.Color.red,
                     .backgroundColor = null,
                     .bold = false,
@@ -778,7 +777,7 @@ pub const WidgetFactory = struct {
             };
         }
 
-        const config = DataGrid.Config{
+        const config = Grid.Config{
             .title = try self.allocator.dupe(u8, "Data Grid"),
             .showHeaders = true,
             .showRowNumbers = true,
@@ -793,12 +792,12 @@ pub const WidgetFactory = struct {
             .pagination_size = 50,
         };
 
-        grid.* = DataGrid{
+        grid.* = Grid{
             .allocator = self.allocator,
             .headers = headers,
             .rows = rows,
             .config = config,
-            .state = DataGrid.TableState{
+            .state = Grid.TableState{
                 .cursor = Point.init(0, 0),
                 .selection = null,
                 .scrollOffset = Point.init(0, 0),

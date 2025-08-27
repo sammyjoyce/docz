@@ -7,7 +7,7 @@ const std = @import("std");
 const shared = @import("../mod.zig");
 const shared_components = shared.components;
 const term_shared = @import("term_shared");
-const unified = term_shared.unified;
+const terminal = term_shared.common;
 const terminal_bridge = @import("core/terminal_bridge.zig");
 const components = @import("../components/mod.zig");
 const notification = @import("notifications.zig");
@@ -162,7 +162,7 @@ pub const CliApp = struct {
     /// Run notification command
     fn runNotifyCommand(self: *Self, args: []const []const u8) !void {
         if (args.len < 2) {
-            try self.bridge.print("Usage: notify <type> <title> [message]\n", terminal_bridge.Styles.ERROR);
+            try self.bridge.print("Usage: notify <type> <title> [message]\n", terminal_bridge.Styles.errorStyle);
             return;
         }
 
@@ -203,13 +203,13 @@ pub const CliApp = struct {
             const validation = input.validateInput();
 
             try self.bridge.print("Email input: ", null);
-            try self.bridge.print("user", unified.Style{ .fg_color = unified.Colors.CYAN });
-            try self.bridge.print("@example.com", unified.Style{ .fg_color = unified.Colors.GREEN });
+            try self.bridge.print("user", terminal.Style{ .fg_color = terminal.Colors.CYAN });
+            try self.bridge.print("@example.com", terminal.Style{ .fg_color = terminal.Colors.GREEN });
 
             switch (validation) {
-                .valid => try self.bridge.print(" ✓", terminal_bridge.Styles.SUCCESS),
-                .invalid => |msg| try self.bridge.printf(" ✗ {s}", .{msg}, terminal_bridge.Styles.ERROR),
-                .warning => |msg| try self.bridge.printf(" ⚠ {s}", .{msg}, unified.Style{ .fg_color = unified.Colors.YELLOW }),
+                .valid => try self.bridge.print(" ✓", terminal_bridge.Styles.success),
+                .invalid => |msg| try self.bridge.printf(" ✗ {s}", .{msg}, terminal_bridge.Styles.errorStyle),
+                .warning => |msg| try self.bridge.printf(" ⚠ {s}", .{msg}, terminal.Style{ .fg_color = terminal.Colors.YELLOW }),
             }
             try self.bridge.print("\n", null);
         }
@@ -242,9 +242,9 @@ pub const CliApp = struct {
 
         for (features) |feature| {
             const status = if (feature.supported) "✅ Supported" else "❌ Not supported";
-            const color = if (feature.supported) unified.Colors.GREEN else unified.Colors.RED;
+            const color = if (feature.supported) terminal.Colors.GREEN else terminal.Colors.RED;
 
-            try self.bridge.printf("{s:<15} {s}\n", .{ feature.name, status }, unified.Style{ .fg_color = color });
+            try self.bridge.printf("{s:<15} {s}\n", .{ feature.name, status }, terminal.Style{ .fg_color = color });
         }
 
         try self.bridge.print("\n", null);

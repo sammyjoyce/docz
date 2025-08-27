@@ -9,7 +9,7 @@ const Allocator = std.mem.Allocator;
 // Import dependencies
 const state = @import("../state.zig");
 const layout = @import("../layout.zig");
-const theme_manager = @import("../../../../theme/mod.zig");
+const theme = @import("../../../../theme/mod.zig");
 const term_mod = @import("../../../../term/mod.zig");
 const render_mod = @import("../../../../render/mod.zig");
 
@@ -86,7 +86,7 @@ pub const ActivityLogRenderer = struct {
         writer: anytype,
         bounds: Rect,
         data_store: *const DashboardStore,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         // Get filtered log entries
         const entries = try self.getFilteredEntries(data_store);
@@ -157,7 +157,7 @@ pub const ActivityLogRenderer = struct {
         self: *const Self,
         writer: anytype,
         bounds: Rect,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         _ = self;
 
@@ -176,7 +176,7 @@ pub const ActivityLogRenderer = struct {
         writer: anytype,
         bounds: Rect,
         entry_count: usize,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         // Position cursor
         try term_mod.moveTo(writer, bounds.x + 2, bounds.y);
@@ -212,7 +212,7 @@ pub const ActivityLogRenderer = struct {
         writer: anytype,
         bounds: Rect,
         entries: []const ActivityLogEntry,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         // Calculate visible range
         const visible_count = @min(entries.len, bounds.height);
@@ -240,7 +240,7 @@ pub const ActivityLogRenderer = struct {
         y: i32,
         width: u16,
         entry: ActivityLogEntry,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         try term_mod.moveTo(writer, x, y);
 
@@ -340,7 +340,7 @@ pub const ActivityLogRenderer = struct {
         writer: anytype,
         bounds: Rect,
         total_entries: usize,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         const scrollbar_height = bounds.height - 3;
         const scrollbar_x = bounds.x + bounds.width - 1;

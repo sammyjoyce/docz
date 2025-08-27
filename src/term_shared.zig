@@ -14,7 +14,7 @@ pub const input = term.input;
 // Convenience re-exports used around the codebase
 pub const TermCaps = term.capabilities.TermCaps;
 pub const color = term.color; // Re-export color module for easier access
-pub const unified = struct {
+pub const common = struct {
     pub const Color = term.color.Color;
     pub const Style = term.color.Style;
 };

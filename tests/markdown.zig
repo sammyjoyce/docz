@@ -63,7 +63,7 @@ test "inlineFormatting" {
     try std.testing.expect(std.mem.indexOf(u8, result, "code") != null);
 }
 
-test "codeBlocks" {
+test "code_blocks" {
     const allocator = std.testing.allocator;
     
     const markdown = 
@@ -143,7 +143,7 @@ test "blockquotes" {
     try std.testing.expect(std.mem.indexOf(u8, result, "This is a quote") != null);
 }
 
-test "horizontalRules" {
+test "horizontal_rules" {
     const allocator = std.testing.allocator;
     
     const markdown = 
@@ -165,7 +165,7 @@ test "horizontalRules" {
     try std.testing.expect(std.mem.indexOf(u8, result, "Text below") != null);
 }
 
-test "qualityTiers" {
+test "quality_tiers" {
     const allocator = std.testing.allocator;
     
     const markdown = "# Test";

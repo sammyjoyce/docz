@@ -104,7 +104,7 @@
 //! ```zig
 //! // Automatic error handling with meaningful messages
 //! const parsed = RequestMapper.fromJson(allocator, params) catch
-//!     return tools_mod.ToolError.MalformedJSON;
+//!     return toolsMod.ToolError.MalformedJSON;
 //! ```
 //!
 //! ## COMPLEX EXAMPLE PATTERNS
@@ -231,7 +231,7 @@
 //! This pattern should be used for all new tools and is recommended for refactoring existing ones.
 
 const std = @import("std");
-const tools_mod = @import("tools_shared");
+const toolsMod = @import("tools_shared");
 const json_reflection = @import("json_reflection");
 
 /// Request structure for the example tool.
@@ -296,7 +296,7 @@ const Response = struct {
 /// 6. **Optional Fields**: Proper support for optional parameters
 /// 7. **Error Handling**: Clear error messages from JSON parsing
 /// 8. **Maintainability**: Changes to structure automatically reflected in JSON
-pub fn execute(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.ToolError!std.json.Value {
+pub fn execute(allocator: std.mem.Allocator, params: std.json.Value) toolsMod.ToolError!std.json.Value {
     // ============================================================================
     // JSON DESERIALIZATION USING COMPTIME REFLECTION
     // ============================================================================
@@ -306,7 +306,7 @@ pub fn execute(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.T
 
     // Deserialize JSON to struct - this replaces all manual field extraction
     const request = RequestMapper.fromJson(allocator, params) catch
-        return tools_mod.ToolError.MalformedJSON;
+        return toolsMod.ToolError.MalformedJSON;
 
     // ============================================================================
     // PARAMETER VALIDATION
@@ -314,13 +314,13 @@ pub fn execute(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.T
 
     // Validate required parameters
     if (request.message.len == 0) {
-        return tools_mod.ToolError.InvalidInput;
+        return toolsMod.ToolError.InvalidInput;
     }
 
     // Validate optional parameters
     const options = request.options orelse @as(@TypeOf(request.options.?), .{ .uppercase = false, .repeat = 1, .prefix = null });
     if (options.repeat == 0 or options.repeat > 10) {
-        return tools_mod.ToolError.InvalidInput;
+        return toolsMod.ToolError.InvalidInput;
     }
 
     // ============================================================================
@@ -336,7 +336,7 @@ pub fn execute(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.T
 
     // Build the result
     var result_builder = std.ArrayList(u8).initCapacity(allocator, total_capacity) catch
-        return tools_mod.ToolError.OutOfMemory;
+        return toolsMod.ToolError.OutOfMemory;
     defer result_builder.deinit(allocator);
 
     var i: u32 = 0;
@@ -384,7 +384,7 @@ pub fn execute(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.T
 
     // Serialize struct to JSON value - this replaces manual ObjectMap building
     const json_response = ResponseMapper.toJsonValue(allocator, response) catch
-        return tools_mod.ToolError.ExecutionFailed;
+        return toolsMod.ToolError.ExecutionFailed;
 
     return json_response;
 }
@@ -466,14 +466,14 @@ const ComplexResponse = struct {
 /// - Enums
 /// - Arbitrary JSON values
 /// - Complex validation
-pub fn complexExecute(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.ToolError!std.json.Value {
+pub fn complexExecute(allocator: std.mem.Allocator, params: std.json.Value) toolsMod.ToolError!std.json.Value {
     // ============================================================================
     // COMPLEX DESERIALIZATION
     // ============================================================================
 
     const ComplexMapper = json_reflection.generateJsonMapper(ComplexRequest);
     const parsed = ComplexMapper.fromJson(allocator, params) catch
-        return tools_mod.ToolError.MalformedJSON;
+        return toolsMod.ToolError.MalformedJSON;
     defer parsed.deinit();
 
     const request = parsed.value;
@@ -483,11 +483,11 @@ pub fn complexExecute(allocator: std.mem.Allocator, params: std.json.Value) tool
     // ============================================================================
 
     if (request.messages.len == 0) {
-        return tools_mod.ToolError.InvalidInput;
+        return toolsMod.ToolError.InvalidInput;
     }
 
     if (request.messages.len > 100) {
-        return tools_mod.ToolError.InvalidInput; // Reasonable limit
+        return toolsMod.ToolError.InvalidInput; // Reasonable limit
     }
 
     // ============================================================================
@@ -499,7 +499,7 @@ pub fn complexExecute(allocator: std.mem.Allocator, params: std.json.Value) tool
 
     // Process each message
     var results = std.ArrayList(ComplexResponse.ResultItem).initCapacity(allocator, request.messages.len) catch
-        return tools_mod.ToolError.OutOfMemory;
+        return toolsMod.ToolError.OutOfMemory;
     defer results.deinit();
 
     var successful_count: usize = 0;
@@ -581,7 +581,7 @@ pub fn complexExecute(allocator: std.mem.Allocator, params: std.json.Value) tool
 
     const ResponseMapper = json_reflection.generateJsonMapper(ComplexResponse);
     const json_response = ResponseMapper.toJsonValue(allocator, complex_response) catch
-        return tools_mod.ToolError.ExecutionFailed;
+        return toolsMod.ToolError.ExecutionFailed;
 
     return json_response;
 }

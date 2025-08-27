@@ -6,7 +6,7 @@ const render = @import("mod.zig");
 /// memory and terminal targets. Higher-level event pumps can build on this.
 pub const Scheduler = struct {
     allocator: std.mem.Allocator,
-    max_fps: u16 = 60,
+    maxFps: u16 = 60,
 
     pub fn init(allocator: std.mem.Allocator) Scheduler {
         return .{ .allocator = allocator };

@@ -41,7 +41,7 @@ pub const SetupWorkflow = struct {
         try steps.append(WorkflowStep.Step{
             .name = "System Requirements Check",
             .description = "Verifying system compatibility and requirements",
-            .execute_fn = checkSystemRequirements,
+            .executeFn = checkSystemRequirements,
             .required = true,
             .timeout_ms = 30000,
             .retry_count = 0,
@@ -52,7 +52,7 @@ pub const SetupWorkflow = struct {
             try steps.append(WorkflowStep.Step{
                 .name = "Create Configuration Directory",
                 .description = "Setting up configuration directory structure",
-                .execute_fn = createConfigDirectory,
+                .executeFn = createConfigDirectory,
                 .required = true,
                 .timeout_ms = 15000,
                 .retry_count = 3,
@@ -64,7 +64,7 @@ pub const SetupWorkflow = struct {
             try steps.append(WorkflowStep.Step{
                 .name = "Dependency Check",
                 .description = "Verifying required dependencies and tools",
-                .execute_fn = checkDependencies,
+                .executeFn = checkDependencies,
                 .required = true,
                 .timeout_ms = 45000,
                 .retry_count = 0,
@@ -75,7 +75,7 @@ pub const SetupWorkflow = struct {
         try steps.append(WorkflowStep.Step{
             .name = "Initialize Configuration",
             .description = "Creating default configuration files",
-            .execute_fn = initializeConfig,
+            .executeFn = initializeConfig,
             .required = true,
             .timeout_ms = 30000,
             .retry_count = 3,
@@ -86,7 +86,7 @@ pub const SetupWorkflow = struct {
             try steps.append(WorkflowStep.Step{
                 .name = "Setup Themes",
                 .description = "Configuring default themes and preferences",
-                .execute_fn = setupThemes,
+                .executeFn = setupThemes,
                 .required = true,
                 .timeout_ms = 15000,
                 .retry_count = 3,
@@ -98,7 +98,7 @@ pub const SetupWorkflow = struct {
             try steps.append(WorkflowStep.Step{
                 .name = "Setup Authentication",
                 .description = "Configuring authentication settings",
-                .execute_fn = setupAuthentication,
+                .executeFn = setupAuthentication,
                 .required = true,
                 .timeout_ms = 60000,
                 .retry_count = 3,
@@ -109,7 +109,7 @@ pub const SetupWorkflow = struct {
         try steps.append(WorkflowStep.Step{
             .name = "Verify Installation",
             .description = "Verifying complete setup and configuration",
-            .execute_fn = verifyInstallation,
+            .executeFn = verifyInstallation,
             .required = true,
             .timeout_ms = 30000,
             .retry_count = 0,

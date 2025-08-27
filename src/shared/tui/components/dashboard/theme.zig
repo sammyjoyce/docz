@@ -2,7 +2,7 @@
 //! Provides theme support for the adaptive dashboard using the centralized theme system
 
 const std = @import("std");
-const theme_manager = @import("../../../theme/mod.zig");
+const theme = @import("../../../theme/mod.zig");
 const term_caps = @import("../../../term/mod.zig");
 
 /// Dashboard-specific theme colors and styles
@@ -10,8 +10,8 @@ pub const DashboardTheme = struct {
     allocator: std.mem.Allocator,
 
     // Background colors
-    background: theme_manager.ColorScheme.Color,
-    surface: theme_manager.ColorScheme.Color,
+    background: theme.ColorScheme.Color,
+    surface: theme.ColorScheme.Color,
 
     // Text colors
     title_style: TextStyle,
@@ -28,7 +28,7 @@ pub const DashboardTheme = struct {
 
     /// Text style combining color and attributes
     pub const TextStyle = struct {
-        color: theme_manager.ColorScheme.Color,
+        color: theme.ColorScheme.Color,
         bold: bool = false,
         italic: bool = false,
         underline: bool = false,
@@ -36,14 +36,14 @@ pub const DashboardTheme = struct {
 
     /// Border style definition
     pub const BorderStyle = struct {
-        color: theme_manager.ColorScheme.Color,
+        color: theme.ColorScheme.Color,
         style: []const u8 = "─│┌┐└┘├┤┬┴┼",
     };
 
     /// Load theme by name with render level adaptation
     pub fn load(allocator: std.mem.Allocator, theme_name: []const u8, render_level: anytype) !DashboardTheme {
         // Get the centralized theme manager
-        const manager = try theme_manager.init(allocator);
+        const manager = try theme.init(allocator);
         defer manager.deinit();
 
         // Switch to the requested theme

@@ -8,19 +8,19 @@ pub fn sparkline(ctx: *render.Context, rect: ui.layout.Rect, values: []const f32
     if (values.len == 0) return;
     const blocks = [_]u21{ '▁', '▂', '▃', '▄', '▅', '▆', '▇', '█' };
     const y: i32 = rect.y;
-    const max_cols: usize = @intCast(rect.w);
-    const step: f32 = @as(f32, @floatFromInt(values.len)) / @as(f32, @floatFromInt(max_cols));
+    const colsMax: usize = @intCast(rect.w);
+    const step: f32 = @as(f32, @floatFromInt(values.len)) / @as(f32, @floatFromInt(colsMax));
     var x: usize = 0;
-    while (x < max_cols) : (x += 1) {
+    while (x < colsMax) : (x += 1) {
         const idxf = @as(f32, @floatFromInt(x)) * step;
         const li = @min(@as(usize, @intFromFloat(idxf)), if (values.len == 0) 0 else values.len - 1);
-        const v = clamp01(values[li]);
+        const v = clampZeroOne(values[li]);
         const bi: usize = @intCast(@max(0, @min(blocks.len - 1, @as(i32, @intFromFloat(@floor(v * @as(f32, @floatFromInt(blocks.len))))))));
         try ctx.putChar(rect.x + @as(i32, @intCast(x)), y, blocks[bi]);
     }
 }
 
-fn clamp01(v: f32) f32 {
+fn clampZeroOne(v: f32) f32 {
     return if (v < 0.0) 0.0 else if (v > 1.0) 1.0 else v;
 }
 

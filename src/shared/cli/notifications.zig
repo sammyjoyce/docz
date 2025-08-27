@@ -20,10 +20,10 @@ const presenters = @import("presenters/mod.zig");
 
 // Re-export base types for convenience (alias to shared components)
 pub const NotificationType = components.NotificationType;
-pub const NotificationConfig = components.NotificationConfiguration;
+pub const NotificationConfig = components.NotificationConfig;
 pub const NotificationAction = components.NotificationAction;
 pub const BaseNotification = components.Notification;
-pub const NotificationUtils = components.NotificationUtils;
+pub const NotificationUtils = components.Util;
 pub const ColorScheme = components.ColorScheme;
 pub const SoundPattern = components.SoundPattern;
 
@@ -389,14 +389,14 @@ pub const Notification = struct {
         const vertical_char = if (box_style.use_unicode_borders) "│" else "|";
 
         // Word wrapping (can be improved)
-        const max_message_width = content_width - 2; // Account for padding
+        const messageWidthMax = content_width - 2; // Account for padding
         var remaining = message;
 
         while (remaining.len > 0) {
-            const line_end = if (remaining.len <= max_message_width)
+            const line_end = if (remaining.len <= messageWidthMax)
                 remaining.len
             else
-                max_message_width;
+                messageWidthMax;
 
             const line = remaining[0..line_end];
             remaining = remaining[line_end..];
@@ -406,8 +406,8 @@ pub const Notification = struct {
             try self.bridge.print(line, text_style);
 
             // Padding to fill the line
-            if (line.len < max_message_width) {
-                for (0..max_message_width - line.len) |_| {
+            if (line.len < messageWidthMax) {
+                for (0..messageWidthMax - line.len) |_| {
                     try self.bridge.print(" ", null);
                 }
             }
@@ -475,7 +475,7 @@ pub const Notification = struct {
                     }
                 },
                 .execute_command => |cmd| {
-                    try self.bridge.printf("⚡ {s} -> {s}", .{ action.label, cmd }, terminal_bridge.Styles.WARNING);
+                    try self.bridge.printf("⚡ {s} -> {s}", .{ action.label, cmd }, terminal_bridge.Styles.warning);
                 },
                 .callback => {
                     try self.bridge.printf("🔘 {s}", .{action.label}, terminal_bridge.Styles.HIGHLIGHT);
@@ -547,8 +547,8 @@ pub const Notification = struct {
             .bottom => .{ "+-", "-+" },
         };
 
-        const max_len = if (message) |msg| @max(title.len, msg.len) else title.len;
-        const width = @max(max_len + 4, 20);
+        const lenMax = if (message) |msg| @max(title.len, msg.len) else title.len;
+        const width = @max(lenMax + 4, 20);
 
         try style.apply(self.bridge.writer(), caps);
         try self.bridge.print(border_chars[0], null);

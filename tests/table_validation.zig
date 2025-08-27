@@ -165,7 +165,7 @@ const table = @import("agents/markdown/lib/table.zig");
     try expectEqualSlices(u8, "NYC", testTable.rows[0][2]);
 }
 
- test "tableRepairFillsEmptyCells" {
+ test "table_repair_fills_empty_cells" {
     // Create a table with empty cells
     const headers = [_][]const u8{ "Name", "Age", "City" };
     const row1 = [_][]const u8{ "John", "", "NYC" }; // Empty age
@@ -214,7 +214,7 @@ const table = @import("agents/markdown/lib/table.zig");
     try expectEqual(table.Alignment.left, testTable.alignments[2]); // Should default to left
 }
 
- test "tableValidateAndRepairCombined" {
+ test "table_validate_and_repair_combined" {
     // Create a problematic table
     const headers = [_][]const u8{ "  Name  ", "Age", "City" };
     const row1 = [_][]const u8{ " John ", "25" }; // Missing city, extra whitespace

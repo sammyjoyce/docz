@@ -38,8 +38,8 @@ pub fn main() !void {
     // Demo 3: Workflow execution
     try stdout.print("Demo 3: Workflow execution\n", .{});
     try stdout.print("Command: workflow auth-setup\n", .{});
-    const workflow_result = try app.run(&[_][]const u8{ "workflow", "auth-setup" });
-    if (workflow_result == 0) {
+    const workflowResult = try app.run(&[_][]const u8{ "workflow", "auth-setup" });
+    if (workflowResult == 0) {
         try stdout.print("✓ Workflow executed successfully\n\n", .{});
     }
 

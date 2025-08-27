@@ -23,7 +23,7 @@ pub const SessionType = enum {
     batch,
     temporary,
     shared,
-    read_only,
+    readOnly,
 };
 
 /// Launch options for agent execution

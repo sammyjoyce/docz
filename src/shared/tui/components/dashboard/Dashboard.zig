@@ -3,7 +3,7 @@
 
 const std = @import("std");
 const term_mod = @import("../../term");
-const term = term_mod.unified;
+const term = term_mod.common;
 const graphics_manager = term_mod.graphics_manager;
 const caps = term_mod.caps;
 

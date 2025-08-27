@@ -7,7 +7,7 @@ const renderer_mod = @import("../../core/renderer.zig");
 const bounds_mod = @import("../../core/bounds.zig");
 const events_mod = @import("../../core/events.zig");
 const tui_mod = @import("../../mod.zig");
-const terminal_mod = tui_mod.term.unified;
+const terminal_mod = tui_mod.term.common;
 
 const Renderer = renderer_mod.Renderer;
 const Render = renderer_mod.Render;
@@ -60,8 +60,8 @@ pub const Table = struct {
         editable: bool = false,
 
         pub const CellStyle = struct {
-            foregroundColor: ?tui_mod.term.unified.Color = null,
-            backgroundColor: ?tui_mod.term.unified.Color = null,
+            foregroundColor: ?tui_mod.term.common.Color = null,
+            backgroundColor: ?tui_mod.term.common.Color = null,
             bold: bool = false,
             italic: bool = false,
             alignment: Alignment = .left,

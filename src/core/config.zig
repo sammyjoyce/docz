@@ -72,10 +72,10 @@ pub fn validateAgentConfig(config: AgentConfig) !void {
     }
 
     // Validate model configuration
-    if (config.model.defaultModel.len == 0) {
+    if (config.model.modelDefault.len == 0) {
         return error.InvalidConfigFormat;
     }
-    if (config.model.maxTokens == 0) {
+    if (config.model.tokensMax == 0) {
         return error.InvalidConfigFormat;
     }
     if (config.model.temperature < 0.0 or config.model.temperature > 2.0) {
@@ -83,21 +83,21 @@ pub fn validateAgentConfig(config: AgentConfig) !void {
     }
 
     // Validate resource limits
-    if (config.limits.maxInputSize == 0) {
+    if (config.limits.inputSizeMax == 0) {
         return error.InvalidConfigFormat;
     }
-    if (config.limits.maxOutputSize == 0) {
+    if (config.limits.outputSizeMax == 0) {
         return error.InvalidConfigFormat;
     }
-    if (config.limits.maxProcessingTimeMs == 0) {
+    if (config.limits.processingTimeMsMax == 0) {
         return error.InvalidConfigFormat;
     }
 
     // Validate defaults
-    if (config.defaults.maxConcurrentOperations == 0) {
+    if (config.defaults.concurrentOperationsMax == 0) {
         return error.InvalidConfigFormat;
     }
-    if (config.defaults.defaultTimeoutMs == 0) {
+    if (config.defaults.timeoutMsDefault == 0) {
         return error.InvalidConfigFormat;
     }
 }
@@ -141,7 +141,7 @@ pub fn getAgentConfigPath(allocator: Allocator, agentName: []const u8) ![]const 
 /// Standard agent configuration structure that all agents should implement
 /// Agents can extend this with their own specific configuration fields
 pub const AgentConfig = struct {
-    /// Basic agent information
+    /// Agent information
     agentInfo: struct {
         name: []const u8,
         version: []const u8 = "1.0.0",
@@ -153,8 +153,8 @@ pub const AgentConfig = struct {
 
     /// Default settings that apply to most agents
     defaults: struct {
-        maxConcurrentOperations: u32 = 10,
-        defaultTimeoutMs: u32 = 30000,
+        concurrentOperationsMax: u32 = 10,
+        timeoutMsDefault: u32 = 30000,
         enableDebugLogging: bool = false,
         enableVerboseOutput: bool = false,
     } = .{},
@@ -169,15 +169,15 @@ pub const AgentConfig = struct {
 
     /// Resource limits
     limits: struct {
-        maxInputSize: u64 = 1048576, // 1MB
-        maxOutputSize: u64 = 1048576, // 1MB
-        maxProcessingTimeMs: u32 = 60000, // 1 minute
+        inputSizeMax: u64 = 1048576, // 1MB
+        outputSizeMax: u64 = 1048576, // 1MB
+        processingTimeMsMax: u32 = 60000, // 1 minute
     } = .{},
 
     /// Model configuration
     model: struct {
-        defaultModel: []const u8 = "claude-3-sonnet-20240229",
-        maxTokens: u32 = 4096,
+        modelDefault: []const u8 = "claude-3-sonnet-20240229",
+        tokensMax: u32 = 4096,
         temperature: f32 = 0.7,
         streamResponses: bool = true,
     } = .{},
@@ -211,8 +211,8 @@ pub fn generateConfigTemplate(allocator: Allocator, agentName: []const u8, descr
         \\        }},
         \\
         \\        .defaults = .{{
-        \\            .maxConcurrentOperations = 10,
-        \\            .defaultTimeoutMs = 30000,
+        \\            .concurrentOperationsMax = 10,
+        \\            .timeoutMsDefault = 30000,
         \\            .enableDebugLogging = false,
         \\            .enableVerboseOutput = false,
         \\        }},
@@ -225,14 +225,14 @@ pub fn generateConfigTemplate(allocator: Allocator, agentName: []const u8, descr
         \\        }},
         \\
         \\        .limits = .{{
-        \\            .maxInputSize = 1048576, // 1MB
-        \\            .maxOutputSize = 1048576, // 1MB
-        \\            .maxProcessingTimeMs = 60000,
+        \\            .inputSizeMax = 1048576, // 1MB
+        \\            .outputSizeMax = 1048576, // 1MB
+        \\            .processingTimeMsMax = 60000,
         \\        }},
         \\
         \\        .model = .{{
-        \\            .defaultModel = "claude-3-sonnet-20240229",
-        \\            .maxTokens = 4096,
+        \\            .modelDefault = "claude-3-sonnet-20240229",
+        \\            .tokensMax = 4096,
         \\            .temperature = 0.7,
         \\            .streamResponses = true,
         \\        }},

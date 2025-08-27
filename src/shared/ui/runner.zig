@@ -28,7 +28,7 @@ pub fn renderToMemory(
     return spans;
 }
 
-/// Render a Component to the terminal via render.TermRenderer. Performs a basic
+/// Render a Component to the terminal via render.TermRenderer. Performs a
 /// measure+layout pass and then delegates paint to the renderer.
 pub fn renderToTerminal(
     allocator: std.mem.Allocator,

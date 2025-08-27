@@ -23,11 +23,11 @@ pub const Message = struct {
 };
 
 // OAuth configuration constants
-pub const oauth_client_id = "9d1c250a-e61b-44d9-88ed-5944d1962f5e";
-pub const oauth_authorization_url = "https://claude.ai/oauth/authorize";
-pub const oauth_token_endpoint = "https://console.anthropic.com/v1/oauth/token";
-pub const oauth_redirect_uri = "https://console.anthropic.com/oauth/code/callback";
-pub const oauth_scopes = "org:create_api_key user:profile user:inference";
+pub const oauthClientId = "9d1c250a-e61b-44d9-88ed-5944d1962f5e";
+pub const oauthAuthorizationUrl = "https://claude.ai/oauth/authorize";
+pub const oauthTokenEndpoint = "https://console.anthropic.com/v1/oauth/token";
+pub const oauthRedirectUri = "https://console.anthropic.com/oauth/code/callback";
+pub const oauthScopes = "org:create_api_key user:profile user:inference";
 
 // OAuth credentials stored to disk
 pub const Credentials = struct {
@@ -77,7 +77,7 @@ pub const OAuthProvider = struct {
     redirect_uri: []const u8,
     scopes: []const []const u8,
 
-    pub fn buildAuthURL(self: OAuthProvider, allocator: std.mem.Allocator, pkce_params: Pkce) ![]u8 {
+    pub fn buildAuthUrl(self: OAuthProvider, allocator: std.mem.Allocator, pkce_params: Pkce) ![]u8 {
         const scopes_joined = try std.mem.join(allocator, " ", self.scopes);
         defer allocator.free(scopes_joined);
 
@@ -179,7 +179,7 @@ pub const CostCalc = struct {
     }
 
     /// Get model pricing information for display
-    pub fn getModelPricingInfo(self: CostCalc, model: []const u8) ModelRates {
+    pub fn getModelRates(self: CostCalc, model: []const u8) ModelRates {
         _ = self; // Cost calculator itself doesn't affect pricing rates
         return getModelPricing(model);
     }
@@ -290,12 +290,12 @@ pub const AnthropicClient = struct {
                 // Check again in case another thread refreshed while we waited
                 if (!oauth_creds.willExpireSoon(300)) return;
 
-                if (globalRefreshState.in_progress) {
+                if (globalRefreshState.inProgress) {
                     return Error.RefreshInProgress;
                 }
 
-                globalRefreshState.in_progress = true;
-                defer globalRefreshState.in_progress = false;
+                globalRefreshState.inProgress = true;
+                defer globalRefreshState.inProgress = false;
 
                 // Perform the refresh
                 const new_creds = refreshTokens(self.allocator, oauth_creds.refreshToken) catch |err| {
@@ -609,12 +609,12 @@ const Chunk = struct {
 
 /// Configuration for large payload processing
 const LargePayload = struct {
-    large_chunk_threshold: usize = 1024 * 1024, // 1MB threshold for large chunk processing
-    streaming_buffer_size: usize = 64 * 1024, // 64KB buffer for streaming large chunks
-    max_accumulated_size: usize = 16 * 1024 * 1024, // 16MB max accumulated data before streaming
-    progress_reporting_interval: usize = 1024 * 1024, // Report progress every 1MB
-    adaptive_buffer_min: usize = 8 * 1024, // Minimum adaptive buffer size: 8KB
-    adaptive_buffer_max: usize = 512 * 1024, // Maximum adaptive buffer size: 512KB
+    largeChunkThreshold: usize = 1024 * 1024, // 1MB threshold for large chunk processing
+    streamingBufferSize: usize = 64 * 1024, // 64KB buffer for streaming large chunks
+    maxAccumulatedSize: usize = 16 * 1024 * 1024, // 16MB max accumulated data before streaming
+    progressReportingInterval: usize = 1024 * 1024, // Report progress every 1MB
+    adaptiveBufferMin: usize = 8 * 1024, // Minimum adaptive buffer size: 8KB
+    adaptiveBufferMax: usize = 512 * 1024, // Maximum adaptive buffer size: 512KB
 };
 
 /// Process chunked Server-Sent Events with large payload optimization and streaming processing
@@ -632,10 +632,10 @@ fn processChunkedStreamingResponse(allocator: std.mem.Allocator, reader: *std.Io
     try event_data.ensureTotalCapacity(16384); // 16KB initial capacity
     try chunk_buffer.ensureTotalCapacity(config.adaptive_buffer_min);
 
-    var recovery_attempts: u8 = 0;
-    const max_recovery_attempts = 3;
-    var total_bytes_processed: usize = 0;
-    var large_chunks_processed: u32 = 0;
+    var recoveryAttempts: u8 = 0;
+    const maxRecoveryAttempts = 3;
+    var totalBytesProcessed: usize = 0;
+    var largeChunksProcessed: u32 = 0;
 
     while (true) {
         if (chunk_state.reading_size) {
@@ -646,13 +646,13 @@ fn processChunkedStreamingResponse(allocator: std.mem.Allocator, reader: *std.Io
                     if (event_data.items.len > 0) {
                         callback(event_data.items);
                     }
-                    std.log.debug("Chunked processing complete: {} bytes total, {} large chunks", .{ total_bytes_processed, large_chunks_processed });
+                    std.log.debug("Chunked processing complete: {} bytes total, {} large chunks", .{ totalBytesProcessed, largeChunksProcessed });
                     return; // Normal end of stream
                 },
                 error.StreamTooLong => {
                     std.log.warn("Chunked response contains size line too long for buffer, attempting graceful recovery", .{});
-                    recovery_attempts += 1;
-                    if (recovery_attempts >= max_recovery_attempts) {
+                    recoveryAttempts += 1;
+                    if (recoveryAttempts >= maxRecoveryAttempts) {
                         std.log.err("Too many recovery attempts, falling back to non-chunked processing", .{});
                         // Fallback: try to process remaining data as regular SSE stream
                         return processStreamingResponse(allocator, reader, callback) catch Error.MalformedChunk;
@@ -671,10 +671,10 @@ fn processChunkedStreamingResponse(allocator: std.mem.Allocator, reader: *std.Io
             }
 
             // Parse chunk size (hex) with optional chunk extensions and error recovery
-            const chunk_info = parseChunkSize(size_line) catch |err| {
+            const chunkInfo = parseChunkSize(size_line) catch |err| {
                 std.log.warn("Failed to parse chunk size '{s}': {}, attempting recovery", .{ size_line, err });
-                recovery_attempts += 1;
-                if (recovery_attempts >= max_recovery_attempts) {
+                recoveryAttempts += 1;
+                if (recoveryAttempts >= maxRecoveryAttempts) {
                     std.log.err("Too many chunk parse errors, falling back to non-chunked processing", .{});
                     return processStreamingResponse(allocator, reader, callback) catch Error.ChunkParseError;
                 }
@@ -682,14 +682,14 @@ fn processChunkedStreamingResponse(allocator: std.mem.Allocator, reader: *std.Io
                 continue;
             };
 
-            chunk_state.size = chunk_info.size;
-            chunk_state.extensions = chunk_info.extensions;
-            recovery_attempts = 0; // Reset on successful parse
+            chunk_state.size = chunkInfo.size;
+            chunk_state.extensions = chunkInfo.extensions;
+            recoveryAttempts = 0; // Reset on successful parse
 
-            // Enhanced logging for large chunk detection
-            if (chunk_state.size >= config.large_chunk_threshold) {
+            // Logging for large chunk detection
+            if (chunk_state.size >= config.largeChunkThreshold) {
                 std.log.info("Processing large chunk: {} bytes (using streaming mode)", .{chunk_state.size});
-                large_chunks_processed += 1;
+                largeChunksProcessed += 1;
             } else if (chunk_state.size > 64 * 1024) {
                 std.log.debug("Processing medium chunk: {} bytes", .{chunk_state.size});
             }
@@ -703,7 +703,7 @@ fn processChunkedStreamingResponse(allocator: std.mem.Allocator, reader: *std.Io
                 if (event_data.items.len > 0) {
                     callback(event_data.items);
                 }
-                std.log.debug("Chunked processing complete: {} bytes total, {} large chunks", .{ total_bytes_processed, large_chunks_processed });
+                std.log.debug("Chunked processing complete: {} bytes total, {} large chunks", .{ totalBytesProcessed, largeChunksProcessed });
                 return;
             }
 
@@ -839,10 +839,10 @@ fn processChunkedStreamingResponse(allocator: std.mem.Allocator, reader: *std.Io
 
 /// Chunk size validation thresholds for large payload processing
 const ChunkSizeValidation = struct {
-    max_chunk_size: usize = 512 * 1024 * 1024, // 512MB absolute maximum per chunk
-    large_chunk_threshold: usize = 1024 * 1024, // 1MB threshold for special handling
-    warning_threshold: usize = 64 * 1024 * 1024, // 64MB threshold for warnings
-    streaming_threshold: usize = 16 * 1024 * 1024, // 16MB threshold for mandatory streaming
+    maxChunkSize: usize = 512 * 1024 * 1024, // 512MB absolute maximum per chunk
+    largeChunkThreshold: usize = 1024 * 1024, // 1MB threshold for special handling
+    warningThreshold: usize = 64 * 1024 * 1024, // 64MB threshold for warnings
+    streamingThreshold: usize = 16 * 1024 * 1024, // 16MB threshold for mandatory streaming
 };
 
 /// Parse chunk size and extensions from chunk size line with large payload support
@@ -879,17 +879,17 @@ fn parseChunkSize(size_line: []const u8) !struct { size: usize, extensions: ?[]c
     };
 
     // Chunk size validation with multiple thresholds
-    if (size > validation.max_chunk_size) {
-        std.log.err("Chunk size {} exceeds absolute maximum allowed size ({})", .{ size, validation.max_chunk_size });
+    if (size > validation.maxChunkSize) {
+        std.log.err("Chunk size {} exceeds absolute maximum allowed size ({})", .{ size, validation.maxChunkSize });
         return Error.PayloadTooLarge;
     }
 
     // Warning thresholds for large payload awareness
-    if (size >= validation.warning_threshold) {
+    if (size >= validation.warningThreshold) {
         std.log.warn("Very large chunk detected: {} bytes ({}MB) - processing enabled", .{ size, size / (1024 * 1024) });
-    } else if (size >= validation.streaming_threshold) {
+    } else if (size >= validation.streamingThreshold) {
         std.log.info("Large chunk detected: {} bytes ({}MB) - streaming processing enabled", .{ size, size / (1024 * 1024) });
-    } else if (size >= validation.large_chunk_threshold) {
+    } else if (size >= validation.largeChunkThreshold) {
         std.log.debug("Medium chunk detected: {} bytes ({}KB)", .{ size, size / 1024 });
     }
 
@@ -1157,7 +1157,7 @@ pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorization_code: [
         \\  "redirect_uri": "{s}",
         \\  "code_verifier": "{s}"
         \\}}
-    , .{ code, state, oauth_client_id, oauth_redirect_uri, pkce_params.codeVerifier });
+    , .{ code, state, oauthClientId, oauthRedirectUri, pkce_params.codeVerifier });
     defer allocator.free(body);
 
     std.log.debug("Sending OAuth token request with JSON body: {s}", .{body});
@@ -1170,7 +1170,7 @@ pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorization_code: [
 
     const req = curl.HTTPRequest{
         .method = .POST,
-        .url = oauth_token_endpoint,
+        .url = oauthTokenEndpoint,
         .headers = &headers,
         .body = body,
         .timeout_ms = 30000, // 30 second timeout
@@ -1258,7 +1258,7 @@ pub fn refreshTokens(allocator: std.mem.Allocator, refreshToken: []const u8) !Cr
         \\  "refresh_token": "{s}",
         \\  "client_id": "{s}"
         \\}}
-    , .{ refreshToken, oauth_client_id });
+    , .{ refreshToken, oauthClientId });
     defer allocator.free(body);
 
     const headers = [_]curl.Header{
@@ -1269,7 +1269,7 @@ pub fn refreshTokens(allocator: std.mem.Allocator, refreshToken: []const u8) !Cr
 
     const req = curl.HTTPRequest{
         .method = .POST,
-        .url = oauth_token_endpoint,
+        .url = oauthTokenEndpoint,
         .headers = &headers,
         .body = body,
         .timeout_ms = 30000, // 30 second timeout

@@ -9,7 +9,7 @@ const Allocator = std.mem.Allocator;
 // Import dependencies
 const state = @import("../state.zig");
 const layout = @import("../layout.zig");
-const theme_manager = @import("../../../../theme/mod.zig");
+const theme = @import("../../../../theme/mod.zig");
 const term_mod = @import("../../../../term/mod.zig");
 const render_mod = @import("../../../../render/mod.zig");
 
@@ -118,7 +118,7 @@ pub const ResourceRenderer = struct {
         writer: anytype,
         bounds: Rect,
         data_store: *const DashboardStore,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         // Update resources from data store if available
         if (data_store.metrics.cpu_percent > 0 or data_store.metrics.mem_percent > 0) {
@@ -180,7 +180,7 @@ pub const ResourceRenderer = struct {
         self: *const Self,
         writer: anytype,
         bounds: Rect,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         _ = self;
 
@@ -197,7 +197,7 @@ pub const ResourceRenderer = struct {
         self: *const Self,
         writer: anytype,
         bounds: Rect,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         try term_mod.moveTo(writer, bounds.x + 2, bounds.y);
         try term_mod.setStyle(writer, .{ .bold = true, .foreground = theme.title });
@@ -221,7 +221,7 @@ pub const ResourceRenderer = struct {
         writer: anytype,
         bounds: Rect,
         y_offset: u16,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         const y = bounds.y + @as(i32, @intCast(y_offset));
 
@@ -267,7 +267,7 @@ pub const ResourceRenderer = struct {
         writer: anytype,
         bounds: Rect,
         y_offset: u16,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         const y = bounds.y + @as(i32, @intCast(y_offset));
 
@@ -322,7 +322,7 @@ pub const ResourceRenderer = struct {
         writer: anytype,
         bounds: Rect,
         y_offset: u16,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         const y = bounds.y + @as(i32, @intCast(y_offset));
 
@@ -366,7 +366,7 @@ pub const ResourceRenderer = struct {
         writer: anytype,
         bounds: Rect,
         y_offset: u16,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         const y = bounds.y + @as(i32, @intCast(y_offset));
 
@@ -416,7 +416,7 @@ pub const ResourceRenderer = struct {
         writer: anytype,
         bounds: Rect,
         y_offset: u16,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         const y = bounds.y + @as(i32, @intCast(y_offset));
 
@@ -440,7 +440,7 @@ pub const ResourceRenderer = struct {
         writer: anytype,
         bounds: Rect,
         y_offset: u16,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         const y = bounds.y + @as(i32, @intCast(y_offset));
 
@@ -459,8 +459,8 @@ pub const ResourceRenderer = struct {
         value: f32,
         max_value: f32,
         width: u16,
-        color: theme_manager.Color,
-        theme: *const theme_manager.ColorScheme,
+        color: theme.Color,
+        theme: *const theme.ColorScheme,
     ) !void {
         _ = self;
 
@@ -502,7 +502,7 @@ pub const ResourceRenderer = struct {
         writer: anytype,
         kbps: f32,
         is_incoming: bool,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         _ = self;
 
@@ -531,8 +531,8 @@ pub const ResourceRenderer = struct {
         value: f32,
         warning_threshold: f32,
         critical_threshold: f32,
-        theme: *const theme_manager.ColorScheme,
-    ) theme_manager.Color {
+        theme: *const theme.ColorScheme,
+    ) theme.Color {
         _ = self;
 
         if (value >= critical_threshold) {

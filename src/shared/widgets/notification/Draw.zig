@@ -37,13 +37,13 @@ pub fn notification(ctx: *render.Context, rect: Rect, sev: Severity, title: []co
 
 pub const Rect = struct { x: i32, y: i32, w: u32, h: u32 };
 
-fn writeClipped(ctx: *render.Context, rect: Rect, start_x: i32, start_y: i32, text: []const u8, len: usize) !void {
-    var x = start_x;
+fn writeClipped(ctx: *render.Context, rect: Rect, startX: i32, startY: i32, text: []const u8, len: usize) !void {
+    var x = startX;
     var i: usize = 0;
     while (i < len) : (i += 1) {
         if (x >= rect.x + @as(i32, @intCast(rect.w))) break;
-        if (x >= rect.x and start_y >= rect.y and start_y < rect.y + @as(i32, @intCast(rect.h))) {
-            try ctx.putChar(x, start_y, text[i]);
+        if (x >= rect.x and startY >= rect.y and startY < rect.y + @as(i32, @intCast(rect.h))) {
+            try ctx.putChar(x, startY, text[i]);
         }
         x += 1;
     }

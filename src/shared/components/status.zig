@@ -22,34 +22,34 @@ pub const Status = struct {
     caps: term_caps.TermCaps,
     level: Level,
     message: []const u8,
-    show_spinner: bool,
-    animation_frame: u32,
+    showSpinner: bool,
+    animationFrame: u32,
 
     pub fn init(level: Level, message: []const u8) Status {
         return Status{
             .caps = term_caps.getTermCaps(),
             .level = level,
             .message = message,
-            .show_spinner = level == .working or level == .loading,
-            .animation_frame = 0,
+            .showSpinner = level == .working or level == .loading,
+            .animationFrame = 0,
         };
     }
 
     pub fn setStatus(self: *Status, level: Level, message: []const u8) void {
         self.level = level;
         self.message = message;
-        self.show_spinner = level == .working or level == .loading;
+        self.showSpinner = level == .working or level == .loading;
     }
 
     pub fn render(self: *Status, writer: anytype) !void {
-        self.animation_frame +%= 1;
+        self.animationFrame +%= 1;
 
         // Clear line
         try writer.writeAll("\r");
         try term_screen.clearLineAll(writer, self.caps);
 
         // Icon/Spinner
-        if (self.show_spinner) {
+        if (self.showSpinner) {
             try self.renderSpinner(writer);
         } else {
             try self.renderIcon(writer);
@@ -65,7 +65,7 @@ pub const Status = struct {
 
     fn renderSpinner(self: *Status, writer: anytype) !void {
         const spinners = [_][]const u8{ "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏" };
-        const spinner_idx = self.animation_frame % spinners.len;
+        const spinnerIdx = self.animationFrame % spinners.len;
 
         if (self.caps.supportsTrueColor()) {
             try term_ansi.setForegroundRgb(writer, self.caps, 100, 149, 237);
@@ -73,7 +73,7 @@ pub const Status = struct {
             try term_ansi.setForeground256(writer, self.caps, 12);
         }
 
-        try writer.writeAll(spinners[spinner_idx]);
+        try writer.writeAll(spinners[spinnerIdx]);
     }
 
     fn renderIcon(self: *Status, writer: anytype) !void {

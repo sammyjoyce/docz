@@ -64,19 +64,19 @@ pub const Terminal = struct {
     }
 
     /// Clamp one bounds rectangle to another
-    pub fn clampBounds(target: Bounds, clamp_to: Bounds) Bounds {
-        return target.clamp(clamp_to);
+    pub fn clampBounds(target: Bounds, clampTo: Bounds) Bounds {
+        return target.clamp(clampTo);
     }
 
     /// Create a screen component
-    pub fn createComponent(id: []const u8, bounds: Bounds, z_index: i32) Component {
+    pub fn createComponent(id: []const u8, bounds: Bounds, zIndex: i32) Component {
         return Component{
             .id = id,
             .bounds = bounds,
             .content = "",
             .visible = true,
             .dirty = true,
-            .zIndex = z_index,
+            .zIndex = zIndex,
         };
     }
 
@@ -232,13 +232,13 @@ pub const Terminal = struct {
     }
 
     /// Set background color
-    pub fn setBackgroundColor(color_code: u8) void {
-        writeFormattedSequence("\x1b[{d}m", .{color_code + 10});
+    pub fn setBackgroundColor(colorCode: u8) void {
+        writeFormattedSequence("\x1b[{d}m", .{colorCode + 10});
     }
 
     /// Set foreground color
-    pub fn setForegroundColor(color_code: u8) void {
-        writeFormattedSequence("\x1b[{d}m", .{color_code});
+    pub fn setForegroundColor(colorCode: u8) void {
+        writeFormattedSequence("\x1b[{d}m", .{colorCode});
     }
 
     /// Reset all text attributes
@@ -339,7 +339,7 @@ pub const enableReverse = Terminal.enableReverse;
 pub const disableReverse = Terminal.disableReverse;
 
 // Tests
-test "Terminal basic functionality" {
+test "Terminal functionality" {
     // Test screen clearing
     Terminal.clear();
     Terminal.clearLine();

@@ -64,15 +64,15 @@ const ComplexData = struct {
 // Benchmark configuration
 const Benchmark = struct {
     iterations: usize = 1000,
-    warmup_iterations: usize = 100,
+    warmupIterations: usize = 100,
 };
 
 // Performance measurement utilities
 const Performance = struct {
-    serialization_time_ns: u64,
-    deserialization_time_ns: u64,
-    memory_used_bytes: usize,
-    allocations_count: usize,
+    serializationTimeNs: u64,
+    deserializationTimeNs: u64,
+    memoryUsedBytes: usize,
+    allocationsCount: usize,
 };
 
 fn measurePerformance(
@@ -83,7 +83,7 @@ fn measurePerformance(
 ) !Performance {
     // Warmup
     var i: usize = 0;
-    while (i < config.warmup_iterations) : (i += 1) {
+    while (i < config.warmupIterations) : (i += 1) {
         const result = try @call(.auto, func, args);
         // Consume the result to avoid unused variable warnings
         if (@TypeOf(result) == []const u8) {
@@ -94,7 +94,7 @@ fn measurePerformance(
     }
 
     // Measure performance
-    const start_time = std.time.nanoTimestamp();
+    const startTime = std.time.nanoTimestamp();
 
     i = 0;
     while (i < config.iterations) : (i += 1) {
@@ -107,14 +107,14 @@ fn measurePerformance(
         }
     }
 
-    const end_time = std.time.nanoTimestamp();
-    const total_time = @as(u64, @intCast(end_time - start_time));
+    const endTime = std.time.nanoTimestamp();
+    const totalTime = @as(u64, @intCast(endTime - startTime));
 
     return Performance{
-        .serialization_time_ns = total_time / config.iterations,
-        .deserialization_time_ns = 0, // Will be set by caller if applicable
-        .memory_used_bytes = 0, // Simplified for benchmark
-        .allocations_count = 0, // Simplified for benchmark
+        .serializationTimeNs = totalTime / config.iterations,
+        .deserializationTimeNs = 0, // Will be set by caller if applicable
+        .memoryUsedBytes = 0, // Simplified for benchmark
+        .allocationsCount = 0, // Simplified for benchmark
     };
 }
 
@@ -127,38 +127,38 @@ fn manualSerialize(value: Data, allocator: std.mem.Allocator) ![]const u8 {
     });
 }
 
-fn manualDeserialize(json_str: []const u8, allocator: std.mem.Allocator) !Data {
+fn manualDeserialize(jsonStr: []const u8, allocator: std.mem.Allocator) !Data {
     // Simple manual parsing for benchmark purposes
     var id: u32 = 0;
-    var name_start: usize = 0;
-    var name_end: usize = 0;
+    var nameStart: usize = 0;
+    var nameEnd: usize = 0;
     var active = false;
 
     // Find id
-    if (std.mem.indexOf(u8, json_str, "\"id\":")) |pos| {
-        const value_start = pos + 5;
-        const value_end = std.mem.indexOf(u8, json_str[value_start..], ",").? + value_start;
-        id = try std.fmt.parseInt(u32, json_str[value_start..value_end], 10);
+    if (std.mem.indexOf(u8, jsonStr, "\"id\":")) |pos| {
+        const valueStart = pos + 5;
+        const valueEnd = std.mem.indexOf(u8, jsonStr[valueStart..], ",").? + valueStart;
+        id = try std.fmt.parseInt(u32, jsonStr[valueStart..valueEnd], 10);
     }
 
     // Find name
-    if (std.mem.indexOf(u8, json_str, "\"name\":")) |pos| {
-        const value_start = pos + 7;
-        const value_end = std.mem.indexOf(u8, json_str[value_start..], "\"").? + value_start + 1;
-        name_start = value_start + 1;
-        name_end = value_end - 1;
+    if (std.mem.indexOf(u8, jsonStr, "\"name\":")) |pos| {
+        const valueStart = pos + 7;
+        const valueEnd = std.mem.indexOf(u8, jsonStr[valueStart..], "\"").? + valueStart + 1;
+        nameStart = valueStart + 1;
+        nameEnd = valueEnd - 1;
     }
 
     // Find active
-    if (std.mem.indexOf(u8, json_str, "\"active\":")) |pos| {
-        const value_start = pos + 9;
-        const value_str = json_str[value_start..value_start + 4];
-        active = std.mem.eql(u8, value_str, "true");
+    if (std.mem.indexOf(u8, jsonStr, "\"active\":")) |pos| {
+        const valueStart = pos + 9;
+        const valueStr = jsonStr[valueStart..valueStart + 4];
+        active = std.mem.eql(u8, valueStr, "true");
     }
 
     return Data{
         .id = id,
-        .name = try allocator.dupe(u8, json_str[name_start..name_end]),
+        .name = try allocator.dupe(u8, jsonStr[nameStart..nameEnd]),
         .active = active,
     };
 }
@@ -189,7 +189,7 @@ fn manualSerializeMedium(value: MediumData, allocator: std.mem.Allocator) ![]con
     return allocator.dupe(u8, buffer[0..fbs.pos]);
 }
 
-fn manualDeserializeMedium(json_str: []const u8, allocator: std.mem.Allocator) !MediumData {
+fn manualDeserializeMedium(jsonStr: []const u8, allocator: std.mem.Allocator) !MediumData {
     _ = allocator; // Mark as used
     // Simplified parsing for benchmark
     var result = MediumData{
@@ -204,10 +204,10 @@ fn manualDeserializeMedium(json_str: []const u8, allocator: std.mem.Allocator) !
     };
 
     // Parse basic fields (simplified)
-    if (std.mem.indexOf(u8, json_str, "\"id\":")) |pos| {
-        const value_start = pos + 5;
-        const value_end = std.mem.indexOf(u8, json_str[value_start..], ",").? + value_start;
-        result.id = try std.fmt.parseInt(u32, json_str[value_start..value_end], 10);
+    if (std.mem.indexOf(u8, jsonStr, "\"id\":")) |pos| {
+        const valueStart = pos + 5;
+        const valueEnd = std.mem.indexOf(u8, jsonStr[valueStart..], ",").? + valueStart;
+        result.id = try std.fmt.parseInt(u32, jsonStr[valueStart..valueEnd], 10);
     }
 
     return result;
@@ -224,63 +224,63 @@ fn reflectionSerialize(value: anytype, allocator: std.mem.Allocator) ![]const u8
 
     inline for (std.meta.fields(T), 0..) |field, i| {
         if (i > 0) try writer.writeByte(',');
-        const field_value = @field(value, field.name);
-        const field_name = try fieldNameToSnake(allocator, field.name);
-        defer allocator.free(field_name);
+        const fieldValue = @field(value, field.name);
+        const fieldName = try fieldNameToSnake(allocator, field.name);
+        defer allocator.free(fieldName);
 
-        try writer.print("\"{s}\":", .{field_name});
-        try appendValueJson(writer, field_value);
+        try writer.print("\"{s}\":", .{fieldName});
+        try appendValueJson(writer, fieldValue);
     }
 
     try writer.writeByte('}');
     return allocator.dupe(u8, buffer[0..fbs.pos]);
 }
 
-fn reflectionDeserialize(comptime T: type, json_str: []const u8, allocator: std.mem.Allocator) !T {
+fn reflectionDeserialize(comptime T: type, jsonStr: []const u8, allocator: std.mem.Allocator) !T {
     // Simplified deserialization for benchmark
     var result: T = undefined;
 
     // Parse id field
-    if (std.mem.indexOf(u8, json_str, "\"id\":")) |pos| {
-        const value_start = pos + 5;
-        const value_end = std.mem.indexOf(u8, json_str[value_start..], ",").? + value_start;
-        result.id = try std.fmt.parseInt(u32, json_str[value_start..value_end], 10);
+    if (std.mem.indexOf(u8, jsonStr, "\"id\":")) |pos| {
+        const valueStart = pos + 5;
+        const valueEnd = std.mem.indexOf(u8, jsonStr[valueStart..], ",").? + valueStart;
+        result.id = try std.fmt.parseInt(u32, jsonStr[valueStart..valueEnd], 10);
     }
 
     // Parse name field (reflection uses snake_case)
-    if (std.mem.indexOf(u8, json_str, "\"name\":")) |pos| {
-        const value_start = pos + 7; // position after "name":
-        const value_end = std.mem.indexOf(u8, json_str[value_start + 1..], "\"").? + value_start + 1;
-        const name_slice = json_str[value_start + 1..value_end];
-        result.name = try allocator.dupe(u8, name_slice);
+    if (std.mem.indexOf(u8, jsonStr, "\"name\":")) |pos| {
+        const valueStart = pos + 7; // position after "name":
+        const valueEnd = std.mem.indexOf(u8, jsonStr[valueStart + 1..], "\"").? + valueStart + 1;
+        const nameSlice = jsonStr[valueStart + 1..valueEnd];
+        result.name = try allocator.dupe(u8, nameSlice);
     } else {
         result.name = "";
     }
 
     // Parse active field
-    if (std.mem.indexOf(u8, json_str, "\"active\":")) |pos| {
-        const value_start = pos + 9;
-        const value_str = json_str[value_start..value_start + 4];
-        result.active = std.mem.eql(u8, value_str, "true");
+    if (std.mem.indexOf(u8, jsonStr, "\"active\":")) |pos| {
+        const valueStart = pos + 9;
+        const valueStr = jsonStr[valueStart..valueStart + 4];
+        result.active = std.mem.eql(u8, valueStr, "true");
     }
 
     return result;
 }
 
-fn fieldNameToSnake(allocator: std.mem.Allocator, field_name: []const u8) ![]const u8 {
-    if (field_name.len == 0) return allocator.dupe(u8, "");
+fn fieldNameToSnake(allocator: std.mem.Allocator, fieldName: []const u8) ![]const u8 {
+    if (fieldName.len == 0) return allocator.dupe(u8, "");
 
     var buffer: [256]u8 = undefined;
     var fbs = std.io.fixedBufferStream(&buffer);
     const writer = fbs.writer();
 
     // Handle first character
-    try writer.writeByte(std.ascii.toLower(field_name[0]));
+    try writer.writeByte(std.ascii.toLower(fieldName[0]));
 
     // Process remaining characters
-    for (field_name[1..], 1..) |c, i| {
-        const prev = field_name[i - 1];
-        const next = if (i + 1 < field_name.len) field_name[i + 1] else null;
+    for (fieldName[1..], 1..) |c, i| {
+        const prev = fieldName[i - 1];
+        const next = if (i + 1 < fieldName.len) fieldName[i + 1] else null;
 
         // Insert underscore if:
         // 1. Current char is uppercase and previous was lowercase, OR
@@ -348,8 +348,8 @@ fn stdlibSerialize(value: anytype, allocator: std.mem.Allocator) ![]const u8 {
 
 
 
-fn stdlibDeserialize(comptime T: type, json_str: []const u8, allocator: std.mem.Allocator) !T {
-    return std.json.parseFromSlice(T, allocator, json_str, .{});
+fn stdlibDeserialize(comptime T: type, jsonStr: []const u8, allocator: std.mem.Allocator) !T {
+    return std.json.parseFromSlice(T, allocator, jsonStr, .{});
 }
 
 // Benchmark functions
@@ -362,26 +362,26 @@ const Results = struct {
 fn benchmarkStruct(allocator: std.mem.Allocator, config: Benchmark) !Results {
     const testData = Data{
         .id = 123,
-        .name = "test_user",
+        .name = "testUser",
         .active = true,
     };
 
     // Manual approach
-    const manual_metrics = try measurePerformance(manualSerialize, .{ testData, allocator }, allocator, config);
-    std.debug.assert(manual_metrics.serialization_time_ns > 0); // Use the variable
+    const manualMetrics = try measurePerformance(manualSerialize, .{ testData, allocator }, allocator, config);
+    std.debug.assert(manualMetrics.serializationTimeNs > 0); // Use the variable
 
     // Reflection approach
-    const reflection_metrics = try measurePerformance(reflectionSerialize, .{ testData, allocator }, allocator, config);
-    std.debug.assert(reflection_metrics.serialization_time_ns > 0); // Use the variable
+    const reflectionMetrics = try measurePerformance(reflectionSerialize, .{ testData, allocator }, allocator, config);
+    std.debug.assert(reflectionMetrics.serializationTimeNs > 0); // Use the variable
 
     // Stdlib approach
-    const stdlib_metrics = try measurePerformance(stdlibSerialize, .{ testData, allocator }, allocator, config);
-    std.debug.assert(stdlib_metrics.serialization_time_ns > 0); // Use the variable
+    const stdlibMetrics = try measurePerformance(stdlibSerialize, .{ testData, allocator }, allocator, config);
+    std.debug.assert(stdlibMetrics.serializationTimeNs > 0); // Use the variable
 
     return Results{
-        .manual = manual_metrics,
-        .reflection = reflection_metrics,
-        .stdlib = stdlib_metrics,
+        .manual = manualMetrics,
+        .reflection = reflectionMetrics,
+        .stdlib = stdlibMetrics,
     };
 }
 

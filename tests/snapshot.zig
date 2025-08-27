@@ -17,7 +17,7 @@ test "snapshot example - basic text" {
     try snapshot.expectSnapshotPass(result);
 }
 
-test "snapshot example - ANSI colored text" {
+test "snapshotExampleAnsiColoredText" {
     const allocator = testing.allocator;
 
     // Content with ANSI escape sequences
@@ -32,7 +32,7 @@ test "snapshot example - ANSI colored text" {
     try snapshot.expectSnapshotPass(result);
 }
 
-test "snapshot example - TUI component output" {
+test "snapshotExampleTuiComponentOutput" {
     const allocator = testing.allocator;
 
     // Simulate TUI component output
@@ -52,7 +52,7 @@ test "snapshot example - TUI component output" {
     try snapshot.expectSnapshotPass(result);
 }
 
-test "snapshot example - using TestTerminal" {
+test "snapshotExampleUsingTestTerminal" {
     const allocator = testing.allocator;
 
     // Use TestTerminal for more complex scenarios

@@ -8,6 +8,8 @@ const Allocator = std.mem.Allocator;
 pub const Markdown = struct {
     allocator: Allocator,
     config: Config,
+    /// Arena owning parsed configuration memory
+    arena: ?std.heap.ArenaAllocator = null,
 
     const Self = @This();
 
@@ -68,24 +70,24 @@ pub const Markdown = struct {
     };
 
     pub fn init(allocator: Allocator, config: Config) Self {
-        return Self{
-            .allocator = allocator,
-            .config = config,
-        };
+        return Self{ .allocator = allocator, .config = config, .arena = null };
     }
 
     /// Initialize agent with configuration loaded from file
     pub fn initFromConfig(allocator: Allocator) !Self {
+        // Use an arena to own all parsed config allocations, and clean it up in deinit
+        var arena = std.heap.ArenaAllocator.init(allocator);
+        errdefer arena.deinit();
+
         const configPath = try Config.getConfigPath(allocator);
         defer allocator.free(configPath);
 
-        const config = try Config.loadFromFile(allocator, configPath);
-        return Self.init(allocator, config);
+        const config = try Config.loadFromFile(arena.allocator(), configPath);
+        return Self{ .allocator = allocator, .config = config, .arena = arena };
     }
 
     pub fn deinit(self: *Self) void {
-        _ = self;
-        // Cleanup resources if needed
+        if (self.arena) |*a| a.deinit();
     }
 
     /// Load system prompt from file or generate dynamically
@@ -168,11 +170,11 @@ pub const Markdown = struct {
         } else if (std.mem.eql(u8, varName, "system_commands_enabled")) {
             return try self.allocator.dupe(u8, if (cfg.features.enableSystemCommands) "enabled" else "disabled");
         } else if (std.mem.eql(u8, varName, "max_input_size")) {
-            return try std.fmt.allocPrint(self.allocator, "{d}", .{cfg.limits.maxInputSize});
+            return try std.fmt.allocPrint(self.allocator, "{d}", .{cfg.limits.inputSizeMax});
         } else if (std.mem.eql(u8, varName, "max_output_size")) {
-            return try std.fmt.allocPrint(self.allocator, "{d}", .{cfg.limits.maxOutputSize});
+            return try std.fmt.allocPrint(self.allocator, "{d}", .{cfg.limits.outputSizeMax});
         } else if (std.mem.eql(u8, varName, "max_processing_time")) {
-            return try std.fmt.allocPrint(self.allocator, "{d}", .{cfg.limits.maxProcessingTimeMs});
+            return try std.fmt.allocPrint(self.allocator, "{d}", .{cfg.limits.processingTimeMsMax});
         } else if (std.mem.eql(u8, varName, "current_date")) {
             const now = std.time.timestamp();
             const epochSeconds = std.time.epoch.EpochSeconds{ .secs = @intCast(now) };

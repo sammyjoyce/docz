@@ -55,7 +55,7 @@ pub const OAuthProvider = struct {
     redirectUri: []const u8,
     scopes: []const []const u8,
 
-    pub fn buildAuthURL(self: OAuthProvider, allocator: std.mem.Allocator, pkceParams: Pkce) ![]u8 {
+    pub fn buildAuthUrl(self: OAuthProvider, allocator: std.mem.Allocator, pkceParams: Pkce) ![]u8 {
         const scopesJoined = try std.mem.join(allocator, " ", self.scopes);
         defer allocator.free(scopesJoined);
         return try std.fmt.allocPrint(
@@ -142,7 +142,7 @@ pub const CostCalc = struct {
         return if (self.isOauthSession) "Subscription (Free)" else "Pay-per-use";
     }
 
-    pub fn getModelPricingInfo(self: CostCalc, model: []const u8) ModelRates {
+    pub fn getModelRates(self: CostCalc, model: []const u8) ModelRates {
         _ = self;
         return getModelPricing(model);
     }

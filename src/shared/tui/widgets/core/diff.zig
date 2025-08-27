@@ -65,15 +65,15 @@ pub const DiffViewer = struct {
 
         pub const ColorScheme = struct {
             /// Color for added lines
-            addition: tui_mod.term.unified.Color = .{ .ansi = 2 }, // Green
+            addition: tui_mod.term.common.Color = .{ .ansi = 2 }, // Green
             /// Color for deleted lines
-            deletion: tui_mod.term.unified.Color = .{ .ansi = 1 }, // Red
+            deletion: tui_mod.term.common.Color = .{ .ansi = 1 }, // Red
             /// Color for modified lines
-            modification: tui_mod.term.unified.Color = .{ .ansi = 3 }, // Yellow
+            modification: tui_mod.term.common.Color = .{ .ansi = 3 }, // Yellow
             /// Color for unchanged lines
-            unchanged: tui_mod.term.unified.Color = .{ .ansi = 7 }, // White
+            unchanged: tui_mod.term.common.Color = .{ .ansi = 7 }, // White
             /// Color for line numbers
-            line_number: tui_mod.term.unified.Color = .{ .ansi = 8 }, // Gray
+            line_number: tui_mod.term.common.Color = .{ .ansi = 8 }, // Gray
         };
     };
 
@@ -335,7 +335,7 @@ pub const DiffViewer = struct {
 
             // Apply selection highlighting
             const is_selected = self.state.selected_line != null and self.state.selected_line.? == line_idx;
-            const bg_color = if (is_selected) tui_mod.term.unified.Color{ .ansi = 4 } else null; // Blue background for selection
+            const bg_color = if (is_selected) tui_mod.term.common.Color{ .ansi = 4 } else null; // Blue background for selection
 
             const panel_line_ctx = Render{
                 .bounds = .{
@@ -357,7 +357,7 @@ pub const DiffViewer = struct {
     }
 
     /// Get the color for a line based on diff operations
-    fn getLineColor(self: *Self, line_idx: usize, panel: ViewerState.Panel) tui_mod.term.unified.Color {
+    fn getLineColor(self: *Self, line_idx: usize, panel: ViewerState.Panel) tui_mod.term.common.Color {
         var current_line: usize = 0;
 
         for (self.operations) |op| {

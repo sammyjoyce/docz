@@ -19,7 +19,7 @@ pub const BreadcrumbTrail = struct {
     caps: term_caps.TermCaps,
     items: std.ArrayList(BreadcrumbItem),
     separator: []const u8,
-    max_width: usize,
+    widthMax: usize,
 
     pub fn init(allocator: Allocator) BreadcrumbTrail {
         return BreadcrumbTrail{
@@ -27,7 +27,7 @@ pub const BreadcrumbTrail = struct {
             .caps = term_caps.getTermCaps(),
             .items = std.ArrayList(BreadcrumbItem).init(allocator),
             .separator = " > ",
-            .max_width = 80,
+            .widthMax = 80,
         };
     }
 

@@ -94,21 +94,21 @@ pub const AttrMask = packed struct {
     bold: bool = false,
     faint: bool = false,
     italic: bool = false,
-    slow_blink: bool = false,
-    rapid_blink: bool = false,
+    slowBlink: bool = false,
+    rapidBlink: bool = false,
     reverse: bool = false,
     conceal: bool = false,
     strikethrough: bool = false,
 
     pub fn isEmpty(self: AttrMask) bool {
-        const as_int: u8 = @bitCast(self);
-        return as_int == 0;
+        const asInt: u8 = @bitCast(self);
+        return asInt == 0;
     }
 
     pub fn eql(self: AttrMask, other: AttrMask) bool {
-        const self_int: u8 = @bitCast(self);
-        const other_int: u8 = @bitCast(other);
-        return self_int == other_int;
+        const selfInt: u8 = @bitCast(self);
+        const otherInt: u8 = @bitCast(other);
+        return selfInt == otherInt;
     }
 };
 
@@ -132,14 +132,14 @@ pub const Color = union(enum) {
     }
 
     /// Convert to ANSI escape sequence
-    pub fn toAnsiSeq(self: Color, allocator: std.mem.Allocator, is_bg: bool) ![]u8 {
+    pub fn toAnsiSeq(self: Color, allocator: std.mem.Allocator, isBg: bool) ![]u8 {
         var seq = std.ArrayList(u8).init(allocator);
         errdefer seq.deinit();
 
-        const prefix = if (is_bg) "48" else "38";
+        const prefix = if (isBg) "48" else "38";
 
         switch (self) {
-            .default => return allocator.dupe(u8, if (is_bg) "49" else "39"),
+            .default => return allocator.dupe(u8, if (isBg) "49" else "39"),
             .ansi => |c| {
                 if (c < 8) {
                     try seq.writer().print("{s};5;{d}", .{ prefix, c });
@@ -169,19 +169,19 @@ pub const Link = struct {
     }
 
     pub fn eql(self: Link, other: Link) bool {
-        const url_match = blk: {
+        const urlMatch = blk: {
             if (self.url == null and other.url == null) break :blk true;
             if (self.url == null or other.url == null) break :blk false;
             break :blk std.mem.eql(u8, self.url.?, other.url.?);
         };
 
-        const params_match = blk: {
+        const paramsMatch = blk: {
             if (self.params == null and other.params == null) break :blk true;
             if (self.params == null or other.params == null) break :blk false;
             break :blk std.mem.eql(u8, self.params.?, other.params.?);
         };
 
-        return url_match and params_match;
+        return urlMatch and paramsMatch;
     }
 
     pub fn reset(self: *Link) void {
@@ -194,24 +194,24 @@ pub const Link = struct {
 pub const Style = struct {
     fg: Color = .default,
     bg: Color = .default,
-    ul_color: Color = .default, // Underline color
+    ulColor: Color = .default, // Underline color
     attrs: AttrMask = .{},
-    ul_style: UnderlineStyle = .none,
+    ulStyle: UnderlineStyle = .none,
 
     pub fn eql(self: Style, other: Style) bool {
         return self.fg.eql(other.fg) and
             self.bg.eql(other.bg) and
-            self.ul_color.eql(other.ul_color) and
+            self.ulColor.eql(other.ulColor) and
             self.attrs.eql(other.attrs) and
-            self.ul_style == other.ul_style;
+            self.ulStyle == other.ulStyle;
     }
 
     pub fn isEmpty(self: Style) bool {
         return self.fg == .default and
             self.bg == .default and
-            self.ul_color == .default and
+            self.ulColor == .default and
             self.attrs.isEmpty() and
-            self.ul_style == .none;
+            self.ulStyle == .none;
     }
 
     pub fn reset(self: *Style) void {
@@ -246,12 +246,12 @@ pub const Style = struct {
             try seq.appendSlice("3");
             first = false;
         }
-        if (self.attrs.slow_blink) {
+        if (self.attrs.slowBlink) {
             if (!first) try seq.append(';');
             try seq.appendSlice("5");
             first = false;
         }
-        if (self.attrs.rapid_blink) {
+        if (self.attrs.rapidBlink) {
             if (!first) try seq.append(';');
             try seq.appendSlice("6");
             first = false;
@@ -273,34 +273,34 @@ pub const Style = struct {
         }
 
         // Underline style
-        if (self.ul_style != .none) {
+        if (self.ulStyle != .none) {
             if (!first) try seq.append(';');
-            try seq.appendSlice(self.ul_style.toAnsiCode());
+            try seq.appendSlice(self.ulStyle.toAnsiCode());
             first = false;
         }
 
         // Colors
         if (self.fg != .default) {
             if (!first) try seq.append(';');
-            const fg_seq = try self.fg.toAnsiSeq(allocator, false);
-            defer allocator.free(fg_seq);
-            try seq.appendSlice(fg_seq);
+            const fgSeq = try self.fg.toAnsiSeq(allocator, false);
+            defer allocator.free(fgSeq);
+            try seq.appendSlice(fgSeq);
             first = false;
         }
 
         if (self.bg != .default) {
             if (!first) try seq.append(';');
-            const bg_seq = try self.bg.toAnsiSeq(allocator, true);
-            defer allocator.free(bg_seq);
-            try seq.appendSlice(bg_seq);
+            const bgSeq = try self.bg.toAnsiSeq(allocator, true);
+            defer allocator.free(bgSeq);
+            try seq.appendSlice(bgSeq);
             first = false;
         }
 
-        if (self.ul_color != .default) {
+        if (self.ulColor != .default) {
             if (!first) try seq.append(';');
-            try seq.appendSlice("58;2;");
-            if (self.ul_color == .rgb) {
-                try seq.writer().print("{d};{d};{d}", .{ self.ul_color.rgb.r, self.ul_color.rgb.g, self.ul_color.rgb.b });
+            try seq.appendSlice("58;5;");
+            if (self.ulColor == .rgb) {
+                try seq.writer().print("{d};{d};{d}", .{ self.ulColor.rgb.r, self.ulColor.rgb.g, self.ulColor.rgb.b });
             }
             first = false;
         }
@@ -323,7 +323,7 @@ pub const Cell = struct {
     /// Hyperlink data
     link: Link = .{},
     /// Whether this cell is a continuation of a wide character
-    is_continuation: bool = false,
+    isContinuation: bool = false,
 
     pub fn isEmpty(self: Cell) bool {
         return self.rune == 0 and self.width == 0 and
@@ -341,7 +341,7 @@ pub const Cell = struct {
     }
 
     pub fn eql(self: Cell, other: Cell) bool {
-        const comb_match = blk: {
+        const combMatch = blk: {
             if (self.comb == null and other.comb == null) break :blk true;
             if (self.comb == null or other.comb == null) break :blk false;
             if (self.comb.?.len != other.comb.?.len) break :blk false;
@@ -355,8 +355,7 @@ pub const Cell = struct {
             self.width == other.width and
             self.style.eql(other.style) and
             self.link.eql(other.link) and
-            self.is_continuation == other.is_continuation and
-            comb_match;
+            combMatch;
     }
 
     pub fn reset(self: *Cell) void {
@@ -365,7 +364,7 @@ pub const Cell = struct {
         self.width = 0;
         self.style.reset();
         self.link.reset();
-        self.is_continuation = false;
+        self.isContinuation = false;
     }
 
     pub fn clear(self: *Cell) void {
@@ -376,7 +375,7 @@ pub const Cell = struct {
         self.rune = ' ';
         self.comb = null;
         self.width = 1;
-        self.is_continuation = false;
+        self.isContinuation = false;
         // Keep style and link
     }
 
@@ -454,10 +453,10 @@ pub const CellBuffer = struct {
     /// Cell data stored as width * height array
     cells: []Cell,
     /// Previous frame for differential rendering
-    previous_cells: []Cell,
+    previousCells: []Cell,
     /// Current cursor position
-    cursor_x: usize = 0,
-    cursor_y: usize = 0,
+    cursorX: usize = 0,
+    cursorY: usize = 0,
     /// Whether buffer needs full redraw
     dirty: bool = true,
 
@@ -467,13 +466,13 @@ pub const CellBuffer = struct {
     pub fn init(allocator: std.mem.Allocator, width: usize, height: usize) !Self {
         const total_cells = width * height;
         const cells = try allocator.alloc(Cell, total_cells);
-        const previous_cells = try allocator.alloc(Cell, total_cells);
+        const previousCells = try allocator.alloc(Cell, total_cells);
 
         // Initialize all cells as empty
         for (cells) |*cell| {
             cell.reset();
         }
-        for (previous_cells) |*cell| {
+        for (previousCells) |*cell| {
             cell.reset();
         }
 
@@ -482,7 +481,7 @@ pub const CellBuffer = struct {
             .width = width,
             .height = height,
             .cells = cells,
-            .previous_cells = previous_cells,
+            .previousCells = previousCells,
         };
     }
 
@@ -494,13 +493,13 @@ pub const CellBuffer = struct {
                 self.allocator.free(comb);
             }
         }
-        for (self.previous_cells) |*cell| {
+        for (self.previousCells) |*cell| {
             if (cell.comb) |comb| {
                 self.allocator.free(comb);
             }
         }
         self.allocator.free(self.cells);
-        self.allocator.free(self.previous_cells);
+        self.allocator.free(self.previousCells);
     }
 
     /// Resize buffer to new dimensions
@@ -526,25 +525,25 @@ pub const CellBuffer = struct {
                 const idx = y * self.width + x;
                 const new_idx = y * width + x;
                 cells[new_idx] = self.cells[idx];
-                previous[new_idx] = self.previous_cells[idx];
+                previous[new_idx] = self.previousCells[idx];
                 // Don't free old combining chars, they're moved
                 self.cells[idx].comb = null;
-                self.previous_cells[idx].comb = null;
+                self.previousCells[idx].comb = null;
             }
         }
 
         // Free old arrays
         self.allocator.free(self.cells);
-        self.allocator.free(self.previous_cells);
+        self.allocator.free(self.previousCells);
         self.cells = cells;
-        self.previous_cells = previous;
+        self.previousCells = previous;
         self.width = width;
         self.height = height;
         self.dirty = true;
 
         // Clamp cursor position to new bounds
-        self.cursor_x = @min(self.cursor_x, width - 1);
-        self.cursor_y = @min(self.cursor_y, height - 1);
+        self.cursorX = @min(self.cursorX, width - 1);
+        self.cursorY = @min(self.cursorY, height - 1);
     }
 
     /// Get cell at position (bounds-checked)
@@ -558,39 +557,49 @@ pub const CellBuffer = struct {
         if (x >= self.width or y >= self.height) return;
 
         const cell = &self.cells[y * self.width + x];
-        const char_width = codepointWidth(rune, .{});
+        const charWidth = codepointWidth(rune, .{});
 
-        // Handle wide characters
-        if (char_width == 2 and x + 1 < self.width) {
+        cell.* = Cell{ .rune = rune, .width = @intCast(codepointWidth(rune, .{})), .style = style, .link = .{}, .comb = null };
+        if (charWidth == 2 and x + 1 < self.width) {
             // First cell contains the character
             cell.rune = rune;
             cell.width = 2;
             cell.style = style;
-            cell.is_continuation = false;
+            cell.isContinuation = false;
 
             // Second cell is marked as continuation
             const continuation_cell = &self.cells[y * self.width + x + 1];
             continuation_cell.rune = 0;
             continuation_cell.width = 0;
             continuation_cell.style = style;
-            continuation_cell.is_continuation = true;
-        } else if (char_width == 0) {
-            // Zero-width character - combine with previous cell if possible
-            if (x > 0 and !self.cells[y * self.width + x - 1].isEmpty()) {
-                // Don't replace the previous character, just update style if needed
-                return;
+            continuation_cell.isContinuation = true;
+        } else if (charWidth == 0) {
+            // Zero-width character, try to add as combining character to previous cell
+            if (x > 0) {
+                const prev_cell = &self.cells[y * self.width + x - 1];
+                if (prev_cell.comb == null) {
+                    prev_cell.comb = try self.allocator.alloc(u21, 1);
+                    prev_cell.comb.?[0] = rune;
+                } else {
+                    const prev_comb = prev_cell.comb.?;
+                    prev_cell.comb = try self.allocator.realloc(prev_comb, prev_comb.len + 1);
+                    prev_cell.comb.?[prev_comb.len] = rune;
+                }
+                return; // Don't modify current cell
             }
-            // Otherwise treat as empty cell
-            cell.rune = 0;
-            cell.width = 0;
+        }
+
+        if (cell.isWide()) {
+            // Clear any existing wide character continuation
+            cleanupWideCell(self, x, y);
+        }
+
+        cell.rune = rune;
+        cell.style = style;
+        if (charWidth <= 1) {
+            cell.width = charWidth;
             cell.style = style;
-            cell.is_continuation = false;
-        } else {
-            // Normal single-width character
-            cell.rune = rune;
-            cell.width = char_width;
-            cell.style = style;
-            cell.is_continuation = false;
+            cell.isContinuation = false;
         }
     }
 
@@ -617,7 +626,7 @@ pub const CellBuffer = struct {
             while (i < cloned_cell.width and x + i < self.width) : (i += 1) {
                 const wide_idx = (y * self.width) + (x + i);
                 self.cells[wide_idx].reset(); // Mark as continuation
-                self.cells[wide_idx].is_continuation = true;
+                self.cells[wide_idx].isContinuation = true;
             }
         }
 
@@ -677,8 +686,8 @@ pub const CellBuffer = struct {
 
             try self.setCell(pos_x, y, codepoint, style);
 
-            const char_width = codepointWidth(codepoint, .{});
-            pos_x += @max(1, char_width); // Always advance at least 1 for wide chars
+            const charWidth = codepointWidth(codepoint, .{});
+            pos_x += @max(1, charWidth); // Always advance at least 1 for wide chars
             i += seq_len;
         }
 
@@ -715,8 +724,8 @@ pub const CellBuffer = struct {
 
     /// Set cursor position
     pub fn setCursor(self: *Self, x: usize, y: usize) void {
-        self.cursor_x = @min(x, self.width - 1);
-        self.cursor_y = @min(y, self.height - 1);
+        self.cursorX = @min(x, self.width - 1);
+        self.cursorY = @min(y, self.height - 1);
     }
 
     /// Get differences between current and previous frame
@@ -741,7 +750,7 @@ pub const CellBuffer = struct {
         } else {
             // Differential rendering - only changed cells
             for (self.cells, 0..) |cell, idx| {
-                if (!cell.eql(self.previous_cells[idx])) {
+                if (!cell.eql(self.previousCells[idx])) {
                     const x = idx % self.width;
                     const y = idx / self.width;
                     try diffs.append(.{ .x = x, .y = y, .cell = cell });
@@ -754,8 +763,8 @@ pub const CellBuffer = struct {
 
     /// Mark current frame as rendered (copies current to previous)
     pub fn swapBuffers(self: *Self) void {
-        // Free old combining chars in previous_cells
-        for (self.previous_cells) |*cell| {
+        // Free old combining chars in previousCells
+        for (self.previousCells) |*cell| {
             if (cell.comb) |comb| {
                 self.allocator.free(comb);
             }
@@ -763,11 +772,11 @@ pub const CellBuffer = struct {
 
         // Deep copy current cells to previous
         for (self.cells, 0..) |cell, idx| {
-            var prev_cell = cell;
+            var prevCell = cell;
             if (cell.comb) |comb| {
-                prev_cell.comb = self.allocator.dupe(u21, comb) catch null;
+                prevCell.comb = self.allocator.dupe(u21, comb) catch null;
             }
-            self.previous_cells[idx] = prev_cell;
+            self.previousCells[idx] = prevCell;
         }
         self.dirty = false;
     }
@@ -941,10 +950,10 @@ pub fn rgbColor(r: u8, g: u8, b: u8) Color {
 }
 
 // Common attribute combinations
-pub const BOLD = AttrMask{ .bold = true };
-pub const ITALIC = AttrMask{ .italic = true };
-pub const REVERSE = AttrMask{ .reverse = true };
-pub const STRIKETHROUGH = AttrMask{ .strikethrough = true };
+pub const bold = AttrMask{ .bold = true };
+pub const italic = AttrMask{ .italic = true };
+pub const reverse = AttrMask{ .reverse = true };
+pub const strikethrough = AttrMask{ .strikethrough = true };
 
 // Utility functions for creating cells
 pub fn createCell(rune: u21, width: u8) Cell {
@@ -980,7 +989,7 @@ pub fn colorStyle(fg: Color, bg: Color) Style {
 }
 
 pub fn underlineStyle(style: UnderlineStyle, color: Color) Style {
-    return Style{ .ul_style = style, .ul_color = color };
+    return Style{ .ulStyle = style, .ulColor = color };
 }
 
 // Tests
@@ -1015,7 +1024,7 @@ test "wide character handling" {
 
     try testing.expect(cell1.rune == 0x4E00);
     try testing.expect(cell1.width == 2);
-    try testing.expect(cell2.is_continuation);
+    try testing.expect(cell2.isContinuation);
 }
 
 test "text writing" {

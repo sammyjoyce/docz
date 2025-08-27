@@ -10,7 +10,7 @@ const ScrollableTextArea = tui.widgets.ScrollableTextArea;
 const WordWrapMode = tui.widgets.WordWrapMode;
 const Selection = tui.widgets.Selection;
 
-test "ScrollableTextArea initialization" {
+test "scrollableTextAreaInitialization" {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
@@ -26,7 +26,7 @@ test "ScrollableTextArea initialization" {
     try testing.expect(!textArea.modified);
 }
 
-test "ScrollableTextArea set text" {
+test "scrollableTextAreaSetText" {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
@@ -46,7 +46,7 @@ test "ScrollableTextArea set text" {
     try testing.expect(textArea.modified);
 }
 
-test "ScrollableTextArea cursor movement" {
+test "scrollableTextAreaCursorMovement" {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
@@ -63,7 +63,7 @@ test "ScrollableTextArea cursor movement" {
     try testing.expectEqual(@as(usize, 2), textArea.cursor_col);
 }
 
-test "ScrollableTextArea search" {
+test "scrollableTextAreaSearch" {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
@@ -86,7 +86,7 @@ test "ScrollableTextArea search" {
     try testing.expectEqual(@as(usize, 11), textArea.search_matches.items[0].end_col);
 }
 
-test "ScrollableTextArea configuration" {
+test "scrollableTextAreaConfiguration" {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
@@ -106,7 +106,7 @@ test "ScrollableTextArea configuration" {
     try testing.expectEqual(@as(u8, 8), textArea.config.tab_width);
 }
 
-test "ScrollableTextArea selection" {
+test "scrollableTextAreaSelection" {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
     const allocator = arena.allocator();

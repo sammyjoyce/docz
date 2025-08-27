@@ -10,7 +10,7 @@ const bounds_mod = @import("../core/bounds.zig");
 const notification_mod = @import("../notifications.zig");
 const progress_mod = @import("../widgets/rich/progress.zig");
 const text_input_mod = @import("../widgets/rich/text_input.zig");
-const theme_manager_mod = @import("../../theme/mod.zig");
+const theme = @import("../../theme/mod.zig");
 const input_system = @import("../../components/input.zig");
 const oauth_mod = @import("../../auth/oauth/mod.zig");
 const markdown_renderer = @import("../../render/markdown.zig");
@@ -22,19 +22,19 @@ const NotificationController = notification_mod.NotificationController;
 const NotificationType = notification_mod.NotificationType;
 const ProgressBar = progress_mod.ProgressBar;
 const TextInput = text_input_mod.TextInput;
-const ThemeManager = theme_manager_mod.Theme;
+const Theme = theme_manager_mod.Theme;
 const InputManager = input_system.InputManager;
 
 /// Standard UI patterns that all agents can use
 pub const StandardUIPatterns = struct {
     allocator: std.mem.Allocator,
     renderer: *Renderer,
-    theme_manager: *ThemeManager,
+    theme_manager: *Theme,
     notification_controller: NotificationController,
     input_manager: InputManager,
 
     /// Initialize the standard UI framework
-    pub fn init(allocator: std.mem.Allocator, renderer: *Renderer, theme_manager: *ThemeManager) !StandardUIPatterns {
+    pub fn init(allocator: std.mem.Allocator, renderer: *Renderer, theme_manager: *Theme) !StandardUIPatterns {
         const notification_controller = NotificationController.init(allocator, renderer);
         const input_manager = try InputManager.init(allocator);
 
@@ -54,7 +54,7 @@ pub const StandardUIPatterns = struct {
 
     /// Show a standard confirmation dialog
     pub fn showConfirmationDialog(self: *StandardUIPatterns, title: []const u8, message: []const u8) !bool {
-        const theme = self.theme_manager.getCurrentTheme();
+        const theme = self.theme.getCurrentTheme();
 
         // Create dialog bounds
         const terminal_size = bounds_mod.getTerminalSize();
@@ -208,13 +208,13 @@ pub const StandardUIPatterns = struct {
 pub const ProgressDialog = struct {
     allocator: std.mem.Allocator,
     renderer: *Renderer,
-    theme_manager: *ThemeManager,
+    theme_manager: *Theme,
     progress_bar: ProgressBar,
     title: []const u8,
     operation: []const u8,
     cancelled: bool = false,
 
-    pub fn init(allocator: std.mem.Allocator, renderer: *Renderer, theme_manager: *ThemeManager, title: []const u8, operation: []const u8) !ProgressDialog {
+    pub fn init(allocator: std.mem.Allocator, renderer: *Renderer, theme_manager: *Theme, title: []const u8, operation: []const u8) !ProgressDialog {
         const progress_bar = try ProgressBar.init(allocator, operation, .gradient);
 
         return ProgressDialog{
@@ -305,7 +305,7 @@ pub const OAuthIntegration = struct {
     /// Wait for authorization code with UI feedback
     fn waitForAuthCode(self: *OAuthIntegration, ui_patterns: *StandardUIPatterns) ![]const u8 {
         _ = self; // Method doesn't use self but needs to be instance method for future extensibility
-        const theme = ui_patterns.theme_manager.getCurrentTheme();
+        const theme = ui_patterns.theme.getCurrentTheme();
 
         // Create input field for code entry
         const input_bounds = renderer_mod.Bounds{
@@ -383,12 +383,12 @@ pub const OAuthIntegration = struct {
 pub const MarkdownEditor = struct {
     allocator: std.mem.Allocator,
     renderer: *Renderer,
-    theme_manager: *ThemeManager,
+    theme_manager: *Theme,
     content: std.ArrayList(u8),
     cursor_position: usize = 0,
     scroll_offset: usize = 0,
 
-    pub fn init(allocator: std.mem.Allocator, renderer: *Renderer, theme_manager: *ThemeManager) !MarkdownEditor {
+    pub fn init(allocator: std.mem.Allocator, renderer: *Renderer, theme_manager: *Theme) !MarkdownEditor {
         return MarkdownEditor{
             .allocator = allocator,
             .renderer = renderer,
@@ -469,7 +469,7 @@ pub const MarkdownEditor = struct {
 
     /// Render the editor
     pub fn render(self: *MarkdownEditor, bounds: renderer_mod.Bounds) !void {
-        const theme = self.theme_manager.getCurrentTheme();
+        const theme = self.theme.getCurrentTheme();
 
         // Draw editor border
         const border_style = Style{

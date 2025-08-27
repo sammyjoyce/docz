@@ -154,7 +154,7 @@ const ScrollableContainer = struct {
     }
 };
 
-test "ScrollableContainer initialization" {
+test "scrollableContainerInitialization" {
     var container = try ScrollableContainer.init(testing.allocator, .{});
     defer container.deinit();
 
@@ -164,7 +164,7 @@ test "ScrollableContainer initialization" {
     try testing.expect(container.scroll_y == 0);
 }
 
-test "ScrollableContainer set content renderer" {
+test "scrollableContainerSetContentRenderer" {
     var container = try ScrollableContainer.init(testing.allocator, .{});
     defer container.deinit();
 
@@ -173,7 +173,7 @@ test "ScrollableContainer set content renderer" {
     try testing.expect(container.config.scroll_behavior == .smooth);
 }
 
-test "ScrollableContainer set content size" {
+test "scrollableContainerSetContentSize" {
     var container = try ScrollableContainer.init(testing.allocator, .{});
     defer container.deinit();
 
@@ -183,7 +183,7 @@ test "ScrollableContainer set content size" {
     try testing.expect(container.content_height == 600);
 }
 
-test "ScrollableContainer scroll position" {
+test "scrollableContainerScrollPosition" {
     var container = try ScrollableContainer.init(testing.allocator, .{});
     defer container.deinit();
 
@@ -203,7 +203,7 @@ test "ScrollableContainer scroll position" {
     try testing.expect(ratio_y == 0.75); // 75/100 (scroll_y / max_scroll)
 }
 
-test "ScrollableContainer scroll by" {
+test "scrollableContainerScrollBy" {
     var container = try ScrollableContainer.init(testing.allocator, .{});
     defer container.deinit();
 
@@ -222,7 +222,7 @@ test "ScrollableContainer scroll by" {
     try testing.expect(container.scroll_y == 100);
 }
 
-test "ScrollableContainer scroll direction restrictions" {
+test "scrollableContainerScrollDirectionRestrictions" {
     // Test vertical-only scrolling
     var vertical_container = try ScrollableContainer.init(testing.allocator, .{
         .scroll_direction = .vertical,
@@ -252,7 +252,7 @@ test "ScrollableContainer scroll direction restrictions" {
     try testing.expect(horizontal_container.scroll_y == 0); // Should not scroll vertically
 }
 
-test "ScrollableContainer can scroll detection" {
+test "scrollableContainerCanScrollDetection" {
     var container = try ScrollableContainer.init(testing.allocator, .{});
     defer container.deinit();
 
@@ -277,7 +277,7 @@ test "ScrollableContainer can scroll detection" {
     try testing.expect(!container.canScroll(.horizontal));
 }
 
-test "ScrollableContainer max scroll position" {
+test "scrollable_container_max scroll position" {
     var container = try ScrollableContainer.init(testing.allocator, .{});
     defer container.deinit();
 
@@ -289,7 +289,7 @@ test "ScrollableContainer max scroll position" {
     try testing.expect(container.getMaxScrollY() == 300); // 400-100
 }
 
-test "ScrollableContainer scroll to" {
+test "scrollable_container_scroll to" {
     var container = try ScrollableContainer.init(testing.allocator, .{});
     defer container.deinit();
 
@@ -307,7 +307,7 @@ test "ScrollableContainer scroll to" {
     try testing.expect(container.velocity_x != 0 or container.velocity_y != 0);
 }
 
-test "ScrollableContainer focus management" {
+test "scrollableContainerFocusManagement" {
     var container = try ScrollableContainer.init(testing.allocator, .{});
     defer container.deinit();
 
@@ -320,7 +320,7 @@ test "ScrollableContainer focus management" {
     try testing.expect(!container.focused);
 }
 
-test "ScrollableContainer configuration" {
+test "scrollableContainerConfiguration" {
     // Test different scrollbar styles
     var modern_container = try ScrollableContainer.init(testing.allocator, .{
         .scrollbar_style = .modern,

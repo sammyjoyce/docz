@@ -60,21 +60,21 @@ pub const Color = union(enum) {
 
 /// Terminal capabilities for adaptive rendering
 pub const TermCaps = struct {
-    supports_truecolor: bool = false,
-    supports_unicode: bool = false,
-    supports_kitty_graphics: bool = false,
-    supports_sixel: bool = false,
-    supports_256_colors: bool = false,
-    supports_wide_chars: bool = false,
+    supportsTruecolor: bool = false,
+    supportsUnicode: bool = false,
+    supportsKittyGraphics: bool = false,
+    supportsSixel: bool = false,
+    supports256Colors: bool = false,
+    supportsWideChars: bool = false,
 
     /// Detect terminal capabilities
     pub fn detect() TermCaps {
         // This would normally detect actual terminal capabilities
         // For now, return conservative defaults that can be expanded
         return .{
-            .supports_truecolor = true,
-            .supports_unicode = true,
-            .supports_256_colors = true,
+            .supportsTruecolor = true,
+            .supportsUnicode = true,
+            .supports256Colors = true,
         };
     }
 };
@@ -122,13 +122,13 @@ pub const Progress = struct {
     /// Optional label to display
     label: ?[]const u8 = null,
     /// Show percentage text
-    show_percentage: bool = true,
+    showPercentage: bool = true,
     /// Show estimated time of arrival
-    show_eta: bool = false,
+    showEta: bool = false,
     /// Show processing rate (bytes/sec, items/sec, etc.)
-    show_rate: bool = false,
+    showRate: bool = false,
     /// Start time for ETA calculation
-    start_time: ?i64 = null,
+    startTime: ?i64 = null,
     /// Total expected value (for rate calculation)
     total: ?f64 = null,
     /// Current processed value (for rate calculation)
@@ -138,13 +138,13 @@ pub const Progress = struct {
     /// Custom color override
     color: ?Color = null,
     /// Background color override
-    background_color: ?Color = null,
+    backgroundColor: ?Color = null,
     /// Animation frame counter
-    animation_frame: u32 = 0,
+    animationFrame: u32 = 0,
     /// History for sparklines/charts
     history: std.ArrayList(ChartPoint),
     /// Maximum history size
-    max_history: usize = 100,
+    maxHistory: usize = 100,
 
     /// Chart point for history tracking
     pub const ChartPoint = struct {
@@ -177,8 +177,8 @@ pub const Progress = struct {
         const clamped_value = std.math.clamp(value, 0.0, 1.0);
         const now = std.time.timestamp();
 
-        if (self.start_time == null and clamped_value > 0.0) {
-            self.start_time = now;
+        if (self.startTime == null and clamped_value > 0.0) {
+            self.startTime = now;
         }
 
         // Add to history for sparklines/charts
@@ -188,12 +188,12 @@ pub const Progress = struct {
         });
 
         // Limit history size
-        if (self.history.items.len > self.max_history) {
+        if (self.history.items.len > self.maxHistory) {
             _ = self.history.orderedRemove(0);
         }
 
         self.value = clamped_value;
-        self.animation_frame +%= 1;
+        self.animationFrame +%= 1;
     }
 
     /// Update current value and recalculate rate
@@ -201,7 +201,7 @@ pub const Progress = struct {
         const now = std.time.timestamp();
 
         if (self.current) |prev_current| {
-            const dt = @as(f32, @floatFromInt(now - (self.start_time orelse now)));
+            const dt = @as(f32, @floatFromInt(now - (self.startTime orelse now)));
             if (dt > 0.0) {
                 const delta = current_value - prev_current;
                 self.rate = @as(f32, @floatFromInt(delta)) / dt;
@@ -209,16 +209,16 @@ pub const Progress = struct {
         }
 
         self.current = current_value;
-        if (self.start_time == null) {
-            self.start_time = now;
+        if (self.startTime == null) {
+            self.startTime = now;
         }
     }
 
     /// Get estimated time remaining in seconds
     pub fn getETA(self: *const Progress) ?i64 {
-        if (self.start_time == null or self.value <= 0.01) return null;
+        if (self.startTime == null or self.value <= 0.01) return null;
 
-        const elapsed = std.time.timestamp() - self.start_time.?;
+        const elapsed = std.time.timestamp() - self.startTime.?;
         const rate = self.value / @as(f32, @floatFromInt(elapsed));
         if (rate <= 0.0) return null;
 
@@ -260,8 +260,8 @@ pub const Progress = struct {
     }
 };
 
-/// Utility functions for progress bar rendering
-pub const Util = struct {
+/// Helper functions for progress bar rendering
+pub const Helper = struct {
     /// HSV to RGB conversion for color effects
     pub fn hsvToRgb(h: f32, s: f32, v: f32) Color {
         const c = v * s;
@@ -308,9 +308,9 @@ pub const Config = struct {
     label: ?[]const u8 = null,
     style: Style = .auto,
     animated: bool = true,
-    show_percentage: bool = true,
-    show_eta: bool = false,
-    show_rate: bool = false,
+    showPercentage: bool = true,
+    showEta: bool = false,
+    showRate: bool = false,
 };
 
 /// Component-based progress bar that integrates with component system
@@ -341,9 +341,9 @@ pub const Bar = struct {
         var data = Progress.init(allocator);
         try data.setProgress(config.progress);
         data.label = if (config.label) |l| try allocator.dupe(u8, l) else null;
-        data.show_percentage = config.show_percentage;
-        data.show_eta = config.show_eta;
-        data.show_rate = config.show_rate;
+        data.showPercentage = config.showPercentage;
+        data.showEta = config.showEta;
+        data.showRate = config.showRate;
 
         self.* = Self{
             .allocator = allocator,
@@ -597,7 +597,7 @@ pub const Renderer = struct {
             if (is_filled) {
                 // Rainbow gradient based on position
                 const hue = pos * 120.0; // Green to red range
-                const rgb = Util.hsvToRgb(120.0 - hue, 0.8, 1.0);
+                const rgb = Helper.hsvToRgb(120.0 - hue, 0.8, 1.0);
                 switch (rgb) {
                     .rgb => |r| try writer.print("\x1b[38;2;{d};{d};{d}m█\x1b[0m", .{ r.r, r.g, r.b }),
                     else => try writer.writeAll("█"),
@@ -626,7 +626,7 @@ pub const Renderer = struct {
             if (is_filled) {
                 // HSV rainbow based on position
                 const hue = pos * 360.0;
-                const rgb = Util.hsvToRgb(hue, 0.8, 1.0);
+                const rgb = Helper.hsvToRgb(hue, 0.8, 1.0);
                 switch (rgb) {
                     .rgb => |r| try writer.print("\x1b[38;2;{d};{d};{d}m█\x1b[0m", .{ r.r, r.g, r.b }),
                     else => try writer.writeAll("█"),
@@ -721,7 +721,7 @@ pub const Renderer = struct {
 
             if (self.caps.supports_truecolor) {
                 const hue = (@as(f32, @floatFromInt(i)) / @as(f32, @floatFromInt(num_circles))) * 360.0;
-                const rgb = Util.hsvToRgb(hue, 0.8, 1.0);
+                const rgb = Helper.hsvToRgb(hue, 0.8, 1.0);
                 switch (rgb) {
                     .rgb => |r| try writer.print("\x1b[38;2;{d};{d};{d}m{s}\x1b[0m ", .{ r.r, r.g, r.b, if (circle_level >= circles.len) circles[circles.len - 1] else circles[circle_level] }),
                     else => try writer.print("{s} ", .{if (circle_level >= circles.len) circles[circles.len - 1] else circles[circle_level]}),
@@ -779,7 +779,7 @@ pub const Renderer = struct {
 
             if (self.caps.supports_truecolor) {
                 const progress_color = value * 120.0; // Green to yellow range
-                const rgb = Util.hsvToRgb(progress_color, 0.8, 1.0);
+                const rgb = Helper.hsvToRgb(progress_color, 0.8, 1.0);
                 switch (rgb) {
                     .rgb => |r| try writer.print("\x1b[38;2;{d};{d};{d}m{s}\x1b[0m", .{ r.r, r.g, r.b, bars[@min(bar_idx, bars.len - 1)] }),
                     else => try writer.writeAll(bars[@min(bar_idx, bars.len - 1)]),

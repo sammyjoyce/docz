@@ -20,7 +20,7 @@ pub const InputEvent = input.InputEvent;
 pub const Input = input.Input;
 pub const InputConfig = input.Config;
 pub const InputFeature = input.Feature;
-pub const InputUtil = input.Util;
+
 pub const Key = input.Key;
 pub const Modifiers = input.Modifiers;
 pub const Animated = progress.Animated;

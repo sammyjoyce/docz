@@ -1,6 +1,6 @@
 const std = @import("std");
 const draw = @import("Draw.zig");
-const render_ctx = @import("../../render/mod.zig");
+const renderCtx = @import("../../render/mod.zig");
 const ui = @import("../../ui/mod.zig");
 
 pub const Notification = struct {
@@ -29,7 +29,7 @@ pub const Notification = struct {
         _ = rect; // No-op for now
     }
 
-    pub fn render(self: *Notification, ctx: *render_ctx.Context) !void {
+    pub fn render(self: *Notification, ctx: *renderCtx.Context) !void {
         // For now, render at origin; higher-level layout to provide rect soon
         const r = draw.Rect{ .x = 0, .y = 0, .w = 40, .h = 3 };
         try draw.notification(ctx, r, self.severity, self.title, self.message);

@@ -7,18 +7,18 @@
 //! - Automatically handles built-in commands (help, version, auth, etc.)
 
 const std = @import("std");
-const agent_main = @import("agent_main");
+const agentMain = @import("agent_main");
 const spec = @import("spec.zig");
 
 pub fn main() !void {
     // Create a general-purpose allocator for the agent
     // In production, you might want to use a more sophisticated allocator
-    var gpa_state = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa_state.deinit();
-    const allocator = gpa_state.allocator();
+    var gpaState = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpaState.deinit();
+    const allocator = gpaState.allocator();
 
-    // Use the simplified agent_main.runAgent() function
+    // Use the simplified agentMain.runAgent() function
     // This handles all CLI parsing, built-in commands, and engine delegation
     // The agent specification (spec.SPEC) defines how this agent works
-    return agent_main.runAgent(allocator, spec.SPEC);
+    return agentMain.runAgent(allocator, spec.SPEC);
 }

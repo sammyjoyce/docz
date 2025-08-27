@@ -60,10 +60,10 @@ pub const ToolReflection = struct {
                     // Check if this declaration is a tool function
                     if (decl.is_pub and @typeInfo(@TypeOf(@field(ModuleType, decl.name))) == .@"fn") {
                         const func = @field(ModuleType, decl.name);
-                        const func_info = @typeInfo(@TypeOf(func));
+                        const funcInfo = @typeInfo(@TypeOf(func));
 
                         // Check if it matches ToolFn signature
-                        if (func_info == .@"fn" and func_info.@"fn".params.len == 2) {
+                        if (funcInfo == .@"fn" and funcInfo.@"fn".params.len == 2) {
                             const toolName = comptime blk: {
                                 // Convert function name to tool name (e.g., "readFile" -> "read_file")
                                 var nameBuf: [decl.name.len * 2]u8 = undefined;
@@ -117,9 +117,9 @@ pub const ToolReflection = struct {
                 inline for (info.decls) |decl| {
                     if (decl.is_pub and @typeInfo(@TypeOf(@field(ModuleType, decl.name))) == .@"fn") {
                         const func = @field(ModuleType, decl.name);
-                        const func_info = @typeInfo(@TypeOf(func));
+                        const funcInfo = @typeInfo(@TypeOf(func));
 
-                        if (func_info == .@"fn" and func_info.@"fn".params.len == 2) {
+                        if (funcInfo == .@"fn" and funcInfo.@"fn".params.len == 2) {
                             tool_list = tool_list ++ [_][]const u8{decl.name};
                         }
                     }
@@ -204,10 +204,10 @@ pub const Registry = struct {
         inline for (info.decls) |decl| {
             if (decl.is_pub and @typeInfo(@TypeOf(@field(ModuleType, decl.name))) == .@"fn") {
                 const func = @field(ModuleType, decl.name);
-                const func_info = @typeInfo(@TypeOf(func));
+                const funcInfo = @typeInfo(@TypeOf(func));
 
                 // Check if it matches ToolFn signature
-                if (func_info == .@"fn" and func_info.@"fn".params.len == 2) {
+                if (funcInfo == .@"fn" and funcInfo.@"fn".params.len == 2) {
                     const toolName = comptime blk: {
                         // Convert function name to tool name (e.g., "readFile" -> "read_file")
                         var nameBuf: [decl.name.len * 2]u8 = undefined;
@@ -321,10 +321,10 @@ fn echo(allocator: std.mem.Allocator, input: []const u8) ToolError![]u8 {
 var globalList: ?*std.ArrayList(u8) = null;
 var globalAllocator: ?std.mem.Allocator = null;
 fn tokenCallbackImpl(chunk: []const u8) void {
-    if (globalList) |lst| {
-        if (globalAllocator) |alloc| {
-            lst.appendSlice(alloc, chunk) catch |err| {
-                std.log.err("Failed to append token chunk: {any}", .{err});
+    if (globalList) |list| {
+        if (globalAllocator) |allocator| {
+            list.appendSlice(allocator, chunk) catch |appendError| {
+                std.log.err("Failed to append token chunk: {any}", .{appendError});
             };
         }
     }
@@ -476,10 +476,10 @@ pub fn registerJsonToolWithRequiredFields(
 ) !void {
     const Stored = struct {
         var func: JsonFunction = undefined;
-        var req: []const []const u8 = &[_][]const u8{};
+        var request: []const []const u8 = &[_][]const u8{};
     };
     Stored.func = jsonFunc;
-    Stored.req = requiredFields;
+    Stored.request = requiredFields;
 
     const wrapper = struct {
         fn run(allocator: std.mem.Allocator, input: []const u8) ToolError![]u8 {
@@ -488,10 +488,10 @@ pub fn registerJsonToolWithRequiredFields(
             if (parsed.value != .object) return ToolError.InvalidInput;
 
             // Validate required fields
-            const field_map = parsed.value.object;
+            const fieldMap = parsed.value.object;
             // Reuse schema helper to validate fields
             const schemas = @import("json_schemas.zig");
-            schemas.validateRequiredFields(field_map, Stored.req) catch return ToolError.MissingParameter;
+            schemas.validateRequiredFields(fieldMap, Stored.request) catch return ToolError.MissingParameter;
 
             const result = Stored.func(allocator, parsed.value) catch |err| return err;
             const out = std.json.stringifyAlloc(allocator, result, .{ .whitespace = false }) catch return ToolError.UnexpectedError;

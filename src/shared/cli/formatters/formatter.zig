@@ -83,7 +83,7 @@ pub const CliFormatter = struct {
         self.terminal.deinit();
     }
 
-    /// Enhanced help display with structured layout
+    /// Help display with structured layout
     pub fn printHelp(self: *CliFormatter, cli_config: anytype) !void {
         const width = @min(self.terminalSize.width, 80);
 
@@ -118,8 +118,8 @@ pub const CliFormatter = struct {
         self.printCapabilitiesInfo();
     }
 
-    /// Enhanced error display
-    pub fn printEnhancedError(self: *CliFormatter, err: anytype, _: ?[]const u8) !void {
+    /// Error display
+    pub fn printError(self: *CliFormatter, err: anytype, _: ?[]const u8) !void {
         const width = @min(self.terminalSize.width, 80);
 
         // Error header with icon and color
@@ -151,8 +151,8 @@ pub const CliFormatter = struct {
         try self.terminal.printf("\n", .{}, null);
     }
 
-    /// Enhanced version display
-    pub fn printEnhancedVersion(self: *CliFormatter, cli_config: anytype) !void {
+    /// Version display
+    pub fn printVersion(self: *CliFormatter, cli_config: anytype) !void {
         try self.terminal.printf("{s}{s}DocZ{s}", .{ self.colors.bold, self.colors.primary, self.colors.reset }, null);
         if (@hasField(@TypeOf(cli_config), "version")) {
             try self.terminal.printf(" version {s}{s}{s}\n", .{ self.colors.accent, cli_config.version, self.colors.reset }, null);

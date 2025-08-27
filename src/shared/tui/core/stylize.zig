@@ -132,7 +132,7 @@ pub const Style = struct {
                 .palette => |v| cell_buffer.Color{ .ansi256 = v },
                 .rgb => |rgb| cell_buffer.Color{ .rgb = .{ .r = rgb.r, .g = rgb.g, .b = rgb.b } },
             } else cell_buffer.Color.default,
-            .ul_color = if (self.underline_color) |c| switch (c) {
+            .ulColor = if (self.underline_color) |c| switch (c) {
                 .default => cell_buffer.Color.default,
                 .ansi => |v| cell_buffer.Color{ .ansi = v },
                 .palette => |v| cell_buffer.Color{ .ansi256 = v },
@@ -142,13 +142,13 @@ pub const Style = struct {
                 .bold = self.bold,
                 .faint = self.faint,
                 .italic = self.italic,
-                .slow_blink = self.blink,
-                .rapid_blink = false,
+                .slowBlink = self.blink,
+                .rapidBlink = false,
                 .reverse = self.reverse,
                 .conceal = self.conceal,
                 .strikethrough = self.strikethrough,
             },
-            .ul_style = @as(cell_buffer.UnderlineStyle, @enumFromInt(@intFromEnum(self.underline_style))),
+            .ulStyle = @as(cell_buffer.UnderlineStyle, @enumFromInt(@intFromEnum(self.underline_style))),
         };
     }
 };

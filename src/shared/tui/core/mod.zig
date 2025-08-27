@@ -11,7 +11,7 @@ pub const stylize = @import("stylize.zig");
 
 // Border merging functionality
 pub const border_merger = @import("border_merger.zig");
-pub const BorderMerger = border_merger.BorderMerger;
+pub const BorderMerger = border_merger.Merger;
 
 // Easing functions for animations
 pub const easing = @import("easing.zig");

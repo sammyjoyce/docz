@@ -20,20 +20,20 @@ pub const TabConfig = struct {
 
     /// Calculate the number of spaces needed to reach the next tab stop
     /// from the given column position
-    pub fn spacesToNextTabStop(self: Self, column: usize) u8 {
+    pub fn spaces_to_next_tab_stop(self: Self, column: usize) u8 {
         const tabStop = self.tab_width;
         const spacesToNext = tabStop - (column % tabStop);
         return @intCast(spacesToNext);
     }
 
     /// Calculate the visual width a tab character would occupy at the given column
-    pub fn tabWidthAtColumn(self: Self, column: usize) u8 {
-        return self.spacesToNextTabStop(column);
+    pub fn tab_width_at_column(self: Self, column: usize) u8 {
+        return self.spaces_to_next_tab_stop(column);
     }
 
     /// Get the next tab stop position after the given column
-    pub fn nextTabStop(self: Self, column: usize) usize {
-        const spaces = self.spacesToNextTabStop(column);
+    pub fn next_tab_stop(self: Self, column: usize) usize {
+        const spaces = self.spaces_to_next_tab_stop(column);
         return column + spaces;
     }
 };
@@ -54,7 +54,7 @@ pub fn expandTabs(
         const codepoint = text[i];
         if (codepoint == '\t') {
             // Expand tab to spaces
-            const spacesNeeded = config.spacesToNextTabStop(column);
+            const spacesNeeded = config.spaces_to_next_tab_stop(column);
             for (0..spacesNeeded) |_| {
                 try result.append(alloc, ' ');
             }
@@ -86,7 +86,7 @@ pub fn displayWidth(text: []const u8, config: TabConfig) usize {
     while (i < text.len) {
         const codepoint = text[i];
         if (codepoint == '\t') {
-            const tabWidth = config.spacesToNextTabStop(column);
+            const tabWidth = config.spaces_to_next_tab_stop(column);
             width += tabWidth;
             column += tabWidth;
         } else if (codepoint == '\n' or codepoint == '\r') {
@@ -136,7 +136,7 @@ pub const TabStop = struct {
     }
 
     /// Find next tab stop after the given column
-    pub fn nextTabStop(self: Self, column: usize) usize {
+    pub fn next_tab_stop(self: Self, column: usize) usize {
         for (self.stops.items) |stop| {
             if (stop > column) return stop;
         }
@@ -144,8 +144,8 @@ pub const TabStop = struct {
     }
 
     /// Calculate spaces to next tab stop
-    pub fn spacesToNextTabStop(self: Self, column: usize) u8 {
-        const nextStop = self.nextTabStop(column);
+    pub fn spaces_to_next_tab_stop(self: Self, column: usize) u8 {
+        const nextStop = self.next_tab_stop(column);
         if (nextStop >= column) {
             const spaces = nextStop - column;
             return @intCast(@min(spaces, 255));
@@ -154,7 +154,7 @@ pub const TabStop = struct {
     }
 
     /// Set a tab stop at the given column
-    pub fn setTabStop(self: *Self, column: usize) void {
+    pub fn set_tab_stop(self: *Self, column: usize) void {
         if (column >= self.width) return;
 
         // Remove existing stop at this column if any
@@ -176,7 +176,7 @@ pub const TabStop = struct {
     }
 
     /// Clear a tab stop at the given column
-    pub fn clearTabStop(self: *Self, column: usize) void {
+    pub fn clear_tab_stop(self: *Self, column: usize) void {
         var i: usize = 0;
         while (i < self.stops.items.len) {
             if (self.stops.items[i] == column) {
@@ -188,7 +188,7 @@ pub const TabStop = struct {
     }
 
     /// Clear all tab stops
-    pub fn clearAllTabStops(self: *Self) void {
+    pub fn clear_all_tab_stops(self: *Self) void {
         self.stops.clearRetainingCapacity();
         var i: usize = 0;
         while (i < self.width) : (i += 8) {
@@ -197,7 +197,7 @@ pub const TabStop = struct {
     }
 
     /// Reset to default tab stops (every 8 columns)
-    pub fn resetToDefault(self: *Self) void {
+    pub fn reset_to_default(self: *Self) void {
         self.stops.clearRetainingCapacity();
         var i: usize = 0;
         while (i < self.width) : (i += 8) {
@@ -409,142 +409,142 @@ test "display width edge cases" {
 // TabConfig Method Tests
 // ============================================================================
 
-test "TabConfig.spacesToNextTabStop" {
+test "tab_config_spaces_to_next_tab_stop" {
     const config4 = TabConfig{ .tab_width = 4 };
     const config8 = TabConfig{ .tab_width = 8 };
 
     // Tab width 4
-    try expectEqual(@as(u8, 4), config4.spacesToNextTabStop(0));
-    try expectEqual(@as(u8, 3), config4.spacesToNextTabStop(1));
-    try expectEqual(@as(u8, 2), config4.spacesToNextTabStop(2));
-    try expectEqual(@as(u8, 1), config4.spacesToNextTabStop(3));
-    try expectEqual(@as(u8, 4), config4.spacesToNextTabStop(4));
+    try expectEqual(@as(u8, 4), config4.spaces_to_next_tab_stop(0));
+    try expectEqual(@as(u8, 3), config4.spaces_to_next_tab_stop(1));
+    try expectEqual(@as(u8, 2), config4.spaces_to_next_tab_stop(2));
+    try expectEqual(@as(u8, 1), config4.spaces_to_next_tab_stop(3));
+    try expectEqual(@as(u8, 4), config4.spaces_to_next_tab_stop(4));
 
     // Tab width 8
-    try expectEqual(@as(u8, 8), config8.spacesToNextTabStop(0));
-    try expectEqual(@as(u8, 7), config8.spacesToNextTabStop(1));
-    try expectEqual(@as(u8, 1), config8.spacesToNextTabStop(7));
-    try expectEqual(@as(u8, 8), config8.spacesToNextTabStop(8));
+    try expectEqual(@as(u8, 8), config8.spaces_to_next_tab_stop(0));
+    try expectEqual(@as(u8, 7), config8.spaces_to_next_tab_stop(1));
+    try expectEqual(@as(u8, 1), config8.spaces_to_next_tab_stop(7));
+    try expectEqual(@as(u8, 8), config8.spaces_to_next_tab_stop(8));
 }
 
-test "TabConfig.tabWidthAtColumn" {
+test "tab_config_tab_width_at_column" {
     const config = TabConfig{ .tab_width = 4 };
 
-    try expectEqual(@as(u8, 4), config.tabWidthAtColumn(0));
-    try expectEqual(@as(u8, 3), config.tabWidthAtColumn(1));
-    try expectEqual(@as(u8, 2), config.tabWidthAtColumn(2));
-    try expectEqual(@as(u8, 1), config.tabWidthAtColumn(3));
-    try expectEqual(@as(u8, 4), config.tabWidthAtColumn(4));
+    try expectEqual(@as(u8, 4), config.tab_width_at_column(0));
+    try expectEqual(@as(u8, 3), config.tab_width_at_column(1));
+    try expectEqual(@as(u8, 2), config.tab_width_at_column(2));
+    try expectEqual(@as(u8, 1), config.tab_width_at_column(3));
+    try expectEqual(@as(u8, 4), config.tab_width_at_column(4));
 }
 
-test "TabConfig.nextTabStop" {
+test "tab_config_next_tab_stop" {
     const config = TabConfig{ .tab_width = 4 };
 
-    try expectEqual(@as(usize, 4), config.nextTabStop(0));
-    try expectEqual(@as(usize, 4), config.nextTabStop(1));
-    try expectEqual(@as(usize, 4), config.nextTabStop(2));
-    try expectEqual(@as(usize, 4), config.nextTabStop(3));
-    try expectEqual(@as(usize, 8), config.nextTabStop(4));
-    try expectEqual(@as(usize, 8), config.nextTabStop(5));
+    try expectEqual(@as(usize, 4), config.next_tab_stop(0));
+    try expectEqual(@as(usize, 4), config.next_tab_stop(1));
+    try expectEqual(@as(usize, 4), config.next_tab_stop(2));
+    try expectEqual(@as(usize, 4), config.next_tab_stop(3));
+    try expectEqual(@as(usize, 8), config.next_tab_stop(4));
+    try expectEqual(@as(usize, 8), config.next_tab_stop(5));
 }
 
 // ============================================================================
 // TabStop Tests
 // ============================================================================
 
-test "TabStop initialization" {
+test "tab_stop_initialization" {
     var manager = try TabStop.init(allocator, 80);
     defer manager.deinit();
 
     try expectEqual(@as(usize, 80), manager.width);
     // Check default tab stops (every 8 columns)
-    try expectEqual(@as(usize, 8), manager.nextTabStop(0));
-    try expectEqual(@as(usize, 16), manager.nextTabStop(8));
-    try expectEqual(@as(usize, 24), manager.nextTabStop(16));
+    try expectEqual(@as(usize, 8), manager.next_tab_stop(0));
+    try expectEqual(@as(usize, 16), manager.next_tab_stop(8));
+    try expectEqual(@as(usize, 24), manager.next_tab_stop(16));
 }
 
-test "TabStop nextTabStop" {
+test "tab_stop_next_tab_stop" {
     var manager = try TabStop.init(allocator, 80);
     defer manager.deinit();
 
     // Default tab stops at 0, 8, 16, 24, 32, 40, 48, 56, 64, 72
-    try expectEqual(@as(usize, 8), manager.nextTabStop(0));
-    try expectEqual(@as(usize, 8), manager.nextTabStop(1));
-    try expectEqual(@as(usize, 8), manager.nextTabStop(7));
-    try expectEqual(@as(usize, 16), manager.nextTabStop(8));
-    try expectEqual(@as(usize, 16), manager.nextTabStop(9));
-    try expectEqual(@as(usize, 79), manager.nextTabStop(79)); // At boundary
+    try expectEqual(@as(usize, 8), manager.next_tab_stop(0));
+    try expectEqual(@as(usize, 8), manager.next_tab_stop(1));
+    try expectEqual(@as(usize, 8), manager.next_tab_stop(7));
+    try expectEqual(@as(usize, 16), manager.next_tab_stop(8));
+    try expectEqual(@as(usize, 16), manager.next_tab_stop(9));
+    try expectEqual(@as(usize, 79), manager.next_tab_stop(79)); // At boundary
 }
 
-test "TabStop spacesToNextTabStop" {
+test "tab_stop_spaces_to_next_tab_stop" {
     var manager = try TabStop.init(allocator, 80);
     defer manager.deinit();
 
-    try expectEqual(@as(u8, 8), manager.spacesToNextTabStop(0));
-    try expectEqual(@as(u8, 7), manager.spacesToNextTabStop(1));
-    try expectEqual(@as(u8, 1), manager.spacesToNextTabStop(7));
-    try expectEqual(@as(u8, 8), manager.spacesToNextTabStop(8));
+    try expectEqual(@as(u8, 8), manager.spaces_to_next_tab_stop(0));
+    try expectEqual(@as(u8, 7), manager.spaces_to_next_tab_stop(1));
+    try expectEqual(@as(u8, 1), manager.spaces_to_next_tab_stop(7));
+    try expectEqual(@as(u8, 8), manager.spaces_to_next_tab_stop(8));
 }
 
-test "TabStop setTabStop" {
+test "tab_stop_set_tab_stop" {
     var manager = try TabStop.init(allocator, 80);
     defer manager.deinit();
 
     // Set custom tab stop
-    manager.setTabStop(12);
-    try expectEqual(@as(usize, 12), manager.nextTabStop(10));
-    try expectEqual(@as(usize, 12), manager.nextTabStop(11));
-    try expectEqual(@as(usize, 16), manager.nextTabStop(12));
+    manager.set_tab_stop(12);
+    try expectEqual(@as(usize, 12), manager.next_tab_stop(10));
+    try expectEqual(@as(usize, 12), manager.next_tab_stop(11));
+    try expectEqual(@as(usize, 16), manager.next_tab_stop(12));
 }
 
-test "TabStop clearTabStop" {
+test "tab_stop_clear_tab_stop" {
     var manager = try TabStop.init(allocator, 80);
     defer manager.deinit();
 
     // Set and then clear a tab stop
-    manager.setTabStop(12);
-    try expectEqual(@as(usize, 12), manager.nextTabStop(10));
+    manager.set_tab_stop(12);
+    try expectEqual(@as(usize, 12), manager.next_tab_stop(10));
 
-    manager.clearTabStop(12);
-    try expectEqual(@as(usize, 16), manager.nextTabStop(10)); // Should skip to next default
+    manager.clear_tab_stop(12);
+    try expectEqual(@as(usize, 16), manager.next_tab_stop(10)); // Should skip to next default
 }
 
-test "TabStop clearAllTabStops" {
+test "tab_stop_clear_all_tab_stops" {
     var manager = try TabStop.init(allocator, 80);
     defer manager.deinit();
 
-    manager.setTabStop(12);
-    manager.setTabStop(20);
-    try expectEqual(@as(usize, 12), manager.nextTabStop(10));
+    manager.set_tab_stop(12);
+    manager.set_tab_stop(20);
+    try expectEqual(@as(usize, 12), manager.next_tab_stop(10));
 
-    manager.clearAllTabStops();
-    try expectEqual(@as(usize, 16), manager.nextTabStop(10)); // Should skip to next default
+    manager.clear_all_tab_stops();
+    try expectEqual(@as(usize, 16), manager.next_tab_stop(10)); // Should skip to next default
 }
 
-test "TabStop resetToDefault" {
+test "tab_stop_reset_to_default" {
     var manager = try TabStop.init(allocator, 80);
     defer manager.deinit();
 
     // Set custom tab stops
-    manager.setTabStop(12);
-    manager.setTabStop(20);
-    try expectEqual(@as(usize, 12), manager.nextTabStop(10));
+    manager.set_tab_stop(12);
+    manager.set_tab_stop(20);
+    try expectEqual(@as(usize, 12), manager.next_tab_stop(10));
 
-    manager.resetToDefault();
-    try expectEqual(@as(usize, 16), manager.nextTabStop(10)); // Should be back to default
+    manager.reset_to_default();
+    try expectEqual(@as(usize, 16), manager.next_tab_stop(10)); // Should be back to default
 }
 
-test "TabStop boundary conditions" {
+test "tab_stop_boundary conditions" {
     var manager = try TabStop.init(allocator, 20);
     defer manager.deinit();
 
     // Test at boundary
-    try expectEqual(@as(usize, 19), manager.nextTabStop(19));
-    try expectEqual(@as(u8, 0), manager.spacesToNextTabStop(19));
+    try expectEqual(@as(usize, 19), manager.next_tab_stop(19));
+    try expectEqual(@as(u8, 0), manager.spaces_to_next_tab_stop(19));
 
     // Test beyond boundary
-    try expectEqual(@as(usize, 19), manager.nextTabStop(20));
-    try expectEqual(@as(u8, 0), manager.spacesToNextTabStop(20));
+    try expectEqual(@as(usize, 19), manager.next_tab_stop(20));
+    try expectEqual(@as(u8, 0), manager.spaces_to_next_tab_stop(20));
 }
 
 // ============================================================================
@@ -627,10 +627,10 @@ test "cursor positioning in tab manager" {
     defer manager.deinit();
 
     // Test cursor positioning at various columns
-    try expectEqual(@as(usize, 8), manager.nextTabStop(0));   // From col 0, next tab at 8
-    try expectEqual(@as(usize, 8), manager.nextTabStop(4));   // From col 4, next tab at 8
-    try expectEqual(@as(usize, 16), manager.nextTabStop(8));  // From col 8, next tab at 16
-    try expectEqual(@as(usize, 16), manager.nextTabStop(12)); // From col 12, next tab at 16
+    try expectEqual(@as(usize, 8), manager.next_tab_stop(0));   // From col 0, next tab at 8
+    try expectEqual(@as(usize, 8), manager.next_tab_stop(4));   // From col 4, next tab at 8
+    try expectEqual(@as(usize, 16), manager.next_tab_stop(8));  // From col 8, next tab at 16
+    try expectEqual(@as(usize, 16), manager.next_tab_stop(12)); // From col 12, next tab at 16
 }
 
 // ============================================================================
@@ -696,7 +696,7 @@ test "tab processing performance test" {
 // Error Handling Tests
 // ============================================================================
 
-test "tab processing with invalid UTF-8" {
+test "tab_processing_with_invalid_utf8" {
     const config = TabConfig{ .tab_width = 4, .expand_tabs = true };
 
     // Create invalid UTF-8 sequence
@@ -717,5 +717,5 @@ test "tab stop manager with zero width" {
 
     try expectEqual(@as(usize, 0), manager.width);
     // Boundary case: no tab stops possible
-    try expectEqual(@as(usize, 0), manager.nextTabStop(0));
+    try expectEqual(@as(usize, 0), manager.next_tab_stop(0));
 }

@@ -144,17 +144,17 @@ pub const HTTPClient = struct {
         }
 
         // Configure headers
-        var header_list: ?*c.curl_slist = null;
-        defer if (header_list) |list| c.curl_slist_free_all(list);
+        var headerList: ?*c.curl_slist = null;
+        defer if (headerList) |list| c.curl_slist_free_all(list);
 
         for (req.headers) |header| {
             const header_str = try std.fmt.allocPrint(self.allocator, "{s}: {s}\x00", .{ header.name, header.value });
             defer self.allocator.free(header_str);
 
-            header_list = c.curl_slist_append(header_list, header_str.ptr);
+            headerList = c.curl_slist_append(headerList, header_str.ptr);
         }
 
-        if (header_list) |list| {
+        if (headerList) |list| {
             _ = c.curl_easy_setopt(handle, c.CURLOPT_HTTPHEADER, list);
         }
 
@@ -269,8 +269,8 @@ pub const HTTPClient = struct {
         }
 
         // Configure headers
-        var header_list: ?*c.curl_slist = null;
-        defer if (header_list) |list| c.curl_slist_free_all(list);
+        var headerList: ?*c.curl_slist = null;
+        defer if (headerList) |list| c.curl_slist_free_all(list);
 
         for (req.headers) |header| {
             // Debug: Check header data
@@ -281,10 +281,10 @@ pub const HTTPClient = struct {
             const header_str = try std.fmt.allocPrint(self.allocator, "{s}: {s}\x00", .{ header.name, header.value });
             defer self.allocator.free(header_str);
 
-            header_list = c.curl_slist_append(header_list, header_str.ptr);
+            headerList = c.curl_slist_append(headerList, header_str.ptr);
         }
 
-        if (header_list) |list| {
+        if (headerList) |list| {
             _ = c.curl_easy_setopt(handle, c.CURLOPT_HTTPHEADER, list);
         }
 

@@ -49,7 +49,7 @@ pub const Notification = struct {
     allocator: std.mem.Allocator,
     capabilities: Capability,
     termCaps: term.caps.TermCaps,
-    terminal: *term.unified.Terminal,
+    terminal: *term.common.Terminal,
     enabled: bool = true,
 
     pub const NotificationLevel = enum {
@@ -67,7 +67,7 @@ pub const Notification = struct {
         duration: ?u32 = null, // seconds
     };
 
-    pub fn init(allocator: std.mem.Allocator, capabilities: Capability, termCaps: term.caps.TermCaps, terminal: *term.unified.Terminal) Notification {
+    pub fn init(allocator: std.mem.Allocator, capabilities: Capability, termCaps: term.caps.TermCaps, terminal: *term.common.Terminal) Notification {
         return Notification{
             .allocator = allocator,
             .capabilities = capabilities,
@@ -80,7 +80,7 @@ pub const Notification = struct {
         if (!self.enabled) return;
 
         // Build shared Notification model
-        const config = components.NotificationConfiguration{
+        const config = components.NotificationConfig{
             .enableSystemNotifications = true,
             .enableSound = n.sound,
             .autoDismissMs = if (n.duration) |d| @as(u32, d * 1000) else null,
@@ -118,9 +118,9 @@ pub const Notification = struct {
 pub const Graphics = struct {
     allocator: std.mem.Allocator,
     capabilities: Capability,
-    terminal: *term.unified.Terminal,
+    terminal: *term.common.Terminal,
 
-    pub fn init(allocator: std.mem.Allocator, capabilities: Capability, terminal: *term.unified.Terminal) Graphics {
+    pub fn init(allocator: std.mem.Allocator, capabilities: Capability, terminal: *term.common.Terminal) Graphics {
         return Graphics{
             .allocator = allocator,
             .capabilities = capabilities,
@@ -146,9 +146,9 @@ pub const Clipboard = struct {
     allocator: std.mem.Allocator,
     capabilities: Capability,
     termCaps: term.caps.TermCaps,
-    terminal: *term.unified.Terminal,
+    terminal: *term.common.Terminal,
 
-    pub fn init(allocator: std.mem.Allocator, capabilities: Capability, termCaps: term.caps.TermCaps, terminal: *term.unified.Terminal) Clipboard {
+    pub fn init(allocator: std.mem.Allocator, capabilities: Capability, termCaps: term.caps.TermCaps, terminal: *term.common.Terminal) Clipboard {
         return Clipboard{
             .allocator = allocator,
             .capabilities = capabilities,
@@ -176,9 +176,9 @@ pub const Hyperlink = struct {
     allocator: std.mem.Allocator,
     capabilities: Capability,
     termCaps: term.caps.TermCaps,
-    terminal: *term.unified.Terminal,
+    terminal: *term.common.Terminal,
 
-    pub fn init(allocator: std.mem.Allocator, capabilities: Capability, termCaps: term.caps.TermCaps, terminal: *term.unified.Terminal) Hyperlink {
+    pub fn init(allocator: std.mem.Allocator, capabilities: Capability, termCaps: term.caps.TermCaps, terminal: *term.common.Terminal) Hyperlink {
         return Hyperlink{
             .allocator = allocator,
             .capabilities = capabilities,
@@ -201,7 +201,7 @@ pub const Cli = struct {
     allocator: std.mem.Allocator,
     capabilities: Capability,
     termCaps: term.caps.TermCaps,
-    terminal: term.unified.Terminal,
+    terminal: term.common.Terminal,
     notification: Notification,
     graphics: Graphics,
     clipboard: Clipboard,
@@ -215,7 +215,7 @@ pub const Cli = struct {
         const termCaps = try term.caps.detectCaps(allocator);
 
         // Initialize terminal
-        var terminal = try term.unified.Terminal.init(allocator);
+        var terminal = try term.common.Terminal.init(allocator);
 
         // Load configuration
         const config = types.Config.loadDefault(allocator);

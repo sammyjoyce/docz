@@ -700,7 +700,7 @@ fn getParticleCharacter(particle_type: ParticleType) []const u8 {
 // ============================================================================
 
 /// Create a typing animation with common presets
-pub const TypingAnimationBuilder = struct {
+pub const Builder = struct {
     /// Create a smooth typing animation
     pub fn smooth(allocator: std.mem.Allocator, text: []const u8, cps: f32) !TypingAnimation {
         var animation = try TypingAnimation.init(allocator, text);
@@ -806,20 +806,20 @@ test "ParticleEmitter basic functionality" {
     try testing.expect(emitter.particles.items.len <= 1);
 }
 
-test "TypingAnimationBuilder presets" {
+test "Builder presets" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
     const text = "Test text";
 
     // Test smooth preset
-    var smooth_anim = try TypingAnimationBuilder.smooth(allocator, text, 30.0);
+    var smooth_anim = try Builder.smooth(allocator, text, 30.0);
     defer smooth_anim.deinit();
     try testing.expectEqual(smooth_anim.typing_style, .smooth);
     try testing.expectEqual(smooth_anim.chars_per_second, 30.0);
 
     // Test typewriter preset
-    var typewriter_anim = try TypingAnimationBuilder.typewriter(allocator, text, 20.0);
+    var typewriter_anim = try Builder.typewriter(allocator, text, 20.0);
     defer typewriter_anim.deinit();
     try testing.expectEqual(typewriter_anim.typing_style, .typewriter);
     try testing.expectEqual(typewriter_anim.cursor_style, .block_blink);

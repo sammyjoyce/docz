@@ -1,6 +1,6 @@
 //! Line Chart Widget with Progressive Enhancement
 //!
-//! Demonstrates sophisticated terminal graphics capabilities with graceful fallback:
+//! Demonstrates terminal graphics capabilities with graceful fallback:
 //! - Kitty Graphics: WebGL-like shaders with smooth antialiased lines
 //! - Sixel: Optimized palette and dithering for high-quality images
 //! - Unicode Braille: High-density plots using Braille patterns (2x4 per char)
@@ -15,7 +15,7 @@ const color_palette = term_shared.term.color.palettes;
 
 const braille = @import("../../render/braille.zig");
 
-/// Advanced line chart with progressive enhancement
+/// Line chart with progressive enhancement
 pub const LineChart = struct {
     allocator: std.mem.Allocator,
     data_buffer: *ringBuffer(Point),

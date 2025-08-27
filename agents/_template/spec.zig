@@ -9,7 +9,7 @@
 const std = @import("std");
 const engine = @import("core_engine");
 const impl = @import("agent.zig");
-const tools_mod = @import("tools_shared");
+const toolsMod = @import("tools_shared");
 
 /// ============================================================================
 /// SYSTEM PROMPT BUILDING
@@ -56,7 +56,7 @@ fn buildSystemPromptImpl(allocator: std.mem.Allocator, options: engine.CliOption
 ///   registry: Shared tools registry to register tools with
 ///
 /// Errors: Tool registration failures or validation errors
-fn registerToolsImpl(registry: *tools_mod.Registry) !void {
+fn registerToolsImpl(registry: *toolsMod.Registry) !void {
     // ============================================================================
     // PATTERN 1: INDIVIDUAL TOOL REGISTRATION (RECOMMENDED)
     // ============================================================================
@@ -68,7 +68,7 @@ fn registerToolsImpl(registry: *tools_mod.Registry) !void {
     const tools = @import("tools/mod.zig");
 
     // Register the tool with comprehensive metadata
-    try tools_mod.registerJsonTool(registry, "example", // tool_name (unique identifier)
+    try toolsMod.registerJsonTool(registry, "example", // tool_name (unique identifier)
         "Tool demonstrating JSON input/output patterns, parameter validation, and structured responses", // description
         tools.tool, // tool_function
         "_template" // agent_name (for attribution)
@@ -80,7 +80,7 @@ fn registerToolsImpl(registry: *tools_mod.Registry) !void {
     // Alternatively, you can register all tools from a module at once
     // This is useful when you have many tools or want to organize them
 
-    // try tools_mod.registerFromModule(registry, tools, "_template");
+    // try toolsMod.registerFromModule(registry, tools, "_template");
 
     // ============================================================================
     // PATTERN 3: CONDITIONAL TOOL REGISTRATION
@@ -91,7 +91,7 @@ fn registerToolsImpl(registry: *tools_mod.Registry) !void {
     // Example: Only register professional tools if custom features are enabled
     // const config = try impl.Config.loadFromFile(allocator, "agents/_template/config.zon");
     // if (config.customFeatureEnabled) {
-    //     try tools_mod.registerJsonTool(registry, "professional_tool", "Professional feature tool", tools.professionalTool, "_template");
+    //     try toolsMod.registerJsonTool(registry, "professional_tool", "Professional feature tool", tools.professionalTool, "_template");
     // }
 
     // ============================================================================
@@ -100,7 +100,7 @@ fn registerToolsImpl(registry: *tools_mod.Registry) !void {
     // When adding new tools to your agent, register them here following these patterns:
 
     // Example custom tool registration:
-    // try tools_mod.registerJsonTool(
+    // try toolsMod.registerJsonTool(
     //     registry,
     //     "my_custom_tool",
     //     "Description of what my tool does",

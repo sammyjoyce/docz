@@ -57,7 +57,7 @@ pub const MemorySurface = @import("surface.zig").MemorySurface;
 pub const TermSurface = @import("surface.zig").TermSurface;
 
 // Core exports - Renderer System
-pub const Renderer = @import("Renderer.zig").Renderer;
+pub const Renderer = @import("renderer.zig").Renderer;
 pub const AdaptiveRenderer = Renderer.AdaptiveRenderer; // Legacy compatibility
 pub const RenderTier = Renderer.RenderTier;
 pub const Theme = Renderer.Theme;
@@ -93,9 +93,13 @@ pub const DirtySpan = diff_surface.DirtySpan;
 pub const diff_coalesce = @import("diff_coalesce.zig");
 pub const DirtyRect = diff_coalesce.DirtyRect;
 pub const coalesceSpansToRects = diff_coalesce.coalesceSpansToRects;
-pub const MemoryRenderer = @import("renderer_memory.zig").MemoryRenderer;
-pub const TermRenderer = @import("renderer_term.zig").TermRenderer;
+pub const Memory = @import("memory.zig").Memory;
+pub const Terminal = @import("terminal.zig").Terminal;
 pub const Scheduler = @import("scheduler.zig").Scheduler;
+
+// Legacy compatibility aliases
+pub const MemoryRenderer = Memory;
+pub const TermRenderer = Terminal;
 
 // Braille graphics module
 pub const braille = @import("braille.zig");
@@ -179,7 +183,7 @@ pub const RendererAPI = struct {
         return self.renderer.getCapabilities();
     }
 
-    pub fn writeText(self: *RendererAPI, text: []const u8, color: ?term_mod.unified.Color, bold: bool) !void {
+    pub fn writeText(self: *RendererAPI, text: []const u8, color: ?term_mod.common.Color, bold: bool) !void {
         return self.renderer.writeText(text, color, bold);
     }
 

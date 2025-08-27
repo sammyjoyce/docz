@@ -1,5 +1,5 @@
 const std = @import("std");
-const Color = @import("../runtime/color.zig").Color;
+const Color = @import("../runtime/Color.zig").Color;
 const term_shared = @import("term_shared");
 const ansi_color = term_shared.term.color;
 

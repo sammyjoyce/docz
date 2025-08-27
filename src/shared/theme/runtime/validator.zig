@@ -2,9 +2,9 @@
 //! Validates themes for correctness, accessibility, and best practices
 
 const std = @import("std");
-const ColorScheme = @import("color_scheme.zig").ColorScheme;
-const Color = @import("color_scheme.zig").Color;
-const RGB = @import("color_scheme.zig").RGB;
+const ColorScheme = @import("ColorScheme.zig").ColorScheme;
+const Color = @import("ColorScheme.zig").Color;
+const RGB = @import("ColorScheme.zig").RGB;
 
 pub const Severity = enum {
     err,

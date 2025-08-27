@@ -2,9 +2,9 @@
 //! Allows themes to inherit from and override parent themes
 
 const std = @import("std");
-const ColorScheme = @import("color_scheme.zig").ColorScheme;
-const Color = @import("color_scheme.zig").Color;
-const RGB = @import("color_scheme.zig").RGB;
+const ColorScheme = @import("ColorScheme.zig").ColorScheme;
+const Color = @import("ColorScheme.zig").Color;
+const RGB = @import("ColorScheme.zig").RGB;
 
 pub const Inheritance = struct {
     allocator: std.mem.Allocator,

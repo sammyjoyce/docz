@@ -13,7 +13,7 @@ const DataSource = tui.widgets.DataSource;
 const ArrayDataSource = tui.widgets.ArrayDataSource;
 const Bounds = tui.core.Bounds;
 
-test "VirtualList initialization" {
+test "virtualListInitialization" {
     const allocator = testing.allocator;
     
     const items = [_]Item{
@@ -34,7 +34,7 @@ test "VirtualList initialization" {
     try testing.expectEqual(@as(?usize, null), list.selected_index);
 }
 
-test "VirtualList data source" {
+test "virtualListDataSource" {
     const allocator = testing.allocator;
     
     const items = [_]Item{
@@ -54,7 +54,7 @@ test "VirtualList data source" {
     try testing.expectEqualStrings("🍒", item.icon.?);
 }
 
-test "VirtualList visible range calculation" {
+test "virtualListVisibleRangeCalculation" {
     const allocator = testing.allocator;
     
     const items = try allocator.alloc(Item, 100);
@@ -99,7 +99,7 @@ test "VirtualList visible range calculation" {
     try testing.expectEqual(@as(usize, 23), list.visible_end); // scroll + viewport + overscan
 }
 
-test "VirtualList keyboard navigation" {
+test "virtualListKeyboardNavigation" {
     const allocator = testing.allocator;
     
     const items = [_]Item{
@@ -149,7 +149,7 @@ test "VirtualList keyboard navigation" {
     try testing.expectEqual(@as(?usize, 0), list.selected_index);
 }
 
-test "VirtualList search functionality" {
+test "virtualListSearchFunctionality" {
     const allocator = testing.allocator;
     
     const items = [_]Item{
@@ -183,7 +183,7 @@ test "VirtualList search functionality" {
     try testing.expectEqual(@as(?std.ArrayList(usize), null), list.filtered_indices);
 }
 
-test "VirtualList scroll physics" {
+test "virtual_list_scroll physics" {
     const allocator = testing.allocator;
     
     const items = try allocator.alloc(Item, 1000);
@@ -228,7 +228,7 @@ test "VirtualList scroll physics" {
     try testing.expect(list.scroll_velocity < 100);
 }
 
-test "VirtualList ensure visible" {
+test "virtual_list_ensure visible" {
     const allocator = testing.allocator;
     
     const items = try allocator.alloc(Item, 100);
@@ -270,7 +270,7 @@ test "VirtualList ensure visible" {
     try testing.expect(50 < visible_end);
 }
 
-test "VirtualList performance with large dataset" {
+test "virtualListPerformanceWithLargeDataset" {
     const allocator = testing.allocator;
     
     // Create a large dataset
@@ -322,7 +322,7 @@ test "VirtualList performance with large dataset" {
     try testing.expect(elapsed < 1000); // Less than 1 second
 }
 
-test "VirtualList mouse handling" {
+test "virtualListMouseHandling" {
     const allocator = testing.allocator;
     
     const items = [_]Item{

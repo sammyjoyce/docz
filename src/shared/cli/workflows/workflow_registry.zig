@@ -60,8 +60,8 @@ pub const WorkflowRegistry = struct {
     }
 
     /// Execute a workflow by name
-    pub fn execute(self: *WorkflowRegistry, workflow_name: []const u8) !types.CommandResult {
-        const workflow = self.workflows.get(workflow_name) orelse {
+    pub fn execute(self: *WorkflowRegistry, workflowName: []const u8) !types.CommandResult {
+        const workflow = self.workflows.get(workflowName) orelse {
             return types.CommandResult.err("Unknown workflow", 1);
         };
 
@@ -87,7 +87,7 @@ pub const WorkflowRegistry = struct {
             }
 
             // Execute step
-            const result = step.execute_fn(self.allocator, step.context) catch |err| {
+            const result = step.executeFn(self.allocator, step.context) catch |err| {
                 const error_msg = try std.fmt.allocPrint(self.allocator, "Step '{s}' failed: {}", .{ step.name, err });
 
                 try self.state.notification.send(.{
@@ -100,15 +100,15 @@ pub const WorkflowRegistry = struct {
             };
 
             if (!result.success) {
-                const error_msg = result.error_message orelse "Unknown error";
+                const errorMsg = result.errorMessage orelse "Unknown error";
 
                 try self.state.notification.send(.{
                     .title = "Workflow Failed",
-                    .body = error_msg,
+                    .body = errorMsg,
                     .level = .err,
                 });
 
-                return types.CommandResult.err(error_msg, 1);
+                return types.CommandResult.err(errorMsg, 1);
             }
         }
 
@@ -204,7 +204,7 @@ fn createAuthVerificationStep() WorkflowStep.WorkflowStep {
 
             return WorkflowStep.WorkflowStepResult{
                 .success = true,
-                .output_data = "Authentication verified",
+                .outputData = "Authentication verified",
             };
         }
     };
@@ -224,7 +224,7 @@ fn createConfigOptimizationStep() WorkflowStep.WorkflowStep {
 
             return WorkflowStep.WorkflowStepResult{
                 .success = true,
-                .output_data = "Configuration optimized for current environment",
+                .outputData = "Configuration optimized for current environment",
             };
         }
     };
@@ -261,7 +261,7 @@ fn createInitialConfigStep() WorkflowStep.WorkflowStep {
 
             return WorkflowStep.WorkflowStepResult{
                 .success = true,
-                .output_data = "Initial configuration created",
+                .outputData = "Initial configuration created",
             };
         }
     };

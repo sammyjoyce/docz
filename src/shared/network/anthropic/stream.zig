@@ -97,10 +97,10 @@ pub fn processSseChunk(stream_ctx: *StreamingCtx, chunk: []const u8) !void {
 
     // Process complete SSE events (separated by double newlines)
     while (std.mem.indexOf(u8, stream_ctx.buffer.items, "\n\n")) |end_pos| {
-        const event_data = stream_ctx.buffer.items[0..end_pos];
+        const eventData = stream_ctx.buffer.items[0..end_pos];
 
         // Extract SSE data field content
-        var lines = std.mem.splitSequence(u8, event_data, "\n");
+        var lines = std.mem.splitSequence(u8, eventData, "\n");
         while (lines.next()) |line| {
             const trimmed_line = std.mem.trim(u8, line, " \t\r");
             if (std.mem.startsWith(u8, trimmed_line, "data: ")) {
@@ -219,37 +219,37 @@ pub fn processChunkTrailers(reader: *std.Io.Reader) !void {
 /// Process accumulated chunk data as Server-Sent Event lines with large payload handling
 pub fn processSSELines(
     chunk_data: []const u8,
-    event_data: *std.array_list.Managed(u8),
+    eventData: *std.array_list.Managed(u8),
     callback: *const fn ([]const u8) void,
 ) !void {
     const sse_config = sse.SSEConfig{};
-    var line_iter = std.mem.splitSequence(u8, chunk_data, "\n");
-    var lines_processed: usize = 0;
-    var total_data_processed: usize = 0;
+    var lineIter = std.mem.splitSequence(u8, chunk_data, "\n");
+    var linesProcessed: usize = 0;
+    var totalDataProcessed: usize = 0;
 
-    while (line_iter.next()) |line_data| {
+    while (lineIter.next()) |line_data| {
         const line = std.mem.trim(u8, line_data, " \t\r\n");
-        lines_processed += 1;
+        linesProcessed += 1;
 
         if (line.len == 0) {
             // Empty line indicates end of SSE event
-            if (event_data.items.len > 0) {
+            if (eventData.items.len > 0) {
                 // Event size validation for large payloads
-                if (event_data.items.len >= sse_config.largeEventThreshold) {
-                    std.log.debug("Processing large SSE event: {} bytes", .{event_data.items.len});
+                if (eventData.items.len >= sse_config.largeEventThreshold) {
+                    std.log.debug("Processing large SSE event: {} bytes", .{eventData.items.len});
                 }
 
-                if (event_data.items.len > sse_config.maxEventSize) {
-                    std.log.warn("SSE event exceeds maximum size ({} > {}), truncating", .{ event_data.items.len, sse_config.maxEventSize });
+                if (eventData.items.len > sse_config.maxEventSize) {
+                    std.log.warn("SSE event exceeds maximum size ({} > {}), truncating", .{ eventData.items.len, sse_config.maxEventSize });
                     // Truncate to maximum size to prevent memory issues
-                    const truncated_event = event_data.items[0..sse_config.maxEventSize];
+                    const truncated_event = eventData.items[0..sse_config.maxEventSize];
                     callback(truncated_event);
                 } else {
-                    callback(event_data.items);
+                    callback(eventData.items);
                 }
 
-                total_data_processed += event_data.items.len;
-                event_data.clearRetainingCapacity();
+                totalDataProcessed += eventData.items.len;
+                eventData.clearRetainingCapacity();
             }
         } else if (std.mem.startsWith(u8, line, "data: ")) {
             // Parse SSE data field with capacity management for large payloads
@@ -260,30 +260,30 @@ pub fn processSSELines(
                 std.log.warn("Very large SSE data line: {} bytes - consider streaming optimization", .{data_content.len});
             }
 
-            if (event_data.items.len > 0) {
-                try event_data.append('\n'); // Multi-line data separator
+            if (eventData.items.len > 0) {
+                try eventData.append('\n'); // Multi-line data separator
             }
 
             // Capacity management with overflow protection
-            const required_capacity = event_data.items.len + data_content.len;
+            const required_capacity = eventData.items.len + data_content.len;
             if (required_capacity > sse_config.maxEventSize) {
                 std.log.warn("SSE event would exceed maximum size, triggering early callback", .{});
                 // Trigger callback with current data before adding more
-                if (event_data.items.len > 0) {
-                    callback(event_data.items);
-                    event_data.clearRetainingCapacity();
+                if (eventData.items.len > 0) {
+                    callback(eventData.items);
+                    eventData.clearRetainingCapacity();
                 }
             }
 
             // Ensure we have capacity for the new data to handle large payloads
-            try event_data.ensureUnusedCapacity(data_content.len);
-            try event_data.appendSlice(data_content);
+            try eventData.ensureUnusedCapacity(data_content.len);
+            try eventData.appendSlice(data_content);
 
             // Streaming: trigger callback for very large events before completion
-            if (event_data.items.len >= sse_config.streamingCallbackThreshold) {
-                std.log.debug("Large SSE event streaming: triggering early callback for {} bytes", .{event_data.items.len});
-                callback(event_data.items);
-                event_data.clearRetainingCapacity();
+            if (eventData.items.len >= sse_config.streamingCallbackThreshold) {
+                std.log.debug("Large SSE event streaming: triggering early callback for {} bytes", .{eventData.items.len});
+                callback(eventData.items);
+                eventData.clearRetainingCapacity();
             }
         } else if (std.mem.startsWith(u8, line, "event: ") or
             std.mem.startsWith(u8, line, "id: ") or
@@ -296,16 +296,16 @@ pub fn processSSELines(
         }
 
         // Periodic progress reporting for very large chunk processing
-        if (lines_processed % sse_config.lineProcessingBatchSize == 0 and
+        if (linesProcessed % sse_config.lineProcessingBatchSize == 0 and
             chunk_data.len >= sse_config.largeEventThreshold)
         {
-            std.log.debug("SSE line processing progress: {} lines, {} bytes total", .{ lines_processed, total_data_processed });
+            std.log.debug("SSE line processing progress: {} lines, {} bytes total", .{ linesProcessed, totalDataProcessed });
         }
     }
 
     // Final logging for large payload processing
     if (chunk_data.len >= sse_config.largeEventThreshold) {
-        std.log.debug("SSE processing complete: {} lines, {} bytes processed", .{ lines_processed, total_data_processed });
+        std.log.debug("SSE processing complete: {} lines, {} bytes processed", .{ linesProcessed, totalDataProcessed });
     }
 }
 
@@ -329,45 +329,45 @@ pub fn processChunkedStreamingResponse(
     reader: *std.Io.Reader,
     callback: *const fn ([]const u8) void,
 ) !void {
-    var event_data = std.array_list.Managed(u8).init(allocator);
-    defer event_data.deinit();
+    var eventData = std.array_list.Managed(u8).init(allocator);
+    defer eventData.deinit();
 
-    var chunk_state = ChunkState{};
-    var chunk_buffer = std.array_list.Managed(u8).init(allocator);
-    defer chunk_buffer.deinit();
+    var chunkState = ChunkState{};
+    var chunkBuffer = std.array_list.Managed(u8).init(allocator);
+    defer chunkBuffer.deinit();
 
     const config = LargePayloadCfg{};
 
     // Use adaptive initial capacity based on expected large payload handling
-    try event_data.ensureTotalCapacity(16384); // 16KB initial capacity
-    try chunk_buffer.ensureTotalCapacity(config.adaptiveBufferMin);
+    try eventData.ensureTotalCapacity(16384); // 16KB initial capacity
+    try chunkBuffer.ensureTotalCapacity(config.adaptiveBufferMin);
 
-    var recovery_attempts: u8 = 0;
-    const max_recovery_attempts = 3;
-    var total_bytes_processed: usize = 0;
-    var large_chunks_processed: u32 = 0;
+    var recoveryAttempts: u8 = 0;
+    const maxRecoveryAttempts = 3;
+    var totalBytesProcessed: usize = 0;
+    var largeChunksProcessed: u32 = 0;
 
     while (true) {
-        if (chunk_state.reading_size) {
+        if (chunkState.reading_size) {
             // Read chunk size line (hex format with optional extensions)
             const size_line_result = reader.*.takeDelimiterExclusive('\n') catch |err| switch (err) {
                 error.EndOfStream => {
                     // Send final event if any data remains
-                    if (event_data.items.len > 0) {
-                        callback(event_data.items);
+                    if (eventData.items.len > 0) {
+                        callback(eventData.items);
                     }
-                    std.log.debug("Chunked processing complete: {} bytes total, {} large chunks", .{ total_bytes_processed, large_chunks_processed });
+                    std.log.debug("Chunked processing complete: {} bytes total, {} large chunks", .{ totalBytesProcessed, largeChunksProcessed });
                     return; // Normal end of stream
                 },
                 error.StreamTooLong => {
                     std.log.warn("Chunked response contains size line too long for buffer, attempting graceful recovery", .{});
-                    recovery_attempts += 1;
-                    if (recovery_attempts >= max_recovery_attempts) {
+                    recoveryAttempts += 1;
+                    if (recoveryAttempts >= maxRecoveryAttempts) {
                         std.log.err("Too many recovery attempts, falling back to non-chunked processing", .{});
                         // Fallback: try to process remaining data as regular SSE stream
                         return processStreamingResponse(allocator, reader, callback) catch StreamError.MalformedChunk;
                     }
-                    chunk_state.reset();
+                    chunkState.reset();
                     continue; // Try again
                 },
                 else => return err,
@@ -383,57 +383,57 @@ pub fn processChunkedStreamingResponse(
             // Parse chunk size (hex) with optional chunk extensions and error recovery
             const chunk_info = parseChunkSize(size_line) catch |err| {
                 std.log.warn("Failed to parse chunk size '{s}': {}, attempting recovery", .{ size_line, err });
-                recovery_attempts += 1;
-                if (recovery_attempts >= max_recovery_attempts) {
+                recoveryAttempts += 1;
+                if (recoveryAttempts >= maxRecoveryAttempts) {
                     std.log.err("Too many chunk parse errors, falling back to non-chunked processing", .{});
                     return processStreamingResponse(allocator, reader, callback) catch StreamError.ChunkParseError;
                 }
-                chunk_state.reset();
+                chunkState.reset();
                 continue;
             };
 
-            chunk_state.size = chunk_info.size;
-            chunk_state.extensions = chunk_info.extensions;
-            recovery_attempts = 0; // Reset on successful parse
+            chunkState.size = chunk_info.size;
+            chunkState.extensions = chunk_info.extensions;
+            recoveryAttempts = 0; // Reset on successful parse
 
             // Logging for large chunk detection
-            if (chunk_state.size >= config.largeChunkThreshold) {
-                std.log.info("Processing large chunk: {} bytes (using streaming mode)", .{chunk_state.size});
-                large_chunks_processed += 1;
-            } else if (chunk_state.size > 64 * 1024) {
-                std.log.debug("Processing medium chunk: {} bytes", .{chunk_state.size});
+            if (chunkState.size >= config.largeChunkThreshold) {
+                std.log.info("Processing large chunk: {} bytes (using streaming mode)", .{chunkState.size});
+                largeChunksProcessed += 1;
+            } else if (chunkState.size > 64 * 1024) {
+                std.log.debug("Processing medium chunk: {} bytes", .{chunkState.size});
             }
 
-            if (chunk_state.size == 0) {
+            if (chunkState.size == 0) {
                 // Zero-sized chunk indicates end of chunked data
                 // Process any remaining trailers, then finish
                 processChunkTrailers(reader) catch |err| {
                     std.log.warn("Error processing chunk trailers: {}, continuing anyway", .{err});
                 };
-                if (event_data.items.len > 0) {
-                    callback(event_data.items);
+                if (eventData.items.len > 0) {
+                    callback(eventData.items);
                 }
-                std.log.debug("Chunked processing complete: {} bytes total, {} large chunks", .{ total_bytes_processed, large_chunks_processed });
+                std.log.debug("Chunked processing complete: {} bytes total, {} large chunks", .{ totalBytesProcessed, largeChunksProcessed });
                 return;
             }
 
-            chunk_state.reading_size = false;
-            chunk_state.bytes_read = 0;
-            chunk_buffer.clearRetainingCapacity();
+            chunkState.reading_size = false;
+            chunkState.bytes_read = 0;
+            chunkBuffer.clearRetainingCapacity();
 
             // Adaptive buffer sizing based on chunk size for memory efficiency
-            const optimal_buffer_size = if (chunk_state.size >= config.largeChunkThreshold)
-                @min(config.adaptiveBufferMax, @max(config.adaptiveBufferMin, chunk_state.size / 8))
+            const optimal_buffer_size = if (chunkState.size >= config.largeChunkThreshold)
+                @min(config.adaptiveBufferMax, @max(config.adaptiveBufferMin, chunkState.size / 8))
             else
                 config.adaptiveBufferMin;
 
-            try chunk_buffer.ensureTotalCapacity(optimal_buffer_size);
+            try chunkBuffer.ensureTotalCapacity(optimal_buffer_size);
         } else {
             // Enhanced chunk data reading with streaming processing for large payloads
-            const remaining = chunk_state.size - chunk_state.bytes_read;
+            const remaining = chunkState.size - chunkState.bytes_read;
             if (remaining == 0) {
                 // Chunk complete, process accumulated data as SSE lines
-                processSSELines(chunk_buffer.items, &event_data, callback) catch |err| {
+                processSSELines(chunkBuffer.items, &eventData, callback) catch |err| {
                     std.log.warn("Error processing SSE lines in chunk: {}, continuing", .{err});
                 };
 
@@ -450,13 +450,13 @@ pub fn processChunkedStreamingResponse(
                     },
                 }
 
-                total_bytes_processed += chunk_state.size;
-                chunk_state.reset();
+                totalBytesProcessed += chunkState.size;
+                chunkState.reset();
                 continue;
             }
 
             // Adaptive read sizing for large payloads
-            const is_large_chunk = chunk_state.size >= config.largeChunkThreshold;
+            const is_large_chunk = chunkState.size >= config.largeChunkThreshold;
             const adaptive_read_size = if (is_large_chunk)
                 @min(remaining, config.streamingBufferSize) // Use larger buffer for large chunks
             else
@@ -475,42 +475,42 @@ pub fn processChunkedStreamingResponse(
                 error.EndOfStream => {
                     std.log.warn("Unexpected end of stream in chunk data, processing partial data", .{});
                     // Graceful degradation: process what we have so far
-                    if (chunk_buffer.items.len > 0) {
-                        processSSELines(chunk_buffer.items, &event_data, callback) catch {};
+                    if (chunkBuffer.items.len > 0) {
+                        processSSELines(chunkBuffer.items, &eventData, callback) catch {};
                     }
-                    if (event_data.items.len > 0) {
-                        callback(event_data.items);
+                    if (eventData.items.len > 0) {
+                        callback(eventData.items);
                     }
                     return;
                 },
                 else => {
                     std.log.warn("Error reading chunk data: {}, attempting recovery", .{err});
-                    recovery_attempts += 1;
-                    if (recovery_attempts >= max_recovery_attempts) {
+                    recoveryAttempts += 1;
+                    if (recoveryAttempts >= maxRecoveryAttempts) {
                         std.log.err("Too many chunk read errors, processing accumulated data and exiting", .{});
-                        if (chunk_buffer.items.len > 0) {
-                            processSSELines(chunk_buffer.items, &event_data, callback) catch {};
+                        if (chunkBuffer.items.len > 0) {
+                            processSSELines(chunkBuffer.items, &eventData, callback) catch {};
                         }
-                        if (event_data.items.len > 0) {
-                            callback(event_data.items);
+                        if (eventData.items.len > 0) {
+                            callback(eventData.items);
                         }
                         return;
                     }
-                    chunk_state.reset();
+                    chunkState.reset();
                     continue;
                 },
             };
 
             if (bytes_read == 0) {
                 std.log.warn("No bytes read in chunk processing, attempting to continue", .{});
-                recovery_attempts += 1;
-                if (recovery_attempts >= max_recovery_attempts) {
+                recoveryAttempts += 1;
+                if (recoveryAttempts >= maxRecoveryAttempts) {
                     std.log.err("Too many zero-byte reads, processing accumulated data", .{});
-                    if (chunk_buffer.items.len > 0) {
-                        processSSELines(chunk_buffer.items, &event_data, callback) catch {};
+                    if (chunkBuffer.items.len > 0) {
+                        processSSELines(chunkBuffer.items, &eventData, callback) catch {};
                     }
-                    if (event_data.items.len > 0) {
-                        callback(event_data.items);
+                    if (eventData.items.len > 0) {
+                        callback(eventData.items);
                     }
                     return;
                 }
@@ -518,30 +518,30 @@ pub fn processChunkedStreamingResponse(
             }
 
             // Memory management: streaming processing for very large chunks
-            if (is_large_chunk and chunk_buffer.items.len + bytes_read > config.maxAccumulatedSize) {
+            if (is_large_chunk and chunkBuffer.items.len + bytes_read > config.maxAccumulatedSize) {
                 // Process accumulated data before adding more to prevent excessive memory usage
-                std.log.debug("Triggering streaming processing to prevent memory overflow (current: {}, adding: {})", .{ chunk_buffer.items.len, bytes_read });
-                if (chunk_buffer.items.len > 0) {
-                    processSSELines(chunk_buffer.items, &event_data, callback) catch |err| {
+                std.log.debug("Triggering streaming processing to prevent memory overflow (current: {}, adding: {})", .{ chunkBuffer.items.len, bytes_read });
+                if (chunkBuffer.items.len > 0) {
+                    processSSELines(chunkBuffer.items, &eventData, callback) catch |err| {
                         std.log.warn("Error in streaming SSE processing: {}, continuing", .{err});
                     };
-                    chunk_buffer.clearRetainingCapacity();
+                    chunkBuffer.clearRetainingCapacity();
                 }
             }
 
             // Accumulate chunk data with capacity management
-            try chunk_buffer.ensureUnusedCapacity(bytes_read);
-            try chunk_buffer.appendSlice(temp_buffer[0..bytes_read]);
-            chunk_state.bytes_read += bytes_read;
-            recovery_attempts = 0; // Reset on successful read
+            try chunkBuffer.ensureUnusedCapacity(bytes_read);
+            try chunkBuffer.appendSlice(temp_buffer[0..bytes_read]);
+            chunkState.bytes_read += bytes_read;
+            recoveryAttempts = 0; // Reset on successful read
 
             // Progress reporting for large chunks
-            if (is_large_chunk and chunk_state.bytes_read > 0 and
-                chunk_state.bytes_read % config.progressReportingInterval == 0)
+            if (is_large_chunk and chunkState.bytes_read > 0 and
+                chunkState.bytes_read % config.progressReportingInterval == 0)
             {
-                const progress_percent = (@as(f64, @floatFromInt(chunk_state.bytes_read)) /
-                    @as(f64, @floatFromInt(chunk_state.size))) * 100.0;
-                std.log.info("Large chunk progress: {d:.1}% ({} / {} bytes)", .{ progress_percent, chunk_state.bytes_read, chunk_state.size });
+                const progress_percent = (@as(f64, @floatFromInt(chunkState.bytes_read)) /
+                    @as(f64, @floatFromInt(chunkState.size))) * 100.0;
+                std.log.info("Large chunk progress: {d:.1}% ({} / {} bytes)", .{ progress_percent, chunkState.bytes_read, chunkState.size });
             }
         }
     }
@@ -557,7 +557,7 @@ pub fn processStreamingResponse(
     var event_state = sse.SSEEventBuilder.init(allocator);
     defer event_state.deinit();
 
-    var lines_processed: usize = 0;
+    var linesProcessed: usize = 0;
     var events_processed: usize = 0;
     var bytes_processed: usize = 0;
     var malformed_lines: usize = 0;
@@ -588,7 +588,7 @@ pub fn processStreamingResponse(
                     events_processed += 1;
                 }
 
-                std.log.debug("SSE processing complete: {} lines, {} events, {} bytes, {} malformed", .{ lines_processed, events_processed, bytes_processed, malformed_lines });
+                std.log.debug("SSE processing complete: {} lines, {} events, {} bytes, {} malformed", .{ linesProcessed, events_processed, bytes_processed, malformed_lines });
                 return; // Normal end of stream
             },
             error.StreamTooLong => {
@@ -613,7 +613,7 @@ pub fn processStreamingResponse(
         };
 
         const line = std.mem.trim(u8, line_result, " \t\r\n");
-        lines_processed += 1;
+        linesProcessed += 1;
         bytes_processed += line.len;
 
         // Empty line handling with event dispatch
@@ -665,9 +665,9 @@ pub fn processStreamingResponse(
         }
 
         // Periodic progress reporting for long-running streams
-        if (lines_processed % 1000 == 0) {
+        if (linesProcessed % 1000 == 0) {
             std.log.debug("SSE processing progress: {} lines, {} events, {} bytes", .{
-                lines_processed,
+                linesProcessed,
                 events_processed,
                 bytes_processed,
             });

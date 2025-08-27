@@ -54,7 +54,7 @@ pub const ParsedOptions = struct {
     input: ?[]const u8 = null,
     system: ?[]const u8 = null,
     config: ?[]const u8 = null,
-    max_tokens: ?u32 = null,
+    tokensMax: ?u32 = null,
     temperature: ?f32 = null,
 };
 
@@ -164,7 +164,7 @@ pub fn parseArgs(allocator: Allocator, args: []const []const u8) !ParsedArgs {
             if (comptime std.mem.eql(u8, field_name, "model")) {
                 result.options.model = try allocator.dupe(u8, opt.default);
             } else if (comptime std.mem.eql(u8, field_name, "max-tokens")) {
-                result.options.max_tokens = opt.default;
+                result.options.tokensMax = opt.default;
             } else if (comptime std.mem.eql(u8, field_name, "temperature")) {
                 result.options.temperature = opt.default;
             }
@@ -215,7 +215,7 @@ pub fn parseArgs(allocator: Allocator, args: []const []const u8) !ParsedArgs {
                 } else if (comptime std.mem.eql(u8, field_name, "config")) {
                     result.options.config = try allocator.dupe(u8, parsed_value);
                 } else if (comptime std.mem.eql(u8, field_name, "max-tokens")) {
-                    result.options.max_tokens = parsed_value;
+                    result.options.tokensMax = parsed_value;
                 } else if (comptime std.mem.eql(u8, field_name, "temperature")) {
                     result.options.temperature = parsed_value;
                 }
@@ -328,7 +328,7 @@ fn printSpaces(n: usize) void {
     while (i < n) : (i += 1) stdout.print(" ", .{}) catch {};
 }
 
-fn printOption(opt: anytype, max_width: usize) void {
+fn printOption(opt: anytype, widthMax: usize) void {
     const stdout = std.fs.File.stdout().writer();
     // Indent
     stdout.print("    ", .{}) catch {};
@@ -343,7 +343,7 @@ fn printOption(opt: anytype, max_width: usize) void {
     stdout.print("--{s} <{s}>", .{ opt.long, opt.type }) catch {};
 
     const label_len = labelLenOption(@TypeOf(opt), opt);
-    const pad = if (max_width > label_len) (max_width - label_len + 2) else 2;
+    const pad = if (widthMax > label_len) (widthMax - label_len + 2) else 2;
     printSpaces(pad);
 
     // description
@@ -361,7 +361,7 @@ fn printOption(opt: anytype, max_width: usize) void {
     stdout.print("\n", .{}) catch {};
 }
 
-fn printFlag(flag: anytype, max_width: usize) void {
+fn printFlag(flag: anytype, widthMax: usize) void {
     const stdout = std.fs.File.stdout().writer();
     stdout.print("    ", .{}) catch {};
     if (@hasField(@TypeOf(flag), "short")) {
@@ -373,7 +373,7 @@ fn printFlag(flag: anytype, max_width: usize) void {
     stdout.print("--{s}", .{flag.long}) catch {};
 
     const label_len = labelLenFlag(@TypeOf(flag), flag);
-    const pad = if (max_width > label_len) (max_width - label_len + 2) else 2;
+    const pad = if (widthMax > label_len) (widthMax - label_len + 2) else 2;
     printSpaces(pad);
 
     stdout.print("{s}", .{flag.description}) catch {};
@@ -389,9 +389,9 @@ fn printFlag(flag: anytype, max_width: usize) void {
 fn printSubcommands(typeInfo: anytype) void {
     const stdout = std.fs.File.stdout().writer();
     const SubcommandsT = @TypeOf(typeInfo);
-    const typeInfo = @typeInfo(SubcommandsT).@"struct";
+    const structInfo = @typeInfo(SubcommandsT).@"struct";
 
-    inline for (typeInfo.fields) |cmd_field| {
+    inline for (structInfo.fields) |cmd_field| {
         const command = @field(typeInfo, cmd_field.name);
 
         // Convert command name to uppercase for display
@@ -404,21 +404,21 @@ fn printSubcommands(typeInfo: anytype) void {
 
         if (@hasField(@TypeOf(command), "typeInfo")) {
             const SubT = @TypeOf(command.typeInfo);
-            const sub_info = @typeInfo(SubT).@"struct";
+            const subInfo = @typeInfo(SubT).@"struct";
 
             // Calculate max width for alignment
-            var max_subcmd_width: usize = 0;
-            inline for (sub_info.fields) |sub_field| {
-                if (sub_field.name.len > max_subcmd_width) {
-                    max_subcmd_width = sub_field.name.len;
+            var subcmdWidthMax: usize = 0;
+            inline for (subInfo.fields) |sub_field| {
+                if (sub_field.name.len > subcmdWidthMax) {
+                    subcmdWidthMax = sub_field.name.len;
                 }
             }
 
-            inline for (sub_info.fields) |sub_field| {
+            inline for (subInfo.fields) |sub_field| {
                 const subcmd_desc = @field(command.typeInfo, sub_field.name);
                 stdout.print("    {s}", .{sub_field.name}) catch {};
-                const pad = if (max_subcmd_width > sub_field.name.len)
-                    (max_subcmd_width - sub_field.name.len + 4)
+                const pad = if (subcmdWidthMax > sub_field.name.len)
+                    (subcmdWidthMax - sub_field.name.len + 4)
                 else
                     4;
                 printSpaces(pad);
@@ -439,7 +439,7 @@ pub fn printHelp(allocator: Allocator) !void {
 pub fn printVersion(allocator: Allocator) !void {
     var formatter = try CliFormatter.init(allocator);
     defer formatter.deinit();
-    try formatter.printEnhancedVersion(cli_config);
+    try formatter.printVersion(cli_config);
 }
 
 pub fn shouldShowHelp(parsed: *const ParsedArgs) bool {
@@ -453,5 +453,5 @@ pub fn shouldShowVersion(parsed: *const ParsedArgs) bool {
 pub fn printError(allocator: Allocator, err: CliError, context: ?[]const u8) !void {
     var formatter = try CliFormatter.init(allocator);
     defer formatter.deinit();
-    try formatter.printEnhancedError(err, context);
+    try formatter.printError(err, context);
 }

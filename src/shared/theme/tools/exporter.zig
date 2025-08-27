@@ -2,9 +2,9 @@
 //! Handles exporting themes to various formats and importing from external sources
 
 const std = @import("std");
-const ColorScheme = @import("../runtime/color_scheme.zig").ColorScheme;
-const Color = @import("../runtime/color_scheme.zig").Color;
-const RGB = @import("../runtime/color_scheme.zig").RGB;
+const ColorScheme = @import("../runtime/ColorScheme.zig").ColorScheme;
+const Color = @import("../runtime/ColorScheme.zig").Color;
+const RGB = @import("../runtime/ColorScheme.zig").RGB;
 
 pub const Exporter = struct {
     allocator: std.mem.Allocator,

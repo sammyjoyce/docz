@@ -28,7 +28,7 @@ Updated `createSharedModules` and `createConditionalSharedModules` functions to:
 
 ### 4. Enhanced Markdown Agent Support
 Added special handling in `createAgentModules` for the markdown agent:
-- Automatically includes `enhanced_markdown_editor.zig` when building markdown agent
+- Automatically includes `markdown_editor.zig` when building markdown agent
 - Links editor with CLI, TUI, tools, terminal, and config modules
 
 ### 5. New Demo Build Targets
@@ -70,7 +70,7 @@ const agent_interface = @import("agent_interface");
 const dashboard = @import("../../src/shared/tui/components/agent_dashboard.zig");
 const interactive = @import("interactive_session");
 const oauth_server = @import("oauth_callback_server");
-const enhanced_editor = @import("enhanced_markdown_editor"); // markdown agent only
+const markdown_editor = @import("markdown_editor"); // markdown agent only
 ```
 
 ## Conditional Module Inclusion

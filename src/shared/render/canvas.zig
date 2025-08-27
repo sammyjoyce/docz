@@ -76,13 +76,13 @@ pub const Rect = struct {
 /// Drawing style configuration
 pub const Style = struct {
     /// Foreground color (null for default)
-    fg_color: ?Color = null,
+    fgColor: ?Color = null,
     /// Background color (null for default)
-    bg_color: ?Color = null,
+    bgColor: ?Color = null,
     /// Line style for drawing operations
-    line_style: LineStyle = .solid,
+    lineStyle: LineStyle = .solid,
     /// Fill pattern for area operations
-    fill_pattern: FillPattern = .solid,
+    fillPattern: FillPattern = .solid,
 };
 
 /// Line styles for drawing operations
@@ -108,20 +108,20 @@ pub const Canvas = struct {
     allocator: std.mem.Allocator,
     width: u32,
     height: u32,
-    resolution_mode: ResolutionMode,
-    current_style: Style,
+    resolutionMode: ResolutionMode,
+    currentStyle: Style,
 
     // Backend implementations
-    braille_canvas: ?BrailleCanvas,
-    block_buffer: ?[][]u8,
-    char_buffer: ?[][]u8,
+    brailleCanvas: ?BrailleCanvas,
+    blockBuffer: ?[][]u8,
+    charBuffer: ?[][]u8,
 
     const Self = @This();
 
     /// Initialize a new multi-resolution canvas
     pub fn init(allocator: std.mem.Allocator, width: u32, height: u32, mode: ResolutionMode) !Self {
         // For now, just use the mode directly or default to braille if auto
-        const effective_mode = if (mode == .auto)
+        const effectiveMode = if (mode == .auto)
             ResolutionMode.braille
         else
             mode;
@@ -130,11 +130,11 @@ pub const Canvas = struct {
             .allocator = allocator,
             .width = width,
             .height = height,
-            .resolution_mode = effective_mode,
-            .current_style = Style{},
-            .braille_canvas = null,
-            .block_buffer = null,
-            .char_buffer = null,
+            .resolutionMode = effectiveMode,
+            .currentStyle = Style{},
+            .brailleCanvas = null,
+            .blockBuffer = null,
+            .charBuffer = null,
         };
 
         // Initialize appropriate backend
@@ -145,20 +145,20 @@ pub const Canvas = struct {
 
     /// Initialize the appropriate backend based on resolution mode
     fn initBackend(self: *Self) !void {
-        switch (self.resolution_mode) {
+        switch (self.resolutionMode) {
             .braille => {
-                self.braille_canvas = try BrailleCanvas.init(self.allocator, self.width, self.height);
+                self.brailleCanvas = try BrailleCanvas.init(self.allocator, self.width, self.height);
             },
             .half_block, .full_block => {
-                self.block_buffer = try self.allocator.alloc([]u8, self.height);
-                for (self.block_buffer.?) |*row| {
+                self.blockBuffer = try self.allocator.alloc([]u8, self.height);
+                for (self.blockBuffer.?) |*row| {
                     row.* = try self.allocator.alloc(u8, self.width);
                     @memset(row.*, ' ');
                 }
             },
             .character => {
-                self.char_buffer = try self.allocator.alloc([]u8, self.height);
-                for (self.char_buffer.?) |*row| {
+                self.charBuffer = try self.allocator.alloc([]u8, self.height);
+                for (self.charBuffer.?) |*row| {
                     row.* = try self.allocator.alloc(u8, self.width);
                     @memset(row.*, ' ');
                 }
@@ -169,16 +169,16 @@ pub const Canvas = struct {
 
     /// Clean up resources
     pub fn deinit(self: *Self) void {
-        if (self.braille_canvas) |*canvas| {
+        if (self.brailleCanvas) |*canvas| {
             canvas.deinit();
         }
-        if (self.block_buffer) |buffer| {
+        if (self.blockBuffer) |buffer| {
             for (buffer) |row| {
                 self.allocator.free(row);
             }
             self.allocator.free(buffer);
         }
-        if (self.char_buffer) |buffer| {
+        if (self.charBuffer) |buffer| {
             for (buffer) |row| {
                 self.allocator.free(row);
             }
@@ -188,22 +188,22 @@ pub const Canvas = struct {
 
     /// Set the current drawing style
     pub fn setStyle(self: *Self, style: Style) void {
-        self.current_style = style;
+        self.currentStyle = style;
     }
 
     /// Clear the canvas
     pub fn clear(self: *Self) void {
-        switch (self.resolution_mode) {
-            .braille => if (self.braille_canvas) |*canvas| canvas.clear(),
+        switch (self.resolutionMode) {
+            .braille => if (self.brailleCanvas) |*canvas| canvas.clear(),
             .half_block, .full_block => {
-                if (self.block_buffer) |buffer| {
+                if (self.blockBuffer) |buffer| {
                     for (buffer) |row| {
                         @memset(row, ' ');
                     }
                 }
             },
             .character => {
-                if (self.char_buffer) |buffer| {
+                if (self.charBuffer) |buffer| {
                     for (buffer) |row| {
                         @memset(row, ' ');
                     }
@@ -215,22 +215,22 @@ pub const Canvas = struct {
 
     /// Set a pixel at the given coordinates
     pub fn setPixel(self: *Self, x: f32, y: f32) !void {
-        switch (self.resolution_mode) {
+        switch (self.resolutionMode) {
             .braille => {
-                if (self.braille_canvas) |*canvas| {
+                if (self.brailleCanvas) |*canvas| {
                     try canvas.setDot(@intFromFloat(x * 2), @intFromFloat(y * 4));
                 }
             },
             .half_block => {
-                if (self.block_buffer) |buffer| {
+                if (self.blockBuffer) |buffer| {
                     const cx = @as(u32, @intFromFloat(x));
                     const cy = @as(u32, @intFromFloat(y * 2));
                     if (cx < self.width and cy < self.height * 2) {
                         const row = cy / 2;
-                        const is_upper = cy % 2 == 0;
+                        const isUpper = cy % 2 == 0;
                         const current = buffer[row][cx];
 
-                        buffer[row][cx] = if (is_upper) {
+                        buffer[row][cx] = if (isUpper) {
                             if (current == ' ') '▀' else if (current == '▄') '█' else current;
                         } else {
                             if (current == ' ') '▄' else if (current == '▀') '█' else current;
@@ -239,7 +239,7 @@ pub const Canvas = struct {
                 }
             },
             .full_block => {
-                if (self.block_buffer) |buffer| {
+                if (self.blockBuffer) |buffer| {
                     const cx = @as(u32, @intFromFloat(x));
                     const cy = @as(u32, @intFromFloat(y));
                     if (cx < self.width and cy < self.height) {
@@ -248,7 +248,7 @@ pub const Canvas = struct {
                 }
             },
             .character => {
-                if (self.char_buffer) |buffer| {
+                if (self.charBuffer) |buffer| {
                     const cx = @as(u32, @intFromFloat(x));
                     const cy = @as(u32, @intFromFloat(y));
                     if (cx < self.width and cy < self.height) {
@@ -262,9 +262,9 @@ pub const Canvas = struct {
 
     /// Draw a line between two points
     pub fn drawLine(self: *Self, start: Point, end: Point) !void {
-        switch (self.resolution_mode) {
+        switch (self.resolutionMode) {
             .braille => {
-                if (self.braille_canvas) |*canvas| {
+                if (self.brailleCanvas) |*canvas| {
                     try canvas.drawLine(start.x * 2, start.y * 4, end.x * 2, end.y * 4);
                 }
             },
@@ -277,7 +277,7 @@ pub const Canvas = struct {
 
     /// Bresenham's line algorithm for non-Braille modes
     fn drawLineBresenham(self: *Self, start: Point, end: Point) !void {
-        const resolution = self.resolution_mode.getResolution();
+        const resolution = self.resolutionMode.getResolution();
 
         var x0 = @as(i32, @intFromFloat(start.x * @as(f32, @floatFromInt(resolution.x))));
         var y0 = @as(i32, @intFromFloat(start.y * @as(f32, @floatFromInt(resolution.y))));
@@ -322,9 +322,9 @@ pub const Canvas = struct {
 
     /// Fill a rectangle
     pub fn fillRect(self: *Self, rect: Rect) !void {
-        switch (self.resolution_mode) {
+        switch (self.resolutionMode) {
             .braille => {
-                if (self.braille_canvas) |*canvas| {
+                if (self.brailleCanvas) |*canvas| {
                     try canvas.drawRect(rect.x * 2, rect.y * 4, rect.width * 2, rect.height * 4);
                 }
             },
@@ -340,9 +340,9 @@ pub const Canvas = struct {
 
     /// Draw a circle
     pub fn drawCircle(self: *Self, center: Point, radius: f32) !void {
-        switch (self.resolution_mode) {
+        switch (self.resolutionMode) {
             .braille => {
-                if (self.braille_canvas) |*canvas| {
+                if (self.brailleCanvas) |*canvas| {
                     try canvas.drawCircle(center.x * 2, center.y * 4, radius * 2);
                 }
             },
@@ -355,7 +355,7 @@ pub const Canvas = struct {
 
     /// Midpoint circle algorithm for non-Braille modes
     fn drawCircleMidpoint(self: *Self, center: Point, radius: f32) !void {
-        const resolution = self.resolution_mode.getResolution();
+        const resolution = self.resolutionMode.getResolution();
         const rx = radius * @as(f32, @floatFromInt(resolution.x));
         _ = radius * @as(f32, @floatFromInt(resolution.y)); // ry not needed for circle
 
@@ -392,7 +392,7 @@ pub const Canvas = struct {
 
     /// Draw text at the specified position (character mode only)
     pub fn drawText(self: *Self, text: []const u8, pos: Point) !void {
-        if (self.resolution_mode != .character and self.resolution_mode != .full_block) {
+        if (self.resolutionMode != .character and self.resolutionMode != .full_block) {
             return; // Text only works in character modes
         }
 
@@ -416,14 +416,14 @@ pub const Canvas = struct {
 
     /// Render the canvas to a writer
     pub fn render(self: *Self, writer: anytype) !void {
-        switch (self.resolution_mode) {
+        switch (self.resolutionMode) {
             .braille => {
-                if (self.braille_canvas) |*canvas| {
+                if (self.brailleCanvas) |*canvas| {
                     try canvas.render(writer);
                 }
             },
             .half_block, .full_block => {
-                if (self.block_buffer) |buffer| {
+                if (self.blockBuffer) |buffer| {
                     for (buffer) |row| {
                         try writer.writeAll(row);
                         try writer.writeByte('\n');
@@ -431,7 +431,7 @@ pub const Canvas = struct {
                 }
             },
             .character => {
-                if (self.char_buffer) |buffer| {
+        if (self.charBuffer) |buffer| {
                     for (buffer) |row| {
                         try writer.writeAll(row);
                         try writer.writeByte('\n');
@@ -451,7 +451,7 @@ pub const Canvas = struct {
 
     /// Get the effective resolution of the canvas
     pub fn getEffectiveResolution(self: Self) struct { width: u32, height: u32 } {
-        const res = self.resolution_mode.getResolution();
+        const res = self.resolutionMode.getResolution();
         return .{
             .width = self.width * res.x,
             .height = self.height * res.y,

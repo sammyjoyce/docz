@@ -4,11 +4,11 @@ const std = @import("std");
 const curl = @import("curl_shared");
 const models = @import("models.zig");
 
-pub const oauth_client_id = "9d1c250a-e61b-44d9-88ed-5944d1962f5e";
-pub const oauth_authorization_url = "https://claude.ai/oauth/authorize";
-pub const oauth_token_endpoint = "https://console.anthropic.com/v1/oauth/token";
-pub const oauth_redirect_uri = "https://console.anthropic.com/oauth/code/callback";
-pub const oauth_scopes = "org:create_api_key user:profile user:inference";
+pub const oauthClientId = "9d1c250a-e61b-44d9-88ed-5944d1962f5e";
+pub const oauthAuthorizationUrl = "https://claude.ai/oauth/authorize";
+pub const oauthTokenEndpoint = "https://console.anthropic.com/v1/oauth/token";
+pub const oauthRedirectUri = "https://console.anthropic.com/oauth/code/callback";
+pub const oauthScopes = "org:create_api_key user:profile user:inference";
 
 const Credentials = models.Credentials;
 const Pkce = models.Pkce;
@@ -36,7 +36,7 @@ pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorizationCode: []
         \\  "redirect_uri": "{s}",
         \\  "code_verifier": "{s}"
         \\}}
-    , .{ code, state, oauth_client_id, oauth_redirect_uri, pkceParams.codeVerifier });
+    , .{ code, state, oauthClientId, oauthRedirectUri, pkceParams.codeVerifier });
     defer allocator.free(body);
 
     std.log.debug("Sending OAuth token request with JSON body: {s}", .{body});
@@ -49,7 +49,7 @@ pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorizationCode: []
 
     const req = curl.HTTPRequest{
         .method = .POST,
-        .url = oauth_token_endpoint,
+        .url = oauthTokenEndpoint,
         .headers = &headers,
         .body = body,
         .timeout_ms = 30000,
@@ -132,7 +132,7 @@ pub fn refreshTokens(allocator: std.mem.Allocator, refreshToken: []const u8) !Cr
         \\  "refresh_token": "{s}",
         \\  "client_id": "{s}"
         \\}}
-    , .{ refreshToken, oauth_client_id });
+    , .{ refreshToken, oauthClientId });
     defer allocator.free(body);
 
     const headers = [_]curl.Header{
@@ -143,7 +143,7 @@ pub fn refreshTokens(allocator: std.mem.Allocator, refreshToken: []const u8) !Cr
 
     const req = curl.HTTPRequest{
         .method = .POST,
-        .url = oauth_token_endpoint,
+        .url = oauthTokenEndpoint,
         .headers = &headers,
         .body = body,
         .timeout_ms = 30000,

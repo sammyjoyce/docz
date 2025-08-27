@@ -94,7 +94,7 @@ pub const WorkflowRunner = struct {
     }
 
     /// Execute the workflow
-    pub fn execute(self: *WorkflowRunner, workflow_name: []const u8) !WorkflowResult {
+    pub fn execute(self: *WorkflowRunner, workflowName: []const u8) !WorkflowResult {
         if (self.writer == null) {
             return error.NoWriter;
         }
@@ -109,7 +109,7 @@ pub const WorkflowRunner = struct {
                 self.allocator,
                 .unicode,
                 40,
-                workflow_name,
+                workflowName,
             );
         }
 
@@ -117,10 +117,10 @@ pub const WorkflowRunner = struct {
         _ = try self.notificationManager.notify(
             .info,
             "Workflow Started",
-            workflow_name,
+            workflowName,
         );
 
-        try self.renderWorkflowHeader(workflow_name);
+        try self.renderWorkflowHeader(workflowName);
 
         // Execute each step
         for (self.steps.items, 0..) |step, i| {
@@ -137,48 +137,48 @@ pub const WorkflowRunner = struct {
             // Execute step
             try self.renderStepStart(step);
 
-            const step_result = step.execute_fn(self.allocator, step.context) catch |err| {
+            const stepResult = step.executeFn(self.allocator, step.context) catch |err| {
                 self.status = .failed;
 
-                const error_msg = try std.fmt.allocPrint(
+                const errorMsg = try std.fmt.allocPrint(
                     self.allocator,
                     "Step '{s}' failed: {any}",
                     .{ step.name, err },
                 );
 
-                try self.renderStepError(step, error_msg);
+                try self.renderStepError(step, errorMsg);
 
                 _ = try self.notificationManager.notify(
                     .err,
                     "Workflow Failed",
-                    error_msg,
+                    errorMsg,
                 );
 
                 return WorkflowResult{
                     .status = .failed,
                     .completedSteps = @intCast(i),
                     .totalSteps = @intCast(self.steps.items.len),
-                    .errorMessage = error_msg,
+                    .errorMessage = errorMsg,
                     .elapsedTime = std.time.timestamp() - self.startTime.?,
                 };
             };
 
-            if (!step_result.success) {
+            if (!stepResult.success) {
                 self.status = .failed;
 
-                try self.renderStepError(step, step_result.error_message);
+                try self.renderStepError(step, stepResult.error_message);
 
                 _ = try self.notificationManager.notify(
                     .err,
                     "Workflow Failed",
-                    step_result.error_message orelse "Unknown error",
+                    stepResult.error_message orelse "Unknown error",
                 );
 
                 return WorkflowResult{
                     .status = .failed,
                     .completedSteps = @intCast(i),
                     .totalSteps = @intCast(self.steps.items.len),
-                    .errorMessage = step_result.error_message,
+                    .errorMessage = stepResult.error_message,
                     .elapsedTime = std.time.timestamp() - self.startTime.?,
                 };
             }
@@ -204,7 +204,7 @@ pub const WorkflowRunner = struct {
         _ = try self.notificationManager.notify(
             .success,
             "Workflow Completed",
-            workflow_name,
+            workflowName,
         );
 
         return WorkflowResult{
@@ -270,7 +270,7 @@ pub const WorkflowRunner = struct {
         try term_ansi.resetStyle(writer.*, self.caps);
     }
 
-    fn renderStepError(self: *WorkflowRunner, step: WorkflowStep.Step, error_msg: ?[]const u8) !void {
+    fn renderStepError(self: *WorkflowRunner, step: WorkflowStep.Step, errorMsg: ?[]const u8) !void {
         const writer = self.writer.?;
 
         if (self.caps.supportsTrueColor()) {
@@ -281,7 +281,7 @@ pub const WorkflowRunner = struct {
 
         try writer.print("✗ Failed: {s}", .{step.name});
 
-        if (error_msg) |msg| {
+        if (errorMsg) |msg| {
             try writer.print(" - {s}", .{msg});
         }
 

@@ -127,11 +127,11 @@ pub const TermSurface = struct {
 
     fn wrap(self: *TermSurface) !*Surface {
         const s = try self.allocator.create(Surface);
-        s.* = .{ .vtable = &VTABLE, .ptr = self_ptr(self) };
+        s.* = .{ .vtable = &VTABLE, .ptr = selfPtr(self) };
         return s;
     }
 
-    fn self_ptr(self: *TermSurface) *anyopaque {
+    fn selfPtr(self: *TermSurface) *anyopaque {
         return @ptrCast(@alignCast(self));
     }
 

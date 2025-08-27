@@ -2,7 +2,7 @@
 
 const std = @import("std");
 const ui = @import("../../ui/mod.zig");
-const render_ctx = @import("../../render/mod.zig");
+const renderCtx = @import("../../render/mod.zig");
 const draw = @import("Draw.zig");
 
 pub const Chart = struct {
@@ -29,7 +29,7 @@ pub const Chart = struct {
         _ = rect;
     }
 
-    pub fn render(self: *Chart, ctx: *render_ctx.Context) !void {
+    pub fn render(self: *Chart, ctx: *renderCtx.Context) !void {
         const rect = ui.layout.Rect{ .x = 0, .y = 0, .w = ctx.surface.size().w, .h = 1 };
         try draw.sparkline(ctx, rect, self.values);
     }

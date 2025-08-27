@@ -205,8 +205,8 @@ pub const Server = struct {
         }
 
         // Start accepting connections
-        const accept_thread = try std.Thread.spawn(.{}, acceptLoop, .{self});
-        accept_thread.detach();
+        const acceptThread = try std.Thread.spawn(.{}, acceptLoop, .{self});
+        acceptThread.detach();
     }
 
     /// Stop the callback server
@@ -290,11 +290,11 @@ pub const Server = struct {
             };
 
             // Handle connection in new thread
-            const handle_thread = std.Thread.spawn(.{}, handleConnection, .{ self, connection }) catch {
+            const handleThread = std.Thread.spawn(.{}, handleConnection, .{ self, connection }) catch {
                 connection.stream.close();
                 continue;
             };
-            handle_thread.detach();
+            handleThread.detach();
         }
     }
 
@@ -307,8 +307,8 @@ pub const Server = struct {
 
         // Read request
         var buffer: [4096]u8 = undefined;
-        const bytes_read = connection.stream.read(&buffer) catch return;
-        const request = buffer[0..bytes_read];
+        const bytesRead = connection.stream.read(&buffer) catch return;
+        const request = buffer[0..bytesRead];
 
         // Parse request
         const result = self.parseCallbackRequest(request) catch |err| {

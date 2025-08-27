@@ -19,4 +19,4 @@ pub const WidgetLayout = renderer_mod.WidgetLayout;
 pub const Message = renderer_mod.Message;
 pub const WidgetBuilder = renderer_mod.WidgetBuilder;
 pub const Layout = renderer_mod.Layout;
-pub const UnifiedRenderer = renderer_mod.UnifiedRenderer;
+pub const Renderer = renderer_mod.Renderer;

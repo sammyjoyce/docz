@@ -29,7 +29,7 @@ const notification_mod = @import("../../components/notification.zig");
 const progress_mod = @import("../../components/progress.zig");
 const input_mod = @import("../../components/input.zig");
 const input_component_mod = @import("../../components/Input.zig");
-const theme_manager_mod = @import("../../theme/mod.zig");
+const theme = @import("../../theme/mod.zig");
 
 // Import terminal capabilities and interface
 const term_mod = @import("../../term/mod.zig");
@@ -44,7 +44,7 @@ const dashboard_mod = @import("../../tui/widgets/dashboard/mod.zig");
 const rich_widgets = @import("../../tui/widgets/rich/mod.zig");
 
 // Re-export key types for convenience
-const AdaptiveRenderer = adaptive_renderer.AdaptiveRenderer;
+const Renderer = adaptive_renderer.Renderer;
 const NotificationType = notification_mod.NotificationType;
 const NotificationConfig = notification_mod.NotificationConfig;
 const BaseNotification = notification_mod.BaseNotification;
@@ -53,7 +53,7 @@ const ProgressConfig = progress_mod.ProgressConfig;
 const InputEvent = input_mod.InputEvent;
 const Key = input_mod.Key;
 const InputComponent = input_component_mod.InputComponent;
-const ThemeManager = theme_manager_mod.Theme;
+const Theme = theme.Theme;
 const CanvasEngine = canvas_engine.CanvasEngine;
 const Modal = modal_system.Modal;
 const ModalManager = modal_system.ModalManager;
@@ -337,25 +337,25 @@ pub const OAuthFlow = struct {
     const Self = @This();
 
     allocator: std.mem.Allocator,
-    renderer: *AdaptiveRenderer,
-    theme_manager: *ThemeManager,
+    renderer: *Renderer,
+    theme_manager: *Theme,
     auth_service: auth_service.Service,
     network_client: network_client.Service,
 
     // State management
-    current_state: OAuthState,
-    start_time: i64,
-    last_state_change: i64,
-    total_progress: f32,
-    error_message: ?[]const u8,
+    currentState: OAuthState,
+    startTime: i64,
+    lastStateChange: i64,
+    totalProgress: f32,
+    errorMessage: ?[]const u8,
 
     // Animation state
-    animation_frame: u32 = 0,
-    last_animation_time: i64 = 0,
+    animationFrame: u32 = 0,
+    lastAnimationTime: i64 = 0,
 
     // Network activity tracking
-    network_active: bool = false,
-    last_network_activity: i64 = 0,
+    networkActive: bool = false,
+    lastNetworkActivity: i64 = 0,
 
     // Features
     flow_diagram: OAuthFlowDiagram,
@@ -373,8 +373,8 @@ pub const OAuthFlow = struct {
     last_input_time: i64 = 0,
 
     // OAuth state
-    pkce_params: ?oauth.Pkce = null,
-    auth_url: ?[]const u8 = null,
+    pkceParams: ?oauth.Pkce = null,
+    authUrl: ?[]const u8 = null,
     credentials: ?oauth.Credentials = null,
 
     // Progressive enhancement
@@ -391,8 +391,8 @@ pub const OAuthFlow = struct {
     // Smart input components
     smart_input: ?InputComponent = null,
 
-    pub fn init(allocator: std.mem.Allocator, renderer: *AdaptiveRenderer, theme_manager: *ThemeManager) !Self {
-        const start_time = std.time.timestamp();
+    pub fn init(allocator: std.mem.Allocator, renderer: *Renderer, theme_manager: *Theme) !Self {
+        const startTime = std.time.timestamp();
 
         // Detect terminal capabilities for progressive enhancement
         const terminal_caps = caps.detectCaps(allocator);
@@ -411,11 +411,11 @@ pub const OAuthFlow = struct {
             .theme_manager = theme_manager,
             .auth_service = auth_svc,
             .network_client = net_svc,
-            .current_state = .initializing,
-            .start_time = start_time,
-            .last_state_change = start_time,
-            .total_progress = 0.0,
-            .error_message = null,
+            .currentState = .initializing,
+            .startTime = startTime,
+            .lastStateChange = startTime,
+            .totalProgress = 0.0,
+            .errorMessage = null,
             .flow_diagram = flow_diagram,
             .shortcuts = .{},
             .progress_history = std.ArrayList(f32).init(allocator),
@@ -462,11 +462,11 @@ pub const OAuthFlow = struct {
             self.allocator.free(msg);
         }
 
-        if (self.pkce_params) |*pkce| {
+        if (self.pkceParams) |*pkce| {
             pkce.deinit(self.allocator);
         }
 
-        if (self.auth_url) |url| {
+        if (self.authUrl) |url| {
             self.allocator.free(url);
         }
 
@@ -521,18 +521,18 @@ pub const OAuthFlow = struct {
     /// Run the OAuth flow
     pub fn run(self: *Self) !oauth.Credentials {
         // Show onboarding wizard
-        try self.showOnboardingWizard();
+        try self.show_onboarding_wizard();
 
         // Main OAuth flow loop
         while (true) {
-            try self.updateState();
+            try self.update_state();
             try self.render();
 
             // Handle state-specific logic
             switch (self.current_state) {
                 .initializing => {
                     std.time.sleep(500_000_000); // 0.5s delay
-                    try self.transitionTo(.network_check);
+                    try self.transition_to(.network_check);
                 },
                 .network_check => {
                     try self.checkNetworkConnection();
@@ -554,7 +554,7 @@ pub const OAuthFlow = struct {
                     try self.saveCredentials();
                 },
                 .credential_save => {
-                    try self.transitionTo(.completion);
+                    try self.transition_to(.completion);
                 },
                 .completion => {
                     try self.showCompletion();
@@ -629,7 +629,7 @@ pub const OAuthFlow = struct {
                 try self.renderer.writeText("╚══════════════════════════════════════════════════════════════╝\n", header_color, false);
             },
             .rich, .full => {
-                const theme = self.theme_manager.getCurrentTheme();
+                const currentTheme = self.theme.getCurrentTheme();
                 const header_color = theme.primary;
                 const text_color = theme.foreground;
 
@@ -699,26 +699,26 @@ pub const OAuthFlow = struct {
     }
 
     /// Transition to a new state with animations
-    fn transitionTo(self: *Self, new_state: OAuthState) !void {
+    fn transitionTo(self: *Self, newState: OAuthState) !void {
         const now = std.time.timestamp();
-        const transition_time = @as(f64, @floatFromInt(now - self.last_state_change)) / 1_000_000_000.0;
+        const transitionTime = @as(f64, @floatFromInt(now - self.lastStateChange)) / 1_000_000_000.0;
 
         // Record timing data
-        try self.timing_data.append(transition_time);
+        try self.timing_data.append(transitionTime);
 
-        self.current_state = new_state;
-        self.last_state_change = now;
+        self.currentState = newState;
+        self.lastStateChange = now;
 
         // Update progress
-        const metadata = new_state.getMetadata();
-        self.total_progress += metadata.progress_weight;
+        const metadata = newState.getMetadata();
+        self.totalProgress += metadata.progress_weight;
 
         // Record progress history
         try self.progress_history.append(self.total_progress);
 
         // Update flow diagram
-        const step_id = @as(u32, @intFromEnum(new_state)) + 1;
-        self.flow_diagram.updateStep(step_id, .active);
+        const stepId = @as(u32, @intFromEnum(newState)) + 1;
+        self.flow_diagram.updateStep(stepId, .active);
 
         // Update KPI values
         for (metadata.kpi_metrics) |metric| {
@@ -736,7 +736,7 @@ pub const OAuthFlow = struct {
     }
 
     /// Update current state and handle animations
-    fn updateState(self: *Self) !void {
+    fn update_state(self: *Self) !void {
         const now = std.time.timestamp();
 
         // Update animations
@@ -787,7 +787,7 @@ pub const OAuthFlow = struct {
     /// Render the current OAuth flow state
     fn render(self: *Self) !void {
         try self.renderer.beginSynchronized();
-        try self.clearScreen();
+        try self.clear_screen();
 
         try self.drawHeader();
         try self.drawProgress();
@@ -812,7 +812,7 @@ pub const OAuthFlow = struct {
     }
 
     /// Clear the entire screen
-    fn clearScreen(self: *Self) !void {
+    fn clear_screen(self: *Self) !void {
         const size = try self.renderer.getSize();
         const full_bounds = adaptive_renderer.Bounds{
             .x = 0,
@@ -832,7 +832,7 @@ pub const OAuthFlow = struct {
             return;
         }
 
-        const theme = self.theme_manager.getCurrentTheme();
+        const currentTheme = self.theme.getCurrentTheme();
         const header_color = theme.primary;
 
         // Draw header box with theme colors
@@ -1200,7 +1200,7 @@ pub const OAuthFlow = struct {
             const progress = @as(f32, @floatFromInt(frame)) / @as(f32, @floatFromInt(frames - 1));
 
             try self.renderer.beginSynchronized();
-            try self.clearScreen();
+            try self.clear_screen();
             try self.drawHeader();
 
             // Draw transition effect
@@ -1250,45 +1250,45 @@ pub const OAuthFlow = struct {
             const error_msg = try std.fmt.allocPrint(self.allocator, "Network check failed: {s}", .{@errorName(err)});
             defer self.allocator.free(error_msg);
             try self.setError(error_msg);
-            try self.transitionTo(.error_state);
+            try self.transition_to(.error_state);
             return;
         };
 
         self.network_active = false;
-        try self.transitionTo(.pkce_generation);
+        try self.transition_to(.pkce_generation);
     }
 
     /// Generate PKCE parameters
     fn generatePkceParameters(self: *Self) !void {
         // Generate PKCE parameters using oauth module
         const pkce = try oauth.generatePkceParams(self.allocator);
-        self.pkce_params = pkce;
-        try self.transitionTo(.url_construction);
+        self.pkceParams = pkce;
+        try self.transition_to(.url_construction);
     }
 
     /// Build authorization URL
     fn buildAuthorizationUrl(self: *Self) !void {
-        if (self.pkce_params == null) {
+        if (self.pkceParams == null) {
             try self.setError("PKCE parameters not generated");
-            try self.transitionTo(.error_state);
+            try self.transition_to(.error_state);
             return;
         }
 
         // Build authorization URL using oauth module
-        const url = try oauth.buildAuthorizationUrl(self.allocator, self.pkce_params.?);
-        self.auth_url = url;
-        try self.transitionTo(.browser_launch);
+        const url = try oauth.buildAuthorizationUrl(self.allocator, self.pkceParams.?);
+        self.authUrl = url;
+        try self.transition_to(.browser_launch);
     }
 
     /// Open browser with authorization URL
     fn openBrowser(self: *Self) !void {
-        if (self.auth_url == null) {
+        if (self.authUrl == null) {
             try self.setError("Authorization URL not built");
-            try self.transitionTo(.error_state);
+            try self.transition_to(.error_state);
             return;
         }
 
-        const auth_url = self.auth_url.?;
+        const authUrl = self.authUrl.?;
 
         // Create clickable URL using OSC 8 if supported
         if (self.terminal_caps) |term_caps| {
@@ -1298,9 +1298,9 @@ pub const OAuthFlow = struct {
         }
 
         // Launch browser using oauth module
-        try oauth.launchBrowser(auth_url);
+        try oauth.launchBrowser(authUrl);
 
-        try self.transitionTo(.authorization_wait);
+        try self.transition_to(.authorization_wait);
     }
 
     /// Wait for authorization code input
@@ -1350,37 +1350,37 @@ pub const OAuthFlow = struct {
 
     /// Exchange code for tokens
     fn exchangeCodeForTokens(self: *Self, code: []const u8) !void {
-        if (self.pkce_params == null) {
+        if (self.pkceParams == null) {
             try self.setError("PKCE parameters not available for token exchange");
-            try self.transitionTo(.error_state);
+            try self.transition_to(.error_state);
             return;
         }
 
         self.network_active = true;
         self.last_network_activity = std.time.timestamp();
 
-        try self.transitionTo(.token_exchange);
+        try self.transition_to(.token_exchange);
 
         // Exchange code for tokens using auth service
-        const creds = self.auth_service.exchangeCode(code, self.pkce_params.?.codeVerifier) catch |err| {
+        const creds = self.auth_service.exchangeCode(code, self.pkceParams.?.codeVerifier) catch |err| {
             self.network_active = false;
             const error_msg = try std.fmt.allocPrint(self.allocator, "Token exchange failed: {s}", .{@errorName(err)});
             defer self.allocator.free(error_msg);
             try self.setError(error_msg);
-            try self.transitionTo(.error_state);
+            try self.transition_to(.error_state);
             return;
         };
 
         self.network_active = false;
         self.credentials = creds.oauth;
-        try self.transitionTo(.credential_save);
+        try self.transition_to(.credential_save);
     }
 
     /// Save credentials
     fn saveCredentials(self: *Self) !void {
         if (self.credentials == null) {
             try self.setError("No credentials to save");
-            try self.transitionTo(.error_state);
+            try self.transition_to(.error_state);
             return;
         }
 
@@ -1390,11 +1390,11 @@ pub const OAuthFlow = struct {
             const error_msg = try std.fmt.allocPrint(self.allocator, "Failed to save credentials: {s}", .{@errorName(err)});
             defer self.allocator.free(error_msg);
             try self.setError(error_msg);
-            try self.transitionTo(.error_state);
+            try self.transition_to(.error_state);
             return;
         };
 
-        try self.transitionTo(.completion);
+        try self.transition_to(.completion);
     }
 
     /// Show completion screen
@@ -1432,7 +1432,7 @@ pub const OAuthFlow = struct {
 };
 
 /// Convenience function to run the OAuth wizard
-pub fn runOAuthWizard(allocator: std.mem.Allocator, renderer: *AdaptiveRenderer, theme_manager: *ThemeManager) !oauth.Credentials {
+pub fn runOAuthWizard(allocator: std.mem.Allocator, renderer: *Renderer, theme_manager: *Theme) !oauth.Credentials {
     // Create and run OAuth wizard
     var wizard = try OAuthFlow.init(allocator, renderer, theme_manager);
     defer wizard.deinit();
@@ -1441,6 +1441,6 @@ pub fn runOAuthWizard(allocator: std.mem.Allocator, renderer: *AdaptiveRenderer,
 }
 
 /// Setup OAuth with TUI experience
-pub fn setupOAuthWithTUI(allocator: std.mem.Allocator, renderer: *AdaptiveRenderer, theme_manager: *ThemeManager) !oauth.Credentials {
+pub fn setupOAuthWithTUI(allocator: std.mem.Allocator, renderer: *Renderer, theme_manager: *Theme) !oauth.Credentials {
     return try runOAuthWizard(allocator, renderer, theme_manager);
 }

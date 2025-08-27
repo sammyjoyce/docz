@@ -1,4 +1,4 @@
-//! Info Panel Component
+//! Panel Component
 //! Displays structured information with icons, colors, and hyperlinks
 
 const std = @import("std");

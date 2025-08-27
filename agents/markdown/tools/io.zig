@@ -157,11 +157,11 @@ pub const ReadMultipleResponse = struct {
     error_message: ?[]const u8 = null,
 
     /// Map of file path to file data
-    files: std.StringHashMap(FileData),
+    files: std.StringHashMap(File),
 };
 
-/// Individual file data for multiple file operations
-pub const FileData = struct {
+/// Individual file for multiple file operations
+pub const File = struct {
     /// File content
     content: []const u8,
     /// Optional file metadata
@@ -439,7 +439,7 @@ fn readMultiple(allocator: std.mem.Allocator, params: json.Value) !json.Value {
     defer request.deinit();
 
     // Initialize hash map for files - more efficient than ObjectMap for this use case
-    var files = std.StringHashMap(FileData).init(allocator);
+    var files = std.StringHashMap(File).init(allocator);
     defer {
         var it = files.iterator();
         while (it.next()) |entry| {
@@ -460,8 +460,8 @@ fn readMultiple(allocator: std.mem.Allocator, params: json.Value) !json.Value {
         };
         errdefer allocator.free(content);
 
-        // Build file data struct
-        var file_data = FileData{
+        // Build file struct
+        var file_data = File{
             .content = try allocator.dupe(u8, content),
         };
         allocator.free(content); // Free temporary content buffer

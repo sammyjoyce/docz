@@ -19,7 +19,7 @@ pub const CliOptions = struct {
         input: ?[]const u8,
         system: ?[]const u8,
         config: ?[]const u8,
-        maxTokens: u32,
+        tokensMax: u32,
         temperature: f32,
     },
     flags: struct {
@@ -222,10 +222,29 @@ pub fn runWithOptions(allocator: std.mem.Allocator, options: CliOptions, spec: A
     var messages = std.array_list.Managed(Message).init(allocator);
     defer messages.deinit();
 
-    const systemPrompt = blk: {
+    var systemPrompt = blk: {
         if (options.options.system) |explicit| break :blk try allocator.dupe(u8, explicit);
         break :blk try spec.buildSystemPrompt(allocator, options);
     };
+    // Prepend anthropic spoof content, if present
+    const spoof = blk: {
+        const path = "prompt/anthropic_spoof.txt";
+        const file = std.fs.cwd().openFile(path, .{}) catch break :blk null;
+        defer file.close();
+        const data = file.readToEndAlloc(allocator, 4096) catch break :blk null;
+        break :blk data;
+    };
+    defer if (spoof) |s| allocator.free(s);
+
+    if (spoof) |s| {
+        if (std.fmt.allocPrint(allocator, "{s}\n\n{s}", .{ s, systemPrompt })) |combined| {
+            // Replace original system prompt with combined content
+            allocator.free(systemPrompt);
+            systemPrompt = combined;
+        } else |_| {
+            // Allocation failed: proceed without spoof content
+        }
+    }
     defer allocator.free(systemPrompt);
     try messages.append(.{ .role = .system, .content = systemPrompt });
 
@@ -273,7 +292,7 @@ pub fn runWithOptions(allocator: std.mem.Allocator, options: CliOptions, spec: A
         std.log.info("Using non-streaming mode (complete response).", .{});
         const response = try client.complete(.{
             .model = options.options.model,
-            .maxTokens = options.options.maxTokens,
+            .maxTokens = options.options.tokensMax,
             .temperature = options.options.temperature,
             .messages = messages.items,
         });
@@ -294,7 +313,7 @@ pub fn runWithOptions(allocator: std.mem.Allocator, options: CliOptions, spec: A
     } else {
         try client.stream(.{
             .model = options.options.model,
-            .maxTokens = options.options.maxTokens,
+            .maxTokens = options.options.tokensMax,
             .temperature = options.options.temperature,
             .messages = messages.items,
             .onToken = &onToken,

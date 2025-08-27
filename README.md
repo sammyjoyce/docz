@@ -210,6 +210,23 @@ zig build -Dagent=markdown run-agent -- --help
 zig build -Dagent=markdown test
 ```
 
+### Authentication
+
+Use the built-in auth subcommands to set up and manage credentials:
+
+```bash
+# Start OAuth setup in your browser (recommended)
+zig build -Dagent=markdown run -- auth login
+
+# Show current authentication status (OAuth/API key/none)
+zig build -Dagent=markdown run -- auth status
+
+# Refresh OAuth tokens
+zig build -Dagent=markdown run -- auth refresh
+```
+
+If you prefer API key auth, set `ANTHROPIC_API_KEY` in your environment. When OAuth credentials are present, they take precedence.
+
 ### Creating a New Agent
 
 ```bash

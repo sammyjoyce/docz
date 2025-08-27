@@ -11,14 +11,14 @@ pub fn table(ctx: *render.Context, rect: ui.layout.Rect, tbl: *const mod.Table) 
     const cols: usize = if (headers.len > 0) headers.len else if (rows.len > 0) rows[0].len else 0;
     if (cols == 0) return;
 
-    const total_w: u32 = rect.w;
-    var widths_buf: [64]u16 = undefined;
-    var widths_slice: []u16 = undefined;
-    if (tbl.column_widths) |w| {
-        widths_slice = @constCast(w);
+    const totalW: u32 = rect.w;
+    var widthsBuf: [64]u16 = undefined;
+    var widthsSlice: []u16 = undefined;
+    if (tbl.columnWidths) |w| {
+        widthsSlice = @constCast(w);
     } else {
-        widths_slice = if (cols <= widths_buf.len) widths_buf[0..cols] else try ctx.surface.toString; // will never reach
-        try calculateWidths(widths_slice, headers, rows, total_w);
+        widthsSlice = if (cols <= widthsBuf.len) widthsBuf[0..cols] else try ctx.surface.toString; // will never reach
+        try calculateWidths(widthsSlice, headers, rows, totalW);
     }
 
     var y: i32 = rect.y;
@@ -30,28 +30,28 @@ pub fn table(ctx: *render.Context, rect: ui.layout.Rect, tbl: *const mod.Table) 
 
     // Borders and header
     if (headers.len > 0) {
-        try drawHorizontalBorder(ctx, rect, y, widths_slice, '+', '-');
+        try drawHorizontalBorder(ctx, rect, y, widthsSlice, '+', '-');
         y += 1;
-        try drawRow(ctx, rect, y, widths_slice, headers, tbl.column_alignments);
+        try drawRow(ctx, rect, y, widthsSlice, headers, tbl.columnAlignments);
         y += 1;
-        try drawHorizontalBorder(ctx, rect, y, widths_slice, '+', '-');
+        try drawHorizontalBorder(ctx, rect, y, widthsSlice, '+', '-');
         y += 1;
     }
 
     // Data rows
     for (rows) |row| {
         if (y >= rect.y + @as(i32, @intCast(rect.h))) break;
-        try drawRow(ctx, rect, y, widths_slice, row, tbl.column_alignments);
+        try drawRow(ctx, rect, y, widthsSlice, row, tbl.columnAlignments);
         y += 1;
     }
 
     // Bottom border if header existed
     if (headers.len > 0 and y < rect.y + @as(i32, @intCast(rect.h))) {
-        try drawHorizontalBorder(ctx, rect, y, widths_slice, '+', '-');
+        try drawHorizontalBorder(ctx, rect, y, widthsSlice, '+', '-');
     }
 }
 
-fn calculateWidths(buf: []u16, headers: []const []const u8, rows: []const []const []const u8, total_w: u32) !void {
+fn calculateWidths(buf: []u16, headers: []const []const u8, rows: []const []const []const u8, totalW: u32) !void {
     // compute content widths
     const cols = buf.len;
     var sum: u32 = 0;
@@ -67,12 +67,12 @@ fn calculateWidths(buf: []u16, headers: []const []const u8, rows: []const []cons
         sum += mw;
     }
     if (sum == 0) return;
-    // scale down proportionally if wider than total_w - (cols+1) borders
-    const border_w: u32 = cols + 1;
-    const max_content = if (total_w > border_w) total_w - border_w else total_w;
-    if (sum > max_content) {
+    // scale down proportionally if wider than totalW - (cols+1) borders
+    const borderW: u32 = cols + 1;
+    const maxContent = if (totalW > borderW) totalW - borderW else totalW;
+    if (sum > maxContent) {
         // fallback: set equal widths
-        const each: u32 = max_content / @as(u32, @intCast(cols));
+        const each: u32 = maxContent / @as(u32, @intCast(cols));
         for (buf) |*w| w.* = @intCast(each);
     }
 }
@@ -102,7 +102,7 @@ fn drawRow(ctx: *render.Context, rect: ui.layout.Rect, y: i32, widths: []const u
     x += 1;
     for (cells, 0..) |cell, i| {
         const w = widths[i];
-        const inner_w: i32 = @as(i32, @intCast(w));
+        const innerW: i32 = @as(i32, @intCast(w));
         const text = alignTrunc(cell, @intCast(w), if (aligns) |a| a[i] else .left);
         var j: usize = 0;
         while (j < text.len and (x < rect.x + @as(i32, @intCast(rect.w)))) : (j += 1) {
@@ -113,7 +113,7 @@ fn drawRow(ctx: *render.Context, rect: ui.layout.Rect, y: i32, widths: []const u
             try ctx.putChar(x, y, '|');
             x += 1;
         }
-        _ = inner_w; // reserved for more precise padding if needed
+        _ = innerW; // reserved for more precise padding if needed
     }
 }
 

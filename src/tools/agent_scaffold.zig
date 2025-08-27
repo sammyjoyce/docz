@@ -17,8 +17,8 @@ pub const ScaffoldAgentError = error{
     OutOfMemory,
 } || std.fs.File.OpenError || std.fs.File.WriteError;
 
-/// ScaffoldAgentOptions contains configuration for agent scaffolding
-pub const ScaffoldAgentOptions = struct {
+/// ScaffoldAgent contains configuration for agent scaffolding
+pub const ScaffoldAgent = struct {
     agentName: []const u8,
     description: []const u8,
     author: []const u8,
@@ -35,10 +35,10 @@ pub const ScaffoldAgentOptions = struct {
 /// 5. Creates subdirectories (tools/, common/, examples/)
 ///
 /// Parameters:
-/// - options: ScaffoldAgentOptions containing agent details and allocator
+/// - options: ScaffoldAgent containing agent details and allocator
 ///
 /// Returns: void on success, error on failure
-pub fn scaffoldAgent(options: ScaffoldAgentOptions) anyerror!void {
+pub fn scaffoldAgent(options: ScaffoldAgent) anyerror!void {
     const allocator = options.allocator;
     const agentName = options.agentName;
     const description = options.description;
@@ -113,8 +113,8 @@ fn isValidAgentName(name: []const u8) bool {
     }
 
     // Cannot be reserved names
-    const RESERVED_NAMES = [_][]const u8{ "_template", "core", "shared", "tools" };
-    for (RESERVED_NAMES) |reserved_name| {
+    const reservedNames = [_][]const u8{ "_template", "core", "shared", "tools" };
+    for (reservedNames) |reserved_name| {
         if (std.mem.eql(u8, name, reserved_name)) return false;
     }
 
@@ -728,7 +728,7 @@ pub fn main() !void {
     const description = arguments[2];
     const author = arguments[3];
 
-    const options = ScaffoldAgentOptions{
+    const options = ScaffoldAgent{
         .agentName = agentName,
         .description = description,
         .author = author,

@@ -2,10 +2,10 @@
 //! Provides high contrast generation and WCAG compliance checking
 
 const std = @import("std");
-const ColorScheme = @import("color_scheme.zig").ColorScheme;
-const Color = @import("color_scheme.zig").Color;
-const RGB = @import("color_scheme.zig").RGB;
-const HSL = @import("color_scheme.zig").HSL;
+const ColorScheme = @import("ColorScheme.zig").ColorScheme;
+const Color = @import("ColorScheme.zig").Color;
+const RGB = @import("ColorScheme.zig").RGB;
+const HSL = @import("ColorScheme.zig").HSL;
 
 pub const Accessibility = struct {
     allocator: std.mem.Allocator,

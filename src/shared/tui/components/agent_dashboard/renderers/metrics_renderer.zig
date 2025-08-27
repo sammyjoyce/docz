@@ -9,7 +9,7 @@ const Allocator = std.mem.Allocator;
 // Import dependencies
 const state = @import("../state.zig");
 const layout = @import("../layout.zig");
-const theme_manager = @import("../../../../theme/mod.zig");
+const theme = @import("../../../../theme/mod.zig");
 const term_mod = @import("../../../../term/mod.zig");
 const render_mod = @import("../../../../render/mod.zig");
 
@@ -84,7 +84,7 @@ pub const MetricsRenderer = struct {
         writer: anytype,
         bounds: Rect,
         data_store: *const DashboardStore,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         // Update history with current metrics
         try self.history.add(data_store.metrics);
@@ -159,7 +159,7 @@ pub const MetricsRenderer = struct {
         self: *const Self,
         writer: anytype,
         bounds: Rect,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         _ = self;
 
@@ -176,7 +176,7 @@ pub const MetricsRenderer = struct {
         self: *const Self,
         writer: anytype,
         bounds: Rect,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         _ = self;
 
@@ -195,7 +195,7 @@ pub const MetricsRenderer = struct {
         label: []const u8,
         value: f32,
         unit: MetricUnit,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         const y = bounds.y + @as(i32, @intCast(y_offset));
 
@@ -232,7 +232,7 @@ pub const MetricsRenderer = struct {
         bounds: Rect,
         y_offset: u16,
         metrics: PerformanceMetrics,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         const y = bounds.y + @as(i32, @intCast(y_offset));
 
@@ -273,7 +273,7 @@ pub const MetricsRenderer = struct {
         bounds: Rect,
         y_offset: u16,
         latency_ms: u64,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         const y = bounds.y + @as(i32, @intCast(y_offset));
 
@@ -309,7 +309,7 @@ pub const MetricsRenderer = struct {
         value: f32,
         width: u16,
         unit: MetricUnit,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         switch (self.config.chart_type) {
             .sparkline => try self.renderSparkline(writer, value, width, unit, theme),
@@ -326,7 +326,7 @@ pub const MetricsRenderer = struct {
         current_value: f32,
         width: u16,
         unit: MetricUnit,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         _ = current_value;
 
@@ -374,7 +374,7 @@ pub const MetricsRenderer = struct {
         value: f32,
         width: u16,
         unit: MetricUnit,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         _ = self;
 
@@ -415,7 +415,7 @@ pub const MetricsRenderer = struct {
         value: f32,
         width: u16,
         unit: MetricUnit,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         _ = self;
 
@@ -458,7 +458,7 @@ pub const MetricsRenderer = struct {
         in_value: f32,
         out_value: f32,
         width: u16,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         _ = self;
         _ = in_value;
@@ -481,7 +481,7 @@ pub const MetricsRenderer = struct {
         self: *const Self,
         writer: anytype,
         width: u16,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         const history = self.history.latency_history.items;
         if (history.len == 0) return;
@@ -532,8 +532,8 @@ pub const MetricsRenderer = struct {
         self: *const Self,
         value: f32,
         unit: MetricUnit,
-        theme: *const theme_manager.ColorScheme,
-    ) theme_manager.Color {
+        theme: *const theme.ColorScheme,
+    ) theme.Color {
         _ = self;
 
         switch (unit) {

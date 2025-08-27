@@ -71,7 +71,7 @@ const config = @import("config_shared");
 // Shared infrastructure
 const tui = @import("tui_shared");
 const term = @import("../../src/term_shared.zig");
-const theme_manager = @import("../../src/shared/theme_manager/mod.zig");
+const theme = @import("../../src/shared/theme/mod.zig");
 const render = @import("render_shared");
 const components = @import("components_shared");
 
@@ -90,7 +90,7 @@ const canvas_mod = @import("../../src/shared/tui/core/canvas.zig");
 
 // Markdown agent specific
 const markdown_tools = @import("tools/mod.zig");
-const ContentEditor = @import("tools/ContentEditor.zig");
+const ContentEditor = @import("tools/content_editor.zig");
 const Validate = @import("tools/validate.zig");
 const document_tool = @import("tools/document.zig");
 const markdown_editor = @import("markdown_editor.zig");
@@ -740,7 +740,7 @@ pub const InteractiveSession = struct {
     progress_tracker: *progress_tracker.ProgressTracker,
 
     /// Layout manager
-    layout_manager: *LayoutManager,
+    layout: *Layout,
 
     /// Metrics collector
     metrics_collector: *MetricsCollector,
@@ -812,7 +812,7 @@ pub const InteractiveSession = struct {
         const progress = try progress_tracker.ProgressTracker.init(allocator);
         errdefer progress.deinit();
 
-        const layout_mgr = try LayoutManager.init(allocator, session_config.layout_config);
+        const layout_mgr = try Layout.init(allocator, session_config.layout_config);
         errdefer layout_mgr.deinit();
 
         const metrics = try MetricsCollector.init(allocator, session_config.metrics_config);
@@ -1512,7 +1512,7 @@ pub const InteractiveSession = struct {
     }
 
     /// Handle keyboard event
-    fn handleKeyEvent(self: *Self, key: tui.KeyEvent) !bool {
+    fn handleKeyEvent(self: *Self, key: tui.Key) !bool {
         // Check command palette first
         if (self.command_palette.isVisible()) {
             return try self.command_palette.handleInput(key);
@@ -1539,7 +1539,7 @@ pub const InteractiveSession = struct {
     }
 
     /// Handle Ctrl shortcuts
-    fn handleCtrlShortcut(self: *Self, key: tui.KeyEvent) !bool {
+    fn handleCtrlShortcut(self: *Self, key: tui.Key) !bool {
         switch (key.code) {
             'q' => return true, // Quit
             's' => try self.saveDocument(), // Save
@@ -1556,7 +1556,7 @@ pub const InteractiveSession = struct {
     }
 
     /// Handle Alt shortcuts
-    fn handleAltShortcut(self: *Self, key: tui.KeyEvent) !bool {
+    fn handleAltShortcut(self: *Self, key: tui.Key) !bool {
         switch (key.code) {
             'p' => try self.togglePreview(), // Toggle preview
             'd' => try self.toggleDashboard(), // Toggle dashboard
@@ -1573,7 +1573,7 @@ pub const InteractiveSession = struct {
     }
 
     /// Handle mouse event
-    fn handleMouseEvent(self: *Self, mouse: tui.MouseEvent) !void {
+    fn handleMouseEvent(self: *Self, mouse: tui.Mouse) !void {
         // Handle mouse interactions based on pane
         const editor_bounds = self.layout_manager.getEditorBounds();
         const preview_bounds = self.layout_manager.getPreviewBounds();
@@ -1601,7 +1601,7 @@ pub const InteractiveSession = struct {
     }
 
     /// Handle mouse in editor pane
-    fn handleEditorMouse(self: *Self, mouse: tui.MouseEvent) !void {
+    fn handleEditorMouse(self: *Self, mouse: tui.Mouse) !void {
         switch (mouse.action) {
             .press => {
                 if (mouse.button == .left) {
@@ -1621,7 +1621,7 @@ pub const InteractiveSession = struct {
     }
 
     /// Handle mouse in preview pane
-    fn handlePreviewMouse(self: *Self, mouse: tui.MouseEvent) !void {
+    fn handlePreviewMouse(self: *Self, mouse: tui.Mouse) !void {
         switch (mouse.action) {
             .press => {
                 if (mouse.button == .left) {
@@ -1641,7 +1641,7 @@ pub const InteractiveSession = struct {
     }
 
     /// Handle mouse in tool discovery
-    fn handleToolDiscoveryMouse(self: *Self, mouse: tui.MouseEvent) !void {
+    fn handleToolDiscoveryMouse(self: *Self, mouse: tui.Mouse) !void {
         switch (mouse.action) {
             .press => {
                 if (mouse.button == .left) {
@@ -1654,7 +1654,7 @@ pub const InteractiveSession = struct {
     }
 
     /// Handle mouse in dashboard area
-    fn handleDashboardMouse(self: *Self, mouse: tui.MouseEvent) !void {
+    fn handleDashboardMouse(self: *Self, mouse: tui.Mouse) !void {
         // Handle dashboard widget interactions
         try self.dashboard.handleMouse(mouse);
     }
@@ -1989,8 +1989,8 @@ pub const ToolInfo = struct {
     action: *const fn (*InteractiveSession) anyerror!void,
 };
 
-/// Layout manager for multi-pane interface
-pub const LayoutManager = struct {
+/// Layout for multi-pane interface
+pub const Layout = struct {
     allocator: Allocator,
     config: LayoutConfig,
     terminal_size: term.TerminalSize,
@@ -2752,7 +2752,7 @@ pub const CommandPalette = struct {
         _ = renderer;
     }
 
-    pub fn handleInput(self: *CommandPalette, key: tui.KeyEvent) !bool {
+    pub fn handleInput(self: *CommandPalette, key: tui.Key) !bool {
         // Implementation here...
         _ = self;
         _ = key;

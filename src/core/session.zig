@@ -70,9 +70,9 @@ pub const SessionConfig = struct {
     /// Checkpoint interval in seconds
     checkpointInterval: u32 = 300,
     /// Maximum session duration in seconds
-    maxDuration: u32 = 3600,
+    durationMax: u32 = 3600,
     /// Maximum state size in bytes
-    maxStateSize: u64 = 10 * 1024 * 1024, // 10MB
+    stateSizeMax: u64 = 10 * 1024 * 1024, // 10MB
     /// Enable audit logging
     enableAudit: bool = true,
     /// Enable collaboration features
@@ -178,15 +178,15 @@ pub const SessionState = struct {
         }
         self.snapshots.deinit(self.allocator);
 
-        var var_it = self.variables.iterator();
-        while (var_it.next()) |entry| {
+        var varIt = self.variables.iterator();
+        while (varIt.next()) |entry| {
             self.allocator.free(entry.key_ptr.*);
             self.allocator.free(entry.value_ptr.*);
         }
         self.variables.deinit();
 
-        var meta_it = self.metadata.iterator();
-        while (meta_it.next()) |entry| {
+        var metaIt = self.metadata.iterator();
+        while (metaIt.next()) |entry| {
             self.allocator.free(entry.key_ptr.*);
             self.allocator.free(entry.value_ptr.*);
         }
@@ -213,11 +213,11 @@ pub const SessionState = struct {
             .tool => &self.tool,
         };
 
-        const key_copy = try self.allocator.dupe(u8, key);
-        if (map.get(key_copy)) |old_value| {
-            old_value.deinit();
+        const keyCopy = try self.allocator.dupe(u8, key);
+        if (map.get(keyCopy)) |oldValue| {
+            oldValue.deinit();
         }
-        try map.put(key_copy, value);
+        try map.put(keyCopy, value);
     }
 
     /// Get state value from specific level
@@ -261,13 +261,13 @@ pub const SessionState = struct {
 
     /// Set variable
     pub fn setVariable(self: *SessionState, name: []const u8, value: []const u8) !void {
-        const name_copy = try self.allocator.dupe(u8, name);
-        const value_copy = try self.allocator.dupe(u8, value);
+        const nameCopy = try self.allocator.dupe(u8, name);
+        const valueCopy = try self.allocator.dupe(u8, value);
 
-        if (self.variables.get(name_copy)) |old_value| {
-            self.allocator.free(old_value);
+        if (self.variables.get(nameCopy)) |oldValue| {
+            self.allocator.free(oldValue);
         }
-        try self.variables.put(name_copy, value_copy);
+        try self.variables.put(nameCopy, valueCopy);
     }
 
     /// Get variable
@@ -277,13 +277,13 @@ pub const SessionState = struct {
 
     /// Set metadata
     pub fn setMetadata(self: *SessionState, key: []const u8, value: []const u8) !void {
-        const key_copy = try self.allocator.dupe(u8, key);
-        const value_copy = try self.allocator.dupe(u8, value);
+        const keyCopy = try self.allocator.dupe(u8, key);
+        const valueCopy = try self.allocator.dupe(u8, value);
 
-        if (self.metadata.get(key_copy)) |old_value| {
-            self.allocator.free(old_value);
+        if (self.metadata.get(keyCopy)) |oldValue| {
+            self.allocator.free(oldValue);
         }
-        try self.metadata.put(key_copy, value_copy);
+        try self.metadata.put(keyCopy, valueCopy);
     }
 
     /// Get metadata
@@ -367,8 +367,8 @@ pub const StateSnapshot = struct {
 
         // Restore variables
         if (root.get("variables")) |vars| {
-            var var_it = vars.object.iterator();
-            while (var_it.next()) |entry| {
+            var varIt = vars.object.iterator();
+            while (varIt.next()) |entry| {
                 const key = try state.allocator.dupe(u8, entry.key_ptr.*);
                 const value = try state.allocator.dupe(u8, entry.value_ptr.*.string);
                 try state.variables.put(key, value);
@@ -377,8 +377,8 @@ pub const StateSnapshot = struct {
 
         // Restore metadata
         if (root.get("metadata")) |meta| {
-            var meta_it = meta.object.iterator();
-            while (meta_it.next()) |entry| {
+            var metaIt = meta.object.iterator();
+            while (metaIt.next()) |entry| {
                 const key = try state.allocator.dupe(u8, entry.key_ptr.*);
                 const value = try state.allocator.dupe(u8, entry.value_ptr.*.string);
                 try state.metadata.put(key, value);
@@ -387,8 +387,8 @@ pub const StateSnapshot = struct {
     }
 
     /// Helper to restore hashmap from JSON
-    fn restoreHashMap(self: *StateSnapshot, map: *std.StringHashMap(json.Value), json_map: ?json.Value) !void {
-        if (json_map) |jm| {
+    fn restoreHashMap(self: *StateSnapshot, map: *std.StringHashMap(json.Value), jsonMap: ?json.Value) !void {
+        if (jsonMap) |jm| {
             var it = jm.object.iterator();
             while (it.next()) |entry| {
                 const key = try self.allocator.dupe(u8, entry.key_ptr.*);
@@ -409,22 +409,22 @@ pub const StateSnapshot = struct {
             .number_string => |s| json.Value{ .number_string = try allocator.dupe(u8, s) },
             .string => |s| json.Value{ .string = try allocator.dupe(u8, s) },
             .array => |arr| blk: {
-                var new_arr = std.ArrayList(json.Value).init(allocator);
+                var newArr = std.ArrayList(json.Value).init(allocator);
                 for (arr.items) |item| {
                     const cloned = try self.deepCloneJsonValue(allocator, item);
-                    try new_arr.append(cloned);
+                    try newArr.append(cloned);
                 }
-                break :blk json.Value{ .array = new_arr };
+                break :blk json.Value{ .array = newArr };
             },
             .object => |obj| blk: {
-                var new_obj = std.StringHashMap(json.Value).init(allocator);
+                var newObj = std.StringHashMap(json.Value).init(allocator);
                 var it = obj.iterator();
                 while (it.next()) |entry| {
                     const key = try allocator.dupe(u8, entry.key_ptr.*);
                     const cloned = try self.deepCloneJsonValue(allocator, entry.value_ptr.*);
-                    try new_obj.put(key, cloned);
+                    try newObj.put(key, cloned);
                 }
-                break :blk json.Value{ .object = new_obj };
+                break :blk json.Value{ .object = newObj };
             },
         };
     }
@@ -454,7 +454,7 @@ pub const Session = struct {
     /// Session statistics
     stats: SessionStats,
     /// Performance metrics
-    performance: PerformanceMetrics,
+    performance: Performance,
     /// Encryption key (if encrypted)
     encryptionKey: ?[32]u8 = null,
     /// Session lock status
@@ -503,7 +503,7 @@ pub const Session = struct {
             .conversationHistory = try std.ArrayList(ConversationEntry).initCapacity(allocator, 0),
             .commandHistory = try std.ArrayList(CommandEntry).initCapacity(allocator, 0),
             .stats = SessionStats{},
-            .performance = PerformanceMetrics{},
+            .performance = Performance{},
             .collaborators = try std.ArrayList(Collaborator).initCapacity(allocator, 0),
             .auditLog = try std.ArrayList(AuditEntry).initCapacity(allocator, 0),
         };
@@ -736,7 +736,7 @@ pub const Session = struct {
     /// Check if session is expired
     pub fn isExpired(self: *Session) bool {
         const duration = self.getDuration();
-        return @as(u64, @intCast(duration)) > self.config.maxDuration;
+        return @as(u64, @intCast(duration)) > self.config.durationMax;
     }
 
     /// End session
@@ -752,7 +752,7 @@ pub const Session = struct {
     }
 
     /// Update performance metrics
-    pub fn updatePerformanceMetrics(self: *Session) void {
+    pub fn updatePerformance(self: *Session) void {
         self.performance.update();
     }
 };
@@ -940,7 +940,7 @@ pub const SessionStats = struct {
 };
 
 /// Performance metrics for monitoring agent performance
-pub const PerformanceMetrics = struct {
+pub const Performance = struct {
     renderTimeMs: f64 = 0,
     responseTimeMs: f64 = 0,
     memoryUsageMb: f64 = 0,
@@ -949,7 +949,7 @@ pub const PerformanceMetrics = struct {
     lastUpdated: i64 = 0,
 
     /// Update metrics with current values
-    pub fn update(self: *PerformanceMetrics) void {
+    pub fn update(self: *Performance) void {
         self.lastUpdated = time.timestamp();
         // In a real implementation, these would be measured from system
         // For now, we'll set some placeholder values
@@ -959,19 +959,19 @@ pub const PerformanceMetrics = struct {
     }
 
     /// Record render time
-    pub fn recordRenderTime(self: *PerformanceMetrics, renderTimeMs: f64) void {
+    pub fn recordRenderTime(self: *Performance, renderTimeMs: f64) void {
         self.renderTimeMs = renderTimeMs;
         self.update();
     }
 
     /// Record response time
-    pub fn recordResponseTime(self: *PerformanceMetrics, responseTimeMs: f64) void {
+    pub fn recordResponseTime(self: *Performance, responseTimeMs: f64) void {
         self.responseTimeMs = responseTimeMs;
         self.update();
     }
 
     /// Get formatted metrics summary
-    pub fn getSummary(self: *PerformanceMetrics, allocator: Allocator) ![]const u8 {
+    pub fn getSummary(self: *Performance, allocator: Allocator) ![]const u8 {
         return try fmt.allocPrint(allocator,
             \\Performance Metrics:
             \\  Render Time: {d:.2}ms
@@ -989,8 +989,8 @@ pub const PerformanceMetrics = struct {
     }
 };
 
-/// Session manager for persistence and lifecycle management
-pub const SessionManager = struct {
+/// Sessions manager for persistence and lifecycle management
+pub const Sessions = struct {
     allocator: Allocator,
     sessionsDir: []const u8,
     checkpointsDir: []const u8,
@@ -1003,9 +1003,9 @@ pub const SessionManager = struct {
     compressionEnabled: bool = true,
 
     /// Initialize session manager
-    pub fn init(allocator: Allocator, sessionsDir: []const u8, enableEncryption: bool) !*SessionManager {
-        const manager = try allocator.create(SessionManager);
-        manager.* = SessionManager{
+    pub fn init(allocator: Allocator, sessionsDir: []const u8, enableEncryption: bool) !*Sessions {
+        const manager = try allocator.create(Sessions);
+        manager.* = Sessions{
             .allocator = allocator,
             .sessionsDir = try allocator.dupe(u8, sessionsDir),
             .checkpointsDir = try fmt.allocPrint(allocator, "{s}/checkpoints", .{sessionsDir}),
@@ -1029,7 +1029,7 @@ pub const SessionManager = struct {
     }
 
     /// Deinitialize session manager
-    pub fn deinit(self: *SessionManager) void {
+    pub fn deinit(self: *Sessions) void {
         self.allocator.free(self.sessionsDir);
         self.allocator.free(self.checkpointsDir);
         self.allocator.free(self.historyDir);
@@ -1044,7 +1044,7 @@ pub const SessionManager = struct {
     }
 
     /// Create a new session
-    pub fn createSession(self: *SessionManager, sessionId: []const u8, config: SessionConfig) !*Session {
+    pub fn createSession(self: *Sessions, sessionId: []const u8, config: SessionConfig) !*Session {
         const session = try self.allocator.create(Session);
         session.* = try Session.init(self.allocator, sessionId, config);
 
@@ -1062,12 +1062,12 @@ pub const SessionManager = struct {
     }
 
     /// Get existing session
-    pub fn getSession(self: *SessionManager, sessionId: []const u8) ?*Session {
+    pub fn getSession(self: *Sessions, sessionId: []const u8) ?*Session {
         return self.activeSessions.get(sessionId);
     }
 
     /// Save session to disk
-    pub fn saveSession(self: *SessionManager, session: *Session) !void {
+    pub fn saveSession(self: *Sessions, session: *Session) !void {
         if (!session.config.enablePersistence) return;
 
         const filename = try fmt.allocPrint(self.allocator, "{s}/{s}.json", .{ self.sessionsDir, session.sessionId });
@@ -1114,7 +1114,7 @@ pub const SessionManager = struct {
     }
 
     /// Create checkpoint
-    pub fn createCheckpoint(self: *SessionManager, session: *Session, description: []const u8) !void {
+    pub fn createCheckpoint(self: *Sessions, session: *Session, description: []const u8) !void {
         if (!session.config.enableCheckpoints) return;
 
         const timestamp = time.timestamp();
@@ -1153,7 +1153,7 @@ pub const SessionManager = struct {
     }
 
     /// End a session
-    pub fn endSession(self: *SessionManager, sessionId: []const u8) !void {
+    pub fn endSession(self: *Sessions, sessionId: []const u8) !void {
         if (self.activeSessions.getEntry(sessionId)) |entry| {
             entry.value_ptr.*.endSession();
 
@@ -1168,13 +1168,13 @@ pub const SessionManager = struct {
     }
 
     /// Get session statistics
-    pub fn getStats(self: *SessionManager) SessionStats {
+    pub fn getStats(self: *Sessions) SessionStats {
         return self.stats;
     }
 
     /// Clean up old sessions and checkpoints
-    pub fn cleanupOldSessions(self: *SessionManager, maxAgeDays: u32) !void {
-        const cutoffTime = time.timestamp() - (@as(i64, maxAgeDays) * 24 * 60 * 60);
+    pub fn cleanupOldSessions(self: *Sessions, ageDaysMax: u32) !void {
+        const cutoffTime = time.timestamp() - (@as(i64, ageDaysMax) * 24 * 60 * 60);
 
         // Clean sessions
         try self.cleanupDirectory(self.sessionsDir, cutoffTime);
@@ -1185,7 +1185,7 @@ pub const SessionManager = struct {
     }
 
     /// List available sessions
-    pub fn listSessions(self: *SessionManager) ![]const []const u8 {
+    pub fn listSessions(self: *Sessions) ![]const []const u8 {
         var sessions = std.array_list.Managed([]const u8).init(self.allocator);
         defer sessions.deinit();
 
@@ -1206,8 +1206,8 @@ pub const SessionManager = struct {
     }
 
     /// Helper functions for data processing
-    fn compressData(self: *SessionManager, data: []const u8) ![]const u8 {
-        // Simple RLE compression for demonstration
+    fn compressData(self: *Sessions, data: []const u8) ![]const u8 {
+        // RLE compression for demonstration
         // In a real implementation, you'd use a proper compression library
         var compressed = std.ArrayList(u8).init(self.allocator);
         defer compressed.deinit();
@@ -1230,7 +1230,7 @@ pub const SessionManager = struct {
         return compressed.toOwnedSlice();
     }
 
-    fn decompressData(self: *SessionManager, data: []const u8) ![]const u8 {
+    fn decompressData(self: *Sessions, data: []const u8) ![]const u8 {
         var decompressed = std.ArrayList(u8).init(self.allocator);
         defer decompressed.deinit();
 
@@ -1250,8 +1250,8 @@ pub const SessionManager = struct {
         return decompressed.toOwnedSlice();
     }
 
-    fn encryptData(self: *SessionManager, data: []const u8, key: [32]u8) ![]const u8 {
-        // Simple XOR encryption for demonstration
+    fn encryptData(self: *Sessions, data: []const u8, key: [32]u8) ![]const u8 {
+        // XOR encryption for demonstration
         // In a real implementation, you'd use proper encryption
         var encrypted = try self.allocator.alloc(u8, data.len);
         for (data, 0..) |byte, i| {
@@ -1260,12 +1260,12 @@ pub const SessionManager = struct {
         return encrypted;
     }
 
-    fn decryptData(self: *SessionManager, data: []const u8, key: [32]u8) ![]const u8 {
+    fn decryptData(self: *Sessions, data: []const u8, key: [32]u8) ![]const u8 {
         // XOR is symmetric
         return self.encryptData(data, key);
     }
 
-    fn createSessionJson(self: *SessionManager, session: *Session) !json.Value {
+    fn createSessionJson(self: *Sessions, session: *Session) !json.Value {
         _ = self;
         return json.Value{
             .object = .{
@@ -1277,7 +1277,7 @@ pub const SessionManager = struct {
         };
     }
 
-    fn cleanupDirectory(self: *SessionManager, dirPath: []const u8, cutoffTime: i64) !void {
+    fn cleanupDirectory(self: *Sessions, dirPath: []const u8, cutoffTime: i64) !void {
         var dir = fs.cwd().openDir(dirPath, .{ .iterate = true }) catch return;
         defer dir.close();
 
@@ -1359,7 +1359,7 @@ pub const SessionHelpers = struct {
         config.enablePersistence = false;
         config.enableCheckpoints = false;
         config.enableAudit = false;
-        config.maxDuration = 3600; // 1 hour
+        config.durationMax = 3600; // 1 hour
         return config;
     }
 };

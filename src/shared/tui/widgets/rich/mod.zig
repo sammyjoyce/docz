@@ -1,4 +1,4 @@
-//! Enhanced TUI widgets module
+//! Rich TUI widgets module
 //! Rich components leveraging terminal capabilities with progressive enhancement
 
 pub const graphics = @import("graphics.zig");

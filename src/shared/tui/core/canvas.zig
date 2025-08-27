@@ -1,15 +1,15 @@
-//! Consolidated Canvas System - Advanced graphics canvas with layer management and real-time interaction
+//! Canvas System - Graphics canvas with layer management and real-time interaction
 //!
-//! This module provides a sophisticated graphics canvas that leverages the full power
-//! of modern terminal capabilities. It supports multi-layer compositing, real-time
-//! interaction, progressive enhancement based on terminal features, and maintains
-//! backward compatibility with the original canvas_engine API.
+//! This module provides a graphics canvas that leverages terminal capabilities. 
+//! It supports multi-layer compositing, real-time interaction, progressive 
+//! enhancement based on terminal features, and maintains backward compatibility 
+//! with the original canvas_engine API.
 
 const std = @import("std");
 const graphics_manager = @import("../term/graphics_manager.zig");
 const unified = @import("../term/unified.zig");
 
-/// Advanced Canvas with layer management and real-time interaction
+/// Canvas with layer management and real-time interaction
 /// Maintains backward compatibility with CanvasEngine API
 pub const Canvas = struct {
     const Self = @This();
@@ -45,7 +45,7 @@ pub const Canvas = struct {
         chart: ChartContent,
         text: TextContent,
 
-        // Advanced content types from Canvas.zig
+        // Extended content types from Canvas.zig
         image: ImageLayer,
         vector: VectorLayer,
 
@@ -93,13 +93,13 @@ pub const Canvas = struct {
             };
         };
 
-        /// Advanced image layer
+        /// Image layer
         pub const ImageLayer = struct {
             image_id: u32,
             source_rect: ?Rect = null,
         };
 
-        /// Advanced vector layer
+        /// Vector layer
         pub const VectorLayer = struct {
             elements: std.ArrayList(VectorElement),
 
@@ -376,7 +376,7 @@ pub const Canvas = struct {
         return layer_id;
     }
 
-    /// Create a new vector layer (advanced feature)
+    /// Create a new vector layer
     pub fn createVectorLayer(self: *Self, name: []const u8) !u32 {
         const layer_id = self.next_layer_id;
         self.next_layer_id += 1;
@@ -418,7 +418,7 @@ pub const Canvas = struct {
         }
     }
 
-    /// Add a vector element to a layer (advanced feature)
+    /// Add a vector element to a layer
     pub fn addVectorElement(self: *Self, layer_id: u32, element: LayerContent.VectorLayer.VectorElement) !void {
         const layer = self.getLayer(layer_id) orelse return error.LayerNotFound;
 
@@ -501,7 +501,7 @@ pub const Canvas = struct {
         return null;
     }
 
-    /// Animate a layer property (advanced feature)
+    /// Animate a layer property
     pub fn animateLayer(self: *Self, layer_id: u32, property: AnimationEngine.Animation.AnimationProperty, target_value: f32, duration_ms: u32) !void {
         if (layer_id >= self.layers.items.len) return error.InvalidLayerId;
 

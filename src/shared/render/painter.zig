@@ -6,24 +6,24 @@ pub const Painter = struct {
     theme: ?*anyopaque,
 
     // Simple clip stack; keep minimal to bootstrap
-    clip_stack: std.ArrayListUnmanaged(Rect),
+    clipStack: std.ArrayListUnmanaged(Rect),
 
     pub const Rect = struct { x: i32, y: i32, w: i32, h: i32 };
 
     pub fn init(surface: *surface_pkg.Surface, theme: ?*anyopaque) Painter {
-        return .{ .surface = surface, .theme = theme, .clip_stack = .{} };
+        return .{ .surface = surface, .theme = theme, .clipStack = .{} };
     }
 
     pub fn deinit(self: *Painter, allocator: std.mem.Allocator) void {
-        self.clip_stack.deinit(allocator);
+        self.clipStack.deinit(allocator);
     }
 
     pub fn clipPush(self: *Painter, allocator: std.mem.Allocator, r: Rect) !void {
-        try self.clip_stack.append(allocator, r);
+        try self.clipStack.append(allocator, r);
     }
 
     pub fn clipPop(self: *Painter) void {
-        _ = self.clip_stack.pop();
+        _ = self.clipStack.pop();
     }
 
     // Minimal drawing helper for early golden tests

@@ -36,13 +36,13 @@ pub const Service = struct {
         defer client.deinit();
 
         // Convert headers of form "Name: Value" to curl.Header
-        var headers_list = std.ArrayListUnmanaged(curl.Header){};
-        defer headers_list.deinit(alloc);
+        var headersList = std.ArrayListUnmanaged(curl.Header){};
+        defer headersList.deinit(alloc);
         for (req.headers) |h| {
             if (std.mem.indexOfScalar(u8, h, ':')) |pos| {
                 const name = std.mem.trim(u8, h[0..pos], " \t");
                 const value = std.mem.trim(u8, h[pos + 1 ..], " \t");
-                try headers_list.append(alloc, .{ .name = name, .value = value });
+                try headersList.append(alloc, .{ .name = name, .value = value });
             } else {
                 // Skip malformed header entries
                 std.log.warn("Skipping malformed header (missing colon): '{s}'", .{h});
@@ -61,7 +61,7 @@ pub const Service = struct {
         const http_req = curl.HTTPRequest{
             .method = method,
             .url = req.url,
-            .headers = headers_list.items,
+            .headers = headersList.items,
             .body = req.body,
             .timeout_ms = req.timeout_ms,
             .follow_redirects = true,
@@ -86,13 +86,13 @@ pub const Service = struct {
         defer client.deinit();
 
         // Convert headers
-        var headers_list = std.ArrayListUnmanaged(curl.Header){};
-        defer headers_list.deinit(alloc);
+        var headersList = std.ArrayListUnmanaged(curl.Header){};
+        defer headersList.deinit(alloc);
         for (req.headers) |h| {
             if (std.mem.indexOfScalar(u8, h, ':')) |pos| {
                 const name = std.mem.trim(u8, h[0..pos], " \t");
                 const value = std.mem.trim(u8, h[pos + 1 ..], " \t");
-                try headers_list.append(alloc, .{ .name = name, .value = value });
+                try headersList.append(alloc, .{ .name = name, .value = value });
             }
         }
 
@@ -100,7 +100,7 @@ pub const Service = struct {
         const http_req = curl.HTTPRequest{
             .method = method,
             .url = req.url,
-            .headers = headers_list.items,
+            .headers = headersList.items,
             .body = req.body,
             .timeout_ms = req.timeout_ms,
             .follow_redirects = true,
@@ -129,19 +129,19 @@ pub const Service = struct {
         var client = try curl.HTTPClient.init(alloc);
         defer client.deinit();
 
-        var headers_list = std.ArrayListUnmanaged(curl.Header){};
-        defer headers_list.deinit(alloc);
+        var headersList = std.ArrayListUnmanaged(curl.Header){};
+        defer headersList.deinit(alloc);
         for (req.headers) |h| {
             if (std.mem.indexOfScalar(u8, h, ':')) |pos| {
                 const name = std.mem.trim(u8, h[0..pos], " \t");
                 const value = std.mem.trim(u8, h[pos + 1 ..], " \t");
-                try headers_list.append(alloc, .{ .name = name, .value = value });
+                try headersList.append(alloc, .{ .name = name, .value = value });
             }
         }
         const http_req = curl.HTTPRequest{
             .method = .GET,
             .url = req.url,
-            .headers = headers_list.items,
+            .headers = headersList.items,
             .body = req.body,
             .timeout_ms = req.timeout_ms,
             .follow_redirects = true,

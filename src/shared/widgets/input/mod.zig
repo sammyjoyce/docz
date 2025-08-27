@@ -1,6 +1,6 @@
 const std = @import("std");
 const ui = @import("../../ui/mod.zig");
-const render_ctx = @import("../../render/mod.zig");
+const renderCtx = @import("../../render/mod.zig");
 const draw = @import("Draw.zig");
 
 pub const Input = struct {
@@ -37,7 +37,7 @@ pub const Input = struct {
         _ = rect;
     }
 
-    pub fn render(self: *Input, ctx: *render_ctx.Context) !void {
+    pub fn render(self: *Input, ctx: *renderCtx.Context) !void {
         const rect = ui.layout.Rect{ .x = 0, .y = 0, .w = ctx.surface.size().w, .h = 1 };
         const lab = if (self.label) |l| l else "";
         try draw.input(ctx, rect, lab, self.text.items, self.cursor);
@@ -93,11 +93,11 @@ pub const Input = struct {
                             };
                         } else {
                             // make room
-                            const new_len = self.text.items.len + n;
-                            self.text.ensureTotalCapacity(new_len) catch return .none;
+                            const newLen = self.text.items.len + n;
+                            self.text.ensureTotalCapacity(newLen) catch return .none;
                             // shift right
-                            std.mem.copyBackwards(u8, self.text.items[self.cursor + n .. new_len], self.text.items[self.cursor..self.text.items.len]);
-                            self.text.items.len = new_len;
+                            std.mem.copyBackwards(u8, self.text.items[self.cursor + n .. newLen], self.text.items[self.cursor..self.text.items.len]);
+                            self.text.items.len = newLen;
                             // insert bytes
                             std.mem.copy(u8, self.text.items[self.cursor .. self.cursor + n], buf[0..n]);
                         }
@@ -114,12 +114,12 @@ pub const Input = struct {
 
 test "input renders label and caret" {
     const allocator = std.testing.allocator;
-    var surface = try render_ctx.MemorySurface.init(allocator, 12, 1);
+    var surface = try renderCtx.MemorySurface.init(allocator, 12, 1);
     defer {
         surface.deinit(allocator);
         allocator.destroy(surface);
     }
-    var ctx = render_ctx.Context.init(surface, null);
+    var ctx = renderCtx.Context.init(surface, null);
 
     var input = try Input.init(allocator);
     defer input.deinit();

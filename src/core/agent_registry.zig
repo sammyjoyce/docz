@@ -71,7 +71,7 @@ pub const Agent = struct {
 };
 
 /// Errors that can occur during agent registry operations.
-pub const AgentRegistryError = error{
+pub const AgentError = error{
     /// Agent not found in the registry.
     AgentNotFound,
     /// Required files are missing for the agent.
@@ -159,8 +159,8 @@ pub const AgentRegistry = struct {
     }
 
     /// Retrieves information for a specific agent by name.
-    /// Returns AgentRegistryError.AgentNotFound if the agent is not registered.
-    pub fn getAgent(self: *const AgentRegistry, name: []const u8) AgentRegistryError!?Agent {
+    /// Returns AgentError.AgentNotFound if the agent is not registered.
+    pub fn getAgent(self: *const AgentRegistry, name: []const u8) AgentError!?Agent {
         return self.agents.get(name);
     }
 
@@ -213,7 +213,7 @@ pub const AgentRegistry = struct {
     /// Returns the parsed configuration as a std.json.Value.
     /// Caller is responsible for freeing the returned value.
     pub fn loadAgentConfig(self: *const AgentRegistry, name: []const u8) !std.json.Value {
-        const info = (try self.getAgent(name)) orelse return AgentRegistryError.AgentNotFound;
+        const info = (try self.getAgent(name)) orelse return AgentError.AgentNotFound;
 
         const file = try fs.openFileAbsolute(info.configPath, .{});
         defer file.close();
@@ -239,11 +239,11 @@ pub const AgentRegistry = struct {
         const root = parsed.value.object;
 
         // Extract agent_config if present
-        const agentConfig = root.get("agent_config") orelse return AgentRegistryError.InvalidConfig;
-        if (agentConfig != .object) return AgentRegistryError.InvalidConfig;
+        const agentConfig = root.get("agent_config") orelse return AgentError.InvalidConfig;
+        if (agentConfig != .object) return AgentError.InvalidConfig;
 
-        const agentInfo = agentConfig.object.get("agent_info") orelse return AgentRegistryError.InvalidConfig;
-        if (agentInfo != .object) return AgentRegistryError.InvalidConfig;
+        const agentInfo = agentConfig.object.get("agent_info") orelse return AgentError.InvalidConfig;
+        if (agentInfo != .object) return AgentError.InvalidConfig;
 
         const name = try extractString(agentInfo.object, "name") orelse agentName;
         const version = try extractString(agentInfo.object, "version") orelse "1.0.0";
@@ -334,7 +334,7 @@ pub const AgentRegistry = struct {
         return duped.toOwnedSlice();
     }
 
-    // ===== ENHANCED FEATURES =====
+    // ===== FEATURES =====
 
     /// Registers an agent at runtime with the provided information.
     /// This allows for dynamic agent registration beyond directory scanning.
@@ -347,27 +347,27 @@ pub const AgentRegistry = struct {
     /// Updates the lifecycle state of an agent.
     /// Validates state transitions and updates timestamps as needed.
     pub fn updateAgentState(self: *AgentRegistry, name: []const u8, newState: AgentState) !void {
-        const entry = self.agents.getPtr(name) orelse return AgentRegistryError.AgentNotFound;
+        const entry = self.agents.getPtr(name) orelse return AgentError.AgentNotFound;
 
         // Validate state transitions
         switch (entry.state) {
             .discovered => if (newState != .loading and newState != .unloaded) {
-                return AgentRegistryError.InvalidStateTransition;
+                return AgentError.InvalidStateTransition;
             },
             .loading => if (newState != .loaded and newState != .failed) {
-                return AgentRegistryError.InvalidStateTransition;
+                return AgentError.InvalidStateTransition;
             },
             .loaded => if (newState != .running and newState != .unloaded and newState != .failed) {
-                return AgentRegistryError.InvalidStateTransition;
+                return AgentError.InvalidStateTransition;
             },
             .running => if (newState != .unloaded and newState != .failed) {
-                return AgentRegistryError.InvalidStateTransition;
+                return AgentError.InvalidStateTransition;
             },
             .failed => if (newState != .unloaded and newState != .loading) {
-                return AgentRegistryError.InvalidStateTransition;
+                return AgentError.InvalidStateTransition;
             },
             .unloaded => if (newState != .loading) {
-                return AgentRegistryError.InvalidStateTransition;
+                return AgentError.InvalidStateTransition;
             },
         }
 
@@ -471,7 +471,7 @@ pub const AgentRegistry = struct {
 
     /// Stores additional metadata for an agent.
     pub fn setAgentMetadata(self: *AgentRegistry, name: []const u8, key: []const u8, value: []const u8) !void {
-        const entry = self.agents.getPtr(name) orelse return AgentRegistryError.AgentNotFound;
+        const entry = self.agents.getPtr(name) orelse return AgentError.AgentNotFound;
 
         const keyDup = try self.allocator.dupe(u8, key);
         const valueDup = try self.allocator.dupe(u8, value);
@@ -487,13 +487,13 @@ pub const AgentRegistry = struct {
 
     /// Retrieves metadata value for an agent.
     pub fn getAgentMetadata(self: *AgentRegistry, name: []const u8, key: []const u8) !?[]const u8 {
-        const entry = self.agents.getPtr(name) orelse return AgentRegistryError.AgentNotFound;
+        const entry = self.agents.getPtr(name) orelse return AgentError.AgentNotFound;
         return entry.metadata.get(key);
     }
 
     /// Lists all metadata keys for an agent.
     pub fn listAgentMetadataKeys(self: *AgentRegistry, name: []const u8) ![][]const u8 {
-        const entry = self.agents.getPtr(name) orelse return AgentRegistryError.AgentNotFound;
+        const entry = self.agents.getPtr(name) orelse return AgentError.AgentNotFound;
 
         var keys = std.array_list.Managed([]const u8).init(self.allocator);
         defer keys.deinit();
@@ -508,7 +508,7 @@ pub const AgentRegistry = struct {
 
     /// Removes metadata from an agent.
     pub fn removeAgentMetadata(self: *AgentRegistry, name: []const u8, key: []const u8) !bool {
-        const entry = self.agents.getPtr(name) orelse return AgentRegistryError.AgentNotFound;
+        const entry = self.agents.getPtr(name) orelse return AgentError.AgentNotFound;
 
         if (entry.metadata.fetchRemove(key)) |kv| {
             self.allocator.free(kv.key);
@@ -520,7 +520,7 @@ pub const AgentRegistry = struct {
 
     /// Gets the current state of an agent.
     pub fn getAgentState(self: *AgentRegistry, name: []const u8) !AgentState {
-        const entry = self.agents.getPtr(name) orelse return AgentRegistryError.AgentNotFound;
+        const entry = self.agents.getPtr(name) orelse return AgentError.AgentNotFound;
         return entry.state;
     }
 
@@ -542,16 +542,16 @@ pub const AgentRegistry = struct {
     /// Prepares an agent for dynamic loading by validating its structure and dependencies.
     /// This method sets up the agent for future dynamic loading capabilities.
     pub fn prepareDynamicLoading(self: *AgentRegistry, name: []const u8) !void {
-        const info = (try self.getAgent(name)) orelse return AgentRegistryError.AgentNotFound;
+        const info = (try self.getAgent(name)) orelse return AgentError.AgentNotFound;
 
         // Validate that all required files exist
         if (!(try self.validateAgent(name))) {
-            return AgentRegistryError.MissingRequiredFiles;
+            return AgentError.MissingRequiredFiles;
         }
 
         // Check if the agent has a valid entry point
         if (!fs.accessAbsolute(info.entryPath, .{})) {
-            return AgentRegistryError.FileSystemError;
+            return AgentError.FileSystemError;
         }
 
         // Set metadata indicating the agent is ready for dynamic loading
@@ -571,7 +571,7 @@ pub const AgentRegistry = struct {
         metadataKeys: [][]const u8,
         stateDescription: []const u8,
     } {
-        const info = (try self.getAgent(name)) orelse return AgentRegistryError.AgentNotFound;
+        const info = (try self.getAgent(name)) orelse return AgentError.AgentNotFound;
         const metadataKeys = try self.listAgentMetadataKeys(name);
 
         const stateDesc = switch (info.state) {
@@ -601,7 +601,7 @@ pub const AgentRegistry = struct {
         var issues = std.array_list.Managed([]const u8).init(self.allocator);
         defer issues.deinit();
 
-        const info = (try self.getAgent(name)) orelse return AgentRegistryError.AgentNotFound;
+        const info = (try self.getAgent(name)) orelse return AgentError.AgentNotFound;
 
         // Check if agent structure is valid
         const filesExist = try self.validateAgent(name);

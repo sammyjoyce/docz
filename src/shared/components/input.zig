@@ -72,7 +72,7 @@ pub const Input = struct {
 
     // Input state
     buffer: std.ArrayList(u8),
-    cursorPos: usize = 0,
+    cursorPositionition: usize = 0,
     selectionStart: ?usize = null,
     selectionEnd: ?usize = null,
     scrollOffset: usize = 0,
@@ -132,7 +132,7 @@ pub const Input = struct {
     pub fn setText(self: *Self, text: []const u8) !void {
         self.buffer.clearRetainingCapacity();
         try self.buffer.appendSlice(text);
-        self.cursorPos = text.len;
+        self.cursorPositionition = text.len;
         self.state.markDirty();
         try self.updateSuggestions();
     }
@@ -140,7 +140,7 @@ pub const Input = struct {
     /// Clear input
     pub fn clear(self: *Self) void {
         self.buffer.clearRetainingCapacity();
-        self.cursorPos = 0;
+        self.cursorPositionition = 0;
         self.clearSuggestions();
         self.state.markDirty();
     }
@@ -381,8 +381,8 @@ pub const Input = struct {
     fn renderCursor(self: *Self, ctx: Render) !void {
         // Calculate cursor position on screen
         const content_start_x = self.state.bounds.x + 1;
-        const visible_cursor_pos = if (self.cursorPos >= self.scrollOffset)
-            self.cursorPos - self.scrollOffset
+        const visible_cursor_pos = if (self.cursorPositionition >= self.scrollOffset)
+            self.cursorPositionition - self.scrollOffset
         else
             0;
 
@@ -402,8 +402,8 @@ pub const Input = struct {
                 };
 
                 // Show character under cursor or space
-                const cursor_char = if (self.cursorPos < self.buffer.items.len)
-                    self.buffer.items[self.cursorPos .. self.cursorPos + 1]
+                const cursor_char = if (self.cursorPosition < self.buffer.items.len)
+                    self.buffer.items[self.cursorPosition .. self.cursorPosition + 1]
                 else
                     " ";
 
@@ -487,33 +487,33 @@ pub const Input = struct {
                 return self.insertChar('a'); // Placeholder
             },
             .backspace => {
-                if (self.cursorPos > 0) {
-                    _ = self.buffer.orderedRemove(self.cursorPos - 1);
-                    self.cursorPos -= 1;
+                if (self.cursorPosition > 0) {
+                    _ = self.buffer.orderedRemove(self.cursorPosition - 1);
+                    self.cursorPosition -= 1;
                     self.state.markDirty();
                     try self.updateSuggestions();
                 }
                 return true;
             },
             .delete => {
-                if (self.cursorPos < self.buffer.items.len) {
-                    _ = self.buffer.orderedRemove(self.cursorPos);
+                if (self.cursorPosition < self.buffer.items.len) {
+                    _ = self.buffer.orderedRemove(self.cursorPosition);
                     self.state.markDirty();
                     try self.updateSuggestions();
                 }
                 return true;
             },
             .left => {
-                if (self.cursorPos > 0) {
-                    self.cursorPos -= 1;
+                if (self.cursorPosition > 0) {
+                    self.cursorPosition -= 1;
                     self.updateScrollOffset();
                     self.state.markDirty();
                 }
                 return true;
             },
             .right => {
-                if (self.cursorPos < self.buffer.items.len) {
-                    self.cursorPos += 1;
+                if (self.cursorPosition < self.buffer.items.len) {
+                    self.cursorPosition += 1;
                     self.updateScrollOffset();
                     self.state.markDirty();
                 }
@@ -588,7 +588,7 @@ pub const Input = struct {
                         const clicked_pos = self.screenToTextPosition(relative_x +| self.scrollOffset);
 
                         if (clicked_pos <= self.buffer.items.len) {
-                            self.cursorPos = clicked_pos;
+                            self.cursorPosition = clicked_pos;
                             self.selectionStart = clicked_pos;
                             self.selectionEnd = clicked_pos;
                             self.state.markDirty();
@@ -608,7 +608,7 @@ pub const Input = struct {
                 if (self.selectionStart != null) {
                     const text_pos = self.screenToTextPosition(relative_x +| self.scrollOffset);
                     if (text_pos <= self.buffer.items.len) {
-                        self.cursorPos = text_pos;
+                        self.cursorPosition = text_pos;
                         self.selectionEnd = text_pos;
                         self.state.markDirty();
                         return true;
@@ -659,8 +659,8 @@ pub const Input = struct {
             if (self.buffer.items.len >= max_len) return true;
         }
 
-        try self.buffer.insert(self.cursorPos, char);
-        self.cursorPos += 1;
+        try self.buffer.insert(self.cursorPosition, char);
+        self.cursorPosition += 1;
         self.updateScrollOffset();
         self.state.markDirty();
         try self.updateSuggestions();
@@ -678,10 +678,10 @@ pub const Input = struct {
         const content_width = @max(1, self.state.bounds.width -| 2);
 
         // Ensure cursor is visible
-        if (self.cursorPos < self.scrollOffset) {
-            self.scrollOffset = self.cursorPos;
-        } else if (self.cursorPos >= self.scrollOffset + content_width) {
-            self.scrollOffset = self.cursorPos - content_width + 1;
+        if (self.cursorPosition < self.scrollOffset) {
+            self.scrollOffset = self.cursorPosition;
+        } else if (self.cursorPosition >= self.scrollOffset + content_width) {
+            self.scrollOffset = self.cursorPosition - content_width + 1;
         }
     }
 

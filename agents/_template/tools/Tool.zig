@@ -7,7 +7,7 @@
 //! It shows how tools used to work before the JSON-based improvements.
 
 const std = @import("std");
-const tools_mod = @import("tools_shared");
+const toolsMod = @import("tools_shared");
 
 /// Legacy tool function using raw string input/output.
 /// This pattern is DEPRECATED - use JSON-based tools instead.
@@ -21,7 +21,7 @@ const tools_mod = @import("tools_shared");
 ///
 /// ⚠️  DEPRECATED: This function is for demonstration only.
 /// New tools should use the JSON pattern from tools/mod.zig
-pub fn execute(allocator: std.mem.Allocator, input: []const u8) tools_mod.ToolError![]u8 {
+pub fn execute(allocator: std.mem.Allocator, input: []const u8) toolsMod.ToolError![]u8 {
     // ============================================================================
     // DEPRECATED PATTERN - DO NOT USE FOR NEW TOOLS
     // ============================================================================
@@ -64,11 +64,15 @@ pub fn execute(allocator: std.mem.Allocator, input: []const u8) tools_mod.ToolEr
     // ============================================================================
 
     if (message.len == 0) {
-        return tools_mod.ToolError.InvalidInput;
+        return toolsMod.ToolError.InvalidInput;
     }
 
     if (repeat == 0 or repeat > 10) {
-        return tools_mod.ToolError.InvalidInput;
+        return toolsMod.ToolError.InvalidInput;
+    }
+
+    if (repeat == 0 or repeat > 10) {
+        return toolsMod.ToolError.InvalidInput;
     }
 
     // ============================================================================

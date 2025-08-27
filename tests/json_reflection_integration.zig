@@ -5,7 +5,7 @@
 //!
 //! 1. Tools using the new system integrate with the engine
 //! 2. API communication still works with Anthropic client
-//! 3. Backward compatibility with existing JSON formats
+//! 3. Backward compatibility with_existing_json formats
 //! 4. Agent registry can handle the new patterns
 //! 5. Error messages are properly propagated
 
@@ -275,7 +275,7 @@ fn errorTestTool(allocator: std.mem.Allocator, params: std.json.Value) ToolError
 // TEST CASES
 // ============================================================================
 
-test "JSON reflection system basic serialization and deserialization" {
+test "jsonReflectionSystemBasicSerializationAndDeserialization" {
     const allocator = testing.allocator;
 
     // Test basic struct serialization/deserialization
@@ -308,7 +308,7 @@ test "JSON reflection system basic serialization and deserialization" {
     try testing.expectEqualStrings(original.optional_field.?, deserialized.value.optional_field.?);
 }
 
-test "JSON helpers integration with tool system" {
+test "jsonHelpersIntegrationWithToolSystem" {
     const allocator = testing.allocator;
 
     // Test parseToolRequest
@@ -359,7 +359,7 @@ test "JSON helpers integration with tool system" {
     try testing.expectEqualStrings("Test error message", error_json.value.object.get("message").?.string);
 }
 
-test "Tool registry integration with new JSON tools" {
+test "toolRegistryIntegrationWithNewJsonTools" {
     const allocator = testing.allocator;
 
     // Create a registry and register our mock tool
@@ -393,7 +393,7 @@ test "Tool registry integration with new JSON tools" {
     try testing.expectEqual(false, result.object.get("enabled").?.bool);
 }
 
-test "Error propagation through tool system" {
+test "errorPropagationThroughToolSystem" {
     const allocator = testing.allocator;
 
     var registry = Registry.init(allocator);
@@ -445,7 +445,7 @@ test "Error propagation through tool system" {
     try testing.expectEqual(true, success_result.object.get("success").?.bool);
 }
 
-test "Backward compatibility with existing JSON formats" {
+test "backwardCompatibilityWithExistingJsonFormats" {
     const allocator = testing.allocator;
 
     // Test that the new system can handle existing JSON formats
@@ -467,7 +467,7 @@ test "Backward compatibility with existing JSON formats" {
     try testing.expectEqualStrings("utf8", obj.get("encoding").?.string);
 }
 
-test "Memory management and cleanup" {
+test "memoryManagementAndCleanup" {
     const allocator = testing.allocator;
 
     // Test that all allocations are properly cleaned up

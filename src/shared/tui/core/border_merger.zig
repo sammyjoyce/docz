@@ -29,7 +29,7 @@ pub const BorderStyle = enum {
 };
 
 /// Border merger handles seamless connections between adjacent widgets
-pub const BorderMerger = struct {
+pub const Merger = struct {
     allocator: std.mem.Allocator,
     widgets: std.ArrayList(WidgetBoundary),
     merge_map: std.AutoHashMap(Point, JunctionType),
@@ -57,7 +57,7 @@ pub const BorderMerger = struct {
         tee_right, // ├ ╠ ┣
     };
 
-    pub fn init(allocator: std.mem.Allocator) !BorderMerger {
+    pub fn init(allocator: std.mem.Allocator) !Merger {
         return .{
             .allocator = allocator,
             .widgets = try std.ArrayList(WidgetBoundary).initCapacity(allocator, 0),
@@ -65,18 +65,18 @@ pub const BorderMerger = struct {
         };
     }
 
-    pub fn deinit(self: *BorderMerger) void {
+    pub fn deinit(self: *Merger) void {
         self.widgets.deinit(self.allocator);
         self.merge_map.deinit();
     }
 
     /// Register a widget boundary for merging
-    pub fn addWidget(self: *BorderMerger, boundary: WidgetBoundary) !void {
+    pub fn addWidget(self: *Merger, boundary: WidgetBoundary) !void {
         try self.widgets.append(self.allocator, boundary);
     }
 
     /// Calculate all junction points where borders should merge
-    pub fn calculateMergePoints(self: *BorderMerger) !void {
+    pub fn calculateMergePoints(self: *Merger) !void {
         self.merge_map.clearRetainingCapacity();
 
         for (self.widgets.items, 0..) |widget_a, i| {
@@ -87,7 +87,7 @@ pub const BorderMerger = struct {
     }
 
     /// Find intersection points between two widget boundaries
-    fn findIntersections(self: *BorderMerger, a: WidgetBoundary, b: WidgetBoundary) !void {
+    fn findIntersections(self: *Merger, a: WidgetBoundary, b: WidgetBoundary) !void {
         // Check if widgets are adjacent horizontally
         if (a.rect.x + @as(i16, @intCast(a.rect.width)) == b.rect.x) {
             // Right edge of A meets left edge of B
@@ -127,7 +127,7 @@ pub const BorderMerger = struct {
     }
 
     /// Check if widget corners meet and need special junction characters
-    fn checkCornerIntersection(self: *BorderMerger, a: WidgetBoundary, b: WidgetBoundary) !void {
+    fn checkCornerIntersection(self: *Merger, a: WidgetBoundary, b: WidgetBoundary) !void {
         // Check all four corners of each widget
         const corners_a = [_]Point{
             .{ .x = @as(u32, @intCast(a.rect.x)), .y = @as(u32, @intCast(a.rect.y)) }, // top-left
@@ -155,7 +155,7 @@ pub const BorderMerger = struct {
     }
 
     /// Determine the type of junction needed at a given point
-    fn determineJunctionType(self: *BorderMerger, point: Point, a: WidgetBoundary, b: WidgetBoundary) JunctionType {
+    fn determineJunctionType(self: *Merger, point: Point, a: WidgetBoundary, b: WidgetBoundary) JunctionType {
         _ = self;
 
         var connections: struct {
@@ -238,7 +238,7 @@ pub const BorderMerger = struct {
     }
 
     /// Determine corner junction type
-    fn determineCornerJunction(self: *BorderMerger, corner: Point, a: WidgetBoundary, b: WidgetBoundary) JunctionType {
+    fn determineCornerJunction(self: *Merger, corner: Point, a: WidgetBoundary, b: WidgetBoundary) JunctionType {
         // TODO: Implement proper corner junction logic
         // For now, simplified implementation that doesn't use all parameters
         _ = self;
@@ -311,7 +311,7 @@ pub const BorderMerger = struct {
     }
 
     /// Apply border merging to a cell buffer
-    pub fn applyMerging(self: *BorderMerger, buffer: *CellBuffer) !void {
+    pub fn applyMerging(self: *Merger, buffer: *CellBuffer) !void {
         var iter = self.merge_map.iterator();
         while (iter.next()) |entry| {
             const point = entry.key_ptr.*;
@@ -336,7 +336,7 @@ pub const BorderMerger = struct {
     }
 
     /// Check if a point is on the border of a widget
-    fn pointOnBorder(self: *BorderMerger, point: Point, widget: WidgetBoundary) bool {
+    fn pointOnBorder(self: *Merger, point: Point, widget: WidgetBoundary) bool {
         _ = self;
 
         const on_top = point.y == widget.rect.y and
@@ -356,7 +356,7 @@ pub const BorderMerger = struct {
     }
 
     /// Clear all registered widgets and merge points
-    pub fn clear(self: *BorderMerger) void {
+    pub fn clear(self: *Merger) void {
         self.widgets.clearRetainingCapacity();
         self.merge_map.clearRetainingCapacity();
     }

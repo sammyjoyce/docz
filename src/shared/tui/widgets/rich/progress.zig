@@ -1,8 +1,8 @@
-//! Advanced Progress Bar Widget
+//! Progress Bar Widget
 //!
 //! This progress bar automatically adapts to terminal capabilities:
-//! - Rich graphics and animations for advanced terminals
-//! - Graceful fallback for basic terminals
+//! - Rich graphics and animations for capable terminals
+//! - Graceful fallback for limited terminals
 //! - Smooth percentage indicators and color coding
 
 const std = @import("std");
@@ -57,7 +57,7 @@ pub const ProgressBar = struct {
     }
 };
 
-/// Convenience function to create and render a simple progress bar
+/// Convenience function to create and render a progress bar
 pub fn renderProgress(
     renderer: *Renderer,
     ctx: Render,

@@ -3,11 +3,11 @@
 
 const std = @import("std");
 const builtin = @import("builtin");
-const ColorScheme = @import("color_scheme.zig").ColorScheme;
+const ColorScheme = @import("ColorScheme.zig").ColorScheme;
 const Settings = @import("config.zig").Settings;
-const Inheritance = @import("inheritance.zig").Inheritance;
-const SystemTheme = @import("system_theme.zig").SystemTheme;
-const Validator = @import("validator.zig").Validator;
+const Inheritance = @import("Inheritance.zig").Inheritance;
+const SystemTheme = @import("SystemTheme.zig").SystemTheme;
+const Validator = @import("Validator.zig").Validator;
 
 pub const Theme = struct {
     allocator: std.mem.Allocator,

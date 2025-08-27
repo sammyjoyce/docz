@@ -32,7 +32,7 @@ const Command = enum {
 };
 
 /// Available command names for tab completion
-const COMMAND_NAMES = [_][]const u8{
+const commandNames = [_][]const u8{
     "chat",
     "oauth",
     "help",
@@ -43,29 +43,29 @@ const COMMAND_NAMES = [_][]const u8{
 
 /// Cached authentication status to avoid repeated file I/O operations
 const AuthStatusCache = struct {
-    auth_status: []const u8,
-    auth_detail: []const u8,
-    last_updated: i64,
+    authStatus: []const u8,
+    authDetail: []const u8,
+    lastUpdated: i64,
 
-    const CACHE_DURATION_MS = 30000; // 30 seconds
+    const cacheDurationMs = 30000; // 30 seconds
 
     fn init() AuthStatusCache {
         return .{
-            .auth_status = "",
-            .auth_detail = "",
-            .last_updated = 0,
+            .authStatus = "",
+            .authDetail = "",
+            .lastUpdated = 0,
         };
     }
 
     fn needsRefresh(self: *const AuthStatusCache) bool {
         const now = std.time.milliTimestamp();
-        return (now - self.last_updated) > CACHE_DURATION_MS;
+        return (now - self.lastUpdated) > cacheDurationMs;
     }
 
     fn update(self: *AuthStatusCache, allocator: std.mem.Allocator) void {
         // Check authentication status using the new auth system
-        var auth_status: []const u8 = "❌ No Auth";
-        var auth_detail: []const u8 = "No authentication configured - setup required";
+        var authStatus: []const u8 = "❌ No Auth";
+        var authDetail: []const u8 = "No authentication configured - setup required";
 
         if (auth.createClient(allocator)) |client| {
             defer client.deinit();
@@ -73,29 +73,29 @@ const AuthStatusCache = struct {
             switch (client.credentials) {
                 .oauth => |creds| {
                     if (creds.isExpired()) {
-                        auth_status = "⚠️  OAuth (Expired)";
-                        auth_detail = "OAuth credentials found but expired - refresh needed";
+                        authStatus = "⚠️  OAuth (Expired)";
+                        authDetail = "OAuth credentials found but expired - refresh needed";
                     } else {
-                        auth_status = "🔐 OAuth (Active)";
-                        auth_detail = "Using Claude Pro/Max OAuth authentication";
+                        authStatus = "🔐 OAuth (Active)";
+                        authDetail = "Using Claude Pro/Max OAuth authentication";
                     }
                 },
                 .api_key => {
-                    auth_status = "🔑 API Key";
-                    auth_detail = "Using ANTHROPIC_API_KEY environment variable";
+                    authStatus = "🔑 API Key";
+                    authDetail = "Using ANTHROPIC_API_KEY environment variable";
                 },
                 .none => {
-                    auth_status = "❌ No Auth";
-                    auth_detail = "No authentication configured - setup required";
+                    authStatus = "❌ No Auth";
+                    authDetail = "No authentication configured - setup required";
                 },
             }
         } else |_| {
             // Keep default values set above
         }
 
-        self.auth_status = auth_status;
-        self.auth_detail = auth_detail;
-        self.last_updated = std.time.milliTimestamp();
+        self.authStatus = authStatus;
+        self.authDetail = authDetail;
+        self.lastUpdated = std.time.milliTimestamp();
     }
 };
 
@@ -141,8 +141,8 @@ fn displayAuthStatus(auth_cache: *const AuthStatusCache) void {
 
     const status_content = [_][]const u8{
         "",
-        auth_cache.auth_status,
-        auth_cache.auth_detail,
+        auth_cache.authStatus,
+        auth_cache.authDetail,
         "",
         "💡 Run 'oauth' command to setup Claude Pro/Max authentication",
         "   Run 'refresh' to update authentication status",
@@ -150,7 +150,7 @@ fn displayAuthStatus(auth_cache: *const AuthStatusCache) void {
     };
 
     const status_section = tui.Section.init("Authentication Status", &status_content, width);
-    status_section.drawWithId("auth_status");
+    status_section.drawWithId("authStatus");
     std.debug.print("\n", .{});
 }
 
@@ -240,7 +240,7 @@ pub fn runInteractiveMode(allocator: std.mem.Allocator) !void {
         std.debug.print("\n", .{});
 
         // Get user command with history and tab completion
-        const command_input = tui.promptInputEnhanced("docz>", allocator, &command_history, &COMMAND_NAMES) catch |err| switch (err) {
+        const command_input = tui.promptInputEnhanced("docz>", allocator, &command_history, &commandNames) catch |err| switch (err) {
             error.Interrupted => {
                 std.debug.print("Interrupted by user\n", .{});
                 continue;
@@ -303,7 +303,7 @@ pub fn runInteractiveMode(allocator: std.mem.Allocator) !void {
                 const width = @min(terminal_size.width, 80);
 
                 // Calculate cache age for display
-                const cache_age = (std.time.milliTimestamp() - auth_cache.last_updated) / 1000;
+                const cache_age = (std.time.milliTimestamp() - auth_cache.lastUpdated) / 1000;
                 const cache_info = std.fmt.allocPrint(allocator, "   Auth cache: Updated {d} seconds ago", .{cache_age}) catch "   Auth cache: Unknown";
 
                 const system_content = [_][]const u8{

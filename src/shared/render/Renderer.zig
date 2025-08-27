@@ -17,7 +17,7 @@ const canvas = @import("tui_shared").core.canvas;
 // Backward compatibility alias
 const canvas_engine = canvas;
 const term_sgr = term_mod.ansi.sgr;
-const theme_manager = @import("theme/mod.zig");
+const theme = @import("theme/mod.zig");
 const Allocator = std.mem.Allocator;
 const Terminal = term_mod.term.Terminal;
 const Color = terminal.Color;
@@ -76,9 +76,9 @@ pub const Renderer = struct {
     /// Cache for rendered content to avoid recomputation
     pub const Cache = struct {
         allocator: Allocator,
-        entries: std.HashMap(u64, CacheEntry, std.HashMap.DefaultRender(u64), 80),
+        entries: std.HashMap(u64, Entry, std.HashMap.DefaultRender(u64), 80),
 
-        const CacheEntry = struct {
+        const Entry = struct {
             content: []u8,
             timestamp: i64,
             renderTier: RenderTier,
@@ -87,7 +87,7 @@ pub const Renderer = struct {
         pub fn init(allocator: Allocator) Cache {
             return Cache{
                 .allocator = allocator,
-                .entries = std.HashMap(u64, CacheEntry, std.HashMap.DefaultRender(u64), 80).init(allocator),
+                .entries = std.HashMap(u64, Entry, std.HashMap.DefaultRender(u64), 80).init(allocator),
             };
         }
 
@@ -114,7 +114,7 @@ pub const Renderer = struct {
                 self.allocator.free(result.value_ptr.content);
             }
 
-            result.value_ptr.* = CacheEntry{
+            result.value_ptr.* = Entry{
                 .content = owned_content,
                 .timestamp = now,
                 .renderTier = render_tier,
@@ -123,10 +123,10 @@ pub const Renderer = struct {
     };
 
     /// Theme system for consistent styling - now uses centralized theme manager
-    pub const Theme = theme_manager.ColorScheme;
+    pub const Theme = theme.ColorScheme;
 
     /// Convert RGB to nearest 256-color palette index
-    pub fn rgbToPalette256(rgb: struct { r: u8, g: u8, b: u8 }) u8 {
+    pub fn rgbToPaletteColor(rgb: struct { r: u8, g: u8, b: u8 }) u8 {
         const r6 = rgb.r * 5 / 255;
         const g6 = rgb.g * 5 / 255;
         const b6 = rgb.b * 5 / 255;
@@ -654,7 +654,7 @@ pub const Renderer = struct {
     };
 
     /// Set color based on renderer capabilities (from adaptive_renderer)
-    pub fn setRendererColor(self: *Renderer, color: theme_manager.Color, writer: anytype) !void {
+    pub fn setRendererColor(self: *Renderer, color: theme.Color, writer: anytype) !void {
         const term_caps = self.capabilities;
 
         switch (self.renderTier) {
@@ -694,7 +694,7 @@ pub const Renderer = struct {
             .render_tier = render_tier,
             .graphics = null, // Initialize on demand
             .cache = Cache.init(allocator),
-            .theme = try theme_manager.ColorScheme.createDark(allocator),
+            .theme = try theme.ColorScheme.createDark(allocator),
             .widgets = std.array_list.Managed(*Widget).init(allocator),
             .focused_widget = null,
             .needs_redraw = true,
@@ -716,7 +716,7 @@ pub const Renderer = struct {
             .render_tier = tier,
             .graphics = null,
             .cache = Cache.init(allocator),
-            .theme = try theme_manager.ColorScheme.createDark(allocator),
+            .theme = try theme.ColorScheme.createDark(allocator),
             .widgets = std.array_list.Managed(*Widget).init(allocator),
             .focused_widget = null,
             .needs_redraw = true,

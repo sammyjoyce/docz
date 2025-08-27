@@ -8,7 +8,7 @@
 //! - Comprehensive documentation
 
 const std = @import("std");
-const tools_mod = @import("tools_shared");
+const toolsMod = @import("tools_shared");
 
 /// ============================================================================
 /// TOOL FUNCTION EXPORTS
@@ -27,7 +27,7 @@ const tools_mod = @import("tools_shared");
 ///
 /// Returns: JSON string response
 /// Errors: ToolError for various failure conditions
-pub fn tool(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.ToolError![]const u8 {
+pub fn tool(allocator: std.mem.Allocator, params: std.json.Value) toolsMod.ToolError![]const u8 {
     // ============================================================================
     // INPUT VALIDATION AND PARSING
     // ============================================================================
@@ -49,7 +49,7 @@ pub fn tool(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.Tool
     // Parse JSON input into our struct
     // This provides type safety and automatic validation
     const parsed = std.json.parseFromValue(Request, allocator, params, .{}) catch
-        return tools_mod.ToolError.MalformedJSON;
+        return toolsMod.ToolError.MalformedJSON;
     defer parsed.deinit();
 
     const request = parsed.value;
@@ -60,13 +60,13 @@ pub fn tool(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.Tool
 
     // Validate required parameters
     if (request.message.len == 0) {
-        return tools_mod.ToolError.InvalidInput;
+        return toolsMod.ToolError.InvalidInput;
     }
 
     // Validate optional parameters
     if (request.options) |options| {
         if (options.repeat == 0 or options.repeat > 10) {
-            return tools_mod.ToolError.InvalidInput;
+            return toolsMod.ToolError.InvalidInput;
         }
     }
 
@@ -122,11 +122,11 @@ pub fn tool(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.Tool
 
     // Convert to JSON string
     // This ensures consistent output format
-    const json_string = try std.json.stringifyAlloc(allocator, response, .{
+    const jsonString = try std.json.stringifyAlloc(allocator, response, .{
         .whitespace = .indent_4, // Pretty print for readability
     });
 
-    return json_string;
+    return jsonString;
 }
 
 /// ============================================================================
@@ -138,7 +138,7 @@ pub fn tool(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.Tool
 /// - Configuration-aware behavior
 /// - Resource cleanup
 /// - Error handling for system operations
-pub fn fileTool(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.ToolError![]const u8 {
+pub fn fileTool(allocator: std.mem.Allocator, params: std.json.Value) toolsMod.ToolError![]const u8 {
     const Request = struct {
         path: []const u8,
         includeSize: bool = true,
@@ -146,14 +146,14 @@ pub fn fileTool(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.
     };
 
     const parsed = std.json.parseFromValue(Request, allocator, params, .{}) catch
-        return tools_mod.ToolError.MalformedJSON;
+        return toolsMod.ToolError.MalformedJSON;
     defer parsed.deinit();
 
     const request = parsed.value;
 
     // Get file statistics
     const stat = std.fs.cwd().statFile(request.path) catch {
-        return tools_mod.ToolError.ExecutionFailed;
+        return toolsMod.ToolError.ExecutionFailed;
     };
 
     const response = .{
@@ -171,7 +171,7 @@ pub fn fileTool(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.
 
 /// Demonstration tool showing configuration integration.
 /// This tool shows how to access agent configuration from within tools.
-pub fn configTool(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.ToolError![]const u8 {
+pub fn configTool(allocator: std.mem.Allocator, params: std.json.Value) toolsMod.ToolError![]const u8 {
     // This would typically access the agent config
     // For demonstration, we'll show the pattern
     const configInfo = .{
@@ -205,22 +205,22 @@ pub fn configTool(allocator: std.mem.Allocator, params: std.json.Value) tools_mo
 ///   registry: The shared tools registry to register with
 ///
 /// Errors: Tool registration failures
-pub fn registerAll(registry: *tools_mod.Registry) !void {
+pub fn registerAll(registry: *toolsMod.Registry) !void {
     // ============================================================================
     // PATTERN 1: INDIVIDUAL REGISTRATION WITH METADATA
     // ============================================================================
     // Register each tool individually with comprehensive metadata
     // This is the recommended approach for most cases
 
-    try tools_mod.registerJsonTool(registry, "example", // tool_name (unique identifier)
+    try toolsMod.registerJsonTool(registry, "example", // tool_name (unique identifier)
         "Tool demonstrating JSON input/output patterns, parameter validation, and structured responses", // description
         tool, // tool_function
         "_template" // agent_name (for attribution)
     );
 
-    try tools_mod.registerJsonTool(registry, "file_info", "Get information about files and directories with configurable detail level", fileTool, "_template");
+    try toolsMod.registerJsonTool(registry, "file_info", "Get information about files and directories with configurable detail level", fileTool, "_template");
 
-    try tools_mod.registerJsonTool(registry, "config_demo", "Demonstration tool showing configuration integration patterns", configTool, "_template");
+    try toolsMod.registerJsonTool(registry, "config_demo", "Demonstration tool showing configuration integration patterns", configTool, "_template");
 
     // ============================================================================
     // PATTERN 2: CONDITIONAL REGISTRATION
@@ -233,7 +233,7 @@ pub fn registerAll(registry: *tools_mod.Registry) !void {
     // Example: Only register professional tools if enabled
     // const enable_professional_tools = true; // This would come from config
     // if (enable_professional_tools) {
-    //     try tools_mod.registerJsonTool(registry, "professional_tool", "...", professionalTool, "_template");
+    //     try toolsMod.registerJsonTool(registry, "professional_tool", "...", professionalTool, "_template");
     // }
 
     // ============================================================================
@@ -243,7 +243,7 @@ pub fn registerAll(registry: *tools_mod.Registry) !void {
     // This scans the module for exported functions and registers them
     // Note: This requires specific naming conventions
 
-    // try tools_mod.registerFromModule(registry, @This(), "_template");
+    // try toolsMod.registerFromModule(registry, @This(), "_template");
 }
 
 /// ============================================================================
@@ -260,7 +260,7 @@ pub fn registerAll(registry: *tools_mod.Registry) !void {
 /// Errors: Validation errors
 pub fn validateToolParams(allocator: std.mem.Allocator, params: std.json.Value, comptime Schema: type) !Schema {
     const parsed = std.json.parseFromValue(Schema, allocator, params, .{}) catch
-        return tools_mod.ToolError.MalformedJSON;
+        return toolsMod.ToolError.MalformedJSON;
     // Note: Caller is responsible for calling parsed.deinit()
 
     // Add custom validation logic here

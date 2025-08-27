@@ -135,7 +135,7 @@ pub fn renderAll(
     writer: anytype,
     layout: anytype, // Should be layout.Layout
     data_store: anytype, // Should be state.DashboardStore
-    theme: anytype, // Should be theme_manager.ColorScheme
+    theme: anytype, // Should be theme.ColorScheme
 ) !void {
     // Render status panel
     if (layout.getPanelBounds("status")) |bounds| {

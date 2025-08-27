@@ -96,7 +96,7 @@ pub const Options = struct {
     input: ?[]const u8 = null,
     system: ?[]const u8 = null,
     config: ?[]const u8 = null,
-    maxTokens: ?u32 = null,
+    tokensMax: ?u32 = null,
     temperature: ?f32 = null,
 };
 
@@ -142,7 +142,7 @@ pub const Config = struct {
     // Core settings
     model: []const u8 = "claude-3-5-sonnet-20241022",
     temperature: f32 = 1.0,
-    maxTokens: u32 = 4096,
+    tokensMax: u32 = 4096,
 
     // Output formatting
     format: OutputFormat = .rich,
@@ -240,7 +240,7 @@ pub const ConfigReflect = struct {
                         },
                         u32 => {
                             // Validate positive numbers
-                            if (std.mem.eql(u8, fieldName, "maxTokens") and fieldValue == 0) {
+                            if (std.mem.eql(u8, fieldName, "tokensMax") and fieldValue == 0) {
                                 return error.InvalidConfig;
                             }
                         },
@@ -294,8 +294,8 @@ pub const ConfigReflect = struct {
                     const fieldHelp = comptime blk: {
                         if (std.mem.eql(u8, field.name, "model")) {
                             break :blk "- model: Claude model to use for generation\n";
-                        } else if (std.mem.eql(u8, field.name, "maxTokens")) {
-                            break :blk "- maxTokens: Maximum tokens to generate\n";
+                        } else if (std.mem.eql(u8, field.name, "tokensMax")) {
+                            break :blk "- tokensMax: Maximum tokens to generate\n";
                         } else if (std.mem.eql(u8, field.name, "temperature")) {
                             break :blk "- temperature: Response randomness (0.0-1.0)\n";
                         } else {
@@ -325,7 +325,7 @@ pub const Args = struct {
     // Core options
     model: []const u8,
     temperature: f32,
-    maxTokens: u32,
+    tokensMax: u32,
 
     // Output options
     format: Config.OutputFormat,
@@ -359,7 +359,7 @@ pub const Args = struct {
         return Args{
             .model = config.model,
             .temperature = config.temperature,
-            .maxTokens = config.maxTokens,
+            .tokensMax = config.tokensMax,
             .format = config.format,
             .theme = config.theme,
             .color = config.color,

@@ -130,7 +130,7 @@ test "sparklineRenderModeConfig" {
     try std.testing.expect(sparkline.render_mode == .graphics);
 }
 
-test "sparklineEmptyData" {
+test "sparkline_empty_data" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();

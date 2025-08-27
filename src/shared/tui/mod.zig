@@ -37,8 +37,8 @@ pub const Point = bounds.Point;
 pub const TerminalSize = bounds.TerminalSize;
 
 // Event system exports
-pub const MouseEvent = events.MouseEvent;
-pub const KeyEvent = events.KeyEvent;
+pub const Mouse = events.MouseEvent;
+pub const Key = events.KeyEvent;
 
 // Core widget exports
 pub const Menu = widgets.Core.Menu;
@@ -56,18 +56,18 @@ pub const TextInputWidget = widgets.Core.TextInputWidget;
 
 // Typing animation exports
 pub const TypingAnimation = typing_animation.TypingAnimation;
-pub const TypingAnimationBuilder = typing_animation.TypingAnimationBuilder;
+pub const TypingAnimationBuilder = typing_animation.Builder;
 pub const ParticleEmitter = typing_animation.ParticleEmitter;
 pub const Particle = typing_animation.Particle;
 
 // Dashboard widget exports
 pub const Dashboard = dashboard.Dashboard;
-pub const DashboardEngine = dashboard.DashboardEngine;
+pub const DashboardEngine = dashboard.Engine;
 pub const LineChart = dashboard.LineChart;
 pub const AreaChart = dashboard.AreaChart;
 pub const BarChart = dashboard.BarChart;
 pub const Heatmap = dashboard.Heatmap;
-pub const DataGrid = dashboard.DataGrid;
+pub const DataGrid = dashboard.Grid;
 pub const Sparkline = dashboard.Sparkline;
 pub const KPICard = dashboard.KPICard;
 pub const Gauge = dashboard.Gauge;

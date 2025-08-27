@@ -154,14 +154,23 @@ pub fn runAgent(allocator: std.mem.Allocator, spec: engine.AgentSpec) !void {
     if (engine.runWithOptions(allocator, interactiveOptions.base, spec)) {
         // done
     } else |err| {
-        // If no credentials are configured, guide user through OAuth setup, then retry once
+        // Clear, actionable error handling for common cases
         if (err == error.MissingAPIKey) {
-            std.log.warn("No authentication configured. Starting OAuth setup...", .{});
-            try setupAuthenticationFlow(allocator, true);
-            try engine.runWithOptions(allocator, interactiveOptions.base, spec);
-        } else {
+            std.log.warn("No authentication configured.", .{});
+            std.log.info("Run 'docz auth login' or set ANTHROPIC_API_KEY.", .{});
             return err;
         }
+        if (err == error.AuthError) {
+            std.log.err("Authentication failed (unauthorized). Check your API key or OAuth session.", .{});
+            std.log.info("Try: 'docz auth status' or re-auth with 'docz auth login'", .{});
+            return err;
+        }
+        if (err == error.APIError) {
+            std.log.err("API request failed. Verify model, quotas, and credentials.", .{});
+            std.log.info("Inspect logs above; try --verbose for more detail.", .{});
+            return err;
+        }
+        return err;
     }
 }
 
@@ -175,7 +184,7 @@ fn parseInteractiveArgs(allocator: std.mem.Allocator, args: [][]const u8) !Inter
                 .input = null,
                 .system = null,
                 .config = null,
-                .maxTokens = 4096,
+                .tokensMax = 4096,
                 .temperature = 0.7,
             },
             .flags = .{
@@ -195,7 +204,7 @@ fn parseInteractiveArgs(allocator: std.mem.Allocator, args: [][]const u8) !Inter
         .session = .{},
     };
 
-    // Parse basic CLI options manually
+    // Parse CLI options manually
     var parsedArgs = CliOptions{
         .options = .{
             .model = "claude-3-sonnet-20240229",
@@ -203,7 +212,7 @@ fn parseInteractiveArgs(allocator: std.mem.Allocator, args: [][]const u8) !Inter
             .input = null,
             .system = null,
             .config = null,
-            .maxTokens = 4096,
+            .tokensMax = 4096,
             .temperature = 0.7,
         },
         .flags = .{
@@ -218,7 +227,7 @@ fn parseInteractiveArgs(allocator: std.mem.Allocator, args: [][]const u8) !Inter
         .positionals = null,
     };
 
-    // Simple argument parsing
+    // Argument parsing
     var argIdx: usize = 0;
     while (argIdx < args.len) {
         const arg = args[argIdx];
@@ -229,7 +238,7 @@ fn parseInteractiveArgs(allocator: std.mem.Allocator, args: [][]const u8) !Inter
         } else if (std.mem.eql(u8, arg, "--max-tokens")) {
             argIdx += 1;
             if (argIdx >= args.len) return error.MissingValue;
-            parsedArgs.options.maxTokens = try std.fmt.parseInt(u32, args[argIdx], 10);
+            parsedArgs.options.tokensMax = try std.fmt.parseInt(u32, args[argIdx], 10);
         } else if (std.mem.eql(u8, arg, "--temperature") or std.mem.eql(u8, arg, "-t")) {
             argIdx += 1;
             if (argIdx >= args.len) return error.MissingValue;
@@ -263,7 +272,7 @@ fn parseInteractiveArgs(allocator: std.mem.Allocator, args: [][]const u8) !Inter
 
     // Copy parsed options to interactive structure
     interactive.base.options.model = parsedArgs.options.model;
-    interactive.base.options.maxTokens = parsedArgs.options.maxTokens;
+    interactive.base.options.tokensMax = parsedArgs.options.tokensMax;
     interactive.base.options.temperature = parsedArgs.options.temperature;
     interactive.base.flags.verbose = parsedArgs.flags.verbose;
     interactive.base.flags.help = parsedArgs.flags.help;
@@ -412,7 +421,7 @@ fn showInteractiveHelp() !void {
         \\  • Rich TUI interface with graphics and mouse support
         \\  • Real-time statistics and progress indicators
         \\  • Session management and history
-        \\  • Enhanced authentication flows
+        \\  • Authentication flows
         \\
         \\🎮 Available Commands:
         \\  help        - Show this help message
@@ -430,6 +439,11 @@ fn showInteractiveHelp() !void {
         \\  --no-progress   - Disable progress indicators
         \\  --session-title - Set custom session title
         \\  --save-session  - Save session to file
+        \\
+        \\🔐 Auth Commands:
+        \\  auth login   - Start OAuth setup in browser
+        \\  auth status  - Show authentication status
+        \\  auth refresh - Refresh OAuth tokens
         \\
         \\🎯 Getting Started:
         \\  1. Run with --interactive flag: agent --interactive
@@ -452,7 +466,7 @@ fn showInteractiveHelp() !void {
 /// Run interactive mode with session support
 fn runInteractiveMode(allocator: std.mem.Allocator, options: InteractiveCliOptions) !void {
     // Create session configuration
-    const sessionConfig = session.InteractiveSessionConfig{
+    const sessionConfig = session.InteractiveConfig{
         .interactive = true,
         .enableTui = switch (options.tui.mode) {
             .rich, .minimal => true,
@@ -461,13 +475,13 @@ fn runInteractiveMode(allocator: std.mem.Allocator, options: InteractiveCliOptio
         .enableDashboard = options.tui.dashboard,
         .enableAuth = true,
         .title = options.session.title orelse "AI Agent Interactive Session",
-        .maxInputLength = 4096,
+        .inputLengthMax = 4096,
         .multiLine = true,
         .showStats = true,
     };
 
     // Initialize base agent for authentication and session management
-    var baseAgent = agent_base.BaseAgent.init(allocator);
+    var baseAgent = agent_base.Agent.init(allocator);
     defer baseAgent.deinit();
 
     // Setup authentication
@@ -481,7 +495,7 @@ fn runInteractiveMode(allocator: std.mem.Allocator, options: InteractiveCliOptio
 }
 
 /// Ensure authentication is properly configured
-fn ensureAuthentication(baseAgent: *agent_base.BaseAgent) !void {
+fn ensureAuthentication(baseAgent: *agent_base.Agent) !void {
     const authStatus = try baseAgent.checkAuthStatus();
 
     switch (authStatus) {

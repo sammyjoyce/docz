@@ -5,7 +5,7 @@ const std = @import("std");
 const renderer_mod = @import("../core/renderer.zig");
 
 const Widget = renderer_mod.Widget;
-const UnifiedRenderer = renderer_mod.UnifiedRenderer;
+const Renderer = renderer_mod.Renderer;
 const InputEvent = renderer_mod.InputEvent;
 const Rect = renderer_mod.Rect;
 const Size = renderer_mod.Size;
@@ -69,7 +69,7 @@ pub const DemoPanel = struct {
         try self.content.append(try self.allocator.dupe(u8, text));
     }
 
-    fn renderImpl(widget: *Widget, renderer: *UnifiedRenderer) !void {
+    fn renderImpl(widget: *Widget, renderer: *Renderer) !void {
         const self: *Self = @fieldParentPtr("widget", widget);
         const theme = renderer.getTheme();
 
@@ -248,7 +248,7 @@ pub const Button = struct {
         self.on_click = callback;
     }
 
-    fn renderButtonImpl(widget: *Widget, renderer: *UnifiedRenderer) !void {
+    fn renderButtonImpl(widget: *Widget, renderer: *Renderer) !void {
         const self: *Self = @fieldParentPtr("widget", widget);
         const theme = renderer.getTheme();
 

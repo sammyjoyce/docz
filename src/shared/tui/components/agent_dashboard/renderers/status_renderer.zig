@@ -9,7 +9,7 @@ const Allocator = std.mem.Allocator;
 // Import dependencies
 const state = @import("../state.zig");
 const layout = @import("../layout.zig");
-const theme_manager = @import("../../../../theme/mod.zig");
+const theme = @import("../../../../theme/mod.zig");
 const term_mod = @import("../../../../term/mod.zig");
 const render_mod = @import("../../../../render/mod.zig");
 
@@ -203,7 +203,7 @@ pub const StatusRenderer = struct {
         writer: anytype,
         bounds: Rect,
         data_store: *const DashboardStore,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         _ = data_store; // Status is typically updated separately
 
@@ -243,7 +243,7 @@ pub const StatusRenderer = struct {
         self: *const Self,
         writer: anytype,
         bounds: Rect,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         _ = self;
 
@@ -260,7 +260,7 @@ pub const StatusRenderer = struct {
         self: *const Self,
         writer: anytype,
         bounds: Rect,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         try term_mod.moveTo(writer, bounds.x + 2, bounds.y);
         try term_mod.setStyle(writer, .{ .bold = true, .foreground = theme.title });
@@ -292,7 +292,7 @@ pub const StatusRenderer = struct {
         self: *const Self,
         writer: anytype,
         bounds: Rect,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         const y_offset: u16 = 0;
 
@@ -343,7 +343,7 @@ pub const StatusRenderer = struct {
         self: *Self,
         writer: anytype,
         bounds: Rect,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         var y_offset: u16 = 0;
 
@@ -397,7 +397,7 @@ pub const StatusRenderer = struct {
         writer: anytype,
         bounds: Rect,
         y_offset: u16,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         const y = bounds.y + @as(i32, @intCast(y_offset));
 
@@ -417,7 +417,7 @@ pub const StatusRenderer = struct {
         writer: anytype,
         bounds: Rect,
         y_offset: u16,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         const y = bounds.y + @as(i32, @intCast(y_offset));
         try term_mod.moveTo(writer, bounds.x, y);
@@ -448,7 +448,7 @@ pub const StatusRenderer = struct {
         writer: anytype,
         bounds: Rect,
         y_offset: u16,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         const y = bounds.y + @as(i32, @intCast(y_offset));
         try term_mod.moveTo(writer, bounds.x, y);
@@ -474,7 +474,7 @@ pub const StatusRenderer = struct {
         writer: anytype,
         bounds: Rect,
         y_offset: u16,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         const y = bounds.y + @as(i32, @intCast(y_offset));
         try term_mod.moveTo(writer, bounds.x, y);
@@ -500,7 +500,7 @@ pub const StatusRenderer = struct {
         writer: anytype,
         bounds: Rect,
         y_offset: u16,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         const y = bounds.y + @as(i32, @intCast(y_offset));
 
@@ -548,7 +548,7 @@ pub const StatusRenderer = struct {
         writer: anytype,
         bounds: Rect,
         y_offset: u16,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         const y = bounds.y + @as(i32, @intCast(y_offset));
         try term_mod.moveTo(writer, bounds.x, y);
@@ -569,7 +569,7 @@ pub const StatusRenderer = struct {
         writer: anytype,
         bounds: Rect,
         y_offset: u16,
-        theme: *const theme_manager.ColorScheme,
+        theme: *const theme.ColorScheme,
     ) !void {
         const y = bounds.y + @as(i32, @intCast(y_offset));
 
@@ -602,7 +602,7 @@ pub const StatusRenderer = struct {
         writer: anytype,
         icon: []const u8,
         label: []const u8,
-        color: theme_manager.Color,
+        color: theme.Color,
         compact: bool,
     ) !void {
         try term_mod.setStyle(writer, .{ .foreground = color });
@@ -623,8 +623,8 @@ pub const StatusRenderer = struct {
     fn getHealthColor(
         self: *const Self,
         health: HealthStatus,
-        theme: *const theme_manager.ColorScheme,
-    ) theme_manager.Color {
+        theme: *const theme.ColorScheme,
+    ) theme.Color {
         _ = self;
 
         return switch (health) {
@@ -641,8 +641,8 @@ pub const StatusRenderer = struct {
     fn getAuthColor(
         self: *const Self,
         auth: AuthStatus,
-        theme: *const theme_manager.ColorScheme,
-    ) theme_manager.Color {
+        theme: *const theme.ColorScheme,
+    ) theme.Color {
         _ = self;
 
         return switch (auth) {
@@ -658,8 +658,8 @@ pub const StatusRenderer = struct {
     fn getConnectionColor(
         self: *const Self,
         conn: ConnectionStatus,
-        theme: *const theme_manager.ColorScheme,
-    ) theme_manager.Color {
+        theme: *const theme.ColorScheme,
+    ) theme.Color {
         _ = self;
 
         return switch (conn) {
@@ -674,8 +674,8 @@ pub const StatusRenderer = struct {
     /// Get overall status color
     fn getOverallStatusColor(
         self: *const Self,
-        theme: *const theme_manager.ColorScheme,
-    ) theme_manager.Color {
+        theme: *const theme.ColorScheme,
+    ) theme.Color {
         if (self.status.health == .@"error" or
             self.status.auth == .@"error" or
             self.status.connection == .@"error")

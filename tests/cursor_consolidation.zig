@@ -62,7 +62,7 @@ test "cursor position creation and conversion" {
     try testing.expectEqual(@as(u16, 10), zero_based.row);
 }
 
-test "cursor builder fluent API" {
+test "cursorBuilderFluentApi" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();

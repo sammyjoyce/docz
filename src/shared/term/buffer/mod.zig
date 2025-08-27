@@ -25,7 +25,7 @@ pub const colorStyle = BufferImpl.colorStyle;
 pub const underlineStyle = BufferImpl.underlineStyle;
 
 // Re-export constants
-pub const BOLD = BufferImpl.BOLD;
-pub const ITALIC = BufferImpl.ITALIC;
-pub const REVERSE = BufferImpl.REVERSE;
-pub const STRIKETHROUGH = BufferImpl.STRIKETHROUGH;
+pub const bold = BufferImpl.bold;
+pub const italic = BufferImpl.italic;
+pub const reverse = BufferImpl.reverse;
+pub const strikethrough = BufferImpl.strikethrough;

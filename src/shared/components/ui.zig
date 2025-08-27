@@ -42,15 +42,15 @@ pub const UI = struct {
 
     pub fn init(allocator: std.mem.Allocator, mode: UIMode) !Self {
         var terminal = try Terminal.init(allocator);
-        const graphics_manager = graphics.GraphicsManager.init(allocator, &terminal);
-        const component_manager = Registry.init(allocator, &terminal);
+        const graphicsManager = graphics.GraphicsManager.init(allocator, &terminal);
+        const componentManager = Registry.init(allocator, &terminal);
         const theme = Theme.forTerminal(&terminal);
 
         return Self{
             .allocator = allocator,
             .terminal = terminal,
-            .graphics = graphics_manager,
-            .componentManager = component_manager,
+            .graphics = graphicsManager,
+            .componentManager = componentManager,
             .mode = mode,
             .theme = theme,
         };
@@ -83,7 +83,7 @@ pub const UI = struct {
             },
             .tui => {
                 // For TUI mode, create a notification component
-                const notification_component = try NotificationComponent.create(self.allocator, Configuration{
+                const notificationComponent = try Notification.create(self.allocator, Config{
                     .level = level,
                     .title = try self.allocator.dupe(u8, title),
                     .message = try self.allocator.dupe(u8, message),
@@ -91,18 +91,18 @@ pub const UI = struct {
                     .autoDismiss = true,
                 });
 
-                try self.componentManager.addComponent(notification_component);
+                try self.componentManager.addComponent(notificationComponent);
             },
         }
     }
 
     /// Show a progress bar using the best method for the current mode
-    pub fn showProgress(self: *Self, progress_value: f32, label: ?[]const u8) !?*Component {
+    pub fn showProgress(self: *Self, progressValue: f32, label: ?[]const u8) !?*Component {
         switch (self.mode) {
             .cli => {
                 // For CLI mode, create an inline progress bar
-                const progress_component = try progress.ProgressBar.create(self.allocator, .{
-                    .progress = progress_value,
+                const progressComponent = try progress.ProgressBar.create(self.allocator, .{
+                    .progress = progressValue,
                     .label = label,
                     .style = .auto,
                     .animated = false, // No animation in CLI mode
@@ -110,36 +110,36 @@ pub const UI = struct {
 
                 // Render immediately
                 const ctx = self.createRender(term.Rect{ .x = 0, .y = 0, .width = 80, .height = 1 });
-                try progress_component.render(ctx);
+                try progressComponent.render(ctx);
                 try self.terminal.flush();
 
-                return progress_component;
+                return progressComponent;
             },
             .tui, .hybrid => {
                 // For TUI mode, add to component manager
-                const progress_component = try progress.ProgressBar.create(self.allocator, .{
-                    .progress = progress_value,
+                const progressComponent = try progress.ProgressBar.create(self.allocator, .{
+                    .progress = progressValue,
                     .label = label,
                     .style = .auto,
                     .animated = true,
                 });
 
-                try self.componentManager.addComponent(progress_component);
-                return progress_component;
+                try self.componentManager.addComponent(progressComponent);
+                return progressComponent;
             },
         }
     }
 
     /// Update a progress bar's value
-    pub fn updateProgress(self: *Self, progress_component: *Component, progress_value: f32) void {
+    pub fn updateProgress(self: *Self, progressComponent: *Component, progressValue: f32) void {
         // Extract the ProgressBar from the component
-        const progress_impl: *progress.ProgressBar = @ptrCast(@alignCast(progress_component.impl));
-        progress_impl.setProgress(progress_value);
+        const progress_impl: *progress.ProgressBar = @ptrCast(@alignCast(progressComponent.impl));
+        progress_impl.setProgress(progressValue);
 
         if (self.mode == .cli) {
             // In CLI mode, re-render immediately
             const ctx = self.createRender(term.Rect{ .x = 0, .y = 0, .width = 80, .height = 1 });
-            progress_component.render(ctx) catch {};
+            progressComponent.render(ctx) catch {};
             self.terminal.flush() catch {};
         }
     }
@@ -177,12 +177,12 @@ pub const UI = struct {
 };
 
 /// Notification component for TUI mode
-pub const NotificationComponent = struct {
+pub const Notification = struct {
     const Self = @This();
 
     allocator: std.mem.Allocator,
     state: base.State,
-    config: Configuration,
+    config: Config,
     creationTime: i64,
     animationProgress: f32 = 0.0,
 
@@ -200,7 +200,7 @@ pub const NotificationComponent = struct {
         .update = update,
     };
 
-    pub fn create(allocator: std.mem.Allocator, config: Configuration) !*Component {
+    pub fn create(allocator: std.mem.Allocator, config: Config) !*Component {
         const self = try allocator.create(Self);
         self.* = Self{
             .allocator = allocator,
@@ -367,8 +367,8 @@ pub const NotificationComponent = struct {
     }
 };
 
-/// Configuration for notification components
-pub const Configuration = struct {
+/// Config for notification components
+pub const Config = struct {
     level: NotificationLevel,
     title: []const u8,
     message: []const u8,

@@ -213,7 +213,7 @@ fn mockCapsForProgram(program: MockProgram) MockTermCaps {
     return caps;
 }
 
-test "field name conversion from PascalCase to snake_case" {
+test "fieldNameConversionFromPascalCaseToSnakeCase" {
     // Test the conversion logic used in the overlay functions
     // This tests the manual mapping from ZON snake_case to struct PascalCase
 

@@ -2,12 +2,12 @@
 //! Provides tools for theme developers including preview, testing, and documentation generation
 
 const std = @import("std");
-const ColorScheme = @import("../runtime/color_scheme.zig").ColorScheme;
-const Color = @import("../runtime/color_scheme.zig").Color;
-const RGB = @import("../runtime/color_scheme.zig").RGB;
-const Validator = @import("../runtime/validator.zig").Validator;
-const Accessibility = @import("../runtime/accessibility.zig").Accessibility;
-const ColorBlindness = @import("../runtime/color_blindness.zig").ColorBlindness;
+const ColorScheme = @import("../runtime/ColorScheme.zig").ColorScheme;
+const Color = @import("../runtime/ColorScheme.zig").Color;
+const RGB = @import("../runtime/ColorScheme.zig").RGB;
+const Validator = @import("../runtime/Validator.zig").Validator;
+const Accessibility = @import("../runtime/Accessibility.zig").Accessibility;
+const ColorBlindness = @import("../runtime/ColorBlindness.zig").ColorBlindness;
 
 pub const Development = struct {
     allocator: std.mem.Allocator,
@@ -160,8 +160,8 @@ pub const Development = struct {
         try writer.writeAll("## Usage\n\n");
         try writer.writeAll("```zig\n");
         try writer.writeAll("// In your application\n");
-        try writer.print("const theme_manager = try Theme.init(allocator);\n", .{});
-        try writer.print("try theme_manager.switchTheme(\"{s}\");\n", .{theme.name});
+        try writer.print("const theme = try Theme.init(allocator);\n", .{});
+        try writer.print("try theme.switchTheme(\"{s}\");\n", .{theme.name});
         try writer.writeAll("```\n");
 
         return buffer.toOwnedSlice();

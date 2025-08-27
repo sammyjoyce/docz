@@ -7,7 +7,7 @@ const renderer_mod = @import("../../core/renderer.zig");
 const Allocator = std.mem.Allocator;
 
 /// Text input widget state
-pub const TextInputState = struct {
+pub const State = struct {
     content: std.ArrayList(u8),
     cursor_pos: usize,
     placeholder: []const u8,
@@ -18,7 +18,7 @@ pub const TextInputState = struct {
 
 /// Text input widget implementation
 pub const TextInput = struct {
-    state: TextInputState,
+    state: State,
     allocator: Allocator,
 
     /// Create a new text input widget

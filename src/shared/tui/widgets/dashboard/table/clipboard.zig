@@ -41,7 +41,7 @@ pub const Clipboard = struct {
         format: ClipboardFormat,
     ) !void {
         // Generate formatted data
-        const data = try selection.SelectionManager.formatSelectedData(selected, headers, rows, self.allocator, format);
+        const data = try selection.Selection.formatSelectedData(selected, headers, rows, self.allocator, format);
 
         // Store for future reference
         if (self.last_copied_data) |old_data| {
@@ -94,7 +94,7 @@ pub const Clipboard = struct {
         const formats = [_]ClipboardFormat{ .plain_text, .csv, .markdown };
 
         for (formats) |format| {
-            const data = try selection.SelectionManager.formatSelectedData(selected, headers, rows, self.allocator, format);
+            const data = try selection.Selection.formatSelectedData(selected, headers, rows, self.allocator, format);
             defer self.allocator.free(data);
 
             // For now, copy the first produced format if renderer supports clipboard
@@ -108,7 +108,7 @@ pub const Clipboard = struct {
         }
 
         // If no clipboard support, show fallback for plain text
-        const plain_data = try selection.SelectionManager.formatSelectedData(selected, headers, rows, self.allocator, .plain_text);
+        const plain_data = try selection.Selection.formatSelectedData(selected, headers, rows, self.allocator, .plain_text);
         defer self.allocator.free(plain_data);
         try self.showCopyFallback(plain_data, .plain_text);
     }

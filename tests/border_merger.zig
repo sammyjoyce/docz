@@ -3,7 +3,7 @@ const testing = std.testing;
 const BorderMerger = @import("../src/shared/render/border_merger.zig").BorderMerger;
 const Point = @import("../src/shared/render/border_merger.zig").Point;
 
-test "BorderMerger initialization and cleanup" {
+test "borderMergerInitializationAndCleanup" {
     const allocator = testing.allocator;
 
     var merger = try BorderMerger.init(allocator);
@@ -13,7 +13,7 @@ test "BorderMerger initialization and cleanup" {
     try testing.expect(merger.merge_map.count() == 0);
 }
 
-test "BorderMerger widget registration" {
+test "borderMergerWidgetRegistration" {
     const allocator = testing.allocator;
 
     var merger = try BorderMerger.init(allocator);
@@ -29,7 +29,7 @@ test "BorderMerger widget registration" {
     try testing.expectEqual(widget.rect.x, merger.widgets.items[0].rect.x);
 }
 
-test "BorderMerger detects horizontal adjacency" {
+test "borderMergerDetectsHorizontalAdjacency" {
     const allocator = testing.allocator;
 
     var merger = try BorderMerger.init(allocator);
@@ -53,7 +53,7 @@ test "BorderMerger detects horizontal adjacency" {
     try testing.expect(merger.merge_map.count() > 0);
 }
 
-test "BorderMerger detects vertical adjacency" {
+test "borderMergerDetectsVerticalAdjacency" {
     const allocator = testing.allocator;
 
     var merger = try BorderMerger.init(allocator);
@@ -77,7 +77,7 @@ test "BorderMerger detects vertical adjacency" {
     try testing.expect(merger.merge_map.count() > 0);
 }
 
-test "BorderMerger junction type determination" {
+test "border_merger_junction type determination" {
     const allocator = testing.allocator;
 
     var merger = try BorderMerger.init(allocator);
@@ -106,7 +106,7 @@ test "BorderMerger junction type determination" {
     try testing.expect(merger.merge_map.count() > 0);
 }
 
-test "BorderMerger character mapping for different styles" {
+test "borderMergerCharacterMappingForDifferentStyles" {
     // Test single style
     try testing.expectEqual(@as(u21, '┌'), BorderMerger.getJunctionChar(.top_left, .single));
     try testing.expectEqual(@as(u21, '┼'), BorderMerger.getJunctionChar(.cross, .single));
@@ -126,7 +126,7 @@ test "BorderMerger character mapping for different styles" {
     try testing.expectEqual(@as(u21, '╋'), BorderMerger.getJunctionChar(.cross, .thick));
 }
 
-test "BorderMerger clear functionality" {
+test "borderMergerClearFunctionality" {
     const allocator = testing.allocator;
 
     var merger = try BorderMerger.init(allocator);
@@ -146,7 +146,7 @@ test "BorderMerger clear functionality" {
     try testing.expect(merger.merge_map.count() == 0);
 }
 
-test "BorderMerger complex grid layout" {
+test "borderMergerComplexGridLayout" {
     const allocator = testing.allocator;
 
     var merger = try BorderMerger.init(allocator);

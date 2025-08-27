@@ -2,14 +2,14 @@
 //! Register all your agent-specific tools here.
 
 const std = @import("std");
-const tools_mod = @import("tools_shared");
+const toolsMod = @import("tools_shared");
 
 // Tool Implementation
 pub const Tool = @import("tool.zig");
 
 /// Test tool function demonstrating the new json_reflection approach.
 /// This replaces manual ObjectMap building with type-safe structs.
-pub fn testTool(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.ToolError!std.json.Value {
+pub fn testTool(allocator: std.mem.Allocator, params: std.json.Value) toolsMod.ToolError!std.json.Value {
     _ = params; // Use params as needed
 
     // Define response structure using json_reflection approach
@@ -36,7 +36,7 @@ pub fn testTool(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.
 
 /// Calculator tool for arithmetic operations
 /// Demonstrates the improved pattern using json_helpers
-pub fn calculator(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.ToolError!std.json.Value {
+pub fn calculator(allocator: std.mem.Allocator, params: std.json.Value) toolsMod.ToolError!std.json.Value {
     // Define the expected request structure
     const CalculatorRequest = struct {
         operation: []const u8,
@@ -45,11 +45,11 @@ pub fn calculator(allocator: std.mem.Allocator, params: std.json.Value) tools_mo
     };
 
     // Parse and validate the request using json_helpers
-    const request = tools_mod.parseToolRequest(CalculatorRequest, params) catch |err| {
+    const request = toolsMod.parseToolRequest(CalculatorRequest, params) catch |err| {
         // Return a proper error response
-        const error_msg = try tools_mod.createErrorResponse(allocator, err, "Invalid calculator request");
-        defer allocator.free(error_msg);
-        return std.json.parseFromSlice(std.json.Value, allocator, error_msg, .{});
+        const errorMsg = try toolsMod.createErrorResponse(allocator, err, "Invalid calculator request");
+        defer allocator.free(errorMsg);
+        return std.json.parseFromSlice(std.json.Value, allocator, errorMsg, .{});
     };
 
     // Perform the calculation
@@ -60,9 +60,9 @@ pub fn calculator(allocator: std.mem.Allocator, params: std.json.Value) tools_mo
     else if (std.mem.eql(u8, request.operation, "multiply"))
         request.a * request.b
     else if (std.mem.eql(u8, request.operation, "divide"))
-        if (request.b == 0) return tools_mod.ToolError.InvalidInput else @divTrunc(request.a, request.b)
+        if (request.b == 0) return toolsMod.ToolError.InvalidInput else @divTrunc(request.a, request.b)
     else
-        return tools_mod.ToolError.InvalidInput;
+        return toolsMod.ToolError.InvalidInput;
 
     // Create the result structure
     const result = .{
@@ -72,14 +72,14 @@ pub fn calculator(allocator: std.mem.Allocator, params: std.json.Value) tools_mo
     };
 
     // Return success response using json_helpers
-    const response_json = try tools_mod.createSuccessResponse(result);
-    defer allocator.free(response_json);
+    const responseJson = try toolsMod.createSuccessResponse(result);
+    defer allocator.free(responseJson);
 
-    return try std.json.parseFromSlice(std.json.Value, allocator, response_json, .{});
+    return try std.json.parseFromSlice(std.json.Value, allocator, responseJson, .{});
 }
 
 /// Tool that demonstrates the standardized tool pattern
-pub fn tool(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.ToolError!std.json.Value {
+pub fn tool(allocator: std.mem.Allocator, params: std.json.Value) toolsMod.ToolError!std.json.Value {
     return Tool.execute(allocator, params);
 }
 

@@ -47,7 +47,7 @@ const WizardState = enum {
     initializing,
     checking_network,
     generating_pkce,
-    building_auth_url,
+    buildingAuthUrl,
     opening_browser,
     waiting_for_code,
     exchanging_token,
@@ -82,7 +82,7 @@ const WizardState = enum {
                 .progress_weight = 0.2,
                 .show_spinner = true,
             },
-            .building_auth_url => .{
+            .buildingAuthUrl => .{
                 .icon = "🔗",
                 .title = "Building Authorization URL",
                 .description = "Constructing secure OAuth authorization link...",
@@ -149,11 +149,11 @@ const StateMetadata = struct {
     description: []const u8,
     color: renderer_mod.Style.Color,
     progress_weight: f32,
-    show_spinner: bool = false,
-    show_network_indicator: bool = false,
+    showSpinner: bool = false,
+    showNetworkIndicator: bool = false,
     interactive: bool = false,
-    show_confetti: bool = false,
-    show_error_details: bool = false,
+    showConfetti: bool = false,
+    showErrorDetails: bool = false,
 };
 
 /// OAuth wizard with rich TUI experience
@@ -201,7 +201,7 @@ pub const OAuthWizard = struct {
     lastNetworkActivity: i64 = 0,
 
     pub fn init(allocator: std.mem.Allocator, renderer: *Renderer) !Self {
-        const start_time = std.time.timestamp();
+        const startTime = std.time.timestamp();
 
         // Initialize components
         const notification_controller = NotificationController.init(allocator, renderer);
@@ -246,8 +246,8 @@ pub const OAuthWizard = struct {
             .networkClient = net_svc,
             .manualCodeInput = std.ArrayList(u8).init(allocator),
             .currentState = .initializing,
-            .startTime = start_time,
-            .lastStateChange = start_time,
+            .startTime = startTime,
+            .lastStateChange = startTime,
             .totalProgress = 0.0,
             .errorMessage = null,
         };
@@ -294,7 +294,7 @@ pub const OAuthWizard = struct {
             try self.render();
 
             // Handle state-specific logic
-            switch (self.currentState) {
+            switch (self.current_state) {
                 .initializing => {
                     std.time.sleep(500_000_000); // 0.5s delay
                     try self.transitionTo(.checking_network);
@@ -305,7 +305,7 @@ pub const OAuthWizard = struct {
                 .generating_pkce => {
                     try self.generatePkceParameters();
                 },
-                .building_auth_url => {
+                .buildingAuthUrl => {
                     try self.buildAuthorizationUrl();
                 },
                 .opening_browser => {
@@ -346,12 +346,12 @@ pub const OAuthWizard = struct {
 
     /// Transition to a new state with animation
     fn transitionTo(self: *Self, new_state: WizardState) !void {
-        self.currentState = new_state;
-        self.lastStateChange = std.time.timestamp();
+        self.current_state = new_state;
+        self.last_state_change = std.time.timestamp();
 
         // Update progress
         const metadata = new_state.getMetadata();
-        self.totalProgress += metadata.progress_weight;
+        self.total_progress += metadata.progress_weight;
 
         // Send notification for state change
         try self.notificationController.info(metadata.title, metadata.description);
@@ -366,25 +366,25 @@ pub const OAuthWizard = struct {
 
         // Update animations
         if (now - self.last_animation_time >= 100_000_000) { // 100ms
-            self.animationFrame += 1;
+            self.animation_frame += 1;
             self.last_animation_time = now;
         }
 
         // Update network activity indicator
-        if (self.networkActive and now - self.last_network_activity > 1_000_000_000) { // 1s timeout
-            self.networkActive = false;
+        if (self.network_active and now - self.last_network_activity > 1_000_000_000) { // 1s timeout
+            self.network_active = false;
             try self.updateStatusBar();
         }
 
         // Update progress bar
-        const state_metadata = self.currentState.getMetadata();
+        const state_metadata = self.current_state.getMetadata();
         if (state_metadata.show_spinner) {
-            const elapsed = @as(f32, @floatFromInt(now - self.lastStateChange));
+            const elapsed = @as(f32, @floatFromInt(now - self.last_state_change));
             const cycle_time = 2.0; // 2 seconds per cycle
             const progress = (elapsed / (cycle_time * 1_000_000_000)) % 1.0;
-            self.progressBar.setProgress(self.totalProgress + (state_metadata.progress_weight * progress));
+            self.progressBar.setProgress(self.total_progress + (state_metadata.progress_weight * progress));
         } else {
-            self.progressBar.setProgress(self.totalProgress);
+            self.progressBar.setProgress(self.total_progress);
         }
     }
 
@@ -472,7 +472,7 @@ pub const OAuthWizard = struct {
             .height = 8,
         };
 
-        const metadata = self.currentState.getMetadata();
+        const metadata = self.current_state.getMetadata();
 
         // Draw state icon and title
         const title_bounds = Bounds{
@@ -512,12 +512,12 @@ pub const OAuthWizard = struct {
         try self.renderer.drawText(desc_ctx, metadata.description);
 
         // Draw state-specific content
-        switch (self.currentState) {
+        switch (self.current_state) {
             .waiting_for_code => {
                 try self.drawCodeInput(state_bounds.y + 5);
             },
             .error_state => {
-                if (self.errorMessage) |msg| {
+                if (self.error_message) |msg| {
                     try self.drawErrorDetails(state_bounds.y + 5, msg);
                 }
             },
@@ -597,8 +597,8 @@ pub const OAuthWizard = struct {
             .clipRegion = null,
         };
 
-        const displayText = if (self.manualCodeInput.items.len > 0)
-            self.manualCodeInput.items
+        const displayText = if (self.manual_code_input.items.len > 0)
+            self.manual_code_input.items
         else
             "Paste authorization code here...";
 
@@ -677,11 +677,11 @@ pub const OAuthWizard = struct {
             .height = 3,
         };
 
-        const metadata = self.currentState.getMetadata();
+        const metadata = self.current_state.getMetadata();
 
         if (metadata.show_spinner) {
             const spinner_chars = [_][]const u8{ "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏" };
-            const spinner_idx = self.animationFrame % spinner_chars.len;
+            const spinner_idx = self.animation_frame % spinner_chars.len;
 
             const ctx = renderer_mod.Render{
                 .bounds = anim_bounds,
@@ -696,7 +696,7 @@ pub const OAuthWizard = struct {
             try self.renderer.drawText(ctx, spinner_text);
         }
 
-        if (metadata.show_network_indicator and self.networkActive) {
+        if (metadata.show_network_indicator and self.network_active) {
             const ctx = renderer_mod.Render{
                 .bounds = Bounds{
                     .x = anim_bounds.x + anim_bounds.width - 10,
@@ -750,7 +750,7 @@ pub const OAuthWizard = struct {
             .clipRegion = null,
         };
 
-        const shortcuts = switch (self.currentState) {
+        const shortcuts = switch (self.current_state) {
             .waiting_for_code => "Enter: Submit Code | Ctrl+V: Paste | Ctrl+U: Clear | Escape: Cancel",
             .error_state => "r: Retry | c: Cancel | h: Help | q: Quit",
             else => "Ctrl+C: Cancel | h: Help",
@@ -762,7 +762,7 @@ pub const OAuthWizard = struct {
     /// Update status bar with current information
     fn updateStatusBar(self: *Self) !void {
         const now = std.time.timestamp();
-        const elapsed_seconds = now - self.startTime;
+        const elapsed_seconds = now - self.start_time;
         const minutes = elapsed_seconds / 60;
         const seconds = elapsed_seconds % 60;
 
@@ -771,21 +771,21 @@ pub const OAuthWizard = struct {
 
         try self.statusBar.updateItem("elapsed", .{ .text = elapsed_text });
 
-        const connection_status = if (self.networkActive) "NETWORK" else "IDLE";
+        const connection_status = if (self.network_active) "NETWORK" else "IDLE";
         try self.statusBar.updateItem("connection", .{ .text = connection_status });
     }
 
     /// Set error message and transition to error state
     fn setError(self: *Self, message: []const u8) !void {
-        if (self.errorMessage) |old_msg| {
+        if (self.error_message) |old_msg| {
             self.allocator.free(old_msg);
         }
-        self.errorMessage = try self.allocator.dupe(u8, message);
+        self.error_message = try self.allocator.dupe(u8, message);
     }
 
     /// Check network connection
     fn checkNetworkConnection(self: *Self) !void {
-        self.networkActive = true;
+        self.network_active = true;
         self.last_network_activity = std.time.timestamp();
 
         // Use network service to check connectivity
@@ -796,7 +796,7 @@ pub const OAuthWizard = struct {
 
         _ = network_client.Service.request(self.allocator, test_request) catch |err| {
             // Network check failed
-            self.networkActive = false;
+            self.network_active = false;
             const error_msg = try std.fmt.allocPrint(self.allocator, "Network check failed: {s}", .{@errorName(err)});
             defer self.allocator.free(error_msg);
             try self.setError(error_msg);
@@ -804,7 +804,7 @@ pub const OAuthWizard = struct {
             return;
         };
 
-        self.networkActive = false;
+        self.network_active = false;
         try self.transitionTo(.generating_pkce);
     }
 
@@ -813,7 +813,7 @@ pub const OAuthWizard = struct {
         // Generate PKCE parameters using oauth module
         const pkce = try oauth.generatePkceParams(self.allocator);
         self.pkceParams = pkce;
-        try self.transitionTo(.building_auth_url);
+        try self.transitionTo(.buildingAuthUrl);
     }
 
     /// Build authorization URL
@@ -838,23 +838,23 @@ pub const OAuthWizard = struct {
             return;
         }
 
-        const auth_url = self.authUrl.?;
+        const authUrl = self.authUrl.?;
 
         // Create clickable URL using OSC 8 if supported
         if (self.caps) |caps| {
             if (caps.supportsHyperlinkOsc8) {
-                try self.renderer.setHyperlink(auth_url);
+                try self.renderer.setHyperlink(authUrl);
             } else {
                 // Fallback: display URL as plain text with instructions
-                try self.notificationController.info("Browser Launch", try std.fmt.allocPrint(self.allocator, "Opening browser... If it doesn't open automatically, copy and paste this URL: {s}", .{auth_url}));
+                try self.notificationController.info("Browser Launch", try std.fmt.allocPrint(self.allocator, "Opening browser... If it doesn't open automatically, copy and paste this URL: {s}", .{authUrl}));
             }
         } else {
             // No capabilities detected, show fallback message
-            try self.notificationController.info("Browser Launch", try std.fmt.allocPrint(self.allocator, "Please open your browser and navigate to: {s}", .{auth_url}));
+            try self.notificationController.info("Browser Launch", try std.fmt.allocPrint(self.allocator, "Please open your browser and navigate to: {s}", .{authUrl}));
         }
 
         // Launch browser using oauth module
-        try oauth.launchBrowser(auth_url);
+        try oauth.launchBrowser(authUrl);
 
         // Clear hyperlink if it was set
         if (self.caps) |caps| {
@@ -884,14 +884,14 @@ pub const OAuthWizard = struct {
             return;
         }
 
-        self.networkActive = true;
+        self.network_active = true;
         self.last_network_activity = std.time.timestamp();
 
         try self.transitionTo(.exchanging_token);
 
         // Exchange code for tokens using auth service
         const creds = self.authService.exchangeCode(code, self.pkceParams.?.codeVerifier) catch |err| {
-            self.networkActive = false;
+            self.network_active = false;
             const error_msg = try std.fmt.allocPrint(self.allocator, "Token exchange failed: {s}", .{@errorName(err)});
             defer self.allocator.free(error_msg);
             try self.setError(error_msg);
@@ -899,7 +899,7 @@ pub const OAuthWizard = struct {
             return;
         };
 
-        self.networkActive = false;
+        self.network_active = false;
         self.credentials = creds.oauth;
         try self.transitionTo(.saving_credentials);
     }
@@ -978,7 +978,7 @@ pub const OAuthWizard = struct {
     /// Handle manual code entry with proper input processing
     fn handleManualCodeEntry(self: *Self) !?[]const u8 {
         // Clear any previous input
-        self.manualCodeInput.clearRetainingCapacity();
+        self.manual_code_input.clearRetainingCapacity();
 
         // Enable input features
         try self.enableInputFeatures();
@@ -994,7 +994,7 @@ pub const OAuthWizard = struct {
                         // Handle special keys
                         switch (key_event.code) {
                             .enter => {
-                                const code = self.manualCodeInput.items;
+                                const code = self.manual_code_input.items;
                                 if (code.len > 0) {
                                     const validation = self.validateAuthorizationCode(code);
                                     switch (validation) {
@@ -1014,21 +1014,21 @@ pub const OAuthWizard = struct {
                                 return null;
                             },
                             .backspace => {
-                                if (self.manualCodeInput.items.len > 0) {
-                                    _ = self.manualCodeInput.pop();
+                                if (self.manual_code_input.items.len > 0) {
+                                    _ = self.manual_code_input.pop();
                                 }
                             },
                             else => {
                                 // Add character to input
                                 if (key_event.text.len > 0) {
-                                    try self.manualCodeInput.appendSlice(key_event.text);
+                                    try self.manual_code_input.appendSlice(key_event.text);
                                 }
                             },
                         }
                     },
                     .paste => |paste_event| {
                         // Handle paste events
-                        try self.manualCodeInput.appendSlice(paste_event.text);
+                        try self.manual_code_input.appendSlice(paste_event.text);
                     },
                     else => {},
                 }

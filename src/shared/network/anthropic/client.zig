@@ -415,10 +415,15 @@ pub const AnthropicClient = struct {
             }
         };
 
-        // Check for 401 Unauthorized and retry if needed
+        // Check for 401 Unauthorized and retry once for OAuth; report auth error for API keys
         if (statusCode == 401 and !is_retry) {
             std.log.warn("Received 401 Unauthorized, attempting token refresh...", .{});
             return self.streamWithRetry(params, true); // Retry once after refresh
+        }
+
+        if (statusCode == 401) {
+            // After retry (or with API keys), surface as authentication error
+            return Error.AuthError;
         }
 
         if (statusCode != 200) {

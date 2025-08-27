@@ -9,7 +9,7 @@
 
 const std = @import("std");
 const term_shared = @import("term_shared");
-const unified = term_shared.unified;
+const terminal = term_shared.common;
 
 /// Rendering strategies based on terminal capabilities
 pub const RenderStrategy = enum {
@@ -20,7 +20,7 @@ pub const RenderStrategy = enum {
     minimal_ascii, // 16 colors, ASCII only
     fallback, // Minimal ANSI support
 
-    pub fn fromCapabilities(caps: unified.TermCaps) RenderStrategy {
+    pub fn fromCapabilities(caps: terminal.TermCaps) RenderStrategy {
         if (caps.supportsKittyGraphics) return .full_graphics;
         if (caps.supportsSixel) return .sixel_graphics;
         if (caps.supportsTruecolor) return .rich_text;
@@ -68,12 +68,12 @@ pub const TerminalBridge = struct {
     const Self = @This();
 
     allocator: std.mem.Allocator,
-    terminal: unified.Terminal,
-    dashboard_terminal: ?unified.DashboardTerminal,
+    terminal: terminal.Terminal,
+    dashboard_terminal: ?terminal.DashboardTerminal,
     config: Config,
 
     // Cached capabilities and strategy
-    capabilities: unified.TermCaps,
+    capabilities: terminal.TermCaps,
     render_strategy: RenderStrategy,
 
     // Performance optimization
@@ -82,20 +82,20 @@ pub const TerminalBridge = struct {
     capabilities_cache_ms: i64 = 5000, // 5 second cache
 
     pub fn init(allocator: std.mem.Allocator, config: Config) !Self {
-        var terminal = try unified.Terminal.init(allocator);
-        const capabilities = terminal.getCapabilities();
+        var term = try terminal.Terminal.init(allocator);
+        const capabilities = term.getCapabilities();
 
         // Initialize dashboard terminal if graphics are supported
-        var dashboard_terminal: ?unified.DashboardTerminal = null;
+        var dashboard_terminal: ?terminal.DashboardTerminal = null;
         if (config.enable_graphics and
             (capabilities.supportsKittyGraphics or capabilities.supportsSixel))
         {
-            dashboard_terminal = try unified.DashboardTerminal.init(allocator);
+            dashboard_terminal = try terminal.DashboardTerminal.init(allocator);
         }
 
         return Self{
             .allocator = allocator,
-            .terminal = terminal,
+            .terminal = term,
             .dashboard_terminal = dashboard_terminal,
             .config = config,
             .capabilities = capabilities,
@@ -114,7 +114,7 @@ pub const TerminalBridge = struct {
     }
 
     /// Get cached terminal capabilities (with optional refresh)
-    pub fn getCapabilities(self: *Self) unified.TermCaps {
+    pub fn getCapabilities(self: *Self) terminal.TermCaps {
         if (!self.config.cache_capabilities) {
             return self.refreshCapabilities();
         }
@@ -128,7 +128,7 @@ pub const TerminalBridge = struct {
     }
 
     /// Force refresh of terminal capabilities
-    pub fn refreshCapabilities(self: *Self) unified.TermCaps {
+    pub fn refreshCapabilities(self: *Self) terminal.TermCaps {
         // Note: In a real implementation, we might want to re-detect capabilities
         // For now, we use the cached ones since detection is expensive
         self.last_capabilities_check = std.time.milliTimestamp();
@@ -141,17 +141,17 @@ pub const TerminalBridge = struct {
     }
 
     /// Get direct access to the terminal (for specialized usage)
-    pub fn getUnifiedTerminal(self: *Self) *unified.Terminal {
+    pub fn getUnifiedTerminal(self: *Self) *terminal.Terminal {
         return &self.terminal;
     }
 
     /// Get dashboard terminal if available
-    pub fn getDashboardTerminal(self: *Self) ?*unified.DashboardTerminal {
+    pub fn getDashboardTerminal(self: *Self) ?*terminal.DashboardTerminal {
         return if (self.dashboard_terminal) |*dt| dt else null;
     }
 
     /// Print text with automatic style adaptation
-    pub fn print(self: *Self, text: []const u8, style: ?unified.Style) !void {
+    pub fn print(self: *Self, text: []const u8, style: ?terminal.Style) !void {
         const adapted_style = if (style) |s| self.adaptStyle(s) else null;
 
         if (self.config.enable_buffering) {
@@ -161,7 +161,7 @@ pub const TerminalBridge = struct {
             if (adapted_style) |s| {
                 try s.apply(buffer_writer, self.capabilities);
                 try buffer_writer.writeAll(text);
-                try unified.Style.reset(buffer_writer, self.capabilities);
+                try terminal.Style.reset(buffer_writer, self.capabilities);
             } else {
                 try buffer_writer.writeAll(text);
             }
@@ -173,7 +173,7 @@ pub const TerminalBridge = struct {
     }
 
     /// Print formatted text with automatic style adaptation
-    pub fn printf(self: *Self, comptime fmt: []const u8, args: anytype, style: ?unified.Style) !void {
+    pub fn printf(self: *Self, comptime fmt: []const u8, args: anytype, style: ?terminal.Style) !void {
         self.render_buffer.clearRetainingCapacity();
         try std.fmt.format(self.render_buffer.writer(), fmt, args);
         try self.print(self.render_buffer.items, style);
@@ -200,7 +200,7 @@ pub const TerminalBridge = struct {
     }
 
     /// Smart notification that adapts to terminal capabilities
-    pub fn notify(self: *Self, level: unified.NotificationLevel, title: []const u8, message: []const u8) !void {
+    pub fn notify(self: *Self, level: terminal.NotificationLevel, title: []const u8, message: []const u8) !void {
         if (!self.config.enable_notifications) return;
 
         try self.terminal.notification(level, title, message);
@@ -214,16 +214,16 @@ pub const TerminalBridge = struct {
     }
 
     /// Create hyperlink if supported, otherwise show URL
-    pub fn hyperlink(self: *Self, url: []const u8, text: []const u8, style: ?unified.Style) !void {
+    pub fn hyperlink(self: *Self, url: []const u8, text: []const u8, style: ?terminal.Style) !void {
         const adapted_style = if (style) |s| self.adaptStyle(s) else null;
         try self.terminal.hyperlink(url, text, adapted_style);
     }
 
     /// Render image using best available protocol
-    pub fn renderImage(self: *Self, image: unified.Image, pos: unified.Point, max_size: ?unified.Point) !void {
+    pub fn renderImage(self: *Self, image: terminal.Image, pos: terminal.Point, max_size: ?terminal.Point) !void {
         if (!self.config.enable_graphics) {
             // Fallback to text representation
-            try self.print("[Image: ", .{ .fg_color = unified.Colors.CYAN });
+            try self.print("[Image: ", .{ .fg_color = terminal.Colors.CYAN });
             try self.printf("{d}x{d} ", .{ image.width, image.height }, null);
             try self.print(switch (image.format) {
                 .png => "PNG",
@@ -232,7 +232,7 @@ pub const TerminalBridge = struct {
                 .rgb24 => "RGB",
                 .rgba32 => "RGBA",
             }, null);
-            try self.print("]", .{ .fg_color = unified.Colors.CYAN });
+            try self.print("]", .{ .fg_color = terminal.Colors.CYAN });
             return;
         }
 
@@ -253,7 +253,7 @@ pub const TerminalBridge = struct {
     }
 
     /// Adapt a style to the current terminal capabilities
-    fn adaptStyle(self: *Self, style: unified.Style) unified.Style {
+    fn adaptStyle(self: *Self, style: terminal.Style) terminal.Style {
         var adapted = style;
 
         // Adapt colors based on capability
@@ -299,7 +299,7 @@ pub const Render = struct {
 
     bridge: *TerminalBridge,
     start_time: std.time.Timer,
-    scoped_context: unified.Scoped,
+    scoped_context: terminal.Scoped,
 
     fn init(bridge: *TerminalBridge) !Self {
         return Self{
@@ -328,37 +328,37 @@ pub const Render = struct {
 
 /// Utility functions for creating common styles
 pub const Styles = struct {
-    pub const ERROR = unified.Style{
-        .fg_color = unified.Colors.RED,
+    pub const errorStyle = terminal.Style{
+        .fg_color = terminal.Colors.RED,
         .bold = true,
     };
 
-    pub const SUCCESS = unified.Style{
-        .fg_color = unified.Colors.GREEN,
+    pub const success = terminal.Style{
+        .fg_color = terminal.Colors.GREEN,
         .bold = true,
     };
 
-    pub const WARNING = unified.Style{
-        .fg_color = unified.Colors.YELLOW,
+    pub const warning = terminal.Style{
+        .fg_color = terminal.Colors.YELLOW,
         .bold = true,
     };
 
-    pub const INFO = unified.Style{
-        .fg_color = unified.Colors.BLUE,
+    pub const INFO = terminal.Style{
+        .fg_color = terminal.Colors.BLUE,
     };
 
-    pub const MUTED = unified.Style{
-        .fg_color = unified.Colors.BRIGHT_BLACK,
+    pub const MUTED = terminal.Style{
+        .fg_color = terminal.Colors.BRIGHT_BLACK,
     };
 
-    pub const HIGHLIGHT = unified.Style{
-        .bg_color = unified.Colors.BRIGHT_BLUE,
-        .fg_color = unified.Colors.WHITE,
+    pub const HIGHLIGHT = terminal.Style{
+        .bg_color = terminal.Colors.BRIGHT_BLUE,
+        .fg_color = terminal.Colors.WHITE,
     };
 
     /// Create a custom style with color adaptation
-    pub fn custom(fg: ?unified.Color, bg: ?unified.Color, bold: bool) unified.Style {
-        return unified.Style{
+    pub fn custom(fg: ?terminal.Color, bg: ?terminal.Color, bold: bool) terminal.Style {
+        return terminal.Style{
             .fg_color = fg,
             .bg_color = bg,
             .bold = bold,
@@ -384,7 +384,7 @@ test "terminal bridge initialization" {
 }
 
 test "render strategy detection" {
-    const caps_high = unified.TermCaps{
+    const caps_high = terminal.TermCaps{
         .supportsTruecolor = true,
         .supportsKittyGraphics = true,
         .supportsHyperlinkOsc8 = false,
