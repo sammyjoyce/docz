@@ -1,11 +1,11 @@
-//! Enhanced CLI Capabilities Demo
+//! CLI Capabilities Demo
 //!
-//! This demo showcases the advanced terminal capabilities provided by the
-//! unified terminal interface and enhanced CLI components including:
+//! This demo showcases the terminal capabilities provided by the
+//! terminal interface and CLI components including:
 //! - Progressive enhancement based on terminal capabilities
 //! - Rich progress bars with multiple rendering modes
 //! - Smart notifications with system integration
-//! - Enhanced input components with validation
+//! - Input components with validation
 //! - Clipboard integration and hyperlink support
 
 const std = @import("std");
@@ -14,8 +14,8 @@ const term_shared = @import("../../../term/mod.zig");
 const unified = term_shared.unified;
 const terminal_bridge = @import("../core/terminal_bridge.zig");
 const components = @import("../../components/mod.zig");
-const notification = @import("../components/base/notification.zig");
-const input = @import("../components/base/input.zig");
+const notification = @import("../notifications.zig");
+const input = @import("../../components/input.zig");
 
 /// Demo configuration
 const DemoConfig = struct {

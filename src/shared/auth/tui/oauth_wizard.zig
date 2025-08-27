@@ -16,21 +16,21 @@ const print = std.debug.print;
 const oauth = @import("../oauth/mod.zig");
 
 // Import TUI components
-const advanced_progress = @import("../../tui/widgets/rich/advanced_progress.zig");
+const progress_mod = @import("../../tui/widgets/rich/progress.zig");
 const notification_mod = @import("../../tui/widgets/rich/notification.zig");
 const text_input = @import("../../tui/widgets/rich/text_input.zig");
 const status_bar = @import("../../tui/widgets/dashboard/status_bar.zig");
-const renderer_mod = @import("../../tui/core/renderer.zig");
-const bounds_mod = @import("../../tui/core/bounds.zig");
-const input_system = @import("../../tui/core/input.zig");
+const renderer_mod = tui_mod.renderer;
+const bounds_mod = tui_mod.bounds;
+const input_system = tui_mod.input;
 
 // Import terminal capabilities
 const term = @import("../../term/mod.zig");
-// Import TUI module for consistent types
+// Import TUI module for consistent types and renderer
 const tui_mod = @import("../../tui/mod.zig");
 
 // Re-export types for convenience
-const AdvancedProgressBar = advanced_progress.AdvancedProgressBar;
+const AdvancedProgressBar = progress_mod.ProgressBar;
 const Notification = notification_mod.Notification;
 const NotificationController = notification_mod.NotificationController;
 const TextInput = text_input.TextInput;
@@ -196,7 +196,7 @@ pub const OAuthWizard = struct {
 
         // Initialize components
         const notification_controller = NotificationController.init(allocator, renderer);
-        const progress_bar = AdvancedProgressBar.init("OAuth Setup", .gradient);
+        const progress_bar = try AdvancedProgressBar.init(allocator, "OAuth Setup", .gradient);
         var status_bar_instance = StatusBar.init(allocator, renderer);
 
         // Configure status bar
@@ -951,17 +951,21 @@ pub const OAuthWizard = struct {
     /// Enable input features for code entry
     fn enableInputFeatures(self: *Self) !void {
         // Enable focus reporting
-        try self.focus_controller.enableFocusReporting(std.fs.File.stdout().writer());
+        if (self.caps) |caps| {
+            try self.focus_controller.enableFocusReporting(std.fs.File.stdout().writer(), caps);
+        }
 
         // Enable bracketed paste
-        try self.paste_controller.enableBracketedPaste(std.fs.File.stdout().writer());
+        if (self.caps) |caps| {
+            try self.paste_controller.enableBracketedPaste(std.fs.File.stdout().writer(), caps);
+        }
 
         // Enable mouse tracking if supported
         if (self.caps) |caps| {
             if (caps.supportsSgrMouse) {
-                try self.mouse_controller.enableMouseTracking(std.fs.File.stdout().writer(), .sgr);
+                try self.mouse_controller.enableMouseTracking(std.fs.File.stdout().writer(), .sgr, caps);
             } else if (caps.supportsX10Mouse) {
-                try self.mouse_controller.enableMouseTracking(std.fs.File.stdout().writer(), .normal);
+                try self.mouse_controller.enableMouseTracking(std.fs.File.stdout().writer(), .normal, caps);
             }
         }
     }

@@ -79,31 +79,31 @@ fn generateCodeVerifier(allocator: std.mem.Allocator, length: usize) ![]u8 {
     }
 
     // Generate random bytes
-    const random_bytes = try allocator.alloc(u8, length);
-    defer allocator.free(random_bytes);
-    std.crypto.random.bytes(random_bytes);
+    const randomBytes = try allocator.alloc(u8, length);
+    defer allocator.free(randomBytes);
+    std.crypto.random.bytes(randomBytes);
 
     // Convert to valid PKCE characters (alphanumeric + -._~)
-    const valid_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
+    const VALID_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
     const verifier = try allocator.alloc(u8, length);
 
-    for (random_bytes, 0..) |byte, i| {
-        verifier[i] = valid_chars[byte % valid_chars.len];
+    for (randomBytes, 0..) |byte, i| {
+        verifier[i] = VALID_CHARS[byte % VALID_CHARS.len];
     }
 
     return verifier;
 }
 
 /// Generate code challenge by SHA256 hashing and base64url encoding the verifier
-fn generateCodeChallenge(allocator: std.mem.Allocator, code_verifier: []const u8) ![]u8 {
+fn generateCodeChallenge(allocator: std.mem.Allocator, codeVerifier: []const u8) ![]u8 {
     // SHA256 hash the verifier
     var hasher = std.crypto.hash.sha2.Sha256.init(.{});
-    hasher.update(code_verifier);
+    hasher.update(codeVerifier);
     const hash = hasher.finalResult();
 
     // Base64url encode the hash
-    const encoded_size = std.base64.url_safe_no_pad.Encoder.calcSize(hash.len);
-    const challenge = try allocator.alloc(u8, encoded_size);
+    const encodedSize = std.base64.url_safe_no_pad.Encoder.calcSize(hash.len);
+    const challenge = try allocator.alloc(u8, encodedSize);
     _ = std.base64.url_safe_no_pad.Encoder.encode(challenge, &hash);
 
     return challenge;
@@ -112,16 +112,16 @@ fn generateCodeChallenge(allocator: std.mem.Allocator, code_verifier: []const u8
 /// Generate a cryptographically secure random state parameter
 fn generateRandomState(allocator: std.mem.Allocator, length: usize) ![]u8 {
     // Generate random bytes
-    const random_bytes = try allocator.alloc(u8, length);
-    defer allocator.free(random_bytes);
-    std.crypto.random.bytes(random_bytes);
+    const randomBytes = try allocator.alloc(u8, length);
+    defer allocator.free(randomBytes);
+    std.crypto.random.bytes(randomBytes);
 
     // Convert to URL-safe characters
-    const valid_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    const VALID_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
     const state = try allocator.alloc(u8, length);
 
-    for (random_bytes, 0..) |byte, i| {
-        state[i] = valid_chars[byte % valid_chars.len];
+    for (randomBytes, 0..) |byte, i| {
+        state[i] = VALID_CHARS[byte % VALID_CHARS.len];
     }
 
     return state;
@@ -163,12 +163,12 @@ pub const RefreshState = struct {
 };
 
 /// Global refresh state for single-flight protection
-var GLOBAL_REFRESH_STATE = RefreshState.init();
+var global_refresh_state = RefreshState.init();
 
 /// Global content collector for complete method (not thread-safe)
-var GLOBAL_CONTENT_COLLECTOR: std.ArrayList(u8) = undefined;
-var GLOBAL_ALLOCATOR: std.mem.Allocator = undefined;
-var GLOBAL_USAGE_INFO: Usage = undefined;
+var global_content_collector: std.ArrayList(u8) = undefined;
+var global_allocator: std.mem.Allocator = undefined;
+var global_usage_info: Usage = undefined;
 
 /// Model pricing information (rates per million tokens)
 pub const ModelPricing = struct {
@@ -348,18 +348,18 @@ pub const AnthropicClient = struct {
                 if (!oauth_creds.willExpireSoon(300)) return;
 
                 // Single-flight protection
-                GLOBAL_REFRESH_STATE.mutex.lock();
-                defer GLOBAL_REFRESH_STATE.mutex.unlock();
+                global_refresh_state.mutex.lock();
+                defer global_refresh_state.mutex.unlock();
 
                 // Check again in case another thread refreshed while we waited
                 if (!oauth_creds.willExpireSoon(300)) return;
 
-                if (GLOBAL_REFRESH_STATE.in_progress) {
+                if (global_refresh_state.in_progress) {
                     return Error.RefreshInProgress;
                 }
 
-                GLOBAL_REFRESH_STATE.in_progress = true;
-                defer GLOBAL_REFRESH_STATE.in_progress = false;
+                global_refresh_state.in_progress = true;
+                defer global_refresh_state.in_progress = false;
 
                 // Perform the refresh
                 const new_creds = refreshTokens(self.allocator, oauth_creds.refresh_token) catch |err| {
@@ -393,10 +393,10 @@ pub const AnthropicClient = struct {
     /// Complete method for non-streaming requests (collects streaming response)
     pub fn complete(self: *AnthropicClient, params: CompleteParams) !CompletionResponse {
         // Set up global collector (not thread-safe, but ok for single-threaded use)
-        GLOBAL_ALLOCATOR = self.allocator;
-        GLOBAL_CONTENT_COLLECTOR = std.ArrayList(u8){};
-        defer GLOBAL_CONTENT_COLLECTOR.deinit(self.allocator);
-        GLOBAL_USAGE_INFO = Usage{ .input_tokens = 0, .output_tokens = 0 };
+        global_allocator = self.allocator;
+        global_content_collector = std.ArrayList(u8){};
+        defer global_content_collector.deinit(self.allocator);
+        global_usage_info = Usage{ .input_tokens = 0, .output_tokens = 0 };
 
         // Create stream params with our collector callback
         const stream_params = StreamParams{
@@ -418,9 +418,9 @@ pub const AnthropicClient = struct {
                         type: ?[]const u8,
                     };
 
-                    const parsed = std.json.parseFromSlice(DeltaMessage, GLOBAL_ALLOCATOR, data, .{}) catch {
+                    const parsed = std.json.parseFromSlice(DeltaMessage, global_allocator, data, .{}) catch {
                         // If not valid JSON, treat as raw text content
-                        GLOBAL_CONTENT_COLLECTOR.appendSlice(GLOBAL_ALLOCATOR, data) catch return;
+                        global_content_collector.appendSlice(global_allocator, data) catch return;
                         return;
                     };
                     defer parsed.deinit();
@@ -428,14 +428,14 @@ pub const AnthropicClient = struct {
                     // Extract content from delta if present
                     if (parsed.value.delta) |delta| {
                         if (delta.text) |text| {
-                            GLOBAL_CONTENT_COLLECTOR.appendSlice(GLOBAL_ALLOCATOR, text) catch return;
+                            global_content_collector.appendSlice(global_allocator, text) catch return;
                         }
                     }
 
                     // Extract usage if present
                     if (parsed.value.usage) |usage| {
-                        GLOBAL_USAGE_INFO.input_tokens = usage.input_tokens;
-                        GLOBAL_USAGE_INFO.output_tokens = usage.output_tokens;
+                        global_usage_info.input_tokens = usage.input_tokens;
+                        global_usage_info.output_tokens = usage.output_tokens;
                     }
                 }
             }.callback,
@@ -444,25 +444,25 @@ pub const AnthropicClient = struct {
         try self.stream(stream_params);
 
         // Create owned content copy
-        const owned_content = try self.allocator.dupe(u8, GLOBAL_CONTENT_COLLECTOR.items);
+        const owned_content = try self.allocator.dupe(u8, global_content_collector.items);
 
         return CompletionResponse{
             .content = owned_content,
-            .usage = GLOBAL_USAGE_INFO,
+            .usage = global_usage_info,
             .allocator = self.allocator,
         };
     }
 
     /// Internal method to handle streaming with automatic retry on 401
-    fn streamWithRetry(self: *AnthropicClient, params: StreamParams, is_retry: bool) Error!void {
+    fn streamWithRetry(self: *AnthropicClient, params: StreamParams, isRetry: bool) Error!void {
         // Refresh OAuth tokens if needed (unless this is already a retry)
-        if (!is_retry) {
+        if (!isRetry) {
             try self.refreshOAuthIfNeeded();
         }
 
         // Build request body
-        const body_json = try buildBodyJSON(self.allocator, params);
-        defer self.allocator.free(body_json);
+        const bodyJson = try buildBodyJson(self.allocator, params);
+        defer self.allocator.free(bodyJson);
 
         // Initialize libcurl client
         var client = curl.HTTPClient.init(self.allocator) catch |err| {
@@ -514,14 +514,14 @@ pub const AnthropicClient = struct {
             }
         };
 
-        var stream_context = Streaming.init(self.allocator, params.on_token);
-        defer stream_context.deinit();
+        var streamContext = Streaming.init(self.allocator, params.on_token);
+        defer streamContext.deinit();
 
         const req = curl.HTTPRequest{
             .method = .POST,
             .url = "https://api.anthropic.com/v1/messages",
             .headers = &headers,
-            .body = body_json,
+            .body = bodyJson,
             .timeout_ms = 120000, // 2 minute timeout for streaming
             .verify_ssl = true,
             .follow_redirects = false,
@@ -529,10 +529,10 @@ pub const AnthropicClient = struct {
         };
 
         // Perform streaming request
-        const status_code = client.streamRequest(
+        const statusCode = client.streamRequest(
             req,
             processStreamChunk,
-            &stream_context,
+            &streamContext,
         ) catch |err| {
             std.log.err("Streaming request failed: {}", .{err});
             switch (err) {
@@ -544,26 +544,26 @@ pub const AnthropicClient = struct {
         };
 
         // Check for 401 Unauthorized and retry if needed
-        if (status_code == 401 and !is_retry) {
+        if (statusCode == 401 and !isRetry) {
             std.log.warn("Received 401 Unauthorized, attempting token refresh...", .{});
             return self.streamWithRetry(params, true); // Retry once after refresh
         }
 
-        if (status_code != 200) {
-            std.log.err("HTTP error: {}", .{status_code});
+        if (statusCode != 200) {
+            std.log.err("HTTP error: {}", .{statusCode});
             return Error.APIError;
         }
 
         // Process any remaining buffered data
-        if (stream_context.buffer.items.len > 0) {
-            processSSEChunk(&stream_context, &.{}) catch |err| {
+        if (streamContext.buffer.items.len > 0) {
+            processSseChunk(&streamContext, &.{}) catch |err| {
                 std.log.warn("Error processing final streaming data: {}", .{err});
             };
         }
     }
 };
 
-fn buildBodyJSON(allocator: std.mem.Allocator, params: StreamParams) ![]u8 {
+fn buildBodyJson(allocator: std.mem.Allocator, params: StreamParams) ![]u8 {
     var buffer = std.array_list.Managed(u8).init(allocator);
     defer buffer.deinit();
 
@@ -607,40 +607,40 @@ fn processStreamChunk(chunk: []const u8, context: *anyopaque) void {
         }
     };
 
-    const stream_context: *Streaming = @ptrCast(@alignCast(context));
+    const streamContext: *Streaming = @ptrCast(@alignCast(context));
 
     // Process chunk for SSE events
-    processSSEChunk(stream_context, chunk) catch |err| {
+    processSseChunk(streamContext, chunk) catch |err| {
         std.log.warn("Error processing stream chunk: {}", .{err});
     };
 }
 
 /// Process individual SSE chunk and extract events
-fn processSSEChunk(stream_context: anytype, chunk: []const u8) !void {
+fn processSseChunk(streamContext: anytype, chunk: []const u8) !void {
     // Add chunk to buffer
-    try stream_context.buffer.appendSlice(stream_context.allocator, chunk);
+    try streamContext.buffer.appendSlice(streamContext.allocator, chunk);
 
     // Process complete SSE events (separated by double newlines)
-    while (std.mem.indexOf(u8, stream_context.buffer.items, "\n\n")) |end_pos| {
-        const event_data = stream_context.buffer.items[0..end_pos];
+    while (std.mem.indexOf(u8, streamContext.buffer.items, "\n\n")) |endPos| {
+        const eventData = streamContext.buffer.items[0..endPos];
 
         // Extract SSE data field content
-        var lines = std.mem.splitSequence(u8, event_data, "\n");
+        var lines = std.mem.splitSequence(u8, eventData, "\n");
         while (lines.next()) |line| {
-            const trimmed_line = std.mem.trim(u8, line, " \t\r");
-            if (std.mem.startsWith(u8, trimmed_line, "data: ")) {
-                const data_content = trimmed_line[6..]; // Skip "data: "
-                if (data_content.len > 0 and !std.mem.eql(u8, data_content, "[DONE]")) {
+            const trimmedLine = std.mem.trim(u8, line, " \t\r");
+            if (std.mem.startsWith(u8, trimmedLine, "data: ")) {
+                const dataContent = trimmedLine[6..]; // Skip "data: "
+                if (dataContent.len > 0 and !std.mem.eql(u8, dataContent, "[DONE]")) {
                     // Call the user callback with the SSE data
-                    stream_context.callback(data_content);
+                    streamContext.callback(dataContent);
                 }
             }
         }
 
         // Remove processed event from buffer
-        const remaining = stream_context.buffer.items[end_pos + 2 ..];
-        std.mem.copyForwards(u8, stream_context.buffer.items[0..remaining.len], remaining);
-        stream_context.buffer.shrinkRetainingCapacity(remaining.len);
+        const remaining = streamContext.buffer.items[endPos + 2 ..];
+        std.mem.copyForwards(u8, streamContext.buffer.items[0..remaining.len], remaining);
+        streamContext.buffer.shrinkRetainingCapacity(remaining.len);
     }
 }
 

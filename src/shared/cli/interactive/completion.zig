@@ -1,4 +1,4 @@
-//! Enhanced autocomplete with fuzzy search using advanced terminal capabilities
+//! Autocomplete with fuzzy search using terminal capabilities
 //! Leverages @src/term for rich terminal interactions
 
 const std = @import("std");
@@ -682,7 +682,7 @@ pub const CompletionSets = struct {
                 .withDescription("Fast, efficient Claude 3 Haiku")
                 .withCategory("model")
                 .withIcon("⚡")
-                .withPreview("Fastest model for quick tasks. 200K context window. Great for simple queries.")
+                .withPreview("Fastest model for quick tasks. 200K context window. Great for basic queries.")
                 .withHelpUrl("https://docs.anthropic.com/claude/docs/models-overview#claude-3-haiku"),
 
             CompletionItem.init("claude-3-opus-20240229")

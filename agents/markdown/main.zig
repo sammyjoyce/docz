@@ -3,6 +3,9 @@ const engine = @import("core_engine");
 const cli = @import("cli_shared");
 const spec = @import("spec.zig");
 const interactive_markdown = @import("interactive_markdown.zig");
+const improved_interactive_session = @import("improved_interactive_session.zig");
+const term = @import("../../src/shared/term/mod.zig");
+const impl = @import("Agent.zig");
 
 const CliOptions = engine.CliOptions;
 
@@ -39,30 +42,15 @@ pub fn main() !void {
 
     // Handle preview mode
     if (args_to_process.preview) {
-        const config = interactive_markdown.EditorConfig{
-            .split_position = 0.5,
-            .show_line_numbers = true,
-            .enable_syntax_highlight = true,
-            .auto_save_interval = 30,
-            .enable_word_wrap = true,
-            .max_preview_width = 80,
-            .enable_mouse = true,
-            .enable_hyperlinks = true,
-            .theme = "default",
-        };
+        // For now, fall back to the enhanced interactive UX
+        // TODO: Implement proper preview mode when interactive_markdown is fully implemented
+        try launchEnhancedInteractiveUX(gpa, args_to_process.prompt);
+        return;
+    }
 
-        // Get file path from positional arguments if provided
-        const file_path = if (args_to_process.prompt) |prompt| blk: {
-            // If prompt looks like a file path, use it
-            if (!std.mem.containsAtLeast(u8, prompt, 1, " ") and
-                (std.mem.endsWith(u8, prompt, ".md") or std.mem.endsWith(u8, prompt, ".markdown")))
-            {
-                break :blk prompt;
-            }
-            break :blk null;
-        } else null;
-
-        try interactive_markdown.launchInteractiveEditor(gpa, file_path, config);
+    // Handle enhanced interactive UX mode
+    if (args_to_process.interactive_ux) {
+        try launchEnhancedInteractiveUX(gpa, args_to_process.prompt);
         return;
     }
 
@@ -114,4 +102,28 @@ pub fn main() !void {
     };
 
     try engine.runWithOptions(gpa, options, spec.SPEC);
+}
+
+/// Launch the enhanced interactive UX with automatic terminal capability detection
+fn launchEnhancedInteractiveUX(allocator: std.mem.Allocator, initial_prompt: ?[]const u8) !void {
+    // Detect terminal capabilities to choose the best UX mode
+    var term_caps = try term.capabilities.TerminalCapabilities.init(allocator);
+    defer term_caps.deinit();
+
+    // Try to detect terminal size
+    term_caps.detectSize() catch {};
+
+    // Initialize the markdown agent
+    var agent = try impl.MarkdownAgent.initFromConfig(allocator);
+    defer agent.deinit();
+
+    // Initialize the improved interactive session
+    var session = try improved_interactive_session.ImprovedInteractiveSession.init(allocator, &agent);
+    defer session.deinit();
+
+    // If there's an initial prompt, we could set it as context, but for now we'll just run
+    _ = initial_prompt;
+
+    // Run the interactive session
+    try session.run();
 }

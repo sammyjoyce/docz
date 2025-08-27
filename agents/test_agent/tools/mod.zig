@@ -5,7 +5,7 @@ const std = @import("std");
 const tools_mod = @import("tools_shared");
 
 // Example Tool Implementation
-pub const ExampleTool = @import("ExampleTool.zig");
+pub const Example = @import("example_tool.zig");
 
 // Test tool function that demonstrates basic functionality
 pub fn testTool(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.ToolError!std.json.Value {
@@ -35,7 +35,7 @@ pub fn calculator(allocator: std.mem.Allocator, params: std.json.Value) tools_mo
     const x = firstNumber.integer;
     const y = secondNumber.integer;
 
-    const result_value: i64 = if (std.mem.eql(u8, operationString, "add"))
+    const resultValue: i64 = if (std.mem.eql(u8, operationString, "add"))
         x + y
     else if (std.mem.eql(u8, operationString, "subtract"))
         x - y
@@ -47,7 +47,7 @@ pub fn calculator(allocator: std.mem.Allocator, params: std.json.Value) tools_mo
         return tools_mod.ToolError.InvalidInput;
 
     var result = std.json.ObjectMap.init(allocator);
-    try result.put("result", std.json.Value{ .integer = result_value });
+    try result.put("result", std.json.Value{ .integer = resultValue });
     try result.put("operation", std.json.Value{ .string = operationString });
     try result.put("inputs", std.json.Value{ .array = std.json.Array.init(allocator) });
     try result.put("success", std.json.Value{ .bool = true });
@@ -57,7 +57,7 @@ pub fn calculator(allocator: std.mem.Allocator, params: std.json.Value) tools_mo
 
 /// Example tool that demonstrates the standardized tool pattern
 pub fn exampleTool(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.ToolError!std.json.Value {
-    return ExampleTool.execute(allocator, params);
+    return Example.execute(allocator, params);
 }
 
 // Tool Registry for this agent

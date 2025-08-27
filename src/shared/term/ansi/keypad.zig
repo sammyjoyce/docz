@@ -3,13 +3,11 @@ const passthrough = @import("passthrough.zig");
 
 pub const TermCaps = caps_mod.TermCaps;
 
-// Keypad Application/Normal mode
+// Keypad Application/Normal mode functions are now in ansi/mode.zig
 pub fn enableKeypadApplicationMode(writer: anytype, caps: TermCaps) !void {
-    // ESC =
-    try passthrough.writeWithPassthrough(writer, caps, "\x1b=");
+    @import("mode.zig").enableKeypadApplicationMode(writer, caps);
 }
 
 pub fn enableKeypadNumericMode(writer: anytype, caps: TermCaps) !void {
-    // ESC >
-    try passthrough.writeWithPassthrough(writer, caps, "\x1b>");
+    @import("mode.zig").enableKeypadNumericMode(writer, caps);
 }

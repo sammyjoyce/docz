@@ -1,6 +1,6 @@
 //! UI Capabilities Demo
 //!
-//! This demo showcases the new unified terminal interface, graphics manager,
+//! This demo showcases the terminal interface, graphics manager,
 //! component-based architecture, and shared UI components with progressive enhancement.
 
 const std = @import("std");
@@ -285,7 +285,7 @@ pub const UIDemo = struct {
 
         try self.uiContext.terminal.printf("\nDemonstrating adaptive graphics rendering:\n\n", .{}, null);
 
-        // Create a simple pattern demo
+        // Create a pattern demo
         if (self.uiContext.graphics) |*graphics_manager| {
             // Try to create a simple progress visualization
             const vis_style = shared.graphics.ProgressVisualizationStyle{
@@ -309,7 +309,7 @@ pub const UIDemo = struct {
 
             graphics_manager.removeImage(image_id);
 
-            try self.uiContext.terminal.printf("\n\n  ↑ Rendered using advanced graphics protocol\n", .{}, shared.createTextStyle(shared.Color{ .rgb = .{ .r = 0, .g = 255, .b = 0 } }, false));
+            try self.uiContext.terminal.printf("\n\n  ↑ Rendered using graphics protocol\n", .{}, shared.createTextStyle(shared.Color{ .rgb = .{ .r = 0, .g = 255, .b = 0 } }, false));
         } else {
             try self.showGraphicsFallback();
         }
@@ -321,7 +321,7 @@ pub const UIDemo = struct {
     fn showGraphicsFallback(self: *Self) !void {
         try self.uiContext.terminal.printf("Fallback graphics rendering:\n", .{}, shared.createTextStyle(shared.Color{ .rgb = .{ .r = 255, .g = 255, .b = 255 } }, true));
 
-        // Create a simple ASCII/Unicode art pattern
+        // Create an ASCII/Unicode art pattern
         const pattern = [_][]const u8{
             "╭─────────────────────────────────────────╮",
             "│ ████████████████████░░░░░░░░░░░░░░░░░░░░ │",

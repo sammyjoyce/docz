@@ -68,7 +68,7 @@ Local HTTP server for OAuth authorization code capture:
 - Support for multiple concurrent flows
 ```
 
-### 3. Enhanced Session Dashboard (`src/core/agent_dashboard.zig`)
+### 3. Enhanced Session Dashboard (`src/shared/tui/components/agent_dashboard.zig`)
 
 Comprehensive real-time monitoring:
 
@@ -652,7 +652,7 @@ if (config.accessibility_config.keyboard_only) {
 // agents/example/enhanced_agent.zig
 const std = @import("std");
 const enhanced = @import("../../src/shared/tui/agent_interface.zig");
-const dashboard = @import("../../src/core/agent_dashboard.zig");
+const dashboard = @import("../../src/shared/tui/components/agent_dashboard.zig");
 const oauth = @import("../../src/shared/auth/oauth/mod.zig");
 
 pub const EnhancedExampleAgent = struct {

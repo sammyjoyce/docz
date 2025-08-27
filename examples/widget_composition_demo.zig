@@ -2,8 +2,7 @@
 //! Demonstrates the improved widget composition pattern
 
 const std = @import("std");
-const widget_interface = @import("../src/shared/tui/core/widget_interface.zig");
-const unified_renderer = @import("../src/shared/tui/core/unified_renderer.zig");
+const renderer_mod = @import("../src/shared/render/Renderer.zig");
 const button_widget = @import("../src/shared/tui/widgets/core/button.zig");
 const text_input_widget = @import("../src/shared/tui/widgets/core/text_input_widget.zig");
 const container_widget = @import("../src/shared/tui/widgets/core/container_widget.zig");
@@ -14,12 +13,12 @@ pub fn main() !void {
     const allocator = gpa.allocator();
 
     // Create a renderer
-    var theme = unified_renderer.Theme.defaultDark();
-    var renderer = try unified_renderer.UnifiedRenderer.init(allocator, theme);
+    const theme = renderer_mod.Theme.defaultDark();
+    var renderer = try renderer_mod.UnifiedRenderer.init(allocator, theme);
     defer renderer.deinit();
 
     // Create some widgets
-    const text_widget = try widget_interface.WidgetBuilder.text(
+    const text_widget = try renderer_mod.WidgetBuilder.text(
         allocator,
         "Welcome to the Widget Composition Demo!",
         "welcome_text",
@@ -77,7 +76,7 @@ pub fn main() !void {
     std.debug.print("Widget composition demo completed!\n", .{});
 }
 
-fn onButtonClick(widget: ?*widget_interface.Widget) void {
+fn onButtonClick(widget: ?*renderer_mod.Widget) void {
     std.debug.print("Button clicked!\n", .{});
     if (widget) |w| {
         std.debug.print("Widget ID: {s}\n", .{w.id});

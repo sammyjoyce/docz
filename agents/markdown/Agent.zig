@@ -5,7 +5,7 @@ const Allocator = std.mem.Allocator;
 // Markdown Agent Module
 // Provides specialized functionality for markdown document creation and editing
 
-pub const MarkdownAgent = struct {
+pub const Markdown = struct {
     allocator: Allocator,
     config: Config,
 
@@ -17,29 +17,29 @@ pub const MarkdownAgent = struct {
         agent_config: @import("config_shared").AgentConfig,
 
         // Add agent-specific configuration fields here
-        text_wrap_width: u32 = 80,
-        heading_style: []const u8 = "atx",
-        list_style: []const u8 = "dash",
-        code_fence_style: []const u8 = "backtick",
-        table_alignment: []const u8 = "auto",
-        front_matter_format: []const u8 = "yaml",
-        toc_style: []const u8 = "github",
-        link_style: []const u8 = "reference",
+        textWrapWidth: u32 = 80,
+        headingStyle: []const u8 = "atx",
+        listStyle: []const u8 = "dash",
+        codeFenceStyle: []const u8 = "backtick",
+        tableAlignment: []const u8 = "auto",
+        frontMatterFormat: []const u8 = "yaml",
+        tocStyle: []const u8 = "github",
+        linkStyle: []const u8 = "reference",
 
         /// Load configuration from file with defaults fallback
         pub fn loadFromFile(allocator: Allocator, path: []const u8) !Config {
             const config_utils = @import("config_shared");
-            const defaults = Config{
-                .agent_config = config_utils.createValidatedAgentConfig("markdown", "Markdown document processing agent", "Developer"),
-                .text_wrap_width = 80,
-                .heading_style = "atx",
-                .list_style = "dash",
-                .code_fence_style = "backtick",
-                .table_alignment = "auto",
-                .front_matter_format = "yaml",
-                .toc_style = "github",
-                .link_style = "reference",
-            };
+        const defaults = Config{
+            .agent_config = config_utils.createValidatedAgentConfig("markdown", "Markdown document processing agent", "Developer"),
+            .textWrapWidth = 80,
+            .headingStyle = "atx",
+            .listStyle = "dash",
+            .codeFenceStyle = "backtick",
+            .tableAlignment = "auto",
+            .frontMatterFormat = "yaml",
+            .tocStyle = "github",
+            .linkStyle = "reference",
+        };
             return config_utils.loadWithDefaults(Config, allocator, path, defaults);
         }
 
@@ -50,14 +50,14 @@ pub const MarkdownAgent = struct {
         }
     };
 
-    pub const DocumentTemplate = struct {
+    pub const Document = struct {
         name: []const u8,
-        front_matter: json.Value,
+        frontMatter: json.Value,
         sections: [][]const u8,
     };
 
     /// Error set for markdown agent operations
-    pub const AgentError = error{
+    pub const Error = error{
         InvalidInput,
         MissingParameter,
         OutOfMemory,
@@ -76,10 +76,10 @@ pub const MarkdownAgent = struct {
 
     /// Initialize agent with configuration loaded from file
     pub fn initFromConfig(allocator: Allocator) !Self {
-        const config_path = try Config.getConfigPath(allocator);
-        defer allocator.free(config_path);
+        const configPath = try Config.getConfigPath(allocator);
+        defer allocator.free(configPath);
 
-        const config = try Config.loadFromFile(allocator, config_path);
+        const config = try Config.loadFromFile(allocator, configPath);
         return Self.init(allocator, config);
     }
 
@@ -90,8 +90,8 @@ pub const MarkdownAgent = struct {
 
     /// Load system prompt from file or generate dynamically
     pub fn loadSystemPrompt(self: *Self) ![]const u8 {
-        const prompt_path = "agents/markdown/system_prompt.txt";
-        const file = std.fs.cwd().openFile(prompt_path, .{}) catch |err| {
+        const promptPath = "agents/markdown/system_prompt.txt";
+        const file = std.fs.cwd().openFile(promptPath, .{}) catch |err| {
             switch (err) {
                 error.FileNotFound => {
                     // Return a default prompt if file doesn't exist
@@ -122,8 +122,8 @@ pub const MarkdownAgent = struct {
                 i += start;
 
                 if (std.mem.indexOf(u8, template[i..], "}")) |end| {
-                    const var_name = template[i + 1 .. i + end];
-                    const replacement = try self.getTemplateVariableValue(var_name);
+                    const varName = template[i + 1 .. i + end];
+                    const replacement = try self.getTemplateVariableValue(varName);
                     defer self.allocator.free(replacement);
                     try result.appendSlice(self.allocator, replacement);
                     i += end + 1;
@@ -143,50 +143,50 @@ pub const MarkdownAgent = struct {
     }
 
     /// Override base agent method to provide config-aware template variable processing
-    pub fn getTemplateVariableValue(self: *Self, var_name: []const u8) ![]const u8 {
+    pub fn getTemplateVariableValue(self: *Self, varName: []const u8) ![]const u8 {
         const cfg = &self.config.agent_config;
 
-        if (std.mem.eql(u8, var_name, "agent_name")) {
+        if (std.mem.eql(u8, varName, "agent_name")) {
             return try self.allocator.dupe(u8, cfg.agentInfo.name);
-        } else if (std.mem.eql(u8, var_name, "agent_version")) {
+        } else if (std.mem.eql(u8, varName, "agent_version")) {
             return try self.allocator.dupe(u8, cfg.agentInfo.version);
-        } else if (std.mem.eql(u8, var_name, "agent_description")) {
+        } else if (std.mem.eql(u8, varName, "agent_description")) {
             return try self.allocator.dupe(u8, cfg.agentInfo.description);
-        } else if (std.mem.eql(u8, var_name, "agent_author")) {
+        } else if (std.mem.eql(u8, varName, "agent_author")) {
             return try self.allocator.dupe(u8, cfg.agentInfo.author);
-        } else if (std.mem.eql(u8, var_name, "debug_enabled")) {
+        } else if (std.mem.eql(u8, varName, "debug_enabled")) {
             return try self.allocator.dupe(u8, if (cfg.defaults.enableDebugLogging) "enabled" else "disabled");
-        } else if (std.mem.eql(u8, var_name, "verbose_enabled")) {
+        } else if (std.mem.eql(u8, varName, "verbose_enabled")) {
             return try self.allocator.dupe(u8, if (cfg.defaults.enableVerboseOutput) "enabled" else "disabled");
-        } else if (std.mem.eql(u8, var_name, "custom_tools_enabled")) {
+        } else if (std.mem.eql(u8, varName, "custom_tools_enabled")) {
             return try self.allocator.dupe(u8, if (cfg.features.enableCustomTools) "enabled" else "disabled");
-        } else if (std.mem.eql(u8, var_name, "file_operations_enabled")) {
+        } else if (std.mem.eql(u8, varName, "file_operations_enabled")) {
             return try self.allocator.dupe(u8, if (cfg.features.enableFileOperations) "enabled" else "disabled");
-        } else if (std.mem.eql(u8, var_name, "network_access_enabled")) {
+        } else if (std.mem.eql(u8, varName, "network_access_enabled")) {
             return try self.allocator.dupe(u8, if (cfg.features.enableNetworkAccess) "enabled" else "disabled");
-        } else if (std.mem.eql(u8, var_name, "system_commands_enabled")) {
+        } else if (std.mem.eql(u8, varName, "system_commands_enabled")) {
             return try self.allocator.dupe(u8, if (cfg.features.enableSystemCommands) "enabled" else "disabled");
-        } else if (std.mem.eql(u8, var_name, "max_input_size")) {
+        } else if (std.mem.eql(u8, varName, "max_input_size")) {
             return try std.fmt.allocPrint(self.allocator, "{d}", .{cfg.limits.maxInputSize});
-        } else if (std.mem.eql(u8, var_name, "max_output_size")) {
+        } else if (std.mem.eql(u8, varName, "max_output_size")) {
             return try std.fmt.allocPrint(self.allocator, "{d}", .{cfg.limits.maxOutputSize});
-        } else if (std.mem.eql(u8, var_name, "max_processing_time")) {
+        } else if (std.mem.eql(u8, varName, "max_processing_time")) {
             return try std.fmt.allocPrint(self.allocator, "{d}", .{cfg.limits.maxProcessingTimeMs});
-        } else if (std.mem.eql(u8, var_name, "current_date")) {
+        } else if (std.mem.eql(u8, varName, "current_date")) {
             const now = std.time.timestamp();
-            const epoch_seconds = std.time.epoch.EpochSeconds{ .secs = @intCast(now) };
-            const epoch_day = epoch_seconds.getEpochDay();
-            const year_day = epoch_day.calculateYearDay();
-            const month_day = year_day.calculateMonthDay();
+            const epochSeconds = std.time.epoch.EpochSeconds{ .secs = @intCast(now) };
+            const epochDay = epochSeconds.getEpochDay();
+            const yearDay = epochDay.calculateYearDay();
+            const monthDay = yearDay.calculateMonthDay();
 
             return try std.fmt.allocPrint(self.allocator, "{d:0>4}-{d:0>2}-{d:0>2}", .{
-                year_day.year,
-                @intFromEnum(month_day.month),
-                month_day.day_index + 1,
+                yearDay.year,
+                @intFromEnum(monthDay.month),
+                monthDay.day_index + 1,
             });
         } else {
             // Unknown variable, return as-is with braces
-            return try std.fmt.allocPrint(self.allocator, "{{{s}}}", .{var_name});
+            return try std.fmt.allocPrint(self.allocator, "{{{s}}}", .{varName});
         }
     }
 
@@ -210,4 +210,4 @@ pub const MarkdownAgent = struct {
 // and registered in spec.zig. The actual implementations remain in the tools/ directory
 // but are called through the standardized interface.
 
-// MarkdownAgent is already exported as pub const above
+// Markdown is already exported as pub const above

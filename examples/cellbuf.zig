@@ -1,14 +1,15 @@
 const std = @import("std");
 const components = @import("../src/shared/components/mod.zig");
+const tab_processor = @import("../src/shared/term/tab_processor.zig");
 
-/// Demonstration of the enhanced cellbuf functionality
-/// Advanced terminal cell buffer features with Zig implementation
+/// Demonstration of the cellbuf functionality
+/// Terminal cell buffer features with Zig implementation
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    // Create a unified cell buffer
+    // Create a cell buffer
     var buffer = try components.CellBuffer.init(allocator, 40, 10);
     defer buffer.deinit();
 
@@ -33,6 +34,10 @@ pub fn main() !void {
     // Demo 5: Advanced styling
     std.debug.print("\n5. Advanced styling features:\n");
     try demoStyling(&buffer, allocator);
+
+    // Demo 6: Tab processing
+    std.debug.print("\n6. Tab character processing:\n");
+    try demoTabProcessing(&buffer, allocator);
 
     std.debug.print("\nDemo completed!\n");
 }
@@ -223,4 +228,73 @@ fn demoStyling(buffer: *components.CellBuffer, allocator: std.mem.Allocator) !vo
     const ansi_seq = try test_style.toAnsiSeq(allocator);
     defer allocator.free(ansi_seq);
     std.debug.print("\nGenerated ANSI sequence: {s}\n", .{ansi_seq});
+}
+
+fn demoTabProcessing(buffer: *components.CellBuffer, allocator: std.mem.Allocator) !void {
+    buffer.clear();
+
+    // Demo tab expansion with different tab widths
+    const tab_configs = [_]tab_processor.TabConfig{
+        .{ .tab_width = 4, .expand_tabs = true },
+        .{ .tab_width = 8, .expand_tabs = true },
+    };
+
+    const test_texts = [_][]const u8{
+        "Hello\tWorld\t!",
+        "\tIndented\ttext",
+        "Col1\tCol2\tCol3",
+    };
+
+    for (tab_configs, 0..) |config, config_idx| {
+        std.debug.print("\nTab width {d}:\n", .{config.tab_width});
+
+        for (test_texts, 0..) |text, text_idx| {
+            // Expand tabs using the tab processor
+            const expanded = try tab_processor.expandTabs(allocator, text, config);
+            defer allocator.free(expanded);
+
+            // Calculate display width
+            const width = tab_processor.displayWidth(text, config);
+
+            std.debug.print("  Original: '{s}' (display width: {d})\n", .{text, width});
+            std.debug.print("  Expanded: '{s}'\n", .{expanded});
+
+            // Render to cell buffer for demonstration
+            buffer.clear();
+            var x: usize = 0;
+            for (expanded) |char| {
+                const cell = components.newCell(char, 1);
+                _ = buffer.setCellFull(x, config_idx * 3 + text_idx, cell);
+                x += 1;
+            }
+        }
+    }
+
+    // Demonstrate tab stop
+    std.debug.print("\nTab Stop Demo:\n");
+    var tab_manager = try tab_processor.TabStop.init(allocator, 80);
+    defer tab_manager.deinit();
+
+    // Show default tab stops
+    std.debug.print("  Default tab stops (every 8 columns):\n");
+    var col: usize = 0;
+    while (col < 40) {
+        const next_stop = tab_manager.nextTabStop(col);
+        const spaces = tab_manager.spacesToNextTabStop(col);
+        std.debug.print("    Column {d} -> next stop at {d} (spaces: {d})\n", .{col, next_stop, spaces});
+        col = next_stop + 1;
+    }
+
+    // Set custom tab stop
+    tab_manager.setTabStop(12);
+    std.debug.print("  After setting custom tab stop at column 12:\n");
+    const custom_next = tab_manager.nextTabStop(10);
+    const custom_spaces = tab_manager.spacesToNextTabStop(10);
+    std.debug.print("    Column 10 -> next stop at {d} (spaces: {d})\n", .{custom_next, custom_spaces});
+
+    // Render final buffer state
+    std.debug.print("\nFinal cell buffer content:\n");
+    const output = try buffer.toString(allocator);
+    defer allocator.free(output);
+    std.debug.print("{s}\n", .{output});
 }

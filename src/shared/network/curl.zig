@@ -96,17 +96,17 @@ pub const HTTPClient = struct {
         defer c.curl_easy_cleanup(handle);
 
         // Response data collectors
-        var response_body = std.ArrayListUnmanaged(u8){};
-        defer response_body.deinit(self.allocator); // Will be moved to HTTPResponse
+        var responseBody = std.ArrayListUnmanaged(u8){};
+        defer responseBody.deinit(self.allocator); // Will be moved to HTTPResponse
 
-        var response_headers = std.StringHashMap([]const u8).init(self.allocator);
+        var responseHeaders = std.StringHashMap([]const u8).init(self.allocator);
         errdefer {
-            var iter = response_headers.iterator();
+            var iter = responseHeaders.iterator();
             while (iter.next()) |entry| {
                 self.allocator.free(entry.key_ptr.*);
                 self.allocator.free(entry.value_ptr.*);
             }
-            response_headers.deinit();
+            responseHeaders.deinit();
         }
 
         // Configure URL
@@ -187,17 +187,17 @@ pub const HTTPClient = struct {
 
         // Configure response body callback
         const BodyCallback = struct {
-            response_body: *std.ArrayListUnmanaged(u8),
+            responseBody: *std.ArrayListUnmanaged(u8),
             allocator: std.mem.Allocator,
         };
 
-        const body_context = BodyCallback{
-            .response_body = &response_body,
+        const bodyContext = BodyCallback{
+            .responseBody = &responseBody,
             .allocator = self.allocator,
         };
 
         _ = c.curl_easy_setopt(handle, c.CURLOPT_WRITEFUNCTION, writeCallback);
-        _ = c.curl_easy_setopt(handle, c.CURLOPT_WRITEDATA, @as(*const anyopaque, @ptrCast(&body_context)));
+        _ = c.curl_easy_setopt(handle, c.CURLOPT_WRITEDATA, @as(*const anyopaque, @ptrCast(&bodyContext)));
 
         // Configure response header callback
         const HeaderCallback = struct {
@@ -205,13 +205,13 @@ pub const HTTPClient = struct {
             allocator: std.mem.Allocator,
         };
 
-        const header_context = HeaderCallback{
-            .headers = &response_headers,
+        const headerContext = HeaderCallback{
+            .headers = &responseHeaders,
             .allocator = self.allocator,
         };
 
         _ = c.curl_easy_setopt(handle, c.CURLOPT_HEADERFUNCTION, headerCallback);
-        _ = c.curl_easy_setopt(handle, c.CURLOPT_HEADERDATA, @as(*const anyopaque, @ptrCast(&header_context)));
+        _ = c.curl_easy_setopt(handle, c.CURLOPT_HEADERDATA, @as(*const anyopaque, @ptrCast(&headerContext)));
 
         // Perform request
         const result = c.curl_easy_perform(handle);
@@ -227,13 +227,13 @@ pub const HTTPClient = struct {
         }
 
         // Get response status code
-        var status_code: c_long = 0;
-        _ = c.curl_easy_getinfo(handle, c.CURLINFO_RESPONSE_CODE, &status_code);
+        var statusCode: c_long = 0;
+        _ = c.curl_easy_getinfo(handle, c.CURLINFO_RESPONSE_CODE, &statusCode);
 
         return HTTPResponse{
-            .status_code = @intCast(status_code),
-            .headers = response_headers,
-            .body = try response_body.toOwnedSlice(self.allocator),
+            .status_code = @intCast(statusCode),
+            .headers = responseHeaders,
+            .body = try responseBody.toOwnedSlice(self.allocator),
             .allocator = self.allocator,
         };
     }
@@ -368,19 +368,19 @@ fn writeCallback(
     contents: [*c]u8,
     size: usize,
     nmemb: usize,
-    user_data: ?*anyopaque,
+    userData: ?*anyopaque,
 ) callconv(.c) usize {
-    const real_size = size * nmemb;
+    const realSize = size * nmemb;
     const BodyCallback = struct {
-        response_body: *std.ArrayList(u8),
+        responseBody: *std.ArrayList(u8),
         allocator: std.mem.Allocator,
     };
-    const context: *const BodyCallback = @ptrCast(@alignCast(user_data.?));
+    const context: *const BodyCallback = @ptrCast(@alignCast(userData.?));
 
-    const data_slice = contents[0..real_size];
-    context.response_body.appendSlice(context.allocator, data_slice) catch return 0; // Signal error by returning 0
+    const dataSlice = contents[0..realSize];
+    context.responseBody.appendSlice(context.allocator, dataSlice) catch return 0; // Signal error by returning 0
 
-    return real_size;
+    return realSize;
 }
 
 // libcurl callback for response headers
@@ -388,40 +388,40 @@ fn headerCallback(
     buffer: [*c]u8,
     size: usize,
     nitems: usize,
-    user_data: ?*anyopaque,
+    userData: ?*anyopaque,
 ) callconv(.c) usize {
-    const real_size = size * nitems;
+    const realSize = size * nitems;
     const HeaderCallback = struct {
         headers: *std.StringHashMap([]const u8),
         allocator: std.mem.Allocator,
     };
-    const context: *const HeaderCallback = @ptrCast(@alignCast(user_data.?));
+    const context: *const HeaderCallback = @ptrCast(@alignCast(userData.?));
 
-    const header_slice = buffer[0..real_size];
-    const header_str = std.mem.trim(u8, header_slice, " \t\r\n");
+    const headerSlice = buffer[0..realSize];
+    const headerStr = std.mem.trim(u8, headerSlice, " \t\r\n");
 
-    if (header_str.len == 0) return real_size; // Skip empty headers
+    if (headerStr.len == 0) return realSize; // Skip empty headers
 
     // Parse "Name: Value" header format
-    if (std.mem.indexOf(u8, header_str, ":")) |colon_pos| {
-        const name = std.mem.trim(u8, header_str[0..colon_pos], " \t");
-        const value = std.mem.trim(u8, header_str[colon_pos + 1 ..], " \t");
+    if (std.mem.indexOf(u8, headerStr, ":")) |colonPos| {
+        const name = std.mem.trim(u8, headerStr[0..colonPos], " \t");
+        const value = std.mem.trim(u8, headerStr[colonPos + 1 ..], " \t");
 
         // Store header (allocate owned strings)
-        const owned_name = context.allocator.dupe(u8, name) catch return 0;
-        const owned_value = context.allocator.dupe(u8, value) catch {
-            context.allocator.free(owned_name);
+        const ownedName = context.allocator.dupe(u8, name) catch return 0;
+        const ownedValue = context.allocator.dupe(u8, value) catch {
+            context.allocator.free(ownedName);
             return 0;
         };
 
-        context.headers.put(owned_name, owned_value) catch {
-            context.allocator.free(owned_name);
-            context.allocator.free(owned_value);
+        context.headers.put(ownedName, ownedValue) catch {
+            context.allocator.free(ownedName);
+            context.allocator.free(ownedValue);
             return 0;
         };
     }
 
-    return real_size;
+    return realSize;
 }
 
 // libcurl callback for streaming response data
@@ -429,17 +429,17 @@ fn streamWriteCallback(
     contents: [*c]u8,
     size: usize,
     nmemb: usize,
-    user_data: ?*anyopaque,
+    userData: ?*anyopaque,
 ) callconv(.c) usize {
-    const real_size = size * nmemb;
+    const realSize = size * nmemb;
     const StreamingCallback = struct {
         callback: StreamCallback,
         context: *anyopaque,
     };
-    const context: *const StreamingCallback = @ptrCast(@alignCast(user_data.?));
+    const context: *const StreamingCallback = @ptrCast(@alignCast(userData.?));
 
-    const data_slice = contents[0..real_size];
-    context.callback(data_slice, context.context);
+    const dataSlice = contents[0..realSize];
+    context.callback(dataSlice, context.context);
 
-    return real_size;
+    return realSize;
 }

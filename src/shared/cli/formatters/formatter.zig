@@ -1,4 +1,4 @@
-//! Simplified enhanced CLI output formatter
+//! CLI output formatter
 //! Provides rich formatting, adaptive colors using @src/term capabilities
 
 const std = @import("std");
@@ -7,7 +7,7 @@ const term_mod = @import("../../term/mod.zig");
 const unified = term_mod.unified;
 
 // Minimal TUI replacements
-const SimpleTui = struct {
+const BasicTui = struct {
     fn getTerminalSize() struct { width: u16, height: u16 } {
         return .{ .width = 80, .height = 24 };
     }
@@ -15,7 +15,7 @@ const SimpleTui = struct {
     const TerminalSize = struct { width: u16, height: u16 };
 };
 
-const tui = SimpleTui;
+const tui = BasicTui;
 
 /// Enhanced CLI formatter with terminal capability awareness
 pub const CliFormatter = struct {

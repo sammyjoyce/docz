@@ -1,10 +1,10 @@
-//! Enhanced Select Menu with Advanced Terminal Capabilities
+//! Select Menu with Terminal Capabilities
 //! Supports mouse interaction, rich graphics, hyperlinks, and modern terminal features
 //! while maintaining backward compatibility with basic terminals.
 
 const std = @import("std");
 const components = @import("../../../components/mod.zig");
-const input = @import("input.zig");
+const input = @import("../../../components/input.zig");
 const term_shared = @import("../../../term/mod.zig");
 const term_ansi = term_shared.ansi.color;
 const term_cursor = term_shared.ansi.cursor;
@@ -105,25 +105,25 @@ pub const SelectMenuItem = struct {
 /// Select Menu with mouse support and rich terminal features
 pub const SelectMenu = struct {
     allocator: Allocator,
-    inputManager: *Input,
+    input_manager: *Input,
     caps: term_caps.TermCaps,
     graphics: ?*GraphicsManager,
 
     // Menu data
     items: std.array_list.Managed(SelectMenuItem),
-    filtered_items: std.array_list.Managed(usize), // Indices into items array
+    filteredItems: std.array_list.Managed(usize), // Indices into items array
     title: []const u8,
     selection_mode: SelectionMode,
-    current_index: usize,
-    search_query: std.array_list.Managed(u8),
+    currentIndex: usize,
+    searchQuery: std.array_list.Managed(u8),
 
     // Display configuration
-    show_search: bool,
-    show_descriptions: bool,
-    show_icons: bool,
-    show_mouse_hints: bool,
-    max_visible_items: usize,
-    scroll_offset: usize,
+    showSearch: bool,
+    showDescriptions: bool,
+    showIcons: bool,
+    showMouseHints: bool,
+    maxVisibleItems: usize,
+    scrollOffset: usize,
 
     // Mouse interaction
     menu_start_row: u32,
@@ -144,20 +144,20 @@ pub const SelectMenu = struct {
 
         return SelectMenu{
             .allocator = allocator,
-            .inputManager = input_mgr,
+            .input_manager = input_mgr,
             .caps = caps,
             .graphics = null,
             .items = std.array_list.Managed(SelectMenuItem).init(allocator),
-            .filtered_items = std.array_list.Managed(usize).init(allocator),
+            .filteredItems = std.array_list.Managed(usize).init(allocator),
             .title = title,
-            .selection_mode = selection_mode,
-            .current_index = 0,
-            .search_query = std.array_list.Managed(u8).init(allocator),
-            .show_search = false,
-            .show_descriptions = true,
-            .show_icons = true,
-            .show_mouse_hints = caps.supportsEnhancedMouse,
-            .max_visible_items = 10,
+            .selectionMode = selection_mode,
+            .currentIndex = 0,
+            .searchQuery = std.array_list.Managed(u8).init(allocator),
+            .showSearch = false,
+            .showDescriptions = true,
+            .showIcons = true,
+            .showMouseHints = caps.supportsEnhancedMouse,
+            .maxVisibleItems = 10,
             .scroll_offset = 0,
             .menu_start_row = 0,
             .menu_start_col = 0,
@@ -516,7 +516,7 @@ pub const SelectMenu = struct {
         try writer.writeAll("┤\n");
     }
 
-    /// Handle input events with enhanced keyboard and mouse support
+    /// Handle input events with keyboard and mouse support
     fn handleInput(self: *SelectMenu, event: InputEvent) !MenuAction {
         switch (event) {
             .key => |key_event| {

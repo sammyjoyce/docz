@@ -1,13 +1,13 @@
-//! Enhanced Color Management System
-//! Implements advanced color conversion and management techniques
-//! Provides superior perceptual color matching and palette optimization
+//! Color Management System
+//! Implements color conversion and management techniques
+//! Provides perceptual color matching and palette optimization
 
 const std = @import("std");
 const color_palette = @import("color_palette.zig");
 
-/// Enhanced Color Manager with HSLuv-based algorithms
-/// Provides sophisticated color conversion and palette management
-pub const EnhancedColor = struct {
+/// Color Manager with HSLuv-based algorithms
+/// Provides color conversion and palette management
+pub const Color = struct {
     allocator: std.mem.Allocator,
     palette: color_palette.ANSI256Palette,
     color_cache: std.AutoHashMap(color_palette.RGBColor, color_palette.TerminalColor),
@@ -26,14 +26,14 @@ pub const EnhancedColor = struct {
         self.color_cache.deinit();
     }
 
-    /// Convert color using enhanced HSLuv-based algorithm with caching
+    /// Convert color using HSLuv-based algorithm with caching
     pub fn convertColorCached(self: *Self, color: color_palette.RGBColor) !color_palette.TerminalColor {
         // Check cache first
         if (self.color_cache.get(color)) |cached| {
             return cached;
         }
 
-        // Convert using enhanced algorithm
+        // Convert using algorithm
         const converted = color_palette.TerminalColor{ .ansi256 = self.palette.convertTo256Enhanced(color) };
 
         // Cache the result
@@ -238,11 +238,11 @@ fn hsluvToRGB(hsluv: anytype) color_palette.RGBColor {
 }
 
 // Tests for enhanced color management
-test "enhanced color conversion caching" {
+test "color conversion caching" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    var manager = EnhancedColor.init(allocator);
+    var manager = Color.init(allocator);
     defer manager.deinit();
 
     const red = color_palette.RGBColor{ .r = 255, .g = 0, .b = 0 };
@@ -260,7 +260,7 @@ test "color distribution analysis" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    var manager = EnhancedColor.init(allocator);
+    var manager = Color.init(allocator);
     defer manager.deinit();
 
     const colors = [_]color_palette.RGBColor{
@@ -282,7 +282,7 @@ test "palette optimization" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    var manager = EnhancedColor.init(allocator);
+    var manager = Color.init(allocator);
     defer manager.deinit();
 
     const colors = [_]color_palette.RGBColor{

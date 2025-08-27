@@ -113,8 +113,24 @@ Clean separation of concerns through service interfaces:
 - **Tools Module** (`src/shared/tools/`): Enhanced tools registry with metadata support, categorization, agent attribution, JSON tools, automatic registration, and clean integration between shared and agent-specific tools
 - **Auth Module** (`src/shared/auth/`): Authentication system providing OAuth and API key support with core authentication logic, OAuth 2.0 implementation, terminal UI for authentication flows, and command-line authentication commands
 - **Render Module** (`src/shared/render/`): Rendering and graphics capabilities with chart/table/progress bar rendering, quality-aware rendering system, and rendering optimization levels
-- **Components Module** (`src/shared/components/`): Shared UI components that work across CLI and TUI contexts
-- **Term Module** (`src/shared/term/`): Terminal capabilities and low-level terminal handling
+- **Components Module** (`src/shared/components/`): Shared UI components that work across CLI and TUI contexts, including the unified input system that provides high-level input abstraction
+- **Term Module** (`src/shared/term/`): Terminal capabilities and low-level terminal handling, including primitive input parsing and protocol handling
+
+### Input System Layering
+
+The input system follows a clear three-layer architecture:
+
+- **Low-level Primitives** (`src/shared/term/input/`): Raw input parsing, key definitions, mouse protocol handling, and terminal capability detection
+- **Unified Abstraction** (`src/shared/components/input.zig`): High-level InputManager with consistent API, event buffering, feature management, and cross-platform compatibility
+- **TUI Features** (`src/shared/tui/core/input/`): TUI-specific functionality including focus management, widget input routing, advanced mouse interactions, and event dispatching
+
+**Dependency Flow**: `term/input/` → `components/input.zig` → `tui/core/input/`
+
+This layered approach ensures:
+- Clean separation of concerns between primitive parsing and high-level features
+- Reusable input handling across CLI and TUI applications
+- Easy testing and maintenance of input functionality
+- No duplication between layers
 
 ## Module Architecture
 

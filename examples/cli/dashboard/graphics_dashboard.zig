@@ -1,15 +1,15 @@
-//! Graphics-Enhanced Dashboard Component
-//! Leverages advanced terminal graphics capabilities to display rich data visualizations
+//! Graphics Dashboard Component
+//! Leverages terminal graphics capabilities to display rich data visualizations
 //! Features progressive enhancement: Kitty Graphics → Sixel → Unicode → ASCII
 
 const std = @import("std");
-const unified_terminal = @import("../core/unified_terminal.zig");
-const rich_progress = @import("../../src/cli/components/base/rich_progress_bar.zig");
+const terminal_mod = @import("../../src/shared/term/unified.zig");
+const rich_progress = @import("../../src/shared/components/progress.zig");
 
 const Allocator = std.mem.Allocator;
-const UnifiedTerminal = unified_terminal.UnifiedTerminal;
-const Color = unified_terminal.Color;
-const RichProgressBar = rich_progress.RichProgressBar;
+const Terminal = terminal_mod.Terminal;
+const Color = terminal_mod.Color;
+const ProgressRenderer = rich_progress.ProgressRenderer;
 
 /// Data point for dashboard metrics
 pub const Point = struct {
@@ -35,7 +35,7 @@ pub const GraphicsDashboard = struct {
     const Self = @This();
 
     allocator: Allocator,
-    terminal: UnifiedTerminal,
+    terminal: Terminal,
     config: DashboardConfig,
 
     // Data storage
@@ -43,7 +43,7 @@ pub const GraphicsDashboard = struct {
     metrics: std.HashMap([]const u8, Metric),
 
     // Visual components
-    progress_bars: std.ArrayList(*RichProgressBar),
+    progress_renderers: std.ArrayList(*ProgressRenderer),
 
     // State
     last_update: i64,
@@ -72,7 +72,7 @@ pub const GraphicsDashboard = struct {
     };
 
     pub fn init(allocator: Allocator, config: DashboardConfig) !Self {
-        const terminal = try UnifiedTerminal.init(allocator);
+        const terminal = try Terminal.init(allocator);
 
         return Self{
             .allocator = allocator,
@@ -185,7 +185,7 @@ pub const GraphicsDashboard = struct {
         try self.renderFooter(size);
     }
 
-    fn renderHeader(self: *Self, size: UnifiedTerminal.Size) !void {
+    fn renderHeader(self: *Self, size: Terminal.Size) !void {
         try self.terminal.moveCursor(1, 1);
         try self.terminal.setForeground(Color.CYAN);
 
@@ -234,7 +234,7 @@ pub const GraphicsDashboard = struct {
         try w.writeByte('\n');
     }
 
-    fn renderMetrics(self: *Self, size: UnifiedTerminal.Size) !void {
+    fn renderMetrics(self: *Self, size: Terminal.Size) !void {
         const w = self.terminal.writer();
 
         if (self.metrics.count() == 0) return;
@@ -269,7 +269,7 @@ pub const GraphicsDashboard = struct {
         try self.terminal.resetStyles();
     }
 
-    fn renderCharts(self: *Self, size: UnifiedTerminal.Size) !void {
+    fn renderCharts(self: *Self, size: Terminal.Size) !void {
         const w = self.terminal.writer();
 
         if (self.data_sets.count() == 0) return;
@@ -408,7 +408,7 @@ pub const GraphicsDashboard = struct {
         try self.terminal.resetStyles();
     }
 
-    fn renderProgressBars(self: *Self, size: UnifiedTerminal.Size) !void {
+    fn renderProgressBars(self: *Self, size: Terminal.Size) !void {
         _ = size; // Size not used in current implementation
         const w = self.terminal.writer();
 
@@ -425,7 +425,7 @@ pub const GraphicsDashboard = struct {
         }
     }
 
-    fn renderFooter(self: *Self, size: UnifiedTerminal.Size) !void {
+    fn renderFooter(self: *Self, size: Terminal.Size) !void {
         const w = self.terminal.writer();
 
         try self.terminal.moveCursor(size.height - 1, 1);

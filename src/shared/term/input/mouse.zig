@@ -1,6 +1,6 @@
 const std = @import("std");
 
-/// Enhanced mouse support with pixel-level precision and advanced features
+/// Mouse support with pixel-level precision and features
 /// Provides comprehensive mouse event handling including SGR, pixel coordinates, and gesture recognition
 /// Based on modern terminal mouse reporting capabilities
 /// Mouse tracking modes
@@ -16,48 +16,12 @@ pub const MouseMode = enum {
     dec_locator, // DEC locator mode
 };
 
-/// Extended mouse button types
-pub const MouseButton = enum(u8) {
-    none = 255,
-    left = 0,
-    middle = 1,
-    right = 2,
-
-    // Wheel events
-    wheel_up = 64,
-    wheel_down = 65,
-    wheel_left = 66,
-    wheel_right = 67,
-
-    // Additional buttons (if supported)
-    button4 = 3,
-    button5 = 4,
-    button6 = 5,
-    button7 = 6,
-
-    // Touch/stylus events (some terminals)
-    touch_1 = 128,
-    touch_2 = 129,
-    touch_3 = 130,
-};
-
-/// Mouse action types with enhanced precision
-pub const MouseAction = enum {
-    press,
-    release,
-    drag,
-    motion,
-    wheel,
-    double_click,
-    triple_click,
-
-    // Touch/gesture events
-    touch,
-    gesture_start,
-    gesture_end,
-    pinch,
-    zoom,
-};
+// Re-export types from the consolidated types module
+const types = @import("types.zig");
+pub const MouseButton = types.MouseButton;
+pub const MouseAction = types.MouseAction;
+pub const MouseEvent = types.MouseEvent;
+pub const Modifiers = types.Modifiers;
 
 /// Mouse event modifiers
 pub const MouseModifiers = packed struct {
@@ -91,68 +55,6 @@ pub const MouseModifiers = packed struct {
         if (self.capslock) result |= 0x40;
         if (self.numlock) result |= 0x80;
         return result;
-    }
-};
-
-/// Enhanced mouse event with pixel precision and metadata
-pub const MouseEvent = struct {
-    button: MouseButton,
-    action: MouseAction,
-
-    // Coordinates
-    col: u32, // Character column (0-based)
-    row: u32, // Character row (0-based)
-    pixel_x: ?u32 = null, // Pixel X coordinate (if available)
-    pixel_y: ?u32 = null, // Pixel Y coordinate (if available)
-
-    // Event metadata
-    modifiers: MouseModifiers = .{},
-    timestamp: i64, // Unix timestamp in microseconds
-
-    // Multi-click detection
-    click_count: u8 = 1, // 1=single, 2=double, 3=triple, etc.
-
-    // Gesture information
-    velocity_x: ?f32 = null, // Horizontal velocity (pixels/second)
-    velocity_y: ?f32 = null, // Vertical velocity (pixels/second)
-    pressure: ?f32 = null, // Touch pressure (0.0-1.0, if available)
-
-    // Source information
-    source: EventSource = .mouse,
-
-    pub const EventSource = enum {
-        mouse,
-        touchpad,
-        touchscreen,
-        stylus,
-        trackball,
-    };
-
-    /// Check if this is a wheel event
-    pub fn isWheel(self: MouseEvent) bool {
-        return switch (self.button) {
-            .wheel_up, .wheel_down, .wheel_left, .wheel_right => true,
-            else => false,
-        };
-    }
-
-    /// Check if this is a touch event
-    pub fn isTouch(self: MouseEvent) bool {
-        return switch (self.button) {
-            .touch_1, .touch_2, .touch_3 => true,
-            else => false,
-        };
-    }
-
-    /// Get wheel direction (if wheel event)
-    pub fn getWheelDirection(self: MouseEvent) ?struct { x: i8, y: i8 } {
-        return switch (self.button) {
-            .wheel_up => .{ .x = 0, .y = -1 },
-            .wheel_down => .{ .x = 0, .y = 1 },
-            .wheel_left => .{ .x = -1, .y = 0 },
-            .wheel_right => .{ .x = 1, .y = 0 },
-            else => null,
-        };
     }
 };
 

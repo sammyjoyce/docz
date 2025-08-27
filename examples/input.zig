@@ -1,8 +1,8 @@
 const std = @import("std");
 const input = @import("../src/shared/term/ansi/input_extra.zig");
 
-/// Demonstration of the enhanced input system
-/// Advanced terminal input features with Zig implementation
+/// Demonstration of the input system
+/// Terminal input features with Zig implementation
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();

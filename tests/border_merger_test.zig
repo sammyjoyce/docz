@@ -1,7 +1,7 @@
 const std = @import("std");
 const testing = std.testing;
-const BorderMerger = @import("src/shared/tui/core/border_merger.zig").BorderMerger;
-const Point = @import("src/shared/tui/core/bounds.zig").Point;
+const BorderMerger = @import("BorderMerger").BorderMerger;
+const Point = @import("Point").Point;
 
 test "BorderMerger initialization and cleanup" {
     const allocator = testing.allocator;

@@ -75,11 +75,11 @@ pub fn exampleTool(allocator: std.mem.Allocator, params: std.json.Value) tools_m
     // ============================================================================
 
     const options = request.options orelse .{};
-    const repeat_count = options.repeat;
+    const repeatCount = options.repeat;
     const message = request.message;
 
     // Allocate result buffer with estimated capacity
-    var result = try std.ArrayList(u8).initCapacity(allocator, message.len * repeat_count + 100);
+    var result = try std.ArrayList(u8).initCapacity(allocator, message.len * repeatCount + 100);
     defer result.deinit();
 
     // Add prefix if specified
@@ -90,7 +90,7 @@ pub fn exampleTool(allocator: std.mem.Allocator, params: std.json.Value) tools_m
 
     // Process the message according to options
     var i: u32 = 0;
-    while (i < repeat_count) : (i += 1) {
+    while (i < repeatCount) : (i += 1) {
         if (i > 0) try result.appendSlice(" ");
 
         if (options.uppercase) {
@@ -113,10 +113,10 @@ pub fn exampleTool(allocator: std.mem.Allocator, params: std.json.Value) tools_m
         .success = true,
         .result = result.items,
         .metadata = .{
-            .original_length = message.len,
-            .repeat_count = repeat_count,
+            .originalLength = message.len,
+            .repeatCount = repeatCount,
             .uppercase = options.uppercase,
-            .processed_at = std.time.timestamp(),
+            .processedAt = std.time.timestamp(),
         },
     };
 
@@ -138,7 +138,7 @@ pub fn exampleTool(allocator: std.mem.Allocator, params: std.json.Value) tools_m
 /// - Configuration-aware behavior
 /// - Resource cleanup
 /// - Error handling for system operations
-pub fn fileInfoTool(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.ToolError![]const u8 {
+pub fn fileTool(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.ToolError![]const u8 {
     const Request = struct {
         path: []const u8,
         include_size: bool = true,
@@ -171,7 +171,7 @@ pub fn fileInfoTool(allocator: std.mem.Allocator, params: std.json.Value) tools_
 
 /// Demonstration tool showing configuration integration.
 /// This tool shows how to access agent configuration from within tools.
-pub fn configAwareTool(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.ToolError![]const u8 {
+pub fn configTool(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.ToolError![]const u8 {
     // This would typically access the agent config
     // For demonstration, we'll show the pattern
     const config_info = .{
@@ -218,9 +218,9 @@ pub fn registerAll(registry: *tools_mod.Registry) !void {
         "_template" // agent_name (for attribution)
     );
 
-    try tools_mod.registerJsonTool(registry, "file_info", "Get information about files and directories with configurable detail level", fileInfoTool, "_template");
+    try tools_mod.registerJsonTool(registry, "file_info", "Get information about files and directories with configurable detail level", fileTool, "_template");
 
-    try tools_mod.registerJsonTool(registry, "config_demo", "Demonstration tool showing configuration integration patterns", configAwareTool, "_template");
+    try tools_mod.registerJsonTool(registry, "config_demo", "Demonstration tool showing configuration integration patterns", configTool, "_template");
 
     // ============================================================================
     // PATTERN 2: CONDITIONAL REGISTRATION

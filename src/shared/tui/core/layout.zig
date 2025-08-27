@@ -53,6 +53,7 @@
 
 const std = @import("std");
 const Bounds = @import("bounds.zig").Bounds;
+const LayoutCache = @import("layout_cache.zig").LayoutCache;
 
 /// Layout direction for flexbox-style layouts
 pub const Direction = enum {
@@ -102,6 +103,8 @@ pub const Layout = struct {
     gap: u32,
     alignment: Alignment,
     children: std.ArrayList(LayoutItem),
+    cache: ?*LayoutCache,
+    enable_cache: bool,
 
     const LayoutItem = struct {
         size: Size,
@@ -121,7 +124,41 @@ pub const Layout = struct {
             .gap = 0,
             .alignment = .start,
             .children = std.ArrayList(LayoutItem).initCapacity(allocator, 4) catch unreachable,
+            .cache = null,
+            .enable_cache = false,
         };
+    }
+
+    /// Initialize layout with caching enabled
+    pub fn initWithCache(allocator: std.mem.Allocator, direction: Direction, bounds: Bounds, cache: *LayoutCache) Layout {
+        return Layout{
+            .allocator = allocator,
+            .direction = direction,
+            .bounds = bounds,
+            .padding = 0,
+            .gap = 0,
+            .alignment = .start,
+            .children = std.ArrayList(LayoutItem).initCapacity(allocator, 4) catch unreachable,
+            .cache = cache,
+            .enable_cache = true,
+        };
+    }
+
+    /// Set cache for the layout
+    pub fn setCache(self: *Layout, cache: *LayoutCache) void {
+        self.cache = cache;
+        self.enable_cache = true;
+    }
+
+    /// Enable or disable caching
+    pub fn setCacheEnabled(self: *Layout, enabled: bool) void {
+        self.enable_cache = enabled;
+    }
+
+    /// Set new bounds for the layout
+    pub fn setBounds(self: *Layout, bounds: Bounds) void {
+        self.bounds = bounds;
+        self.invalidateCache();
     }
 
     pub fn deinit(self: *Layout) void {
@@ -130,14 +167,17 @@ pub const Layout = struct {
 
     pub fn setPadding(self: *Layout, padding: u32) void {
         self.padding = padding;
+        self.invalidateCache();
     }
 
     pub fn setGap(self: *Layout, gap: u32) void {
         self.gap = gap;
+        self.invalidateCache();
     }
 
     pub fn setAlignment(self: *Layout, alignment: Alignment) void {
         self.alignment = alignment;
+        self.invalidateCache();
     }
 
     pub fn addChild(self: *Layout, size: Size) !usize {
@@ -150,6 +190,7 @@ pub const Layout = struct {
             .computed_bounds = Bounds.init(0, 0, 0, 0),
         };
         try self.children.append(self.allocator, item);
+        self.invalidateCache();
         return self.children.items.len - 1;
     }
 
@@ -159,17 +200,69 @@ pub const Layout = struct {
             self.children.items[index].min_height = min_height;
             self.children.items[index].max_width = max_width;
             self.children.items[index].max_height = max_height;
+            self.invalidateCache();
         }
+    }
+
+    /// Invalidate cache entries that may be affected by changes
+    pub fn invalidateCache(self: *Layout) void {
+        if (!self.enable_cache or self.cache == null) return;
+
+        // For simplicity, clear all cache entries
+        // In a more sophisticated implementation, we could invalidate only affected entries
+        self.cache.?.clear();
     }
 
     pub fn layout(self: *Layout) void {
         if (self.children.items.len == 0) return;
+
+        // Check cache first if enabled
+        if (self.enable_cache and self.cache != null) {
+            const children_hash = LayoutCache.hashChildren(self.children.items);
+            const key = LayoutCache.CacheKey{
+                .bounds = self.bounds,
+                .direction = self.direction,
+                .padding = self.padding,
+                .gap = self.gap,
+                .alignment = self.alignment,
+                .children_hash = children_hash,
+            };
+
+            if (self.cache.?.get(key)) |cached_bounds| {
+                // Use cached results
+                for (self.children.items, 0..) |*item, i| {
+                    item.computed_bounds = cached_bounds[i];
+                }
+                return;
+            }
+        }
 
         const content_bounds = self.getContentBounds();
 
         switch (self.direction) {
             .row => self.layoutRow(content_bounds),
             .column => self.layoutColumn(content_bounds),
+        }
+
+        // Store in cache if enabled
+        if (self.enable_cache and self.cache != null) {
+            const children_hash = LayoutCache.hashChildren(self.children.items);
+            const key = LayoutCache.CacheKey{
+                .bounds = self.bounds,
+                .direction = self.direction,
+                .padding = self.padding,
+                .gap = self.gap,
+                .alignment = self.alignment,
+                .children_hash = children_hash,
+            };
+
+            const computed_bounds = self.allocator.alloc(Bounds, self.children.items.len) catch return;
+            defer self.allocator.free(computed_bounds);
+            for (self.children.items, 0..) |item, i| {
+                computed_bounds[i] = item.computed_bounds;
+            }
+
+            self.cache.?.put(key, computed_bounds) catch {};
         }
     }
 
@@ -204,10 +297,9 @@ pub const Layout = struct {
                     fixed_width += min_size;
                     min_constraints += 1;
                 },
-                .max => |max_size| {
+                .max => |_| {
                     // Max constraints don't take space in first pass
                     max_constraints += 1;
-                    _ = max_size;
                 },
                 .ratio => |ratio| {
                     ratio_sum += ratio.numerator;

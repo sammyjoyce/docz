@@ -64,44 +64,44 @@ pub const ToolReflection = struct {
 
                         // Check if it matches ToolFn signature
                         if (func_info == .@"fn" and func_info.@"fn".params.len == 2) {
-                            const tool_name = comptime blk: {
+                            const toolName = comptime blk: {
                                 // Convert function name to tool name (e.g., "readFile" -> "read_file")
-                                var name_buf: [decl.name.len * 2]u8 = undefined;
-                                var name_len: usize = 0;
+                                var nameBuf: [decl.name.len * 2]u8 = undefined;
+                                var nameLen: usize = 0;
 
                                 for (decl.name, 0..) |char, i| {
                                     if (char >= 'A' and char <= 'Z' and i > 0) {
-                                        name_buf[name_len] = '_';
-                                        name_len += 1;
-                                        name_buf[name_len] = char + ('a' - 'A');
+                                        nameBuf[nameLen] = '_';
+                                        nameLen += 1;
+                                        nameBuf[nameLen] = char + ('a' - 'A');
                                     } else {
-                                        name_buf[name_len] = if (char >= 'A' and char <= 'Z')
+                                        nameBuf[nameLen] = if (char >= 'A' and char <= 'Z')
                                             char + ('a' - 'A')
                                         else
                                             char;
                                     }
-                                    name_len += 1;
+                                    nameLen += 1;
                                 }
 
-                                break :blk name_buf[0..name_len];
+                                break :blk nameBuf[0..nameLen];
                             };
 
-                            try registry.register(allocator.dupe(u8, tool_name), func);
+                            try registry.register(allocator.dupe(u8, toolName), func);
                         }
                     }
                 }
             }
 
             /// Get tool metadata using comptime reflection
-            pub fn getToolMeta(comptime tool_name: []const u8) ?ToolMetadata {
+            pub fn getToolMeta(comptime toolName: []const u8) ?ToolMetadata {
                 const info = @typeInfo(ModuleType).@"struct";
 
                 inline for (info.decls) |decl| {
-                    if (decl.is_pub and std.mem.eql(u8, decl.name, tool_name)) {
+                    if (decl.is_pub and std.mem.eql(u8, decl.name, toolName)) {
                         const func = @field(ModuleType, decl.name);
                         return ToolMetadata{
-                            .name = tool_name,
-                            .description = "Tool function: " ++ tool_name,
+                            .name = toolName,
+                            .description = "Tool function: " ++ toolName,
                             .func = func,
                         };
                     }
@@ -151,50 +151,50 @@ pub const Registry = struct {
 
     /// Register a tool with basic information
     pub fn register(self: *Registry, name: []const u8, func: ToolFn) !void {
-        const owned_name = try self.allocator.dupe(u8, name);
-        errdefer self.allocator.free(owned_name);
-        try self.map.put(owned_name, func);
+        const ownedName = try self.allocator.dupe(u8, name);
+        errdefer self.allocator.free(ownedName);
+        try self.map.put(ownedName, func);
 
         // Create default metadata
         const meta = ToolMetadata{
-            .name = owned_name,
+            .name = ownedName,
             .description = "Tool function",
             .func = func,
             .category = "general",
             .version = "1.0",
             .agent = "shared",
         };
-        try self.metadata.put(owned_name, meta);
+        try self.metadata.put(ownedName, meta);
     }
 
     /// Register a tool with full metadata
     pub fn registerWithMeta(self: *Registry, meta: ToolMetadata) !void {
-        const owned_name = try self.allocator.dupe(u8, meta.name);
-        errdefer self.allocator.free(owned_name);
+        const ownedName = try self.allocator.dupe(u8, meta.name);
+        errdefer self.allocator.free(ownedName);
 
-        const owned_desc = try self.allocator.dupe(u8, meta.description);
-        errdefer self.allocator.free(owned_desc);
+        const ownedDesc = try self.allocator.dupe(u8, meta.description);
+        errdefer self.allocator.free(ownedDesc);
 
-        const owned_category = try self.allocator.dupe(u8, meta.category);
-        errdefer self.allocator.free(owned_category);
+        const ownedCategory = try self.allocator.dupe(u8, meta.category);
+        errdefer self.allocator.free(ownedCategory);
 
-        const owned_version = try self.allocator.dupe(u8, meta.version);
-        errdefer self.allocator.free(owned_version);
+        const ownedVersion = try self.allocator.dupe(u8, meta.version);
+        errdefer self.allocator.free(ownedVersion);
 
-        const owned_agent = try self.allocator.dupe(u8, meta.agent);
-        errdefer self.allocator.free(owned_agent);
+        const ownedAgent = try self.allocator.dupe(u8, meta.agent);
+        errdefer self.allocator.free(ownedAgent);
 
-        try self.map.put(owned_name, meta.func);
+        try self.map.put(ownedName, meta.func);
 
-        const owned_meta = ToolMetadata{
-            .name = owned_name,
-            .description = owned_desc,
+        const ownedMeta = ToolMetadata{
+            .name = ownedName,
+            .description = ownedDesc,
             .func = meta.func,
-            .category = owned_category,
-            .version = owned_version,
-            .agent = owned_agent,
+            .category = ownedCategory,
+            .version = ownedVersion,
+            .agent = ownedAgent,
         };
-        try self.metadata.put(owned_name, owned_meta);
+        try self.metadata.put(ownedName, ownedMeta);
     }
 
     /// Register multiple tools from a module using comptime reflection
@@ -208,31 +208,31 @@ pub const Registry = struct {
 
                 // Check if it matches ToolFn signature
                 if (func_info == .@"fn" and func_info.@"fn".params.len == 2) {
-                    const tool_name = comptime blk: {
+                    const toolName = comptime blk: {
                         // Convert function name to tool name (e.g., "readFile" -> "read_file")
-                        var name_buf: [decl.name.len * 2]u8 = undefined;
-                        var name_len: usize = 0;
+                        var nameBuf: [decl.name.len * 2]u8 = undefined;
+                        var nameLen: usize = 0;
 
                         for (decl.name, 0..) |char, i| {
                             if (char >= 'A' and char <= 'Z' and i > 0) {
-                                name_buf[name_len] = '_';
-                                name_len += 1;
-                                name_buf[name_len] = char + ('a' - 'A');
+                                nameBuf[nameLen] = '_';
+                                nameLen += 1;
+                                nameBuf[nameLen] = char + ('a' - 'A');
                             } else {
-                                name_buf[name_len] = if (char >= 'A' and char <= 'Z')
+                                nameBuf[nameLen] = if (char >= 'A' and char <= 'Z')
                                     char + ('a' - 'A')
                                 else
                                     char;
                             }
-                            name_len += 1;
+                            nameLen += 1;
                         }
 
-                        break :blk name_buf[0..name_len];
+                        break :blk nameBuf[0..nameLen];
                     };
 
                     const meta = ToolMetadata{
-                        .name = tool_name,
-                        .description = "Tool function: " ++ tool_name,
+                        .name = toolName,
+                        .description = "Tool function: " ++ toolName,
                         .func = func,
                         .category = "agent",
                         .version = "1.0",
@@ -259,8 +259,8 @@ pub const Registry = struct {
         var tools = std.ArrayList(ToolMetadata).init(allocator);
         defer tools.deinit();
 
-        var it = self.metadata.iterator();
-        while (it.next()) |entry| {
+        var iterator = self.metadata.iterator();
+        while (iterator.next()) |entry| {
             try tools.append(entry.value_ptr.*);
         }
 
@@ -272,8 +272,8 @@ pub const Registry = struct {
         var tools = std.ArrayList(ToolMetadata).init(allocator);
         defer tools.deinit();
 
-        var it = self.metadata.iterator();
-        while (it.next()) |entry| {
+        var iterator = self.metadata.iterator();
+        while (iterator.next()) |entry| {
             if (std.mem.eql(u8, entry.value_ptr.agent, agentName)) {
                 try tools.append(entry.value_ptr.*);
             }
@@ -387,7 +387,7 @@ fn oracleTool(allocator: std.mem.Allocator, input: []const u8) ToolError![]u8 {
         const monthDay = yearDay.calculateMonthDay();
 
         break :blk std.fmt.allocPrint(allocator, "{d}-{d:0>2}-{d:0>2}", .{
-            yearDay.year, @intFromEnum(monthDay.month), monthDay.day_index,
+            yearDay.year, @intFromEnum(monthDay.month), monthDay.dayIndex,
         }) catch return ToolError.OutOfMemory;
     };
     defer allocator.free(currentDate);
@@ -428,12 +428,12 @@ fn oracleTool(allocator: std.mem.Allocator, input: []const u8) ToolError![]u8 {
 }
 
 /// Helper to create a ToolFn wrapper for JSON-based tools
-pub fn createJsonToolWrapper(json_func: JSONToolFunction) ToolFn {
+pub fn createJsonToolWrapper(jsonFunc: JSONToolFunction) ToolFn {
     // Store the function in a global variable to avoid lifetime issues
     const StoredFunction = struct {
         var func: JSONToolFunction = undefined;
     };
-    StoredFunction.func = json_func;
+    StoredFunction.func = jsonFunc;
 
     return struct {
         fn wrapper(allocator: std.mem.Allocator, input: []const u8) ToolError![]u8 {

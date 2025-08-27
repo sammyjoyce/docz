@@ -12,6 +12,7 @@ const term_caps = @import("../../term/caps.zig");
 const graphics_manager = @import("../../term/graphics_manager.zig");
 const color_palette = @import("../../term/color_palette.zig");
 const enhanced_mouse = @import("../../term/mouse.zig");
+const braille = @import("../../render/braille.zig");
 
 /// Advanced line chart with progressive enhancement
 pub const LineChart = struct {
@@ -360,23 +361,29 @@ pub const LineChart = struct {
 
     fn renderUnicodeBraille(self: *LineChart, bounds: Bounds) !void {
         // Standard: High-density plotting with Braille patterns (2x4 dots per character)
-        const braille = self.render_mode.unicode_braille;
-        const resolution_x = bounds.width * 2; // 2 dots horizontally
-        const resolution_y = bounds.height * 4; // 4 dots vertically
+        const braille_config = self.render_mode.unicode_braille;
 
-        // Create dot buffer
-        const dot_buffer = try self.allocator.alloc(bool, resolution_x * resolution_y);
-        defer self.allocator.free(dot_buffer);
-        @memset(dot_buffer, false);
+        // Create Braille canvas
+        var canvas = try braille.BrailleCanvas.init(self.allocator, bounds.width, bounds.height);
+        defer canvas.deinit();
 
-        // Render series as dots
+        // Set world bounds to match chart viewport
+        canvas.setWorldBounds(.{
+            .min_x = self.viewport.min_x,
+            .max_x = self.viewport.max_x,
+            .min_y = self.viewport.min_y,
+            .max_y = self.viewport.max_y,
+        });
+
+        // Render series as Braille graphics
         for (self.series.items) |series| {
             if (!series.visible) continue;
-            try self.renderSeriesBraille(dot_buffer, bounds, series, resolution_x, resolution_y, braille.dot_threshold);
+            try self.renderSeriesBraille(&canvas, series, braille_config.dot_threshold);
         }
 
-        // Convert dot buffer to Braille characters
-        try self.convertToBraille(dot_buffer, bounds, resolution_x);
+        // Render to output
+        const writer = std.io.getStdOut().writer();
+        try canvas.render(writer);
     }
 
     fn renderASCIIAdaptive(self: *LineChart, bounds: Bounds) !void {
@@ -526,23 +533,21 @@ pub const LineChart = struct {
         // Implementation would convert RGB buffer to Sixel format
     }
 
-    fn renderSeriesBraille(self: *LineChart, dots: []bool, bounds: Bounds, series: Series, res_x: u32, res_y: u32, threshold: f32) !void {
-        _ = self;
-        _ = dots;
-        _ = bounds;
-        _ = series;
-        _ = res_x;
-        _ = res_y;
+    fn renderSeriesBraille(self: *LineChart, canvas: *braille.BrailleCanvas, series: Series, threshold: f32) !void {
+        // Threshold could be used for filtering/thinning in future implementation
         _ = threshold;
-        // Implementation would plot points as Braille dots
-    }
 
-    fn convertToBraille(self: *LineChart, dots: []bool, bounds: Bounds, res_x: u32) !void {
-        _ = self;
-        _ = dots;
-        _ = bounds;
-        _ = res_x;
-        // Implementation would convert dot pattern to Braille characters
+        // Convert data points to Braille dots
+        var points = std.ArrayList(struct { x: f64, y: f64 }).init(self.allocator);
+        defer points.deinit();
+
+        // Transform series data points to canvas coordinates
+        for (series.data.items) |point| {
+            try points.append(.{ .x = point.x, .y = point.y });
+        }
+
+        // Plot the data points
+        braille.BrailleUtils.plotDataPoints(canvas, points.items, true);
     }
 
     fn renderSeriesASCII(self: *LineChart, buffer: []u8, bounds: Bounds, series: Series, density_chars: []const u8) !void {

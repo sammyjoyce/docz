@@ -16,7 +16,7 @@
 const std = @import("std");
 const unified = @import("../../../src/shared/term/unified.zig");
 const capabilities = @import("../../../src/shared/term/caps.zig");
-const terminal_abstraction = @import("../../core/TerminalAbstraction.zig");
+const terminal_abstraction = @import("../../core/terminal_abstraction.zig");
 
 const Allocator = std.mem.Allocator;
 const TerminalAbstraction = terminal_abstraction.TerminalAbstraction;
@@ -89,7 +89,7 @@ pub const Set = struct {
     style: enum { solid, dashed, dotted } = .solid,
 };
 
-/// Terminal Graphics Manager
+/// Terminal Graphics
 pub const TerminalGraphics = struct {
     allocator: Allocator,
     terminal: TerminalAbstraction,

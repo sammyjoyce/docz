@@ -8,12 +8,12 @@ pub const screen = @import("screen.zig");
 
 // Basic ANSI functionality
 pub const clipboard = @import("clipboard.zig");
-pub const graphics = @import("graphics.zig");
+pub const graphics = @import("ansi_graphics.zig");
 pub const sixel_graphics = @import("sixel_graphics.zig");
 pub const hyperlink = @import("hyperlink.zig");
 pub const notification = @import("notification.zig");
 pub const mode = @import("mode.zig");
-pub const paste = @import("paste.zig");
+
 pub const reset = @import("reset.zig");
 pub const charset = @import("charset.zig");
 pub const control_chars = @import("control_chars.zig");
@@ -41,11 +41,11 @@ pub const ghostty = @import("ghostty.zig");
 pub const background = @import("background.zig");
 pub const bidirectional_text = @import("bidirectional_text.zig");
 
-pub const clipboard_integration = @import("clipboard_integration.zig");
+// Clipboard integration is now part of clipboard.zig
 
 pub const cursor_optimizer = @import("cursor_optimizer.zig");
 pub const cwd = @import("cwd.zig");
-pub const input_extra = @import("input_extra.zig");
+pub const keys = @import("keys.zig");
 pub const kitty_graphics = @import("kitty_graphics.zig");
 pub const modern_features = @import("modern_features.zig");
 pub const passthrough = @import("passthrough.zig");

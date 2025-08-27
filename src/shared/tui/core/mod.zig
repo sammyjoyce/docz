@@ -14,16 +14,28 @@ pub const stylize = @import("stylize.zig");
 // Renderers
 pub const renderers = @import("renderers/mod.zig");
 
-// Enhanced input system
+// Input system
 pub const input = @import("input/mod.zig");
 
 // Border merging functionality
 pub const border_merger = @import("border_merger.zig");
 pub const BorderMerger = border_merger.BorderMerger;
 
-// Advanced easing functions for animations
+// Easing functions for animations
 pub const easing = @import("easing.zig");
 pub const Easing = easing.Easing;
+
+// Typing animation system with particle effects
+pub const typing_animation = @import("typing_animation.zig");
+pub const TypingAnimation = typing_animation.TypingAnimation;
+pub const TypingAnimationBuilder = typing_animation.TypingAnimationBuilder;
+pub const ParticleEmitter = typing_animation.ParticleEmitter;
+pub const Particle = typing_animation.Particle;
+
+// Canvas system for graphics
+pub const canvas = @import("canvas.zig");
+// Backward compatibility alias
+pub const canvas_engine = canvas;
 
 // Global initialization functions
 pub fn init(allocator: std.mem.Allocator) !void {

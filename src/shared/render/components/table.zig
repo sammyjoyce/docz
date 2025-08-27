@@ -1,11 +1,11 @@
 const std = @import("std");
-const AdaptiveRenderer = @import("../adaptive_renderer.zig").AdaptiveRenderer;
-const RenderMode = AdaptiveRenderer.RenderMode;
+const Renderer = @import("../renderer.zig").Renderer;
+const RenderTier = Renderer.RenderTier;
 const QualityTiers = @import("../quality_tiers.zig").QualityTiers;
 const TableConfig = @import("../quality_tiers.zig").TableConfig;
 const term_shared = @import("term_shared");
 const Color = term_shared.ansi.color.Color;
-const cacheKey = @import("../adaptive_renderer.zig").cacheKey;
+const cacheKey = @import("../renderer.zig").cacheKey;
 
 /// Table data structure
 pub const Table = struct {
@@ -106,10 +106,10 @@ pub fn renderTable(renderer: *@import("../Renderer.zig").Renderer, table: Table)
     defer output.deinit();
 
     switch (renderer.render_tier) {
-        .ultra => try renderEnhanced(renderer, table, &output),
-        .enhanced => try renderStandard(renderer, table, &output),
-        .standard => try renderCompatible(renderer, table, &output),
-        .minimal => try renderMinimal(renderer, table, &output),
+        .ultra => try renderHigh(renderer, table, &output),
+        .enhanced => try renderMedium(renderer, table, &output),
+        .standard => try renderLow(renderer, table, &output),
+        .minimal => try renderBasic(renderer, table, &output),
     }
 
     const content = try output.toOwnedSlice();
@@ -120,7 +120,7 @@ pub fn renderTable(renderer: *@import("../Renderer.zig").Renderer, table: Table)
 }
 
 /// Enhanced rendering with box drawing and colors
-fn renderEnhanced(renderer: *AdaptiveRenderer, table: Table, output: *std.ArrayList(u8)) !void {
+fn renderEnhanced(renderer: *Renderer, table: Table, output: *std.ArrayList(u8)) !void {
     const config = QualityTiers.Table.enhanced;
     const writer = output.writer();
 
@@ -176,7 +176,7 @@ fn renderEnhanced(renderer: *AdaptiveRenderer, table: Table, output: *std.ArrayL
 }
 
 /// Standard rendering with Unicode box drawing
-fn renderStandard(renderer: *AdaptiveRenderer, table: Table, output: *std.ArrayList(u8)) !void {
+fn renderStandard(renderer: *Renderer, table: Table, output: *std.ArrayList(u8)) !void {
     const config = QualityTiers.Table.standard;
     const writer = output.writer();
 
@@ -226,7 +226,7 @@ fn renderStandard(renderer: *AdaptiveRenderer, table: Table, output: *std.ArrayL
 }
 
 /// Compatible rendering with ASCII characters
-fn renderCompatible(renderer: *AdaptiveRenderer, table: Table, output: *std.ArrayList(u8)) !void {
+fn renderCompatible(renderer: *Renderer, table: Table, output: *std.ArrayList(u8)) !void {
     const config = QualityTiers.Table.compatible;
     const writer = output.writer();
 
@@ -263,7 +263,7 @@ fn renderCompatible(renderer: *AdaptiveRenderer, table: Table, output: *std.Arra
 }
 
 /// Minimal rendering with plain text
-fn renderMinimal(_: *AdaptiveRenderer, table: Table, output: *std.ArrayList(u8)) !void {
+fn renderMinimal(_: *Renderer, table: Table, output: *std.ArrayList(u8)) !void {
     const writer = output.writer();
 
     // Title
@@ -331,7 +331,7 @@ fn renderHorizontalBorder(writer: anytype, widths: []const u16, chars: TableConf
 
 /// Render a data row
 fn renderDataRow(
-    renderer: *AdaptiveRenderer,
+    renderer: *Renderer,
     config: TableConfig,
     row: []const []const u8,
     widths: []const u16,
@@ -391,32 +391,8 @@ fn renderDataRow(
 }
 
 /// Set table color based on renderer capabilities
-fn setTableColor(renderer: *AdaptiveRenderer, color: Color, writer: anytype) !void {
-    switch (renderer.render_mode) {
-        .enhanced => {
-            switch (color) {
-                .rgb => |rgb| try writer.print("\x1b[38;2;{d};{d};{d}m", .{ rgb.r, rgb.g, rgb.b }),
-                .ansi => |ansi| try writer.print("\x1b[3{d}m", .{@intFromEnum(ansi)}),
-                .palette => |pal| try writer.print("\x1b[38;5;{d}m", .{pal}),
-            }
-        },
-        .standard => {
-            switch (color) {
-                .rgb => |rgb| {
-                    const palette_index = rgbToPalette256(rgb);
-                    try writer.print("\x1b[38;5;{d}m", .{palette_index});
-                },
-                .ansi => |ansi| try writer.print("\x1b[3{d}m", .{@intFromEnum(ansi)}),
-                .palette => |pal| try writer.print("\x1b[38;5;{d}m", .{pal}),
-            }
-        },
-        .compatible, .minimal => {
-            switch (color) {
-                .ansi => |ansi| try writer.print("\x1b[3{d}m", .{@intFromEnum(ansi)}),
-                else => {}, // No color support
-            }
-        },
-    }
+fn setTableColor(renderer: *Renderer, color: Color, writer: anytype) !void {
+    try renderer.setRendererColor(color, writer);
 }
 
 /// Convert RGB to nearest 256-color palette index
@@ -431,7 +407,7 @@ fn rgbToPalette256(rgb: struct { r: u8, g: u8, b: u8 }) u8 {
 test "table rendering" {
     const testing = std.testing;
 
-    var renderer = try AdaptiveRenderer.initWithMode(testing.allocator, .standard);
+    var renderer = try Renderer.initWithTier(testing.allocator, .enhanced);
     defer renderer.deinit();
 
     const headers = [_][]const u8{ "Name", "Age", "City" };

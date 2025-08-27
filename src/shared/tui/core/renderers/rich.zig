@@ -11,13 +11,14 @@
 
 const std = @import("std");
 const renderer_mod = @import("../renderer.zig");
-const term_mod = @import("../../../term/mod.zig");
+const term_mod = @import("term_shared");
 const term_caps = term_mod.caps;
 
 // Import terminal capabilities modules
 const term_ansi_color = term_mod.ansi.color;
 const term_ansi_enhanced_color = term_mod.ansi.color;
 const term_ansi_cursor = term_mod.ansi.cursor;
+const term_ansi_mode = term_mod.ansi.mode;
 const term_ansi_screen = term_mod.ansi.screen;
 const term_ansi_hyperlink = term_mod.ansi.hyperlink;
 const term_ansi_clipboard = term_mod.ansi.clipboard;
@@ -354,9 +355,9 @@ pub const RichRenderer = struct {
 
         if (visible != self.cursor_visible) {
             if (visible) {
-                try term_ansi_cursor.showCursor(self.writer, self.caps);
+                try term_ansi_mode.showCursor(self.writer, self.caps);
             } else {
-                try term_ansi_cursor.hideCursor(self.writer, self.caps);
+                try term_ansi_mode.hideCursor(self.writer, self.caps);
             }
             self.cursor_visible = visible;
         }

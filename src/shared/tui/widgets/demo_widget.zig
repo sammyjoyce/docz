@@ -2,14 +2,14 @@
 //! Shows how to create widgets using the new unified architecture
 
 const std = @import("std");
-const unified_renderer = @import("../core/unified_renderer.zig");
+const renderer_mod = @import("../core/renderer.zig");
 
-const Widget = unified_renderer.Widget;
-const UnifiedRenderer = unified_renderer.UnifiedRenderer;
-const InputEvent = unified_renderer.InputEvent;
-const Rect = unified_renderer.Rect;
-const Size = unified_renderer.Size;
-const Color = @import("../../cli/core/unified_terminal.zig").Color;
+const Widget = renderer_mod.Widget;
+const UnifiedRenderer = renderer_mod.UnifiedRenderer;
+const InputEvent = renderer_mod.InputEvent;
+const Rect = renderer_mod.Rect;
+const Size = renderer_mod.Size;
+const Color = @import("../../term/unified.zig").Color;
 
 /// A demo panel widget that showcases TUI capabilities
 pub const DemoPanel = struct {

@@ -212,7 +212,7 @@ pub const SSEEventState = struct {
 /// - id: field_value (event identifier)
 /// - retry: field_value (reconnection time in milliseconds)
 /// - :comment (ignored per specification)
-pub fn processSSELine(line: []const u8, event_state: *SSEEventState, config: *const SSEProcessingConfig) SSEError!?SSEField {
+pub fn processSseLine(line: []const u8, eventState: *SSEEventState, config: *const SSEProcessingConfig) SSEError!?SSEField {
     if (line.len == 0) return null; // Skip empty lines - these typically separate events
 
     // Handle comment lines (start with ':')
@@ -222,132 +222,132 @@ pub fn processSSELine(line: []const u8, event_state: *SSEEventState, config: *co
     }
 
     // Parse SSE field: "field_name: field_value" or "field_name:field_value"
-    const colon_pos = std.mem.indexOf(u8, line, ":") orelse {
+    const colonPos = std.mem.indexOf(u8, line, ":") orelse {
         std.log.debug("SSE line without colon (possible data continuation): {s}", .{line[0..@min(line.len, 50)]});
         // Treat lines without colons as potential data continuation
-        try event_state.addDataLine(line);
+        try eventState.addDataLine(line);
         return .data;
     };
 
-    const field_name = std.mem.trim(u8, line[0..colon_pos], " \t");
-    const field_value_start = colon_pos + 1;
-    const field_value = if (field_value_start < line.len and line[field_value_start] == ' ')
-        line[field_value_start + 1 ..] // Skip space after colon if present
+    const fieldName = std.mem.trim(u8, line[0..colonPos], " \t");
+    const fieldValueStart = colonPos + 1;
+    const fieldValue = if (fieldValueStart < line.len and line[fieldValueStart] == ' ')
+        line[fieldValueStart + 1 ..] // Skip space after colon if present
     else
-        line[field_value_start..];
+        line[fieldValueStart..];
 
-    const field_type = SSEField.fromString(field_name);
+    const fieldType = SSEField.fromString(fieldName);
 
     // Process SSE fields according to specification
-    switch (field_type) {
+    switch (fieldType) {
         .data => {
             // Enhanced data field processing with capacity management
-            if (field_value.len > config.large_event_threshold) {
-                std.log.warn("Very large SSE data line: {} bytes - consider streaming optimization", .{field_value.len});
+            if (fieldValue.len > config.large_event_threshold) {
+                std.log.warn("Very large SSE data line: {} bytes - consider streaming optimization", .{fieldValue.len});
             }
 
             // Enhanced capacity management with overflow protection
-            const required_capacity = event_state.data_buffer.items.len + field_value.len + 1; // +1 for potential newline
-            if (required_capacity > config.max_event_size) {
+            const requiredCapacity = eventState.data_buffer.items.len + fieldValue.len + 1; // +1 for potential newline
+            if (requiredCapacity > config.max_event_size) {
                 std.log.warn("SSE data would exceed maximum event size, truncating to prevent memory issues", .{});
                 return SSEError.EventTooLarge;
             }
 
-            try event_state.addDataLine(field_value);
+            try eventState.addDataLine(fieldValue);
         },
         .event => {
             // Set event type
-            event_state.event_type = field_value;
-            std.log.debug("SSE event type set: {s}", .{field_value});
+            eventState.event_type = fieldValue;
+            std.log.debug("SSE event type set: {s}", .{fieldValue});
         },
         .id => {
             // Set event ID
-            event_state.event_id = field_value;
-            std.log.debug("SSE event ID set: {s}", .{field_value});
+            eventState.event_id = fieldValue;
+            std.log.debug("SSE event ID set: {s}", .{fieldValue});
         },
         .retry => {
             // Set retry interval with validation
-            try event_state.setRetryInterval(field_value, config);
+            try eventState.setRetryInterval(fieldValue, config);
         },
         .unknown => {
             // Unknown field - log for debugging but continue processing
-            std.log.debug("Unknown SSE field '{s}': {s}", .{ field_name, field_value[0..@min(field_value.len, 50)] });
+            std.log.debug("Unknown SSE field '{s}': {s}", .{ fieldName, fieldValue[0..@min(fieldValue.len, 50)] });
         },
         .comment => unreachable, // Already handled above
     }
 
-    return field_type;
+    return fieldType;
 }
 
 /// Process multiple SSE lines from accumulated data
 ///
 /// This function splits input data by newlines and processes each line,
 /// building up event state and returning completed events.
-pub fn processSSELines(
+pub fn processSseLines(
     data: []const u8,
-    event_state: *SSEEventState,
+    eventState: *SSEEventState,
     config: *const SSEProcessingConfig,
     events: *std.array_list.Managed(SSEEvent),
     allocator: std.mem.Allocator,
 ) SSEError!void {
-    var line_iterator = std.mem.splitScalar(u8, data, '\n');
-    var line_count: usize = 0;
+    var lineIterator = std.mem.splitScalar(u8, data, '\n');
+    var lineCount: usize = 0;
 
-    while (line_iterator.next()) |line| {
-        line_count += 1;
+    while (lineIterator.next()) |line| {
+        lineCount += 1;
 
         // Process line and check for field type
-        _ = processSSELine(line, event_state, config) catch |err| {
-            std.log.warn("Error processing SSE line {}: {}", .{ line_count, err });
+        _ = processSseLine(line, eventState, config) catch |err| {
+            std.log.warn("Error processing SSE line {}: {}", .{ lineCount, err });
             continue; // Continue processing other lines
         };
 
         // Check if this line indicates an event boundary (empty line)
-        if (line.len == 0 and event_state.hasEventContent()) {
+        if (line.len == 0 and eventState.hasEventContent()) {
             // Empty line indicates end of event - dispatch current event
-            const event = event_state.buildEvent();
-            const cloned_event = try event.clone(allocator);
-            try events.append(cloned_event);
-            event_state.reset();
+            const event = eventState.buildEvent();
+            const clonedEvent = try event.clone(allocator);
+            try events.append(clonedEvent);
+            eventState.reset();
 
             std.log.debug("SSE event dispatched: type={?s}, id={?s}, data_length={}", .{ event.event_type, event.event_id, event.data.len });
         }
 
         // Batch processing optimization for large chunks
-        if (line_count % config.line_processing_batch_size == 0) {
-            std.log.debug("Processed {} SSE lines", .{line_count});
+        if (lineCount % config.line_processing_batch_size == 0) {
+            std.log.debug("Processed {} SSE lines", .{lineCount});
         }
     }
 
     // If there's remaining event content without a trailing empty line, dispatch it
-    if (event_state.hasEventContent()) {
-        const event = event_state.buildEvent();
-        const cloned_event = try event.clone(allocator);
-        try events.append(cloned_event);
-        event_state.reset();
+    if (eventState.hasEventContent()) {
+        const event = eventState.buildEvent();
+        const clonedEvent = try event.clone(allocator);
+        try events.append(clonedEvent);
+        eventState.reset();
     }
 
-    std.log.debug("Completed processing {} SSE lines, generated {} events", .{ line_count, events.items.len });
+    std.log.debug("Completed processing {} SSE lines, generated {} events", .{ lineCount, events.items.len });
 }
 
 /// Convenience function to parse SSE data and return array of structured events
-pub fn parseSSEData(
+pub fn parseSseData(
     data: []const u8,
     allocator: std.mem.Allocator,
     config: ?SSEProcessingConfig,
 ) SSEError![]SSEEvent {
-    const sse_config = config orelse SSEProcessingConfig{};
-    var event_state = SSEEventState.init(allocator);
-    defer event_state.deinit();
+    const sseConfig = config orelse SSEProcessingConfig{};
+    var eventState = SSEEventState.init(allocator);
+    defer eventState.deinit();
 
     var events = std.array_list.Managed(SSEEvent).init(allocator);
-    try processSSELines(data, &event_state, &sse_config, &events, allocator);
+    try processSseLines(data, &eventState, &sseConfig, &events, allocator);
 
     return events.toOwnedSlice();
 }
 
-/// Free array of SSE events returned by parseSSEData
-pub fn freeSSEEvents(events: []SSEEvent, allocator: std.mem.Allocator) void {
+/// Free array of SSE events returned by parseSseData
+pub fn freeSseEvents(events: []SSEEvent, allocator: std.mem.Allocator) void {
     for (events) |*event| {
         event.deinit(allocator);
     }
@@ -415,33 +415,33 @@ test "SSE line processing" {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    var event_state = SSEEventState.init(allocator);
-    defer event_state.deinit();
+    var eventState = SSEEventState.init(allocator);
+    defer eventState.deinit();
 
     const config = createTestConfig();
 
     // Test data line
-    const data_field = try processSSELine("data: Hello World", &event_state, &config);
-    try std.testing.expectEqual(SSEField.data, data_field.?);
-    try std.testing.expectEqualStrings("Hello World", event_state.data_buffer.items);
+    const dataField = try processSseLine("data: Hello World", &eventState, &config);
+    try std.testing.expectEqual(SSEField.data, dataField.?);
+    try std.testing.expectEqualStrings("Hello World", eventState.data_buffer.items);
 
     // Test event line
-    const event_field = try processSSELine("event: message", &event_state, &config);
-    try std.testing.expectEqual(SSEField.event, event_field.?);
-    try std.testing.expectEqualStrings("message", event_state.event_type.?);
+    const eventField = try processSseLine("event: message", &eventState, &config);
+    try std.testing.expectEqual(SSEField.event, eventField.?);
+    try std.testing.expectEqualStrings("message", eventState.event_type.?);
 
     // Test ID line
-    const id_field = try processSSELine("id: 123", &event_state, &config);
-    try std.testing.expectEqual(SSEField.id, id_field.?);
-    try std.testing.expectEqualStrings("123", event_state.event_id.?);
+    const idField = try processSseLine("id: 123", &eventState, &config);
+    try std.testing.expectEqual(SSEField.id, idField.?);
+    try std.testing.expectEqualStrings("123", eventState.event_id.?);
 
     // Test retry line
-    _ = try processSSELine("retry: 30", &event_state, &config);
-    try std.testing.expectEqual(@as(u32, 30), event_state.retry_interval.?);
+    _ = try processSseLine("retry: 30", &eventState, &config);
+    try std.testing.expectEqual(@as(u32, 30), eventState.retry_interval.?);
 
     // Test comment line
-    const comment_field = try processSSELine(": This is a comment", &event_state, &config);
-    try std.testing.expectEqual(SSEField.comment, comment_field.?);
+    const commentField = try processSseLine(": This is a comment", &eventState, &config);
+    try std.testing.expectEqual(SSEField.comment, commentField.?);
 }
 
 test "SSE multi-line data parsing" {
@@ -449,7 +449,7 @@ test "SSE multi-line data parsing" {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    const sse_data =
+    const sseData =
         \\data: First line
         \\data: Second line
         \\event: multiline
@@ -459,8 +459,8 @@ test "SSE multi-line data parsing" {
         \\
     ;
 
-    const events = try parseSSEData(sse_data, allocator, createTestConfig());
-    defer freeSSEEvents(events, allocator);
+    const events = try parseSseData(sseData, allocator, createTestConfig());
+    defer freeSseEvents(events, allocator);
 
     try std.testing.expectEqual(@as(usize, 2), events.len);
 

@@ -11,7 +11,7 @@
 const std = @import("std");
 const clear_widget = @import("../src/shared/tui/widgets/core/clear.zig");
 const bounds_mod = @import("../src/shared/tui/core/bounds.zig");
-const themes = @import("../src/shared/tui/themes/default.zig");
+const theme_manager = @import("../src/shared/theme_manager/mod.zig");
 const term_writer = @import("../src/shared/term/writer.zig");
 
 const Clear = clear_widget.Clear;
@@ -21,7 +21,7 @@ const Pattern = clear_widget.Pattern;
 const BorderOptions = clear_widget.BorderOptions;
 const Bounds = bounds_mod.Bounds;
 const Point = bounds_mod.Point;
-const Color = themes.Color;
+const Color = theme_manager.Color;
 const print = term_writer.print;
 
 const DemoState = struct {
@@ -181,7 +181,7 @@ fn drawCurrentDemo(state: *DemoState, demo_index: usize) !void {
 
 fn demoSpacesClear(state: *DemoState) !void {
     print("Basic Spaces Clear\x1b[0m\n\n", .{});
-    print("This demo shows the simplest clear mode - filling with spaces.\n", .{});
+    print("This demo shows the clear mode - filling with spaces.\n", .{});
     
     // Create background content
     drawBackgroundContent(12, 5, 40, 10);
@@ -203,7 +203,7 @@ fn demoSolidColorClear(state: *DemoState) !void {
     drawBackgroundContent(12, 5, 50, 12);
     
     // Create multiple colored overlays
-    const colors = [_]Color{ .BLUE, .GREEN, .MAGENTA, .CYAN };
+    const colors = [_]Color{ theme_manager.Colors.BLUE, theme_manager.Colors.GREEN, theme_manager.Colors.MAGENTA, theme_manager.Colors.CYAN };
     const positions = [_][2]u32{
         .{ 14, 13 },
         .{ 24, 14 },
@@ -279,10 +279,10 @@ fn demoPatternClear(state: *DemoState) !void {
         overlay.* = Clear.init(state.allocator, Bounds.init(x, y, 10, 5))
             .withMode(.pattern)
             .withPattern(pattern, null)
-            .withBackgroundColor(.BLACK)
+            .withBackgroundColor(theme_manager.Colors.BLACK)
             .withBorder(BorderOptions{
                 .style = .single,
-                .color = .WHITE,
+                .color = theme_manager.Colors.WHITE,
                 .padding = 0,
             });
         
@@ -369,11 +369,11 @@ fn demoBorderedOverlay(state: *DemoState) !void {
     
     // Border styles
     const border_styles = [_]clear_widget.BorderOptions{
-        .{ .style = .single, .color = .WHITE, .padding = 1 },
-        .{ .style = .double, .color = .CYAN, .padding = 1 },
-        .{ .style = .rounded, .color = .GREEN, .padding = 0 },
-        .{ .style = .thick, .color = .YELLOW, .padding = 0 },
-        .{ .style = .dashed, .color = .MAGENTA, .padding = 0 },
+        .{ .style = .single, .color = theme_manager.Colors.WHITE, .padding = 1 },
+        .{ .style = .double, .color = theme_manager.Colors.CYAN, .padding = 1 },
+        .{ .style = .rounded, .color = theme_manager.Colors.GREEN, .padding = 0 },
+        .{ .style = .thick, .color = theme_manager.Colors.YELLOW, .padding = 0 },
+        .{ .style = .dashed, .color = theme_manager.Colors.MAGENTA, .padding = 0 },
     };
     
     const style_names = [_][]const u8{
@@ -387,7 +387,7 @@ fn demoBorderedOverlay(state: *DemoState) !void {
         const overlay = try state.allocator.create(Clear);
         overlay.* = Clear.init(state.allocator, Bounds.init(x, y, 12, 6))
             .withMode(.solid_color)
-            .withBackgroundColor(.BLACK)
+            .withBackgroundColor(theme_manager.Colors.BLACK)
             .withBorder(border);
         
         try state.addOverlay(overlay);
@@ -411,7 +411,7 @@ fn demoAdvancedEffects(state: *DemoState) !void {
     const blur_overlay = try state.allocator.create(Clear);
     blur_overlay.* = Clear.init(state.allocator, Bounds.init(13, 14, 20, 8))
         .withMode(.blur)
-        .withShadow(true, .GRAY);
+        .withShadow(true, theme_manager.Colors.BRIGHT_BLACK);
     try state.addOverlay(blur_overlay);
     try blur_overlay.show();
     
@@ -419,7 +419,7 @@ fn demoAdvancedEffects(state: *DemoState) !void {
     const filter_overlay = try state.allocator.create(Clear);
     filter_overlay.* = Clear.init(state.allocator, Bounds.init(35, 15, 20, 8))
         .withMode(.color_filter)
-        .withShadow(true, .BLACK);
+        .withShadow(true, theme_manager.Colors.BLACK);
     try state.addOverlay(filter_overlay);
     try filter_overlay.show();
     
@@ -428,13 +428,13 @@ fn demoAdvancedEffects(state: *DemoState) !void {
     combined_overlay.* = Clear.init(state.allocator, Bounds.init(57, 14, 20, 10))
         .withMode(.pattern)
         .withPattern(.diagonal_stripes, null)
-        .withBackgroundColor(.BLUE)
+        .withBackgroundColor(theme_manager.Colors.BLUE)
         .withBorder(BorderOptions{
             .style = .double,
-            .color = .CYAN,
+            .color = theme_manager.Colors.CYAN,
             .padding = 1,
         })
-        .withShadow(true, .BLACK);
+        .withShadow(true, theme_manager.Colors.BLACK);
     try state.addOverlay(combined_overlay);
     try combined_overlay.show();
     
@@ -450,13 +450,13 @@ fn showHelp(state: *DemoState) !void {
     const help_overlay = try state.allocator.create(Clear);
     help_overlay.* = Clear.init(state.allocator, help_bounds)
         .withMode(.solid_color)
-        .withBackgroundColor(.BLACK)
+        .withBackgroundColor(theme_manager.Colors.BLACK)
         .withBorder(BorderOptions{
             .style = .double,
-            .color = .YELLOW,
+            .color = theme_manager.Colors.YELLOW,
             .padding = 1,
         })
-        .withShadow(true, .GRAY);
+        .withShadow(true, theme_manager.Colors.BRIGHT_BLACK);
     
     try state.addOverlay(help_overlay);
     try help_overlay.show();

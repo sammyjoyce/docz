@@ -1,5 +1,5 @@
-//! Enhanced CLI Components Demo
-//! Demonstrates the new advanced CLI components with terminal capabilities
+//! CLI Components Demo
+//! Demonstrates the CLI components with terminal capabilities
 
 const std = @import("std");
 const components = @import("components/mod.zig");

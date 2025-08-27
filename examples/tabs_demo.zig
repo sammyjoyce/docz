@@ -357,7 +357,7 @@ fn drawDataTab(allocator: std.mem.Allocator) !void {
     try stdout_writer.print("Sample Data Table\n", .{});
     try stdout_writer.print("=================\n\n", .{});
 
-    // Draw a simple table
+    // Draw a table
     const headers = [_][]const u8{ "ID", "Name", "Status", "Value" };
     const data = [_][4][]const u8{
         .{ "001", "Alice Johnson", "Active", "$1,250.00" },

@@ -4,13 +4,20 @@
 
 const std = @import("std");
 const term_screen = @import("../term/screen.zig");
+const ansi_screen = @import("../term/ansi/screen.zig");
 
 /// Re-export screen types for convenience
 pub const Control = term_screen.Control;
-pub const Bounds = term_screen.Bounds;
+pub const Bounds = @import("../types.zig").BoundsU32;
 pub const Component = term_screen.Component;
 pub const Screen = term_screen.Screen;
 pub const TermCaps = term_screen.TermCaps;
+
+/// Re-export ANSI functions for direct access
+pub const clearScreenToEnd = ansi_screen.clearScreenToEnd;
+pub const clearScreenToStart = ansi_screen.clearScreenToStart;
+pub const clearScreenAll = ansi_screen.clearScreenAll;
+pub const clearLineAll = ansi_screen.clearLineAll;
 
 /// TerminalScreen provides high-level terminal screen functionality
 /// Wraps the low-level term/screen.zig with additional convenience methods
@@ -298,8 +305,8 @@ pub const saveCursor = TerminalScreen.saveCursor;
 pub const restoreCursor = TerminalScreen.restoreCursor;
 pub const requestCursorPosition = TerminalScreen.requestCursorPosition;
 pub const createBounds = TerminalScreen.createBounds;
-pub const isEmpty = TerminalScreen.isEmpty;
-pub const intersects = TerminalScreen.intersects;
+pub const isBoundsEmpty = TerminalScreen.isBoundsEmpty;
+pub const boundsIntersect = TerminalScreen.boundsIntersect;
 pub const clampBounds = TerminalScreen.clampBounds;
 pub const createComponent = TerminalScreen.createComponent;
 pub const createScreen = TerminalScreen.createScreen;
@@ -370,8 +377,8 @@ test "TerminalScreen basic functionality" {
     // Test bounds operations
     const bounds1 = TerminalScreen.createBounds(0, 0, 10, 10);
     const bounds2 = TerminalScreen.createBounds(5, 5, 10, 10);
-    _ = TerminalScreen.isEmpty(bounds1);
-    _ = TerminalScreen.intersects(bounds1, bounds2);
+    _ = TerminalScreen.isBoundsEmpty(bounds1);
+    _ = TerminalScreen.boundsIntersect(bounds1, bounds2);
     _ = TerminalScreen.clampBounds(bounds1, bounds2);
 
     // Test text attributes

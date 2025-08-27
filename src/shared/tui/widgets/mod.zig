@@ -1,6 +1,6 @@
 //! TUI Widgets Module
 //!
-//! Organizes widgets by category and provides unified exports
+//! Organizes widgets by category and provides exports
 
 const std = @import("std");
 
@@ -21,6 +21,10 @@ pub const Core = struct {
     pub const TagInput = @import("core/tag_input.zig").TagInput;
     pub const DiffViewer = @import("core/diff_viewer.zig").DiffViewer;
     pub const Clear = @import("core/clear.zig").Clear;
+    pub const Scrollbar = @import("core/scrollbar.zig").Scrollbar;
+    pub const VirtualList = @import("core/VirtualList.zig").VirtualList;
+    pub const ScrollableTextArea = @import("core/ScrollableTextArea.zig").ScrollableTextArea;
+    pub const ScrollableContainer = @import("core/ScrollableContainer.zig").ScrollableContainer;
 
     // Placeholder implementations for widgets to be extracted
     pub const Table = struct {
@@ -31,14 +35,15 @@ pub const Core = struct {
     };
 };
 
-// Rich widgets (advanced functionality)
+// Rich widgets
 pub const Rich = struct {
     pub const ProgressBar = @import("rich/progress.zig").ProgressBar;
-    pub const Notification = @import("rich/notification.zig").Notification;
+    pub const Notification = @import("../notifications.zig").NotificationWidget;
+    pub const NotificationController = @import("../notifications.zig").NotificationController;
     pub const Graphics = @import("rich/graphics.zig").GraphicsWidget;
 };
 
-// Dashboard widgets (new advanced graphics widgets)
+// Dashboard widgets (graphics widgets)
 pub const dashboard = @import("dashboard/mod.zig");
 
 // Convenience re-exports
@@ -53,6 +58,16 @@ pub const Table = Core.Table;
 pub const TagInput = Core.TagInput;
 pub const DiffViewer = Core.DiffViewer;
 pub const Clear = Core.Clear;
+pub const Scrollbar = Core.Scrollbar;
+pub const Orientation = core.scrollbar.Orientation;
+pub const ScrollbarStyle = core.scrollbar.ScrollbarStyle;
+pub const VirtualList = Core.VirtualList;
+pub const DataSource = core.DataSource;
+pub const Item = core.Item;
+pub const VirtualListConfig = core.Config;
+pub const ArrayDataSource = core.ArrayDataSource;
+pub const ScrollableTextArea = Core.ScrollableTextArea;
+pub const ScrollableContainer = Core.ScrollableContainer;
 pub const Tag = @import("core/tag_input.zig").Tag;
 pub const TagCategory = @import("core/tag_input.zig").TagCategory;
 pub const TagInputConfig = @import("core/tag_input.zig").TagInputConfig;

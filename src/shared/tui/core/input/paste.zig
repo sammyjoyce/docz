@@ -75,14 +75,18 @@ pub const Paste = struct {
         return self.paste_buffer.items;
     }
 
-    /// Enable bracketed paste mode
-    pub fn enableBracketedPaste(writer: anytype) !void {
-        try writer.writeAll("\x1b[?2004h"); // Enable bracketed paste
+    /// Enable bracketed paste mode using consolidated mode functions
+    pub fn enableBracketedPaste(writer: anytype, caps: anytype) !void {
+        const term_mod = @import("../../../term/mod.zig");
+        const TermCaps = term_mod.caps.TermCaps;
+        try term_mod.ansi.mode.enableBracketedPaste(writer, @as(TermCaps, caps));
     }
 
-    /// Disable bracketed paste mode
-    pub fn disableBracketedPaste(writer: anytype) !void {
-        try writer.writeAll("\x1b[?2004l"); // Disable bracketed paste
+    /// Disable bracketed paste mode using consolidated mode functions
+    pub fn disableBracketedPaste(writer: anytype, caps: anytype) !void {
+        const term_mod = @import("../../../term/mod.zig");
+        const TermCaps = term_mod.caps.TermCaps;
+        try term_mod.ansi.mode.disableBracketedPaste(writer, @as(TermCaps, caps));
     }
 };
 

@@ -1,8 +1,8 @@
 const std = @import("std");
 
-/// Advanced screen management for terminal applications
+/// Screen management for terminal applications
 /// Provides screen save/restore, alternate screen buffer, and window management
-/// Inspired by advanced terminal libraries with modern features
+/// Inspired by terminal libraries with modern features
 /// ANSI escape sequences for screen management
 pub const ScreenSequences = struct {
     // Alternate screen buffer

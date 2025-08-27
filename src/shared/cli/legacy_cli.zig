@@ -423,7 +423,7 @@ fn printSubcommands(subcommands: anytype) void {
 }
 
 pub fn printHelp(allocator: Allocator) !void {
-    // For now, use a simple approach
+    // For now, use a basic approach
     var formatter = try CliFormatter.init(allocator);
     defer formatter.deinit();
     try formatter.printEnhancedHelp(cli_config);

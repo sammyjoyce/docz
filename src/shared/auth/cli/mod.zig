@@ -6,7 +6,6 @@
 const std = @import("std");
 const core = @import("../core/mod.zig");
 const oauth = @import("../oauth/mod.zig");
-const tui = @import("../tui/mod.zig");
 
 /// Authentication command types
 pub const AuthCommand = enum {
@@ -34,13 +33,13 @@ pub fn runAuthCommand(allocator: std.mem.Allocator, command: AuthCommand) !void 
 /// Handle login command (OAuth setup)
 pub fn handleLoginCommand(allocator: std.mem.Allocator) !void {
     std.log.info("Starting OAuth authentication setup...", .{});
-    try tui.setupOAuthWithTUI(allocator);
+    _ = try oauth.setupOAuth(allocator);
 }
 
 /// Handle status command
 pub fn handleStatusCommand(allocator: std.mem.Allocator) !void {
     std.log.info("Checking authentication status...", .{});
-    try tui.showAuthStatus(allocator);
+    try displayStatusCLI(allocator);
 }
 
 /// Handle refresh command

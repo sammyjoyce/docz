@@ -1,26 +1,49 @@
-//! Enhanced input system for TUI applications
-//! Uses the unified input system from @src/shared/input for comprehensive input support
+//! TUI-Specific Input Layer - High-level Features
+//!
+//! This module provides TUI-specific input handling features that build upon
+//! the input system. It adds high-level functionality like focus management,
+//! widget input routing, and interaction patterns.
+//!
+//! Architecture Layer: HIGH-LEVEL TUI FEATURES
+//! - Focus management and tracking
+//! - Widget-level input routing and event dispatching
+//! - Mouse interaction (drag, click, scroll)
+//! - Bracketed paste handling with content processing
+//! - Event system with handler registration
+//! - TUI-specific event types and conversions
+//! - Legacy compatibility layer for existing TUI widgets
+//!
+//! This layer depends on the input system from src/shared/components/input.zig
+//! and adds TUI-specific features on top of it.
+//!
+//! Usage:
+//!   - Use EventSystem for comprehensive TUI input handling
+//!   - Use individual components (Focus, Mouse, Paste) for specific features
+//!   - Use Compat layer for backward compatibility with existing widgets
+//!
+//! Architecture Flow:
+//!   term/input/ (primitives) → components/input.zig (input) → tui/core/input/ (TUI features)
 pub const events = @import("events.zig");
 pub const focus = @import("focus.zig");
 pub const paste = @import("paste.zig");
 pub const mouse = @import("mouse.zig");
 
-// Re-export unified input types from the new unified system
-pub const input = @import("../../../input.zig");
-pub const Event = input.Event;
+// Re-export input types from the input system
+pub const input = @import("../../../components/input.zig");
 pub const Key = input.Key;
 pub const Modifiers = input.Modifiers;
 pub const MouseButton = input.MouseButton;
-pub const MouseMode = input.MouseMode;
+pub const MouseAction = input.MouseAction;
+pub const MouseEvent = input.MouseEvent;
 pub const InputManager = input.InputManager;
 pub const InputConfig = input.InputConfig;
 pub const InputFeatures = input.InputFeatures;
-pub const InputParser = input.InputParser;
 pub const InputUtils = input.InputUtils;
 
 // Legacy TUI-specific types (for enhanced TUI features)
 pub const EventSystem = events.EventSystem;
-pub const InputEvent = events.InputEvent; // Legacy TUI event type
+pub const TuiInputEvent = events.InputEvent; // Legacy TUI event type
+pub const InputEvent = TuiInputEvent; // TUI-specific input event
 
 pub const Focus = focus.Focus;
 pub const FocusHandler = focus.FocusHandler;

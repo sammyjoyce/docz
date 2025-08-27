@@ -1,18 +1,19 @@
 //! Component-Based UI Architecture
 //!
-//! This module provides a unified component system that can be used by both CLI and TUI
+//! This module provides a component system that can be used by both CLI and TUI
 //! interfaces, enabling code reuse and consistent behavior across different presentation modes.
 
 const std = @import("std");
 const term_shared = @import("../term/mod.zig");
-const unified = term_shared.unified;
+const term = term_shared.term;
 const graphics = term_shared.graphics_manager;
+const theme_manager = @import("../theme_manager/mod.zig");
 
-const Terminal = unified.Terminal;
-const Color = unified.Color;
-const Style = unified.Style;
-const Point = unified.Point;
-const Rect = unified.Rect;
+const Terminal = term.Terminal;
+const Color = term.Color;
+const Style = term.Style;
+const Point = term.Point;
+const Rect = term.Rect;
 const GraphicsManager = graphics.GraphicsManager;
 
 /// Unique identifier for components
@@ -144,84 +145,8 @@ pub const Render = struct {
     }
 };
 
-/// Theme system for consistent styling
-pub const Theme = struct {
-    colors: Colors,
-    typography: Typography,
-    spacing: Spacing,
-    animation: AnimationSettings,
-
-    pub const Colors = struct {
-        primary: Color = unified.Colors.BLUE,
-        secondary: Color = unified.Colors.CYAN,
-        success: Color = unified.Colors.GREEN,
-        warning: Color = unified.Colors.YELLOW,
-        errorColor: Color = unified.Colors.RED,
-        background: Color = unified.Colors.BLACK,
-        foreground: Color = unified.Colors.WHITE,
-        border: Color = unified.Colors.BRIGHT_BLACK,
-        focus: Color = unified.Colors.BRIGHT_BLUE,
-    };
-
-    pub const Typography = struct {
-        defaultStyle: Style = .{},
-        headerStyle: Style = .{ .bold = true },
-        emphasisStyle: Style = .{ .italic = true },
-        codeStyle: Style = .{ .fg_color = unified.Colors.CYAN },
-    };
-
-    pub const Spacing = struct {
-        padding: u32 = 1,
-        margin: u32 = 1,
-        borderWidth: u32 = 1,
-    };
-
-    pub const AnimationSettings = struct {
-        enabled: bool = true,
-        duration: u32 = 200, // milliseconds
-        easing: EasingFunction = .ease_out,
-
-        pub const EasingFunction = enum {
-            linear,
-            ease_in,
-            ease_out,
-            ease_in_out,
-        };
-    };
-
-    /// Get default theme
-    pub fn default() Theme {
-        return Theme{
-            .colors = Colors{},
-            .typography = Typography{},
-            .spacing = Spacing{},
-            .animation = AnimationSettings{},
-        };
-    }
-
-    /// Create theme adapted to terminal capabilities
-    pub fn forTerminal(terminal: *Terminal) Theme {
-        const caps = terminal.getCapabilities();
-        var theme = Theme.default();
-
-        // Adapt colors based on capabilities
-        if (!caps.supportsTruecolor) {
-            // Use ANSI colors for basic terminals
-            theme.colors.primary = unified.Colors.BRIGHT_BLUE;
-            theme.colors.secondary = unified.Colors.BRIGHT_CYAN;
-            theme.colors.success = unified.Colors.BRIGHT_GREEN;
-            theme.colors.warning = unified.Colors.BRIGHT_YELLOW;
-            theme.colors.errorColor = unified.Colors.BRIGHT_RED;
-        }
-
-        // Disable animations for very basic terminals
-        if (!caps.supportsTruecolor and !caps.supportsKittyGraphics) {
-            theme.animation.enabled = false;
-        }
-
-        return theme;
-    }
-};
+/// Theme system for consistent styling - now uses centralized theme manager
+pub const Theme = theme_manager.ColorScheme;
 
 /// Base component interface using vtable pattern for polymorphism
 pub const Component = struct {
@@ -355,15 +280,15 @@ pub const ComponentRegistry = struct {
     components: std.ArrayList(*Component),
     focusedComponent: ?*Component,
     nextId: ComponentId,
-    theme: Theme,
+    theme: *Theme,
 
-    pub fn init(allocator: std.mem.Allocator, terminal: *Terminal) Self {
+    pub fn init(allocator: std.mem.Allocator, theme: *Theme) Self {
         return Self{
             .allocator = allocator,
             .components = std.ArrayList(*Component).init(allocator),
             .focusedComponent = null,
             .nextId = 1,
-            .theme = Theme.forTerminal(terminal),
+            .theme = theme,
         };
     }
 
@@ -453,7 +378,7 @@ pub const ComponentRegistry = struct {
     }
 
     pub fn getTheme(self: *Self) *Theme {
-        return &self.theme;
+        return self.theme;
     }
 
     fn compareZIndex(context: void, a: *Component, b: *Component) bool {
@@ -512,8 +437,7 @@ pub const Animation = struct {
     }
 };
 
-/// Alias for backward compatibility
-pub const RenderContext = Render;
+
 
 test "component state" {
     var state = ComponentState{};

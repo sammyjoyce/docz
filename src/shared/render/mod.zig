@@ -51,19 +51,48 @@
 
 const std = @import("std");
 
-// Core exports - Unified Renderer System
-pub const Renderer = @import("Renderer.zig").Renderer;
+// Core exports - Renderer System
+pub const Renderer = @import("renderer.zig").Renderer;
+pub const AdaptiveRenderer = Renderer.AdaptiveRenderer; // Backward compatibility
 pub const RenderTier = Renderer.RenderTier;
 pub const Theme = Renderer.Theme;
 pub const cacheKey = Renderer.cacheKey;
 pub const QualityTiers = @import("quality_tiers.zig").QualityTiers;
+pub const Settings = @import("quality_tiers.zig").Settings;
+pub const TableSettings = @import("quality_tiers.zig").TableSettings;
+pub const ChartSettings = @import("quality_tiers.zig").ChartSettings;
+
+// Widget system exports
+pub const Widget = Renderer.Widget;
+pub const WidgetVTable = Renderer.WidgetVTable;
+pub const WidgetBuilder = Renderer.WidgetBuilder;
+pub const Container = Renderer.Container;
+pub const InputEvent = Renderer.InputEvent;
+pub const Style = Renderer.Style;
+pub const Bounds = Renderer.Bounds;
+pub const Point = Renderer.Point;
+pub const Size = Renderer.Size;
+pub const Rect = Renderer.Rect;
+pub const Context = Renderer.Context;
+pub const BoxStyle = Renderer.BoxStyle;
+pub const Constraints = Renderer.Constraints;
+pub const Layout = Renderer.Layout;
+
+// Graphics system
+pub const Graphics = @import("../term/graphics.zig").Graphics;
 
 // Diff rendering module
 pub const diff = @import("diff.zig");
 
+// Braille graphics module
+pub const braille = @import("braille.zig");
+pub const BrailleCanvas = braille.BrailleCanvas;
+pub const BraillePatterns = braille.BraillePatterns;
+pub const BrailleUtils = braille.BrailleUtils;
+
 // Component modules
-const table_mod = @import("components/Table.zig");
-const chart_mod = @import("components/Chart.zig");
+const table_mod = @import("components/table.zig");
+const chart_mod = @import("components/chart.zig");
 
 // Progress bar exports from consolidated module
 pub const Progress = @import("../components/progress.zig").Progress;
@@ -108,77 +137,82 @@ pub fn createRendererWithTheme(allocator: std.mem.Allocator, theme: Theme) !*Ren
     return Renderer.initWithTheme(allocator, theme);
 }
 
-/// Enhanced renderer API with component methods
-pub const EnhancedRenderer = struct {
+/// Backward compatibility functions
+pub fn initAdaptive(allocator: std.mem.Allocator) !*AdaptiveRenderer {
+    return Renderer.initAdaptive(allocator);
+}
+
+/// Renderer API with component methods
+pub const RendererAPI = struct {
     renderer: *Renderer,
 
-    pub fn init(allocator: std.mem.Allocator) !EnhancedRenderer {
+    pub fn init(allocator: std.mem.Allocator) !RendererAPI {
         const renderer = try Renderer.init(allocator);
-        return EnhancedRenderer{ .renderer = renderer };
+        return RendererAPI{ .renderer = renderer };
     }
 
-    pub fn deinit(self: *EnhancedRenderer) void {
+    pub fn deinit(self: *RendererAPI) void {
         self.renderer.deinit();
     }
 
-    pub fn renderProgress(self: *EnhancedRenderer, progress: Progress) !void {
+    pub fn renderProgress(self: *RendererAPI, progress: Progress) !void {
         return @import("../components/progress.zig").renderProgress(self.renderer, progress);
     }
 
-    pub fn renderTable(self: *EnhancedRenderer, table: Table) !void {
-        return @import("components/Table.zig").renderTable(self.renderer, table);
+    pub fn renderTable(self: *RendererAPI, table: Table) !void {
+        return @import("components/table.zig").renderTable(self.renderer, table);
     }
 
-    pub fn renderChart(self: *EnhancedRenderer, chart: Chart) !void {
-        return @import("components/Chart.zig").renderChart(self.renderer, chart);
+    pub fn renderChart(self: *RendererAPI, chart: Chart) !void {
+        return @import("components/chart.zig").renderChart(self.renderer, chart);
     }
 
-    pub fn getRenderingInfo(self: *const EnhancedRenderer) Renderer.RenderingInfo {
+    pub fn getRenderingInfo(self: *const RendererAPI) Renderer.Info {
         return self.renderer.getRenderingInfo();
     }
 
-    pub fn writeText(self: *EnhancedRenderer, text: []const u8, color: ?@import("../cli/core/unified_terminal.zig").Color, bold: bool) !void {
+    pub fn writeText(self: *RendererAPI, text: []const u8, color: ?@import("../term/unified.zig").Color, bold: bool) !void {
         return self.renderer.writeText(text, color, bold);
     }
 
-    pub fn flush(self: *EnhancedRenderer) !void {
+    pub fn flush(self: *RendererAPI) !void {
         return self.renderer.flush();
     }
 
-    pub fn beginSynchronized(self: *EnhancedRenderer) !void {
+    pub fn beginSynchronized(self: *RendererAPI) !void {
         return self.renderer.beginSynchronized();
     }
 
-    pub fn endSynchronized(self: *EnhancedRenderer) !void {
+    pub fn endSynchronized(self: *RendererAPI) !void {
         return self.renderer.endSynchronized();
     }
+
+    /// Render a data dashboard with table and charts
+    pub fn renderDataDashboard(self: *RendererAPI, dashboard: Dashboard) !void {
+        try self.renderer.beginSynchronized();
+        defer self.renderer.endSynchronized() catch {};
+
+        // Title
+        if (dashboard.title) |title| {
+            try self.writeText(title, @import("../term/unified.zig").Color.CYAN, true);
+            try self.writeText("\n\n", null, false);
+        }
+
+        // Table
+        if (dashboard.table) |table| {
+            try self.renderTable(table);
+            try self.writeText("\n", null, false);
+        }
+
+        // Charts
+        for (dashboard.charts) |chart| {
+            try self.renderChart(chart);
+            try self.writeText("\n", null, false);
+        }
+
+        try self.flush();
+    }
 };
-
-/// Render a data dashboard with table and charts
-pub fn renderDataDashboard(self: *EnhancedRenderer, dashboard: Dashboard) !void {
-    try self.renderer.beginSynchronized();
-    defer self.renderer.endSynchronized() catch {};
-
-    // Title
-    if (dashboard.title) |title| {
-        try self.writeText(title, @import("../cli/core/unified_terminal.zig").Color.CYAN, true);
-        try self.writeText("\n\n", null, false);
-    }
-
-    // Table
-    if (dashboard.table) |table| {
-        try self.renderTable(table);
-        try self.writeText("\n", null, false);
-    }
-
-    // Charts
-    for (dashboard.charts) |chart| {
-        try self.renderChart(chart);
-        try self.writeText("\n", null, false);
-    }
-
-    try self.flush();
-}
 
 pub const Dashboard = struct {
     title: ?[]const u8 = null,
@@ -194,7 +228,7 @@ pub const Dashboard = struct {
 // }
 
 // Tests
-test "unified rendering system" {
+test "rendering system" {
     const testing = std.testing;
 
     // Test core renderer creation
@@ -204,19 +238,19 @@ test "unified rendering system" {
     const info = renderer.getRenderingInfo();
     try testing.expect(info.tier == .minimal);
 
-    // Test enhanced renderer
-    var enhanced = try EnhancedRenderer.init(testing.allocator);
-    defer enhanced.deinit();
+    // Test renderer API
+    var api = try RendererAPI.init(testing.allocator);
+    defer api.deinit();
 
-    const enhanced_info = enhanced.getRenderingInfo();
-    try testing.expect(enhanced_info.tier != .minimal or enhanced_info.tier == .minimal); // Any tier is valid
+    const api_info = api.getRenderingInfo();
+    try testing.expect(api_info.tier != .minimal or api_info.tier == .minimal); // Any tier is valid
 
     // Test component rendering
     const progress = Progress{
         .value = 0.5,
         .label = "Test",
     };
-    try enhanced.renderProgress(progress);
+    try api.renderProgress(progress);
 
     const headers = [_][]const u8{ "A", "B" };
     const row = [_][]const u8{ "1", "2" };
@@ -226,10 +260,10 @@ test "unified rendering system" {
         .headers = &headers,
         .rows = &rows,
     };
-    try enhanced.renderTable(table);
+    try api.renderTable(table);
 
     const data = [_]f64{ 1.0, 2.0 };
     const series = Chart.Series{ .name = "Test", .data = &data };
     const chart = Chart{ .data_series = &[_]Chart.Series{series} };
-    try enhanced.renderChart(chart);
+    try api.renderChart(chart);
 }

@@ -1,6 +1,6 @@
-//! Enhanced CLI Main Entry Point
+//! CLI Main Entry Point
 //!
-//! This demonstrates how to integrate the enhanced CLI components with the
+//! This demonstrates how to integrate the CLI components with the
 //! existing CLI framework to provide progressive terminal capabilities.
 
 const std = @import("std");
@@ -9,12 +9,12 @@ const term_shared = @import("../../term/mod.zig");
 const unified = term_shared.unified;
 const terminal_bridge = @import("core/terminal_bridge.zig");
 const components = @import("../components/mod.zig");
-const notification = @import("components/base/notification.zig");
-const input_mod = @import("components/base/input.zig");
+const notification = @import("notifications.zig");
+const input_mod = @import("../components/input.zig");
 const demo = @import("demos/capabilities_demo.zig");
 
-/// Enhanced CLI Application that uses the unified terminal interface
-pub const EnhancedCliApp = struct {
+/// CLI Application that uses the terminal interface
+pub const CliApp = struct {
     const Self = @This();
 
     allocator: std.mem.Allocator,
@@ -55,7 +55,7 @@ pub const EnhancedCliApp = struct {
         self.bridge.deinit();
     }
 
-    /// Main CLI run method with enhanced capabilities
+    /// Main CLI run method with capabilities
     pub fn run(self: *Self, args: []const []const u8) !u8 {
         // Show welcome message with terminal capabilities
         try self.showWelcome();
@@ -270,13 +270,13 @@ pub const EnhancedCliApp = struct {
         try self.bridge.print("  help                    Show this help\n", null);
 
         try self.bridge.print("\nExamples:\n", terminal_bridge.Styles.INFO);
-        try self.bridge.print("  enhanced-cli demo\n", terminal_bridge.Styles.MUTED);
-        try self.bridge.print("  enhanced-cli progress 100 rainbow\n", terminal_bridge.Styles.MUTED);
-        try self.bridge.print("  enhanced-cli notify success 'Build Complete' 'All tests passed'\n", terminal_bridge.Styles.MUTED);
-        try self.bridge.print("  enhanced-cli input email\n", terminal_bridge.Styles.MUTED);
+        try self.bridge.print("  cli demo\n", terminal_bridge.Styles.MUTED);
+        try self.bridge.print("  cli progress 100 rainbow\n", terminal_bridge.Styles.MUTED);
+        try self.bridge.print("  cli notify success 'Build Complete' 'All tests passed'\n", terminal_bridge.Styles.MUTED);
+        try self.bridge.print("  cli input email\n", terminal_bridge.Styles.MUTED);
     }
 
-    /// Handle command execution errors with enhanced error reporting
+    /// Handle command execution errors with error reporting
     fn handleError(self: *Self, command: []const u8, err: anyerror) !void {
         const error_msg = try std.fmt.allocPrint(self.allocator, "Failed to execute '{s}': {s}", .{ command, @errorName(err) });
         defer self.allocator.free(error_msg);
@@ -302,7 +302,7 @@ pub const EnhancedCliApp = struct {
     }
 };
 
-/// Main entry point for enhanced CLI
+/// Main entry point for CLI
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
@@ -313,19 +313,19 @@ pub fn main() !void {
 
     const cli_args = if (args.len > 1) args[1..] else &[_][]const u8{};
 
-    var app = try EnhancedCliApp.init(allocator);
+    var app = try CliApp.init(allocator);
     defer app.deinit();
 
     const exit_code = try app.run(cli_args);
     std.process.exit(exit_code);
 }
 
-test "enhanced cli initialization" {
+test "cli initialization" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    var app = try EnhancedCliApp.init(allocator);
+    var app = try CliApp.init(allocator);
     defer app.deinit();
 
     // Basic functionality test

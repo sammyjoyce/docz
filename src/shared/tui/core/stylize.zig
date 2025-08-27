@@ -9,7 +9,8 @@
 
 const std = @import("std");
 const renderer = @import("renderer.zig");
-const cell_buffer = @import("../../components/cell_buffer.zig");
+const term = @import("term_shared");
+const cell_buffer = term.cellbuf;
 
 /// Core Style type that unifies different style representations
 pub const Style = struct {

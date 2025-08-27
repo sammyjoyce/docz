@@ -5,7 +5,7 @@
 
 const std = @import("std");
 const base = @import("base.zig");
-const unified = @import("../term/unified.zig");
+const term = @import("../term/term.zig");
 const graphics = @import("../term/graphics_manager.zig");
 const notification = @import("notification.zig");
 const progress = @import("progress.zig");
@@ -15,9 +15,9 @@ const ComponentRegistry = base.ComponentRegistry;
 const RenderContext = base.RenderContext;
 const Event = base.Event;
 const Theme = base.Theme;
-const NotificationLevel = unified.NotificationLevel;
-const Terminal = unified.Terminal;
-const Color = unified.Color;
+const NotificationLevel = term.NotificationLevel;
+const Terminal = term.Terminal;
+const Color = term.Color;
 
 /// Context mode determines how components are rendered
 pub const UIMode = enum {
@@ -63,7 +63,7 @@ pub const UI = struct {
     }
 
     /// Create a render context for components
-    pub fn createRenderContext(self: *Self, bounds: unified.Rect) RenderContext {
+    pub fn createRenderContext(self: *Self, bounds: term.Rect) RenderContext {
         return RenderContext{
             .terminal = &self.terminal,
             .graphics = if (self.graphics) |*gfx| gfx else null,
@@ -109,7 +109,7 @@ pub const UI = struct {
                 });
 
                 // Render immediately
-                const ctx = self.createRenderContext(unified.Rect{ .x = 0, .y = 0, .width = 80, .height = 1 });
+                const ctx = self.createRenderContext(term.Rect{ .x = 0, .y = 0, .width = 80, .height = 1 });
                 try progress_component.render(ctx);
                 try self.terminal.flush();
 
@@ -138,7 +138,7 @@ pub const UI = struct {
 
         if (self.mode == .cli) {
             // In CLI mode, re-render immediately
-            const ctx = self.createRenderContext(unified.Rect{ .x = 0, .y = 0, .width = 80, .height = 1 });
+            const ctx = self.createRenderContext(term.Rect{ .x = 0, .y = 0, .width = 80, .height = 1 });
             progress_component.render(ctx) catch {};
             self.terminal.flush() catch {};
         }
@@ -150,7 +150,7 @@ pub const UI = struct {
     }
 
     /// Render all components (mainly for TUI mode)
-    pub fn render(self: *Self, bounds: unified.Rect) !void {
+    pub fn render(self: *Self, bounds: term.Rect) !void {
         const ctx = self.createRenderContext(bounds);
         try self.componentManager.render(ctx);
     }
@@ -171,7 +171,7 @@ pub const UI = struct {
     }
 
     /// Get terminal capabilities
-    pub fn getCapabilities(self: *Self) unified.TermCaps {
+    pub fn getCapabilities(self: *Self) term.TermCaps {
         return self.terminal.getCapabilities();
     }
 };
@@ -292,13 +292,13 @@ pub const NotificationComponent = struct {
         try content.append('┐');
 
         // Render title line
-        const title_style = unified.Style{ .fg_color = level_color, .bold = true };
+        const title_style = term.Style{ .fg_color = level_color, .bold = true };
         try ctx.terminal.print(content.items, title_style);
 
         // Move to next line for message
         try ctx.terminal.moveTo(self.state.bounds.x, current_y + 1);
 
-        const message_style = unified.Style{ .fg_color = ctx.theme.colors.foreground };
+        const message_style = term.Style{ .fg_color = ctx.theme.colors.foreground };
         try ctx.terminal.printf("│ {s}", .{self.config.message}, message_style);
 
         // Add padding for message line
@@ -319,14 +319,14 @@ pub const NotificationComponent = struct {
         try ctx.terminal.print("┘", title_style);
     }
 
-    fn measure(impl: *anyopaque, available: unified.Rect) unified.Rect {
+    fn measure(impl: *anyopaque, available: term.Rect) term.Rect {
         const self: *Self = @ptrCast(@alignCast(impl));
 
         const width = @max(self.config.title.len + 10, // Title + icon + padding
             @min(self.config.message.len + 4, available.width) // Message + padding, clamped to available
             );
 
-        return unified.Rect{
+        return term.Rect{
             .x = available.x,
             .y = available.y,
             .width = @min(width, available.width),
@@ -378,8 +378,8 @@ pub const NotificationConfig = struct {
 
 /// Utility functions for common UI operations
 /// Create a styled text span
-pub fn createTextStyle(color: ?Color, bold: bool) unified.Style {
-    return unified.Style{
+pub fn createTextStyle(color: ?Color, bold: bool) term.Style {
+    return term.Style{
         .fg_color = color,
         .bold = bold,
     };
@@ -430,9 +430,9 @@ pub const BorderChars = struct {
 };
 
 /// Draw a border around a rectangle
-pub fn drawBorder(terminal: *Terminal, bounds: unified.Rect, border: BorderStyle) !void {
+pub fn drawBorder(terminal: *Terminal, bounds: term.Rect, border: BorderStyle) !void {
     const chars = border.getChars();
-    const style = unified.Style{ .fg_color = border.color };
+    const style = term.Style{ .fg_color = border.color };
 
     // Top border
     try terminal.moveTo(bounds.x, bounds.y);
@@ -463,7 +463,7 @@ pub fn drawBorder(terminal: *Terminal, bounds: unified.Rect, border: BorderStyle
 }
 
 /// Center text within a rectangle
-pub fn centerText(terminal: *Terminal, bounds: unified.Rect, text: []const u8, style: ?unified.Style) !void {
+pub fn centerText(terminal: *Terminal, bounds: term.Rect, text: []const u8, style: ?term.Style) !void {
     const text_width = text.len;
     const x_offset = if (bounds.width > text_width) (bounds.width - text_width) / 2 else 0;
     const y_offset = bounds.height / 2;

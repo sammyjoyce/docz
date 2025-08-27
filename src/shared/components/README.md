@@ -1,12 +1,12 @@
-# Unified Progress Bar System
+# Progress Bar System
 
-This directory contains a unified progress bar implementation that eliminates duplication across the codebase.
+This directory contains a progress bar implementation that eliminates duplication across the codebase.
 
 ## Architecture
 
 ### Core Components
 
-- **`progress.zig`** - Unified progress implementation with core data structures, utilities, and all rendering styles
+- **`progress.zig`** - Progress implementation with core data structures, utilities, and all rendering styles
 - **`mod.zig`** - Module exports and convenience functions
 
 ### Key Features
@@ -111,7 +111,7 @@ try progress.render(renderer, ctx);
 ### From Render Progress Bar
 
 1. Replace `src/shared/render/components/ProgressBar.zig` usage with adapter
-2. Update to use unified data structures
+2. Update to use data structures
 3. Leverage quality tiers for adaptive rendering
 
 ### From TUI Progress Bar

@@ -1,12 +1,14 @@
 const std = @import("std");
-const AdaptiveRenderer = @import("../adaptive_renderer.zig").AdaptiveRenderer;
-const RenderMode = AdaptiveRenderer.RenderMode;
+const Renderer = @import("../renderer.zig").Renderer;
+const RenderTier = Renderer.RenderTier;
 const QualityTiers = @import("../quality_tiers.zig").QualityTiers;
 const ChartConfig = @import("../quality_tiers.zig").ChartConfig;
 const term_mod = @import("../../term/mod.zig");
 const term_sgr = @import("../../term/ansi/sgr.zig");
 const Color = term_mod.ansi.color.Color;
-const cacheKey = @import("../adaptive_renderer.zig").cacheKey;
+const cacheKey = @import("../renderer.zig").cacheKey;
+const graphics_manager = @import("../../term/graphics_manager.zig");
+const GraphicsManager = graphics_manager.GraphicsManager;
 
 /// Chart data structure
 pub const Chart = struct {
@@ -85,10 +87,10 @@ pub fn renderChart(renderer: *@import("../Renderer.zig").Renderer, chart: Chart)
     defer output.deinit();
 
     switch (renderer.render_tier) {
-        .ultra => try renderEnhanced(renderer, chart, &output),
-        .enhanced => try renderStandard(renderer, chart, &output),
-        .standard => try renderCompatible(renderer, chart, &output),
-        .minimal => try renderMinimal(renderer, chart, &output),
+        .ultra => try renderHigh(renderer, chart, &output),
+        .enhanced => try renderMedium(renderer, chart, &output),
+        .standard => try renderLow(renderer, chart, &output),
+        .minimal => try renderBasic(renderer, chart, &output),
     }
 
     const content = try output.toOwnedSlice();
@@ -98,9 +100,9 @@ pub fn renderChart(renderer: *@import("../Renderer.zig").Renderer, chart: Chart)
     try renderer.terminal.writeText(content);
 }
 
-/// Enhanced rendering with graphics support
-fn renderEnhanced(renderer: *AdaptiveRenderer, chart: Chart, output: *std.ArrayList(u8)) !void {
-    const config = QualityTiers.Chart.enhanced;
+/// High quality rendering with graphics support
+fn renderHigh(renderer: *Renderer, chart: Chart, output: *std.ArrayList(u8)) !void {
+    const config = QualityTiers.Chart.high;
     const writer = output.writer();
 
     // Title
@@ -112,12 +114,17 @@ fn renderEnhanced(renderer: *AdaptiveRenderer, chart: Chart, output: *std.ArrayL
         try writer.writeAll("\n\n");
     }
 
-    if (config.use_graphics and renderer.graphics_manager != null) {
-        // Use graphics manager to create chart image
-        try writer.writeAll("[Graphics rendering would be implemented here with Kitty/Sixel]\n");
-
-        // For now, fall back to Unicode rendering
-        try renderUnicodeChart(renderer, chart, config, writer);
+    if (config.use_graphics) {
+        // Try to use graphics manager for advanced chart rendering
+        if (renderer.getGraphicsManager()) |gm| {
+            try writer.writeAll("[Graphics chart rendering with Kitty/Sixel would be implemented here]\n");
+            // TODO: Implement actual graphics chart rendering using GraphicsManager
+            _ = gm; // Use the graphics manager
+        } else |err| {
+            // Fall back to Unicode rendering if graphics manager fails
+            _ = err; // Handle error if needed
+            try renderUnicodeChart(renderer, chart, config, writer);
+        }
     } else {
         try renderUnicodeChart(renderer, chart, config, writer);
     }
@@ -128,9 +135,9 @@ fn renderEnhanced(renderer: *AdaptiveRenderer, chart: Chart, output: *std.ArrayL
     }
 }
 
-/// Standard rendering with Unicode blocks
-fn renderStandard(renderer: *AdaptiveRenderer, chart: Chart, output: *std.ArrayList(u8)) !void {
-    const config = QualityTiers.Chart.standard;
+/// Medium quality rendering with Unicode blocks
+fn renderMedium(renderer: *Renderer, chart: Chart, output: *std.ArrayList(u8)) !void {
+    const config = QualityTiers.Chart.medium;
     const writer = output.writer();
 
     // Title
@@ -146,9 +153,9 @@ fn renderStandard(renderer: *AdaptiveRenderer, chart: Chart, output: *std.ArrayL
     }
 }
 
-/// Compatible rendering with ASCII characters
-fn renderCompatible(renderer: *AdaptiveRenderer, chart: Chart, output: *std.ArrayList(u8)) !void {
-    const config = QualityTiers.Chart.compatible;
+/// Low quality rendering with ASCII characters
+fn renderLow(renderer: *Renderer, chart: Chart, output: *std.ArrayList(u8)) !void {
+    const config = QualityTiers.Chart.low;
     const writer = output.writer();
 
     // Title
@@ -164,8 +171,8 @@ fn renderCompatible(renderer: *AdaptiveRenderer, chart: Chart, output: *std.Arra
     }
 }
 
-/// Minimal rendering with text summary
-fn renderMinimal(_: *AdaptiveRenderer, chart: Chart, output: *std.ArrayList(u8)) !void {
+/// Basic rendering with text summary
+fn renderBasic(_: *Renderer, chart: Chart, output: *std.ArrayList(u8)) !void {
     const writer = output.writer();
 
     // Title
@@ -194,7 +201,7 @@ fn renderMinimal(_: *AdaptiveRenderer, chart: Chart, output: *std.ArrayList(u8))
 }
 
 /// Render chart using Unicode block characters
-fn renderUnicodeChart(renderer: *AdaptiveRenderer, chart: Chart, config: ChartConfig, writer: anytype) !void {
+fn renderUnicodeChart(renderer: *Renderer, chart: Chart, config: ChartConfig, writer: anytype) !void {
     const dimensions = getDimensions(chart, config);
     const min_max = chart.getMinMaxValues();
 
@@ -211,7 +218,7 @@ fn renderUnicodeChart(renderer: *AdaptiveRenderer, chart: Chart, config: ChartCo
 }
 
 /// Render chart using ASCII characters
-fn renderAsciiChart(renderer: *AdaptiveRenderer, chart: Chart, config: ChartConfig, writer: anytype) !void {
+fn renderAsciiChart(renderer: *Renderer, chart: Chart, config: ChartConfig, writer: anytype) !void {
     const dimensions = getDimensions(chart, config);
     const min_max = chart.getMinMaxValues();
 
@@ -234,7 +241,7 @@ fn getDimensions(chart: Chart, config: ChartConfig) struct { width: u16, height:
 }
 
 /// Render Unicode line chart
-fn renderUnicodeLineChart(renderer: *AdaptiveRenderer, chart: Chart, config: ChartConfig, dimensions: struct { width: u16, height: u16 }, min_max: struct { min: f64, max: f64 }, writer: anytype) !void {
+fn renderUnicodeLineChart(renderer: *Renderer, chart: Chart, config: ChartConfig, dimensions: struct { width: u16, height: u16 }, min_max: struct { min: f64, max: f64 }, writer: anytype) !void {
     const value_range = min_max.max - min_max.min;
     if (value_range == 0) return;
 
@@ -297,7 +304,7 @@ fn renderUnicodeLineChart(renderer: *AdaptiveRenderer, chart: Chart, config: Cha
 }
 
 /// Render Unicode bar chart
-fn renderUnicodeBarChart(renderer: *AdaptiveRenderer, chart: Chart, config: ChartConfig, dimensions: struct { width: u16, height: u16 }, min_max: struct { min: f64, max: f64 }, writer: anytype) !void {
+fn renderUnicodeBarChart(renderer: *Renderer, chart: Chart, config: ChartConfig, dimensions: struct { width: u16, height: u16 }, min_max: struct { min: f64, max: f64 }, writer: anytype) !void {
     if (chart.data_series.len == 0) return;
 
     const series = chart.data_series[0]; // Use first series for bar chart
@@ -336,13 +343,13 @@ fn renderUnicodeBarChart(renderer: *AdaptiveRenderer, chart: Chart, config: Char
 }
 
 /// Render Unicode area chart
-fn renderUnicodeAreaChart(renderer: *AdaptiveRenderer, chart: Chart, config: ChartConfig, dimensions: struct { width: u16, height: u16 }, min_max: struct { min: f64, max: f64 }, writer: anytype) !void {
+fn renderUnicodeAreaChart(renderer: *Renderer, chart: Chart, config: ChartConfig, dimensions: struct { width: u16, height: u16 }, min_max: struct { min: f64, max: f64 }, writer: anytype) !void {
     // Similar to line chart but fills area below the line
     try renderUnicodeLineChart(renderer, chart, config, dimensions, min_max, writer);
 }
 
 /// Render sparkline (compact line chart)
-fn renderSparkline(renderer: *AdaptiveRenderer, chart: Chart, config: ChartConfig, writer: anytype) !void {
+fn renderSparkline(renderer: *Renderer, chart: Chart, config: ChartConfig, writer: anytype) !void {
     if (chart.data_series.len == 0) return;
 
     const series = chart.data_series[0];
@@ -378,7 +385,7 @@ fn renderSparkline(renderer: *AdaptiveRenderer, chart: Chart, config: ChartConfi
 }
 
 /// Render ASCII line chart
-fn renderAsciiLineChart(_: *AdaptiveRenderer, chart: Chart, _: ChartConfig, dimensions: struct { width: u16, height: u16 }, min_max: struct { min: f64, max: f64 }, writer: anytype) !void {
+fn renderAsciiLineChart(_: *Renderer, chart: Chart, _: ChartConfig, dimensions: struct { width: u16, height: u16 }, min_max: struct { min: f64, max: f64 }, writer: anytype) !void {
     const value_range = min_max.max - min_max.min;
     if (value_range == 0) return;
 
@@ -415,7 +422,7 @@ fn renderAsciiLineChart(_: *AdaptiveRenderer, chart: Chart, _: ChartConfig, dime
 }
 
 /// Render ASCII bar chart
-fn renderAsciiBarChart(_: *AdaptiveRenderer, chart: Chart, _: ChartConfig, dimensions: struct { width: u16, height: u16 }, min_max: struct { min: f64, max: f64 }, writer: anytype) !void {
+fn renderAsciiBarChart(_: *Renderer, chart: Chart, _: ChartConfig, dimensions: struct { width: u16, height: u16 }, min_max: struct { min: f64, max: f64 }, writer: anytype) !void {
     if (chart.data_series.len == 0) return;
 
     const series = chart.data_series[0];
@@ -436,7 +443,7 @@ fn renderAsciiBarChart(_: *AdaptiveRenderer, chart: Chart, _: ChartConfig, dimen
 }
 
 /// Render legend
-fn renderLegend(renderer: *AdaptiveRenderer, chart: Chart, config: ChartConfig, writer: anytype) !void {
+fn renderLegend(renderer: *Renderer, chart: Chart, config: ChartConfig, writer: anytype) !void {
     try writer.writeAll("\nLegend:\n");
 
     for (chart.data_series) |series| {
@@ -488,11 +495,11 @@ fn renderDataTable(chart: Chart, writer: anytype) !void {
 }
 
 /// Set chart color based on renderer capabilities
-fn setChartColor(renderer: *AdaptiveRenderer, color: Color, writer: anytype) !void {
+fn setChartColor(renderer: *Renderer, color: Color, writer: anytype) !void {
     const caps = term_mod.capabilities.getTermCaps();
 
-    switch (renderer.render_mode) {
-        .enhanced => {
+    switch (renderer.render_tier) {
+        .ultra, .enhanced => {
             switch (color) {
                 .rgb => |rgb| try term_sgr.setForegroundRgb(writer, caps, rgb.r, rgb.g, rgb.b),
                 .ansi => |ansi| {
@@ -517,7 +524,7 @@ fn setChartColor(renderer: *AdaptiveRenderer, color: Color, writer: anytype) !vo
                 .palette => |pal| try term_sgr.setForeground256(writer, caps, pal),
             }
         },
-        .compatible, .minimal => {
+        .minimal => {
             switch (color) {
                 .ansi => |ansi| {
                     const color_code = @as(u16, @intFromEnum(ansi)) + 30; // 30-37 for foreground
@@ -541,7 +548,7 @@ fn rgbToPalette256(rgb: struct { r: u8, g: u8, b: u8 }) u8 {
 test "chart rendering" {
     const testing = std.testing;
 
-    var renderer = try AdaptiveRenderer.initWithMode(testing.allocator, .standard);
+    var renderer = try Renderer.initWithTier(testing.allocator, .standard);
     defer renderer.deinit();
 
     const data1 = [_]f64{ 1.0, 3.0, 2.0, 5.0, 4.0 };

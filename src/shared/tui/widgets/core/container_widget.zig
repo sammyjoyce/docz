@@ -3,7 +3,7 @@
 
 const std = @import("std");
 const widget_interface = @import("../../core/widget_interface.zig");
-const unified_renderer = @import("../../core/unified_renderer.zig");
+const renderer_mod = @import("../../core/renderer.zig");
 const Allocator = std.mem.Allocator;
 
 /// Container widget implementation that wraps the Container struct
@@ -39,7 +39,7 @@ pub const ContainerWidget = struct {
     }
 
     /// Render the container
-    pub fn render(ctx: *anyopaque, renderer: *unified_renderer.UnifiedRenderer, area: widget_interface.Rect) !void {
+    pub fn render(ctx: *anyopaque, renderer: *renderer_mod.Renderer, area: widget_interface.Rect) !void {
         const self: *@This() = @ptrCast(@alignCast(ctx));
         try self.container.render(renderer, area);
     }
@@ -93,12 +93,12 @@ pub const ContainerWidget = struct {
     }
 
     /// Set background color
-    pub fn setBackground(self: *ContainerWidget, color: unified_renderer.Color) void {
+    pub fn setBackground(self: *ContainerWidget, color: renderer_mod.Style.Color) void {
         self.container.background = color;
     }
 
     /// Set border
-    pub fn setBorder(self: *ContainerWidget, color: unified_renderer.Color, style: enum { single, double, rounded }) void {
+    pub fn setBorder(self: *ContainerWidget, color: renderer_mod.Style.Color, style: enum { single, double, rounded }) void {
         self.container.border = .{
             .color = color,
             .style = style,

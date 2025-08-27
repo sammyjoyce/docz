@@ -73,7 +73,7 @@ pub const ThemeValidator = struct {
         });
 
         try self.rules.append(.{
-            .name = "enhanced_contrast",
+            .name = "contrast",
             .description = "Text should have WCAG AAA contrast",
             .severity = .warning,
             .validator = validateEnhancedContrast,

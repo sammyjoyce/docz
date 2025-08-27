@@ -1,26 +1,33 @@
-//! Unified Input System for Terminal Applications
+//! Input System for Terminal Applications
 //!
-//! This module provides a unified high-level input interface that consolidates
+//! This module provides a high-level input interface that consolidates
 //! the various input handling systems across CLI and TUI components. It builds
 //! upon the low-level primitives in src/shared/term/input/ to provide consistent
 //! event handling, buffering, and feature management.
 //!
 //! Architecture:
-//!   term/input/ (primitives) → components/input.zig (unified interface) → cli/tui (implementations)
+//!   term/input/ (primitives) → components/input.zig (interface) → cli/tui (implementations)
 
 const std = @import("std");
 const term_mod = @import("../term/mod.zig");
-const unified_parser = term_mod.input.unified_parser;
+const parser = term_mod.input.parser;
 const types = term_mod.input.types;
 const caps = term_mod.caps;
 const ansi_mode = term_mod.ansi.mode;
 
 // Re-export key types for convenience
-pub const Key = unified_parser.Key;
+pub const Key = parser.Key;
 pub const Modifiers = types.Modifiers;
 pub const MouseEvent = types.MouseEvent;
 pub const MouseButton = types.MouseButton;
 pub const MouseAction = types.MouseAction;
+
+// Re-export mouse types from low-level module
+const mouse_mod = @import("../term/input/mouse.zig");
+pub const MouseMode = mouse_mod.MouseMode;
+pub const MouseModifiers = mouse_mod.MouseModifiers;
+pub const MouseParser = mouse_mod.MouseParser;
+pub const MouseSequences = mouse_mod.MouseSequences;
 
 /// Unified input event types that work across CLI and TUI
 pub const InputEvent = union(enum) {
@@ -85,8 +92,8 @@ pub const InputEvent = union(enum) {
         height: u32,
     };
 
-    /// Convert from low-level unified_parser.InputEvent
-    pub fn fromUnifiedEvent(allocator: std.mem.Allocator, event: unified_parser.InputEvent) !InputEvent {
+    /// Convert from low-level parser.InputEvent
+    pub fn fromEvent(allocator: std.mem.Allocator, event: parser.InputEvent) !InputEvent {
         return switch (event) {
             .key_press => |key| InputEvent{
                 .key_press = .{
@@ -194,8 +201,211 @@ pub const InputEvent = union(enum) {
     }
 };
 
+/// Unified mouse abstraction that wraps low-level mouse functionality
+/// Provides a high-level interface for mouse input handling across CLI and TUI applications
+pub const Mouse = struct {
+    const Self = @This();
+
+    allocator: std.mem.Allocator,
+    parser: MouseParser,
+    current_mode: MouseMode = .none,
+    supported_modes: std.EnumSet(MouseMode) = std.EnumSet(MouseMode).init(.{}),
+
+    // Event handlers
+    event_handlers: std.ArrayListUnmanaged(MouseEventHandler) = .{},
+    click_handlers: std.ArrayListUnmanaged(MouseClickHandler) = .{},
+    scroll_handlers: std.ArrayListUnmanaged(MouseScrollHandler) = .{},
+
+    // Configuration
+    double_click_threshold_ms: u32 = 400,
+    click_distance_threshold: u32 = 3,
+
+    pub fn init(allocator: std.mem.Allocator) Self {
+        return Self{
+            .allocator = allocator,
+            .parser = MouseParser.init(allocator),
+            .event_handlers = std.ArrayListUnmanaged(MouseEventHandler){},
+            .click_handlers = std.ArrayListUnmanaged(MouseClickHandler){},
+            .scroll_handlers = std.ArrayListUnmanaged(MouseScrollHandler){},
+        };
+    }
+
+    pub fn deinit(self: *Self) void {
+        self.event_handlers.deinit(self.allocator);
+        self.click_handlers.deinit(self.allocator);
+        self.scroll_handlers.deinit(self.allocator);
+    }
+
+    /// Enable mouse tracking with specified mode
+    pub fn enable(self: *Self, mode: MouseMode) !void {
+        if (self.current_mode == mode) return;
+
+        // Disable current mode first
+        try self.disable();
+
+        const sequence = switch (mode) {
+            .none => return,
+            .basic => MouseSequences.ENABLE_BASIC,
+            .normal => MouseSequences.ENABLE_NORMAL,
+            .button_event => MouseSequences.ENABLE_BUTTON,
+            .any_event => MouseSequences.ENABLE_ANY,
+            .sgr_basic => MouseSequences.ENABLE_NORMAL ++ MouseSequences.ENABLE_SGR,
+            .sgr_pixel => MouseSequences.ENABLE_NORMAL ++ MouseSequences.ENABLE_SGR ++ MouseSequences.ENABLE_SGR_PIXEL,
+            .urxvt => MouseSequences.ENABLE_NORMAL ++ MouseSequences.ENABLE_URXVT,
+            .dec_locator => "", // Would need DEC locator sequences
+        };
+
+        try self.sendSequence(sequence);
+        self.current_mode = mode;
+        self.parser.mode = mode;
+    }
+
+    /// Disable mouse tracking
+    pub fn disable(self: *Self) !void {
+        if (self.current_mode == .none) return;
+
+        const sequence = switch (self.current_mode) {
+            .none => "",
+            .basic => MouseSequences.DISABLE_BASIC,
+            .normal => MouseSequences.DISABLE_NORMAL,
+            .button_event => MouseSequences.DISABLE_BUTTON,
+            .any_event => MouseSequences.DISABLE_ANY,
+            .sgr_basic => MouseSequences.DISABLE_SGR ++ MouseSequences.DISABLE_NORMAL,
+            .sgr_pixel => MouseSequences.DISABLE_SGR_PIXEL ++ MouseSequences.DISABLE_SGR ++ MouseSequences.DISABLE_NORMAL,
+            .urxvt => MouseSequences.DISABLE_URXVT ++ MouseSequences.DISABLE_NORMAL,
+            .dec_locator => "",
+        };
+
+        try self.sendSequence(sequence);
+        self.current_mode = .none;
+        self.parser.mode = .none;
+    }
+
+    /// Send mouse control sequence to terminal
+    fn sendSequence(self: Self, sequence: []const u8) !void {
+        _ = self;
+        if (sequence.len > 0) {
+            const stdout = std.fs.File.stdout();
+            try stdout.writeAll(sequence);
+        }
+    }
+
+    /// Parse mouse event from input sequence
+    pub fn parseEvent(self: *Self, sequence: []const u8) ?MouseEvent {
+        return self.parser.parseEvent(sequence);
+    }
+
+    /// Process input event and dispatch to handlers
+    pub fn processInputEvent(self: *Self, event: InputEvent) !void {
+        switch (event) {
+            .mouse_press, .mouse_release, .mouse_move, .mouse_scroll => {
+                // Dispatch to general event handlers
+                for (self.event_handlers.items) |handler| {
+                    if (handler.func(event)) return; // Handler consumed the event
+                }
+
+                // Dispatch to specific handlers
+                switch (event) {
+                    .mouse_press, .mouse_release, .mouse_move => try self.processMouseClick(event),
+                    .mouse_scroll => |scroll| try self.processMouseScroll(scroll),
+                }
+            },
+            else => {},
+        }
+    }
+
+    fn processMouseClick(self: *Self, event: InputEvent) !void {
+        // Convert to mouse event format for handlers
+        const mouse_data = switch (event) {
+            .mouse_press => |m| .{ .button = m.button, .action = .press, .x = m.x, .y = m.y, .mods = m.modifiers },
+            .mouse_release => |m| .{ .button = m.button, .action = .release, .x = m.x, .y = m.y, .mods = m.modifiers },
+            .mouse_move => |m| .{ .button = .none, .action = .move, .x = m.x, .y = m.y, .mods = m.modifiers },
+            else => return,
+        };
+
+        const mouse_event = MouseEvent{
+            .button = mouse_data.button,
+            .action = mouse_data.action,
+            .x = mouse_data.x,
+            .y = mouse_data.y,
+            .mods = mouse_data.mods,
+            .timestamp = std.time.microTimestamp(),
+        };
+
+        // Dispatch to click handlers
+        for (self.click_handlers.items) |handler| {
+            if (handler.func(mouse_event)) return;
+        }
+    }
+
+    fn processMouseScroll(self: *Self, scroll: InputEvent.MouseScrollEvent) !void {
+        const scroll_event = MouseEvent{
+            .button = if (scroll.delta_y < 0) .wheel_up else .wheel_down,
+            .action = .press, // Wheel events are typically treated as presses
+            .x = scroll.x,
+            .y = scroll.y,
+            .mods = scroll.modifiers,
+            .timestamp = std.time.microTimestamp(),
+        };
+
+        for (self.scroll_handlers.items) |handler| {
+            if (handler.func(scroll_event)) return;
+        }
+    }
+
+    /// Register general mouse event handler
+    pub fn addEventHandler(self: *Self, handler: MouseEventHandler) !void {
+        try self.event_handlers.append(self.allocator, handler);
+    }
+
+    /// Register click-specific handler
+    pub fn addClickHandler(self: *Self, handler: MouseClickHandler) !void {
+        try self.click_handlers.append(self.allocator, handler);
+    }
+
+    /// Register scroll-specific handler
+    pub fn addScrollHandler(self: *Self, handler: MouseScrollHandler) !void {
+        try self.scroll_handlers.append(self.allocator, handler);
+    }
+
+    /// Get current mouse mode
+    pub fn getCurrentMode(self: Self) MouseMode {
+        return self.current_mode;
+    }
+
+    /// Check if mouse tracking is enabled
+    pub fn isEnabled(self: Self) bool {
+        return self.current_mode != .none;
+    }
+
+    /// Set double-click detection threshold
+    pub fn setDoubleClickThreshold(self: *Self, threshold_ms: u32) void {
+        self.double_click_threshold_ms = threshold_ms;
+        self.parser.setDoubleClickThreshold(threshold_ms);
+    }
+
+    /// Set click distance threshold for multi-click detection
+    pub fn setClickDistanceThreshold(self: *Self, threshold: u32) void {
+        self.click_distance_threshold = threshold;
+        self.parser.setClickDistanceThreshold(threshold);
+    }
+};
+
+/// Mouse event handler function types
+pub const MouseEventHandler = struct {
+    func: *const fn (event: InputEvent) bool, // Returns true if handled
+};
+
+pub const MouseClickHandler = struct {
+    func: *const fn (event: MouseEvent) bool, // Returns true if handled
+};
+
+pub const MouseScrollHandler = struct {
+    func: *const fn (event: MouseEvent) bool, // Returns true if handled
+};
+
 /// Input features that can be enabled
-pub const InputFeatures = packed struct {
+pub const InputFeature = packed struct {
     raw_mode: bool = true,
     mouse_events: bool = true,
     bracketed_paste: bool = true,
@@ -206,20 +416,20 @@ pub const InputFeatures = packed struct {
 
 /// Configuration for input handling
 pub const InputConfig = struct {
-    features: InputFeatures = .{},
+    features: Feature = .{},
     buffer_size: usize = 4096,
     poll_timeout_ms: u32 = 100,
     enable_debug_logging: bool = false,
 };
 
 /// Unified input manager that provides consistent input handling across CLI and TUI
-pub const InputManager = struct {
+pub const Input = struct {
     const Self = @This();
 
     allocator: std.mem.Allocator,
     config: InputConfig,
     caps: caps.TermCaps,
-    parser: unified_parser.InputParser,
+    parser: parser.InputParser,
 
     // Terminal state
     raw_mode_enabled: bool = false,
@@ -241,7 +451,7 @@ pub const InputManager = struct {
 
     pub fn init(allocator: std.mem.Allocator, config: InputConfig) !Self {
         const terminal_caps = try caps.detectCaps(allocator);
-        const input_parser = unified_parser.InputParser.init(allocator);
+        const input_parser = parser.InputParser.init(allocator);
 
         return Self{
             .allocator = allocator,
@@ -509,9 +719,9 @@ pub const InputManager = struct {
         }
     }
 
-    fn parseBuffer(self: *Self) ![]unified_parser.InputEvent {
+    fn parseBuffer(self: *Self) ![]parser.InputEvent {
         const data = self.input_buffer.items[self.buffer_pos..];
-        if (data.len == 0) return &[_]unified_parser.InputEvent{};
+        if (data.len == 0) return &[_]parser.InputEvent{};
 
         const events = try self.parser.parse(data);
         self.buffer_pos = self.input_buffer.items.len;
@@ -524,7 +734,7 @@ pub const InputManager = struct {
         if (data.len == 0) return null;
 
         // Try to parse one event
-        var temp_parser = unified_parser.InputParser.init(self.allocator);
+        var temp_parser = parser.InputParser.init(self.allocator);
         defer temp_parser.deinit();
 
         const events = temp_parser.parse(data) catch return null;
@@ -555,7 +765,7 @@ pub const InputManager = struct {
 };
 
 /// Helper functions for working with input events
-pub const InputUtils = struct {
+pub const Utility = struct {
     /// Check if a key event matches specific criteria
     pub fn keyMatches(event: InputEvent.KeyPressEvent, key: Key, modifiers: ?Modifiers) bool {
         if (event.key != key) return false;
@@ -624,7 +834,7 @@ pub const InputUtils = struct {
 };
 
 test "input manager initialization" {
-    var manager = try InputManager.init(std.testing.allocator, .{});
+    var manager = try Input.init(std.testing.allocator, .{});
     defer manager.deinit();
 
     try std.testing.expect(!manager.raw_mode_enabled);
@@ -635,7 +845,7 @@ test "input event conversion" {
     const allocator = std.testing.allocator;
 
     // Test key press conversion
-    const unified_key = unified_parser.InputEvent{
+    const key_event = parser.InputEvent{
         .key_press = .{
             .code = .enter,
             .text = "enter",
@@ -643,7 +853,7 @@ test "input event conversion" {
         },
     };
 
-    const converted = try InputEvent.fromUnifiedEvent(allocator, unified_key);
+    const converted = try InputEvent.fromEvent(allocator, key_event);
     defer converted.deinit(allocator);
 
     try std.testing.expect(converted == .key_press);
@@ -657,9 +867,31 @@ test "input utils" {
         .modifiers = .{ .ctrl = true },
     };
 
-    try std.testing.expect(InputUtils.keyMatches(event, .enter, .{ .ctrl = true }));
-    try std.testing.expect(!InputUtils.keyMatches(event, .enter, .{ .alt = true }));
+    try std.testing.expect(Utility.keyMatches(event, .enter, .{ .ctrl = true }));
+    try std.testing.expect(!Utility.keyMatches(event, .enter, .{ .alt = true }));
 
-    const display_text = InputUtils.getKeyDisplayText(event);
+    const display_text = Utility.getKeyDisplayText(event);
     try std.testing.expectEqualStrings("enter", display_text);
+}
+
+test "mouse abstraction" {
+    const allocator = std.testing.allocator;
+
+    // Test creating a mouse instance
+    var mouse = Mouse.init(allocator);
+    defer mouse.deinit();
+
+    // Test basic functionality
+    try std.testing.expect(!mouse.isEnabled());
+    try std.testing.expect(mouse.getCurrentMode() == .none);
+
+    // Test enabling mouse
+    try mouse.enable(.basic);
+    try std.testing.expect(mouse.isEnabled());
+    try std.testing.expect(mouse.getCurrentMode() == .basic);
+
+    // Test disabling mouse
+    try mouse.disable();
+    try std.testing.expect(!mouse.isEnabled());
+    try std.testing.expect(mouse.getCurrentMode() == .none);
 }

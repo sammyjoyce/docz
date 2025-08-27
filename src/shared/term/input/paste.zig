@@ -1,8 +1,8 @@
 const std = @import("std");
 
 // Bracketed paste markers.
-const BracketedPasteStart: []const u8 = "\x1b[200~";
-const BracketedPasteEnd: []const u8 = "\x1b[201~";
+pub const BracketedPasteStart: []const u8 = "\x1b[200~";
+pub const BracketedPasteEnd: []const u8 = "\x1b[201~";
 
 /// Enhanced paste event types for bracketed paste handling
 pub const PasteEvent = union(enum) {

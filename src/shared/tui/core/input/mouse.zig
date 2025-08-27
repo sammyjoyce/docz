@@ -1,21 +1,23 @@
 //! Enhanced mouse event handling for TUI applications
 //! Provides pixel-precise mouse tracking and rich interaction support
 const std = @import("std");
-const unified_input = @import("../../../input.zig");
+const unified_input = @import("../../../components/input.zig");
 const tui_mod = @import("../../mod.zig");
-const term_mouse = tui_mod.term.input.mouse;
+const term_mouse = unified_input;
+const caps_mod = @import("../../../term/capabilities.zig");
 
 // Re-export unified mouse types
 pub const MouseButton = unified_input.MouseButton;
 pub const MouseMode = unified_input.MouseMode;
+pub const UnifiedMouse = unified_input.Mouse;
 
 // Re-export legacy mouse types for backward compatibility
-pub const MouseEvent = term_mouse.MouseEvent;
-pub const MouseAction = term_mouse.MouseAction;
-pub const MouseProtocol = term_mouse.MouseProtocol;
+pub const MouseEvent = unified_input.MouseEvent;
+pub const MouseAction = unified_input.MouseAction;
+pub const MouseProtocol = caps_mod.MouseProtocol;
 
 /// Rich mouse controller with pixel precision support
-pub const Mouse = struct {
+pub const TUIMouse = struct {
     handlers: std.ArrayListUnmanaged(MouseHandler),
     click_handlers: std.ArrayListUnmanaged(ClickHandler),
     drag_handlers: std.ArrayListUnmanaged(DragHandler),
@@ -32,8 +34,8 @@ pub const Mouse = struct {
     double_click_threshold_ms: i64 = 300,
     drag_threshold_pixels: u32 = 3,
 
-    pub fn init(allocator: std.mem.Allocator) Mouse {
-        return Mouse{
+    pub fn init(allocator: std.mem.Allocator) TUIMouse {
+        return TUIMouse{
             .handlers = std.ArrayListUnmanaged(MouseHandler){},
             .click_handlers = std.ArrayListUnmanaged(ClickHandler){},
             .drag_handlers = std.ArrayListUnmanaged(DragHandler){},
@@ -42,7 +44,7 @@ pub const Mouse = struct {
         };
     }
 
-    pub fn deinit(self: *Mouse) void {
+    pub fn deinit(self: *TUIMouse) void {
         self.handlers.deinit(self.allocator);
         self.click_handlers.deinit(self.allocator);
         self.drag_handlers.deinit(self.allocator);
@@ -50,27 +52,27 @@ pub const Mouse = struct {
     }
 
     /// Register general mouse event handler
-    pub fn addHandler(self: *Mouse, handler: MouseHandler) !void {
+    pub fn addHandler(self: *TUIMouse, handler: MouseHandler) !void {
         try self.handlers.append(self.allocator, handler);
     }
 
     /// Register click-specific handler
-    pub fn addClickHandler(self: *Mouse, handler: ClickHandler) !void {
+    pub fn addClickHandler(self: *TUIMouse, handler: ClickHandler) !void {
         try self.click_handlers.append(self.allocator, handler);
     }
 
     /// Register drag-specific handler
-    pub fn addDragHandler(self: *Mouse, handler: DragHandler) !void {
+    pub fn addDragHandler(self: *TUIMouse, handler: DragHandler) !void {
         try self.drag_handlers.append(self.allocator, handler);
     }
 
     /// Register scroll-specific handler
-    pub fn addScrollHandler(self: *Mouse, handler: ScrollHandler) !void {
+    pub fn addScrollHandler(self: *TUIMouse, handler: ScrollHandler) !void {
         try self.scroll_handlers.append(self.allocator, handler);
     }
 
     /// Process mouse event and dispatch to appropriate handlers
-    pub fn processMouseEvent(self: *Mouse, event: unified_input.Event) !void {
+    pub fn processMouseEvent(self: *TUIMouse, event: unified_input.Event) !void {
         const now = std.time.milliTimestamp();
 
         // Dispatch to general handlers first
@@ -86,7 +88,7 @@ pub const Mouse = struct {
         }
     }
 
-    fn processMouseClick(self: *Mouse, event: unified_input.Event, now: i64) !void {
+    fn processMouseClick(self: *TUIMouse, event: unified_input.Event, now: i64) !void {
         const position, const button, const modifiers = switch (event) {
             .mouse_press => |m| .{ Position{ .x = @as(i32, @intCast(m.x)), .y = @as(i32, @intCast(m.y)) }, m.button, m.modifiers },
             .mouse_release => |m| .{ Position{ .x = @as(i32, @intCast(m.x)), .y = @as(i32, @intCast(m.y)) }, m.button, m.modifiers },
@@ -123,8 +125,8 @@ pub const Mouse = struct {
                         .start_pos = self.drag_start_pos.?,
                         .end_pos = position,
                         .current_pos = position,
-                        .button = mouse.button,
-                        .modifiers = mouse.modifiers,
+                        .button = button,
+                        .modifiers = modifiers,
                         .action = DragEvent.Action.end,
                     };
 
@@ -149,8 +151,8 @@ pub const Mouse = struct {
                             .start_pos = start_pos,
                             .end_pos = position,
                             .current_pos = position,
-                            .button = mouse.button,
-                            .modifiers = mouse.modifiers,
+                            .button = button,
+                            .modifiers = modifiers,
                             .action = DragEvent.Action.start,
                         };
 
@@ -163,8 +165,8 @@ pub const Mouse = struct {
                             .start_pos = start_pos,
                             .end_pos = position,
                             .current_pos = position,
-                            .button = mouse.button,
-                            .modifiers = mouse.modifiers,
+                            .button = button,
+                            .modifiers = modifiers,
                             .action = DragEvent.Action.drag,
                         };
 
@@ -177,7 +179,7 @@ pub const Mouse = struct {
         }
     }
 
-    fn processMouseScroll(self: *Mouse, scroll: term_mouse.Scroll) !void {
+    fn processMouseScroll(self: *TUIMouse, scroll: term_mouse.Scroll) !void {
         const scroll_event = ScrollEvent{
             .position = Position{ .x = scroll.x, .y = scroll.y },
             .direction = scroll.direction,
@@ -189,7 +191,7 @@ pub const Mouse = struct {
         }
     }
 
-    fn checkDoubleClick(self: *Mouse, position: Position, now: i64) bool {
+    fn checkDoubleClick(self: *TUIMouse, position: Position, now: i64) bool {
         if (self.last_click_pos) |last_pos| {
             const time_diff = now - self.last_click_time;
             const dx = if (position.x > last_pos.x) position.x - last_pos.x else last_pos.x - position.x;
@@ -203,32 +205,29 @@ pub const Mouse = struct {
     }
 
     /// Enable mouse tracking with specified protocol
-    pub fn enableMouseTracking(writer: anytype, protocol: MouseProtocol) !void {
-        switch (protocol) {
-            .x10 => try writer.writeAll("\x1b[?9h"),
-            .normal => try writer.writeAll("\x1b[?1000h"),
-            .button_event => try writer.writeAll("\x1b[?1002h"),
-            .any_event => try writer.writeAll("\x1b[?1003h"),
-            .sgr => {
-                try writer.writeAll("\x1b[?1006h"); // SGR mode
-                try writer.writeAll("\x1b[?1000h"); // Enable mouse
-            },
-            .sgr_pixels => {
-                try writer.writeAll("\x1b[?1016h"); // SGR pixel mode
-                try writer.writeAll("\x1b[?1006h"); // SGR mode
-                try writer.writeAll("\x1b[?1000h"); // Enable mouse
-            },
-        }
+    pub fn enableMouseTracking(writer: anytype, protocol: MouseProtocol, term_caps: anytype) !void {
+        const term_mod = @import("../../../term/mod.zig");
+        const TermCaps = term_mod.caps.TermCaps;
+        const mode_mod = term_mod.ansi.mode;
+
+        // Convert from local MouseProtocol to mode.MouseProtocol
+        const mode_protocol = switch (protocol) {
+            .x10 => mode_mod.MouseProtocol.x10,
+            .normal => mode_mod.MouseProtocol.normal,
+            .button_event => mode_mod.MouseProtocol.button_event,
+            .any_event => mode_mod.MouseProtocol.any_event,
+            .sgr => mode_mod.MouseProtocol.sgr,
+            .sgr_pixels => mode_mod.MouseProtocol.sgr_pixels,
+        };
+
+        try mode_mod.enableMouseTracking(writer, mode_protocol, @as(TermCaps, term_caps));
     }
 
     /// Disable mouse tracking
-    pub fn disableMouseTracking(writer: anytype) !void {
-        try writer.writeAll("\x1b[?1016l"); // Disable SGR pixel mode
-        try writer.writeAll("\x1b[?1006l"); // Disable SGR mode
-        try writer.writeAll("\x1b[?1003l"); // Disable any event
-        try writer.writeAll("\x1b[?1002l"); // Disable button event
-        try writer.writeAll("\x1b[?1000l"); // Disable mouse
-        try writer.writeAll("\x1b[?9l"); // Disable X10
+    pub fn disableMouseTracking(writer: anytype, term_caps: anytype) !void {
+        const term_mod = @import("../../../term/mod.zig");
+        const TermCaps = term_mod.caps.TermCaps;
+        try term_mod.ansi.mode.disableMouseTracking(writer, @as(TermCaps, term_caps));
     }
 };
 
@@ -284,9 +283,9 @@ pub const ScrollHandler = struct {
 
 /// Mouse-aware widget trait
 pub const MouseAware = struct {
-    mouse_controller: *Mouse,
+    mouse_controller: *TUIMouse,
 
-    pub fn init(mouse_controller: *Mouse) MouseAware {
+    pub fn init(mouse_controller: *TUIMouse) MouseAware {
         return MouseAware{
             .mouse_controller = mouse_controller,
         };
@@ -311,9 +310,12 @@ pub const MouseAware = struct {
     }
 };
 
+// Alias for backward compatibility
+pub const Mouse = TUIMouse;
+
 // Tests
 test "mouse controller initialization" {
-    var mouse_controller = Mouse.init(std.testing.allocator);
+    var mouse_controller = TUIMouse.init(std.testing.allocator);
     defer mouse_controller.deinit();
 
     try std.testing.expect(!mouse_controller.is_dragging);
@@ -321,7 +323,7 @@ test "mouse controller initialization" {
 }
 
 test "double-click detection" {
-    var mouse_controller = Mouse.init(std.testing.allocator);
+    var mouse_controller = TUIMouse.init(std.testing.allocator);
     defer mouse_controller.deinit();
 
     const pos1 = Position{ .x = 10, .y = 20 };

@@ -29,7 +29,7 @@ pub const CommandRouter = struct {
     }
 
     /// Execute a parsed command with pipeline support
-    pub fn execute(self: *CommandRouter, args: types.ParsedArgsUnified) !types.CommandResult {
+    pub fn execute(self: *CommandRouter, args: types.ArgsUnified) !types.CommandResult {
         // Check for pipeline syntax (e.g., "auth status | format json | clipboard")
         if (args.raw_message) |msg| {
             if (std.mem.indexOf(u8, msg, "|")) |_| {
@@ -61,7 +61,7 @@ pub const CommandRouter = struct {
     }
 
     /// Execute a command pipeline
-    fn executePipeline(self: *CommandRouter, args: types.ParsedArgsUnified) !types.CommandResult {
+    fn executePipeline(self: *CommandRouter, args: types.ArgsUnified) !types.CommandResult {
         if (args.raw_message) |msg| {
             const stages = std.mem.split(u8, msg, "|");
             var current_output: ?[]const u8 = null;
@@ -136,7 +136,7 @@ pub const CommandRouter = struct {
         return types.CommandResult.ok(command);
     }
 
-    fn executeChat(self: *CommandRouter, args: types.ParsedArgsUnified) !types.CommandResult {
+    fn executeChat(self: *CommandRouter, args: types.ArgsUnified) !types.CommandResult {
         _ = args;
 
         // For now, just return a placeholder
@@ -150,7 +150,7 @@ pub const CommandRouter = struct {
         return types.CommandResult.ok("Chat functionality would be implemented here");
     }
 
-    fn executeAuth(self: *CommandRouter, args: types.ParsedArgsUnified) !types.CommandResult {
+    fn executeAuth(self: *CommandRouter, args: types.ArgsUnified) !types.CommandResult {
         // Handle auth subcommands
         if (args.auth_subcommand) |subcmd| {
             switch (subcmd) {
@@ -163,7 +163,7 @@ pub const CommandRouter = struct {
         }
     }
 
-    fn executeAuthLogin(self: *CommandRouter, args: types.ParsedArgsUnified) !types.CommandResult {
+    fn executeAuthLogin(self: *CommandRouter, args: types.ArgsUnified) !types.CommandResult {
         _ = args;
 
         try self.context.notification.send(.{
@@ -175,7 +175,7 @@ pub const CommandRouter = struct {
         return types.CommandResult.ok("Auth login would be implemented here");
     }
 
-    fn executeAuthStatus(self: *CommandRouter, args: types.ParsedArgsUnified) !types.CommandResult {
+    fn executeAuthStatus(self: *CommandRouter, args: types.ArgsUnified) !types.CommandResult {
         _ = args;
 
         // Show auth status with enhanced formatting
@@ -187,7 +187,7 @@ pub const CommandRouter = struct {
         return types.CommandResult.ok(status_text);
     }
 
-    fn executeAuthRefresh(self: *CommandRouter, args: types.ParsedArgsUnified) !types.CommandResult {
+    fn executeAuthRefresh(self: *CommandRouter, args: types.ArgsUnified) !types.CommandResult {
         _ = args;
 
         try self.context.notification.send(.{
@@ -199,7 +199,7 @@ pub const CommandRouter = struct {
         return types.CommandResult.ok("Auth token refreshed");
     }
 
-    fn executeInteractive(self: *CommandRouter, args: types.ParsedArgsUnified) !types.CommandResult {
+    fn executeInteractive(self: *CommandRouter, args: types.ArgsUnified) !types.CommandResult {
         _ = args;
 
         if (self.context.hasFeature(.hyperlinks) or self.context.hasFeature(.mouse)) {
@@ -214,7 +214,7 @@ pub const CommandRouter = struct {
         }
     }
 
-    fn executeHelp(self: *CommandRouter, args: types.ParsedArgsUnified) !types.CommandResult {
+    fn executeHelp(self: *CommandRouter, args: types.ArgsUnified) !types.CommandResult {
         _ = args;
 
         const help_text =
@@ -263,7 +263,7 @@ pub const CommandRouter = struct {
         return types.CommandResult.ok(output);
     }
 
-    fn executeVersion(self: *CommandRouter, args: types.ParsedArgsUnified) !types.CommandResult {
+    fn executeVersion(self: *CommandRouter, args: types.ArgsUnified) !types.CommandResult {
         _ = args;
 
         const capabilities = self.context.capabilities;

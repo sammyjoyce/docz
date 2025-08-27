@@ -5,10 +5,10 @@
 const std = @import("std");
 const Bounds = @import("../../core/bounds.zig").Bounds;
 const Point = @import("../../core/bounds.zig").Point;
-const Color = @import("../../themes/default.zig").Color;
+const Color = @import("../../../theme_manager/mod.zig").ColorScheme.Color;
 const terminal_writer = @import("../../components/terminal_writer.zig");
 const widget_interface = @import("../../core/widget_interface.zig");
-const unified_renderer = @import("../../core/unified_renderer.zig");
+const renderer_mod = @import("../../core/renderer.zig");
 const Allocator = std.mem.Allocator;
 
 /// Clear mode determines how the area is cleared
@@ -623,7 +623,7 @@ pub const Clear = struct {
     }
 
     // Widget interface implementations
-    fn renderWidget(ctx: *anyopaque, renderer: *unified_renderer.UnifiedRenderer, area: widget_interface.Rect) !void {
+    fn renderWidget(ctx: *anyopaque, renderer: *renderer_mod.Renderer, area: widget_interface.Rect) !void {
         _ = renderer;
         _ = area;
         const self: *Clear = @ptrCast(@alignCast(ctx));

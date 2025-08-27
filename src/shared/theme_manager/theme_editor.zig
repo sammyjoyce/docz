@@ -1,4 +1,4 @@
-//! Advanced Theme Customization Editor
+//! Theme Customization Editor
 //! Interactive color scheme editor with real-time preview
 
 const std = @import("std");

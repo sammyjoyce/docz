@@ -25,8 +25,8 @@ pub const DashboardConfig = struct {
 pub const RenderLevel = enum {
     /// Kitty Graphics Protocol + full features
     premium,
-    /// Sixel graphics + true colors + advanced features
-    enhanced,
+    /// Sixel graphics + true colors + features
+    rich,
     /// Unicode blocks + 256 colors + basic features
     standard,
     /// ASCII only + 16 colors
@@ -40,9 +40,9 @@ pub const RenderLevel = enum {
             return .premium;
         }
 
-        // Enhanced: True colors + mouse + some advanced features
+        // Rich: True colors + mouse + some features
         if (term_caps.supportsTruecolor and term_caps.supportsSgrMouse and term_caps.supportsHyperlinkOsc8) {
-            return .enhanced;
+            return .rich;
         }
 
         // Standard: Basic features
@@ -237,7 +237,7 @@ pub const AdaptiveDashboard = struct {
     pub fn getCapabilitiesSummary(self: *Self) []const u8 {
         return switch (self.render_level) {
             .premium => "Premium (Kitty Graphics + Full Features)",
-            .enhanced => "Enhanced (True Color + Advanced Features)",
+            .rich => "Rich (True Color + Features)",
             .standard => "Standard (256 Color + Basic Features)",
             .minimal => "Minimal (16 Color + ASCII Only)",
         };
@@ -376,7 +376,7 @@ pub const AdaptiveDashboard = struct {
         const footer_bounds = self.layout.getFooterBounds();
 
         // Keyboard shortcuts
-        const shortcuts = if (self.render_level == .premium or self.render_level == .enhanced)
+        const shortcuts = if (self.render_level == .premium or self.render_level == .rich)
             "Q:Quit | R:Refresh | Mouse:Interactive"
         else
             "Q:Quit | R:Refresh";

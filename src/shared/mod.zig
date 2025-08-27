@@ -14,5 +14,8 @@ pub const Network = struct {
 pub const auth = @import("auth/mod.zig");
 pub const term = @import("term/mod.zig");
 
-// Unified input system - now located in term/input.zig
-pub const input = @import("term/input.zig");
+// Unified types - consolidated data structures
+pub const types = @import("types.zig");
+
+// Unified input system - located in components/input.zig
+pub const input = @import("components/input.zig");

@@ -13,7 +13,7 @@
 const std = @import("std");
 const unified = @import("../../../src/shared/term/unified.zig");
 const capabilities = @import("../../../src/shared/term/caps.zig");
-const terminal_abstraction = @import("../../core/TerminalAbstraction.zig");
+const terminal_abstraction = @import("../../core/terminal_abstraction.zig");
 
 // Advanced input handling
 const input_events = @import("../../../src/shared/term/input/input_driver.zig");

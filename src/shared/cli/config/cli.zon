@@ -88,6 +88,10 @@
             .long = "interactive",
             .description = "Launch interactive command palette mode",
         },
+        .interactive_ux = .{
+            .long = "interactive-ux",
+            .description = "Launch enhanced interactive UX with progressive disclosure and tool discovery",
+        },
         .oauth = .{
             .long = "oauth",
             .description = "Setup OAuth authentication for Claude Pro/Max",

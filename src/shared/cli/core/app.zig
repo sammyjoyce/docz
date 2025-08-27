@@ -1,10 +1,10 @@
-//! Unified CLI Application
+//! CLI Application
 //! Main application that coordinates all CLI functionality
 
 const std = @import("std");
 const context = @import("context.zig");
 const types = @import("types.zig");
-const router = @import("router.zig");
+const router = @import("Router.zig");
 
 pub const CliApp = struct {
     allocator: std.mem.Allocator,
@@ -72,7 +72,7 @@ pub const CliApp = struct {
         }
     }
 
-    fn parseArguments(self: *CliApp, args: []const []const u8) !types.ParsedArgsUnified {
+    fn parseArguments(self: *CliApp, args: []const []const u8) !types.ArgsUnified {
         const legacy_parser = @import("legacy_parser.zig");
         // The enhanced parser expects argv-style input including program name at index 0.
         var argv = try self.allocator.alloc([]const u8, args.len + 1);
@@ -134,7 +134,7 @@ pub const CliApp = struct {
             \\  --stream          Stream responses
             \\  --no-hyperlinks   Disable hyperlinks
             \\  --no-clipboard    Disable clipboard integration
-            \\  --format FORMAT   Output format (simple|enhanced|json|markdown)
+            \\  --format FORMAT   Output format (basic|rich|json|markdown)
             \\
             \\Terminal Features:
         ;

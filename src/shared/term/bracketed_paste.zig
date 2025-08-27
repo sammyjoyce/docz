@@ -6,8 +6,10 @@ const std = @import("std");
 /// Bracketed paste sequences
 pub const ENABLE_BRACKETED_PASTE = "\x1b[?2004h";
 pub const DISABLE_BRACKETED_PASTE = "\x1b[?2004l";
-pub const PASTE_START = "\x1b[200~";
-pub const PASTE_END = "\x1b[201~";
+
+// Import consolidated paste markers from input/paste.zig
+pub const PASTE_START = @import("input/paste.zig").BracketedPasteStart;
+pub const PASTE_END = @import("input/paste.zig").BracketedPasteEnd;
 
 /// Paste event with metadata
 pub const PasteEvent = struct {

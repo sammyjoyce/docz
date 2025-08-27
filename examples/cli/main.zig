@@ -1,5 +1,5 @@
 //! Main entry point for the CLI with Graphics Dashboard
-//! Demonstrates the unified CLI architecture and progressive enhancement capabilities
+//! Demonstrates the CLI architecture and progressive enhancement capabilities
 
 const std = @import("std");
 const cli_mod = @import("components/cli.zig");

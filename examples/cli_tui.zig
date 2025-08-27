@@ -1,20 +1,20 @@
 //! Complete Demonstration of CLI and TUI with Graphics
-//! Shows the unified architecture and progressive enhancement in action
+//! Shows the architecture and progressive enhancement in action
 
 const std = @import("std");
 
 // Import our systems
 const cli = @import("examples/cli/components/cli.zig");
-const unified_renderer = @import("src/shared/tui/core/unified_renderer.zig");
+const renderer_mod = @import("src/shared/render/Renderer.zig");
 const demo_widget = @import("src/shared/tui/widgets/demo_widget.zig");
 
 const Allocator = std.mem.Allocator;
 const CLI = cli.CLI;
-const UnifiedRenderer = unified_renderer.UnifiedRenderer;
-const Theme = unified_renderer.Theme;
-const Rect = unified_renderer.Rect;
-const Size = unified_renderer.Size;
-const Color = @import("src/shared/cli/core/unified_terminal.zig").Color;
+const UnifiedRenderer = renderer_mod.UnifiedRenderer;
+const Theme = renderer_mod.Theme;
+const Rect = renderer_mod.Rect;
+const Size = renderer_mod.Size;
+const Color = renderer_mod.Color;
 
 /// Main demonstration function
 pub fn main() !void {
@@ -58,7 +58,7 @@ fn showUsage() !void {
         \\
         \\Modes:
         \\  cli   - CLI-only demonstration with graphics dashboard
-        \\  tui   - TUI-only demonstration with unified widgets
+        \\  tui   - TUI-only demonstration with widgets
         \\  both  - Integrated demonstration showing both systems
         \\
         \\Features Demonstrated:
@@ -155,7 +155,7 @@ fn runTUIDemo(allocator: Allocator) !void {
         std.time.sleep(100 * std.time.ns_per_ms); // 100ms delay
 
         // Simulate some input events for demo
-        const fake_event = unified_renderer.InputEvent{ .key = .{ .key = .tab, .modifiers = .{} } };
+        const fake_event = renderer_mod.InputEvent{ .key = .{ .key = .tab, .modifiers = .{} } };
         _ = try renderer.handleInput(fake_event);
 
         // Simple exit condition for demo (normally you'd handle actual input)
@@ -172,7 +172,7 @@ fn runTUIDemo(allocator: Allocator) !void {
 
     const w = terminal.writer();
     try w.writeAll("TUI Demo completed!\n");
-    try w.writeAll("The unified TUI system demonstrated:\n");
+    try w.writeAll("The TUI system demonstrated:\n");
     try w.writeAll("• Widget-based architecture with focus management\n");
     try w.writeAll("• Progressive enhancement based on terminal capabilities\n");
     try w.writeAll("• Unified theme system with automatic detection\n");
@@ -214,8 +214,8 @@ fn runIntegratedDemo(allocator: Allocator) !void {
 
     try stdout.writeAll("\n\n✅ Integration Complete!\n");
     try stdout.writeAll("This demonstration showcased:\n");
-    try stdout.writeAll("• CLI with graphics-enhanced dashboard\n");
-    try stdout.writeAll("• TUI with unified widget architecture\n");
+    try stdout.writeAll("• CLI with graphics dashboard\n");
+    try stdout.writeAll("• TUI with widget architecture\n");
     try stdout.writeAll("• Progressive enhancement across both systems\n");
     try stdout.writeAll("• Shared terminal capability detection\n");
     try stdout.writeAll("• Consistent theming and component interfaces\n");
@@ -223,7 +223,7 @@ fn runIntegratedDemo(allocator: Allocator) !void {
 }
 
 /// Show TUI startup message with terminal capability info
-fn showTUIStartupMessage(terminal: *@import("src/shared/cli/core/unified_terminal.zig").UnifiedTerminal) !void {
+fn showTUIStartupMessage(terminal: *@import("src/shared/cli/core/unified_terminal.zig").Terminal) !void {
     const w = terminal.writer();
 
     try terminal.clearScreen();
@@ -234,7 +234,7 @@ fn showTUIStartupMessage(terminal: *@import("src/shared/cli/core/unified_termina
     try w.writeAll("Detected Capabilities:\n");
 
     const capabilities = [_]struct {
-        feature: @import("src/shared/cli/core/unified_terminal.zig").UnifiedTerminal.Feature,
+        feature: @import("src/shared/cli/core/unified_terminal.zig").Terminal.Feature,
         name: []const u8,
         icon: []const u8,
     }{

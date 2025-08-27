@@ -1,4 +1,4 @@
-//! Unified Notification Base System
+//! Notification Base System
 //!
 //! This module provides a common foundation for all notification systems,
 //! eliminating duplication and providing consistent behavior across CLI and TUI contexts.
@@ -51,28 +51,28 @@ pub const NotificationType = enum {
     }
 
     /// Get the appropriate color for this notification type
-    pub fn color(self: NotificationType) term_shared.unified.Color {
+    pub fn color(self: NotificationType) term_shared.term.Color {
         return switch (self) {
-            .info => term_shared.unified.Color{ .rgb = .{ .r = 52, .g = 152, .b = 219 } }, // Blue
-            .success => term_shared.unified.Color{ .rgb = .{ .r = 46, .g = 204, .b = 113 } }, // Green
-            .warning => term_shared.unified.Color{ .rgb = .{ .r = 241, .g = 196, .b = 15 } }, // Yellow
-            .@"error" => term_shared.unified.Color{ .rgb = .{ .r = 231, .g = 76, .b = 60 } }, // Red
-            .debug => term_shared.unified.Color{ .rgb = .{ .r = 155, .g = 89, .b = 182 } }, // Purple
-            .critical => term_shared.unified.Color{ .rgb = .{ .r = 192, .g = 57, .b = 43 } }, // Dark red
-            .progress => term_shared.unified.Color{ .rgb = .{ .r = 255, .g = 215, .b = 0 } }, // Gold
+            .info => term_shared.term.Color{ .rgb = .{ .r = 52, .g = 152, .b = 219 } }, // Blue
+            .success => term_shared.term.Color{ .rgb = .{ .r = 46, .g = 204, .b = 113 } }, // Green
+            .warning => term_shared.term.Color{ .rgb = .{ .r = 241, .g = 196, .b = 15 } }, // Yellow
+            .@"error" => term_shared.term.Color{ .rgb = .{ .r = 231, .g = 76, .b = 60 } }, // Red
+            .debug => term_shared.term.Color{ .rgb = .{ .r = 155, .g = 89, .b = 182 } }, // Purple
+            .critical => term_shared.term.Color{ .rgb = .{ .r = 192, .g = 57, .b = 43 } }, // Dark red
+            .progress => term_shared.term.Color{ .rgb = .{ .r = 255, .g = 215, .b = 0 } }, // Gold
         };
     }
 
-    /// Convert to unified notification level
-    pub fn toUnifiedLevel(self: NotificationType) term_shared.unified.NotificationLevel {
+    /// Convert to notification level
+    pub fn toLevel(self: NotificationType) term_shared.term.NotificationLevel {
         return switch (self) {
             .info => .info,
             .success => .success,
             .warning => .warning,
             .@"error" => .@"error",
             .debug => .debug,
-            .critical => .@"error", // Map critical to error for unified interface
-            .progress => .info, // Map progress to info for unified interface
+            .critical => .@"error", // Map critical to error for interface
+            .progress => .info, // Map progress to info for interface
         };
     }
 };
@@ -419,34 +419,34 @@ pub const NotificationUtils = struct {
 pub const ColorScheme = struct {
     /// Get the standard color scheme for a notification type
     pub fn getStandard(notification_type: NotificationType) struct {
-        border: term_shared.unified.Color,
-        background: ?term_shared.unified.Color,
-        text: ?term_shared.unified.Color,
+        border: term_shared.term.Color,
+        background: ?term_shared.term.Color,
+        text: ?term_shared.term.Color,
     } {
         const base_color = notification_type.color();
 
         return .{
             .border = base_color,
             .background = switch (notification_type) {
-                .critical => term_shared.unified.Color{ .rgb = .{ .r = 20, .g = 20, .b = 20 } },
+                .critical => term_shared.term.Color{ .rgb = .{ .r = 20, .g = 20, .b = 20 } },
                 else => null,
             },
             .text = switch (notification_type) {
-                .info, .success, .warning, .@"error", .debug, .critical => term_shared.unified.Colors.WHITE,
+                .info, .success, .warning, .@"error", .debug, .critical => term_shared.term.Colors.WHITE,
             },
         };
     }
 
     /// Get muted colors for less intrusive notifications
     pub fn getMuted() struct {
-        border: term_shared.unified.Color,
-        background: ?term_shared.unified.Color,
-        text: ?term_shared.unified.Color,
+        border: term_shared.term.Color,
+        background: ?term_shared.term.Color,
+        text: ?term_shared.term.Color,
     } {
         return .{
-            .border = term_shared.unified.Colors.BRIGHT_BLACK,
+            .border = term_shared.term.Colors.BRIGHT_BLACK,
             .background = null,
-            .text = term_shared.unified.Colors.WHITE,
+            .text = term_shared.term.Colors.WHITE,
         };
     }
 };

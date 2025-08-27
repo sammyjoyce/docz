@@ -112,7 +112,7 @@ fn demoBasicDiff(allocator: std.mem.Allocator, renderer: *tui.Renderer, terminal
 /// Demo code diff with syntax highlighting
 fn demoCodeDiff(allocator: std.mem.Allocator, renderer: *tui.Renderer, terminal_size: bounds_mod.TerminalSize) !void {
     std.debug.print("💻 Demo 2: Code Diff\n");
-    std.debug.print("   Programming code comparison with unified view\n\n");
+    std.debug.print("   Programming code comparison with view\n\n");
 
     const original_code =
         \\pub fn fibonacci(n: u32) u32 {
@@ -157,7 +157,7 @@ fn demoCodeDiff(allocator: std.mem.Allocator, renderer: *tui.Renderer, terminal_
         \\}
     ;
 
-    // Create DiffViewer with unified mode and custom config
+    // Create DiffViewer with mode and custom config
     var diff_viewer = try tui.DiffViewer.init(allocator, original_code, modified_code, .{
         .mode = .unified,
         .show_line_numbers = true,

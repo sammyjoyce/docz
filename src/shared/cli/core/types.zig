@@ -1,5 +1,5 @@
 //! CLI argument types and structures
-//! Unified types for the new CLI system
+//! Types for the CLI system
 
 const std = @import("std");
 const Allocator = std.mem.Allocator;
@@ -33,7 +33,7 @@ pub const AuthSubcommand = enum {
 };
 
 /// Available CLI commands
-pub const UnifiedCommand = enum {
+pub const Command = enum {
     chat,
     auth,
     interactive,
@@ -42,8 +42,8 @@ pub const UnifiedCommand = enum {
     tui_demo,
 
     /// Generate fromString method using comptime reflection
-    pub fn fromString(str: []const u8) ?UnifiedCommand {
-        const info = @typeInfo(UnifiedCommand).@"enum";
+    pub fn fromString(str: []const u8) ?Command {
+        const info = @typeInfo(Command).@"enum";
         inline for (info.fields) |field| {
             const field_name = field.name;
             const commandString = comptime blk: {
@@ -55,15 +55,15 @@ pub const UnifiedCommand = enum {
             };
 
             if (std.mem.eql(u8, str, commandString)) {
-                return @field(UnifiedCommand, field_name);
+                return @field(Command, field_name);
             }
         }
         return null;
     }
 
     /// Generate toString method using comptime reflection
-    pub fn toString(self: UnifiedCommand) []const u8 {
-        const info = @typeInfo(UnifiedCommand).@"enum";
+    pub fn toString(self: Command) []const u8 {
+        const info = @typeInfo(Command).@"enum";
         inline for (info.fields) |field| {
             if (@intFromEnum(self) == field.value) {
                 if (std.mem.eql(u8, field.name, "tui_demo")) {
@@ -77,7 +77,7 @@ pub const UnifiedCommand = enum {
     }
 
     /// Get command description using comptime reflection
-    pub fn getDescription(self: UnifiedCommand) []const u8 {
+    pub fn getDescription(self: Command) []const u8 {
         return switch (self) {
             .chat => "Start interactive chat session (default command)",
             .auth => "Authentication management commands",
@@ -90,7 +90,7 @@ pub const UnifiedCommand = enum {
 };
 
 /// Parsed CLI options (values that require arguments)
-pub const ParsedOptions = struct {
+pub const Options = struct {
     model: ?[]const u8 = null,
     output: ?[]const u8 = null,
     input: ?[]const u8 = null,
@@ -101,7 +101,7 @@ pub const ParsedOptions = struct {
 };
 
 /// Parsed CLI flags (boolean options)
-pub const ParsedFlags = struct {
+pub const Flags = struct {
     verbose: bool = false,
     help: bool = false,
     version: bool = false,
@@ -109,23 +109,24 @@ pub const ParsedFlags = struct {
     pretty: bool = false,
     debug: bool = false,
     interactive: bool = false,
+    interactive_ux: bool = false,
     oauth: bool = false,
 };
 
 /// Parsed positional arguments
-pub const ParsedPositionals = struct {
-    command: UnifiedCommand = UnifiedCommand.chat,
+pub const Positionals = struct {
+    command: Command = Command.chat,
     prompt: ?[]const u8 = null,
 };
 
 /// Complete parsed arguments structure
-pub const ParsedArgs = struct {
-    options: ParsedOptions,
-    flags: ParsedFlags,
-    positionals: ParsedPositionals,
+pub const Args = struct {
+    options: Options,
+    flags: Flags,
+    positionals: Positionals,
     allocator: Allocator,
 
-    pub fn deinit(self: *ParsedArgs) void {
+    pub fn deinit(self: *Args) void {
         // Clean up allocated strings
         if (self.options.model) |str| self.allocator.free(str);
         if (self.options.output) |str| self.allocator.free(str);
@@ -212,7 +213,7 @@ pub const CommandResult = struct {
 };
 
 /// Comptime reflection utilities for CLI configuration
-pub const ConfigReflection = struct {
+pub const ConfigReflect = struct {
     /// Generate validation function from config struct
     pub fn generateValidator(comptime ConfigType: type) type {
         return struct {
@@ -319,8 +320,8 @@ pub const ConfigError = error{
     TypeMismatch,
 };
 
-/// Enhanced ParsedArgs for unified CLI
-pub const ParsedArgsUnified = struct {
+/// Enhanced Args for unified CLI
+pub const ArgsUnified = struct {
     // Core options
     model: []const u8,
     temperature: f32,
@@ -339,12 +340,13 @@ pub const ParsedArgsUnified = struct {
     // Mode flags
     stream: bool,
     interactive: bool,
+    interactive_ux: bool,
     verbose: bool,
     help: bool,
     version: bool,
 
     // Command structure
-    command: ?UnifiedCommand,
+    command: ?Command,
     authSubcommand: ?AuthSubcommand,
     positionalArguments: [][]const u8,
 
@@ -353,8 +355,8 @@ pub const ParsedArgsUnified = struct {
 
     allocator: Allocator,
 
-    pub fn fromConfig(config: Config, allocator: Allocator) ParsedArgsUnified {
-        return ParsedArgsUnified{
+    pub fn fromConfig(config: Config, allocator: Allocator) ArgsUnified {
+        return ArgsUnified{
             .model = config.model,
             .temperature = config.temperature,
             .maxTokens = config.maxTokens,
@@ -366,6 +368,7 @@ pub const ParsedArgsUnified = struct {
             .notifications = config.notifications,
             .stream = config.stream,
             .interactive = config.interactive,
+            .interactive_ux = false, // New flag, default to false
             .verbose = config.verbose,
             .help = false,
             .version = false,
@@ -377,7 +380,7 @@ pub const ParsedArgsUnified = struct {
         };
     }
 
-    pub fn deinit(self: *ParsedArgsUnified) void {
+    pub fn deinit(self: *ArgsUnified) void {
         // Clean up allocated arrays if needed
         if (self.positionalArguments.len > 0) {
             self.allocator.free(self.positionalArguments);

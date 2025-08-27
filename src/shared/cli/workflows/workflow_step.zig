@@ -116,7 +116,7 @@ pub const WorkflowStep = struct {
 
 /// Common step implementations for typical CLI operations
 pub const CommonSteps = struct {
-    /// Simple delay step for testing or spacing
+    /// Delay step for testing or spacing
     pub fn delay(duration_ms: u32) Step {
         const DelayImpl = struct {
             fn execute(allocator: Allocator, context: ?Step) anyerror!StepResult {

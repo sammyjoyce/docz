@@ -9,7 +9,8 @@ const Allocator = std.mem.Allocator;
 // File tree widget
 const file_tree_mod = @import("../widgets/core/file_tree.zig");
 const focus_mod = @import("../core/input/focus.zig");
-const mouse_mod = @import("../../term/input/mouse.zig");
+const components = @import("../../components/mod.zig");
+const mouse_mod = components.input.Mouse;
 const term_ansi = @import("../../term/ansi/color.zig");
 
 /// Enhanced file browser component with Git integration

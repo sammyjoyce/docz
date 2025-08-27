@@ -1,5 +1,5 @@
 //! Core CLI argument parser
-//! Extracted from monolithic cli.zig with enhanced error handling and modularity
+//! Extracted from monolithic cli.zig with error handling and modularity
 
 const std = @import("std");
 const types = @import("types.zig");
@@ -219,8 +219,10 @@ pub const Parser = struct {
                     result.flags.pretty = true;
                 } else if (comptime std.mem.eql(u8, field_name, "debug")) {
                     result.flags.debug = true;
-                } else if (comptime std.mem.eql(u8, field_name, "interactive")) {
-                    result.flags.interactive = true;
+                 } else if (comptime std.mem.eql(u8, field_name, "interactive")) {
+                     result.flags.interactive = true;
+                 } else if (comptime std.mem.eql(u8, field_name, "interactive_ux")) {
+                     result.flags.interactive_ux = true;
                 }
                 return true;
             }

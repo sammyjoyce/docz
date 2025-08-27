@@ -1,11 +1,11 @@
 //! Agent Interface System
 //!
-//! This module provides a modern agent interface that leverages all advanced
+//! This module provides a modern agent interface that leverages all
 //! terminal capabilities to create beautiful, modern, and interactive AI agent experiences.
 //!
 //! ## Key Features
 //!
-//! - **Advanced Terminal Integration**: Mouse support, graphics, notifications, themes
+//! - **Terminal Integration**: Mouse support, graphics, notifications, themes
 //! - **Rich CLI/TUI Experience**: Command palette, dashboards, progress tracking
 //! - **OAuth Integration**: Seamless authentication with wizards
 //! - **Adaptive Rendering**: Automatically adjusts to terminal capabilities
@@ -55,7 +55,8 @@ pub const CliOptions = engine.CliOptions;
 
 // Terminal abstractions
 const screen_manager = @import("../term/screen_manager.zig");
-const mouse_mod = @import("../term/input/mouse.zig");
+const input_components = @import("components_shared");
+const mouse_mod = input_components.input.Mouse;
 
 // File tree widget
 const file_tree_mod = @import("widgets/core/file_tree.zig");
@@ -63,6 +64,7 @@ const focus_mod = @import("core/input/focus.zig");
 const term_ansi = @import("../term/ansi/color.zig");
 
 // Component imports
+const components_mod = @import("../components/mod.zig");
 const CommandPalette = @import("components/command_palette.zig").CommandPalette;
 const NotificationSystem = @import("components/notification_system.zig").NotificationSystem;
 const ProgressTracker = @import("components/progress_tracker.zig").ProgressTracker;
@@ -182,7 +184,7 @@ pub const PerformanceSettings = struct {
 /// Render quality modes
 pub const RenderQuality = enum {
     auto, // Detect and use best available
-    enhanced, // Full graphics, true color, animations
+    rich, // Full graphics, true color, animations
     standard, // 256 colors, Unicode blocks
     compatible, // 16 colors, ASCII art
     minimal, // Plain text only
@@ -669,12 +671,12 @@ pub const Agent = struct {
         return switch (self.config.ui_settings.render_quality) {
             .auto => blk: {
                 if (self.terminal_caps.supportsTruecolor) {
-                    break :blk .enhanced;
+                    break :blk .rich;
                 } else {
                     break :blk .standard;
                 }
             },
-            .enhanced => .enhanced,
+            .rich => .rich,
             .standard => .standard,
             .compatible => .compatible,
             .minimal => .minimal,

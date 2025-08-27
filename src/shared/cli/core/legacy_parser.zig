@@ -9,7 +9,7 @@ const types = @import("types.zig");
 
 pub const CliError = types.CliError;
 
-pub const ParsedArgs = struct {
+pub const Args = struct {
     // Core options from config
     model: []const u8,
     maxTokens: ?u32,
@@ -37,7 +37,7 @@ pub const ParsedArgs = struct {
 
     allocator: Allocator,
 
-    pub fn deinit(self: *ParsedArgs) void {
+    pub fn deinit(self: *Args) void {
         // Clean up any allocated strings
         for (self.rawArgs) |arg| {
             self.allocator.free(arg);
@@ -49,8 +49,8 @@ pub const ParsedArgs = struct {
         }
     }
 
-    pub fn init(allocator: Allocator) ParsedArgs {
-        return ParsedArgs{
+    pub fn init(allocator: Allocator) Args {
+        return Args{
             .model = cli_config.options[0].default,
             .maxTokens = null,
             .temperature = null,
@@ -86,8 +86,8 @@ pub const Parser = struct {
         self.formatter.deinit();
     }
 
-    pub fn parse(self: *Parser, args: [][]const u8) !ParsedArgs {
-        var parsed = ParsedArgs.init(self.allocator);
+    pub fn parse(self: *Parser, args: [][]const u8) !Args {
+        var parsed = Args.init(self.allocator);
 
         // Store raw args for debugging
         parsed.rawArgs = try self.allocator.alloc([]const u8, args.len);
@@ -232,7 +232,7 @@ pub const Parser = struct {
         return parsed;
     }
 
-    pub fn handleParsedArgs(self: *Parser, parsed: *ParsedArgs) !void {
+    pub fn handleParsedArgs(self: *Parser, parsed: *Args) !void {
         if (parsed.help) {
             try self.formatter.printHelp(cli_config);
             return;
@@ -308,7 +308,7 @@ pub const Parser = struct {
 };
 
 /// Convenience function to parse arguments using the parser
-pub fn parseArgs(allocator: Allocator, args: [][]const u8) !ParsedArgs {
+pub fn parseArgs(allocator: Allocator, args: [][]const u8) !Args {
     var parser = try Parser.init(allocator);
     defer parser.deinit();
     return try parser.parse(args);
@@ -316,7 +316,7 @@ pub fn parseArgs(allocator: Allocator, args: [][]const u8) !ParsedArgs {
 
 /// Full parsing and handling in one call
 /// Note: Auth commands are NOT handled here to allow agents to implement their own OAuth flow
-pub fn parseAndHandle(allocator: Allocator, args: [][]const u8) !?ParsedArgs {
+pub fn parseAndHandle(allocator: Allocator, args: [][]const u8) !?Args {
     var parser = try Parser.init(allocator);
     defer parser.deinit();
     var parsed = parser.parse(args) catch |err| {

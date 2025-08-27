@@ -31,7 +31,7 @@ fn buildSystemPromptImpl(allocator: std.mem.Allocator, options: engine.CliOption
 
     // Initialize agent with configuration loaded from file
     // This demonstrates the recommended pattern for agent initialization
-    var agent = try impl.TemplateAgent.initFromConfig(allocator);
+    var agent = try impl.Template.initFromConfig(allocator);
     defer agent.deinit();
 
     // Load and process the system prompt template
@@ -90,7 +90,7 @@ fn registerToolsImpl(registry: *tools_mod.Registry) !void {
 
     // Example: Only register advanced tools if custom features are enabled
     // const config = try impl.Config.loadFromFile(allocator, "agents/_template/config.zon");
-    // if (config.custom_feature_enabled) {
+    // if (config.customFeatureEnabled) {
     //     try tools_mod.registerJsonTool(registry, "advanced_tool", "Advanced feature tool", tools.advancedTool, "_template");
     // }
 

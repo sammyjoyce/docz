@@ -92,6 +92,7 @@ pub const MouseEventTracker = struct {
         const now = std.time.microTimestamp();
         var event_type = MouseEventType.click;
         var click_count: u8 = 1;
+        const gesture: ?MouseGesture = null;
 
         switch (mouse_event.action) {
             .press => {
@@ -153,6 +154,9 @@ pub const MouseEventTracker = struct {
 
                         if (self.is_dragging) {
                             // Gesture information could be added here in the future
+                            // Velocity could be calculated using dx/time_diff_s and dy/time_diff_s
+                            _ = dx;
+                            _ = dy;
                         }
                     }
 
@@ -248,7 +252,7 @@ test "mouse event tracker initialization" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    var tracker = MouseEventTracker.init(allocator);
+    const tracker = MouseEventTracker.init(allocator);
     try testing.expect(!tracker.is_dragging);
     try testing.expect(tracker.click_count == 0);
 }

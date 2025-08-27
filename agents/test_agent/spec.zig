@@ -8,7 +8,7 @@ const tools_mod = @import("tools_shared");
 fn buildSystemPromptImpl(allocator: std.mem.Allocator, options: engine.CliOptions) ![]const u8 {
     _ = options; // reserved for future use (e.g., config path)
 
-    var agent = try impl.TestAgent.initFromConfig(allocator);
+    var agent = try impl.Test.initFromConfig(allocator);
     defer agent.deinit();
 
     return agent.loadSystemPrompt();

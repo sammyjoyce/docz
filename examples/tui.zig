@@ -1,6 +1,6 @@
 //! Smart TUI Demo Example
 //!
-//! This example demonstrates the enhanced TUI system with progressive enhancement.
+//! This example demonstrates the TUI system with progressive enhancement.
 //! Run with: zig run examples/smart_tui_demo.zig
 
 const std = @import("std");
@@ -32,7 +32,7 @@ pub fn main() !void {
     const terminal_size = bounds_mod.getTerminalSize();
     std.debug.print("📐 Terminal Size: {}×{}\n\n", .{ terminal_size.width, terminal_size.height });
 
-    // Demo the advanced TUI components
+    // Demo the TUI components
     try demoNotifications();
     try demoProgressBars(renderer, terminal_size);
     try demoBoxDrawing(renderer, caps);
@@ -58,7 +58,7 @@ fn demoNotifications() !void {
     std.debug.print("🔔 Demo 1: Advanced Notifications\n");
     std.debug.print("   Progressive enhancement from basic terminal bell to rich OSC notifications\n\n");
 
-    try tui.notifyInfo("Demo Started", "Welcome to the advanced TUI demonstration!");
+    try tui.notifyInfo("Demo Started", "Welcome to the TUI demonstration!");
     std.time.sleep(800 * std.time.ns_per_ms);
 
     try tui.notifySuccess("Feature Detection", "Terminal capabilities detected and optimized");

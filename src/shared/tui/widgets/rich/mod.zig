@@ -2,13 +2,13 @@
 //! Rich components leveraging terminal capabilities with progressive enhancement
 
 pub const graphics = @import("graphics.zig");
-pub const notification = @import("notification.zig");
+pub const notification = @import("../../notifications.zig");
 pub const progress = @import("progress.zig");
 pub const text_input = @import("text_input.zig");
 
 // Re-export main types
 pub const GraphicsWidget = graphics.GraphicsWidget;
-pub const Notification = notification.Notification;
+pub const Notification = notification.NotificationWidget;
 pub const NotificationController = notification.NotificationController;
 pub const ProgressBar = progress.ProgressBar;
 pub const TextInput = text_input.TextInput;

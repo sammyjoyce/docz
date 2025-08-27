@@ -4,7 +4,7 @@
 const std = @import("std");
 const WorkflowStep = @import("workflow_step.zig");
 const WorkflowRunner = @import("workflow_runner.zig");
-const notification_manager = @import("../interactive/notification_manager.zig");
+const notification_manager = @import("../notifications.zig");
 const Allocator = std.mem.Allocator;
 
 pub const SetupConfig = struct {

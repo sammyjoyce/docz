@@ -3,7 +3,7 @@
 
 const std = @import("std");
 const widget_interface = @import("../../core/widget_interface.zig");
-const unified_renderer = @import("../../core/unified_renderer.zig");
+const renderer_mod = @import("../../core/renderer.zig");
 const Allocator = std.mem.Allocator;
 
 /// Button widget state
@@ -50,27 +50,28 @@ pub const ButtonWidget = struct {
     }
 
     /// Render the button
-    pub fn render(ctx: *anyopaque, renderer: *unified_renderer.UnifiedRenderer, area: widget_interface.Rect) !void {
+    pub fn render(ctx: *anyopaque, renderer: *renderer_mod.Renderer, area: widget_interface.Rect) !void {
         const self: *@This() = @ptrCast(@alignCast(ctx));
 
         // Choose colors based on state
         const bg_color = if (self.state.pressed)
-            unified_renderer.Color.BLUE
-        else if (renderer.focused_widget != null and renderer.focused_widget.?.ptr == ctx)
-            unified_renderer.Color.CYAN
+            renderer_mod.Style.Color{ .palette = 12 } // Blue
         else
-            unified_renderer.Color.GRAY;
+            renderer_mod.Style.Color{ .palette = 8 }; // Gray
 
-        const fg_color = if (self.state.enabled)
-            unified_renderer.Color.WHITE
-        else
-            unified_renderer.Color.GRAY;
+        const fg_color = renderer_mod.Style.Color{ .palette = 15 }; // White
 
         // Draw button background
         const button_text = try std.fmt.allocPrint(self.allocator, "[ {s} ]", .{self.state.label});
         defer self.allocator.free(button_text);
 
-        try renderer.drawText(area.x, area.y, button_text, fg_color, bg_color);
+        const button_ctx = renderer_mod.Render{
+            .bounds = area.toBounds(),
+            .style = .{ .fg_color = fg_color, .bg_color = bg_color },
+            .zIndex = 0,
+            .clipRegion = null,
+        };
+        try renderer.drawText(button_ctx, button_text);
     }
 
     /// Handle input events
@@ -175,5 +176,3 @@ pub fn createButton(
     const button = try ButtonWidget.init(allocator, label, on_click);
     return try button.createWidget(id, bounds);
 }
-</xai:function_call name="write">
-<parameter name="filePath">src/shared/tui/widgets/core/text_input_widget.zig

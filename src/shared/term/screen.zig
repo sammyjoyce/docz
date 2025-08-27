@@ -1,6 +1,9 @@
 const std = @import("std");
 const caps_mod = @import("capabilities.zig");
+const ansi_screen = @import("ansi/screen.zig");
 const passthrough = @import("ansi/passthrough.zig");
+const tab_processor = @import("tab_processor.zig");
+const types = @import("../types.zig");
 
 pub const TermCaps = caps_mod.TermCaps;
 
@@ -14,255 +17,42 @@ pub const Control = struct {
     pub const REQUEST_CURSOR_POSITION = "\x1b[6n";
 };
 
-/// Low-level ANSI screen control functions
-pub const Ansi = struct {
-    /// Clear part/all of the screen (ED)
-    ///  CSI 0 J  -> clear from cursor to end of screen
-    ///  CSI 1 J  -> clear from cursor to beginning of screen
-    ///  CSI 2 J  -> clear entire screen
-    pub fn clearScreenToEnd(writer: anytype, caps: TermCaps) !void {
-        try passthrough.writeWithPassthrough(writer, caps, "\x1b[0J");
-    }
-    pub fn clearScreenToStart(writer: anytype, caps: TermCaps) !void {
-        try passthrough.writeWithPassthrough(writer, caps, "\x1b[1J");
-    }
-    pub fn clearScreenAll(writer: anytype, caps: TermCaps) !void {
-        try passthrough.writeWithPassthrough(writer, caps, "\x1b[2J");
-    }
+/// Re-export ANSI screen functions for convenience
+pub const clearScreenToEnd = ansi_screen.clearScreenToEnd;
+pub const clearScreenToStart = ansi_screen.clearScreenToStart;
+pub const clearScreenAll = ansi_screen.clearScreenAll;
+pub const clearLineToEnd = ansi_screen.clearLineToEnd;
+pub const clearLineToStart = ansi_screen.clearLineToStart;
+pub const clearLineAll = ansi_screen.clearLineAll;
+pub const setScrollRegion = ansi_screen.setScrollRegion;
+pub const resetScrollRegion = ansi_screen.resetScrollRegion;
+pub const scrollUp = ansi_screen.scrollUp;
+pub const scrollDown = ansi_screen.scrollDown;
+pub const insertLine = ansi_screen.insertLine;
+pub const deleteLine = ansi_screen.deleteLine;
+pub const insertCharacter = ansi_screen.insertCharacter;
+pub const deleteCharacter = ansi_screen.deleteCharacter;
+pub const setHorizontalTabStop = ansi_screen.setHorizontalTabStop;
+pub const tabClear = ansi_screen.tabClear;
+pub const setTopBottomMargins = ansi_screen.setTopBottomMargins;
+pub const setLeftRightMargins = ansi_screen.setLeftRightMargins;
+pub const setTabEvery8Columns = ansi_screen.setTabEvery8Columns;
+pub const repeatPreviousCharacter = ansi_screen.repeatPreviousCharacter;
+pub const requestPresentationStateReport = ansi_screen.requestPresentationStateReport;
+pub const tabStopReport = ansi_screen.tabStopReport;
+pub const cursorInformationReport = ansi_screen.cursorInformationReport;
+pub const horizontalTab = ansi_screen.horizontalTab;
+pub const cursorBackTab = ansi_screen.cursorBackTab;
+pub const cursorHorizontalTab = ansi_screen.cursorHorizontalTab;
+pub const cursorVerticalTab = ansi_screen.cursorVerticalTab;
+pub const writeTextWithTabControl = ansi_screen.writeTextWithTabControl;
 
-    /// Clear part/all of the line (EL)
-    ///  CSI 0 K  -> clear from cursor to end of line
-    ///  CSI 1 K  -> clear from cursor to beginning of line
-    ///  CSI 2 K  -> clear entire line
-    pub fn clearLineToEnd(writer: anytype, caps: TermCaps) !void {
-        try passthrough.writeWithPassthrough(writer, caps, "\x1b[0K");
-    }
-    pub fn clearLineToStart(writer: anytype, caps: TermCaps) !void {
-        try passthrough.writeWithPassthrough(writer, caps, "\x1b[1K");
-    }
-    pub fn clearLineAll(writer: anytype, caps: TermCaps) !void {
-        try passthrough.writeWithPassthrough(writer, caps, "\x1b[2K");
-    }
-
-    /// Set scroll region (DECSTBM): CSI top ; bottom r
-    pub fn setScrollRegion(writer: anytype, caps: TermCaps, top: u32, bottom: u32) !void {
-        var tmp: [32]u8 = undefined;
-        var fbs = std.io.fixedBufferStream(&tmp);
-        var w = fbs.writer();
-        try w.writeAll("\x1b[");
-        try std.fmt.format(w, "{d};{d}r", .{ top, bottom });
-        try passthrough.writeWithPassthrough(writer, caps, fbs.getWritten());
-    }
-
-    /// Reset scroll region to full screen: CSI r
-    pub fn resetScrollRegion(writer: anytype, caps: TermCaps) !void {
-        try passthrough.writeWithPassthrough(writer, caps, "\x1b[r");
-    }
-
-    /// Scroll Up (SU): CSI n S
-    pub fn scrollUp(writer: anytype, caps: TermCaps, n: u32) !void {
-        if (n == 0) return;
-        var tmp: [16]u8 = undefined;
-        var fbs = std.io.fixedBufferStream(&tmp);
-        var w = fbs.writer();
-        try w.writeAll("\x1b[");
-        try std.fmt.format(w, "{d}S", .{n});
-        try passthrough.writeWithPassthrough(writer, caps, fbs.getWritten());
-    }
-
-    /// Scroll Down (SD): CSI n T
-    pub fn scrollDown(writer: anytype, caps: TermCaps, n: u32) !void {
-        if (n == 0) return;
-        var tmp: [16]u8 = undefined;
-        var fbs = std.io.fixedBufferStream(&tmp);
-        var w = fbs.writer();
-        try w.writeAll("\x1b[");
-        try std.fmt.format(w, "{d}T", .{n});
-        try passthrough.writeWithPassthrough(writer, caps, fbs.getWritten());
-    }
-
-    /// Insert Line (IL): CSI n L
-    pub fn insertLine(writer: anytype, caps: TermCaps, n: u32) !void {
-        const count = if (n == 0) 1 else n;
-        var tmp: [16]u8 = undefined;
-        var fbs = std.io.fixedBufferStream(&tmp);
-        var w = fbs.writer();
-        try w.writeAll("\x1b[");
-        try std.fmt.format(w, "{d}L", .{count});
-        try passthrough.writeWithPassthrough(writer, caps, fbs.getWritten());
-    }
-
-    /// Delete Line (DL): CSI n M
-    pub fn deleteLine(writer: anytype, caps: TermCaps, n: u32) !void {
-        const count = if (n == 0) 1 else n;
-        var tmp: [16]u8 = undefined;
-        var fbs = std.io.fixedBufferStream(&tmp);
-        var w = fbs.writer();
-        try w.writeAll("\x1b[");
-        try std.fmt.format(w, "{d}M", .{count});
-        try passthrough.writeWithPassthrough(writer, caps, fbs.getWritten());
-    }
-
-    /// Insert Character (ICH): CSI n @
-    pub fn insertCharacter(writer: anytype, caps: TermCaps, n: u32) !void {
-        const count = if (n == 0) 1 else n;
-        var tmp: [16]u8 = undefined;
-        var fbs = std.io.fixedBufferStream(&tmp);
-        var w = fbs.writer();
-        try w.writeAll("\x1b[");
-        try std.fmt.format(w, "{d}@", .{count});
-        try passthrough.writeWithPassthrough(writer, caps, fbs.getWritten());
-    }
-
-    /// Delete Character (DCH): CSI n P
-    pub fn deleteCharacter(writer: anytype, caps: TermCaps, n: u32) !void {
-        const count = if (n == 0) 1 else n;
-        var tmp: [16]u8 = undefined;
-        var fbs = std.io.fixedBufferStream(&tmp);
-        var w = fbs.writer();
-        try w.writeAll("\x1b[");
-        try std.fmt.format(w, "{d}P", .{count});
-        try passthrough.writeWithPassthrough(writer, caps, fbs.getWritten());
-    }
-
-    /// Horizontal Tab Set (HTS): ESC H
-    pub fn setHorizontalTabStop(writer: anytype, caps: TermCaps) !void {
-        try passthrough.writeWithPassthrough(writer, caps, "\x1bH");
-    }
-
-    /// Tab Clear (TBC): CSI n g, where n=0 clears at current column, n=3 clears all
-    pub fn tabClear(writer: anytype, caps: TermCaps, n: u32) !void {
-        if (n == 0) {
-            try passthrough.writeWithPassthrough(writer, caps, "\x1b[g");
-        } else {
-            var tmp: [16]u8 = undefined;
-            var fbs = std.io.fixedBufferStream(&tmp);
-            var w = fbs.writer();
-            try w.writeAll("\x1b[");
-            try std.fmt.format(w, "{d}g", .{n});
-            try passthrough.writeWithPassthrough(writer, caps, fbs.getWritten());
-        }
-    }
-
-    /// Set Top/Bottom Margins (DECSTBM): CSI top ; bot r (alias of setScrollRegion)
-    pub fn setTopBottomMargins(writer: anytype, caps: TermCaps, top: u32, bottom: u32) !void {
-        try Ansi.setScrollRegion(writer, caps, top, bottom);
-    }
-
-    /// Set Left/Right Margins (DECSLRM): CSI left ; right s
-    pub fn setLeftRightMargins(writer: anytype, caps: TermCaps, left: u32, right: u32) !void {
-        var tmp: [32]u8 = undefined;
-        var fbs = std.io.fixedBufferStream(&tmp);
-        var w = fbs.writer();
-        try w.writeAll("\x1b[");
-        try std.fmt.format(w, "{d};{d}s", .{ left, right });
-        try passthrough.writeWithPassthrough(writer, caps, fbs.getWritten());
-    }
-
-    /// Set tab stops every 8 columns (DECST8C): CSI ? 5 W
-    pub fn setTabEvery8Columns(writer: anytype, caps: TermCaps) !void {
-        try passthrough.writeWithPassthrough(writer, caps, "\x1b[?5W");
-    }
-
-    /// Repeat previous character (REP): CSI n b
-    pub fn repeatPreviousCharacter(writer: anytype, caps: TermCaps, n: u32) !void {
-        if (n == 0) n = 1;
-        var tmp: [16]u8 = undefined;
-        var fbs = std.io.fixedBufferStream(&tmp);
-        var w = fbs.writer();
-        try w.writeAll("\x1b[");
-        try std.fmt.format(w, "{d}b", .{n});
-        try passthrough.writeWithPassthrough(writer, caps, fbs.getWritten());
-    }
-
-    /// Request presentation state report (DECRQPSR): CSI Ps $ w
-    pub fn requestPresentationStateReport(writer: anytype, caps: TermCaps, ps: u32) !void {
-        var tmp: [32]u8 = undefined;
-        var fbs = std.io.fixedBufferStream(&tmp);
-        var w = fbs.writer();
-        try w.writeAll("\x1b[");
-        try std.fmt.format(w, "{d}$w", .{ps});
-        try passthrough.writeWithPassthrough(writer, caps, fbs.getWritten());
-    }
-
-    /// Tab Stop Report (DECTABSR): DCS 2 $ u D/.../D ST
-    pub fn tabStopReport(writer: anytype, caps: TermCaps, stops: []const u32) !void {
-        var buf = std.ArrayList(u8).init(std.heap.page_allocator);
-        defer buf.deinit();
-        try buf.appendSlice("\x1bP2$u");
-        var first = true;
-        for (stops) |s| {
-            if (!first) try buf.append('/') else first = false;
-            var tmp: [16]u8 = undefined;
-            const z = try std.fmt.bufPrint(&tmp, "{d}", .{s});
-            try buf.appendSlice(z);
-        }
-        try buf.appendSlice("\x1b\\");
-        try passthrough.writeWithPassthrough(writer, caps, buf.items);
-    }
-
-    /// Cursor Information Report (DECCIR): DCS 1 $ u D;...;D ST
-    pub fn cursorInformationReport(writer: anytype, caps: TermCaps, values: []const u32) !void {
-        var buf = std.ArrayList(u8).init(std.heap.page_allocator);
-        defer buf.deinit();
-        try buf.appendSlice("\x1bP1$u");
-        var first = true;
-        for (values) |v| {
-            if (!first) try buf.append(';') else first = false;
-            var tmp: [16]u8 = undefined;
-            const z = try std.fmt.bufPrint(&tmp, "{d}", .{v});
-            try buf.appendSlice(z);
-        }
-        try buf.appendSlice("\x1b\\");
-        try passthrough.writeWithPassthrough(writer, caps, buf.items);
-    }
-};
-
-/// Bounds represents a rectangular area on screen
-pub const Bounds = struct {
-    x: u32,
-    y: u32,
-    width: u32,
-    height: u32,
-
-    pub fn init(x: u32, y: u32, width: u32, height: u32) Bounds {
-        return Bounds{
-            .x = x,
-            .y = y,
-            .width = width,
-            .height = height,
-        };
-    }
-
-    pub fn isEmpty(self: Bounds) bool {
-        return self.width == 0 or self.height == 0;
-    }
-
-    pub fn intersects(self: Bounds, other: Bounds) bool {
-        return !(self.x + self.width <= other.x or
-            other.x + other.width <= self.x or
-            self.y + self.height <= other.y or
-            other.y + other.height <= self.y);
-    }
-
-    pub fn clamp(self: Bounds, other: Bounds) Bounds {
-        const x1 = std.math.max(self.x, other.x);
-        const y1 = std.math.max(self.y, other.y);
-        const x2 = std.math.min(self.x + self.width, other.x + other.width);
-        const y2 = std.math.min(self.y + self.height, other.y + other.height);
-
-        if (x1 >= x2 or y1 >= y2) {
-            return Bounds.init(0, 0, 0, 0);
-        }
-
-        return Bounds.init(x1, y1, x2 - x1, y2 - y1);
-    }
-};
+// Bounds type is available from shared/types.zig
 
 /// Screen component for efficient partial rendering
 pub const Component = struct {
     id: []const u8,
-    bounds: Bounds,
+    bounds: types.BoundsU32,
     content: []const u8,
     visible: bool,
     dirty: bool, // Needs redraw
@@ -272,18 +62,20 @@ pub const Component = struct {
 /// Screen management for efficient partial rendering
 pub const Screen = struct {
     components: std.ArrayList(Component),
-    screen_bounds: Bounds,
-    dirty_regions: std.ArrayList(Bounds),
+    screen_bounds: types.BoundsU32,
+    dirty_regions: std.ArrayList(types.BoundsU32),
     allocator: std.mem.Allocator,
     caps: TermCaps,
+    tab_config: tab_processor.TabConfig,
 
     pub fn init(allocator: std.mem.Allocator, width: u32, height: u32, caps: TermCaps) Screen {
         return Screen{
             .components = std.ArrayList(Component).init(allocator),
-            .screen_bounds = Bounds.init(0, 0, width, height),
-            .dirty_regions = std.ArrayList(Bounds).init(allocator),
+            .screen_bounds = types.BoundsU32.init(0, 0, width, height),
+            .dirty_regions = std.ArrayList(types.BoundsU32).init(allocator),
             .allocator = allocator,
             .caps = caps,
+            .tab_config = tab_processor.TabConfig{}, // Default tab config
         };
     }
 
@@ -297,7 +89,7 @@ pub const Screen = struct {
         self.dirty_regions.deinit();
     }
 
-    pub fn addComponent(self: *Screen, id: []const u8, bounds: Bounds, zIndex: i32) !void {
+    pub fn addComponent(self: *Screen, id: []const u8, bounds: types.BoundsU32, zIndex: i32) !void {
         const component = Component{
             .id = try self.allocator.dupe(u8, id),
             .bounds = bounds,
@@ -323,7 +115,7 @@ pub const Screen = struct {
         }
     }
 
-    pub fn moveComponent(self: *Screen, id: []const u8, new_bounds: Bounds) !void {
+    pub fn moveComponent(self: *Screen, id: []const u8, new_bounds: types.BoundsU32) !void {
         for (self.components.items) |*component| {
             if (std.mem.eql(u8, component.id, id)) {
                 // Mark old and new positions as dirty
@@ -378,7 +170,7 @@ pub const Screen = struct {
         }
     }
 
-    fn markDirty(self: *Screen, bounds: Bounds) !void {
+    fn markDirty(self: *Screen, bounds: types.BoundsU32) !void {
         // Add to dirty regions for partial updates
         try self.dirty_regions.append(bounds);
     }
@@ -408,7 +200,7 @@ pub const Screen = struct {
         return a.zIndex < b.zIndex;
     }
 
-    fn renderRegion(self: *Screen, writer: anytype, region: Bounds) !void {
+    fn renderRegion(self: *Screen, writer: anytype, region: types.BoundsU32) !void {
         // Clear the region first
         try self.clearRegion(writer, region);
 
@@ -420,7 +212,7 @@ pub const Screen = struct {
         }
     }
 
-    fn clearRegion(self: *Screen, writer: anytype, region: Bounds) !void {
+    fn clearRegion(self: *Screen, writer: anytype, region: types.BoundsU32) !void {
         // Move cursor to region start and clear the area
         var y: u32 = region.y;
         while (y < region.y + region.height) : (y += 1) {
@@ -433,7 +225,7 @@ pub const Screen = struct {
         }
     }
 
-    fn renderComponent(self: *Screen, writer: anytype, component: Component, clipRegion: Bounds) !void {
+    fn renderComponent(self: *Screen, writer: anytype, component: Component, clipRegion: types.BoundsU32) !void {
 
         // Calculate the intersection of component bounds and clip region
         const render_bounds = component.bounds.clamp(clipRegion);
@@ -442,9 +234,18 @@ pub const Screen = struct {
         // Position cursor at the start of the render area
         try moveCursor(writer, self.caps, render_bounds.y, render_bounds.x);
 
-        // For now, just render the content as-is
-        // TODO: Implement proper text wrapping and clipping
-        try writer.writeAll(component.content);
+        // Expand tabs in the content if tab processing is enabled
+        if (self.tab_config.expand_tabs) {
+            const expanded_content = try tab_processor.expandTabs(self.allocator, component.content, self.tab_config);
+            defer self.allocator.free(expanded_content);
+
+            // For now, just render the expanded content as-is
+            // TODO: Implement proper text wrapping and clipping
+            try writer.writeAll(expanded_content);
+        } else {
+            // Render content without tab expansion
+            try writer.writeAll(component.content);
+        }
     }
 
     pub fn refresh(self: *Screen, writer: anytype) !void {
@@ -454,9 +255,14 @@ pub const Screen = struct {
     }
 
     pub fn resize(self: *Screen, width: u32, height: u32) void {
-        self.screen_bounds = Bounds.init(0, 0, width, height);
+        self.screen_bounds = types.BoundsU32.init(0, 0, width, height);
         // Mark entire screen as dirty since everything might need repositioning
         self.markDirty(self.screen_bounds) catch {};
+    }
+
+    /// Set tab configuration for text rendering
+    pub fn setTabConfig(self: *Screen, config: tab_processor.TabConfig) void {
+        self.tab_config = config;
     }
 };
 
@@ -502,69 +308,19 @@ pub fn requestCursorPosition(writer: anytype, caps: TermCaps) !void {
     try passthrough.writeWithPassthrough(writer, caps, Control.REQUEST_CURSOR_POSITION);
 }
 
-/// Clear screen to end from cursor
-pub fn clearScreenToEnd(writer: anytype, caps: TermCaps) !void {
-    try passthrough.writeWithPassthrough(writer, caps, "\x1b[0J");
+/// Write text with tab expansion to terminal
+/// Handles tab characters according to the provided configuration
+pub fn writeTextWithTabs(writer: anytype, allocator: std.mem.Allocator, text: []const u8, tab_config: tab_processor.TabConfig) !void {
+    if (tab_config.expand_tabs) {
+        const expanded = try tab_processor.expandTabs(allocator, text, tab_config);
+        defer allocator.free(expanded);
+        try writer.writeAll(expanded);
+    } else {
+        try writer.writeAll(text);
+    }
 }
 
-/// Clear screen to start from cursor
-pub fn clearScreenToStart(writer: anytype, caps: TermCaps) !void {
-    try passthrough.writeWithPassthrough(writer, caps, "\x1b[1J");
-}
-
-/// Clear entire screen
-pub fn clearScreenAll(writer: anytype, caps: TermCaps) !void {
-    try passthrough.writeWithPassthrough(writer, caps, "\x1b[2J");
-}
-
-/// Clear line to end from cursor
-pub fn clearLineToEnd(writer: anytype, caps: TermCaps) !void {
-    try passthrough.writeWithPassthrough(writer, caps, "\x1b[0K");
-}
-
-/// Clear line to start from cursor
-pub fn clearLineToStart(writer: anytype, caps: TermCaps) !void {
-    try passthrough.writeWithPassthrough(writer, caps, "\x1b[1K");
-}
-
-/// Clear entire line
-pub fn clearLineAll(writer: anytype, caps: TermCaps) !void {
-    try passthrough.writeWithPassthrough(writer, caps, "\x1b[2K");
-}
-
-/// Set scroll region
-pub fn setScrollRegion(writer: anytype, caps: TermCaps, top: u32, bottom: u32) !void {
-    var tmp: [32]u8 = undefined;
-    var fbs = std.io.fixedBufferStream(&tmp);
-    var w = fbs.writer();
-    try w.writeAll("\x1b[");
-    try std.fmt.format(w, "{d};{d}r", .{ top, bottom });
-    try passthrough.writeWithPassthrough(writer, caps, fbs.getWritten());
-}
-
-/// Reset scroll region to full screen
-pub fn resetScrollRegion(writer: anytype, caps: TermCaps) !void {
-    try passthrough.writeWithPassthrough(writer, caps, "\x1b[r");
-}
-
-/// Scroll up by n lines
-pub fn scrollUp(writer: anytype, caps: TermCaps, n: u32) !void {
-    if (n == 0) return;
-    var tmp: [16]u8 = undefined;
-    var fbs = std.io.fixedBufferStream(&tmp);
-    var w = fbs.writer();
-    try w.writeAll("\x1b[");
-    try std.fmt.format(w, "{d}S", .{n});
-    try passthrough.writeWithPassthrough(writer, caps, fbs.getWritten());
-}
-
-/// Scroll down by n lines
-pub fn scrollDown(writer: anytype, caps: TermCaps, n: u32) !void {
-    if (n == 0) return;
-    var tmp: [16]u8 = undefined;
-    var fbs = std.io.fixedBufferStream(&tmp);
-    var w = fbs.writer();
-    try w.writeAll("\x1b[");
-    try std.fmt.format(w, "{d}T", .{n});
-    try passthrough.writeWithPassthrough(writer, caps, fbs.getWritten());
+/// Calculate the display width of text containing tabs
+pub fn textDisplayWidth(text: []const u8, tab_config: tab_processor.TabConfig) usize {
+    return tab_processor.displayWidth(text, tab_config);
 }

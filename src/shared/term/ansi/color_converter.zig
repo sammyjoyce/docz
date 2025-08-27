@@ -1,14 +1,14 @@
 const std = @import("std");
 const math = std.math;
-const enhanced_distance = @import("color_distance.zig");
+const color_distance = @import("color_distance.zig");
 const precise_palette = @import("precise_ansi_palette.zig");
 
-/// Enhanced 256-color conversion algorithm
-/// Uses advanced color science for optimal terminal color approximation
-const RGBColor = enhanced_distance.RGBColor;
+/// 256-color conversion algorithm
+/// Uses color science for optimal terminal color approximation
+const RGBColor = color_distance.RGBColor;
 
-/// Advanced 256-color converter using optimized algorithm
-pub const EnhancedColorConverter = struct {
+/// 256-color converter using optimized algorithm
+pub const Converter = struct {
     const Self = @This();
 
     /// 6x6x6 color cube values used by xterm (standard xterm values)
@@ -87,8 +87,8 @@ pub const EnhancedColorConverter = struct {
         const gray_result = calculateGrayscaleColor(rgb);
 
         // Use perceptual distance to choose the best match
-        const cube_distance = enhanced_distance.perceptualDistance(rgb, cube_result.color);
-        const gray_distance = enhanced_distance.perceptualDistance(rgb, gray_result.color);
+        const cube_distance = color_distance.perceptualDistance(rgb, cube_result.color);
+        const gray_distance = color_distance.perceptualDistance(rgb, gray_result.color);
 
         // Return the perceptually closer match
         if (cube_distance <= gray_distance) {
@@ -110,8 +110,8 @@ pub const EnhancedColorConverter = struct {
         const gray_result = calculateGrayscaleColor(rgb);
 
         // Use fast perceptual distance
-        const cube_distance = enhanced_distance.perceptualDistanceFast(rgb, cube_result.color);
-        const gray_distance = enhanced_distance.perceptualDistanceFast(rgb, gray_result.color);
+        const cube_distance = color_distance.perceptualDistanceFast(rgb, cube_result.color);
+        const gray_distance = color_distance.perceptualDistanceFast(rgb, gray_result.color);
 
         return if (cube_distance <= gray_distance) cube_result.index else gray_result.index;
     }
@@ -136,7 +136,7 @@ pub const EnhancedColorConverter = struct {
         // Check basic 16 colors
         for (0..16) |i| {
             const palette_color = precise_palette.getRgbColor(@intCast(i));
-            const distance = enhanced_distance.perceptualDistance(rgb, palette_color);
+            const distance = color_distance.perceptualDistance(rgb, palette_color);
             if (distance < best_distance) {
                 best_distance = distance;
                 best_index = @intCast(i);
@@ -145,7 +145,7 @@ pub const EnhancedColorConverter = struct {
 
         // Check cube color
         const cube_result = calculateCubeColor(rgb);
-        const cube_distance = enhanced_distance.perceptualDistance(rgb, cube_result.color);
+        const cube_distance = color_distance.perceptualDistance(rgb, cube_result.color);
         if (cube_distance < best_distance) {
             best_distance = cube_distance;
             best_index = cube_result.index;
@@ -153,7 +153,7 @@ pub const EnhancedColorConverter = struct {
 
         // Check grayscale color
         const gray_result = calculateGrayscaleColor(rgb);
-        const gray_distance = enhanced_distance.perceptualDistance(rgb, gray_result.color);
+        const gray_distance = color_distance.perceptualDistance(rgb, gray_result.color);
         if (gray_distance < best_distance) {
             best_index = gray_result.index;
         }
@@ -192,8 +192,8 @@ pub const EnhancedColorConverter = struct {
             return .{
                 .best_256_index = best_index,
                 .best_256_color = best_color,
-                .perceptual_distance = enhanced_distance.perceptualDistance(original, best_color),
-                .euclidean_distance = enhanced_distance.perceptualDistanceFast(original, best_color),
+                .perceptual_distance = color_distance.perceptualDistance(original, best_color),
+                .euclidean_distance = color_distance.perceptualDistanceFast(original, best_color),
                 .is_exact_match = (original.r == best_color.r and original.g == best_color.g and original.b == best_color.b),
                 .color_space_info = .{
                     .is_in_cube = precise_palette.isCubeColor(best_index),
@@ -271,7 +271,7 @@ pub const EnhancedColorConverter = struct {
                 // Allow some difference between methods
                 const enhanced_color = precise_palette.getRgbColor(enhanced);
                 const optimal_color = precise_palette.getRgbColor(optimal);
-                const distance = enhanced_distance.perceptualDistanceFast(enhanced_color, optimal_color);
+                const distance = color_distance.perceptualDistanceFast(enhanced_color, optimal_color);
                 if (distance > 5.0) { // Threshold for "similar enough"
                     results_match = false;
                     break;
@@ -300,16 +300,16 @@ pub const ColorConverter = struct {
     /// Convert RGB to 256-color using specified strategy
     pub fn convert(rgb: RGBColor, strategy: Strategy) u8 {
         return switch (strategy) {
-            .enhanced => EnhancedColorConverter.convert256Enhanced(rgb),
-            .fast => EnhancedColorConverter.convert256Fast(rgb),
-            .optimal => EnhancedColorConverter.convertOptimal(rgb),
+            .enhanced => Converter.convert256Enhanced(rgb),
+            .fast => Converter.convert256Fast(rgb),
+            .optimal => Converter.convertOptimal(rgb),
             .simple => precise_palette.PreciseColorMatcher.findClosestEuclidean(rgb).index,
         };
     }
 
     /// Convert RGB to 16-color
     pub fn convert16(rgb: RGBColor) u8 {
-        return EnhancedColorConverter.convert16(rgb);
+        return Converter.convert16(rgb);
     }
 
     /// Get recommended strategy based on performance requirements
@@ -327,20 +327,20 @@ const testing = std.testing;
 
 test "cube coordinate calculation" {
     // Test cube coordinate mapping
-    try testing.expect(EnhancedColorConverter.rgbTo6Cube(0) == 0);
-    try testing.expect(EnhancedColorConverter.rgbTo6Cube(47) == 0); // Below threshold
-    try testing.expect(EnhancedColorConverter.rgbTo6Cube(48) == 1); // At threshold
-    try testing.expect(EnhancedColorConverter.rgbTo6Cube(255) == 5); // Max value
+    try testing.expect(Converter.rgbTo6Cube(0) == 0);
+    try testing.expect(Converter.rgbTo6Cube(47) == 0); // Below threshold
+    try testing.expect(Converter.rgbTo6Cube(48) == 1); // At threshold
+    try testing.expect(Converter.rgbTo6Cube(255) == 5); // Max value
 
     // Test cube-to-RGB conversion
-    try testing.expect(EnhancedColorConverter.cubeToRgb(0) == 0x00);
-    try testing.expect(EnhancedColorConverter.cubeToRgb(1) == 0x5F);
-    try testing.expect(EnhancedColorConverter.cubeToRgb(5) == 0xFF);
+    try testing.expect(Converter.cubeToRgb(0) == 0x00);
+    try testing.expect(Converter.cubeToRgb(1) == 0x5F);
+    try testing.expect(Converter.cubeToRgb(5) == 0xFF);
 }
 
 test "cube color calculation" {
     const pure_red = RGBColor.init(255, 0, 0);
-    const cube_result = EnhancedColorConverter.calculateCubeColor(pure_red);
+    const cube_result = Converter.calculateCubeColor(pure_red);
 
     // Pure red should map to cube coordinates (5, 0, 0)
     try testing.expect(cube_result.color.r == 0xFF);
@@ -353,7 +353,7 @@ test "cube color calculation" {
 
 test "grayscale calculation" {
     const gray = RGBColor.init(128, 128, 128);
-    const gray_result = EnhancedColorConverter.calculateGrayscaleColor(gray);
+    const gray_result = Converter.calculateGrayscaleColor(gray);
 
     // Should be in grayscale range (232-255)
     try testing.expect(gray_result.index >= 232 and gray_result.index <= 255);
@@ -363,19 +363,19 @@ test "grayscale calculation" {
     try testing.expect(gray_result.color.g == gray_result.color.b);
 }
 
-test "enhanced color conversion" {
+test "color conversion" {
     // Test pure colors that should have exact matches
     const pure_red = RGBColor.init(255, 0, 0);
-    const red_result = EnhancedColorConverter.convert256Enhanced(pure_red);
+    const red_result = Converter.convert256Enhanced(pure_red);
     try testing.expect(red_result == 9 or red_result == 196); // Basic red or cube red
 
     const pure_blue = RGBColor.init(0, 0, 255);
-    const blue_result = EnhancedColorConverter.convert256Enhanced(pure_blue);
+    const blue_result = Converter.convert256Enhanced(pure_blue);
     try testing.expect(blue_result == 12 or blue_result == 21); // Basic blue or cube blue
 
     // Test gray conversion
     const mid_gray = RGBColor.init(128, 128, 128);
-    const gray_result = EnhancedColorConverter.convert256Enhanced(mid_gray);
+    const gray_result = Converter.convert256Enhanced(mid_gray);
     try testing.expect(gray_result >= 232 or gray_result == 8); // Should be grayscale or basic gray
 }
 
@@ -394,7 +394,7 @@ test "conversion strategy comparison" {
     // Results should be reasonably close (allowing for different algorithms)
     const enhanced_color = precise_palette.getRgbColor(enhanced);
     const optimal_color = precise_palette.getRgbColor(optimal);
-    const distance = enhanced_distance.perceptualDistanceFast(enhanced_color, optimal_color);
+    const distance = color_distance.perceptualDistanceFast(enhanced_color, optimal_color);
     try testing.expect(distance < 20.0); // Should be relatively close
 }
 
@@ -420,7 +420,7 @@ test "16-color conversion" {
 
 test "conversion analysis" {
     const test_color = RGBColor.init(180, 90, 45);
-    const analysis = EnhancedColorConverter.Analysis.analyzeConversion(test_color);
+    const analysis = Converter.Analysis.analyzeConversion(test_color);
 
     try testing.expect(analysis.best_256_index <= 255);
     try testing.expect(analysis.perceptual_distance >= 0.0);
@@ -441,7 +441,7 @@ test "batch conversion" {
     };
 
     var results: [4]u8 = undefined;
-    EnhancedColorConverter.convertBatch(&test_colors, &results, false);
+    Converter.convertBatch(&test_colors, &results, false);
 
     // All results should be valid
     for (results) |result| {

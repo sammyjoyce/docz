@@ -1,5 +1,5 @@
 //! Interactive CLI interface for DocZ
-//! Provides command palette and enhanced user experience
+//! Provides command palette and user experience
 
 const std = @import("std");
 const components = @import("../components/mod.zig");

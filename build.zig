@@ -16,7 +16,7 @@ const BUILD_CONFIG = struct {
         const ENGINE_ZIG = "src/core/engine.zig";
         const CONFIG_ZIG = "src/core/config.zig";
         const AGENT_INTERFACE_ZIG = "src/shared/tui/agent_interface.zig";
-        const AGENT_DASHBOARD_ZIG = "src/core/agent_dashboard.zig";
+        const AGENT_DASHBOARD_ZIG = "src/shared/tui/components/agent_dashboard.zig";
         const INTERACTIVE_SESSION_ZIG = "src/core/interactive_session.zig";
         const CLI_ZIG = "src/shared/cli/mod.zig";
         const AUTH_ZIG = "src/shared/auth/mod.zig";
@@ -1870,14 +1870,6 @@ pub fn build(b: *std.Build) !void {
     }
 }
 
-/// Setup example targets for building standalone examples
-fn setupExampleTargets(ctx: BuildContext, shared_modules: ConditionalSharedModules) void {
-    _ = ctx;
-    _ = shared_modules;
-    // Example targets setup - currently no examples to build
-    // This function is called but not implemented yet
-}
-
 // ============================================================================
 // REGISTRY-BASED UTILITY FUNCTIONS
 // ============================================================================
@@ -2424,10 +2416,7 @@ fn printHelp() void {
     std.log.info("", .{});
     std.log.info("📚 EXAMPLES:", .{});
     std.log.info("  zig build example-stylize          # Run stylize trait system demo", .{});
-    std.log.info("", .{});
-    std.log.info("📋 INFORMATION:", .{});
-    std.log.info("  zig build help                     # Show this help", .{});
-    std.log.info("  zig build agent-info               # Show current agent info", .{});
+    std.log.info("  zig build run-typing-demo          # Run typing animation demo", .{});
     std.log.info("", .{});
     std.log.info("💡 QUICK START EXAMPLES:", .{});
     std.log.info("  zig build scaffold-agent -- my-ai \"AI assistant\" \"John Doe\"", .{});
@@ -2502,7 +2491,7 @@ fn setupDemoTargets(ctx: BuildContext, shared_modules: ConditionalSharedModules)
         const editor_module = ctx.b.addModule("enhanced_editor_demo", .{
             .target = ctx.target,
             .optimize = ctx.optimize,
-            .root_source_file = ctx.b.path("agents/markdown/enhanced_markdown_editor.zig"),
+            .root_source_file = ctx.b.path("agents/markdown/markdown_editor.zig"),
         });
 
         // Add necessary imports
@@ -2559,6 +2548,26 @@ fn setupExampleTargets(ctx: BuildContext, shared_modules: ConditionalSharedModul
     linkSystemDependencies(tabs_exe);
     const tabs_run = ctx.b.addRunArtifact(tabs_exe);
     tabs_demo_step.dependOn(&tabs_run.step);
+
+    // Typing animation demo - demonstrates the typing animation system
+    const typing_demo_step = ctx.b.step("run-typing-demo", "Run typing animation comprehensive demo");
+    const typing_module = ctx.b.addModule("typing_animation_demo", .{
+        .target = ctx.target,
+        .optimize = ctx.optimize,
+        .root_source_file = ctx.b.path("examples/typing_animation_demo.zig"),
+    });
+
+    // Add necessary imports for the typing animation demo
+    if (shared_modules.tui) |tui| typing_module.addImport("tui_shared", tui);
+    if (shared_modules.term) |term| typing_module.addImport("term_shared", term);
+
+    const typing_exe = ctx.b.addExecutable(.{
+        .name = "typing-animation-demo",
+        .root_module = typing_module,
+    });
+    linkSystemDependencies(typing_exe);
+    const typing_run = ctx.b.addRunArtifact(typing_exe);
+    typing_demo_step.dependOn(&typing_run.step);
 }
 
 fn setupAgentExecutable(ctx: BuildContext, agent_entry: *std.Build.Module, manifest: ?AgentManifest) void {

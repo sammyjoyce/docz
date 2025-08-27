@@ -47,9 +47,9 @@ pub const DashboardEngine = struct {
     /// Terminal capability tiers for progressive enhancement
     pub const CapabilityTier = enum {
         /// Kitty graphics, Sixel, 24-bit color, pixel mouse, synchronized output
-        ultra_enhanced,
+        premium,
         /// Unicode blocks, 256 colors, SGR mouse, double buffering
-        enhanced,
+        rich,
         /// ASCII art, 16 colors, basic mouse, partial redraws
         standard,
         /// Plain text, no mouse, full redraws
@@ -62,9 +62,9 @@ pub const DashboardEngine = struct {
             const has_mouse = caps.supportsMouseTracking() catch false;
 
             if (has_kitty and has_truecolor and has_mouse) {
-                return .ultra_enhanced;
+                return .premium;
             } else if (has_sixel or (has_truecolor and has_mouse)) {
-                return .enhanced;
+                return .rich;
             } else if (caps.supports256Color() catch false and has_mouse) {
                 return .standard;
             }
@@ -214,8 +214,8 @@ pub const Compositor = struct {
     output_buffer: *OutputBuffer,
 
     const CompositorMode = enum {
-        ultra_enhanced, // Alpha blending with Kitty graphics
-        enhanced, // Dithering with Sixel/Unicode
+        premium, // Alpha blending with Kitty graphics
+        rich, // Dithering with Sixel/Unicode
         standard, // Simple alpha simulation
         minimal, // Plain text overlay
     };
@@ -225,8 +225,8 @@ pub const Compositor = struct {
         compositor.* = .{
             .allocator = allocator,
             .mode = switch (tier) {
-                .ultra_enhanced => .ultra_enhanced,
-                .enhanced => .enhanced,
+                .premium => .premium,
+                .rich => .rich,
                 .standard => .standard,
                 .minimal => .minimal,
             },
@@ -242,8 +242,8 @@ pub const Compositor = struct {
 
     pub fn composite(self: *Compositor, layers: []RenderPipeline.RenderLayer) !void {
         switch (self.mode) {
-            .ultra_enhanced => try self.compositeWithAlphaBlending(layers),
-            .enhanced => try self.compositeWithDithering(layers),
+            .premium => try self.compositeWithAlphaBlending(layers),
+            .rich => try self.compositeWithDithering(layers),
             .standard => try self.compositeSimple(layers),
             .minimal => try self.compositePlainText(layers),
         }
@@ -502,12 +502,12 @@ pub const AdaptiveRenderer = struct {
         renderer.* = .{
             .allocator = allocator,
             .strategy = switch (tier) {
-                .ultra_enhanced => .{ .kitty_graphics = try KittyRenderer.init(allocator) },
-                .enhanced => .{ .sixel_graphics = try SixelRenderer.init(allocator) },
+                .premium => .{ .kitty_graphics = try KittyRenderer.init(allocator) },
+                .rich => .{ .sixel_graphics = try SixelRenderer.init(allocator) },
                 .standard => .{ .unicode_blocks = try UnicodeRenderer.init(allocator) },
                 .minimal => .{ .ascii_art = try AsciiRenderer.init(allocator) },
             },
-            .graphics_manager = if (tier == .ultra_enhanced or tier == .enhanced)
+            .graphics_manager = if (tier == .premium or tier == .rich)
                 try allocator.create(graphics_manager.GraphicsManager)
             else
                 null,

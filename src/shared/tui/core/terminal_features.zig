@@ -4,7 +4,7 @@
 /// Compatible with Zig 0.15.1
 const std = @import("std");
 
-pub const cellbuf = @import("../../components/cell_buffer.zig");
+pub const cellbuf = @import("../../term/cellbuf.zig");
 // TODO: Implement advanced cursor optimizer
 // pub const cursor_optimizer = @import("ansi/cursor_optimizer.zig");
 // TODO: Implement enhanced input handler
@@ -86,13 +86,13 @@ pub const AdvancedTerminal = struct {
     }
 
     /// Set cell with character and styling
-    pub fn setCell(self: *Self, x: usize, y: usize, codepoint: u21, fg: CellColor, bg: CellColor, cell_attrs: CellAttrs) !void {
-        try self.buffer.setCell(x, y, codepoint, fg, bg, cell_attrs);
+    pub fn setCell(self: *Self, x: usize, y: usize, rune: u21, style: cellbuf.Style) !void {
+        try self.buffer.setCell(x, y, rune, style);
     }
 
     /// Write text at position
-    pub fn writeText(self: *Self, x: usize, y: usize, text: []const u8, fg: CellColor, bg: CellColor, cell_attrs: CellAttrs) !usize {
-        return try self.buffer.writeText(x, y, text, fg, bg, cell_attrs);
+    pub fn writeText(self: *Self, x: usize, y: usize, text: []const u8, style: cellbuf.Style) !usize {
+        return try self.buffer.writeText(x, y, text, style);
     }
 
     /// Clear entire buffer
@@ -101,13 +101,13 @@ pub const AdvancedTerminal = struct {
     }
 
     /// Fill rectangular area
-    pub fn fillRect(self: *Self, x: usize, y: usize, w: usize, h: usize, codepoint: u21, fg: CellColor, bg: CellColor, cell_attrs: CellAttrs) !void {
-        try self.buffer.fillRect(x, y, w, h, codepoint, fg, bg, cell_attrs);
+    pub fn fillRect(self: *Self, x: usize, y: usize, w: usize, h: usize, rune: u21, style: cellbuf.Style) !void {
+        try self.buffer.fillRect(x, y, w, h, rune, style);
     }
 
     /// Draw box with borders
-    pub fn drawBox(self: *Self, x: usize, y: usize, w: usize, h: usize, style: cellbuf.CellBuffer.BoxStyle, fg: CellColor, bg: CellColor, cell_attrs: CellAttrs) !void {
-        try self.buffer.drawBox(x, y, w, h, style, fg, bg, cell_attrs);
+    pub fn drawBox(self: *Self, x: usize, y: usize, w: usize, h: usize, style: cellbuf.CellBuffer.BoxStyle, fg: cellbuf.Color, bg: cellbuf.Color, attrs: cellbuf.AttrMask) !void {
+        try self.buffer.drawBox(x, y, w, h, style, fg, bg, attrs);
     }
 
     /// Set cursor position
@@ -133,7 +133,7 @@ pub const AdvancedTerminal = struct {
         var last_y: usize = 0;
         var last_fg = cellbuf.defaultColor();
         var last_bg = cellbuf.defaultColor();
-        var last_attrs = CellAttrs{};
+        var last_attrs = cellbuf.AttrMask{};
 
         for (diffs) |diff| {
             // Move cursor if needed
@@ -146,20 +146,20 @@ pub const AdvancedTerminal = struct {
             }
 
             // Update colors and attributes if changed
-            if (!diff.cell.fg_color.eql(last_fg) or !diff.cell.bg_color.eql(last_bg) or !diff.cell.attrs.eql(last_attrs)) {
-                try writeColorAndAttrs(writer, diff.cell.fg_color, diff.cell.bg_color, diff.cell.attrs);
-                last_fg = diff.cell.fg_color;
-                last_bg = diff.cell.bg_color;
-                last_attrs = diff.cell.attrs;
+            if (!diff.cell.style.fg.eql(last_fg) or !diff.cell.style.bg.eql(last_bg) or !diff.cell.style.attrs.eql(last_attrs)) {
+                try writeColorAndAttrs(writer, diff.cell.style.fg, diff.cell.style.bg, diff.cell.style.attrs);
+                last_fg = diff.cell.style.fg;
+                last_bg = diff.cell.style.bg;
+                last_attrs = diff.cell.style.attrs;
             }
 
             // Write character if not a continuation cell
-            if (!diff.cell.is_continuation and diff.cell.codepoint > 0) {
+            if (!diff.cell.is_continuation and diff.cell.rune > 0) {
                 var buf: [4]u8 = undefined;
-                const len = try std.unicode.utf8Encode(diff.cell.codepoint, &buf);
+                const len = try std.unicode.utf8Encode(diff.cell.rune, &buf);
                 try writer.writeAll(buf[0..len]);
                 last_x += @max(1, diff.cell.width);
-            } else if (diff.cell.codepoint == 0) {
+            } else if (diff.cell.rune == 0) {
                 // Empty cell - write space
                 try writer.writeByte(' ');
                 last_x += 1;
@@ -208,79 +208,87 @@ pub const AdvancedTerminal = struct {
 };
 
 /// Helper function to write ANSI color and attribute sequences
-fn writeColorAndAttrs(writer: anytype, fg: CellColor, bg: CellColor, cell_attrs: CellAttrs) !void {
+fn writeColorAndAttrs(writer: anytype, fg: cellbuf.Color, bg: cellbuf.Color, attrs: cellbuf.AttrMask) !void {
     // Reset if needed
     try writer.writeAll("\x1b[0m");
 
     // Foreground color
     switch (fg) {
         .default => {},
-        .indexed => |idx| try writer.print("\x1b[38;5;{d}m", .{idx}),
+        .ansi => |idx| try writer.print("\x1b[38;5;{d}m", .{idx}),
+        .ansi256 => |idx| try writer.print("\x1b[38;5;{d}m", .{idx}),
         .rgb => |rgb| try writer.print("\x1b[38;2;{d};{d};{d}m", .{ rgb.r, rgb.g, rgb.b }),
     }
 
     // Background color
     switch (bg) {
         .default => {},
-        .indexed => |idx| try writer.print("\x1b[48;5;{d}m", .{idx}),
+        .ansi => |idx| try writer.print("\x1b[48;5;{d}m", .{idx}),
+        .ansi256 => |idx| try writer.print("\x1b[48;5;{d}m", .{idx}),
         .rgb => |rgb| try writer.print("\x1b[48;2;{d};{d};{d}m", .{ rgb.r, rgb.g, rgb.b }),
     }
 
     // Attributes
-    if (cell_attrs.bold) try writer.writeAll("\x1b[1m");
-    if (cell_attrs.dim) try writer.writeAll("\x1b[2m");
-    if (cell_attrs.italic) try writer.writeAll("\x1b[3m");
-    if (cell_attrs.underline) try writer.writeAll("\x1b[4m");
-    if (cell_attrs.blink) try writer.writeAll("\x1b[5m");
-    if (cell_attrs.reverse) try writer.writeAll("\x1b[7m");
-    if (cell_attrs.strikethrough) try writer.writeAll("\x1b[9m");
+    if (attrs.bold) try writer.writeAll("\x1b[1m");
+    if (attrs.faint) try writer.writeAll("\x1b[2m");
+    if (attrs.italic) try writer.writeAll("\x1b[3m");
+    if (attrs.slow_blink) try writer.writeAll("\x1b[5m");
+    if (attrs.rapid_blink) try writer.writeAll("\x1b[6m");
+    if (attrs.reverse) try writer.writeAll("\x1b[7m");
+    if (attrs.conceal) try writer.writeAll("\x1b[8m");
+    if (attrs.strikethrough) try writer.writeAll("\x1b[9m");
 }
 
 // Convenience color functions
 pub const Colors = struct {
-    pub fn default() CellColor {
+    pub fn default() cellbuf.Color {
         return .default;
     }
-    pub fn indexed(idx: u8) CellColor {
-        return .{ .indexed = idx };
+    pub fn ansi(idx: u8) cellbuf.Color {
+        return .{ .ansi = idx };
     }
-    pub fn rgb(r: u8, g: u8, b: u8) CellColor {
+    pub fn ansi256(idx: u8) cellbuf.Color {
+        return .{ .ansi256 = idx };
+    }
+    pub fn rgb(r: u8, g: u8, b: u8) cellbuf.Color {
         return .{ .rgb = .{ .r = r, .g = g, .b = b } };
     }
 
     // Common colors
-    pub const BLACK = indexed(0);
-    pub const RED = indexed(1);
-    pub const GREEN = indexed(2);
-    pub const YELLOW = indexed(3);
-    pub const BLUE = indexed(4);
-    pub const MAGENTA = indexed(5);
-    pub const CYAN = indexed(6);
-    pub const WHITE = indexed(7);
+    pub const BLACK = ansi(0);
+    pub const RED = ansi(1);
+    pub const GREEN = ansi(2);
+    pub const YELLOW = ansi(3);
+    pub const BLUE = ansi(4);
+    pub const MAGENTA = ansi(5);
+    pub const CYAN = ansi(6);
+    pub const WHITE = ansi(7);
 
-    pub const BRIGHT_BLACK = indexed(8);
-    pub const BRIGHT_RED = indexed(9);
-    pub const BRIGHT_GREEN = indexed(10);
-    pub const BRIGHT_YELLOW = indexed(11);
-    pub const BRIGHT_BLUE = indexed(12);
-    pub const BRIGHT_MAGENTA = indexed(13);
-    pub const BRIGHT_CYAN = indexed(14);
-    pub const BRIGHT_WHITE = indexed(15);
+    pub const BRIGHT_BLACK = ansi(8);
+    pub const BRIGHT_RED = ansi(9);
+    pub const BRIGHT_GREEN = ansi(10);
+    pub const BRIGHT_YELLOW = ansi(11);
+    pub const BRIGHT_BLUE = ansi(12);
+    pub const BRIGHT_MAGENTA = ansi(13);
+    pub const BRIGHT_CYAN = ansi(14);
+    pub const BRIGHT_WHITE = ansi(15);
 };
 
 // Convenience attribute combinations
 pub const Attrs = struct {
-    pub const NONE = CellAttrs{};
-    pub const BOLD = CellAttrs{ .bold = true };
-    pub const DIM = CellAttrs{ .dim = true };
-    pub const ITALIC = CellAttrs{ .italic = true };
-    pub const UNDERLINE = CellAttrs{ .underline = true };
-    pub const BLINK = CellAttrs{ .blink = true };
-    pub const REVERSE = CellAttrs{ .reverse = true };
-    pub const STRIKETHROUGH = CellAttrs{ .strikethrough = true };
+    pub const NONE = cellbuf.AttrMask{};
+    pub const BOLD = cellbuf.AttrMask{ .bold = true };
+    pub const FAINT = cellbuf.AttrMask{ .faint = true };
+    pub const ITALIC = cellbuf.AttrMask{ .italic = true };
+    pub const UNDERLINE = cellbuf.AttrMask{ .underline = true };
+    pub const SLOW_BLINK = cellbuf.AttrMask{ .slow_blink = true };
+    pub const RAPID_BLINK = cellbuf.AttrMask{ .rapid_blink = true };
+    pub const REVERSE = cellbuf.AttrMask{ .reverse = true };
+    pub const CONCEAL = cellbuf.AttrMask{ .conceal = true };
+    pub const STRIKETHROUGH = cellbuf.AttrMask{ .strikethrough = true };
 
-    pub const BOLD_UNDERLINE = CellAttrs{ .bold = true, .underline = true };
-    pub const ITALIC_DIM = CellAttrs{ .italic = true, .dim = true };
+    pub const BOLD_UNDERLINE = cellbuf.AttrMask{ .bold = true, .underline = true };
+    pub const ITALIC_FAINT = cellbuf.AttrMask{ .italic = true, .faint = true };
 };
 
 // Tests
@@ -303,7 +311,8 @@ test "advanced terminal text writing and rendering" {
     defer terminal.deinit();
 
     // Write some text
-    _ = try terminal.writeText(0, 0, "Hello, World!", Colors.GREEN, Colors.default(), Attrs.bold);
+    const style = cellbuf.Style{ .fg = Colors.GREEN, .bg = Colors.default(), .attrs = Attrs.BOLD };
+    _ = try terminal.writeText(0, 0, "Hello, World!", style);
 
     // Test rendering to a buffer
     var output = std.ArrayList(u8).init(allocator);

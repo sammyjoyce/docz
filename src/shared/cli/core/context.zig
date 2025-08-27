@@ -1,9 +1,8 @@
-//! Unified CLI Context
+//! CLI Context
 //! Central context that provides access to all terminal capabilities and shared state
 //! This replaces the fragmented initialization patterns from multiple CLI entry points
 
 const std = @import("std");
-const components = @import("../../components/mod.zig");
 const term = @import("../../term/mod.zig");
 const ansi_clipboard = term.ansi.clipboard;
 const ansi_notification = term.ansi.notification;
@@ -19,7 +18,7 @@ pub const ContextError = error{
 };
 
 /// Capability set representing what the current terminal can do
-pub const CapabilitySet = struct {
+pub const Capability = struct {
     hyperlinks: bool = false,
     clipboard: bool = false,
     notifications: bool = false,
@@ -27,13 +26,13 @@ pub const CapabilitySet = struct {
     truecolor: bool = false,
     mouse: bool = false,
 
-    pub fn detect(allocator: std.mem.Allocator) CapabilitySet {
+    pub fn detect(allocator: std.mem.Allocator) Capability {
         // For now, return basic capabilities since term.detectCapabilities doesn't exist yet
         // This would integrate with the actual terminal detection system
         _ = allocator;
 
         // Basic capability detection - this would be enhanced with real detection
-        return CapabilitySet{
+        return Capability{
             .hyperlinks = true, // Most modern terminals support this
             .clipboard = true, // OSC 52 is widely supported
             .notifications = true, // OSC 9 is common
@@ -45,9 +44,9 @@ pub const CapabilitySet = struct {
 };
 
 /// Notification manager for CLI operations
-pub const NotificationHandler = struct {
+pub const Notification = struct {
     allocator: std.mem.Allocator,
-    capabilities: CapabilitySet,
+    capabilities: Capability,
     termCaps: term.caps.TermCaps,
     terminal: *term.unified.Terminal,
     enabled: bool = true,
@@ -59,7 +58,7 @@ pub const NotificationHandler = struct {
         err, // error is reserved keyword
     };
 
-    pub const Notification = struct {
+    pub const NotificationData = struct {
         title: []const u8,
         body: ?[]const u8 = null,
         level: NotificationLevel = .info,
@@ -67,8 +66,8 @@ pub const NotificationHandler = struct {
         duration: ?u32 = null, // seconds
     };
 
-    pub fn init(allocator: std.mem.Allocator, capabilities: CapabilitySet, termCaps: term.caps.TermCaps, terminal: *term.unified.Terminal) NotificationHandler {
-        return NotificationHandler{
+    pub fn init(allocator: std.mem.Allocator, capabilities: Capability, termCaps: term.caps.TermCaps, terminal: *term.unified.Terminal) Notification {
+        return Notification{
             .allocator = allocator,
             .capabilities = capabilities,
             .termCaps = termCaps,
@@ -76,7 +75,7 @@ pub const NotificationHandler = struct {
         };
     }
 
-    pub fn send(self: *NotificationHandler, notification: Notification) !void {
+    pub fn send(self: *Notification, notification: NotificationData) !void {
         if (!self.enabled) return;
 
         if (self.capabilities.notifications) {
@@ -103,10 +102,10 @@ pub const NotificationHandler = struct {
 /// Graphics manager for enhanced visual elements
 pub const Graphics = struct {
     allocator: std.mem.Allocator,
-    capabilities: CapabilitySet,
+    capabilities: Capability,
     terminal: *term.unified.Terminal,
 
-    pub fn init(allocator: std.mem.Allocator, capabilities: CapabilitySet, terminal: *term.unified.Terminal) Graphics {
+    pub fn init(allocator: std.mem.Allocator, capabilities: Capability, terminal: *term.unified.Terminal) Graphics {
         return Graphics{
             .allocator = allocator,
             .capabilities = capabilities,
@@ -144,11 +143,11 @@ pub const Graphics = struct {
 /// Clipboard manager for copy/paste operations
 pub const Clipboard = struct {
     allocator: std.mem.Allocator,
-    capabilities: CapabilitySet,
+    capabilities: Capability,
     termCaps: term.caps.TermCaps,
     terminal: *term.unified.Terminal,
 
-    pub fn init(allocator: std.mem.Allocator, capabilities: CapabilitySet, termCaps: term.caps.TermCaps, terminal: *term.unified.Terminal) Clipboard {
+    pub fn init(allocator: std.mem.Allocator, capabilities: Capability, termCaps: term.caps.TermCaps, terminal: *term.unified.Terminal) Clipboard {
         return Clipboard{
             .allocator = allocator,
             .capabilities = capabilities,
@@ -174,11 +173,11 @@ pub const Clipboard = struct {
 /// Hyperlink manager for clickable links
 pub const Hyperlink = struct {
     allocator: std.mem.Allocator,
-    capabilities: CapabilitySet,
+    capabilities: Capability,
     termCaps: term.caps.TermCaps,
     terminal: *term.unified.Terminal,
 
-    pub fn init(allocator: std.mem.Allocator, capabilities: CapabilitySet, termCaps: term.caps.TermCaps, terminal: *term.unified.Terminal) Hyperlink {
+    pub fn init(allocator: std.mem.Allocator, capabilities: Capability, termCaps: term.caps.TermCaps, terminal: *term.unified.Terminal) Hyperlink {
         return Hyperlink{
             .allocator = allocator,
             .capabilities = capabilities,
@@ -203,10 +202,10 @@ pub const Hyperlink = struct {
 /// Main CLI context that ties everything together
 pub const Cli = struct {
     allocator: std.mem.Allocator,
-    capabilities: CapabilitySet,
+    capabilities: Capability,
     termCaps: term.caps.TermCaps,
     terminal: term.unified.Terminal,
-    notification: NotificationHandler,
+    notification: Notification,
     graphics: Graphics,
     clipboard: Clipboard,
     hyperlink: Hyperlink,
@@ -215,7 +214,7 @@ pub const Cli = struct {
 
     pub fn init(allocator: std.mem.Allocator) !Cli {
         // Detect terminal capabilities
-        const capabilities = CapabilitySet.detect(allocator);
+        const capabilities = Capability.detect(allocator);
         const termCaps = try term.caps.detectCaps(allocator);
 
         // Initialize unified terminal
@@ -229,7 +228,7 @@ pub const Cli = struct {
             .capabilities = capabilities,
             .termCaps = termCaps,
             .terminal = terminal,
-            .notification = NotificationHandler.init(allocator, capabilities, termCaps, &terminal),
+            .notification = Notification.init(allocator, capabilities, termCaps, &terminal),
             .graphics = Graphics.init(allocator, capabilities, &terminal),
             .clipboard = Clipboard.init(allocator, capabilities, termCaps, &terminal),
             .hyperlink = Hyperlink.init(allocator, capabilities, termCaps, &terminal),

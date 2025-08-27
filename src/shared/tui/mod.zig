@@ -1,7 +1,7 @@
 //! Consolidated TUI Framework - Main Module
 //!
-//! This module provides a unified interface to all TUI components with advanced graphics
-//! capabilities, progressive enhancement, and comprehensive terminal integration.
+//! This module provides an interface to all TUI components with graphics
+//! capabilities, progressive enhancement, and terminal integration.
 
 const std = @import("std");
 const term_shared = @import("term_shared");
@@ -14,6 +14,11 @@ pub const layout = core.layout;
 pub const screen = core.screen;
 pub const renderer = core.renderer;
 pub const input = core.input;
+pub const canvas = core.canvas;
+// Backward compatibility alias
+pub const canvas_engine = core.canvas;
+pub const easing = core.easing;
+pub const typing_animation = core.typing_animation;
 
 // Widget system - organized by category
 pub const widgets = @import("widgets/mod.zig");
@@ -24,7 +29,7 @@ pub const themes = @import("themes/mod.zig");
 // Utilities
 pub const utils = @import("utils/mod.zig");
 
-// Dashboard system - NEW advanced graphics capabilities
+// Dashboard system - graphics capabilities
 pub const dashboard = @import("widgets/dashboard/mod.zig");
 
 // Agent interface system
@@ -57,14 +62,21 @@ pub const Section = widgets.Core.Section;
 pub const TextInput = widgets.Core.TextInput;
 pub const TabContainer = widgets.Core.TabContainer;
 pub const Table = widgets.Core.Table;
+pub const VirtualList = widgets.Core.VirtualList;
 
-// Enhanced widget exports
-pub const ProgressBar = widgets.Enhanced.ProgressBar;
-pub const Notification = widgets.Enhanced.Notification;
-pub const Graphics = widgets.Enhanced.Graphics;
-pub const EnhancedTextInput = widgets.Enhanced.TextInput;
+// Widget exports
+pub const ProgressBar = widgets.ProgressBar;
+pub const Notification = widgets.Notification;
+pub const Graphics = widgets.Graphics;
+pub const TextInputWidget = widgets.Core.TextInputWidget;
 
-// Dashboard widget exports - NEW
+// Typing animation exports
+pub const TypingAnimation = typing_animation.TypingAnimation;
+pub const TypingAnimationBuilder = typing_animation.TypingAnimationBuilder;
+pub const ParticleEmitter = typing_animation.ParticleEmitter;
+pub const Particle = typing_animation.Particle;
+
+// Dashboard widget exports
 pub const Dashboard = dashboard.Dashboard;
 pub const DashboardEngine = dashboard.DashboardEngine;
 pub const LineChart = dashboard.LineChart;
@@ -82,7 +94,7 @@ pub const AgentConfig = agent_interface.Config;
 
 // Renderer system exports
 pub const Renderer = renderer.Renderer;
-pub const RenderContext = renderer.RenderContext;
+pub const Render = renderer.Render;
 pub const Style = renderer.Style;
 pub const Color = renderer.Style.Color;
 pub const Image = renderer.Image;
@@ -127,7 +139,7 @@ pub fn createSimpleDashboard(allocator: std.mem.Allocator, title: []const u8) !*
         .build();
 }
 
-pub fn createAdvancedDashboard(allocator: std.mem.Allocator, title: []const u8) !*Dashboard {
+pub fn createFullDashboard(allocator: std.mem.Allocator, title: []const u8) !*Dashboard {
     const caps = detectCapabilities();
     return try dashboard.DashboardBuilder.init(allocator)
         .withTitle(title)

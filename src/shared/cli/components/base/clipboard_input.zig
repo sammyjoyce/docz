@@ -48,7 +48,7 @@ pub const ClipboardInput = struct {
         var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
         try self.displayPrompt(&stdout_writer.interface);
 
-        // For now, use simple stdin reading
+        // For now, use basic stdin reading
         // This would be enhanced with actual clipboard integration
         var stdin_buffer: [4096]u8 = undefined;
         const stdin_file = std.fs.File.stdin();

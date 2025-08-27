@@ -29,7 +29,7 @@ This directory contains a unified TUI (Terminal User Interface) system that cons
 ```
 tui/
 ├── core/
-│   └── unified_renderer.zig    # Main rendering system
+│   └── renderer.zig             # Main rendering system (consolidated)
 ├── widgets/
 │   ├── demo_widget.zig         # Example widget implementations
 │   ├── core/                   # Basic widgets (Button, Label, Panel)
@@ -258,7 +258,7 @@ else
 ## Migration Guide
 
 ### From src/tui/
-1. Replace renderer imports with `tui/core/unified_renderer.zig`
+1. Replace renderer imports with `tui/core/renderer.zig`
 2. Update widget constructors to use new Widget interface
 3. Use unified theme system instead of custom colors
 4. Leverage automatic capability detection

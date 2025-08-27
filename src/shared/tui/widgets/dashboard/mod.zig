@@ -1,7 +1,7 @@
 //! Advanced Dashboard System Module
 //!
 //! Provides sophisticated data visualization components leveraging modern terminal
-//! capabilities including Kitty graphics, Sixel, 24-bit color, and enhanced input.
+//! capabilities including Kitty graphics, Sixel, 24-bit color, and input.
 
 const std = @import("std");
 const chart_line_mod = @import("chart/line.zig");
@@ -47,7 +47,7 @@ pub const KPICard = struct {
 
 // Core engine placeholder
 pub const DashboardEngine = struct {
-    pub const CapabilityTier = enum { basic, enhanced, advanced };
+    pub const CapabilityTier = enum { basic, rich, full };
 
     pub fn init(allocator: std.mem.Allocator) !*DashboardEngine {
         _ = allocator;
@@ -156,12 +156,8 @@ pub const DashboardWidget = struct {
         kpi_card: *KPICard,
     };
 
-    pub const Bounds = struct {
-        x: u32,
-        y: u32,
-        width: u32,
-        height: u32,
-    };
+    // Re-export unified types for backward compatibility
+    pub const Bounds = @import("../../../types.zig").BoundsU32;
 
     pub fn render(self: *DashboardWidget, render_pipeline: anytype) !void {
         if (!self.visible) return;
@@ -234,21 +230,11 @@ pub const InputEvent = union(enum) {
         super: bool = false,
     };
 
-    pub const MouseButton = enum {
-        left,
-        right,
-        middle,
-        none,
-    };
+    // Re-export unified types for backward compatibility
+    pub const MouseButton = @import("../../../types.zig").MouseButton;
 
-    pub const MouseAction = enum {
-        press,
-        release,
-        move,
-        drag,
-        scroll_up,
-        scroll_down,
-    };
+    // Re-export unified types for backward compatibility
+    pub const MouseAction = @import("../../../types.zig").MouseAction;
 };
 
 // Builder API placeholder

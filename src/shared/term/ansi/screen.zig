@@ -1,6 +1,7 @@
 const std = @import("std");
 const caps_mod = @import("../caps.zig");
 const passthrough = @import("passthrough.zig");
+const tab_processor = @import("../tab_processor.zig");
 
 pub const TermCaps = caps_mod.TermCaps;
 
@@ -170,4 +171,41 @@ pub fn cursorInformationReport(writer: anytype, caps: TermCaps, values: []const 
     }
     try buf.appendSlice("\x1b\\");
     try writeCsi(writer, caps, buf.items);
+}
+
+// Tab control functions with proper ANSI escape sequences
+
+/// Move cursor to next tab stop (HT): TAB character
+pub fn horizontalTab(writer: anytype, caps: TermCaps) !void {
+    try writeCsi(writer, caps, "\t");
+}
+
+/// Move cursor back to previous tab stop (CBT): CSI n Z
+pub fn cursorBackTab(writer: anytype, caps: TermCaps, n: u32) !void {
+    try writeCsiNum(writer, caps, 'Z', if (n == 0) 1 else n);
+}
+
+/// Move cursor to next horizontal tab stop (CHT): CSI n I
+pub fn cursorHorizontalTab(writer: anytype, caps: TermCaps, n: u32) !void {
+    try writeCsiNum(writer, caps, 'I', if (n == 0) 1 else n);
+}
+
+/// Move cursor to next vertical tab stop (CVT): CSI n Y
+pub fn cursorVerticalTab(writer: anytype, caps: TermCaps, n: u32) !void {
+    try writeCsiNum(writer, caps, 'Y', if (n == 0) 1 else n);
+}
+
+/// Write text with tab expansion using ANSI tab control
+/// This function handles tab characters by either expanding them to spaces
+/// or using ANSI tab control sequences depending on configuration
+pub fn writeTextWithTabControl(writer: anytype, allocator: std.mem.Allocator, text: []const u8, tab_config: tab_processor.TabConfig, caps: TermCaps) !void {
+    if (tab_config.expand_tabs) {
+        // Expand tabs to spaces for consistent rendering
+        const expanded = try tab_processor.expandTabs(allocator, text, tab_config);
+        defer allocator.free(expanded);
+        try passthrough.writeWithPassthrough(writer, caps, expanded);
+    } else {
+        // Use raw tab characters - terminal will handle tab stops
+        try passthrough.writeWithPassthrough(writer, caps, text);
+    }
 }

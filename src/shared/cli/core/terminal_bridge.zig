@@ -1,7 +1,7 @@
 //! Terminal Bridge for CLI Components
 //!
-//! This module provides a unified interface between CLI components and the
-//! advanced terminal capabilities in @src/term. It serves as a bridge that:
+//! This module provides an interface between CLI components and the
+//! terminal capabilities in @src/term. It serves as a bridge that:
 //! - Caches terminal capabilities to avoid repeated detection
 //! - Provides progressive enhancement strategies
 //! - Standardizes component rendering interfaces

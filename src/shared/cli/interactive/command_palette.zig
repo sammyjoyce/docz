@@ -1,5 +1,5 @@
-//! Rich command palette with fuzzy search and advanced terminal features
-//! Uses terminal capabilities from @src/term for enhanced user experience
+//! Command palette with fuzzy search and terminal features
+//! Uses terminal capabilities from @src/term for user experience
 
 const std = @import("std");
 const components = @import("../../components/mod.zig");
@@ -287,7 +287,7 @@ pub const CommandPalette = struct {
 
         try writer.writeAll("  📊 Graphics Preview: ");
 
-        // Simple ASCII art representation of graphics capability
+        // ASCII art representation of graphics capability
         const bars = "▁▃▅▇█▇▅▃▁";
         try writer.writeAll(bars);
 
@@ -601,7 +601,7 @@ pub const CommandPalette = struct {
         }
     }
 
-    /// Simple enhanced input with basic completion
+    /// Input with basic completion
     pub fn enhancedInput(
         allocator: Allocator,
         prompt_text: []const u8,

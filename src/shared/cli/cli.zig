@@ -1,5 +1,5 @@
-//! Main CLI interface using the enhanced modular architecture
-//! This is the new primary CLI module that applications should use
+//! Main CLI interface using the modular architecture
+//! This is the primary CLI module that applications should use
 
 const std = @import("std");
 

@@ -6,7 +6,7 @@
 
 const std = @import("std");
 const base = @import("base.zig");
-const unified = @import("../term/unified.zig");
+const term = @import("../term/term.zig");
 
 const Component = base.Component;
 const ComponentState = base.ComponentState;
@@ -14,14 +14,14 @@ const RenderContext = base.RenderContext;
 const Event = base.Event;
 const Theme = base.Theme;
 
-const Terminal = unified.Terminal;
-const Style = unified.Style;
-const Color = unified.Color;
-const Point = unified.Point;
-const Rect = unified.Rect;
+const Terminal = term.Terminal;
+const Style = term.Style;
+const Color = term.Color;
+const Point = term.Point;
+const Rect = term.Rect;
 
 /// Smart input enhancement features
-pub const SmartInputFeatures = packed struct {
+pub const Feature = packed struct {
     autocomplete: bool = true,
     syntaxHighlighting: bool = true,
     multiLine: bool = false,
@@ -39,7 +39,7 @@ pub const Suggestion = struct {
 };
 
 /// Input validation result
-pub const ValidationResult = union(enum) {
+pub const Validation = union(enum) {
     valid,
     warning: []const u8,
     validationError: []const u8,
@@ -49,12 +49,12 @@ pub const ValidationResult = union(enum) {
 pub const SuggestionProvider = *const fn (input: []const u8, allocator: std.mem.Allocator) anyerror![]Suggestion;
 
 /// Callback type for validators
-pub const Validator = *const fn (input: []const u8) ValidationResult;
+pub const Validator = *const fn (input: []const u8) Validation;
 
 /// Smart input configuration
-pub const SmartInputConfig = struct {
+pub const Config = struct {
     placeholder: ?[]const u8 = null,
-    features: SmartInputFeatures = .{},
+    features: Feature = .{},
     suggestionProvider: ?SuggestionProvider = null,
     validator: ?Validator = null,
     maxLength: ?u32 = null,
@@ -68,7 +68,7 @@ pub const SmartInput = struct {
 
     allocator: std.mem.Allocator,
     state: ComponentState,
-    config: SmartInputConfig,
+    config: Config,
 
     // Input state
     buffer: std.ArrayList(u8),
@@ -81,7 +81,7 @@ pub const SmartInput = struct {
     suggestions: ?[]Suggestion = null,
     selectedSuggestion: usize = 0,
     showSuggestions: bool = false,
-    validationResult: ValidationResult = .valid,
+    validationResult: Validation = .valid,
     history: std.ArrayList([]const u8),
     historyIndex: ?usize = null,
 
@@ -103,7 +103,7 @@ pub const SmartInput = struct {
         .update = update,
     };
 
-    pub fn create(allocator: std.mem.Allocator, config: SmartInputConfig) !*Component {
+    pub fn create(allocator: std.mem.Allocator, config: Config) !*Component {
         const self = try allocator.create(Self);
         self.* = Self{
             .allocator = allocator,
@@ -761,7 +761,7 @@ pub fn defaultSuggestionProvider(input: []const u8, allocator: std.mem.Allocator
 }
 
 /// Example validator for demonstration
-pub fn defaultValidator(input: []const u8) ValidationResult {
+pub fn defaultValidator(input: []const u8) Validation {
     if (input.len == 0) return .valid;
 
     // Simple validation rules

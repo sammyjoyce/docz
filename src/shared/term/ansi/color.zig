@@ -1705,6 +1705,4 @@ test "color response parsing" {
     const response_st = "\x1b]11;rgb:ffff/0000/0000\x1b\\";
     const color_st = try parseColorResponse(response_st);
     try testing.expectEqualStrings("rgb:ffff/0000/0000", color_st);
-}</content>
-</xai:function_call name="bash">
-<parameter name="command">rm src/shared/term/ansi/color_conversion.zig src/shared/term/ansi/color_converter.zig src/shared/term/ansi/color_space_utilities.zig
+}

@@ -16,9 +16,9 @@ const agent_main = @import("agent_main.zig");
 /// Agents can embed this struct or use composition to inherit base functionality.
 pub const BaseAgent = struct {
     allocator: Allocator,
-    session_manager: ?*session.SessionManager = null,
-    auth_client: ?*auth.AuthClient = null,
-    session_stats: session.SessionStats = .{},
+    sessionManager: ?*session.SessionManager = null,
+    authClient: ?*auth.AuthClient = null,
+    sessionStats: session.SessionStats = .{},
 
     const Self = @This();
 
@@ -34,12 +34,12 @@ pub const BaseAgent = struct {
     /// Clean up base agent resources
     pub fn deinit(self: *Self) void {
         // Clean up session manager
-        if (self.session_manager) |sess_mgr| {
+        if (self.sessionManager) |sess_mgr| {
             sess_mgr.deinit();
         }
 
         // Clean up auth client
-        if (self.auth_client) |*client| {
+        if (self.authClient) |*client| {
             client.deinit();
         }
 
@@ -143,17 +143,17 @@ pub const BaseAgent = struct {
     /// This creates a session manager that agents can use for rich terminal experiences
     pub fn enableInteractiveMode(self: *Self, config: session.SessionConfig) !void {
         _ = config; // Configuration stored but not currently used in session manager
-        if (self.session_manager != null) {
+        if (self.sessionManager != null) {
             return error.AlreadyEnabled;
         }
 
         // Create session manager with default directory
-        const sessions_dir = try std.fmt.allocPrint(self.allocator, "{s}/.docz/sessions", .{std.fs.selfExePathAlloc(self.allocator)});
-        defer self.allocator.free(sessions_dir);
+        const sessionsDir = try std.fmt.allocPrint(self.allocator, "{s}/.docz/sessions", .{std.fs.selfExePathAlloc(self.allocator)});
+        defer self.allocator.free(sessionsDir);
 
-        self.session_manager = try session.SessionManager.init(self.allocator, sessions_dir);
-        self.session_stats.last_session_start = std.time.timestamp();
-        self.session_stats.total_sessions += 1;
+        self.sessionManager = try session.SessionManager.init(self.allocator, sessionsDir);
+        self.sessionStats.last_session_start = std.time.timestamp();
+        self.sessionStats.total_sessions += 1;
 
         std.log.info("🤖 Interactive mode enabled for agent", .{});
     }
@@ -161,18 +161,18 @@ pub const BaseAgent = struct {
     /// Start the interactive session
     /// This begins the main interaction loop with the user
     pub fn startInteractiveSession(self: *Self) !void {
-        if (self.session_manager) |sess_mgr| {
+        if (self.sessionManager) |sess_mgr| {
             // Create a new session
-            const session_id = try session.generateSessionId(self.allocator);
-            _ = try sess_mgr.createSession(session_id);
+            const sessionId = try session.generateSessionId(self.allocator);
+            _ = try sess_mgr.createSession(sessionId);
 
-            self.session_stats.last_session_end = std.time.timestamp();
+            self.sessionStats.last_session_end = std.time.timestamp();
 
             // Update average session duration
-            const session_duration = self.session_stats.last_session_end - self.session_stats.last_session_start;
-            const total_sessions = @as(f64, @floatFromInt(self.session_stats.total_sessions));
-            self.session_stats.average_session_duration =
-                (self.session_stats.average_session_duration * (total_sessions - 1) + @as(f64, @floatFromInt(session_duration))) / total_sessions;
+            const sessionDuration = self.sessionStats.last_session_end - self.sessionStats.last_session_start;
+            const totalSessions = @as(f64, @floatFromInt(self.sessionStats.total_sessions));
+            self.sessionStats.average_session_duration =
+                (self.sessionStats.average_session_duration * (totalSessions - 1) + @as(f64, @floatFromInt(sessionDuration))) / totalSessions;
         } else {
             return error.InteractiveModeNotEnabled;
         }
@@ -180,16 +180,16 @@ pub const BaseAgent = struct {
 
     /// Check if interactive mode is available
     pub fn hasInteractiveMode(self: *Self) bool {
-        return self.session_manager != null;
+        return self.sessionManager != null;
     }
 
     /// Get current session statistics
     pub fn getSessionStats(self: *Self) session.SessionStats {
         // Update with current session manager stats
-        if (self.session_manager) |sess_mgr| {
-            self.session_stats = sess_mgr.getStats();
+        if (self.sessionManager) |sess_mgr| {
+            self.sessionStats = sess_mgr.getStats();
         }
-        return self.session_stats;
+        return self.sessionStats;
     }
 
     // ===== AUTHENTICATION METHODS =====
@@ -197,19 +197,19 @@ pub const BaseAgent = struct {
     /// Initialize authentication for this agent
     /// This sets up OAuth or API key authentication as available
     pub fn initAuthentication(self: *Self) !void {
-        if (self.auth_client != null) {
+        if (self.authClient != null) {
             return error.AlreadyInitialized;
         }
 
-        self.auth_client = try auth.createClient(self.allocator);
-        self.session_stats.auth_attempts += 1;
+        self.authClient = try auth.createClient(self.allocator);
+        self.sessionStats.auth_attempts += 1;
 
         std.log.info("🔐 Authentication initialized", .{});
     }
 
     /// Check authentication status
     pub fn checkAuthStatus(self: *Self) !auth.AuthMethod {
-        if (self.auth_client) |client| {
+        if (self.authClient) |client| {
             if (client.credentials.isValid()) {
                 return client.credentials.getMethod();
             } else {
@@ -246,23 +246,23 @@ pub const BaseAgent = struct {
     /// Setup OAuth authentication interactively
     /// This launches the OAuth wizard for first-time setup
     pub fn setupOAuth(self: *Self) !void {
-        self.session_stats.auth_attempts += 1;
+        self.sessionStats.auth_attempts += 1;
 
         const credentials = try auth.oauth.setupOAuth(self.allocator);
 
         // Create new auth client with the credentials
-        if (self.auth_client) |*client| {
+        if (self.authClient) |*client| {
             client.deinit();
         }
 
-        self.auth_client = auth.AuthClient.init(self.allocator, auth.AuthCredentials{ .oauth = credentials });
+        self.authClient = auth.AuthClient.init(self.allocator, auth.AuthCredentials{ .oauth = credentials });
 
         std.log.info("✅ OAuth setup completed successfully!", .{});
     }
 
     /// Refresh authentication tokens
     pub fn refreshAuth(self: *Self) !void {
-        if (self.auth_client) |*client| {
+        if (self.authClient) |*client| {
             try client.refresh();
             std.log.info("🔄 Authentication tokens refreshed", .{});
         } else {
@@ -273,7 +273,7 @@ pub const BaseAgent = struct {
     /// Get the current authentication client
     /// Returns null if authentication is not initialized
     pub fn getAuthClient(self: *Self) ?*auth.AuthClient {
-        return if (self.auth_client) |*client| client else null;
+        return if (self.authClient) |*client| client else null;
     }
 
     /// Create an Anthropic client using current authentication
@@ -281,13 +281,13 @@ pub const BaseAgent = struct {
     pub fn createAnthropicClient(self: *Self) !*anthropic.AnthropicClient {
         const client = self.getAuthClient() orelse return error.AuthNotInitialized;
 
-        const api_key = switch (client.credentials) {
+        const apiKey = switch (client.credentials) {
             .api_key => |key| key,
             .oauth => |oauth_creds| oauth_creds.access_token,
             .none => return error.NoCredentials,
         };
 
-        return try anthropic.AnthropicClient.init(self.allocator, api_key);
+        return try anthropic.AnthropicClient.init(self.allocator, apiKey);
     }
 
     // ===== CONVENIENCE METHODS =====
@@ -363,10 +363,10 @@ pub const SessionHelpers = struct {
     /// Create and start a basic session
     pub fn startBasicSession(allocator: Allocator, title: []const u8) !*session.SessionManager {
         _ = title; // Not used in current implementation
-        const sessions_dir = try std.fmt.allocPrint(allocator, "{s}/.docz/sessions", .{std.fs.selfExePathAlloc(allocator)});
-        defer allocator.free(sessions_dir);
+        const sessionsDir = try std.fmt.allocPrint(allocator, "{s}/.docz/sessions", .{std.fs.selfExePathAlloc(allocator)});
+        defer allocator.free(sessionsDir);
 
-        const sess_mgr = try session.SessionManager.init(allocator, sessions_dir);
+        const sess_mgr = try session.SessionManager.init(allocator, sessionsDir);
         _ = try sess_mgr.createSession(try session.generateSessionId(allocator));
         return sess_mgr;
     }
@@ -374,10 +374,10 @@ pub const SessionHelpers = struct {
     /// Create and start a rich session with TUI
     pub fn startRichSession(allocator: Allocator, title: []const u8) !*session.SessionManager {
         _ = title; // Not used in current implementation
-        const sessions_dir = try std.fmt.allocPrint(allocator, "{s}/.docz/sessions", .{std.fs.selfExePathAlloc(allocator)});
-        defer allocator.free(sessions_dir);
+        const sessionsDir = try std.fmt.allocPrint(allocator, "{s}/.docz/sessions", .{std.fs.selfExePathAlloc(allocator)});
+        defer allocator.free(sessionsDir);
 
-        const sess_mgr = try session.SessionManager.init(allocator, sessions_dir);
+        const sess_mgr = try session.SessionManager.init(allocator, sessionsDir);
         _ = try sess_mgr.createSession(try session.generateSessionId(allocator));
         return sess_mgr;
     }
@@ -385,10 +385,10 @@ pub const SessionHelpers = struct {
     /// Create and start a CLI-only session
     pub fn startCLISession(allocator: Allocator, title: []const u8) !*session.SessionManager {
         _ = title; // Not used in current implementation
-        const sessions_dir = try std.fmt.allocPrint(allocator, "{s}/.docz/sessions", .{std.fs.selfExePathAlloc(allocator)});
-        defer allocator.free(sessions_dir);
+        const sessionsDir = try std.fmt.allocPrint(allocator, "{s}/.docz/sessions", .{std.fs.selfExePathAlloc(allocator)});
+        defer allocator.free(sessionsDir);
 
-        const sess_mgr = try session.SessionManager.init(allocator, sessions_dir);
+        const sess_mgr = try session.SessionManager.init(allocator, sessionsDir);
         _ = try sess_mgr.createSession(try session.generateSessionId(allocator));
         return sess_mgr;
     }
@@ -447,12 +447,12 @@ pub const ConfigHelpers = struct {
     pub fn loadConfig(
         comptime ConfigType: type,
         allocator: Allocator,
-        agent_name: []const u8,
+        agentName: []const u8,
         defaults: ConfigType,
     ) ConfigType {
         const configUtils = @import("config.zig");
-        const configPath = configUtils.getAgentConfigPath(allocator, agent_name) catch {
-            std.log.info("Using default configuration for agent: {s}", .{agent_name});
+        const configPath = configUtils.getAgentConfigPath(allocator, agentName) catch {
+            std.log.info("Using default configuration for agent: {s}", .{agentName});
             return defaults;
         };
         defer allocator.free(configPath);
@@ -461,9 +461,9 @@ pub const ConfigHelpers = struct {
     }
 
     /// Get standard agent config path
-    pub fn getConfigPath(allocator: Allocator, agent_name: []const u8) ![]const u8 {
+    pub fn getConfigPath(allocator: Allocator, agentName: []const u8) ![]const u8 {
         const configUtils = @import("config.zig");
-        return configUtils.getAgentConfigPath(allocator, agent_name);
+        return configUtils.getAgentConfigPath(allocator, agentName);
     }
 
     /// Create validated agent config with standard defaults
@@ -486,21 +486,21 @@ pub const ConfigHelpers = struct {
     pub fn saveConfig(
         comptime ConfigType: type,
         allocator: Allocator,
-        agent_name: []const u8,
+        agentName: []const u8,
         config: ConfigType,
     ) !void {
         const configUtils = @import("config.zig");
-        const configPath = try configUtils.getAgentConfigPath(allocator, agent_name);
+        const configPath = try configUtils.getAgentConfigPath(allocator, agentName);
         defer allocator.free(configPath);
 
         // Convert config to JSON for saving
-        const json_content = try std.json.stringifyAlloc(allocator, config, .{});
-        defer allocator.free(json_content);
+        const jsonContent = try std.json.stringifyAlloc(allocator, config, .{});
+        defer allocator.free(jsonContent);
 
         const file = try std.fs.cwd().createFile(configPath, .{ .mode = 0o600 });
         defer file.close();
 
-        try file.writeAll(json_content);
+        try file.writeAll(jsonContent);
     }
 };
 

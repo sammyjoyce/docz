@@ -32,17 +32,17 @@ pub const Config = struct {
     // Add your custom configuration fields here
     // These will be loaded from config.zon and have defaults
 
-    /// Whether to enable the custom demonstration feature
-    custom_feature_enabled: bool = false,
+        /// Whether to enable the custom demonstration feature
+        customFeatureEnabled: bool = false,
 
-    /// Maximum number of custom operations to perform
-    max_custom_operations: u32 = 50,
+        /// Maximum number of custom operations to perform
+        maxCustomOperations: u32 = 50,
 
-    /// Custom processing timeout in seconds
-    custom_timeout_seconds: u32 = 30,
+        /// Custom processing timeout in seconds
+        customTimeoutSeconds: u32 = 30,
 
-    /// Example of a string configuration with default
-    custom_message: []const u8 = "Hello from template agent!",
+        /// Example of a string configuration with default
+        customMessage: []const u8 = "Hello from template agent!",
 
     /// ============================================================================
     /// CONFIGURATION LOADING METHODS
@@ -63,10 +63,10 @@ pub const Config = struct {
                 "A template for creating new agents", // description
                 "Developer" // author
             ),
-            .custom_feature_enabled = false,
-            .max_custom_operations = 50,
-            .custom_timeout_seconds = 30,
-            .custom_message = "Hello from template agent!",
+            .customFeatureEnabled = false,
+            .maxCustomOperations = 50,
+            .customTimeoutSeconds = 30,
+            .customMessage = "Hello from template agent!",
         };
 
         // Use ConfigHelpers to load with validation and defaults
@@ -93,13 +93,13 @@ pub const Config = struct {
         try ConfigHelpers.validateAgentConfig(&self.agent_config);
 
         // Validate agent-specific fields
-        if (self.max_custom_operations == 0) {
+        if (self.maxCustomOperations == 0) {
             return error.InvalidConfiguration;
         }
-        if (self.custom_timeout_seconds == 0) {
+        if (self.customTimeoutSeconds == 0) {
             return error.InvalidConfiguration;
         }
-        if (self.custom_message.len == 0) {
+        if (self.customMessage.len == 0) {
             return error.InvalidConfiguration;
         }
 
@@ -118,7 +118,7 @@ pub const Config = struct {
 /// ============================================================================
 /// Main agent implementation demonstrating clean lifecycle management.
 /// This shows the recommended pattern for agent initialization and cleanup.
-pub const TemplateAgent = struct {
+pub const Template = struct {
     // ============================================================================
     // AGENT STATE
     // ============================================================================
@@ -130,10 +130,10 @@ pub const TemplateAgent = struct {
     config: Config,
 
     /// Example of agent-specific state that persists across operations
-    operation_count: u32 = 0,
+    operationCount: u32 = 0,
 
     /// Example of managed resources (would be freed in deinit)
-    custom_buffer: ?[]u8 = null,
+    customBuffer: ?[]u8 = null,
 
     // ============================================================================
     // INITIALIZATION METHODS
@@ -147,12 +147,12 @@ pub const TemplateAgent = struct {
     ///   config: Pre-loaded and validated configuration
     ///
     /// Returns: Initialized agent instance
-    pub fn init(allocator: Allocator, config: Config) TemplateAgent {
-        return TemplateAgent{
+    pub fn init(allocator: Allocator, config: Config) Template {
+        return Template{
             .allocator = allocator,
             .config = config,
-            .operation_count = 0,
-            .custom_buffer = null,
+            .operationCount = 0,
+            .customBuffer = null,
         };
     }
 
@@ -164,19 +164,19 @@ pub const TemplateAgent = struct {
     ///
     /// Returns: Initialized agent instance with loaded configuration
     /// Errors: Configuration loading or validation errors
-    pub fn initFromConfig(allocator: Allocator) !TemplateAgent {
+    pub fn initFromConfig(allocator: Allocator) !Template {
         // Get the standard configuration path
-        const config_path = try Config.getConfigPath(allocator);
-        defer allocator.free(config_path);
+        const configPath = try Config.getConfigPath(allocator);
+        defer allocator.free(configPath);
 
         // Load configuration with defaults
-        var config = try Config.loadFromFile(allocator, config_path);
+        var config = try Config.loadFromFile(allocator, configPath);
 
         // Validate configuration
         try config.validate();
 
         // Initialize agent with loaded config
-        return TemplateAgent.init(allocator, config);
+        return Template.init(allocator, config);
     }
 
     /// Initialize agent with custom configuration path.
@@ -184,14 +184,14 @@ pub const TemplateAgent = struct {
     ///
     /// Parameters:
     ///   allocator: Memory allocator for agent operations
-    ///   config_path: Custom path to configuration file
+    ///   configPath: Custom path to configuration file
     ///
     /// Returns: Initialized agent instance with loaded configuration
     /// Errors: File access or configuration errors
-    pub fn initFromConfigPath(allocator: Allocator, config_path: []const u8) !TemplateAgent {
-        var config = try Config.loadFromFile(allocator, config_path);
+    pub fn initFromConfigPath(allocator: Allocator, configPath: []const u8) !Template {
+        var config = try Config.loadFromFile(allocator, configPath);
         try config.validate();
-        return TemplateAgent.init(allocator, config);
+        return Template.init(allocator, config);
     }
 
     // ============================================================================
@@ -201,15 +201,15 @@ pub const TemplateAgent = struct {
     /// Clean up agent resources.
     /// This method is called when the agent is no longer needed.
     /// Always call this to prevent resource leaks.
-    pub fn deinit(self: *TemplateAgent) void {
+    pub fn deinit(self: *Template) void {
         // Clean up managed resources
-        if (self.custom_buffer) |buffer| {
+        if (self.customBuffer) |buffer| {
             self.allocator.free(buffer);
-            self.custom_buffer = null;
+            self.customBuffer = null;
         }
 
         // Reset state
-        self.operation_count = 0;
+        self.operationCount = 0;
 
         // Note: We don't free the config here as it may be owned by the caller
         // The config contains allocated strings that should be freed by the caller
@@ -224,7 +224,7 @@ pub const TemplateAgent = struct {
     ///
     /// Returns: Processed system prompt with variables replaced
     /// Errors: File access errors or template processing errors
-    pub fn loadSystemPrompt(self: *TemplateAgent) ![]const u8 {
+    pub fn loadSystemPrompt(self: *Template) ![]const u8 {
         // Path to the system prompt template file
         const prompt_path = "agents/_template/system_prompt.txt";
 
@@ -263,7 +263,7 @@ pub const TemplateAgent = struct {
     ///
     /// Returns: Processed string with variables replaced
     /// Errors: Memory allocation errors or unknown variable names
-    fn processTemplateVariables(self: *TemplateAgent, template: []const u8) ![]const u8 {
+    fn processTemplateVariables(self: *Template, template: []const u8) ![]const u8 {
         // Allocate result buffer with some extra capacity for replacements
         var result = try std.ArrayList(u8).initCapacity(self.allocator, template.len + 1024);
         defer result.deinit();
@@ -309,11 +309,11 @@ pub const TemplateAgent = struct {
     /// Add your custom variables here when extending the template.
     ///
     /// Parameters:
-    ///   var_name: Name of the variable (without braces)
+    ///   varName: Name of the variable (without braces)
     ///
     /// Returns: String value for the variable
     /// Errors: Memory allocation errors
-    fn getTemplateVariableValue(self: *TemplateAgent, var_name: []const u8) ![]const u8 {
+    fn getTemplateVariableValue(self: *Template, varName: []const u8) ![]const u8 {
         const cfg = &self.config.agent_config;
 
         // ============================================================================
@@ -321,44 +321,44 @@ pub const TemplateAgent = struct {
         // ============================================================================
         // These variables are available for all agents using the standard config
 
-        if (std.mem.eql(u8, var_name, "agent_name")) {
+        if (std.mem.eql(u8, varName, "agent_name")) {
             return try self.allocator.dupe(u8, cfg.agent_info.name);
-        } else if (std.mem.eql(u8, var_name, "agent_version")) {
+        } else if (std.mem.eql(u8, varName, "agent_version")) {
             return try self.allocator.dupe(u8, cfg.agent_info.version);
-        } else if (std.mem.eql(u8, var_name, "agent_description")) {
+        } else if (std.mem.eql(u8, varName, "agent_description")) {
             return try self.allocator.dupe(u8, cfg.agent_info.description);
-        } else if (std.mem.eql(u8, var_name, "agent_author")) {
+        } else if (std.mem.eql(u8, varName, "agent_author")) {
             return try self.allocator.dupe(u8, cfg.agent_info.author);
-        } else if (std.mem.eql(u8, var_name, "debug_enabled")) {
+        } else if (std.mem.eql(u8, varName, "debug_enabled")) {
             return try self.allocator.dupe(u8, if (cfg.defaults.enable_debug_logging) "enabled" else "disabled");
-        } else if (std.mem.eql(u8, var_name, "verbose_enabled")) {
+        } else if (std.mem.eql(u8, varName, "verbose_enabled")) {
             return try self.allocator.dupe(u8, if (cfg.defaults.enable_verbose_output) "enabled" else "disabled");
-        } else if (std.mem.eql(u8, var_name, "custom_tools_enabled")) {
+        } else if (std.mem.eql(u8, varName, "custom_tools_enabled")) {
             return try self.allocator.dupe(u8, if (cfg.features.enable_custom_tools) "enabled" else "disabled");
-        } else if (std.mem.eql(u8, var_name, "file_operations_enabled")) {
+        } else if (std.mem.eql(u8, varName, "file_operations_enabled")) {
             return try self.allocator.dupe(u8, if (cfg.features.enable_file_operations) "enabled" else "disabled");
-        } else if (std.mem.eql(u8, var_name, "network_access_enabled")) {
+        } else if (std.mem.eql(u8, varName, "network_access_enabled")) {
             return try self.allocator.dupe(u8, if (cfg.features.enable_network_access) "enabled" else "disabled");
-        } else if (std.mem.eql(u8, var_name, "system_commands_enabled")) {
+        } else if (std.mem.eql(u8, varName, "system_commands_enabled")) {
             return try self.allocator.dupe(u8, if (cfg.features.enable_system_commands) "enabled" else "disabled");
-        } else if (std.mem.eql(u8, var_name, "max_input_size")) {
+        } else if (std.mem.eql(u8, varName, "max_input_size")) {
             return try std.fmt.allocPrint(self.allocator, "{d}", .{cfg.limits.max_input_size});
-        } else if (std.mem.eql(u8, var_name, "max_output_size")) {
+        } else if (std.mem.eql(u8, varName, "max_output_size")) {
             return try std.fmt.allocPrint(self.allocator, "{d}", .{cfg.limits.max_output_size});
-        } else if (std.mem.eql(u8, var_name, "max_processing_time")) {
+        } else if (std.mem.eql(u8, varName, "max_processing_time")) {
             return try std.fmt.allocPrint(self.allocator, "{d}", .{cfg.limits.max_processing_time_ms});
-        } else if (std.mem.eql(u8, var_name, "current_date")) {
+        } else if (std.mem.eql(u8, varName, "current_date")) {
             // Get current date in YYYY-MM-DD format
             const now = std.time.timestamp();
-            const epoch_seconds = std.time.epoch.EpochSeconds{ .secs = @intCast(now) };
-            const epoch_day = epoch_seconds.getEpochDay();
-            const year_day = epoch_day.calculateYearDay();
-            const month_day = year_day.calculateMonthDay();
+            const epochSeconds = std.time.epoch.EpochSeconds{ .secs = @intCast(now) };
+            const epochDay = epochSeconds.getEpochDay();
+            const yearDay = epochDay.calculateYearDay();
+            const monthDay = yearDay.calculateMonthDay();
 
             return try std.fmt.allocPrint(self.allocator, "{d:0>4}-{d:0>2}-{d:0>2}", .{
-                year_day.year,
-                @intFromEnum(month_day.month),
-                month_day.day_index + 1,
+                yearDay.year,
+                @intFromEnum(monthDay.month),
+                monthDay.day_index + 1,
             });
         }
 
@@ -367,16 +367,16 @@ pub const TemplateAgent = struct {
         // ============================================================================
         // Add your custom template variables here
 
-        else if (std.mem.eql(u8, var_name, "custom_feature_enabled")) {
-            return try self.allocator.dupe(u8, if (self.config.custom_feature_enabled) "enabled" else "disabled");
-        } else if (std.mem.eql(u8, var_name, "max_custom_operations")) {
-            return try std.fmt.allocPrint(self.allocator, "{d}", .{self.config.max_custom_operations});
-        } else if (std.mem.eql(u8, var_name, "custom_timeout_seconds")) {
-            return try std.fmt.allocPrint(self.allocator, "{d}", .{self.config.custom_timeout_seconds});
-        } else if (std.mem.eql(u8, var_name, "custom_message")) {
-            return try self.allocator.dupe(u8, self.config.custom_message);
-        } else if (std.mem.eql(u8, var_name, "operation_count")) {
-            return try std.fmt.allocPrint(self.allocator, "{d}", .{self.operation_count});
+        else if (std.mem.eql(u8, varName, "custom_feature_enabled")) {
+            return try self.allocator.dupe(u8, if (self.config.customFeatureEnabled) "enabled" else "disabled");
+        } else if (std.mem.eql(u8, varName, "max_custom_operations")) {
+            return try std.fmt.allocPrint(self.allocator, "{d}", .{self.config.maxCustomOperations});
+        } else if (std.mem.eql(u8, varName, "custom_timeout_seconds")) {
+            return try std.fmt.allocPrint(self.allocator, "{d}", .{self.config.customTimeoutSeconds});
+        } else if (std.mem.eql(u8, varName, "custom_message")) {
+            return try self.allocator.dupe(u8, self.config.customMessage);
+        } else if (std.mem.eql(u8, varName, "operation_count")) {
+            return try std.fmt.allocPrint(self.allocator, "{d}", .{self.operationCount});
         }
 
         // ============================================================================
@@ -384,7 +384,7 @@ pub const TemplateAgent = struct {
         // ============================================================================
         // For unknown variables, return them as-is with braces to preserve formatting
         else {
-            return try std.fmt.allocPrint(self.allocator, "{{{s}}}", .{var_name});
+            return try std.fmt.allocPrint(self.allocator, "{{{s}}}", .{varName});
         }
     }
 
@@ -400,22 +400,22 @@ pub const TemplateAgent = struct {
     ///
     /// Returns: Processed result
     /// Errors: Processing errors
-    pub fn processCustomOperation(self: *TemplateAgent, input: []const u8) ![]const u8 {
+    pub fn processCustomOperation(self: *Template, input: []const u8) ![]const u8 {
         // Check if custom feature is enabled
-        if (!self.config.custom_feature_enabled) {
+        if (!self.config.customFeatureEnabled) {
             return try self.allocator.dupe(u8, "Custom feature is disabled in configuration");
         }
 
         // Check operation limits
-        if (self.operation_count >= self.config.max_custom_operations) {
+        if (self.operationCount >= self.config.maxCustomOperations) {
             return try self.allocator.dupe(u8, "Maximum custom operations reached");
         }
 
         // Increment operation count
-        self.operation_count += 1;
+        self.operationCount += 1;
 
         // Perform custom processing
-        const result = try std.fmt.allocPrint(self.allocator, "Processed '{s}' using custom feature (operation #{d})", .{ input, self.operation_count });
+        const result = try std.fmt.allocPrint(self.allocator, "Processed '{s}' using custom feature (operation #{d})", .{ input, self.operationCount });
 
         return result;
     }
@@ -424,7 +424,7 @@ pub const TemplateAgent = struct {
     /// This demonstrates how to provide runtime status information.
     ///
     /// Returns: Status information as a formatted string
-    pub fn getStatus(self: *TemplateAgent) ![]const u8 {
+    pub fn getStatus(self: *Template) ![]const u8 {
         return try std.fmt.allocPrint(self.allocator,
             \\Agent Status:
             \\  Name: {s}
@@ -443,11 +443,11 @@ pub const TemplateAgent = struct {
         , .{
             self.config.agent_config.agent_info.name,
             self.config.agent_config.agent_info.version,
-            if (self.config.custom_feature_enabled) "enabled" else "disabled",
-            self.operation_count,
-            self.config.max_custom_operations,
-            self.config.custom_timeout_seconds,
-            if (self.custom_buffer != null) "allocated" else "none",
+            if (self.config.customFeatureEnabled) "enabled" else "disabled",
+            self.operationCount,
+            self.config.maxCustomOperations,
+            self.config.customTimeoutSeconds,
+            if (self.customBuffer != null) "allocated" else "none",
             if (self.config.agent_config.defaults.enable_debug_logging) "enabled" else "disabled",
             if (self.config.agent_config.defaults.enable_verbose_output) "enabled" else "disabled",
             if (self.config.agent_config.features.enable_file_operations) "enabled" else "disabled",

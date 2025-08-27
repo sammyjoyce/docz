@@ -13,16 +13,16 @@ pub const input = @import("input.zig");
 
 // Re-export main types for convenience
 pub const ProgressData = progress.ProgressData;
-
-// Input system exports - now using unified input system
-pub const unified_input = @import("../input.zig");
-pub const InputEvent = unified_input.Event; // Unified event type
-pub const InputManager = unified_input.InputManager;
-pub const InputConfig = unified_input.InputConfig;
-pub const InputFeatures = unified_input.InputFeatures;
-pub const InputUtils = unified_input.InputUtils;
-pub const Key = unified_input.Key;
-pub const Modifiers = unified_input.Modifiers;
+pub const InputEvent = input.InputEvent;
+pub const Input = input.Input;
+pub const Config = input.Config;
+pub const Feature = input.Feature;
+pub const Utility = input.Utility;
+pub const Key = input.Key;
+pub const Modifiers = input.Modifiers;
+pub const AdaptiveProgress = progress.AdaptiveProgress;
+pub const BarConfig = progress.BarConfig;
+pub const Animated = progress.Animated;
 pub const ProgressStyle = progress.ProgressStyle;
 pub const TermCaps = progress.TermCaps;
 pub const ProgressUtils = progress.ProgressUtils;
@@ -57,6 +57,7 @@ pub const ComponentRegistry = base.ComponentRegistry;
 pub const Event = base.Event;
 pub const Theme = base.Theme;
 pub const Animation = base.Animation;
+pub const Render = base.Render;
 
 // UI Context exports
 pub const UI = ui_context.UI;
@@ -70,12 +71,12 @@ pub const centerText = ui_context.centerText;
 
 // Component implementations
 pub const ProgressBar = progress.ProgressBar;
-pub const ProgressBarConfig = progress.ProgressBarConfig;
+pub const BarConfig = progress.BarConfig;
 pub const SmartInput = smart_input.SmartInput;
-pub const SmartInputConfig = smart_input.SmartInputConfig;
-pub const SmartInputFeatures = smart_input.SmartInputFeatures;
+pub const Config = smart_input.Config;
+pub const Feature = smart_input.Feature;
 pub const Suggestion = smart_input.Suggestion;
-pub const ValidationResult = smart_input.ValidationResult;
+pub const Validation = smart_input.Validation;
 pub const SuggestionProvider = smart_input.SuggestionProvider;
 pub const Validator = smart_input.Validator;
 
@@ -85,15 +86,15 @@ pub const TerminalWriter = @import("terminal_writer.zig").TerminalWriter;
 pub const TerminalCursor = @import("terminal_cursor.zig").TerminalCursor;
 pub const TerminalScreen = @import("terminal_screen.zig").TerminalScreen;
 
-// Unified cell buffer implementation
-pub const CellBuffer = @import("cell_buffer.zig").CellBuffer;
-pub const Cell = @import("cell_buffer.zig").Cell;
-pub const Style = @import("cell_buffer.zig").Style;
-pub const Color = @import("cell_buffer.zig").Color;
-pub const AttrMask = @import("cell_buffer.zig").AttrMask;
-pub const UnderlineStyle = @import("cell_buffer.zig").UnderlineStyle;
-pub const Link = @import("cell_buffer.zig").Link;
-pub const Rectangle = @import("cell_buffer.zig").Rectangle;
+// Cell buffer types are now available from term/cellbuf.zig
+pub const CellBuffer = @import("../term/cellbuf.zig").CellBuffer;
+pub const Cell = @import("../term/cellbuf.zig").Cell;
+pub const Style = @import("../term/cellbuf.zig").Style;
+pub const Color = @import("../term/cellbuf.zig").Color;
+pub const AttrMask = @import("../term/cellbuf.zig").AttrMask;
+pub const UnderlineStyle = @import("../term/cellbuf.zig").UnderlineStyle;
+pub const Link = @import("../term/cellbuf.zig").Link;
+pub const Rectangle = @import("../term/cellbuf.zig").Rectangle;
 
 // Convenience functions for terminal wrappers
 pub const print = TerminalWriter.print;

@@ -1,12 +1,12 @@
-//! Enhanced CLI Component with Graphics Dashboard Integration
-//! Demonstrates progressive enhancement and advanced terminal capabilities
+//! CLI Component with Graphics Dashboard Integration
+//! Demonstrates progressive enhancement and terminal capabilities
 
 const std = @import("std");
 const unified_terminal = @import("../core/unified_terminal.zig");
 const graphics_dashboard = @import("../dashboard/graphics_dashboard.zig");
 
 const Allocator = std.mem.Allocator;
-const UnifiedTerminal = unified_terminal.UnifiedTerminal;
+const Terminal = unified_terminal.Terminal;
 const Color = unified_terminal.Color;
 const GraphicsDashboard = graphics_dashboard.GraphicsDashboard;
 const DashboardConfig = graphics_dashboard.DashboardConfig;
@@ -16,12 +16,12 @@ pub const Cli = struct {
     const Self = @This();
 
     allocator: Allocator,
-    terminal: UnifiedTerminal,
+    terminal: Terminal,
     dashboard: ?GraphicsDashboard,
     running: bool,
 
     pub fn init(allocator: Allocator) !Self {
-        const terminal = try UnifiedTerminal.init(allocator);
+        const terminal = try Terminal.init(allocator);
 
         return Self{
             .allocator = allocator,
@@ -65,14 +65,14 @@ pub const Cli = struct {
 
         try self.terminal.clearScreen();
         try self.terminal.setForeground(Color.CYAN);
-        try w.writeAll("🚀 Enhanced CLI with Progressive Terminal Capabilities\n");
+        try w.writeAll("🚀 CLI with Progressive Terminal Capabilities\n");
         try self.terminal.resetStyles();
 
         try w.writeAll("\n📊 Detected Terminal Features:\n");
 
         // Check each feature and display with appropriate styling
         const features = [_]struct {
-            feature: UnifiedTerminal.Feature,
+            feature: Terminal.Feature,
             name: []const u8,
             icon: []const u8,
         }{
@@ -129,7 +129,7 @@ pub const Cli = struct {
             const config = DashboardConfig{
                 .width = 80,
                 .height = 24,
-                .title = "Enhanced Graphics Dashboard",
+                .title = "Graphics Dashboard",
                 .show_legend = true,
                 .show_grid = true,
                 .update_interval_ms = 1000,
@@ -224,7 +224,7 @@ pub const Cli = struct {
 
         try w.writeAll("⚡ Progress Bar Styles:\n");
 
-        const rich_progress = @import("../../src/shared/cli/components/base/rich_progress_bar.zig");
+        const rich_progress = @import("../../src/shared/components/progress.zig");
 
         const styles = [_]struct {
             style: rich_progress.ProgressStyle,
@@ -322,7 +322,7 @@ pub const Cli = struct {
         try w.writeAll("===========================\n\n");
         try w.writeAll("Usage: cli [COMMAND]\n\n");
         try w.writeAll("Commands:\n");
-        try w.writeAll("  dashboard    Display graphics-enhanced dashboard\n");
+        try w.writeAll("  dashboard    Display graphics dashboard\n");
         try w.writeAll("  demo         Run terminal feature demonstrations\n");
         try w.writeAll("  help         Show this help message\n\n");
 

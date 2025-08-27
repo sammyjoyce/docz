@@ -7,7 +7,7 @@ Updated build.zig to integrate new UX enhancement modules and features into the 
 
 ### 1. Added New Core Module Paths
 - `AGENT_INTERFACE_ZIG = "src/shared/tui/agent_interface.zig"`
-- `AGENT_DASHBOARD_ZIG = "src/core/agent_dashboard.zig"`
+- `AGENT_DASHBOARD_ZIG = "src/shared/tui/components/agent_dashboard.zig"`
 - `INTERACTIVE_SESSION_ZIG = "src/core/interactive_session.zig"`
 - `OAUTH_CALLBACK_SERVER_ZIG = "src/shared/auth/oauth/callback_server.zig"`
 
@@ -67,7 +67,7 @@ zig build -Dagent=markdown demo-markdown-editor
 Agents can now import and use the new modules:
 ```zig
 const agent_interface = @import("agent_interface");
-const dashboard = @import("agent_dashboard");
+const dashboard = @import("../../src/shared/tui/components/agent_dashboard.zig");
 const interactive = @import("interactive_session");
 const oauth_server = @import("oauth_callback_server");
 const enhanced_editor = @import("enhanced_markdown_editor"); // markdown agent only

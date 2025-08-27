@@ -5,8 +5,8 @@ const std = @import("std");
 const Bounds = @import("../../core/bounds.zig").Bounds;
 const Color = @import("../../themes/default.zig").Color;
 const terminal_writer = @import("../../components/terminal_writer.zig");
-const term_mod = @import("../../../term/mod.zig");
-const term_cursor = @import("../../../term/ansi/cursor.zig");
+const term_mod = @import("term_shared");
+const term_cursor = term_mod.ansi.cursor;
 
 /// Border style for the block
 pub const BorderStyle = enum {

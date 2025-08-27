@@ -1,16 +1,16 @@
-//! Enhanced Theme Management System
+//! Theme Management System
 //! Provides comprehensive theme management with persistence, customization,
 //! accessibility features, and cross-platform support
 
 const std = @import("std");
 const builtin = @import("builtin");
 const term = @import("../term/mod.zig");
-const cli_themes = @import("../cli/themes/mod.zig");
-const tui_themes = @import("../tui/themes/mod.zig");
 
 pub const ThemeManager = @import("theme.zig").ThemeManager;
 pub const ThemeConfig = @import("theme_config.zig").ThemeConfig;
 pub const ColorScheme = @import("color_scheme.zig").ColorScheme;
+pub const Color = @import("color.zig").Color;
+pub const Colors = @import("color.zig").Colors;
 pub const ThemeInheritance = @import("theme_inheritance.zig").ThemeInheritance;
 pub const ThemeEditor = @import("theme_editor.zig").ThemeEditor;
 pub const ThemeExporter = @import("theme_exporter.zig").ThemeExporter;

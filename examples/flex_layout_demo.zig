@@ -1,4 +1,4 @@
-//! Demonstration of advanced flex layout modes in Zig TUI
+//! Demonstration of flex layout modes in Zig TUI
 //!
 //! This example showcases the new space distribution modes:
 //! - space_between: Equal spacing between items, no space at edges
@@ -6,16 +6,14 @@
 //! - space_evenly: Equal spacing including edges
 
 const std = @import("std");
-const unified_terminal = @import("../src/shared/cli/core/unified_terminal.zig");
-const unified_renderer = @import("../src/shared/tui/core/unified_renderer.zig");
+const renderer_mod = @import("../src/shared/render/Renderer.zig");
 
-const UnifiedTerminal = unified_terminal.UnifiedTerminal;
-const UnifiedRenderer = unified_renderer.UnifiedRenderer;
-const Layout = unified_renderer.Layout;
-const Widget = unified_renderer.Widget;
-const Rect = unified_renderer.Rect;
-const Size = unified_renderer.Size;
-const Color = unified_terminal.Color;
+const UnifiedRenderer = renderer_mod.UnifiedRenderer;
+const Layout = renderer_mod.Layout;
+const Widget = renderer_mod.Widget;
+const Rect = renderer_mod.Rect;
+const Size = renderer_mod.Size;
+const Color = renderer_mod.Color;
 
 /// Simple demo widget that displays a colored box with text
 const DemoWidget = struct {
@@ -76,15 +74,12 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    // Initialize terminal and renderer
-    var terminal = try UnifiedTerminal.init(allocator);
-    defer terminal.deinit();
-
+    // Initialize renderer (includes terminal)
     var renderer = try UnifiedRenderer.init(allocator, UnifiedRenderer.Theme.defaultDark());
     defer renderer.deinit();
 
     // Get terminal size
-    const term_size = try terminal.getSize();
+    const term_size = try renderer.getRenderer().getSize();
     const container = Rect{
         .x = 2,
         .y = 2,
@@ -124,8 +119,8 @@ pub fn main() !void {
     // Main demo loop
     while (true) {
         // Clear screen
-        try terminal.clearScreen();
-        try terminal.moveCursor(0, 0);
+        try renderer.getRenderer().clearScreen();
+        try renderer.getRenderer().moveCursor(0, 0);
 
         // Display current mode
         const header = try std.fmt.allocPrint(allocator, "Flex Layout Demo - {s} (Press SPACE to cycle, ESC to exit)", .{mode_names[mode_index]});
@@ -144,7 +139,7 @@ pub fn main() !void {
         try renderer.render();
 
         // Wait for input
-        const input = try terminal.readInput();
+        const input = try renderer.getRenderer().getTerminal().readInput();
         switch (input) {
             .char => |ch| {
                 switch (ch) {

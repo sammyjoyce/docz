@@ -39,20 +39,20 @@ pub fn execute(allocator: std.mem.Allocator, input: []const u8) tools_mod.ToolEr
     var repeat: u32 = 1;
 
     // Simple example: expect "message:options" format
-    if (std.mem.indexOf(u8, input, ":")) |colon_pos| {
-        message = std.mem.trim(u8, input[0..colon_pos], " ");
-        const options_str = std.mem.trim(u8, input[colon_pos + 1 ..], " ");
+    if (std.mem.indexOf(u8, input, ":")) |colonPos| {
+        message = std.mem.trim(u8, input[0..colonPos], " ");
+        const optionsStr = std.mem.trim(u8, input[colonPos + 1 ..], " ");
 
         // Parse options (very basic example)
-        if (std.mem.indexOf(u8, options_str, "uppercase")) |_| {
+        if (std.mem.indexOf(u8, optionsStr, "uppercase")) |_| {
             uppercase = true;
         }
-        if (std.mem.indexOf(u8, options_str, "repeat=")) |repeat_pos| {
-            const repeat_str = options_str[repeat_pos + 7 ..];
-            if (std.mem.indexOf(u8, repeat_str, " ")) |space_pos| {
-                repeat = std.fmt.parseInt(u32, repeat_str[0..space_pos], 10) catch 1;
+        if (std.mem.indexOf(u8, optionsStr, "repeat=")) |repeatPos| {
+            const repeatStr = optionsStr[repeatPos + 7 ..];
+            if (std.mem.indexOf(u8, repeatStr, " ")) |spacePos| {
+                repeat = std.fmt.parseInt(u32, repeatStr[0..spacePos], 10) catch 1;
             } else {
-                repeat = std.fmt.parseInt(u32, repeat_str, 10) catch 1;
+                repeat = std.fmt.parseInt(u32, repeatStr, 10) catch 1;
             }
         }
     } else {

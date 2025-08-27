@@ -1,6 +1,6 @@
-//! Unified Progress Bar System
+//! Progress Bar System
 //!
-//! This module provides a comprehensive, unified progress bar system that consolidates
+//! This module provides a comprehensive progress bar system that consolidates
 //! functionality from multiple implementations. It supports:
 //! - Core progress calculation and state management
 //! - Multiple rendering styles (ASCII, Unicode, gradients, animations)
@@ -23,9 +23,9 @@ const RenderContext = base.RenderContext;
 const Event = base.Event;
 
 // Adaptive renderer integration
-const adaptive_renderer = @import("../render/adaptive_renderer.zig");
+const adaptive_renderer = @import("../render/mod.zig");
 const AdaptiveRenderer = adaptive_renderer.AdaptiveRenderer;
-const RenderMode = adaptive_renderer.RenderMode;
+const RenderMode = adaptive_renderer.RenderTier;
 const cacheKey = adaptive_renderer.cacheKey;
 
 /// RGB color structure
@@ -260,7 +260,7 @@ pub const ProgressData = struct {
 };
 
 /// Utility functions for progress bar rendering
-pub const ProgressUtils = struct {
+pub const Utility = struct {
     /// HSV to RGB conversion for color effects
     pub fn hsvToRgb(h: f32, s: f32, v: f32) Color {
         const c = v * s;
@@ -302,7 +302,7 @@ pub const ProgressUtils = struct {
 };
 
 /// Progress bar configuration for component-based usage
-pub const ProgressBarConfig = struct {
+pub const BarConfig = struct {
     progress: f32 = 0.0,
     label: ?[]const u8 = null,
     style: ProgressStyle = .auto,
@@ -312,13 +312,13 @@ pub const ProgressBarConfig = struct {
     show_rate: bool = false,
 };
 
-/// Component-based progress bar that integrates with unified component system
+/// Component-based progress bar that integrates with component system
 pub const ProgressBar = struct {
     const Self = @This();
 
     allocator: std.mem.Allocator,
     state: ComponentState,
-    config: ProgressBarConfig,
+    config: BarConfig,
     data: ProgressData,
 
     const vtable = Component.VTable{
@@ -335,7 +335,7 @@ pub const ProgressBar = struct {
         .update = update,
     };
 
-    pub fn create(allocator: std.mem.Allocator, config: ProgressBarConfig) !*Component {
+    pub fn create(allocator: std.mem.Allocator, config: BarConfig) !*Component {
         const self = try allocator.create(Self);
         var data = ProgressData.init(allocator);
         try data.setProgress(config.progress);
@@ -596,7 +596,7 @@ pub const ProgressRenderer = struct {
             if (is_filled) {
                 // Rainbow gradient based on position
                 const hue = pos * 120.0; // Green to red range
-                const rgb = ProgressUtils.hsvToRgb(120.0 - hue, 0.8, 1.0);
+                const rgb = Utility.hsvToRgb(120.0 - hue, 0.8, 1.0);
                 switch (rgb) {
                     .rgb => |r| try writer.print("\x1b[38;2;{d};{d};{d}m█\x1b[0m", .{ r.r, r.g, r.b }),
                     else => try writer.writeAll("█"),
@@ -625,7 +625,7 @@ pub const ProgressRenderer = struct {
             if (is_filled) {
                 // HSV rainbow based on position
                 const hue = pos * 360.0;
-                const rgb = ProgressUtils.hsvToRgb(hue, 0.8, 1.0);
+                const rgb = Utility.hsvToRgb(hue, 0.8, 1.0);
                 switch (rgb) {
                     .rgb => |r| try writer.print("\x1b[38;2;{d};{d};{d}m█\x1b[0m", .{ r.r, r.g, r.b }),
                     else => try writer.writeAll("█"),
@@ -720,7 +720,7 @@ pub const ProgressRenderer = struct {
 
             if (self.caps.supports_truecolor) {
                 const hue = (@as(f32, @floatFromInt(i)) / @as(f32, @floatFromInt(num_circles))) * 360.0;
-                const rgb = ProgressUtils.hsvToRgb(hue, 0.8, 1.0);
+                const rgb = Utility.hsvToRgb(hue, 0.8, 1.0);
                 switch (rgb) {
                     .rgb => |r| try writer.print("\x1b[38;2;{d};{d};{d}m{s}\x1b[0m ", .{ r.r, r.g, r.b, if (circle_level >= circles.len) circles[circles.len - 1] else circles[circle_level] }),
                     else => try writer.print("{s} ", .{if (circle_level >= circles.len) circles[circles.len - 1] else circles[circle_level]}),
@@ -778,7 +778,7 @@ pub const ProgressRenderer = struct {
 
             if (self.caps.supports_truecolor) {
                 const progress_color = value * 120.0; // Green to yellow range
-                const rgb = ProgressUtils.hsvToRgb(progress_color, 0.8, 1.0);
+                const rgb = Utility.hsvToRgb(progress_color, 0.8, 1.0);
                 switch (rgb) {
                     .rgb => |r| try writer.print("\x1b[38;2;{d};{d};{d}m{s}\x1b[0m", .{ r.r, r.g, r.b, bars[@min(bar_idx, bars.len - 1)] }),
                     else => try writer.writeAll(bars[@min(bar_idx, bars.len - 1)]),
@@ -876,7 +876,7 @@ pub const ProgressRenderer = struct {
 // Adaptive Renderer Integration
 
 /// Progress bar data for adaptive renderer
-pub const Progress = struct {
+pub const AdaptiveProgress = struct {
     value: f32, // 0.0 to 1.0
     label: ?[]const u8 = null,
     percentage: bool = true,
@@ -885,14 +885,14 @@ pub const Progress = struct {
     color: ?Color = null,
     background_color: ?Color = null,
 
-    pub fn validate(self: Progress) !void {
+    pub fn validate(self: AdaptiveProgress) !void {
         if (self.value < 0.0 or self.value > 1.0) {
             return error.InvalidProgressValue;
         }
     }
 
-    /// Convert to unified ProgressData
-    pub fn toProgressData(self: Progress, allocator: std.mem.Allocator) !ProgressData {
+    /// Convert to ProgressData
+    pub fn toProgressData(self: AdaptiveProgress, allocator: std.mem.Allocator) !ProgressData {
         var data = ProgressData.init(allocator);
         try data.setProgress(self.value);
         data.label = if (self.label) |l| try allocator.dupe(u8, l) else null;
@@ -904,8 +904,8 @@ pub const Progress = struct {
     }
 };
 
-/// Render progress bar using unified renderer
-pub fn renderProgress(renderer: *@import("../render/Renderer.zig").Renderer, progress_data: Progress) !void {
+/// Render progress bar using renderer
+pub fn renderProgress(renderer: *@import("../render/Renderer.zig").Renderer, progress_data: AdaptiveProgress) !void {
     try progress_data.validate();
 
     const key = cacheKey("progress_{d}_{?s}_{}_{}_{?d}", .{ progress_data.value, progress_data.label, progress_data.percentage, progress_data.eta, progress_data.eta_seconds });
@@ -918,7 +918,7 @@ pub fn renderProgress(renderer: *@import("../render/Renderer.zig").Renderer, pro
     var output = std.ArrayList(u8).init(renderer.allocator);
     defer output.deinit();
 
-    // Convert to unified ProgressData
+    // Convert to ProgressData
     var data = try progress_data.toProgressData(renderer.allocator);
     defer data.deinit();
 
@@ -940,7 +940,7 @@ pub fn renderProgress(renderer: *@import("../render/Renderer.zig").Renderer, pro
     try renderer.terminal.writeText(content);
 }
 
-/// Render progress bar from unified ProgressData
+/// Render progress bar from ProgressData
 pub fn renderProgressData(renderer: *@import("../render/Renderer.zig").Renderer, data: *ProgressData) !void {
     const key = cacheKey("progress_data_{d}_{?s}_{}_{}_{}", .{ data.value, data.label, data.show_percentage, data.show_eta, data.show_rate });
 
@@ -971,25 +971,25 @@ pub fn renderProgressData(renderer: *@import("../render/Renderer.zig").Renderer,
 }
 
 /// Create animated progress bar that updates over time
-pub const AnimatedProgress = struct {
+pub const Animated = struct {
     renderer: *@import("../render/Renderer.zig").Renderer,
     data: ProgressData,
     start_time: i64,
 
-    pub fn init(renderer: *@import("../render/Renderer.zig").Renderer, progress: Progress) !AnimatedProgress {
+    pub fn init(renderer: *@import("../render/Renderer.zig").Renderer, progress: AdaptiveProgress) !Animated {
         const data = try progress.toProgressData(renderer.allocator);
-        return AnimatedProgress{
+        return Animated{
             .renderer = renderer,
             .data = data,
             .start_time = std.time.milliTimestamp(),
         };
     }
 
-    pub fn deinit(self: *AnimatedProgress) void {
+    pub fn deinit(self: *Animated) void {
         self.data.deinit();
     }
 
-    pub fn update(self: *AnimatedProgress, new_value: f32) !void {
+    pub fn update(self: *Animated, new_value: f32) !void {
         try self.data.setProgress(new_value);
 
         // Calculate ETA if enabled
@@ -1002,7 +1002,7 @@ pub const AnimatedProgress = struct {
         try renderProgressData(self.renderer, &self.data);
     }
 
-    pub fn finish(self: *AnimatedProgress) !void {
+    pub fn finish(self: *Animated) !void {
         try self.data.setProgress(1.0);
         try self.update(1.0);
         try self.renderer.terminal.writeText("\n");
@@ -1016,7 +1016,7 @@ test "progress bar rendering" {
     var renderer = try AdaptiveRenderer.initWithMode(testing.allocator, .standard);
     defer renderer.deinit();
 
-    const progress = Progress{
+    const progress = AdaptiveProgress{
         .value = 0.75,
         .label = "Test Progress",
         .percentage = true,
@@ -1025,6 +1025,6 @@ test "progress bar rendering" {
     try renderProgress(renderer, progress);
 
     // Test validation
-    const invalid_progress = Progress{ .value = 1.5 };
+    const invalid_progress = AdaptiveProgress{ .value = 1.5 };
     try testing.expectError(error.InvalidProgressValue, invalid_progress.validate());
 }

@@ -15,8 +15,8 @@ pub const InputEventType = enum {
     unknown,
 };
 
-/// Color event data for terminal color queries
-pub const ColorEventData = struct {
+/// Color event for terminal color queries
+pub const ColorEvent = struct {
     pub const ColorType = enum {
         foreground,
         background,
@@ -37,8 +37,8 @@ pub const InputEvent = union(InputEventType) {
     key: types.KeyEvent,
     mouse: types.MouseEvent,
     paste: types.PasteEvent,
-    color_request: ColorEventData,
-    color_response: ColorEventData,
+    color_request: ColorEvent,
+    color_response: ColorEvent,
     focus: void,
     blur: void,
     resize: types.ResizeEvent,
@@ -171,7 +171,7 @@ pub const InputEventQueue = struct {
     }
 
     /// Filter events by type
-    pub fn filterByType(event_type: InputEventType, allocator: std.mem.Allocator) ![]InputEvent {
+    pub fn filterByType(self: *Self, event_type: InputEventType) ![]InputEvent {
         var filtered = std.ArrayList(InputEvent).init(self.allocator);
         errdefer {
             for (filtered.items) |*event| {
@@ -197,10 +197,10 @@ pub const InputEventQueue = struct {
     }
 };
 
-/// Color event manager for terminal color queries
-pub const ColorEvent = struct {
+/// Color query handler for terminal color queries
+pub const ColorQuery = struct {
     allocator: std.mem.Allocator,
-    pending_queries: std.AutoHashMap(u32, ColorEventData.ColorType),
+    pending_queries: std.AutoHashMap(u32, ColorQuery.ColorType),
 
     const Self = @This();
 
@@ -216,7 +216,7 @@ pub const ColorEvent = struct {
     }
 
     /// Send color query to terminal
-    pub fn queryColor(self: *Self, color_type: ColorEventData.ColorType, index: ?u8) !void {
+    pub fn queryColor(self: *Self, color_type: ColorQuery.ColorType, index: ?u8) !void {
         const query_id = std.crypto.random.int(u32);
 
         // Store pending query
@@ -243,7 +243,8 @@ pub const ColorEvent = struct {
     }
 
     /// Parse color response from terminal
-    pub fn parseColorResponse(self: *Self, sequence: []const u8) ?ColorEventData {
+    pub fn parseColorResponse(self: *Self, sequence: []const u8) ?ColorEvent {
+        _ = self;
         if (!std.mem.startsWith(u8, sequence, "\x1b]")) return null;
 
         // Parse OSC sequence
@@ -279,7 +280,7 @@ pub const ColorEvent = struct {
         // Parse color value (simplified - would need full color parsing)
         const color = types.Color{ .r = 0, .g = 0, .b = 0 }; // Placeholder
 
-        return ColorEventData{
+        return ColorEvent{
             .color_type = color_type,
             .color = color,
             .index = index,
@@ -304,11 +305,11 @@ test "input event queue" {
     try testing.expect(queue.count() == 0);
 }
 
-test "color event manager" {
+test "color query handler" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    var manager = ColorEvent.init(allocator);
+    var manager = ColorQuery.init(allocator);
     defer manager.deinit();
 
     // Test parsing color response (simplified)

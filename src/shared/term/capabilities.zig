@@ -4,6 +4,42 @@ const builtin = @import("builtin");
 // Import the ZON capabilities database (compiled at comptime)
 const cfg = @import("termcaps.zon");
 
+// Field mapping utilities for cleaner overlay implementation
+const field_mapping = struct {
+    // Maps PascalCase field names to snake_case ZON field names
+    fn mapField(comptime field_name: []const u8) []const u8 {
+        if (std.mem.eql(u8, field_name, "supportsTruecolor")) return "supports_truecolor";
+        if (std.mem.eql(u8, field_name, "supportsHyperlinkOsc8")) return "supports_hyperlink_osc8";
+        if (std.mem.eql(u8, field_name, "supportsClipboardOsc52")) return "supports_clipboard_osc52";
+        if (std.mem.eql(u8, field_name, "supportsWorkingDirOsc7")) return "supports_working_dir_osc7";
+        if (std.mem.eql(u8, field_name, "supportsTitleOsc012")) return "supports_title_osc012";
+        if (std.mem.eql(u8, field_name, "supportsNotifyOsc9")) return "supports_notify_osc9";
+        if (std.mem.eql(u8, field_name, "supportsFinalTermOsc133")) return "supports_finalterm_osc133";
+        if (std.mem.eql(u8, field_name, "supportsITerm2Osc1337")) return "supports_iterm2_osc1337";
+        if (std.mem.eql(u8, field_name, "supportsColorOsc10_12")) return "supports_color_osc10_12";
+        if (std.mem.eql(u8, field_name, "supportsKittyKeyboard")) return "supports_kitty_keyboard";
+        if (std.mem.eql(u8, field_name, "supportsKittyGraphics")) return "supports_kitty_graphics";
+        if (std.mem.eql(u8, field_name, "supportsSixel")) return "supports_sixel";
+        if (std.mem.eql(u8, field_name, "supportsModifyOtherKeys")) return "supports_modify_other_keys";
+        if (std.mem.eql(u8, field_name, "supportsXtwinops")) return "supports_xtwinops";
+        if (std.mem.eql(u8, field_name, "supportsBracketedPaste")) return "supports_bracketed_paste";
+        if (std.mem.eql(u8, field_name, "supportsFocusEvents")) return "supports_focus_events";
+        if (std.mem.eql(u8, field_name, "supportsSgrMouse")) return "supports_sgr_mouse";
+        if (std.mem.eql(u8, field_name, "supportsSgrPixelMouse")) return "supports_sgr_pixel_mouse";
+        if (std.mem.eql(u8, field_name, "supportsLightDarkReport")) return "supports_lightdark_report";
+        if (std.mem.eql(u8, field_name, "supportsLinuxPaletteOscP")) return "supports_linux_palette_oscp";
+        if (std.mem.eql(u8, field_name, "supportsDeviceAttributes")) return "supports_device_attributes";
+        if (std.mem.eql(u8, field_name, "supportsCursorStyle")) return "supports_cursor_style";
+        if (std.mem.eql(u8, field_name, "supportsCursorPositionReport")) return "supports_cursor_position_report";
+        if (std.mem.eql(u8, field_name, "supportsPointerShape")) return "supports_pointer_shape";
+        if (std.mem.eql(u8, field_name, "needsTmuxPassthrough")) return "needs_tmux_passthrough";
+        if (std.mem.eql(u8, field_name, "needsScreenPassthrough")) return "needs_screen_passthrough";
+        if (std.mem.eql(u8, field_name, "screenChunkLimit")) return "screen_chunk_limit";
+        if (std.mem.eql(u8, field_name, "widthMethod")) return "width_method";
+        return field_name;
+    }
+};
+
 /// Width method for character width calculation
 pub const WidthMethod = enum { grapheme, wcwidth };
 
@@ -301,42 +337,33 @@ pub const TerminalCapabilities = struct {
 
     /// Enable mouse protocol on the given writer
     pub fn enableMouseProtocol(self: *TerminalCapabilities, writer: anytype) !void {
-        switch (self.mouse_caps.preferred_protocol) {
+        const ansi_mod = @import("ansi/mod.zig");
+
+        // Convert from capabilities MouseProtocol to ansi.mode MouseProtocol
+        const protocol = switch (self.mouse_caps.preferred_protocol) {
             .none => return,
-            .x10 => try writer.writeAll("\x1b[?9h"),
-            .normal => try writer.writeAll("\x1b[?1000h"),
-            .utf8 => try writer.writeAll("\x1b[?1005h\x1b[?1000h"),
-            .urxvt => try writer.writeAll("\x1b[?1015h\x1b[?1000h"),
-            .sgr => {
-                try writer.writeAll("\x1b[?1002h"); // Button events
-                if (self.mouse_caps.supports_focus_events) {
-                    try writer.writeAll("\x1b[?1004h"); // Focus events
-                }
-            },
-            .pixel => {
-                try writer.writeAll("\x1b[?1002h\x1b[?1016h"); // Button events + pixel
-                if (self.mouse_caps.supports_focus_events) {
-                    try writer.writeAll("\x1b[?1004h"); // Focus events
-                }
-            },
-            .kitty => {
-                try writer.writeAll("\x1b[?1002h\x1b[?1016h"); // Button events + pixel
-                if (self.mouse_caps.supports_focus_events) {
-                    try writer.writeAll("\x1b[?1004h"); // Focus events
-                }
-            },
-        }
+            .x10 => ansi_mod.mode.MouseProtocol.x10,
+            .normal => ansi_mod.mode.MouseProtocol.normal,
+            .utf8 => ansi_mod.mode.MouseProtocol.utf8,
+            .urxvt => ansi_mod.mode.MouseProtocol.urxvt,
+            .sgr => ansi_mod.mode.MouseProtocol.sgr,
+            .pixel => ansi_mod.mode.MouseProtocol.sgr_pixels,
+            .kitty => ansi_mod.mode.MouseProtocol.sgr_pixels,
+        };
+
+        try ansi_mod.mode.enableMouseTracking(writer, protocol, self.caps);
 
         // Enable bracketed paste if supported
         if (self.mouse_caps.supports_bracketed_paste) {
-            try writer.writeAll("\x1b[?2004h");
+            try ansi_mod.mode.enableBracketedPaste(writer, self.caps);
         }
     }
 
     /// Disable mouse mode
     pub fn disableMouseMode(self: *TerminalCapabilities, writer: anytype) !void {
-        _ = self; // Not used in stub implementation
-        try writer.writeAll("\x1b[?1000l\x1b[?1002l\x1b[?1004l\x1b[?1005l\x1b[?1006l\x1b[?1015l\x1b[?1016l\x1b[?2004l");
+        const ansi_mod = @import("ansi/mod.zig");
+        try ansi_mod.mode.disableMouseTracking(writer, self.caps);
+        try ansi_mod.mode.disableBracketedPaste(writer, self.caps);
     }
 };
 
@@ -376,55 +403,42 @@ fn defaultsCaps() TermCaps {
     };
 }
 
-fn overlayCaps(comptime ProgObj: type, prog: ProgObj, caps: *TermCaps) void {
-    // Update each field if present in program override
-    if (@hasField(ProgObj, "supports_truecolor")) caps.supportsTruecolor = prog.supports_truecolor;
-    if (@hasField(ProgObj, "supports_hyperlink_osc8")) caps.supportsHyperlinkOsc8 = prog.supports_hyperlink_osc8;
-    if (@hasField(ProgObj, "supports_clipboard_osc52")) caps.supportsClipboardOsc52 = prog.supports_clipboard_osc52;
-    if (@hasField(ProgObj, "supports_working_dir_osc7")) caps.supportsWorkingDirOsc7 = prog.supports_working_dir_osc7;
-    if (@hasField(ProgObj, "supports_title_osc012")) caps.supportsTitleOsc012 = prog.supports_title_osc012;
-    if (@hasField(ProgObj, "supports_notify_osc9")) caps.supportsNotifyOsc9 = prog.supports_notify_osc9;
-    if (@hasField(ProgObj, "supports_finalterm_osc133")) caps.supportsFinalTermOsc133 = prog.supports_finalterm_osc133;
-    if (@hasField(ProgObj, "supports_iterm2_osc1337")) caps.supportsITerm2Osc1337 = prog.supports_iterm2_osc1337;
-    if (@hasField(ProgObj, "supports_color_osc10_12")) caps.supportsColorOsc10_12 = prog.supports_color_osc10_12;
-    if (@hasField(ProgObj, "supports_kitty_keyboard")) caps.supportsKittyKeyboard = prog.supports_kitty_keyboard;
-    if (@hasField(ProgObj, "supports_kitty_graphics")) caps.supportsKittyGraphics = prog.supports_kitty_graphics;
-    if (@hasField(ProgObj, "supports_sixel")) caps.supportsSixel = prog.supports_sixel;
-    if (@hasField(ProgObj, "supports_modify_other_keys")) caps.supportsModifyOtherKeys = prog.supports_modify_other_keys;
-    if (@hasField(ProgObj, "supports_xtwinops")) caps.supportsXtwinops = prog.supports_xtwinops;
-    if (@hasField(ProgObj, "supports_bracketed_paste")) caps.supportsBracketedPaste = prog.supports_bracketed_paste;
-    if (@hasField(ProgObj, "supports_focus_events")) caps.supportsFocusEvents = prog.supports_focus_events;
-    if (@hasField(ProgObj, "supports_sgr_mouse")) caps.supportsSgrMouse = prog.supports_sgr_mouse;
-    if (@hasField(ProgObj, "supports_sgr_pixel_mouse")) caps.supportsSgrPixelMouse = prog.supports_sgr_pixel_mouse;
-    if (@hasField(ProgObj, "supports_lightdark_report")) caps.supportsLightDarkReport = prog.supports_lightdark_report;
-    if (@hasField(ProgObj, "supports_linux_palette_oscp")) caps.supportsLinuxPaletteOscP = prog.supports_linux_palette_oscp;
-    if (@hasField(ProgObj, "supports_device_attributes")) caps.supportsDeviceAttributes = prog.supports_device_attributes;
-    if (@hasField(ProgObj, "supports_cursor_style")) caps.supportsCursorStyle = prog.supports_cursor_style;
-    if (@hasField(ProgObj, "supports_cursor_position_report")) caps.supportsCursorPositionReport = prog.supports_cursor_position_report;
-    if (@hasField(ProgObj, "supports_pointer_shape")) caps.supportsPointerShape = prog.supports_pointer_shape;
-    if (@hasField(ProgObj, "needs_tmux_passthrough")) caps.needsTmuxPassthrough = prog.needs_tmux_passthrough;
-    if (@hasField(ProgObj, "needs_screen_passthrough")) caps.needsScreenPassthrough = prog.needs_screen_passthrough;
-    if (@hasField(ProgObj, "screen_chunk_limit")) caps.screenChunkLimit = @intCast(prog.screen_chunk_limit);
-    if (@hasField(ProgObj, "width_method")) caps.widthMethod = if (std.mem.eql(u8, prog.width_method, "wcwidth")) .grapheme else .wcwidth;
+// Helper function to apply overlay with special case handling
+fn applyOverlay(prog_config: anytype, caps: *TermCaps) void {
+    // Use field mapping to overlay values, but only for fields that exist in the program config
+    inline for (std.meta.fields(TermCaps)) |field| {
+        const source_field_name = field_mapping.mapField(field.name);
+        if (@hasField(@TypeOf(prog_config), source_field_name)) {
+            // Handle special cases
+            if (std.mem.eql(u8, field.name, "widthMethod")) {
+                caps.widthMethod = if (std.mem.eql(u8, @field(prog_config, source_field_name), "wcwidth")) .wcwidth else .grapheme;
+            } else if (std.mem.eql(u8, field.name, "screenChunkLimit")) {
+                caps.screenChunkLimit = @intCast(@field(prog_config, source_field_name));
+            } else {
+                // Normal field mapping
+                @field(caps, field.name) = @field(prog_config, source_field_name);
+            }
+        }
+    }
 }
 
 fn capsForProgram(comptime P: Program) TermCaps {
     var caps = defaultsCaps();
     const bp = cfg.by_program;
     switch (P) {
-        .Kitty => overlayCaps(@TypeOf(bp.kitty), bp.kitty, &caps),
-        .WezTerm => overlayCaps(@TypeOf(bp.wezterm), bp.wezterm, &caps),
-        .ITerm2 => overlayCaps(@TypeOf(bp.iterm2), bp.iterm2, &caps),
-        .AppleTerminal => overlayCaps(@TypeOf(bp.apple_terminal), bp.apple_terminal, &caps),
-        .VTE => overlayCaps(@TypeOf(bp.vte), bp.vte, &caps),
-        .Alacritty => overlayCaps(@TypeOf(bp.alacritty), bp.alacritty, &caps),
-        .Ghostty => overlayCaps(@TypeOf(bp.ghostty), bp.ghostty, &caps),
-        .Konsole => overlayCaps(@TypeOf(bp.konsole), bp.konsole, &caps),
-        .Xterm => overlayCaps(@TypeOf(bp.xterm), bp.xterm, &caps),
-        .VSCode => overlayCaps(@TypeOf(bp.vscode), bp.vscode, &caps),
-        .WindowsTerminal => overlayCaps(@TypeOf(bp.windows_terminal), bp.windows_terminal, &caps),
-        .LinuxConsole => overlayCaps(@TypeOf(bp.linux_console), bp.linux_console, &caps),
-        .Unknown => {},
+        .Kitty => applyOverlay(bp.kitty, &caps),
+        .WezTerm => applyOverlay(bp.wezterm, &caps),
+        .ITerm2 => applyOverlay(bp.iterm2, &caps),
+        .AppleTerminal => applyOverlay(bp.apple_terminal, &caps),
+        .VTE => applyOverlay(bp.vte, &caps),
+        .Alacritty => applyOverlay(bp.alacritty, &caps),
+        .Ghostty => applyOverlay(bp.ghostty, &caps),
+        .Konsole => applyOverlay(bp.konsole, &caps),
+        .Xterm => applyOverlay(bp.xterm, &caps),
+        .VSCode => applyOverlay(bp.vscode, &caps),
+        .WindowsTerminal => applyOverlay(bp.windows_terminal, &caps),
+        .LinuxConsole => applyOverlay(bp.linux_console, &caps),
+        .Unknown => applyOverlay(bp.unknown, &caps),
     }
     return caps;
 }
@@ -537,6 +551,7 @@ fn detectCapsFromEnv(env: *const std.process.EnvMap) TermCaps {
 fn detectMouseCapabilities(allocator: std.mem.Allocator, env: *const std.process.EnvMap) !MouseCapabilities {
     var caps = MouseCapabilities{};
     const program = detectProgram(env);
+    _ = allocator; // Currently unused but kept for future extensions
 
     // Apply terminal-specific capabilities
     switch (program) {
@@ -744,6 +759,16 @@ pub fn getTermCaps() TermCaps {
 }
 
 // Tests
+test "field mapping works correctly" {
+    const testing = std.testing;
+
+    // Test that field mapping converts PascalCase to snake_case correctly
+    try testing.expectEqualStrings("supports_truecolor", field_mapping.mapField("supportsTruecolor"));
+    try testing.expectEqualStrings("supports_kitty_keyboard", field_mapping.mapField("supportsKittyKeyboard"));
+    try testing.expectEqualStrings("width_method", field_mapping.mapField("widthMethod"));
+    try testing.expectEqualStrings("screen_chunk_limit", field_mapping.mapField("screenChunkLimit"));
+}
+
 test "terminal capabilities detection" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -779,6 +804,4 @@ test "terminal type from secondary ID" {
     try testing.expect(TerminalType.fromSecondaryId(0) == .xterm);
     try testing.expect(TerminalType.fromSecondaryId(1) == .vt100);
     try testing.expect(TerminalType.fromSecondaryId(65) == .gnome_terminal);
-}</content>
-</xai:function_call">Now I need to update the mod.zig file to export from the new consolidated capabilities.zig file instead of the old separate files. Let me check what's currently in mod.zig.</<xai:function_call name="read">
-<parameter name="filePath">src/shared/term/mod.zig
+}
