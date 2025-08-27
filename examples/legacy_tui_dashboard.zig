@@ -1,3 +1,12 @@
+// Legacy Dashboard Implementation
+//
+// This is a legacy Dashboard implementation preserved for historical reference.
+// The canonical dashboard is now located in src/shared/tui/components/dashboard/Dashboard.zig
+// This file demonstrates an older approach using render/EnhancedRenderer.
+//
+// For new implementations, please use the updated dashboard component in the
+// src/shared/tui/components/dashboard/ directory.
+
 const std = @import("std");
 const adaptive_render = @import("../render/mod.zig");
 const AdaptiveRenderer = adaptive_render.AdaptiveRenderer;

@@ -32,6 +32,7 @@ Framework for building multiple independent terminal-based AI agents. Each agent
   - **`src/shared/network/`** - Network and API clients
   - **`src/shared/tools/`** - Shared tools registry
   - **`src/shared/auth/`** - Authentication system
+  - **`src/shared/json_reflection/`** - Compile-time JSON processing utilities
   - **`src/shared/term/`** - Terminal capabilities and low-level terminal handling
 - **`examples/`** - Demo and example files
 - **`tests/`** - Test files organized by category
@@ -112,6 +113,7 @@ Clean separation of concerns through service interfaces:
 - **Network Module** (`src/shared/network/`): API clients and network utilities including Anthropic/Claude API client, HTTP client utilities, and server-sent events handling
 - **Tools Module** (`src/shared/tools/`): Enhanced tools registry with metadata support, categorization, agent attribution, JSON tools, automatic registration, and clean integration between shared and agent-specific tools
 - **Auth Module** (`src/shared/auth/`): Authentication system providing OAuth and API key support with core authentication logic, OAuth 2.0 implementation, terminal UI for authentication flows, and command-line authentication commands
+- **JSON Reflection Module** (`src/shared/json_reflection/`): Compile-time JSON processing utilities providing schema validation, type-safe JSON parsing, and reflection-based JSON manipulation for enhanced tool and agent capabilities
 - **Render Module** (`src/shared/render/`): Rendering and graphics capabilities with chart/table/progress bar rendering, quality-aware rendering system, and rendering optimization levels
 - **Components Module** (`src/shared/components/`): Shared UI components that work across CLI and TUI contexts, including the unified input system that provides high-level input abstraction
 - **Term Module** (`src/shared/term/`): Terminal capabilities and low-level terminal handling, including primitive input parsing and protocol handling
@@ -283,9 +285,9 @@ config_helpers.zig      // Collection of utilities
 tool_registry.zig       // Registry implementation
 
 // Good: Single type files (PascalCase.zig)
-Agent.zig              // Contains: pub const Agent = struct { ... }
-Command.zig            // Contains: pub const Command = struct { ... }
-Parser.zig             // Contains: pub const Parser = struct { ... }
+agent.zig              // Contains: pub const Agent = struct { ... }
+command.zig            // Contains: pub const Command = struct { ... }
+parser.zig             // Contains: pub const Parser = struct { ... }
 
 // Good: Barrel exports
 mod.zig                // Module entry point, always lowercase

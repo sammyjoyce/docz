@@ -12,7 +12,7 @@
 const std = @import("std");
 const renderer_mod = @import("./core/renderer.zig");
 const bounds_mod = @import("./core/bounds.zig");
-const components_shared = @import("../components/mod.zig");
+const components_shared = @import("components_shared");
 const notification = components_shared.notification;
 
 const Renderer = renderer_mod.Renderer;

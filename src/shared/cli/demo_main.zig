@@ -4,13 +4,13 @@
 //! existing CLI framework to provide progressive terminal capabilities.
 
 const std = @import("std");
-const shared_components = @import("../../components/mod.zig");
-const term_shared = @import("../../term/mod.zig");
+const shared_components = @import("components_shared");
+const term_shared = @import("term_shared");
 const unified = term_shared.unified;
 const terminal_bridge = @import("core/terminal_bridge.zig");
 const components = @import("../components/mod.zig");
 const notification = @import("notifications.zig");
-const input_mod = @import("../components/input.zig");
+const input_mod = @import("components_shared").input;
 const demo = @import("demos/capabilities_demo.zig");
 
 /// CLI Application that uses the terminal interface

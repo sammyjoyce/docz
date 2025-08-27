@@ -32,7 +32,7 @@ fn testAllRenderModes(allocator: std.mem.Allocator) !void {
     std.debug.print("-" ** 30);
     std.debug.print("\n");
 
-    const modes = [_]AdaptiveRenderer.RenderMode{ .enhanced, .standard, .compatible, .minimal };
+    const modes = [_]AdaptiveRenderer.RenderMode{ .standard, .compatible, .minimal };
 
     for (modes) |mode| {
         std.debug.print("  Testing {s} mode... ", mode.description());
@@ -318,5 +318,5 @@ test "comprehensive adaptive rendering tests" {
 
     // Test rendering info
     const info = test_renderer.getRenderingInfo();
-    try testing.expect(info.mode == .enhanced or info.mode == .standard or info.mode == .compatible or info.mode == .minimal);
+    try testing.expect(info.mode == .standard or info.mode == .compatible or info.mode == .minimal);
 }

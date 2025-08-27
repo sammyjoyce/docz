@@ -3,11 +3,13 @@
 //! Supports keyboard navigation, mouse interaction, filtering, and async loading
 
 const std = @import("std");
-const term_ansi = @import("../../../term/ansi/color.zig");
-const term_caps = @import("../../../term/caps.zig");
-const focus_mod = @import("../../core/input/focus.zig");
-const mouse_mod = @import("../../core/input/mouse.zig");
-const renderer_mod = @import("../../core/renderer.zig");
+const term_shared = @import("term_shared");
+const term_ansi = term_shared.ansi.color;
+const term_caps = term_shared.caps;
+const tui = @import("tui_shared");
+const focus_mod = tui.core.input.focus;
+const mouse_mod = tui.core.input.mouse;
+const renderer_mod = tui.core.renderer;
 
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayListUnmanaged;

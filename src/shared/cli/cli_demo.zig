@@ -2,7 +2,7 @@
 //! Demonstrates the key architectural improvements without external dependencies
 
 const std = @import("std");
-const term_mod = @import("../term/mod.zig");
+const term_mod = @import("term_shared");
 
 // =============================================================================
 // Core Types (simplified versions)

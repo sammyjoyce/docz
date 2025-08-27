@@ -29,17 +29,17 @@ pub const Markdown = struct {
         /// Load configuration from file with defaults fallback
         pub fn loadFromFile(allocator: Allocator, path: []const u8) !Config {
             const config_utils = @import("config_shared");
-        const defaults = Config{
-            .agent_config = config_utils.createValidatedAgentConfig("markdown", "Markdown document processing agent", "Developer"),
-            .textWrapWidth = 80,
-            .headingStyle = "atx",
-            .listStyle = "dash",
-            .codeFenceStyle = "backtick",
-            .tableAlignment = "auto",
-            .frontMatterFormat = "yaml",
-            .tocStyle = "github",
-            .linkStyle = "reference",
-        };
+            const defaults = Config{
+                .agent_config = config_utils.createValidatedAgentConfig("markdown", "Markdown document processing agent", "Developer"),
+                .textWrapWidth = 80,
+                .headingStyle = "atx",
+                .listStyle = "dash",
+                .codeFenceStyle = "backtick",
+                .tableAlignment = "auto",
+                .frontMatterFormat = "yaml",
+                .tocStyle = "github",
+                .linkStyle = "reference",
+            };
             return config_utils.loadWithDefaults(Config, allocator, path, defaults);
         }
 

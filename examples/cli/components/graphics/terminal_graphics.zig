@@ -200,7 +200,7 @@ pub const TerminalGraphics = struct {
         }
     }
 
-    /// Render enhanced progress bar with graphics
+    /// Render progress bar with graphics
     pub fn renderProgressWithChart(
         self: *TerminalGraphics,
         progress: f32,

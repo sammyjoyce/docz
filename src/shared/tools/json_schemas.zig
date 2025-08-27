@@ -1,0 +1,405 @@
+//! Common JSON schema definitions for tool request/response handling.
+//! Provides reusable structs and helper functions to replace manual ObjectMap building.
+
+const std = @import("std");
+const json = std.json;
+
+/// Generic tool response wrapper that can contain any result type
+pub fn ToolResponse(comptime ResultType: type) type {
+    return struct {
+        /// Whether the operation succeeded
+        success: bool,
+        /// The tool that generated this response
+        tool: []const u8,
+        /// Optional command that was executed
+        command: ?[]const u8 = null,
+        /// The actual result data
+        result: ?ResultType = null,
+        /// Error message if success is false
+        @"error": ?[]const u8 = null,
+        /// Optional metadata about the operation
+        metadata: ?json.Value = null,
+    };
+}
+
+/// Common response types for different tool categories
+/// File operation response
+pub const FileOperationResponse = struct {
+    /// Path to the file that was operated on
+    file_path: []const u8,
+    /// Content of the file (for read operations)
+    content: ?[]const u8 = null,
+    /// File metadata
+    metadata: ?FileMetadata = null,
+    /// Operation result (e.g., "created", "updated", "deleted")
+    operation: ?[]const u8 = null,
+    /// Size of the file in bytes
+    size: ?u64 = null,
+    /// Last modified timestamp
+    modified: ?i128 = null,
+};
+
+/// File metadata structure
+pub const FileMetadata = struct {
+    size: u64,
+    modified: i128,
+    is_file: bool,
+    is_dir: bool,
+    permissions: ?[]const u8 = null,
+};
+
+/// Text processing response
+pub const TextProcessingResponse = struct {
+    /// Original text that was processed
+    original: ?[]const u8 = null,
+    /// Processed result text
+    result: []const u8,
+    /// Changes made during processing
+    changes: ?[]TextChange = null,
+    /// Statistics about the processing
+    stats: ?TextProcessingStats = null,
+};
+
+/// Text change description
+pub const TextChange = struct {
+    /// Type of change (insert, delete, replace)
+    change_type: []const u8,
+    /// Start position of the change
+    start: usize,
+    /// End position of the change
+    end: usize,
+    /// Original text (for replace/delete)
+    old_text: ?[]const u8 = null,
+    /// New text (for insert/replace)
+    new_text: ?[]const u8 = null,
+};
+
+/// Text processing statistics
+pub const TextProcessingStats = struct {
+    /// Number of lines processed
+    lines_processed: usize = 0,
+    /// Number of changes made
+    changes_count: usize = 0,
+    /// Processing time in milliseconds
+    processing_time_ms: u64 = 0,
+};
+
+/// Search response
+pub const SearchResponse = struct {
+    /// The search query used
+    query: []const u8,
+    /// Search results
+    results: []SearchResult,
+    /// Total number of matches found
+    total_matches: usize,
+    /// Search options used
+    options: ?SearchOptions = null,
+};
+
+/// Individual search result
+pub const SearchResult = struct {
+    /// File where the match was found
+    file: []const u8,
+    /// Line number (1-based)
+    line: usize,
+    /// Column number (1-based)
+    column: usize,
+    /// The matched text
+    match: []const u8,
+    /// Context around the match
+    context: ?[]const u8 = null,
+};
+
+/// Search options
+pub const SearchOptions = struct {
+    case_sensitive: bool = false,
+    whole_words: bool = false,
+    regex_mode: bool = false,
+    max_results: ?usize = null,
+};
+
+/// Directory listing response
+pub const DirectoryResponse = struct {
+    /// Path to the directory
+    directory_path: []const u8,
+    /// Directory entries
+    entries: []DirectoryEntry,
+    /// Total number of entries
+    total_count: usize,
+};
+
+/// Directory entry
+pub const DirectoryEntry = struct {
+    /// Name of the entry
+    name: []const u8,
+    /// Type of entry
+    entry_type: enum { file, directory, symlink, unknown },
+    /// Size in bytes (for files)
+    size: ?u64 = null,
+    /// Last modified timestamp
+    modified: ?i128 = null,
+};
+
+/// Validation response
+pub const ValidationResponse = struct {
+    /// Whether validation passed
+    is_valid: bool,
+    /// Validation errors found
+    errors: ?[]ValidationError = null,
+    /// Validation warnings
+    warnings: ?[]ValidationWarning = null,
+    /// Validation statistics
+    stats: ?ValidationStats = null,
+};
+
+/// Validation error
+pub const ValidationError = struct {
+    /// Error message
+    message: []const u8,
+    /// Line number where error occurred
+    line: ?usize = null,
+    /// Column number where error occurred
+    column: ?usize = null,
+    /// Severity level
+    severity: enum { @"error", warning, info } = .@"error",
+};
+
+/// Validation warning
+pub const ValidationWarning = struct {
+    /// Warning message
+    message: []const u8,
+    /// Line number where warning occurred
+    line: ?usize = null,
+    /// Column number where warning occurred
+    column: ?usize = null,
+};
+
+/// Validation statistics
+pub const ValidationStats = struct {
+    /// Total number of checks performed
+    total_checks: usize = 0,
+    /// Number of errors found
+    error_count: usize = 0,
+    /// Number of warnings found
+    warning_count: usize = 0,
+    /// Processing time in milliseconds
+    processing_time_ms: u64 = 0,
+};
+
+/// Common request structs for tool patterns
+/// File operation request
+pub const FileOperationRequest = struct {
+    /// Path to the file
+    file_path: []const u8,
+    /// Operation to perform
+    operation: enum { read, write, append, delete, move, copy },
+    /// Content for write/append operations
+    content: ?[]const u8 = null,
+    /// Target path for move/copy operations
+    target_path: ?[]const u8 = null,
+    /// Whether to include metadata in response
+    include_metadata: bool = false,
+    /// Encoding to use
+    encoding: enum { utf8, binary } = .utf8,
+};
+
+/// Text processing request
+pub const TextProcessingRequest = struct {
+    /// Text content to process
+    content: []const u8,
+    /// Operation to perform
+    operation: enum { format, lint, transform, analyze },
+    /// Processing options
+    options: ?json.Value = null,
+    /// File path context (optional)
+    file_path: ?[]const u8 = null,
+};
+
+/// Search request
+pub const SearchRequest = struct {
+    /// Search query
+    query: []const u8,
+    /// Files or directories to search in
+    paths: ?[][]const u8 = null,
+    /// File patterns to include
+    include_patterns: ?[][]const u8 = null,
+    /// File patterns to exclude
+    exclude_patterns: ?[][]const u8 = null,
+    /// Search options
+    options: SearchOptions = .{},
+};
+
+/// Directory request
+pub const DirectoryRequest = struct {
+    /// Directory path to list
+    directory_path: []const u8 = ".",
+    /// Whether to show detailed information
+    show_details: bool = false,
+    /// Maximum number of results
+    max_results: usize = 100,
+    /// Whether to recurse into subdirectories
+    recursive: bool = false,
+    /// Maximum depth for recursive listing
+    max_depth: usize = 3,
+};
+
+/// Validation request
+pub const ValidationRequest = struct {
+    /// Content to validate
+    content: []const u8,
+    /// Validation type
+    validation_type: enum { syntax, schema, lint, custom },
+    /// Schema or rules to validate against
+    schema: ?[]const u8 = null,
+    /// File path context
+    file_path: ?[]const u8 = null,
+    /// Validation options
+    options: ?json.Value = null,
+};
+
+/// Helper functions for creating responses
+/// Create a simple success response
+pub fn createSuccessResponse(allocator: std.mem.Allocator, tool_name: []const u8, message: []const u8) !json.Value {
+    var result = json.ObjectMap.init(allocator);
+    try result.put("success", json.Value{ .bool = true });
+    try result.put("tool", json.Value{ .string = try allocator.dupe(u8, tool_name) });
+    try result.put("message", json.Value{ .string = try allocator.dupe(u8, message) });
+    return json.Value{ .object = result };
+}
+
+/// Create a simple error response
+pub fn createErrorResponse(allocator: std.mem.Allocator, tool_name: []const u8, error_msg: []const u8) !json.Value {
+    var result = json.ObjectMap.init(allocator);
+    try result.put("success", json.Value{ .bool = false });
+    try result.put("tool", json.Value{ .string = try allocator.dupe(u8, tool_name) });
+    try result.put("error", json.Value{ .string = try allocator.dupe(u8, error_msg) });
+    return json.Value{ .object = result };
+}
+
+/// Create a file operation success response
+pub fn createFileOperationResponse(allocator: std.mem.Allocator, tool_name: []const u8, command: []const u8, response: FileOperationResponse) !json.Value {
+    const ResponseType = ToolResponse(FileOperationResponse);
+    return ResponseType.successWithCommand(allocator, tool_name, command, response);
+}
+
+/// Create a search response
+pub fn createSearchResponse(allocator: std.mem.Allocator, tool_name: []const u8, command: []const u8, response: SearchResponse) !json.Value {
+    const ResponseType = ToolResponse(SearchResponse);
+    return ResponseType.successWithCommand(allocator, tool_name, command, response);
+}
+
+/// Create a validation response
+pub fn createValidationResponse(allocator: std.mem.Allocator, tool_name: []const u8, command: []const u8, response: ValidationResponse) !json.Value {
+    const ResponseType = ToolResponse(ValidationResponse);
+    return ResponseType.successWithCommand(allocator, tool_name, command, response);
+}
+
+/// Validation helpers
+/// Validate required fields in a JSON object
+pub fn validateRequiredFields(params: json.ObjectMap, required_fields: []const []const u8) !void {
+    for (required_fields) |field| {
+        if (params.get(field) == null) {
+            return error.MissingRequiredField;
+        }
+    }
+}
+
+/// Validate field types in a JSON object
+pub fn validateFieldTypes(params: json.ObjectMap, field_types: std.StringHashMap(json.ValueTag)) !void {
+    var iterator = field_types.iterator();
+    while (iterator.next()) |entry| {
+        const field_name = entry.key_ptr.*;
+        const expected_type = entry.value_ptr.*;
+
+        if (params.get(field_name)) |value| {
+            if (value != expected_type) {
+                return error.InvalidFieldType;
+            }
+        }
+    }
+}
+
+/// Parse and validate a request struct from JSON
+pub fn parseAndValidateRequest(comptime RequestType: type, allocator: std.mem.Allocator, params: json.Value) !RequestType {
+    const parsed = try json.parseFromValue(RequestType, allocator, params, .{});
+    defer parsed.deinit();
+
+    // Additional validation can be added here if needed
+    return parsed.value;
+}
+
+/// Utility functions for working with JSON values
+/// Extract string from JSON value safely
+pub fn getString(value: json.Value, default: ?[]const u8) ?[]const u8 {
+    return switch (value) {
+        .string => |s| s,
+        else => default,
+    };
+}
+
+/// Extract boolean from JSON value safely
+pub fn getBool(value: json.Value, default: bool) bool {
+    return switch (value) {
+        .bool => |b| b,
+        else => default,
+    };
+}
+
+/// Extract integer from JSON value safely
+pub fn getInteger(value: json.Value, default: i64) i64 {
+    return switch (value) {
+        .integer => |i| i,
+        else => default,
+    };
+}
+
+/// Extract array from JSON value safely
+pub fn getArray(value: json.Value) ?json.Array {
+    return switch (value) {
+        .array => |a| a,
+        else => null,
+    };
+}
+
+/// Extract object from JSON value safely
+pub fn getObject(value: json.Value) ?json.ObjectMap {
+    return switch (value) {
+        .object => |o| o,
+        else => null,
+    };
+}
+
+/// Convert FileMetadata to JSON value
+pub fn fileMetadataToJson(allocator: std.mem.Allocator, metadata: FileMetadata) !json.Value {
+    var obj = json.ObjectMap.init(allocator);
+    try obj.put("size", json.Value{ .integer = @intCast(metadata.size) });
+    try obj.put("modified", json.Value{ .integer = metadata.modified });
+    try obj.put("is_file", json.Value{ .bool = metadata.is_file });
+    try obj.put("is_dir", json.Value{ .bool = metadata.is_dir });
+    if (metadata.permissions) |perms| {
+        try obj.put("permissions", json.Value{ .string = try allocator.dupe(u8, perms) });
+    }
+    return json.Value{ .object = obj };
+}
+
+/// Convert DirectoryEntry to JSON value
+pub fn directoryEntryToJson(allocator: std.mem.Allocator, entry: DirectoryEntry) !json.Value {
+    var obj = json.ObjectMap.init(allocator);
+    try obj.put("name", json.Value{ .string = try allocator.dupe(u8, entry.name) });
+    try obj.put("entry_type", json.Value{ .string = @tagName(entry.entry_type) });
+    if (entry.size) |size| {
+        try obj.put("size", json.Value{ .integer = @intCast(size) });
+    }
+    if (entry.modified) |modified| {
+        try obj.put("modified", json.Value{ .integer = modified });
+    }
+    return json.Value{ .object = obj };
+}
+
+/// Error types for validation
+pub const SchemaValidationError = error{
+    MissingRequiredField,
+    InvalidFieldType,
+    InvalidJson,
+    SchemaValidationFailed,
+};

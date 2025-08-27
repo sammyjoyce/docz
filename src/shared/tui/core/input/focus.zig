@@ -57,14 +57,14 @@ pub const Focus = struct {
 
     /// Enable focus reporting escape sequences
     pub fn enableFocusReporting(writer: anytype, caps: anytype) !void {
-        const term_mod = @import("../../../term/mod.zig");
+        const term_mod = @import("term_shared");
         const TermCaps = term_mod.caps.TermCaps;
         try term_mod.ansi.mode.enableFocusEvents(writer, @as(TermCaps, caps));
     }
 
     /// Disable focus reporting escape sequences
     pub fn disableFocusReporting(writer: anytype, caps: anytype) !void {
-        const term_mod = @import("../../../term/mod.zig");
+        const term_mod = @import("term_shared");
         const TermCaps = term_mod.caps.TermCaps;
         try term_mod.ansi.mode.disableFocusEvents(writer, @as(TermCaps, caps));
     }

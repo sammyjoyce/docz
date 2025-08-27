@@ -31,8 +31,8 @@ pub const NotificationHandler = interactive.notification_manager.NotificationHan
 pub const GraphicsWidget = tui.GraphicsWidget;
 
 // Terminal capabilities
-pub const TermCaps = @import("../term/mod.zig").caps.TermCaps;
-pub const getTermCaps = @import("../term/mod.zig").caps.getTermCaps;
+pub const TermCaps = @import("term_shared").caps.TermCaps;
+pub const getTermCaps = @import("term_shared").caps.getTermCaps;
 
 // Advanced features
 pub const HyperlinkBuilder = utils.hyperlinks.HyperlinkBuilder;

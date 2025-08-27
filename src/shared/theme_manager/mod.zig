@@ -4,7 +4,7 @@
 
 const std = @import("std");
 const builtin = @import("builtin");
-const term = @import("../term/mod.zig");
+const term = @import("term_shared");
 
 pub const ThemeManager = @import("theme.zig").ThemeManager;
 pub const ThemeConfig = @import("theme_config.zig").ThemeConfig;

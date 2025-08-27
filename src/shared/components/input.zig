@@ -9,7 +9,7 @@
 //!   term/input/ (primitives) → components/input.zig (interface) → cli/tui (implementations)
 
 const std = @import("std");
-const term_mod = @import("../term/mod.zig");
+const term_mod = @import("term_shared");
 const parser = term_mod.input.parser;
 const types = term_mod.input.types;
 const caps = term_mod.caps;
@@ -23,7 +23,7 @@ pub const MouseButton = types.MouseButton;
 pub const MouseAction = types.MouseAction;
 
 // Re-export mouse types from low-level module
-const mouse_mod = @import("../term/input/mouse.zig");
+const mouse_mod = @import("term_shared").input.mouse;
 pub const MouseMode = mouse_mod.MouseMode;
 pub const MouseModifiers = mouse_mod.MouseModifiers;
 pub const MouseParser = mouse_mod.MouseParser;
@@ -416,7 +416,7 @@ pub const InputFeature = packed struct {
 
 /// Configuration for input handling
 pub const InputConfig = struct {
-    features: Feature = .{},
+    features: InputFeature = .{},
     buffer_size: usize = 4096,
     poll_timeout_ms: u32 = 100,
     enable_debug_logging: bool = false,

@@ -5,7 +5,7 @@ const std = @import("std");
 const stylize = @import("../src/shared/tui/core/stylize.zig");
 const styled_widgets = @import("../src/shared/tui/widgets/styled_widgets.zig");
 const term = @import("../src/shared/term/mod.zig");
-const unified = @import("../src/shared/term/unified.zig");
+const terminal_mod = @import("../src/shared/term/unified.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -13,7 +13,7 @@ pub fn main() !void {
     const allocator = gpa.allocator();
 
     // Initialize terminal
-    var terminal = try unified.Terminal.init(allocator, .{});
+    var terminal = try terminal_mod.Terminal.init(allocator, .{});
     defer terminal.deinit();
 
     const stdout = std.io.getStdOut().writer();

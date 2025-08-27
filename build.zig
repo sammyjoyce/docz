@@ -261,7 +261,7 @@ const AgentRegistry = struct {
         defer agent_dir.close();
 
         // Check for required files
-        const required_files = [_][]const u8{ "main.zig", "spec.zig", "Agent.zig" };
+        const required_files = [_][]const u8{ "main.zig", "spec.zig" };
         var missing_files = try std.ArrayList([]const u8).initCapacity(self.allocator, 4);
         defer {
             for (missing_files.items) |file| self.allocator.free(file);
@@ -284,6 +284,32 @@ const AgentRegistry = struct {
 
         if (missing_files.items.len > 0) {
             std.log.err("❌ Agent '{s}': Missing required files - {s}", .{ agent_name, std.mem.join(self.allocator, ", ", missing_files.items) catch "unknown" });
+            return false;
+        }
+
+        // Check for Agent.zig or agent.zig
+        const agent_zig_path = try std.fmt.allocPrint(self.allocator, "{s}/Agent.zig", .{agent_path});
+        defer self.allocator.free(agent_zig_path);
+        const agent_zig_exists = blk: {
+            _ = std.fs.cwd().statFile(agent_zig_path) catch |err| switch (err) {
+                error.FileNotFound => break :blk false,
+                else => return err,
+            };
+            break :blk true;
+        };
+
+        const agent_zig_lower_path = try std.fmt.allocPrint(self.allocator, "{s}/agent.zig", .{agent_path});
+        defer self.allocator.free(agent_zig_lower_path);
+        const agent_zig_lower_exists = blk2: {
+            _ = std.fs.cwd().statFile(agent_zig_lower_path) catch |err| switch (err) {
+                error.FileNotFound => break :blk2 false,
+                else => return err,
+            };
+            break :blk2 true;
+        };
+
+        if (agent_zig_exists == false and agent_zig_lower_exists == false) {
+            std.log.err("❌ Agent '{s}': Missing required file - either Agent.zig or agent.zig is required", .{agent_name});
             return false;
         }
 
@@ -725,7 +751,7 @@ const ModuleBuilder = struct {
         defer agent_dir.close();
 
         // Check required files
-        const required_files = [_][]const u8{ "main.zig", "spec.zig", "Agent.zig" };
+        const required_files = [_][]const u8{ "main.zig", "spec.zig" };
         for (required_files) |file| {
             const file_path = try std.fmt.allocPrint(self.ctx.b.allocator, "{s}/{s}", .{ agent_path, file });
             defer self.ctx.b.allocator.free(file_path);
@@ -742,6 +768,35 @@ const ModuleBuilder = struct {
                     else => return err,
                 }
             };
+        }
+
+        // Check for Agent.zig or agent.zig
+        const agent_zig_path = try std.fmt.allocPrint(self.ctx.b.allocator, "{s}/Agent.zig", .{agent_path});
+        defer self.ctx.b.allocator.free(agent_zig_path);
+        const agent_zig_exists = blk3: {
+            _ = std.fs.cwd().statFile(agent_zig_path) catch |err| switch (err) {
+                error.FileNotFound => break :blk3 false,
+                else => return err,
+            };
+            break :blk3 true;
+        };
+
+        const agent_zig_lower_path = try std.fmt.allocPrint(self.ctx.b.allocator, "{s}/agent.zig", .{agent_path});
+        defer self.ctx.b.allocator.free(agent_zig_lower_path);
+        const agent_zig_lower_exists = blk4: {
+            _ = std.fs.cwd().statFile(agent_zig_lower_path) catch |err| switch (err) {
+                error.FileNotFound => break :blk4 false,
+                else => return err,
+            };
+            break :blk4 true;
+        };
+
+        if (agent_zig_exists == false and agent_zig_lower_exists == false) {
+            try result.errors.append(self.ctx.b.allocator, .{
+                .field = "agent_file",
+                .message = try self.ctx.b.allocator.dupe(u8, "Either Agent.zig or agent.zig is required"),
+            });
+            result.is_valid = false;
         }
 
         // Check optional files and generate warnings
@@ -940,7 +995,8 @@ const ModuleBuilder = struct {
         if (invalid_count > 0) {
             std.log.info("", .{});
             std.log.info("💡 Fix invalid agents by ensuring they have:", .{});
-            std.log.info("   - main.zig, spec.zig, Agent.zig files", .{});
+            std.log.info("   - main.zig, spec.zig files", .{});
+            std.log.info("   - Either Agent.zig or agent.zig file", .{});
             std.log.info("   - Valid agent.manifest.zon file", .{});
         }
     }
@@ -963,7 +1019,7 @@ const ModuleBuilder = struct {
         defer agent_dir.close();
 
         // Check for required files
-        const required_files = [_][]const u8{ "main.zig", "spec.zig", "Agent.zig" };
+        const required_files = [_][]const u8{ "main.zig", "spec.zig" };
         var missing_files = try std.ArrayList([]const u8).initCapacity(self.ctx.b.allocator, 4);
         defer missing_files.deinit(self.ctx.b.allocator);
 
@@ -986,6 +1042,20 @@ const ModuleBuilder = struct {
             for (missing_files.items) |file| {
                 self.ctx.b.allocator.free(file);
             }
+            return false;
+        }
+
+        // Check for Agent.zig or agent.zig
+        const agent_zig_path = try std.fmt.allocPrint(self.ctx.b.allocator, "{s}/Agent.zig", .{agent_path});
+        defer self.ctx.b.allocator.free(agent_zig_path);
+        const agent_zig_exists = std.fs.cwd().openFile(agent_zig_path, .{}) catch false;
+
+        const agent_zig_lower_path = try std.fmt.allocPrint(self.ctx.b.allocator, "{s}/agent.zig", .{agent_path});
+        defer self.ctx.b.allocator.free(agent_zig_lower_path);
+        const agent_zig_lower_exists = std.fs.cwd().openFile(agent_zig_lower_path, .{}) catch false;
+
+        if (agent_zig_exists == false and agent_zig_lower_exists == false) {
+            std.log.err("❌ Agent '{s}': Missing required file - either Agent.zig or agent.zig is required", .{agent_name});
             return false;
         }
 
@@ -1039,6 +1109,11 @@ const ModuleBuilder = struct {
         const auth = self.createModule(BUILD_CONFIG.PATHS.AUTH_ZIG);
         auth.addImport("anthropic_shared", anthropic);
 
+        // JSON reflection module for comptime JSON processing
+        // Provides utilities for compile-time JSON schema validation and processing
+        // Requires Zig 0.15.1+ for optimal comptime reflection performance
+        const json_reflection = self.createModule("src/shared/json_reflection/mod.zig");
+
         // OAuth callback server module
         const oauth_callback_server = self.createModule(BUILD_CONFIG.PATHS.OAUTH_CALLBACK_SERVER_ZIG);
         oauth_callback_server.addImport("auth_shared", auth);
@@ -1090,6 +1165,7 @@ const ModuleBuilder = struct {
             .term = term,
             .config = config,
             .auth = auth,
+            .json_reflection = json_reflection,
             .theme_manager = theme_manager,
             .agent_interface = agent_interface,
             .agent_dashboard = agent_dashboard,
@@ -1109,6 +1185,7 @@ const ModuleBuilder = struct {
             .term = null,
             .config = null,
             .auth = null,
+            .json_reflection = null,
             .render = null,
             .components = null,
             .theme_manager = null,
@@ -1122,9 +1199,13 @@ const ModuleBuilder = struct {
         modules.config = self.createModule(BUILD_CONFIG.PATHS.CONFIG_ZIG);
         modules.engine = self.createModule(BUILD_CONFIG.PATHS.ENGINE_ZIG);
         modules.tools = self.createModule(BUILD_CONFIG.PATHS.TOOLS_ZIG);
+        // Always include json_reflection module for comptime JSON processing
+        // This module provides compile-time JSON reflection utilities that are
+        // useful for all agents and tools, regardless of their specific capabilities
+        modules.json_reflection = self.createModule("src/shared/json_reflection/mod.zig");
         // Always include anthropic module (will be stub when network access disabled)
         modules.anthropic = self.createModule(BUILD_CONFIG.PATHS.ANTHROPIC_ZIG);
-        
+
         // Always include new core modules for enhanced UX
         modules.agent_interface = self.createModule(BUILD_CONFIG.PATHS.AGENT_INTERFACE_ZIG);
         modules.interactive_session = self.createModule(BUILD_CONFIG.PATHS.INTERACTIVE_SESSION_ZIG);
@@ -1223,6 +1304,8 @@ const ModuleBuilder = struct {
                 }
                 if (modules.tui) |tui| {
                     modules.theme_manager.?.addImport("tui_themes", tui);
+                    // Allow TUI code to import theme_manager by name
+                    tui.addImport("theme_manager", modules.theme_manager.?);
                 }
             } else {
                 std.log.info("   🚫 Excluding advanced terminal modules (basic CLI only)", .{});
@@ -1235,13 +1318,30 @@ const ModuleBuilder = struct {
                 modules.render = self.createModule("src/shared/render/mod.zig");
                 modules.components = self.createModule("src/shared/components/mod.zig");
 
-                // Add term dependency to render module
+                // Add dependencies
                 if (modules.term) |term| {
                     if (modules.render) |render| {
                         render.addImport("term_shared", term);
                     }
                     if (modules.components) |components| {
                         components.addImport("term_shared", term);
+                    }
+                }
+
+                // Components depend on theme_manager for themes
+                if (modules.components) |components| {
+                    if (modules.theme_manager) |theme_manager| {
+                        components.addImport("theme_manager", theme_manager);
+                    }
+                }
+
+                // Add components dependency to render module
+                if (modules.render) |render| {
+                    if (modules.components) |components| {
+                        render.addImport("components_shared", components);
+                    }
+                    if (modules.theme_manager) |theme_manager| {
+                        render.addImport("theme_manager", theme_manager);
                     }
                 }
             } else {
@@ -1263,6 +1363,7 @@ const ModuleBuilder = struct {
             std.log.info("🔧 Building with all modules (no manifest found)", .{});
             modules.anthropic = self.createModule(BUILD_CONFIG.PATHS.ANTHROPIC_ZIG);
             modules.auth = self.createModule(BUILD_CONFIG.PATHS.AUTH_ZIG);
+            modules.json_reflection = self.createModule("src/shared/json_reflection/mod.zig");
             modules.oauth_callback_server = self.createModule(BUILD_CONFIG.PATHS.OAUTH_CALLBACK_SERVER_ZIG);
             modules.term = self.createModule("src/shared/term/mod.zig");
             modules.cli = self.createModule(BUILD_CONFIG.PATHS.CLI_ZIG);
@@ -1305,6 +1406,20 @@ const ModuleBuilder = struct {
                 if (modules.agent_dashboard) |dashboard| {
                     dashboard.addImport("tui_shared", tui);
                 }
+                if (modules.theme_manager) |theme_manager| {
+                    // Allow TUI code to import theme_manager by name
+                    tui.addImport("theme_manager", theme_manager);
+                }
+            }
+            if (modules.render) |render| {
+                if (modules.theme_manager) |theme_manager| {
+                    render.addImport("theme_manager", theme_manager);
+                }
+            }
+            if (modules.components) |components| {
+                if (modules.theme_manager) |theme_manager| {
+                    components.addImport("theme_manager", theme_manager);
+                }
             }
             if (modules.agent_interface) |interface| {
                 if (modules.agent_dashboard) |dashboard| {
@@ -1324,6 +1439,7 @@ const ModuleBuilder = struct {
         if (shared.cli) |cli| entry.addImport("cli_shared", cli);
         if (shared.tools) |tools| entry.addImport("tools_shared", tools);
         if (shared.config) |config| entry.addImport("config_shared", config);
+        if (shared.json_reflection) |json_reflection| entry.addImport("json_reflection", json_reflection);
 
         // Add optional imports based on available modules
         if (shared.tui) |tui| entry.addImport("tui_shared", tui);
@@ -1350,19 +1466,19 @@ const ModuleBuilder = struct {
     }
 
     fn createApiModule(self: ModuleBuilder) *std.Build.Module {
-        // For testing, use a test module that includes our border merger test
+        // For testing, create a simple test module
         const test_module = self.ctx.b.addModule("border_merger_test", .{
             .target = self.ctx.target,
             .optimize = self.ctx.optimize,
             .root_source_file = self.ctx.b.path("tests/border_merger_test.zig"),
         });
 
-        // Add necessary imports for the test
+        // Add the modules that the test imports
         const border_merger = self.createModule("src/shared/tui/core/border_merger.zig");
         const bounds = self.createModule("src/shared/tui/core/bounds.zig");
 
         test_module.addImport("BorderMerger", border_merger);
-        test_module.addImport("Point", bounds);
+        test_module.addImport("Bounds", bounds);
 
         return test_module;
     }
@@ -1398,6 +1514,7 @@ const ModuleBuilder = struct {
         mod.addImport("tui_shared", shared.tui);
         mod.addImport("tools_shared", shared.tools);
         mod.addImport("config_shared", shared.config);
+        mod.addImport("json_reflection", shared.json_reflection);
         mod.addImport("theme_manager", shared.theme_manager);
     }
 
@@ -1437,6 +1554,7 @@ const SharedModules = struct {
     term: *std.Build.Module,
     config: *std.Build.Module,
     auth: *std.Build.Module,
+    json_reflection: *std.Build.Module,
     theme_manager: *std.Build.Module,
     agent_interface: *std.Build.Module,
     agent_dashboard: *std.Build.Module,
@@ -1453,6 +1571,7 @@ const ConditionalSharedModules = struct {
     term: ?*std.Build.Module,
     config: ?*std.Build.Module,
     auth: ?*std.Build.Module,
+    json_reflection: ?*std.Build.Module,
     render: ?*std.Build.Module,
     components: ?*std.Build.Module,
     theme_manager: ?*std.Build.Module,
@@ -1942,7 +2061,8 @@ fn validateAllAgents(registry: *AgentRegistry) !void {
     if (invalid_count > 0) {
         std.log.info("", .{});
         std.log.info("💡 Fix invalid agents by ensuring they have:", .{});
-        std.log.info("   - main.zig, spec.zig, Agent.zig files", .{});
+        std.log.info("   - main.zig, spec.zig files", .{});
+        std.log.info("   - Either Agent.zig or agent.zig file", .{});
         std.log.info("   - Valid agent.manifest.zon file", .{});
     }
 }
@@ -2060,7 +2180,7 @@ fn runScaffoldAgent(b: *std.Build) !void {
     std.log.info("📁 Created files:", .{});
     std.log.info("   • agents/{s}/main.zig", .{agent_name});
     std.log.info("   • agents/{s}/spec.zig", .{agent_name});
-    std.log.info("   • agents/{s}/Agent.zig", .{agent_name});
+    std.log.info("   • agents/{s}/agent.zig", .{agent_name});
     std.log.info("   • agents/{s}/config.zon", .{agent_name});
     std.log.info("   • agents/{s}/agent.manifest.zon", .{agent_name});
     std.log.info("   • agents/{s}/system_prompt.txt", .{agent_name});
@@ -2069,7 +2189,7 @@ fn runScaffoldAgent(b: *std.Build) !void {
     std.log.info("   • agents/{s}/README.md", .{agent_name});
     std.log.info("", .{});
     std.log.info("🚀 Next steps:", .{});
-    std.log.info("   1. Customize the agent implementation in agents/{s}/Agent.zig", .{agent_name});
+    std.log.info("   1. Customize the agent implementation in agents/{s}/agent.zig", .{agent_name});
     std.log.info("   2. Add custom tools in agents/{s}/tools/", .{agent_name});
     std.log.info("   3. Update the system prompt in agents/{s}/system_prompt.txt", .{agent_name});
     std.log.info("   4. Test your agent: zig build -Dagent={s} run", .{agent_name});
@@ -2116,12 +2236,12 @@ fn copyTemplateFiles(allocator: std.mem.Allocator, agent_name: []const u8, descr
     }{
         .{ .source = "agents/_template/main.zig", .dest = "main.zig", .process_placeholders = false },
         .{ .source = "agents/_template/spec.zig", .dest = "spec.zig", .process_placeholders = true },
-        .{ .source = "agents/_template/Agent.zig", .dest = "Agent.zig", .process_placeholders = true },
+        .{ .source = "agents/_template/agent.zig", .dest = "agent.zig", .process_placeholders = true },
         .{ .source = "agents/_template/config.zon", .dest = "config.zon", .process_placeholders = true },
         .{ .source = "agents/_template/agent.manifest.zon", .dest = "agent.manifest.zon", .process_placeholders = true },
         .{ .source = "agents/_template/system_prompt.txt", .dest = "system_prompt.txt", .process_placeholders = true },
         .{ .source = "agents/_template/tools/mod.zig", .dest = "tools/mod.zig", .process_placeholders = true },
-        .{ .source = "agents/_template/tools/example_tool.zig", .dest = "tools/example_tool.zig", .process_placeholders = true },
+        .{ .source = "agents/_template/tools/ExampleTool.zig", .dest = "tools/ExampleTool.zig", .process_placeholders = true },
         .{ .source = "agents/_template/README.md", .dest = "README.md", .process_placeholders = true },
     };
 
@@ -2416,6 +2536,8 @@ fn printHelp() void {
     std.log.info("", .{});
     std.log.info("📚 EXAMPLES:", .{});
     std.log.info("  zig build example-stylize          # Run stylize trait system demo", .{});
+    std.log.info("  zig build example-tabs             # Run tabs widget demo", .{});
+    std.log.info("  zig build example-multi-resolution-canvas  # Run canvas demo", .{});
     std.log.info("  zig build run-typing-demo          # Run typing animation demo", .{});
     std.log.info("", .{});
     std.log.info("💡 QUICK START EXAMPLES:", .{});
@@ -2568,6 +2690,27 @@ fn setupExampleTargets(ctx: BuildContext, shared_modules: ConditionalSharedModul
     linkSystemDependencies(typing_exe);
     const typing_run = ctx.b.addRunArtifact(typing_exe);
     typing_demo_step.dependOn(&typing_run.step);
+
+    // Multi-resolution canvas demo - demonstrates the unified canvas API
+    const canvas_demo_step = ctx.b.step("example-multi-resolution-canvas", "Run multi-resolution canvas demo");
+    const canvas_module = ctx.b.addModule("multi_resolution_canvas_demo", .{
+        .target = ctx.target,
+        .optimize = ctx.optimize,
+        .root_source_file = ctx.b.path("examples/multi_resolution_canvas_demo.zig"),
+    });
+
+    // Add necessary imports for the canvas demo
+    if (shared_modules.render) |render| canvas_module.addImport("render_shared", render);
+    if (shared_modules.term) |term| canvas_module.addImport("term_shared", term);
+    if (shared_modules.components) |components| canvas_module.addImport("components_shared", components);
+
+    const canvas_exe = ctx.b.addExecutable(.{
+        .name = "multi-resolution-canvas-demo",
+        .root_module = canvas_module,
+    });
+    linkSystemDependencies(canvas_exe);
+    const canvas_run = ctx.b.addRunArtifact(canvas_exe);
+    canvas_demo_step.dependOn(&canvas_run.step);
 }
 
 fn setupAgentExecutable(ctx: BuildContext, agent_entry: *std.Build.Module, manifest: ?AgentManifest) void {

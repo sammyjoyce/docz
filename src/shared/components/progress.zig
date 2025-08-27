@@ -22,8 +22,8 @@ const ComponentState = base.ComponentState;
 const RenderContext = base.RenderContext;
 const Event = base.Event;
 
-// Adaptive renderer integration
-const adaptive_renderer = @import("../render/mod.zig");
+// Adaptive renderer integration (via shared module)
+const adaptive_renderer = @import("render_shared");
 const AdaptiveRenderer = adaptive_renderer.AdaptiveRenderer;
 const RenderMode = adaptive_renderer.RenderTier;
 const cacheKey = adaptive_renderer.cacheKey;
@@ -905,7 +905,7 @@ pub const AdaptiveProgress = struct {
 };
 
 /// Render progress bar using renderer
-pub fn renderProgress(renderer: *@import("../render/Renderer.zig").Renderer, progress_data: AdaptiveProgress) !void {
+pub fn renderProgress(renderer: *@import("render_shared").Renderer, progress_data: AdaptiveProgress) !void {
     try progress_data.validate();
 
     const key = cacheKey("progress_{d}_{?s}_{}_{}_{?d}", .{ progress_data.value, progress_data.label, progress_data.percentage, progress_data.eta, progress_data.eta_seconds });
@@ -941,7 +941,7 @@ pub fn renderProgress(renderer: *@import("../render/Renderer.zig").Renderer, pro
 }
 
 /// Render progress bar from ProgressData
-pub fn renderProgressData(renderer: *@import("../render/Renderer.zig").Renderer, data: *ProgressData) !void {
+pub fn renderProgressData(renderer: *@import("render_shared").Renderer, data: *ProgressData) !void {
     const key = cacheKey("progress_data_{d}_{?s}_{}_{}_{}", .{ data.value, data.label, data.show_percentage, data.show_eta, data.show_rate });
 
     if (renderer.cache.get(key, renderer.render_tier)) |cached| {
@@ -972,11 +972,11 @@ pub fn renderProgressData(renderer: *@import("../render/Renderer.zig").Renderer,
 
 /// Create animated progress bar that updates over time
 pub const Animated = struct {
-    renderer: *@import("../render/Renderer.zig").Renderer,
+    renderer: *@import("render_shared").Renderer,
     data: ProgressData,
     start_time: i64,
 
-    pub fn init(renderer: *@import("../render/Renderer.zig").Renderer, progress: AdaptiveProgress) !Animated {
+    pub fn init(renderer: *@import("render_shared").Renderer, progress: AdaptiveProgress) !Animated {
         const data = try progress.toProgressData(renderer.allocator);
         return Animated{
             .renderer = renderer,

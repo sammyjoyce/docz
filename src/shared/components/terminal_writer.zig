@@ -3,7 +3,7 @@
 //! Wraps term/writer.zig functionality with additional convenience methods
 
 const std = @import("std");
-const term_writer = @import("../term/writer.zig");
+const term_writer = @import("term_shared").writer;
 
 /// TerminalWriter provides high-level terminal output functionality
 /// Wraps the low-level term/writer.zig with additional convenience methods

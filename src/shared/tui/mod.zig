@@ -32,8 +32,7 @@ pub const utils = @import("utils/mod.zig");
 // Dashboard system - graphics capabilities
 pub const dashboard = @import("widgets/dashboard/mod.zig");
 
-// Agent interface system
-pub const agent_interface = @import("agent_interface.zig");
+// Agent interface system is available as a separate module
 
 // Convenience re-exports for backward compatibility
 pub const Bounds = bounds.Bounds;
@@ -88,9 +87,7 @@ pub const Sparkline = dashboard.Sparkline;
 pub const KPICard = dashboard.KPICard;
 pub const Gauge = dashboard.Gauge;
 
-// Agent interface exports
-pub const Agent = agent_interface.Agent;
-pub const AgentConfig = agent_interface.Config;
+// Agent interface is available as a separate module
 
 // Renderer system exports
 pub const Renderer = renderer.Renderer;
@@ -111,8 +108,7 @@ pub const CommandHistory = utils.CommandHistory;
 // Factory functions
 pub const createRenderer = renderer.createRenderer;
 pub const createDashboard = dashboard.createDashboard;
-pub const createAgent = agent_interface.createAgent;
-pub const runInteractive = agent_interface.runInteractive;
+// Agent interface functions are available in the separate agent_interface module
 
 // Global initialization functions
 pub fn initTUI(allocator: std.mem.Allocator) !void {

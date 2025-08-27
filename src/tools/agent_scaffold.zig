@@ -132,12 +132,12 @@ fn copyTemplateFiles(
 ) anyerror!void {
     const templateFiles = [_][]const u8{
         "main.zig",
-        "Agent.zig",
+        "agent.zig",
         "spec.zig",
         "system_prompt.txt",
         "README.md",
         "tools/mod.zig",
-        "tools/example_tool.zig",
+        "tools/ExampleTool.zig",
     };
 
     for (templateFiles) |templateFile| {

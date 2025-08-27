@@ -1,4 +1,4 @@
-//! Enhanced CLI Capabilities Demo
+//! CLI Capabilities Demo
 //!
 //! This demo showcases all the terminal capabilities and components:
 //! - Terminal abstraction with progressive enhancement
@@ -11,7 +11,7 @@
 //! the appropriate features for maximum compatibility.
 
 const std = @import("std");
-const unified = @import("../../src/shared/term/unified.zig");
+const terminal_mod = @import("../../src/shared/term/terminal_mod.zig");
 
 // Our components
 const terminal_abstraction = @import("../core/terminal_abstraction.zig");
@@ -38,13 +38,13 @@ const DemoConfig = struct {
 /// CLI Demo
 pub const CliDemo = struct {
     allocator: Allocator,
-    terminal: *unified.Terminal,
+    terminal: *terminal_mod.Terminal,
     abstraction: TerminalAbstraction,
     config: DemoConfig,
 
     pub fn init(allocator: Allocator, config: DemoConfig) !CliDemo {
-        const terminal = try allocator.create(unified.Terminal);
-        terminal.* = try unified.Terminal.init(allocator);
+        const terminal = try allocator.create(terminal_mod.Terminal);
+        terminal.* = try terminal_mod.Terminal.init(allocator);
 
         return CliDemo{
             .allocator = allocator,

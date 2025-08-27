@@ -1,16 +1,16 @@
 const std = @import("std");
 const adaptive_render = @import("../../src/render/mod.zig");
 const AdaptiveRenderer = adaptive_render.AdaptiveRenderer;
-const EnhancedRenderer = adaptive_render.EnhancedRenderer;
+const Renderer = adaptive_render.Renderer;
 const Progress = adaptive_render.Progress;
 const Table = adaptive_render.Table;
 const Chart = adaptive_render.Chart;
 const AnimatedProgress = adaptive_render.AnimatedProgress;
 const Color = @import("../../src/shared/term/ansi/color.zig").Color;
 
-/// Adaptive CLI that demonstrates enhanced terminal features
+/// Adaptive CLI that demonstrates terminal features
 pub const AdaptiveCLI = struct {
-    renderer: EnhancedRenderer,
+    renderer: Renderer,
     config: Config,
 
     pub const Config = struct {
@@ -21,7 +21,7 @@ pub const AdaptiveCLI = struct {
     };
 
     pub fn init(allocator: std.mem.Allocator, config: Config) !AdaptiveCLI {
-        const renderer = try EnhancedRenderer.init(allocator);
+        const renderer = try Renderer.init(allocator);
 
         return AdaptiveCLI{
             .renderer = renderer,

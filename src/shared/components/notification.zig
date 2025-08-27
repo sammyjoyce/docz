@@ -11,7 +11,7 @@
 //! - Common sanitization and formatting utilities
 
 const std = @import("std");
-const term_shared = @import("../term/mod.zig");
+const term_shared = @import("term_shared");
 const ansi_notifications = term_shared.ansi.notification;
 
 /// Common notification types with semantic meaning
@@ -78,7 +78,7 @@ pub const NotificationType = enum {
 };
 
 /// Configuration for notification rendering and behavior
-pub const NotificationConfig = struct {
+pub const NotificationConfiguration = struct {
     // Behavior settings
     enableSystemNotifications: bool = true,
     enableSound: bool = false,
@@ -109,7 +109,7 @@ pub const NotificationAction = struct {
 };
 
 /// Base notification structure with common fields
-pub const BaseNotification = struct {
+pub const Notification = struct {
     const Self = @This();
 
     // Core notification data
@@ -117,7 +117,7 @@ pub const BaseNotification = struct {
     message: []const u8,
     notification_type: NotificationType,
     timestamp: i64,
-    config: NotificationConfig,
+    config: NotificationConfiguration,
 
     // Optional metadata
     actions: []const NotificationAction = &[_]NotificationAction{},
@@ -138,7 +138,7 @@ pub const BaseNotification = struct {
         title: []const u8,
         message: []const u8,
         notification_type: NotificationType,
-        config: NotificationConfig,
+        config: NotificationConfiguration,
     ) Self {
         return Self{
             .title = title,
@@ -154,7 +154,7 @@ pub const BaseNotification = struct {
         title: []const u8,
         message: []const u8,
         notification_type: NotificationType,
-        config: NotificationConfig,
+        config: NotificationConfiguration,
         actions: []const NotificationAction,
     ) Self {
         return Self{
@@ -172,7 +172,7 @@ pub const BaseNotification = struct {
         title: []const u8,
         message: []const u8,
         progress: f32,
-        config: NotificationConfig,
+        config: NotificationConfiguration,
     ) Self {
         return Self{
             .title = title,
@@ -257,7 +257,7 @@ pub const SystemNotification = struct {
         writer: anytype,
         allocator: std.mem.Allocator,
         caps: term_shared.TermCaps,
-        notification: *const BaseNotification,
+        notification: *const Notification,
     ) !void {
         try send(writer, allocator, caps, notification.title, notification.message);
     }
@@ -368,7 +368,7 @@ pub const NotificationUtils = struct {
     pub fn calculateDimensions(
         title: []const u8,
         message: []const u8,
-        config: NotificationConfig,
+        config: NotificationConfiguration,
     ) struct { width: u32, height: u32 } {
         const title_len = std.unicode.utf8CountCodepoints(title) catch title.len;
         const message_len = std.unicode.utf8CountCodepoints(message) catch message.len;

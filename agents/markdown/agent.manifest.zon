@@ -51,10 +51,10 @@
             .network_access = true,
 
             // Whether agent supports interactive terminal UI
-            .terminal_ui = true,
+            .terminal_ui = false,
 
             // Whether agent can process images/media
-            .media_processing = true,
+            .media_processing = false,
 
             // Whether agent supports real-time streaming
             .streaming_responses = true,

@@ -1,7 +1,9 @@
 //! Interactive Agent Launcher - Core launcher functionality
 //!
-//! Provides a comprehensive launcher interface with agent discovery, interactive selection,
-//! session management, and rich visual features for the multi-agent terminal AI system.
+//! Provides a comprehensive launcher interface with agent discovery, interactive
+//! selection, session management, and simple stats persistence.
+//!
+//! Zig: 0.15.1
 
 const std = @import("std");
 const fs = std.fs;
@@ -9,10 +11,11 @@ const mem = std.mem;
 const fmt = std.fmt;
 const time = std.time;
 const json = std.json;
+
 const Allocator = std.mem.Allocator;
 
 // Core system imports
-const AgentRegistry = @import("agent_registry.zig");
+const AgentRegistry = @import("agent_registry.zig").AgentRegistry;
 
 /// Session types for agent launching
 pub const SessionType = enum {
@@ -26,17 +29,17 @@ pub const SessionType = enum {
 /// Launch options for agent execution
 pub const LaunchOptions = struct {
     /// Agent name to launch
-    agentName: []const u8,
+    agent_name: []const u8,
     /// Session type
-    sessionType: SessionType = .interactive,
+    session_type: SessionType = .interactive,
     /// Custom configuration overrides
-    configOverrides: ?std.StringHashMap([]const u8) = null,
+    config_overrides: ?std.StringHashMap([]const u8) = null,
     /// Environment variables
     environment: ?std.StringHashMap([]const u8) = null,
     /// API keys for authentication
-    apiKeys: ?std.StringHashMap([]const u8) = null,
+    api_keys: ?std.StringHashMap([]const u8) = null,
     /// Working directory
-    workingDir: ?[]const u8 = null,
+    working_dir: ?[]const u8 = null,
     /// Command line arguments
     args: ?[][]const u8 = null,
     /// Enable debug mode
@@ -44,133 +47,135 @@ pub const LaunchOptions = struct {
     /// Enable verbose output
     verbose: bool = false,
     /// Session timeout in seconds
-    timeoutSeconds: ?u32 = null,
+    timeout_seconds: ?u32 = null,
 };
 
 /// Agent statistics for usage tracking
 pub const AgentStats = struct {
     /// Total launches
-    totalLaunches: u64 = 0,
+    total_launches: u64 = 0,
     /// Successful launches
-    successfulLaunches: u64 = 0,
+    successful_launches: u64 = 0,
     /// Failed launches
-    failedLaunches: u64 = 0,
+    failed_launches: u64 = 0,
     /// Average session duration
-    averageDurationSeconds: f64 = 0,
+    average_duration_seconds: f64 = 0,
     /// Last launch timestamp
-    lastLaunch: ?i64 = null,
+    last_launch: ?i64 = null,
     /// Favorite status
-    isFavorite: bool = false,
+    is_favorite: bool = false,
     /// Launch history
-    launchHistory: std.ArrayList(AgentStats.LaunchRecord),
+    launch_history: std.ArrayList(AgentStats.LaunchRecord),
 
     /// Individual launch record
     pub const LaunchRecord = struct {
         timestamp: i64,
         success: bool,
-        durationSeconds: u32,
-        sessionType: SessionType,
-        errorMessage: ?[]const u8 = null,
+        duration_seconds: u32,
+        session_type: SessionType,
+        error_message: ?[]const u8 = null,
     };
 };
 
 /// Launcher configuration with comprehensive options
 pub const LauncherConfig = struct {
     /// Enable interactive mode with full TUI
-    enableInteractive: bool = true,
+    enable_interactive: bool = true,
     /// Enable batch mode for scripting
-    enableBatchMode: bool = false,
+    enable_batch_mode: bool = false,
     /// Show agent previews and details
-    showPreviews: bool = true,
+    show_previews: bool = true,
     /// Enable search and filtering
-    enableSearch: bool = true,
+    enable_search: bool = true,
     /// Enable category-based organization
-    enableCategories: bool = true,
+    enable_categories: bool = true,
     /// Enable favorites system
-    enableFavorites: bool = true,
+    enable_favorites: bool = true,
     /// Enable recent agents tracking
-    enableRecent: bool = true,
+    enable_recent: bool = true,
     /// Enable visual features (icons, colors, animations)
-    enableVisualFeatures: bool = true,
+    enable_visual_features: bool = true,
     /// Enable mouse support
-    enableMouse: bool = true,
+    enable_mouse: bool = true,
     /// Enable keyboard shortcuts
-    enableShortcuts: bool = true,
+    enable_shortcuts: bool = true,
     /// Default session type
-    defaultSessionType: SessionType = .interactive,
+    default_session_type: SessionType = .interactive,
     /// Session persistence directory
-    sessionDir: []const u8 = ".agent_sessions",
+    session_dir: []const u8 = ".agent_sessions",
     /// Favorites file path
-    favoritesFile: []const u8 = ".agent_favorites.json",
+    favorites_file: []const u8 = ".agent_favorites.json",
     /// Recent agents file path
-    recentFile: []const u8 = ".agent_recent.json",
+    recent_file: []const u8 = ".agent_recent.json",
     /// Statistics file path
-    statsFile: []const u8 = ".agent_stats.json",
+    stats_file: []const u8 = ".agent_stats.json",
     /// Show welcome screen
-    showWelcome: bool = true,
+    show_welcome: bool = true,
     /// Welcome message
-    welcomeMessage: []const u8 = "Welcome to the Multi-Agent Terminal AI System",
+    welcome_message: []const u8 = "Welcome to the Multi-Agent Terminal AI System",
     /// Enable help system
-    enableHelp: bool = true,
+    enable_help: bool = true,
     /// Enable tutorial mode
-    enableTutorial: bool = false,
+    enable_tutorial: bool = false,
     /// Theme name
-    themeName: []const u8 = "dark",
+    theme_name: []const u8 = "dark",
     /// Refresh rate for interactive mode
-    refreshRateMs: u64 = 100,
+    refresh_rate_ms: u64 = 100,
 };
 
 /// Main interactive agent launcher
 pub const AgentLauncher = struct {
+    const Self = @This();
+
     allocator: Allocator,
     config: LauncherConfig,
     registry: AgentRegistry,
 
     // State management
     favorites: std.StringHashMap(void),
-    recentAgents: std.ArrayList([]const u8),
-    agentStats: std.StringHashMap(AgentStats),
-    searchQuery: []const u8 = "",
-    selectedCategory: ?[]const u8 = null,
-    selectedIndex: usize = 0,
+    recent_agents: std.ArrayList([]const u8),
+    agent_stats: std.StringHashMap(AgentStats),
+    search_query: []const u8 = "",
+    selected_category: ?[]const u8 = null,
+    selected_index: usize = 0,
 
     // UI state
-    isRunning: bool = false,
-    needsRedraw: bool = true,
-    lastInputTime: i64 = 0,
+    is_running: bool = false,
+    needs_redraw: bool = true,
+    last_input_time: i64 = 0,
 
     /// Initialize the agent launcher
-    pub fn init(allocator: Allocator, config: LauncherConfig) !AgentLauncher {
+    pub fn init(allocator: Allocator, config: LauncherConfig) !Self {
         // Initialize agent registry
         var registry = AgentRegistry.init(allocator);
         try registry.discoverAgents("agents");
 
         // Load persistent data
         var favorites = std.StringHashMap(void).init(allocator);
-        var recentAgents = std.ArrayList([]const u8).init(allocator);
-        var agentStats = std.StringHashMap(AgentStats).init(allocator);
+        var recent_agents = std.ArrayList([]const u8).init(allocator);
+        var agent_stats = std.StringHashMap(AgentStats).init(allocator);
 
         // Load favorites
-        try loadFavorites(allocator, config.favoritesFile, &favorites);
+        try loadFavorites(allocator, config.favorites_file, &favorites);
 
         // Load recent agents
-        try loadRecentAgents(allocator, config.recentFile, &recentAgents);
+        try loadRecentAgents(allocator, config.recent_file, &recent_agents);
 
         // Load statistics
-        try loadAgentStats(allocator, config.statsFile, &agentStats);
+        try loadAgentStats(allocator, config.stats_file, &agent_stats);
 
-        return AgentLauncher{
+        return Self{
             .allocator = allocator,
             .config = config,
             .registry = registry,
             .favorites = favorites,
-            .recentAgents = recentAgents,
-            .agentStats = agentStats,
+            .recent_agents = recent_agents,
+            .agent_stats = agent_stats,
         };
     }
 
     /// Deinitialize the launcher and clean up resources
-    pub fn deinit(self: *AgentLauncher) void {
+    pub fn deinit(self: *Self) void {
         // Clean up collections
         self.registry.deinit();
 
@@ -182,71 +187,71 @@ pub const AgentLauncher = struct {
         self.favorites.deinit();
 
         // Clean up recent agents
-        for (self.recentAgents.items) |agent| {
+        for (self.recent_agents.items) |agent| {
             self.allocator.free(agent);
         }
-        self.recentAgents.deinit();
+        self.recent_agents.deinit();
 
         // Clean up stats
-        var stats_it = self.agentStats.iterator();
+        var stats_it = self.agent_stats.iterator();
         while (stats_it.next()) |entry| {
             self.allocator.free(entry.key_ptr.*);
             var stats = entry.value_ptr.*;
-            for (stats.launchHistory.items) |*record| {
-                if (record.errorMessage) |msg| {
+            for (stats.launch_history.items) |*record| {
+                if (record.error_message) |msg| {
                     self.allocator.free(msg);
                 }
             }
-            stats.launchHistory.deinit();
+            stats.launch_history.deinit();
         }
-        self.agentStats.deinit();
+        self.agent_stats.deinit();
 
         // Clean up search query
-        if (self.searchQuery.len > 0) {
-            self.allocator.free(self.searchQuery);
+        if (self.search_query.len > 0) {
+            self.allocator.free(self.search_query);
         }
 
         // Clean up selected category
-        if (self.selectedCategory) |cat| {
+        if (self.selected_category) |cat| {
             self.allocator.free(cat);
         }
     }
 
-    /// Run the interactive launcher
+    /// Run the launcher
     pub fn run(self: *Self) !void {
-        if (self.config.enable_interactive) {
+        if (self.config.enable_interactive and !self.config.enable_batch_mode) {
             try self.runInteractive();
         } else {
             try self.runBatch();
         }
     }
 
-    /// Run interactive launcher with full TUI
+    /// Run interactive launcher (simple terminal UI)
     pub fn runInteractive(self: *Self) !void {
-        self.isRunning = true;
-        defer self.isRunning = false;
+        self.is_running = true;
+        defer self.is_running = false;
 
         // Show welcome screen
-        if (self.config.showWelcome) {
+        if (self.config.show_welcome) {
             try self.showWelcomeScreen();
         }
 
         // Get available agents
         const agents = try self.registry.getAllAgents();
         defer {
+            // Free agent copies allocated by registry
             for (agents) |agent| {
                 self.allocator.free(agent.name);
                 self.allocator.free(agent.description);
                 self.allocator.free(agent.version);
                 self.allocator.free(agent.author);
-                for (agent.tags) |tag| {
-                    self.allocator.free(tag);
-                }
+
+                for (agent.tags) |tag| self.allocator.free(tag);
                 if (agent.tags.len > 0) self.allocator.free(agent.tags);
-                for (agent.capabilities) |cap| {
-                    self.allocator.free(cap);
-                }
+
+                for (agent.capabilities) |cap| self.allocator.free(cap);
                 if (agent.capabilities.len > 0) self.allocator.free(agent.capabilities);
+
                 self.allocator.free(agent.configPath);
                 self.allocator.free(agent.entryPath);
                 agent.metadata.deinit();
@@ -261,9 +266,8 @@ pub const AgentLauncher = struct {
         try self.savePersistentData();
     }
 
-    /// Run batch mode launcher
+    /// Run batch mode launcher (list to stdout)
     pub fn runBatch(self: *Self) !void {
-        // Get available agents
         const agents = try self.registry.getAllAgents();
         defer {
             for (agents) |agent| {
@@ -271,14 +275,13 @@ pub const AgentLauncher = struct {
                 self.allocator.free(agent.description);
                 self.allocator.free(agent.version);
                 self.allocator.free(agent.author);
-                for (agent.tags) |tag| {
-                    self.allocator.free(tag);
-                }
+
+                for (agent.tags) |tag| self.allocator.free(tag);
                 if (agent.tags.len > 0) self.allocator.free(agent.tags);
-                for (agent.capabilities) |cap| {
-                    self.allocator.free(cap);
-                }
+
+                for (agent.capabilities) |cap| self.allocator.free(cap);
                 if (agent.capabilities.len > 0) self.allocator.free(agent.capabilities);
+
                 self.allocator.free(agent.configPath);
                 self.allocator.free(agent.entryPath);
                 agent.metadata.deinit();
@@ -286,7 +289,6 @@ pub const AgentLauncher = struct {
             self.allocator.free(agents);
         }
 
-        // Display agents in batch mode
         std.debug.print("Available Agents:\n", .{});
         std.debug.print("================\n", .{});
         for (agents, 0..) |agent, i| {
@@ -307,40 +309,39 @@ pub const AgentLauncher = struct {
         std.debug.print("Use 'zig build -Dagent=<name> run' to launch an agent\n", .{});
     }
 
-    /// Show welcome screen with branding and quick actions
+    /// Show welcome screen
     pub fn showWelcomeScreen(self: *Self) !void {
         std.debug.print("\n", .{});
         std.debug.print("╔══════════════════════════════════════════════════════════════════════════════╗\n", .{});
         std.debug.print("║                        Multi-Agent Terminal AI System                       ║\n", .{});
         std.debug.print("╚══════════════════════════════════════════════════════════════════════════════╝\n", .{});
         std.debug.print("\n", .{});
-        std.debug.print("{s}\n", .{self.config.welcomeMessage});
-        std.debug.print("\n", .{});
+        std.debug.print("{s}\n\n", .{self.config.welcome_message});
 
         // Display recent agents
-        if (self.recentAgents.items.len > 0) {
+        if (self.recent_agents.items.len > 0) {
             std.debug.print("Recent agents:\n", .{});
-            for (self.recentAgents.items, 0..) |agent, i| {
-                if (i >= 3) break; // Show max 3 recent agents
+            for (self.recent_agents.items, 0..) |agent, i| {
+                if (i >= 3) break; // Show max 3
                 std.debug.print("  • {s}\n", .{agent});
             }
             std.debug.print("\n", .{});
         }
 
         std.debug.print("Press Enter to continue...", .{});
-        var buf: [1]u8 = undefined;
-        _ = try std.io.getStdIn().read(&buf);
+        var ch: [1]u8 = undefined;
+        _ = try std.io.getStdIn().read(&ch);
         std.debug.print("\n\n", .{});
     }
 
-    /// Display interactive agent menu
-    pub fn displayAgentMenu(self: *Self, agents: []AgentRegistry.Agent) !void {
+    /// Display simple interactive agent menu
+    pub fn displayAgentMenu(self: *Self, agents: []@import("agent_registry.zig").Agent) !void {
         while (true) {
             std.debug.print("\nAvailable Agents:\n", .{});
             std.debug.print("================\n", .{});
 
             for (agents, 0..) |agent, i| {
-                const marker = if (i == self.selectedIndex) "▶" else " ";
+                const marker = if (i == self.selected_index) "▶" else " ";
                 const favorite = if (self.favorites.contains(agent.name)) "★" else " ";
                 std.debug.print("{s} {s} [{d}] {s} v{s}\n", .{ marker, favorite, i + 1, agent.name, agent.version });
                 std.debug.print("      {s}\n", .{agent.description});
@@ -362,64 +363,32 @@ pub const AgentLauncher = struct {
 
             var buf: [256]u8 = undefined;
             const input = try std.io.getStdIn().readUntilDelimiterOrEof(&buf, '\n');
+
             if (input) |line| {
                 const trimmed = mem.trim(u8, line, &std.ascii.whitespace);
-                if (mem.eql(u8, trimmed, "q") or mem.eql(u8, trimmed, "quit")) {
-                    break;
-                } else if (mem.eql(u8, trimmed, "f")) {
-                    if (self.selectedIndex < agents.len) {
-                        try self.toggleFavorite(agents[self.selectedIndex].name);
-                    }
-                } else if (mem.eql(u8, trimmed, "")) {
-                    // Launch selected agent
-                    if (self.selectedIndex < agents.len) {
-                        const options = LaunchOptions{
-                             .agentName = agents[self.selectedIndex].name,
-                             .sessionType = self.config.defaultSessionType,
-                         };
-                         try self.launchAgent(options);
-                         try self.addRecentAgent(agents[self.selectedIndex].name);
-                     }
-                 } else if (std.fmt.parseInt(usize, trimmed, 10)) |index| {
-                     if (index > 0 and index <= agents.len) {
-                         self.selectedIndex = index - 1;
-                     }
-                 }
-            }
-        }
-    }
-                    std.debug.print("\n", .{});
-                }
-                std.debug.print("\n", .{});
-            }
 
-            std.debug.print("Commands: [1-{}] select, [f]avorite, [q]uit, [Enter] launch\n", .{agents.len});
-            std.debug.print("Select agent: ", .{});
-
-            var buf: [256]u8 = undefined;
-            const input = try std.io.getStdIn().readUntilDelimiterOrEof(&buf, '\n');
-            if (input) |line| {
-                const trimmed = mem.trim(u8, line, &std.ascii.whitespace);
                 if (mem.eql(u8, trimmed, "q") or mem.eql(u8, trimmed, "quit")) {
                     break;
                 } else if (mem.eql(u8, trimmed, "f")) {
                     if (self.selected_index < agents.len) {
                         try self.toggleFavorite(agents[self.selected_index].name);
                     }
-                 } else if (mem.eql(u8, trimmed, "")) {
-                     // Launch selected agent
-                     if (self.selected_index < agents.len) {
-                         const options = LaunchOptions{
-                             .agentName = agents[self.selected_index].name,
-                             .sessionType = self.config.default_session_type,
-                         };
-                         try self.launchAgent(options);
-                         try self.addRecentAgent(agents[self.selected_index].name);
-                     }
-                 }
-                } else if (std.fmt.parseInt(usize, trimmed, 10)) |index| {
-                    if (index > 0 and index <= agents.len) {
-                        self.selected_index = index - 1;
+                } else if (trimmed.len == 0) {
+                    // Launch selected agent
+                    if (self.selected_index < agents.len) {
+                        const options = LaunchOptions{
+                            .agent_name = agents[self.selected_index].name,
+                            .session_type = self.config.default_session_type,
+                        };
+                        try self.launchAgent(options);
+                        try self.addRecentAgent(agents[self.selected_index].name);
+                    }
+                } else {
+                    const maybe_index = std.fmt.parseInt(usize, trimmed, 10) catch null;
+                    if (maybe_index) |idx1| {
+                        if (idx1 > 0 and idx1 <= agents.len) {
+                            self.selected_index = idx1 - 1;
+                        }
                     }
                 }
             }
@@ -429,46 +398,44 @@ pub const AgentLauncher = struct {
     /// Launch an agent with specified options
     pub fn launchAgent(self: *Self, options: LaunchOptions) !void {
         // Validate agent exists
-        const agentInfo = (try self.registry.getAgent(options.agentName)) orelse {
+        const agent_info = (try self.registry.getAgent(options.agent_name)) orelse {
             return error.AgentNotFound;
         };
 
-        // Update statistics
-        try self.updateAgentStats(options.agentName, true, 0, options.sessionType, null);
+        // Update statistics (start)
+        try self.updateAgentStats(options.agent_name, true, 0, options.session_type, null);
 
         // Add to recent agents
-        try self.addRecentAgent(options.agentName);
+        try self.addRecentAgent(options.agent_name);
 
-        // Launch agent (this would integrate with the actual agent execution system)
-        try self.executeAgentSimple(agentInfo, options);
+        // Execute agent (placeholder)
+        try self.executeAgentSimple(agent_info, options);
 
-        // Update statistics on successful completion
-        try self.updateAgentStats(options.agentName, false, 0, options.sessionType, null);
+        // Update statistics (completion)
+        try self.updateAgentStats(options.agent_name, false, 0, options.session_type, null);
     }
 
-    /// Execute the actual agent (simplified version)
-    pub fn executeAgentSimple(_: *Self, agentInfo: AgentRegistry.Agent, options: LaunchOptions) !void {
-        // Simulate agent execution
-        std.debug.print("Launching agent: {s} v{s}\n", .{ agentInfo.name, agentInfo.version });
-        std.debug.print("Description: {s}\n", .{agentInfo.description});
-        std.debug.print("Author: {s}\n", .{agentInfo.author});
+    /// Execute the actual agent (simplified)
+    pub fn executeAgentSimple(self: *Self, agent_info: @import("agent_registry.zig").Agent, options: LaunchOptions) !void {
+        _ = self;
 
-        if (options.debug) {
-            std.debug.print("Debug mode enabled\n", .{});
-        }
+        std.debug.print("Launching agent: {s} v{s}\n", .{ agent_info.name, agent_info.version });
+        std.debug.print("Description: {s}\n", .{agent_info.description});
+        std.debug.print("Author: {s}\n", .{agent_info.author});
+
+        if (options.debug) std.debug.print("Debug mode enabled\n", .{});
 
         if (options.verbose) {
             std.debug.print("Verbose output enabled\n", .{});
-            std.debug.print("Session type: {}\n", .{options.sessionType});
-            std.debug.print("Working directory: {s}\n", .{options.workingDir orelse "current"});
+            std.debug.print("Session type: {}\n", .{options.session_type});
+            std.debug.print("Working directory: {s}\n", .{options.working_dir orelse "current"});
         }
 
-        // In a real implementation, this would:
-        // 1. Load the agent module dynamically
-        // 2. Initialize the agent with the provided configuration
-        // 3. Set up the execution environment
-        // 4. Run the agent main loop
-        // 5. Handle agent termination and cleanup
+        // TODO: integrate with actual agent execution system:
+        // 1. Load agent module dynamically
+        // 2. Initialize with config/environment
+        // 3. Run main loop
+        // 4. Handle termination/cleanup
     }
 
     /// Add agent to recent list
@@ -477,7 +444,8 @@ pub const AgentLauncher = struct {
         var i: usize = 0;
         while (i < self.recent_agents.items.len) {
             if (mem.eql(u8, self.recent_agents.items[i], agent_name)) {
-                _ = self.recent_agents.orderedRemove(i);
+                const removed = self.recent_agents.orderedRemove(i);
+                self.allocator.free(removed);
                 break;
             }
             i += 1;
@@ -527,7 +495,14 @@ pub const AgentLauncher = struct {
     }
 
     /// Update agent statistics
-    pub fn updateAgentStats(self: *Self, agent_name: []const u8, is_start: bool, duration_seconds: u32, session_type: SessionType, error_message: ?[]const u8) !void {
+    pub fn updateAgentStats(
+        self: *Self,
+        agent_name: []const u8,
+        is_start: bool,
+        duration_seconds: u32,
+        session_type: SessionType,
+        error_message: ?[]const u8,
+    ) !void {
         const name_copy = try self.allocator.dupe(u8, agent_name);
         defer self.allocator.free(name_copy);
 
@@ -551,7 +526,7 @@ pub const AgentLauncher = struct {
 
             // Add launch record
             const record = AgentStats.LaunchRecord{
-                .timestamp = stats.last_launch.?,
+                .timestamp = stats.last_launch orelse time.timestamp(),
                 .success = error_message == null,
                 .duration_seconds = duration_seconds,
                 .session_type = session_type,
@@ -560,14 +535,10 @@ pub const AgentLauncher = struct {
             try stats.launch_history.append(record);
 
             // Update average duration
-            const total_duration: f64 = blk: {
-                var sum: u64 = 0;
-                for (stats.launch_history.items) |rec| {
-                    sum += rec.duration_seconds;
-                }
-                break :blk @as(f64, @floatFromInt(sum));
-            };
-            stats.average_duration_seconds = total_duration / @as(f64, @floatFromInt(stats.launch_history.items.len));
+            var sum: u64 = 0;
+            for (stats.launch_history.items) |rec| sum += rec.duration_seconds;
+            stats.average_duration_seconds = @as(f64, @floatFromInt(sum)) /
+                @as(f64, @floatFromInt(stats.launch_history.items.len));
         }
     }
 
@@ -579,7 +550,7 @@ pub const AgentLauncher = struct {
     }
 };
 
-/// Helper functions for persistent data management
+/// ---------- Helper functions for persistent data management ----------
 fn parseSessionType(type_str: []const u8) SessionType {
     if (mem.eql(u8, type_str, "interactive")) return .interactive;
     if (mem.eql(u8, type_str, "batch")) return .batch;
@@ -684,21 +655,21 @@ fn loadAgentStats(allocator: Allocator, filepath: []const u8, stats: *std.String
 
         const agent_name = try allocator.dupe(u8, entry.key_ptr.*);
         var agent_stats = AgentStats{
-            .launchHistory = std.ArrayList(AgentStats.LaunchRecord).init(allocator),
+            .launch_history = std.ArrayList(AgentStats.LaunchRecord).init(allocator),
         };
 
         const obj = entry.value_ptr.*.object;
 
         // Load basic stats
-        if (obj.get("totalLaunches")) |v| agent_stats.totalLaunches = @intCast(v.integer);
-        if (obj.get("successfulLaunches")) |v| agent_stats.successfulLaunches = @intCast(v.integer);
-        if (obj.get("failedLaunches")) |v| agent_stats.failedLaunches = @intCast(v.integer);
-        if (obj.get("averageDurationSeconds")) |v| agent_stats.averageDurationSeconds = v.float;
-        if (obj.get("lastLaunch")) |v| agent_stats.lastLaunch = v.integer;
-        if (obj.get("isFavorite")) |v| agent_stats.isFavorite = v.bool;
+        if (obj.get("total_launches")) |v| agent_stats.total_launches = @intCast(v.integer);
+        if (obj.get("successful_launches")) |v| agent_stats.successful_launches = @intCast(v.integer);
+        if (obj.get("failed_launches")) |v| agent_stats.failed_launches = @intCast(v.integer);
+        if (obj.get("average_duration_seconds")) |v| agent_stats.average_duration_seconds = v.float;
+        if (obj.get("last_launch")) |v| agent_stats.last_launch = v.integer;
+        if (obj.get("is_favorite")) |v| agent_stats.is_favorite = v.bool;
 
         // Load launch history
-        if (obj.get("launchHistory")) |history| {
+        if (obj.get("launch_history")) |history| {
             if (history == .array) {
                 for (history.array.items) |record_val| {
                     if (record_val == .object) {
@@ -706,11 +677,11 @@ fn loadAgentStats(allocator: Allocator, filepath: []const u8, stats: *std.String
                         const record = AgentStats.LaunchRecord{
                             .timestamp = record_obj.get("timestamp").?.integer,
                             .success = record_obj.get("success").?.bool,
-                            .durationSeconds = @intCast(record_obj.get("durationSeconds").?.integer),
-                            .sessionType = parseSessionType(record_obj.get("sessionType").?.string),
-                            .errorMessage = if (record_obj.get("errorMessage")) |msg| try allocator.dupe(u8, msg.string) else null,
+                            .duration_seconds = @intCast(record_obj.get("duration_seconds").?.integer),
+                            .session_type = parseSessionType(record_obj.get("session_type").?.string),
+                            .error_message = if (record_obj.get("error_message")) |msg| try allocator.dupe(u8, msg.string) else null,
                         };
-                        try agent_stats.launchHistory.append(record);
+                        try agent_stats.launch_history.append(record);
                     }
                 }
             }
@@ -734,14 +705,14 @@ fn saveAgentStats(allocator: Allocator, filepath: []const u8, stats: *std.String
 
         const agent_stats = entry.value_ptr.*;
 
-        try agent_obj.put(try allocator.dupe(u8, "totalLaunches"), json.Value{ .integer = @intCast(agent_stats.totalLaunches) });
-        try agent_obj.put(try allocator.dupe(u8, "successfulLaunches"), json.Value{ .integer = @intCast(agent_stats.successfulLaunches) });
-        try agent_obj.put(try allocator.dupe(u8, "failedLaunches"), json.Value{ .integer = @intCast(agent_stats.failedLaunches) });
-        try agent_obj.put(try allocator.dupe(u8, "averageDurationSeconds"), json.Value{ .float = agent_stats.averageDurationSeconds });
-        if (agent_stats.lastLaunch) |ts| {
-            try agent_obj.put(try allocator.dupe(u8, "lastLaunch"), json.Value{ .integer = ts });
+        try agent_obj.put(try allocator.dupe(u8, "total_launches"), json.Value{ .integer = @intCast(agent_stats.total_launches) });
+        try agent_obj.put(try allocator.dupe(u8, "successful_launches"), json.Value{ .integer = @intCast(agent_stats.successful_launches) });
+        try agent_obj.put(try allocator.dupe(u8, "failed_launches"), json.Value{ .integer = @intCast(agent_stats.failed_launches) });
+        try agent_obj.put(try allocator.dupe(u8, "average_duration_seconds"), json.Value{ .float = agent_stats.average_duration_seconds });
+        if (agent_stats.last_launch) |ts| {
+            try agent_obj.put(try allocator.dupe(u8, "last_launch"), json.Value{ .integer = ts });
         }
-        try agent_obj.put(try allocator.dupe(u8, "isFavorite"), json.Value{ .bool = agent_stats.isFavorite });
+        try agent_obj.put(try allocator.dupe(u8, "is_favorite"), json.Value{ .bool = agent_stats.is_favorite });
 
         // Save launch history
         var history_arr = std.ArrayList(json.Value).init(allocator);
@@ -753,16 +724,16 @@ fn saveAgentStats(allocator: Allocator, filepath: []const u8, stats: *std.String
 
             try record_obj.put(try allocator.dupe(u8, "timestamp"), json.Value{ .integer = record.timestamp });
             try record_obj.put(try allocator.dupe(u8, "success"), json.Value{ .bool = record.success });
-            try record_obj.put(try allocator.dupe(u8, "durationSeconds"), json.Value{ .integer = record.durationSeconds });
-            try record_obj.put(try allocator.dupe(u8, "sessionType"), json.Value{ .string = @tagName(record.sessionType) });
-            if (record.errorMessage) |msg| {
-                try record_obj.put(try allocator.dupe(u8, "errorMessage"), json.Value{ .string = msg });
+            try record_obj.put(try allocator.dupe(u8, "duration_seconds"), json.Value{ .integer = record.duration_seconds });
+            try record_obj.put(try allocator.dupe(u8, "session_type"), json.Value{ .string = @tagName(record.session_type) });
+            if (record.error_message) |msg| {
+                try record_obj.put(try allocator.dupe(u8, "error_message"), json.Value{ .string = msg });
             }
 
             try history_arr.append(json.Value{ .object = record_obj });
         }
 
-        try agent_obj.put(try allocator.dupe(u8, "launchHistory"), json.Value{ .array = history_arr });
+        try agent_obj.put(try allocator.dupe(u8, "launch_history"), json.Value{ .array = history_arr });
 
         try json_obj.put(try allocator.dupe(u8, entry.key_ptr.*), json.Value{ .object = agent_obj });
     }
@@ -777,27 +748,27 @@ fn saveAgentStats(allocator: Allocator, filepath: []const u8, stats: *std.String
 /// Create a default launcher configuration
 pub fn createDefaultConfig(_: Allocator) LauncherConfig {
     return LauncherConfig{
-        .enableInteractive = true,
-        .enableBatchMode = false,
-        .showPreviews = true,
-        .enableSearch = true,
-        .enableCategories = true,
-        .enableFavorites = true,
-        .enableRecent = true,
-        .enableVisualFeatures = true,
-        .enableMouse = true,
-        .enableShortcuts = true,
-        .defaultSessionType = .interactive,
-        .sessionDir = ".agent_sessions",
-        .favoritesFile = ".agent_favorites.json",
-        .recentFile = ".agent_recent.json",
-        .statsFile = ".agent_stats.json",
-        .showWelcome = true,
-        .welcomeMessage = "Welcome to the Multi-Agent Terminal AI System",
-        .enableHelp = true,
-        .enableTutorial = false,
-        .themeName = "dark",
-        .refreshRateMs = 100,
+        .enable_interactive = true,
+        .enable_batch_mode = false,
+        .show_previews = true,
+        .enable_search = true,
+        .enable_categories = true,
+        .enable_favorites = true,
+        .enable_recent = true,
+        .enable_visual_features = true,
+        .enable_mouse = true,
+        .enable_shortcuts = true,
+        .default_session_type = .interactive,
+        .session_dir = ".agent_sessions",
+        .favorites_file = ".agent_favorites.json",
+        .recent_file = ".agent_recent.json",
+        .stats_file = ".agent_stats.json",
+        .show_welcome = true,
+        .welcome_message = "Welcome to the Multi-Agent Terminal AI System",
+        .enable_help = true,
+        .enable_tutorial = false,
+        .theme_name = "dark",
+        .refresh_rate_ms = 100,
     };
 }
 

@@ -1,4 +1,4 @@
-//! Advanced Progress Component with Full Terminal Feature Integration
+//! Progress Component with Full Terminal Feature Integration
 //!
 //! This component demonstrates comprehensive usage of terminal capabilities including:
 //! - Kitty Graphics Protocol for real-time charts
@@ -12,10 +12,10 @@
 const std = @import("std");
 
 // Core terminal capabilities
-const unified = @import("../../../src/shared/term/unified.zig");
+const terminal_mod = @import("../../../src/shared/term/terminal_mod.zig");
 const caps_mod = @import("../../../src/shared/term/caps.zig");
 
-// Advanced features that were previously unused
+// Features that were previously unused
 // const kitty_proto = @import("../../../src/shared/term/ansi/kitty.zig");
 // const iterm2_proto = @import("../../../src/shared/term/ansi/iterm2.zig");
 // const finalterm_proto = @import("../../../src/shared/term/ansi/finalterm.zig");
@@ -81,7 +81,7 @@ pub const Progress = struct {
     config: ProgressConfig,
 
     // Terminal interface
-    terminal: *unified.Terminal,
+    terminal: *terminal_mod.Terminal,
     capabilities: caps_mod.TermCaps,
     mode: ProgressMode,
 
@@ -107,7 +107,7 @@ pub const Progress = struct {
     animation_frame: u32,
     render_buffer: std.ArrayList(u8),
 
-    pub fn init(allocator: Allocator, terminal: *unified.Terminal, config: ProgressConfig) !Progress {
+    pub fn init(allocator: Allocator, terminal: *terminal_mod.Terminal, config: ProgressConfig) !Progress {
         const capabilities = terminal.getCapabilities();
         const mode = detectBestMode(capabilities);
 
@@ -311,7 +311,7 @@ pub const Progress = struct {
         // Final notifications
         if (self.config.enable_notifications) {
             const message = finalMessage orelse if (success) "Task completed successfully!" else "Task failed";
-            const level = if (success) unified.NotificationLevel.success else unified.NotificationLevel.@"error";
+            const level = if (success) terminal_mod.NotificationLevel.success else terminal_mod.NotificationLevel.@"error";
 
             // System notification
             if (self.capabilities.supportsNotifyOsc9) {

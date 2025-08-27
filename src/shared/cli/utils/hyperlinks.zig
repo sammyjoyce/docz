@@ -2,8 +2,7 @@
 //! Builds on @src/term/ansi/hyperlink.zig with additional convenience functions
 
 const std = @import("std");
-const components = @import("../../components/mod.zig");
-const term_shared = @import("../../term/mod.zig");
+const term_shared = @import("term_shared");
 const term_hyperlink = term_shared.ansi.hyperlink;
 const term_caps = term_shared.caps;
 const Allocator = std.mem.Allocator;

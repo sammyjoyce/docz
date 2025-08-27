@@ -1,3 +1,10 @@
+// DEPRECATED: This is legacy CLI code being phased out.
+// DEPRECATED: This is legacy CLI code being phased out.
+// This file provides backward compatibility but should not be used for new development.
+// Please migrate to the new CLI system using src/core/agent_main.zig for standardized
+// agent entry points and CLI parsing.
+// This file will be removed in the next major version.
+
 //! Pure Zig CLI parser using comptime reflection from cli.zon configuration
 
 const std = @import("std");

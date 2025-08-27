@@ -136,7 +136,7 @@ pub const AgentRegistry = struct {
     /// Scans the specified agents directory and loads metadata for all valid agents.
     /// Only agents with valid config.zon files and required structure are added.
     pub fn discoverAgents(self: *AgentRegistry, agentsDir: []const u8) !void {
-        var dir = try fs.openDirAbsolute(agentsDir, .{ .iterate = true });
+        var dir = try fs.cwd().openDir(agentsDir, .{ .iterate = true });
         defer dir.close();
 
         var it = dir.iterate();
@@ -150,7 +150,7 @@ pub const AgentRegistry = struct {
             const configPath = try std.fs.path.join(self.allocator, &[_][]const u8{ agentPath, "config.zon" });
             defer self.allocator.free(configPath);
 
-            if (fs.accessAbsolute(configPath, .{}) catch false) {
+            if (fs.cwd().access(configPath, .{}) catch false) {
                 try self.loadAgentFromConfig(entry.name, configPath, agentPath);
             }
         }
@@ -176,21 +176,32 @@ pub const AgentRegistry = struct {
         return agentsList.toOwnedSlice();
     }
 
-    /// Validates that an agent has all required files (main.zig, spec.zig, Agent.zig).
+    /// Validates that an agent has all required files (main.zig, spec.zig, Agent.zig|agent.zig).
     /// Returns true if valid, false otherwise.
     pub fn validateAgent(self: *const AgentRegistry, name: []const u8) !bool {
         const info = (try self.getAgent(name)) orelse return false;
 
-        const requiredFiles = [_][]const u8{ "main.zig", "spec.zig", "Agent.zig" };
+        // Always require main.zig and spec.zig
+        const requiredCore = [_][]const u8{ "main.zig", "spec.zig" };
         const agentDir = std.fs.path.dirname(info.entryPath) orelse return false;
 
-        for (requiredFiles) |file| {
+        // Check core files
+        for (requiredCore) |file| {
             const filePath = try std.fs.path.join(self.allocator, &[_][]const u8{ agentDir, file });
             defer self.allocator.free(filePath);
 
             if (!fs.accessAbsolute(filePath, .{})) {
                 return false;
             }
+        }
+
+        // Check implementation file: accept either Agent.zig (legacy) or agent.zig (preferred)
+        const agentUpper = try std.fs.path.join(self.allocator, &[_][]const u8{ agentDir, "Agent.zig" });
+        defer self.allocator.free(agentUpper);
+        const agentLower = try std.fs.path.join(self.allocator, &[_][]const u8{ agentDir, "agent.zig" });
+        defer self.allocator.free(agentLower);
+        if (!fs.accessAbsolute(agentUpper, .{}) and !fs.accessAbsolute(agentLower, .{})) {
+            return false;
         }
 
         return true;

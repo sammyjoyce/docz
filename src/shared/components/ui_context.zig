@@ -83,7 +83,7 @@ pub const UI = struct {
             },
             .tui => {
                 // For TUI mode, create a notification component
-                const notification_component = try NotificationComponent.create(self.allocator, NotificationConfig{
+                const notification_component = try NotificationComponent.create(self.allocator, NotificationConfiguration{
                     .level = level,
                     .title = try self.allocator.dupe(u8, title),
                     .message = try self.allocator.dupe(u8, message),
@@ -182,7 +182,7 @@ pub const NotificationComponent = struct {
 
     allocator: std.mem.Allocator,
     state: base.ComponentState,
-    config: NotificationConfig,
+    config: NotificationConfiguration,
     creationTime: i64,
     animationProgress: f32 = 0.0,
 
@@ -200,7 +200,7 @@ pub const NotificationComponent = struct {
         .update = update,
     };
 
-    pub fn create(allocator: std.mem.Allocator, config: NotificationConfig) !*Component {
+    pub fn create(allocator: std.mem.Allocator, config: NotificationConfiguration) !*Component {
         const self = try allocator.create(Self);
         self.* = Self{
             .allocator = allocator,
@@ -368,7 +368,7 @@ pub const NotificationComponent = struct {
 };
 
 /// Configuration for notification components
-pub const NotificationConfig = struct {
+pub const NotificationConfiguration = struct {
     level: NotificationLevel,
     title: []const u8,
     message: []const u8,

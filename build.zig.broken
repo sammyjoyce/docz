@@ -2056,7 +2056,7 @@ fn runScaffoldAgent(b: *std.Build) !void {
     std.log.info("📁 Created files:", .{});
     std.log.info("   • agents/{s}/main.zig", .{agent_name});
     std.log.info("   • agents/{s}/spec.zig", .{agent_name});
-    std.log.info("   • agents/{s}/Agent.zig", .{agent_name});
+    std.log.info("   • agents/{s}/agent.zig", .{agent_name});
     std.log.info("   • agents/{s}/config.zon", .{agent_name});
     std.log.info("   • agents/{s}/agent.manifest.zon", .{agent_name});
     std.log.info("   • agents/{s}/system_prompt.txt", .{agent_name});
@@ -2065,7 +2065,7 @@ fn runScaffoldAgent(b: *std.Build) !void {
     std.log.info("   • agents/{s}/README.md", .{agent_name});
     std.log.info("", .{});
     std.log.info("🚀 Next steps:", .{});
-    std.log.info("   1. Customize the agent implementation in agents/{s}/Agent.zig", .{agent_name});
+    std.log.info("   1. Customize the agent implementation in agents/{s}/agent.zig", .{agent_name});
     std.log.info("   2. Add custom tools in agents/{s}/tools/", .{agent_name});
     std.log.info("   3. Update the system prompt in agents/{s}/system_prompt.txt", .{agent_name});
     std.log.info("   4. Test your agent: zig build -Dagent={s} run", .{agent_name});
@@ -2112,12 +2112,12 @@ fn copyTemplateFiles(allocator: std.mem.Allocator, agent_name: []const u8, descr
     }{
         .{ .source = "agents/_template/main.zig", .dest = "main.zig", .process_placeholders = false },
         .{ .source = "agents/_template/spec.zig", .dest = "spec.zig", .process_placeholders = true },
-        .{ .source = "agents/_template/Agent.zig", .dest = "Agent.zig", .process_placeholders = true },
+        .{ .source = "agents/_template/agent.zig", .dest = "agent.zig", .process_placeholders = true },
         .{ .source = "agents/_template/config.zon", .dest = "config.zon", .process_placeholders = true },
         .{ .source = "agents/_template/agent.manifest.zon", .dest = "agent.manifest.zon", .process_placeholders = true },
         .{ .source = "agents/_template/system_prompt.txt", .dest = "system_prompt.txt", .process_placeholders = true },
         .{ .source = "agents/_template/tools/mod.zig", .dest = "tools/mod.zig", .process_placeholders = true },
-        .{ .source = "agents/_template/tools/example_tool.zig", .dest = "tools/example_tool.zig", .process_placeholders = true },
+        .{ .source = "agents/_template/tools/ExampleTool.zig", .dest = "tools/ExampleTool.zig", .process_placeholders = true },
         .{ .source = "agents/_template/README.md", .dest = "README.md", .process_placeholders = true },
     };
 

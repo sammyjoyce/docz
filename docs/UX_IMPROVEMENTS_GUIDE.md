@@ -3,1096 +3,1492 @@
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [New UX Improvements Catalog](#new-ux-improvements-catalog)
-3. [Enhanced Agent Interface Integration](#enhanced-agent-interface-integration)
-4. [OAuth Callback Server Implementation](#oauth-callback-server-implementation)
-5. [Real-time Dashboard Integration](#real-time-dashboard-integration)
-6. [Upgrading Markdown Agent](#upgrading-markdown-agent)
-7. [Before/After Comparisons](#beforeafter-comparisons)
-8. [New Capabilities Summary](#new-capabilities-summary)
-9. [Migration Guide](#migration-guide)
-10. [Code Examples](#code-examples)
-11. [Troubleshooting](#troubleshooting)
-12. [Visual OAuth Flow Guide](#visual-oauth-flow-guide)
-13. [Enhanced Markdown Interactive Session](#enhanced-markdown-interactive-session)
-14. [Agent UX Framework Documentation](#agent-ux-framework-documentation)
-15. [Best Practices for Terminal UX](#best-practices-for-terminal-ux)
-16. [Integration Examples](#integration-examples)
-17. [Keyboard Shortcuts Reference](#keyboard-shortcuts-reference)
-18. [Accessibility Guidelines](#accessibility-guidelines)
-19. [Performance Considerations](#performance-considerations)
+2. [OAuth Flow with Progressive Enhancement](#oauth-flow-with-progressive-enhancement)
+3. [Markdown Agent Interactive Session Enhancements](#markdown-agent-interactive-session-enhancements)
+4. [Unified Agent Startup and Branding](#unified-agent-startup-and-branding)
+5. [Error Handling UX Patterns](#error-handling-ux-patterns)
+6. [Progress Feedback Patterns](#progress-feedback-patterns)
+7. [Interactive Help System](#interactive-help-system)
+8. [Implementation Examples and Code Patterns](#implementation-examples-and-code-patterns)
+9. [Component Reference](#component-reference)
+10. [Best Practices](#best-practices)
 
 ## Overview
 
-This guide provides comprehensive instructions for integrating the new UX improvements into existing and new agents. The enhanced features provide modern terminal experiences with rich interactions, beautiful interfaces, and seamless workflows.
+This guide provides comprehensive instructions for implementing modern UX improvements across all agents' CLI and TUI interfaces. The patterns leverage existing terminal UI components while introducing progressive enhancements that gracefully adapt to terminal capabilities.
 
-### Key Improvements
+### Core Principles
 
-- **Enhanced Agent Interface** - Modern, adaptive terminal interface with rich UI components
-- **OAuth Callback Server** - Robust authentication flow with automatic code capture
-- **Real-time Dashboards** - Live monitoring with charts, metrics, and performance data
-- **Interactive Markdown Editor** - Split-screen editing with live preview
-- **Smart Command Palette** - Fuzzy search and intelligent command discovery
-- **Adaptive Rendering** - Terminal capability detection and graceful degradation
-- **Theme System** - Customizable color schemes and visual styles
+- **Progressive Enhancement**: Start with basic functionality, enhance based on terminal capabilities
+- **Consistency**: Unified patterns across all agents
+- **Accessibility**: Keyboard-first navigation with screen reader support
+- **Performance**: Optimized rendering and minimal latency
+- **Feedback**: Clear, immediate user feedback for all actions
+- **Discoverability**: Intuitive interfaces with built-in help
 
-## New UX Improvements Catalog
+## OAuth Flow with Progressive Enhancement
 
-### 1. Enhanced Agent Interface (`src/shared/tui/agent_interface.zig`)
+### Architecture Overview
 
-Modern agent interface leveraging all terminal capabilities:
+The OAuth flow implements a three-tier progressive enhancement strategy:
 
-```zig
-// Features Available
-- Advanced terminal integration (mouse, graphics, notifications)
-- Rich CLI/TUI experience with command palette and dashboards
-- OAuth integration with authentication wizards
-- Adaptive rendering based on terminal capabilities
-- Session management with full state preservation
-- Beautiful responsive interface with animations
-```
+1. **Basic Mode**: Simple URL display with manual code input
+2. **Enhanced Mode**: Local callback server with automatic code capture
+3. **Advanced Mode**: Full TUI wizard with visual feedback and animations
 
-### 2. OAuth Callback Server (`src/shared/auth/oauth/callback_server.zig`)
-
-Local HTTP server for OAuth authorization code capture:
+### Implementation Pattern
 
 ```zig
-// Features
-- Configurable port (default: 8080)
-- Automatic authorization code capture
-- PKCE verification for security
-- State parameter validation
-- Beautiful success/error pages
-- Real-time terminal status updates
-- Timeout handling and cleanup
-- Support for multiple concurrent flows
+//! OAuth Flow with Progressive Enhancement
+//! agents/your_agent/auth/oauth_flow.zig
+
+const std = @import("std");
+const auth = @import("../../../src/shared/auth/mod.zig");
+const term = @import("../../../src/shared/term/mod.zig");
+const tui = @import("../../../src/shared/tui/mod.zig");
+
+pub const OAuthFlowConfig = struct {
+    /// OAuth provider configuration
+    provider: auth.oauth.ProviderConfig,
+    
+    /// Terminal capability requirements
+    capabilities: struct {
+        min_terminal: term.TerminalLevel = .basic,
+        require_colors: bool = false,
+        require_mouse: bool = false,
+        require_unicode: bool = false,
+    } = .{},
+    
+    /// Progressive enhancement levels
+    enhancement: struct {
+        use_callback_server: bool = true,
+        use_visual_wizard: bool = true,
+        use_animations: bool = true,
+        use_notifications: bool = true,
+    } = .{},
+    
+    /// UI configuration
+    ui: struct {
+        show_progress: bool = true,
+        show_instructions: bool = true,
+        theme: []const u8 = "default",
+        branding: ?BrandingConfig = null,
+    } = .{},
+};
+
+/// Progressive OAuth flow implementation
+pub const ProgressiveOAuthFlow = struct {
+    allocator: std.mem.Allocator,
+    config: OAuthFlowConfig,
+    terminal_level: term.TerminalLevel,
+    
+    pub fn init(allocator: std.mem.Allocator, config: OAuthFlowConfig) !ProgressiveOAuthFlow {
+        const terminal_level = try term.detectCapabilities();
+        return .{
+            .allocator = allocator,
+            .config = config,
+            .terminal_level = terminal_level,
+        };
+    }
+    
+    pub fn run(self: *ProgressiveOAuthFlow) !auth.oauth.TokenResponse {
+        // Determine enhancement level based on terminal capabilities
+        const enhancement_level = self.determineEnhancementLevel();
+        
+        switch (enhancement_level) {
+            .basic => return self.runBasicFlow(),
+            .enhanced => return self.runEnhancedFlow(),
+            .advanced => return self.runAdvancedFlow(),
+        }
+    }
+    
+    fn determineEnhancementLevel(self: *ProgressiveOAuthFlow) EnhancementLevel {
+        // Check terminal capabilities
+        if (self.terminal_level == .basic) {
+            return .basic;
+        }
+        
+        // Check for callback server support
+        if (!self.config.enhancement.use_callback_server) {
+            return .basic;
+        }
+        
+        // Check for TUI support
+        if (self.terminal_level.supportsFullTUI() and 
+            self.config.enhancement.use_visual_wizard) {
+            return .advanced;
+        }
+        
+        return .enhanced;
+    }
+    
+    fn runBasicFlow(self: *ProgressiveOAuthFlow) !auth.oauth.TokenResponse {
+        // Basic flow: Display URL, manual code input
+        const auth_url = try self.buildAuthorizationUrl();
+        
+        // Display instructions
+        try self.displayBasicInstructions(auth_url);
+        
+        // Wait for manual code input
+        const code = try self.promptForCode();
+        
+        // Exchange code for token
+        return self.exchangeCodeForToken(code);
+    }
+    
+    fn runEnhancedFlow(self: *ProgressiveOAuthFlow) !auth.oauth.TokenResponse {
+        // Enhanced flow: Callback server with status updates
+        var server = try auth.oauth.CallbackServer.init(self.allocator, .{
+            .port = 8080,
+            .timeout_ms = 300_000,
+            .show_success_page = true,
+        });
+        defer server.deinit();
+        
+        // Start server
+        try server.start();
+        
+        // Build and display auth URL
+        const auth_url = try self.buildAuthorizationUrlWithRedirect(server.getRedirectUri());
+        try self.displayEnhancedInstructions(auth_url);
+        
+        // Show progress indicator
+        var progress = try ProgressIndicator.init(self.allocator);
+        defer progress.deinit();
+        
+        // Wait for callback
+        const result = try server.waitForCallback();
+        progress.complete();
+        
+        // Exchange code for token
+        return self.exchangeCodeForToken(result.code);
+    }
+    
+    fn runAdvancedFlow(self: *ProgressiveOAuthFlow) !auth.oauth.TokenResponse {
+        // Advanced flow: Full TUI wizard
+        var wizard = try auth.tui.OAuthWizard.init(self.allocator, .{
+            .provider = self.config.provider,
+            .theme = self.config.ui.theme,
+            .enable_animations = self.config.enhancement.use_animations,
+            .enable_notifications = self.config.enhancement.use_notifications,
+        });
+        defer wizard.deinit();
+        
+        // Apply branding if configured
+        if (self.config.ui.branding) |branding| {
+            try wizard.applyBranding(branding);
+        }
+        
+        // Run interactive wizard
+        return wizard.runInteractive();
+    }
+};
+
+/// Visual states for OAuth flow
+pub const OAuthFlowState = enum {
+    initializing,
+    checking_network,
+    generating_pkce,
+    building_url,
+    launching_browser,
+    waiting_for_code,
+    exchanging_token,
+    saving_credentials,
+    complete,
+    error,
+};
+
+/// Enhanced OAuth wizard with visual feedback
+pub const EnhancedOAuthWizard = struct {
+    allocator: std.mem.Allocator,
+    canvas: *tui.Canvas,
+    current_state: OAuthFlowState,
+    progress: f32,
+    
+    pub fn render(self: *EnhancedOAuthWizard) !void {
+        // Clear screen
+        try self.canvas.clear();
+        
+        // Render header with branding
+        try self.renderHeader();
+        
+        // Render current state
+        try self.renderStateVisual();
+        
+        // Render progress bar
+        try self.renderProgressBar();
+        
+        // Render instructions
+        try self.renderInstructions();
+        
+        // Render status messages
+        try self.renderStatusMessages();
+        
+        // Flush to terminal
+        try self.canvas.flush();
+    }
+    
+    fn renderStateVisual(self: *EnhancedOAuthWizard) !void {
+        const visuals = switch (self.current_state) {
+            .initializing => "⚡ Setting up OAuth flow...",
+            .checking_network => "🌐 Checking network connectivity...",
+            .generating_pkce => "🔧 Generating secure parameters...",
+            .building_url => "🔗 Building authorization URL...",
+            .launching_browser => "🌐 Opening browser...",
+            .waiting_for_code => "⏳ Waiting for authorization...",
+            .exchanging_token => "🔄 Exchanging code for token...",
+            .saving_credentials => "💾 Saving credentials securely...",
+            .complete => "✅ Authentication successful!",
+            .error => "❌ Authentication failed",
+        };
+        
+        try self.canvas.writeAt(10, 8, visuals);
+    }
+};
 ```
 
-### 3. Enhanced Session Dashboard (`src/shared/tui/components/agent_dashboard.zig`)
+### Progressive Enhancement Examples
 
-Comprehensive real-time monitoring:
-
-```zig
-// Dashboard Components
-- Real-time statistics and metrics
-- Live charts with dynamic data visualization
-- Cost tracking (tokens and API usage)
-- Performance metrics (response time, throughput)
-- Resource monitoring (memory, CPU, network)
-- Network status indicators
-- Theme support (dark/light modes)
-```
-
-### 4. Interactive Markdown Editor (`agents/markdown/enhanced_markdown_editor.zig`)
-
-Feature-rich markdown editing environment:
-
-```zig
-// Editor Features
-- Syntax highlighting with themes
-- Live preview with synchronized scrolling
-- Auto-completion and snippets
-- Table of contents generation
-- Export to HTML/PDF
-- Multi-cursor support
-- Smart indentation
-- Bracket matching
-```
-
-### 5. Smart Command Palette (`src/shared/tui/components/command_palette.zig`)
-
-Intelligent command discovery:
-
-```zig
-// Palette Features
-- Fuzzy search with scoring algorithm
-- Frecency-based command history
-- Visual match highlighting
-- Command categorization
-- Keyboard-driven navigation
-- Session integration
-```
-
-## Visual OAuth Flow Guide
-
-### Step-by-Step OAuth Implementation
-
-#### 1. Configure OAuth Settings
-
-```zig
-// agents/your_agent/auth_config.zon
-.{
-    .oauth = .{
-        .client_id = "your_client_id",
-        .auth_url = "https://provider.com/oauth/authorize",
-        .token_url = "https://provider.com/oauth/token",
-        .redirect_uri = "http://localhost:8080/callback",
-        .scopes = &[_][]const u8{ "read", "write" },
-        .use_pkce = true,
-    },
-    .callback_server = .{
-        .port = 8080,
-        .timeout_ms = 300_000, // 5 minutes
-        .show_success_page = true,
-        .auto_close = true,
-    },
-}
-```
-
-#### 2. Enhanced OAuth Wizard Implementation
-
-```zig
-const enhanced_oauth = @import("../../src/shared/auth/tui/enhanced_oauth_wizard.zig");
-
-pub fn runOAuthWizard(allocator: std.mem.Allocator) !void {
-    // Create enhanced OAuth wizard
-    var wizard = try enhanced_oauth.EnhancedOAuthWizard.init(allocator, .{
-        .enable_animations = true,
-        .show_progress_bar = true,
-        .enable_notifications = true,
-        .theme = "modern",
-    });
-    defer wizard.deinit();
-
-    // Run the complete flow with visual feedback
-    const result = try wizard.runFlow(.{
-        .provider = "github", // or "google", "microsoft", etc.
-        .scopes = &[_][]const u8{ "repo", "user" },
-        .use_callback_server = true,
-    });
-
-    // Save tokens securely
-    try saveTokens(allocator, result.tokens);
-
-    // Show success notification
-    try wizard.showSuccessNotification("Authentication complete!");
-}
-```
-
-#### 3. Visual Flow States
-
-The enhanced OAuth wizard provides rich visual feedback through different states:
-
-- **Initializing** - ⚡ Shows setup progress with spinner
-- **Network Check** - 🌐 Validates connectivity with indicators
-- **PKCE Generation** - 🔧 Creates secure parameters
-- **URL Building** - 🔗 Constructs authorization link
-- **Browser Launch** - 🌐 Opens browser with clickable links
-- **Waiting** - ⏳ Interactive code input with validation
-- **Token Exchange** - ⚡ Exchanges code for tokens
-- **Complete** - ✅ Success animation and confirmation
-
-### OAuth Flow Visualization
+#### Level 1: Basic Terminal
 
 ```
-🔐 Enhanced Claude Pro/Max OAuth Setup Wizard
+OAuth Authentication Required
+============================
+
+Please visit the following URL to authenticate:
+https://provider.com/oauth/authorize?client_id=xxx&redirect_uri=urn:ietf:wg:oauth:2.0:oob
+
+After authorizing, enter the code below:
+Code: [_____________________]
+```
+
+#### Level 2: Enhanced Terminal
+
+```
+🔐 OAuth Authentication
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 📋 Step 1: Authorization
-🌐 Click here to authenticate [clickable link]
-   https://github.com/login/oauth/authorize?client_id=...
+Click to open browser: https://provider.com/oauth/authorize?...
+Or press ENTER to open automatically
 
-⏳ Waiting for authorization code...
-━━━━━━━━━━━━━━━━ 65% [███████████░░░░░] ETA: 8s
+⏳ Waiting for authorization...
+[███████████░░░░░] 65% • ETA: 8s
 
-✅ Authentication successful!
-🔑 Token saved securely to keychain
-📊 Rate limits: 5000 requests/hour remaining
+Local server listening on: http://localhost:8080/callback
 ```
 
-## Enhanced Markdown Interactive Session
+#### Level 3: Advanced Terminal (Full TUI)
 
-### Session Configuration
-
-```zig
-// Comprehensive session configuration
-pub const InteractiveSessionConfig = struct {
-    /// Base agent configuration
-    base_config: agent_interface.Config,
-
-    /// Dashboard settings
-    dashboard_config: DashboardConfig = .{
-        .enabled = true,
-        .title = "Markdown Interactive Session",
-        .refresh_interval_ms = 1000,
-        .enable_animations = true,
-        .enable_mouse = true,
-        .show_welcome = true,
-        .default_layout = .dashboard,
-    },
-
-    /// Layout configuration
-    layout_config: LayoutConfig = .{
-        .pane_sizes = .{
-            .editor_width_ratio = 0.6,
-            .preview_width_ratio = 0.4,
-            .sidebar_width = 30,
-            .metrics_height = 8,
-            .status_height = 1,
-        },
-        .resizable_panes = true,
-        .mode = .dashboard,
-        .show_borders = true,
-        .border_style = .rounded,
-    },
-
-    /// Preview settings
-    preview_config: PreviewConfig = .{
-        .live_preview = true,
-        .update_delay_ms = 300,
-        .adaptive_rendering = true,
-        .render_mode = .enhanced,
-        .syntax_highlighting = true,
-        .enable_math = true,
-        .enable_mermaid = true,
-        .enable_images = true,
-        .zoom_level = 1.0,
-    },
-
-    /// Metrics and monitoring
-    metrics_config: MetricsConfig = .{
-        .enabled = true,
-        .show_sparklines = true,
-        .update_interval_ms = 1000,
-        .max_history = 100,
-        .show_tokens = true,
-        .show_costs = true,
-        .show_response_times = true,
-        .show_complexity = true,
-    },
-
-    /// Session management
-    session_config: SessionConfig = .{
-        .enable_session_save = true,
-        .save_interval_s = 60,
-        .max_history = 1000,
-        .enable_version_history = true,
-        .max_versions = 50,
-        .enable_auto_backup = true,
-        .backup_interval_s = 300,
-        .max_backups = 10,
-    },
-
-    /// Input handling
-    input_config: InputConfig = .{
-        .smart_input = true,
-        .auto_completion = true,
-        .completion_delay_ms = 500,
-        .fuzzy_search = true,
-        .max_suggestions = 10,
-        .context_aware = true,
-        .tag_management = true,
-    },
-
-    /// Notification settings
-    notification_config: NotificationConfig = .{
-        .enabled = true,
-        .duration_ms = 3000,
-        .max_concurrent = 5,
-        .desktop_notifications = false,
-        .position = .top_right,
-        .sound_notifications = false,
-    },
-
-    /// Theme and appearance
-    theme_config: ThemeConfig = .{
-        .name = "dark",
-        .enable_switching = true,
-        .accessibility_themes = true,
-        .high_contrast = false,
-    },
-
-    /// Performance settings
-    performance_config: PerformanceConfig = .{
-        .background_processing = true,
-        .max_background_threads = 4,
-        .preview_quality = .high,
-        .enable_caching = true,
-        .cache_size_mb = 100,
-        .lazy_loading = true,
-    },
-
-    /// Accessibility options
-    accessibility_config: AccessibilityConfig = .{
-        .screen_reader = false,
-        .high_contrast = false,
-        .large_text = false,
-        .reduced_motion = false,
-        .keyboard_only = false,
-        .focus_indicators = true,
-        .skip_links = true,
-    },
-};
+```
+╭─────────────────── OAuth Setup Wizard ───────────────────╮
+│                                                           │
+│  🔐 Authenticating with GitHub                          │
+│                                                           │
+│  ┌─ Current Step ─────────────────────────────────────┐ │
+│  │                                                     │ │
+│  │  🌐 Opening browser for authorization...           │ │
+│  │                                                     │ │
+│  │  ▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░░░  65%                      │ │
+│  │                                                     │ │
+│  └────────────────────────────────────────────────────┘ │
+│                                                           │
+│  📊 Progress                                             │
+│  ├─ ✅ Network check complete                           │
+│  ├─ ✅ PKCE parameters generated                        │
+│  ├─ ✅ Authorization URL built                          │
+│  ├─ ⏳ Waiting for callback...                          │
+│  └─ ⏸  Token exchange pending                          │
+│                                                           │
+│  [Continue] [Manual Input] [Cancel]                      │
+╰───────────────────────────────────────────────────────────╯
 ```
 
-### Interactive Session Features
+## Markdown Agent Interactive Session Enhancements
 
-#### Multi-Pane Layout Management
+### Enhanced Architecture
 
-```zig
-pub const LayoutManager = struct {
-    allocator: Allocator,
-    config: LayoutConfig,
-    terminal_size: term.TerminalSize,
-
-    pub fn getEditorBounds(self: *LayoutManager) term.Rect {
-        return switch (self.config.mode) {
-            .dashboard => .{
-                .x = self.config.pane_sizes.sidebar_width,
-                .y = self.config.pane_sizes.metrics_height,
-                .width = @as(u16, @intFromFloat(@as(f32, @floatFromInt(self.terminal_size.width - self.config.pane_sizes.sidebar_width)) * self.config.pane_sizes.editor_width_ratio)),
-                .height = self.terminal_size.height - self.config.pane_sizes.metrics_height - self.config.pane_sizes.status_height,
-            },
-            .editor_focus => .{
-                .x = 0,
-                .y = 0,
-                .width = self.terminal_size.width,
-                .height = self.terminal_size.height - self.config.pane_sizes.status_height,
-            },
-            .split_view => .{
-                .x = 0,
-                .y = 0,
-                .width = self.terminal_size.width / 2,
-                .height = self.terminal_size.height - self.config.pane_sizes.status_height,
-            },
-            .minimal => .{
-                .x = 0,
-                .y = 0,
-                .width = self.terminal_size.width,
-                .height = self.terminal_size.height,
-            },
-        };
-    }
-};
-```
-
-#### Live Preview System
+The markdown agent's interactive session implements a multi-pane dashboard with live preview, metrics tracking, and intelligent editing features.
 
 ```zig
-pub const PreviewRenderer = struct {
-    allocator: Allocator,
-    config: PreviewConfig,
-    last_update: i64 = 0,
-    cached_preview: ?[]u8 = null,
+//! Enhanced Markdown Interactive Session
+//! agents/markdown/enhanced_session.zig
 
-    pub fn updatePreview(self: *PreviewRenderer, document: *const enhanced_editor.Document) !void {
-        // Generate preview based on configuration
-        // Implementation here...
-        _ = self;
-        _ = document;
-    }
-
-    pub fn renderAdaptivePreview(self: *PreviewRenderer, renderer: *anyopaque, x: u16, y: u16, width: u16, height: u16, document: *const enhanced_editor.Document) !void {
-        // Render preview with adaptive quality
-        // Implementation here...
-        _ = self;
-        _ = renderer;
-        _ = x;
-        _ = y;
-        _ = width;
-        _ = height;
-        _ = document;
-    }
-};
-```
-
-#### Metrics and Monitoring
-
-```zig
-pub const MetricsCollector = struct {
-    allocator: Allocator,
-    config: MetricsConfig,
-    document_metrics: std.ArrayList(DocumentMetricsSnapshot),
-    session_metrics: std.ArrayList(SessionMetricsSnapshot),
-    sparklines: std.StringHashMap([]f32),
-
-    pub fn updateDocumentMetrics(self: *MetricsCollector, metrics: *const enhanced_editor.DocumentMetrics) !void {
-        const snapshot = DocumentMetricsSnapshot{
-            .timestamp = std.time.timestamp(),
-            .word_count = metrics.word_count,
-            .line_count = metrics.line_count,
-            .char_count = metrics.char_count,
-            .reading_time = metrics.reading_time,
-            .heading_count = @as(u32, @intCast(std.mem.count(u32, &metrics.heading_counts))),
-            .link_count = metrics.link_count,
-            .code_block_count = metrics.code_block_count,
-            .table_count = metrics.table_count,
-        };
-
-        try self.document_metrics.append(snapshot);
-
-        // Maintain history limit
-        if (self.document_metrics.items.len > self.config.max_history) {
-            _ = self.document_metrics.orderedRemove(0);
-        }
-
-        // Update sparklines
-        try self.updateSparkline("word_count", @floatFromInt(metrics.word_count));
-        try self.updateSparkline("line_count", @floatFromInt(metrics.line_count));
-        try self.updateSparkline("reading_time", metrics.reading_time);
-    }
-};
-```
-
-## Agent UX Framework Documentation
-
-### Core Architecture
-
-The Agent UX Framework provides a comprehensive foundation for building modern terminal-based AI agents with rich user experiences.
-
-#### Key Components
-
-1. **StandardAgentInterface** - Base interface providing common functionality
-2. **HelpSystem** - Comprehensive help with keyboard shortcuts and documentation
-3. **Agent** - Main agent structure with full TUI capabilities
-4. **Configuration System** - Flexible configuration with ZON-based settings
-
-#### Standard Agent Interface
-
-```zig
-pub const StandardAgentInterface = struct {
-    allocator: Allocator,
-    base_agent: *base_agent.BaseAgent,
-    command_palette: ?*cli.interactive.CommandPalette = null,
-    notification_system: ?*tui.components.notification_system.NotificationSystem = null,
-    help_system: ?*HelpSystem = null,
-    theme_manager: ?*cli.themes.ThemeManager = null,
-
-    pub fn init(allocator: Allocator, base_agent_ptr: *base_agent.BaseAgent) !StandardAgentInterface {
-        return Self{
-            .allocator = allocator,
-            .base_agent = base_agent_ptr,
-        };
-    }
-
-    pub fn enableCLIMode(self: *StandardAgentInterface) !void {
-        // Initialize command palette for CLI
-        self.command_palette = try cli.interactive.CommandPalette.init(self.allocator);
-
-        // Initialize notification system
-        self.notification_system = try tui.components.notification_system.NotificationSystem.init(self.allocator, true);
-
-        // Initialize help system
-        self.help_system = try HelpSystem.init(self.allocator);
-    }
-};
-```
-
-#### Help System
-
-```zig
-pub const HelpSystem = struct {
-    allocator: Allocator,
-    topics: std.StringHashMap(HelpTopic),
-    shortcuts: std.ArrayList(KeyboardShortcut),
-    current_topic: ?[]const u8 = null,
-
-    pub const HelpTopic = struct {
-        id: []const u8,
-        title: []const u8,
-        content: []const u8,
-        category: []const u8,
-        related_topics: std.ArrayList([]const u8),
-        last_updated: i64 = 0,
-    };
-
-    pub const KeyboardShortcut = struct {
-        keys: []const u8,
-        description: []const u8,
-        category: []const u8,
-        context: []const u8 = "global",
-    };
-};
-```
-
-### Configuration System
-
-#### Agent Configuration
-
-```zig
-pub const Config = struct {
-    /// Base agent configuration
-    base_config: config.AgentConfig,
-
-    /// UI Enhancement Settings
-    ui_settings: UISettings = .{},
-};
-
-pub const UISettings = struct {
-    /// Enable dashboard view
-    enable_dashboard: bool = true,
-
-    /// Enable mouse interaction
-    enable_mouse: bool = true,
-
-    /// Enable graphics rendering
-    enable_graphics: bool = true,
-
-    /// Enable desktop notifications
-    enable_notifications: bool = true,
-
-    /// Enable command palette
-    enable_command_palette: bool = true,
-
-    /// Enable animations and transitions
-    enable_animations: bool = true,
-
-    /// Theme name or "auto" for system detection
-    theme: []const u8 = "auto",
-
-    /// Render quality mode
-    render_quality: RenderQuality = .auto,
-
-    /// Layout mode
-    layout_mode: LayoutMode = .adaptive,
-};
-```
-
-## Best Practices for Terminal UX
-
-### 1. Progressive Enhancement
-
-Always design with progressive enhancement in mind:
-
-```zig
-// Check terminal capabilities and adapt
-const caps = term.caps.detectCaps(allocator);
-const render_level = if (caps.supportsTruecolor and caps.supportsSgrMouse) .enhanced else .standard;
-
-// Configure features based on capabilities
-const config = Config{
-    .enable_mouse = caps.supports_mouse,
-    .enable_graphics = caps.supports_images,
-    .render_quality = render_level,
-    .enable_animations = caps.supportsTruecolor,
-};
-```
-
-### 2. Responsive Design
-
-Handle different terminal sizes gracefully:
-
-```zig
-pub fn handleResize(self: *Self, size: TerminalSize) !void {
-    // Recalculate layouts
-    try self.layout_manager.updateSize(size);
-
-    // Update dashboard
-    try self.dashboard.handleResize(size);
-
-    // Force redraw
-    self.needs_redraw = true;
-}
-```
-
-### 3. Performance Optimization
-
-```zig
-// Use background processing for heavy operations
-if (config.performance_config.background_processing) {
-    self.background_thread = try Thread.spawn(.{}, backgroundWorker, .{self});
-}
-
-// Implement caching for expensive operations
-if (self.config.performance_config.enable_caching) {
-    try self.cache_manager.cacheResult(key, result);
-}
-
-// Use lazy loading for components
-try self.lazy_load_component.loadIfNeeded();
-```
-
-### 4. Error Handling
-
-```zig
-// Graceful degradation on errors
-pub fn processWithFallback(self: *Self, input: []const u8) ![]const u8 {
-    return self.processEnhanced(input) catch |err| {
-        // Log error for debugging
-        try self.logger.logError("Enhanced processing failed", err);
-
-        // Fall back to basic processing
-        try self.notifier.showNotification(.{
-            .title = "Using Basic Mode",
-            .message = "Enhanced features unavailable, using basic processing",
-            .type = .warning,
-        });
-
-        return self.processBasic(input);
-    };
-}
-```
-
-### 5. Accessibility
-
-```zig
-// Support screen readers
-if (config.accessibility_config.screen_reader) {
-    try self.renderer.enableScreenReaderMode();
-    try self.addScreenReaderLabels();
-}
-
-// High contrast mode
-if (config.accessibility_config.high_contrast) {
-    try self.theme_manager.switchToHighContrast();
-}
-
-// Keyboard navigation
-if (config.accessibility_config.keyboard_only) {
-    try self.enableKeyboardNavigation();
-    try self.disableMouseFeatures();
-}
-```
-
-## Integration Examples
-
-### Example 1: Complete Enhanced Agent
-
-```zig
-// agents/example/enhanced_agent.zig
 const std = @import("std");
-const enhanced = @import("../../src/shared/tui/agent_interface.zig");
-const dashboard = @import("../../src/shared/tui/components/agent_dashboard.zig");
-const oauth = @import("../../src/shared/auth/oauth/mod.zig");
+const tui = @import("../../src/shared/tui/mod.zig");
+const components = @import("../../src/shared/components/mod.zig");
 
-pub const EnhancedExampleAgent = struct {
+pub const EnhancedSessionConfig = struct {
+    /// Layout configuration
+    layout: LayoutConfig = .{
+        .mode = .split_horizontal,
+        .editor_ratio = 0.6,
+        .preview_ratio = 0.4,
+        .show_outline = true,
+        .show_metrics = true,
+    },
+    
+    /// Editor features
+    editor: EditorConfig = .{
+        .syntax_highlighting = true,
+        .line_numbers = true,
+        .auto_indent = true,
+        .bracket_matching = true,
+        .word_wrap = true,
+        .vim_mode = false,
+    },
+    
+    /// Preview settings
+    preview: PreviewConfig = .{
+        .live_update = true,
+        .update_delay_ms = 300,
+        .render_mode = .enhanced,
+        .sync_scroll = true,
+        .show_outline = true,
+    },
+    
+    /// Interactive features
+    interactive: InteractiveConfig = .{
+        .command_palette = true,
+        .quick_actions = true,
+        .context_menu = true,
+        .drag_drop = true,
+        .multi_cursor = false,
+    },
+};
+
+pub const EnhancedMarkdownSession = struct {
     allocator: std.mem.Allocator,
-    interface: *enhanced.Interface,
-    dashboard: *dashboard.Dashboard,
-    auth_manager: *oauth.AuthManager,
-
-    pub fn init(allocator: std.mem.Allocator) !Self {
-        return .{
+    config: EnhancedSessionConfig,
+    
+    // UI components
+    layout: *tui.Layout,
+    editor: *components.Editor,
+    preview: *components.MarkdownPreview,
+    outline: *components.DocumentOutline,
+    metrics: *components.MetricsPanel,
+    command_palette: *components.CommandPalette,
+    
+    // State management
+    document: Document,
+    session_state: SessionState,
+    undo_stack: UndoStack,
+    
+    pub fn init(allocator: std.mem.Allocator, config: EnhancedSessionConfig) !EnhancedMarkdownSession {
+        var session = EnhancedMarkdownSession{
             .allocator = allocator,
-            .interface = try enhanced.Interface.init(allocator, .{
-                .enable_all_features = true,
-            }),
-            .dashboard = try dashboard.Dashboard.init(allocator, .{}),
-            .auth_manager = try oauth.AuthManager.init(allocator, .{}),
+            .config = config,
+            .layout = undefined,
+            .editor = undefined,
+            .preview = undefined,
+            .outline = undefined,
+            .metrics = undefined,
+            .command_palette = undefined,
+            .document = Document.init(allocator),
+            .session_state = SessionState.init(),
+            .undo_stack = UndoStack.init(allocator),
         };
+        
+        // Initialize layout
+        session.layout = try tui.Layout.init(allocator, .{
+            .mode = config.layout.mode,
+            .resizable = true,
+        });
+        
+        // Initialize components
+        try session.initializeComponents();
+        
+        return session;
     }
-
-    pub fn run(self: *Self) !void {
-        // Authenticate if needed
-        if (!self.auth_manager.isAuthenticated()) {
-            try self.runOAuthFlow();
+    
+    fn initializeComponents(self: *EnhancedMarkdownSession) !void {
+        // Initialize editor with enhanced features
+        self.editor = try components.Editor.init(self.allocator, .{
+            .syntax_highlighting = self.config.editor.syntax_highlighting,
+            .line_numbers = self.config.editor.line_numbers,
+            .language = "markdown",
+            .theme = "github-dark",
+        });
+        
+        // Initialize live preview
+        self.preview = try components.MarkdownPreview.init(self.allocator, .{
+            .render_mode = self.config.preview.render_mode,
+            .live_update = self.config.preview.live_update,
+        });
+        
+        // Initialize document outline
+        self.outline = try components.DocumentOutline.init(self.allocator, .{
+            .collapsible = true,
+            .clickable = true,
+        });
+        
+        // Initialize metrics panel
+        self.metrics = try components.MetricsPanel.init(self.allocator, .{
+            .show_sparklines = true,
+            .update_interval_ms = 1000,
+        });
+        
+        // Initialize command palette
+        self.command_palette = try components.CommandPalette.init(self.allocator, .{
+            .fuzzy_search = true,
+            .show_shortcuts = true,
+        });
+        
+        // Register commands
+        try self.registerCommands();
+    }
+    
+    fn registerCommands(self: *EnhancedMarkdownSession) !void {
+        const commands = [_]Command{
+            .{ .name = "Save", .shortcut = "Ctrl+S", .action = .save },
+            .{ .name = "Preview", .shortcut = "Ctrl+P", .action = .toggle_preview },
+            .{ .name = "Format", .shortcut = "Ctrl+Shift+F", .action = .format_document },
+            .{ .name = "Export HTML", .shortcut = "Ctrl+E", .action = .export_html },
+            .{ .name = "Insert Table", .shortcut = "Ctrl+T", .action = .insert_table },
+            .{ .name = "Toggle Outline", .shortcut = "Ctrl+O", .action = .toggle_outline },
+            .{ .name = "Find", .shortcut = "Ctrl+F", .action = .find },
+            .{ .name = "Replace", .shortcut = "Ctrl+H", .action = .replace },
+        };
+        
+        for (commands) |cmd| {
+            try self.command_palette.registerCommand(cmd);
         }
+    }
+    
+    pub fn render(self: *EnhancedMarkdownSession) !void {
+        // Update layout
+        try self.layout.update();
+        
+        // Render main editor
+        try self.renderEditor();
+        
+        // Render preview if enabled
+        if (self.config.preview.live_update) {
+            try self.renderPreview();
+        }
+        
+        // Render outline if visible
+        if (self.config.layout.show_outline) {
+            try self.renderOutline();
+        }
+        
+        // Render metrics panel
+        if (self.config.layout.show_metrics) {
+            try self.renderMetrics();
+        }
+        
+        // Render command palette if active
+        if (self.command_palette.isActive()) {
+            try self.renderCommandPalette();
+        }
+    }
+};
+```
 
-        // Start dashboard
-        try self.dashboard.start();
+### Interactive Session UI Layout
 
-        // Main loop with enhanced interface
-        while (true) {
-            const command = try self.interface.getCommand();
+```
+╭────────── Markdown Interactive Session ──────────╮
+│ File: document.md • Modified • 1,234 words      │
+├──────────────────┬──────────────┬───────────────┤
+│                  │              │               │
+│  Editor          │  Preview     │  Outline      │
+│                  │              │               │
+│  # Title         │  Title       │  📁 Title     │
+│                  │  ═══════     │   ├─ Intro   │
+│  ## Introduction │              │   ├─ Content │
+│  Lorem ipsum...  │  Introduction│   └─ Summary │
+│                  │  Lorem...    │               │
+│                  │              │               │
+├──────────────────┴──────────────┴───────────────┤
+│ 📊 Metrics                                       │
+│ Words: 1,234 • Chars: 6,789 • Reading: 5 min   │
+│ Tokens: ▂▄█▅▃ • Cost: $0.02 • Time: ▁▂▄█▅      │
+├──────────────────────────────────────────────────┤
+│ Ready • Ln 12, Col 45 • Markdown • UTF-8       │
+╰──────────────────────────────────────────────────╯
+```
 
-            switch (command) {
-                .process => |file| {
-                    try self.processWithProgress(file);
+## Unified Agent Startup and Branding
+
+### Consistent Startup Sequence
+
+All agents should implement a unified startup sequence with consistent branding and progressive initialization feedback.
+
+```zig
+//! Unified Agent Startup Pattern
+//! src/core/agent_startup.zig
+
+const std = @import("std");
+const term = @import("../shared/term/mod.zig");
+const tui = @import("../shared/tui/mod.zig");
+
+pub const StartupConfig = struct {
+    /// Agent branding
+    branding: BrandingConfig,
+    
+    /// Startup options
+    options: struct {
+        show_splash: bool = true,
+        show_version: bool = true,
+        show_capabilities: bool = false,
+        animation_duration_ms: u64 = 1500,
+        check_updates: bool = false,
+    } = .{},
+    
+    /// Progress tracking
+    progress: struct {
+        show_progress: bool = true,
+        show_steps: bool = true,
+        verbose: bool = false,
+    } = .{},
+};
+
+pub const BrandingConfig = struct {
+    name: []const u8,
+    version: []const u8,
+    description: []const u8,
+    author: []const u8,
+    logo_ascii: ?[]const u8 = null,
+    color_scheme: ColorScheme = .default,
+};
+
+pub const UnifiedStartup = struct {
+    allocator: std.mem.Allocator,
+    config: StartupConfig,
+    terminal: *term.Terminal,
+    
+    pub fn run(self: *UnifiedStartup) !void {
+        // Phase 1: Terminal initialization
+        try self.initializeTerminal();
+        
+        // Phase 2: Show splash screen
+        if (self.config.options.show_splash) {
+            try self.showSplashScreen();
+        }
+        
+        // Phase 3: Progressive initialization
+        try self.progressiveInit();
+        
+        // Phase 4: Welcome message
+        try self.showWelcomeMessage();
+    }
+    
+    fn showSplashScreen(self: *UnifiedStartup) !void {
+        const splash = SplashScreen.init(self.allocator, self.config.branding);
+        defer splash.deinit();
+        
+        // Render animated logo if available
+        if (self.config.branding.logo_ascii) |logo| {
+            try splash.renderAnimatedLogo(logo, .{
+                .duration_ms = self.config.options.animation_duration_ms,
+                .effect = .fade_in,
+            });
+        }
+        
+        // Show version and description
+        if (self.config.options.show_version) {
+            try splash.renderVersionInfo();
+        }
+    }
+    
+    fn progressiveInit(self: *UnifiedStartup) !void {
+        const steps = [_]InitStep{
+            .{ .name = "Terminal capabilities", .action = checkTerminalCapabilities },
+            .{ .name = "Configuration", .action = loadConfiguration },
+            .{ .name = "Authentication", .action = verifyAuthentication },
+            .{ .name = "Tools registration", .action = registerTools },
+            .{ .name = "Session restore", .action = restoreSession },
+        };
+        
+        var progress = try ProgressTracker.init(self.allocator, .{
+            .total_steps = steps.len,
+            .show_steps = self.config.progress.show_steps,
+        });
+        defer progress.deinit();
+        
+        for (steps) |step| {
+            try progress.startStep(step.name);
+            try step.action();
+            try progress.completeStep();
+        }
+    }
+};
+
+/// Example ASCII art logos for agents
+pub const AgentLogos = struct {
+    pub const markdown =
+        \\    __  ___           __       __                    
+        \\   /  |/  /___ ______/ /______/ /___ _      ______  
+        \\  / /|_/ / __ `/ ___/ //_/ __  / __ \ | /| / / __ \ 
+        \\ / /  / / /_/ / /  / ,< / /_/ / /_/ / |/ |/ / / / / 
+        \\/_/  /_/\__,_/_/  /_/|_|\__,_/\____/|__/|__/_/ /_/  
+    ;
+    
+    pub const code_assistant =
+        \\   ______          __        ___    ____
+        \\  / ____/___  ____/ /__     /   |  /  _/
+        \\ / /   / __ \/ __  / _ \   / /| |  / /  
+        \\/ /___/ /_/ / /_/ /  __/  / ___ |_/ /   
+        \\\____/\____/\__,_/\___/  /_/  |_/___/   
+    ;
+};
+```
+
+### Startup Visual Examples
+
+#### Minimal Startup
+```
+Markdown Agent v1.0.0
+Initializing...
+Ready.
+```
+
+#### Standard Startup
+```
+┌─────────────────────────────────────┐
+│     Markdown Agent v1.0.0          │
+│     AI-powered document editor      │
+└─────────────────────────────────────┘
+
+Initializing...
+✓ Terminal capabilities detected
+✓ Configuration loaded
+✓ Authentication verified
+✓ Tools registered (12 available)
+✓ Session restored
+
+Ready. Type 'help' for commands.
+```
+
+#### Enhanced Startup with Animation
+```
+    __  ___           __       __                    
+   /  |/  /___ ______/ /______/ /___ _      ______  
+  / /|_/ / __ `/ ___/ //_/ __  / __ \ | /| / / __ \ 
+ / /  / / /_/ / /  / ,< / /_/ / /_/ / |/ |/ / / / / 
+/_/  /_/\__,_/_/  /_/|_|\__,_/\____/|__/|__/_/ /_/  
+                                                      
+        Markdown Agent • Version 1.0.0
+        Your AI-powered document assistant
+        
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Initializing components...
+[████████████████████] 100% Complete
+
+✨ Welcome! Type 'help' to get started.
+```
+
+## Error Handling UX Patterns
+
+### Comprehensive Error Presentation
+
+Error handling should provide clear, actionable feedback with progressive detail levels.
+
+```zig
+//! Error Handling UX Patterns
+//! src/shared/error_ux.zig
+
+const std = @import("std");
+const term = @import("term/mod.zig");
+
+pub const ErrorLevel = enum {
+    warning,
+    error,
+    critical,
+};
+
+pub const ErrorContext = struct {
+    level: ErrorLevel,
+    code: []const u8,
+    message: []const u8,
+    details: ?[]const u8 = null,
+    suggestion: ?[]const u8 = null,
+    help_url: ?[]const u8 = null,
+    stack_trace: ?[]const u8 = null,
+};
+
+pub const ErrorPresenter = struct {
+    allocator: std.mem.Allocator,
+    terminal: *term.Terminal,
+    verbose: bool = false,
+    
+    pub fn present(self: *ErrorPresenter, context: ErrorContext) !void {
+        switch (context.level) {
+            .warning => try self.presentWarning(context),
+            .error => try self.presentError(context),
+            .critical => try self.presentCritical(context),
+        }
+    }
+    
+    fn presentError(self: *ErrorPresenter, context: ErrorContext) !void {
+        // Clear line for clean presentation
+        try self.terminal.clearLine();
+        
+        // Error header with icon and color
+        try self.terminal.setColor(.red);
+        try self.terminal.write("❌ Error");
+        if (context.code.len > 0) {
+            try self.terminal.write(" [");
+            try self.terminal.write(context.code);
+            try self.terminal.write("]");
+        }
+        try self.terminal.write(": ");
+        try self.terminal.resetColor();
+        
+        // Error message
+        try self.terminal.writeLine(context.message);
+        
+        // Details if available
+        if (context.details) |details| {
+            try self.terminal.setColor(.dim);
+            try self.terminal.write("   ");
+            try self.terminal.writeLine(details);
+            try self.terminal.resetColor();
+        }
+        
+        // Suggestion with icon
+        if (context.suggestion) |suggestion| {
+            try self.terminal.setColor(.yellow);
+            try self.terminal.write("💡 ");
+            try self.terminal.resetColor();
+            try self.terminal.writeLine(suggestion);
+        }
+        
+        // Help URL if available
+        if (context.help_url) |url| {
+            try self.terminal.setColor(.blue);
+            try self.terminal.write("📚 Learn more: ");
+            try self.terminal.writeLine(url);
+            try self.terminal.resetColor();
+        }
+        
+        // Stack trace in verbose mode
+        if (self.verbose and context.stack_trace != null) {
+            try self.presentStackTrace(context.stack_trace.?);
+        }
+    }
+    
+    fn presentWarning(self: *ErrorPresenter, context: ErrorContext) !void {
+        try self.terminal.setColor(.yellow);
+        try self.terminal.write("⚠️  Warning: ");
+        try self.terminal.resetColor();
+        try self.terminal.writeLine(context.message);
+    }
+    
+    fn presentCritical(self: *ErrorPresenter, context: ErrorContext) !void {
+        // Box drawing for critical errors
+        const box = Box.init(self.allocator, .{
+            .style = .double,
+            .color = .red,
+            .padding = 1,
+        });
+        defer box.deinit();
+        
+        var content = std.ArrayList(u8).init(self.allocator);
+        defer content.deinit();
+        
+        try content.appendSlice("CRITICAL ERROR\n\n");
+        try content.appendSlice(context.message);
+        
+        try box.render(self.terminal, content.items);
+        
+        // Recovery instructions
+        try self.terminal.writeLine("\nRecovery options:");
+        try self.terminal.writeLine("  1. Save your work and restart");
+        try self.terminal.writeLine("  2. Check the logs at ~/.agent/logs");
+        try self.terminal.writeLine("  3. Report issue: github.com/org/repo/issues");
+    }
+};
+```
+
+### Error Display Examples
+
+#### Warning
+```
+⚠️  Warning: Configuration file not found, using defaults
+```
+
+#### Standard Error
+```
+❌ Error [E001]: Failed to connect to API
+   Connection timeout after 30 seconds
+💡 Check your internet connection and try again
+📚 Learn more: docs.agent.ai/errors/E001
+```
+
+#### Critical Error
+```
+╔════════════════════════════════════════╗
+║          CRITICAL ERROR                ║
+║                                        ║
+║  Out of memory: Cannot allocate 2GB    ║
+║                                        ║
+╚════════════════════════════════════════╝
+
+Recovery options:
+  1. Save your work and restart
+  2. Check the logs at ~/.agent/logs
+  3. Report issue: github.com/org/repo/issues
+```
+
+## Progress Feedback Patterns
+
+### Multi-Level Progress Indicators
+
+```zig
+//! Progress Feedback Patterns
+//! src/shared/progress_patterns.zig
+
+const std = @import("std");
+const term = @import("term/mod.zig");
+const components = @import("components/mod.zig");
+
+pub const ProgressStyle = enum {
+    simple,      // Basic percentage
+    bar,         // Progress bar
+    spinner,     // Animated spinner
+    detailed,    // Multi-line with substeps
+    dashboard,   // Full dashboard view
+};
+
+pub const ProgressContext = struct {
+    operation: []const u8,
+    total_steps: ?usize = null,
+    current_step: usize = 0,
+    substeps: ?[]const SubStep = null,
+    show_eta: bool = true,
+    show_speed: bool = false,
+    cancelable: bool = true,
+};
+
+pub const AdaptiveProgress = struct {
+    allocator: std.mem.Allocator,
+    terminal: *term.Terminal,
+    style: ProgressStyle,
+    context: ProgressContext,
+    start_time: i64,
+    
+    pub fn update(self: *AdaptiveProgress, progress: f32) !void {
+        switch (self.style) {
+            .simple => try self.renderSimple(progress),
+            .bar => try self.renderBar(progress),
+            .spinner => try self.renderSpinner(progress),
+            .detailed => try self.renderDetailed(progress),
+            .dashboard => try self.renderDashboard(progress),
+        }
+    }
+    
+    fn renderBar(self: *AdaptiveProgress, progress: f32) !void {
+        const width = 40;
+        const filled = @floatToInt(usize, progress * @intToFloat(f32, width));
+        
+        try self.terminal.saveCursor();
+        try self.terminal.clearLine();
+        
+        // Operation name
+        try self.terminal.write(self.context.operation);
+        try self.terminal.write(": ");
+        
+        // Progress bar
+        try self.terminal.write("[");
+        for (0..width) |i| {
+            if (i < filled) {
+                try self.terminal.setColor(.green);
+                try self.terminal.write("█");
+            } else {
+                try self.terminal.setColor(.dim);
+                try self.terminal.write("░");
+            }
+        }
+        try self.terminal.resetColor();
+        try self.terminal.write("] ");
+        
+        // Percentage
+        try self.terminal.write(try std.fmt.allocPrint(
+            self.allocator,
+            "{d:.0}%",
+            .{progress * 100}
+        ));
+        
+        // ETA if enabled
+        if (self.context.show_eta) {
+            const eta = self.calculateETA(progress);
+            try self.terminal.write(" • ETA: ");
+            try self.terminal.write(eta);
+        }
+        
+        try self.terminal.restoreCursor();
+    }
+    
+    fn renderDetailed(self: *AdaptiveProgress, progress: f32) !void {
+        // Clear area for multi-line display
+        try self.terminal.saveCursor();
+        for (0..5) |_| {
+            try self.terminal.clearLine();
+            try self.terminal.cursorDown(1);
+        }
+        try self.terminal.restoreCursor();
+        
+        // Main operation
+        try self.terminal.writeLine(self.context.operation);
+        
+        // Progress bar
+        try self.renderBar(progress);
+        try self.terminal.newLine();
+        
+        // Substeps if available
+        if (self.context.substeps) |substeps| {
+            for (substeps) |substep| {
+                try self.renderSubstep(substep);
+            }
+        }
+        
+        // Cancel hint
+        if (self.context.cancelable) {
+            try self.terminal.setColor(.dim);
+            try self.terminal.writeLine("Press Ctrl+C to cancel");
+            try self.terminal.resetColor();
+        }
+    }
+};
+
+/// Indeterminate progress for unknown duration operations
+pub const IndeterminateProgress = struct {
+    allocator: std.mem.Allocator,
+    terminal: *term.Terminal,
+    message: []const u8,
+    animation: Animation,
+    
+    const Animation = enum {
+        dots,
+        spinner,
+        pulse,
+        bounce,
+    };
+    
+    const animations = .{
+        .dots = [_][]const u8{ "   ", ".  ", ".. ", "..." },
+        .spinner = [_][]const u8{ "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏" },
+        .pulse = [_][]const u8{ "○", "◔", "◑", "◕", "●", "◕", "◑", "◔" },
+        .bounce = [_][]const u8{ "[    ]", "[=   ]", "[==  ]", "[=== ]", "[ ===]", "[  ==]", "[   =]" },
+    };
+    
+    pub fn render(self: *IndeterminateProgress, frame: usize) !void {
+        const frames = switch (self.animation) {
+            .dots => animations.dots,
+            .spinner => animations.spinner,
+            .pulse => animations.pulse,
+            .bounce => animations.bounce,
+        };
+        
+        const current_frame = frames[frame % frames.len];
+        
+        try self.terminal.saveCursor();
+        try self.terminal.clearLine();
+        try self.terminal.write(current_frame);
+        try self.terminal.write(" ");
+        try self.terminal.write(self.message);
+        try self.terminal.restoreCursor();
+    }
+};
+```
+
+### Progress Display Examples
+
+#### Simple Progress
+```
+Processing: 65%
+```
+
+#### Progress Bar
+```
+Analyzing document: [████████████████████░░░░░░░░░] 65% • ETA: 12s
+```
+
+#### Detailed Progress
+```
+Building project
+[████████████████████░░░░░░░░░] 65% • ETA: 12s
+
+✓ Dependencies resolved
+✓ Source files compiled
+⠙ Running tests... (15/42)
+  Optimizing output...
+
+Press Ctrl+C to cancel
+```
+
+#### Indeterminate Progress
+```
+⠸ Connecting to server...
+```
+
+## Interactive Help System
+
+### Context-Aware Help Implementation
+
+```zig
+//! Interactive Help System
+//! src/shared/help_system.zig
+
+const std = @import("std");
+const tui = @import("tui/mod.zig");
+
+pub const HelpLevel = enum {
+    quick,      // Single line hints
+    standard,   // Basic help text
+    detailed,   // Full documentation
+    tutorial,   // Interactive tutorial
+};
+
+pub const HelpContext = struct {
+    command: ?[]const u8 = null,
+    feature: ?[]const u8 = null,
+    error_code: ?[]const u8 = null,
+    current_view: []const u8,
+};
+
+pub const InteractiveHelp = struct {
+    allocator: std.mem.Allocator,
+    help_database: HelpDatabase,
+    current_context: HelpContext,
+    
+    pub fn show(self: *InteractiveHelp, level: HelpLevel) !void {
+        switch (level) {
+            .quick => try self.showQuickHelp(),
+            .standard => try self.showStandardHelp(),
+            .detailed => try self.showDetailedHelp(),
+            .tutorial => try self.runTutorial(),
+        }
+    }
+    
+    fn showQuickHelp(self: *InteractiveHelp) !void {
+        // Context-aware single line help
+        const hint = try self.help_database.getQuickHint(self.current_context);
+        try self.displayHint(hint);
+    }
+    
+    fn showDetailedHelp(self: *InteractiveHelp) !void {
+        // Full help modal
+        var modal = try tui.Modal.init(self.allocator, .{
+            .title = "Help Documentation",
+            .width = 80,
+            .height = 24,
+            .closeable = true,
+        });
+        defer modal.deinit();
+        
+        // Add navigation
+        try modal.addSection("Navigation", .{
+            .content = 
+                \\↑/↓ or j/k    Navigate items
+                \\←/→ or h/l    Switch tabs
+                \\PgUp/PgDn     Scroll pages
+                \\Home/End      Jump to start/end
+                \\/ or Ctrl+F   Search
+                \\Esc           Close help
+            ,
+        });
+        
+        // Add command reference
+        try modal.addSection("Commands", try self.getCommandHelp());
+        
+        // Add keyboard shortcuts
+        try modal.addSection("Shortcuts", try self.getShortcuts());
+        
+        try modal.render();
+    }
+    
+    fn runTutorial(self: *InteractiveHelp) !void {
+        var tutorial = try InteractiveTutorial.init(self.allocator, .{
+            .agent_name = "Markdown Agent",
+            .steps = &[_]TutorialStep{
+                .{
+                    .title = "Welcome",
+                    .content = "Let's learn how to use the Markdown Agent!",
+                    .action = .continue,
                 },
-                .dashboard => {
-                    try self.dashboard.toggle();
+                .{
+                    .title = "Creating Documents",
+                    .content = "Type 'new' to create a new document",
+                    .action = .wait_for_command,
+                    .expected = "new",
                 },
-                .quit => break,
-            }
-
-            // Update metrics
-            try self.dashboard.updateMetrics(self.getMetrics());
-        }
+                .{
+                    .title = "Editing",
+                    .content = "Use the editor to write markdown",
+                    .action = .interactive_edit,
+                },
+                // More steps...
+            },
+        });
+        defer tutorial.deinit();
+        
+        try tutorial.run();
     }
+};
+
+pub const CommandHelp = struct {
+    pub const categories = [_]Category{
+        .{
+            .name = "File Operations",
+            .commands = &[_]Command{
+                .{ .name = "new", .args = "[filename]", .desc = "Create new document" },
+                .{ .name = "open", .args = "<filename>", .desc = "Open existing document" },
+                .{ .name = "save", .args = "[filename]", .desc = "Save current document" },
+                .{ .name = "export", .args = "<format>", .desc = "Export to HTML/PDF" },
+            },
+        },
+        .{
+            .name = "Editing",
+            .commands = &[_]Command{
+                .{ .name = "format", .args = "", .desc = "Format document" },
+                .{ .name = "validate", .args = "", .desc = "Check for errors" },
+                .{ .name = "preview", .args = "", .desc = "Toggle preview" },
+            },
+        },
+    };
 };
 ```
 
-### Example 2: OAuth Integration
+### Help Display Examples
 
-```zig
-// Complete OAuth flow with all enhancements
-pub fn authenticateWithEnhancements(allocator: std.mem.Allocator) !void {
-    // Create enhanced OAuth wizard
-    var wizard = try EnhancedOAuthWizard.init(allocator, .{
-        .provider = "github",
-        .theme = "modern",
-        .enable_animations = true,
-    });
-    defer wizard.deinit();
-
-    // Show animated introduction
-    try wizard.showIntro();
-
-    // Start callback server
-    var server = try CallbackServer.init(allocator, .{
-        .port = 8080,
-        .show_success_page = true,
-    });
-    defer server.deinit();
-    try server.start();
-
-    // Generate and display auth URL
-    const auth_url = try wizard.generateAuthUrl();
-    try wizard.displayClickableUrl(auth_url);
-
-    // Wait with progress bar
-    const result = try wizard.waitForAuth(.{
-        .show_progress = true,
-        .timeout_ms = 300_000,
-    });
-
-    // Exchange and save tokens
-    const tokens = try wizard.exchangeCode(result.code);
-    try wizard.saveTokens(tokens);
-
-    // Show success notification
-    try wizard.showSuccess("Authentication complete!");
-}
+#### Quick Hint
+```
+💡 Tip: Press Ctrl+P to toggle preview mode
 ```
 
-### Example 3: Dashboard with Live Updates
+#### Standard Help
+```
+Available commands:
+  new [name]    Create new document
+  open <file>   Open existing file
+  save          Save current document
+  help          Show this help
+  quit          Exit application
+
+Press F1 for detailed help
+```
+
+#### Detailed Help Modal
+```
+╭───────────── Help Documentation ─────────────╮
+│                                               │
+│  Navigation                                   │
+│  ├─ ↑/↓ or j/k    Navigate items            │
+│  ├─ ←/→ or h/l    Switch tabs               │
+│  ├─ PgUp/PgDn     Scroll pages              │
+│  └─ Esc           Close help                 │
+│                                               │
+│  Commands                                     │
+│  ├─ File Operations                          │
+│  │  ├─ new [name]   Create document         │
+│  │  ├─ open <file>  Open file               │
+│  │  └─ save [name]  Save document           │
+│  └─ Editing                                  │
+│     ├─ format       Auto-format              │
+│     └─ validate     Check errors             │
+│                                               │
+│  [Search] [Tutorial] [Close]                 │
+╰───────────────────────────────────────────────╯
+```
+
+## Implementation Examples and Code Patterns
+
+### Complete Agent Integration Example
 
 ```zig
-// Real-time dashboard with all components
-pub fn createFullDashboard(allocator: std.mem.Allocator) !*Dashboard {
-    const dash = try Dashboard.init(allocator, .{
-        .layout = .grid,
-        .theme = "cyberpunk",
-    });
+//! Complete agent with all UX improvements
+//! agents/enhanced_agent/main.zig
 
-    // Add statistics panel
-    try dash.addComponent(.{
-        .type = .stats,
-        .metrics = &[_]Metric{
-            .{ .name = "Requests", .value = 0 },
-            .{ .name = "Tokens", .value = 0 },
-            .{ .name = "Cost", .value = 0.0 },
+const std = @import("std");
+const core = @import("../../src/core/mod.zig");
+const shared = @import("../../src/shared/mod.zig");
+const spec = @import("spec.zig");
+
+pub fn main() !void {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+    
+    // Initialize with enhanced startup
+    var startup = try shared.startup.UnifiedStartup.init(allocator, .{
+        .branding = .{
+            .name = "Enhanced Agent",
+            .version = "1.0.0",
+            .description = "Next-generation AI agent",
+            .author = "Agent Team",
+            .logo_ascii = spec.logo,
+            .color_scheme = .modern,
+        },
+        .options = .{
+            .show_splash = true,
+            .show_capabilities = true,
+            .check_updates = true,
         },
     });
+    
+    try startup.run();
+    
+    // Initialize agent with enhanced features
+    var agent = try spec.Agent.init(allocator, .{
+        .enable_oauth = true,
+        .enable_dashboard = true,
+        .enable_help = true,
+        .progress_style = .detailed,
+        .error_handling = .enhanced,
+    });
+    defer agent.deinit();
+    
+    // Run with enhanced session
+    try agent.runInteractive();
+}
+```
 
-    // Add live chart
-    try dash.addComponent(.{
-        .type = .chart,
-        .config = .{
-            .title = "Performance",
-            .type = .line,
-            .max_points = 100,
+### Testing UX Components
+
+```zig
+//! UX Component Testing
+//! tests/ux_test.zig
+
+const std = @import("std");
+const testing = std.testing;
+const ux = @import("../src/shared/ux/mod.zig");
+
+test "OAuth flow progression" {
+    const allocator = testing.allocator;
+    
+    var flow = try ux.ProgressiveOAuthFlow.init(allocator, .{
+        .provider = .{
+            .name = "github",
+            .client_id = "test_id",
+        },
+        .capabilities = .{
+            .min_terminal = .basic,
         },
     });
-
-    // Add cost tracker
-    try dash.addComponent(.{
-        .type = .cost_tracker,
-        .config = .{
-            .show_projection = true,
-            .alert_threshold = 10.0,
-        },
-    });
-
-    // Start update loop
-    try dash.startUpdateLoop(1000); // 1 second refresh
-
-    return dash;
+    defer flow.deinit();
+    
+    // Test level detection
+    const level = flow.determineEnhancementLevel();
+    try testing.expect(level != null);
 }
-```
 
-## Keyboard Shortcuts Reference
-
-### Global Shortcuts
-
-| Shortcut | Description | Context |
-|----------|-------------|---------|
-| `Ctrl+C` | Interrupt current operation | Global |
-| `Ctrl+D` | Exit agent | Global |
-| `↑/↓` | Navigate command history | Input |
-| `Tab` | Auto-complete commands and paths | Input |
-| `Ctrl+R` | Search command history | Input |
-| `F1` | Show help | Global |
-| `F2` | Show tools palette | Global |
-| `Ctrl+P` | Open command palette | Global |
-| `Ctrl+T` | Toggle theme | Global |
-| `Ctrl+S` | Save current work | Global |
-| `Ctrl+O` | Open file browser | Global |
-| `Ctrl+Shift+E` | Toggle file tree sidebar | Global |
-
-### Editor Shortcuts
-
-| Shortcut | Description | Context |
-|----------|-------------|---------|
-| `Ctrl+S` | Save document | Editor |
-| `Ctrl+Z` | Undo | Editor |
-| `Ctrl+Y` | Redo | Editor |
-| `Ctrl+F` | Find | Editor |
-| `Ctrl+H` | Replace | Editor |
-| `Ctrl+A` | Select all | Editor |
-| `Ctrl+C` | Copy | Editor |
-| `Ctrl+V` | Paste | Editor |
-| `Ctrl+X` | Cut | Editor |
-| `Alt+1-6` | Insert heading level | Editor |
-| `Ctrl+Shift+T` | Format table | Editor |
-| `Ctrl+K` | Insert link | Editor |
-
-### Dashboard Shortcuts
-
-| Shortcut | Description | Context |
-|----------|-------------|---------|
-| `Alt+D` | Toggle dashboard | Dashboard |
-| `Alt+M` | Show metrics | Dashboard |
-| `Alt+H` | Show version history | Dashboard |
-| `Alt+L` | Switch layout | Dashboard |
-| `Alt+P` | Toggle preview | Dashboard |
-| `Q` | Quit dashboard | Dashboard |
-| `R` | Refresh dashboard | Dashboard |
-
-### Command Palette Shortcuts
-
-| Shortcut | Description | Context |
-|----------|-------------|---------|
-| `Ctrl+P` | Open command palette | Global |
-| `↑/↓` | Navigate suggestions | Command Palette |
-| `Enter` | Execute selected command | Command Palette |
-| `Tab` | Auto-complete command | Command Palette |
-| `Escape` | Close palette | Command Palette |
-| `Ctrl+U` | Clear search | Command Palette |
-
-### OAuth Wizard Shortcuts
-
-| Shortcut | Description | Context |
-|----------|-------------|---------|
-| `?` | Show help | OAuth Wizard |
-| `Q` | Quit wizard | OAuth Wizard |
-| `R` | Retry operation | OAuth Wizard |
-| `Ctrl+V` | Paste authorization code | OAuth Wizard |
-| `Ctrl+U` | Clear input | OAuth Wizard |
-| `Enter` | Submit code | OAuth Wizard |
-| `Escape` | Cancel input | OAuth Wizard |
-
-## Accessibility Guidelines
-
-### Screen Reader Support
-
-```zig
-// Enable screen reader compatibility
-if (config.accessibility_config.screen_reader) {
-    // Add ARIA-like labels for terminal elements
-    try self.renderer.addScreenReaderLabel("main_content", "Main content area");
-    try self.renderer.addScreenReaderLabel("command_input", "Command input field");
-    try self.renderer.addScreenReaderLabel("status_bar", "Status information");
-
-    // Announce dynamic content changes
-    try self.screen_reader.announce("New message received");
-    try self.screen_reader.announce("File saved successfully");
-
-    // Provide keyboard navigation hints
-    try self.showKeyboardNavigationHints();
-}
-```
-
-### High Contrast Mode
-
-```zig
-// Implement high contrast theme
-pub fn enableHighContrast(self: *Self) !void {
-    try self.theme_manager.switchTheme("high_contrast");
-
-    // Ensure minimum contrast ratios
-    const min_contrast_ratio = 4.5; // WCAG AA standard
-
-    // Update all UI elements with high contrast colors
-    try self.updateContrastRatios(min_contrast_ratio);
-
-    // Add focus indicators
-    try self.renderer.enableFocusIndicators();
-}
-```
-
-### Keyboard Navigation
-
-```zig
-// Implement full keyboard navigation
-pub fn enableKeyboardNavigation(self: *Self) !void {
-    // Define tab order for interactive elements
-    const tab_order = &[_][]const u8{
-        "command_input",
-        "file_browser",
-        "dashboard_widgets",
-        "help_button",
+test "Error presenter formatting" {
+    const allocator = testing.allocator;
+    
+    var presenter = ux.ErrorPresenter.init(allocator);
+    defer presenter.deinit();
+    
+    const context = ux.ErrorContext{
+        .level = .error,
+        .code = "E001",
+        .message = "Test error",
+        .suggestion = "Try again",
     };
+    
+    const output = try presenter.format(context);
+    defer allocator.free(output);
+    
+    try testing.expect(std.mem.indexOf(u8, output, "E001") != null);
+    try testing.expect(std.mem.indexOf(u8, output, "Try again") != null);
+}
 
-    try self.focus_manager.setTabOrder(tab_order);
-
-    // Enable focus cycling
-    try self.focus_manager.enableFocusCycling();
-
-    // Add skip links for screen readers
-    if (config.accessibility_config.skip_links) {
-        try self.renderer.addSkipLink("main_content", "Skip to main content");
-        try self.renderer.addSkipLink("navigation", "Skip to navigation");
+test "Progress bar rendering" {
+    const allocator = testing.allocator;
+    
+    var progress = try ux.AdaptiveProgress.init(allocator, .{
+        .style = .bar,
+        .context = .{
+            .operation = "Testing",
+            .show_eta = true,
+        },
+    });
+    defer progress.deinit();
+    
+    // Test various progress values
+    for ([_]f32{ 0.0, 0.25, 0.5, 0.75, 1.0 }) |value| {
+        const output = try progress.render(value);
+        defer allocator.free(output);
+        try testing.expect(output.len > 0);
     }
 }
 ```
 
-### Reduced Motion
+## Component Reference
+
+### Available UI Components
+
+| Component | Location | Purpose | Terminal Requirements |
+|-----------|----------|---------|----------------------|
+| **OAuth Wizard** | `src/shared/auth/tui/oauth_wizard.zig` | Visual OAuth flow | Colors, Unicode |
+| **Progress Bar** | `src/shared/components/progress.zig` | Progress indication | Basic |
+| **Command Palette** | `src/shared/tui/components/command_palette.zig` | Command discovery | Colors, Mouse |
+| **Error Modal** | `src/shared/tui/widgets/modal.zig` | Error display | Colors |
+| **Dashboard** | `src/shared/tui/components/dashboard/` | Metrics display | Full TUI |
+| **Editor** | `src/shared/components/editor.zig` | Text editing | Colors, Unicode |
+| **Preview** | `src/shared/render/markdown_renderer.zig` | Markdown preview | Colors, Unicode |
+| **Help System** | `src/shared/help/mod.zig` | Interactive help | Colors |
+| **Notification** | `src/shared/components/notification.zig` | Status messages | Colors |
+| **Splash Screen** | `src/shared/tui/components/welcome_screen.zig` | Startup branding | Colors, Unicode |
+
+### Component Integration Matrix
+
+| Feature | Basic Terminal | Enhanced Terminal | Full TUI |
+|---------|---------------|-------------------|----------|
+| **OAuth** | URL + Manual Code | Callback Server | Visual Wizard |
+| **Progress** | Percentage | Progress Bar | Dashboard |
+| **Errors** | Plain Text | Formatted + Color | Modal Dialog |
+| **Help** | Text List | Categorized | Interactive |
+| **Editor** | Line Input | Syntax Highlight | Split Pane |
+| **Preview** | None | Basic Render | Live Update |
+| **Commands** | CLI Args | Menu | Palette |
+| **Notifications** | Print | Styled | Toast |
+
+## Best Practices
+
+### 1. Terminal Capability Detection
+
+Always detect and adapt to terminal capabilities:
 
 ```zig
-// Respect user's motion preferences
-pub fn handleReducedMotion(self: *Self) !void {
-    if (config.accessibility_config.reduced_motion) {
-        // Disable animations
-        try self.animation_engine.disable();
-
-        // Use instant transitions
-        try self.renderer.setTransitionMode(.instant);
-
-        // Disable progress spinners
-        try self.progress_tracker.disableSpinners();
-
-        // Use static indicators instead of animated ones
-        try self.status_indicators.setMode(.static);
-    }
-}
-```
-
-## Performance Considerations
-
-### Memory Management
-
-```zig
-// Use arena allocators for temporary operations
-pub fn processWithArena(self: *Self, input: []const u8) ![]const u8 {
-    var arena = std.heap.ArenaAllocator.init(self.allocator);
-    defer arena.deinit();
-    const arena_allocator = arena.allocator();
-
-    // Use arena for temporary allocations
-    const temp_buffer = try arena_allocator.alloc(u8, 1024);
-    const result = try self.processInput(arena_allocator, input, temp_buffer);
-
-    // Return owned copy using main allocator
-    return try self.allocator.dupe(u8, result);
-}
-```
-
-### Caching Strategies
-
-```zig
-// Implement intelligent caching
-pub const CacheManager = struct {
-    allocator: Allocator,
-    cache: std.StringHashMap(CacheEntry),
-    max_size_bytes: usize,
-    current_size_bytes: usize,
-
-    pub const CacheEntry = struct {
-        data: []const u8,
-        timestamp: i64,
-        access_count: u64,
-        size_bytes: usize,
-    };
-
-    pub fn cacheResult(self: *CacheManager, key: []const u8, data: []const u8) !void {
-        const owned_key = try self.allocator.dupe(u8, key);
-        const owned_data = try self.allocator.dupe(u8, data);
-
-        const entry = CacheEntry{
-            .data = owned_data,
-            .timestamp = std.time.timestamp(),
-            .access_count = 0,
-            .size_bytes = owned_data.len,
-        };
-
-        // Check if we need to evict entries
-        if (self.current_size_bytes + entry.size_bytes > self.max_size_bytes) {
-            try self.evictLeastRecentlyUsed(entry.size_bytes);
-        }
-
-        try self.cache.put(owned_key, entry);
-        self.current_size_bytes += entry.size_bytes;
-    }
-
-    pub fn getCachedResult(self: *CacheManager, key: []const u8) ?[]const u8 {
-        const entry = self.cache.getPtr(key) orelse return null;
-        entry.access_count += 1;
-        return entry.data;
-    }
+const capabilities = try term.detectCapabilities();
+const ui_level = switch (capabilities.level) {
+    .basic => UILevel.minimal,
+    .enhanced => UILevel.standard,
+    .full => UILevel.rich,
 };
 ```
 
-### Background Processing
+### 2. Graceful Degradation
+
+Provide fallbacks for limited terminals:
 
 ```zig
-// Offload heavy operations to background threads
-pub fn startBackgroundProcessing(self: *Self) !void {
-    if (!self.config.performance_config.background_processing) return;
-
-    // Start background thread for file indexing
-    self.file_indexer_thread = try Thread.spawn(.{}, struct {
-        fn run(self_ptr: *Self) void {
-            while (self_ptr.is_running) {
-                // Index files in background
-                self_ptr.indexNextBatch() catch |err| {
-                    // Log error but continue
-                    std.log.err("Background indexing error: {}", .{err});
-                };
-                std.time.sleep(100 * std.time.ns_per_ms);
-            }
-        }
-    }.run, .{self});
-
-    // Start background thread for metrics collection
-    self.metrics_thread = try Thread.spawn(.{}, struct {
-        fn run(self_ptr: *Self) void {
-            while (self_ptr.is_running) {
-                // Collect system metrics
-                self_ptr.collectSystemMetrics() catch |err| {
-                    std.log.err("Metrics collection error: {}", .{err});
-                };
-                std.time.sleep(1 * std.time.ns_per_s);
-            }
-        }
-    }.run, .{self});
+if (capabilities.supports_unicode) {
+    try render.drawBox("╭──────╮");
+} else {
+    try render.drawBox("+------+");
 }
 ```
 
-### Lazy Loading
+### 3. Responsive Design
+
+Adapt to terminal size changes:
 
 ```zig
-// Implement lazy loading for heavy components
-pub const LazyLoader = struct {
-    allocator: Allocator,
-    components: std.StringHashMap(ComponentLoader),
-    loaded_components: std.StringHashMap(*anyopaque),
-
-    pub const ComponentLoader = struct {
-        load_fn: *const fn (allocator: Allocator) anyerror!*anyopaque,
-        is_loaded: bool = false,
-    };
-
-    pub fn loadComponent(self: *LazyLoader, name: []const u8) !*anyopaque {
-        // Check if already loaded
-        if (self.loaded_components.get(name)) |component| {
-            return component;
-        }
-
-        // Get loader
-        const loader = self.components.get(name) orelse {
-            return error.ComponentNotFound;
-        };
-
-        // Load component
-        const component = try loader.load_fn(self.allocator);
-        try self.loaded_components.put(try self.allocator.dupe(u8, name), component);
-
-        return component;
+pub fn handleResize(self: *Component, width: u16, height: u16) !void {
+    if (width < 80) {
+        self.layout = .compact;
+    } else {
+        self.layout = .full;
     }
-
-    pub fn preloadComponent(self: *LazyLoader, name: []const u8) !void {
-        if (self.loaded_components.get(name) != null) return;
-
-        const loader = self.components.get(name) orelse return;
-        const component = try loader.load_fn(self.allocator);
-        try self.loaded_components.put(try self.allocator.dupe(u8, name), component);
-    }
-};
+    try self.rerender();
+}
 ```
 
-This comprehensive guide covers all the UX improvements and provides detailed implementation guidance for developers. The modular architecture ensures that you can adopt these enhancements incrementally while maintaining backward compatibility.</content>
-</xai:function_call/>
-</xai:function_call name="run">
-<parameter name="bash">
-<parameter name="command">cd /Users/sam/code/docz && git add docs/UX_IMPROVEMENTS_GUIDE.md
+### 4. Consistent Key Bindings
+
+Follow standard conventions:
+
+- **Ctrl+C**: Cancel/Interrupt
+- **Ctrl+S**: Save
+- **Ctrl+Q**: Quit
+- **Ctrl+F**: Find
+- **F1**: Help
+- **Esc**: Close/Cancel
+- **Tab**: Next field
+- **Shift+Tab**: Previous field
+
+### 5. Performance Optimization
+
+Minimize terminal operations:
+
+```zig
+// Batch updates
+var buffer = try BufferedRenderer.init(allocator);
+defer buffer.deinit();
+
+try buffer.begin();
+// Multiple render operations
+try buffer.commit(); // Single flush to terminal
+```
+
+### 6. Accessibility
+
+Ensure keyboard-only navigation:
+
+```zig
+pub fn handleKeyPress(self: *Component, key: Key) !void {
+    switch (key) {
+        .tab => try self.focusNext(),
+        .shift_tab => try self.focusPrevious(),
+        .enter, .space => try self.activate(),
+        else => {},
+    }
+}
+```
+
+### 7. Error Recovery
+
+Provide clear recovery paths:
+
+```zig
+catch |err| {
+    try self.showError(.{
+        .error = err,
+        .recovery_options = &[_]RecoveryOption{
+            .{ .label = "Retry", .action = .retry },
+            .{ .label = "Skip", .action = .skip },
+            .{ .label = "Abort", .action = .abort },
+        },
+    });
+}
+```
+
+### 8. Session Persistence
+
+Save and restore session state:
+
+```zig
+pub fn saveSession(self: *Session) !void {
+    const state = try self.serialize();
+    defer self.allocator.free(state);
+    try std.fs.cwd().writeFile(".agent_session", state);
+}
+
+pub fn restoreSession(self: *Session) !void {
+    const state = try std.fs.cwd().readFileAlloc(
+        self.allocator,
+        ".agent_session",
+        1024 * 1024
+    );
+    defer self.allocator.free(state);
+    try self.deserialize(state);
+}
+```
+
+## Conclusion
+
+This guide provides comprehensive patterns for implementing modern UX improvements across all agents. The key principles are:
+
+1. **Progressive Enhancement**: Adapt to terminal capabilities
+2. **Consistent Experience**: Unified patterns across agents
+3. **Clear Feedback**: Immediate, actionable user feedback
+4. **Discoverability**: Intuitive interfaces with built-in help
+5. **Performance**: Optimized rendering and responsiveness
+6. **Accessibility**: Full keyboard navigation support
+7. **Error Handling**: Clear error presentation with recovery options
+8. **Visual Polish**: Professional appearance with animations and theming
+
+By following these patterns, agents provide a modern, professional terminal experience that rivals graphical applications while maintaining the efficiency and power of command-line interfaces.
+
+## Resources
+
+- [Terminal UI Components Documentation](../src/shared/tui/README.md)
+- [OAuth Implementation Guide](../src/shared/auth/README.md)
+- [Markdown Agent Documentation](../agents/markdown/README.md)
+- [Theme System Guide](../src/shared/theme_manager/README.md)
+- [Testing Guide](../tests/README.md)

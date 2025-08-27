@@ -32,17 +32,17 @@ pub const Config = struct {
     // Add your custom configuration fields here
     // These will be loaded from config.zon and have defaults
 
-        /// Whether to enable the custom demonstration feature
-        customFeatureEnabled: bool = false,
+    /// Whether to enable the custom demonstration feature
+    customFeatureEnabled: bool = false,
 
-        /// Maximum number of custom operations to perform
-        maxCustomOperations: u32 = 50,
+    /// Maximum number of custom operations to perform
+    maxCustomOperations: u32 = 50,
 
-        /// Custom processing timeout in seconds
-        customTimeoutSeconds: u32 = 30,
+    /// Custom processing timeout in seconds
+    customTimeoutSeconds: u32 = 30,
 
-        /// Example of a string configuration with default
-        customMessage: []const u8 = "Hello from template agent!",
+    /// Example of a string configuration with default
+    customMessage: []const u8 = "Hello from template agent!",
 
     /// ============================================================================
     /// CONFIGURATION LOADING METHODS

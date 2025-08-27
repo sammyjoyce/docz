@@ -2,8 +2,8 @@
 //! Provides copy/paste functionality using OSC 52 and fallback methods
 
 const std = @import("std");
-const components = @import("../../../components/mod.zig");
-const term_shared = @import("../../../term/mod.zig");
+const components = @import("components_shared");
+const term_shared = @import("term_shared");
 const term_clipboard = term_shared.ansi.clipboard;
 const term_caps = term_shared.caps;
 const term_ansi = term_shared.ansi.color;

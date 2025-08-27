@@ -19,35 +19,8 @@ pub const Size = struct {
     height: u16,
 };
 
-pub const Rect = struct {
-    x: i16,
-    y: i16,
-    width: u16,
-    height: u16,
-
-    pub fn contains(self: Rect, point: Point) bool {
-        return point.x >= self.x and
-            point.x < self.x + @as(i16, @intCast(self.width)) and
-            point.y >= self.y and
-            point.y < self.y + @as(i16, @intCast(self.height));
-    }
-
-    pub fn intersects(self: Rect, other: Rect) bool {
-        return !(self.x + @as(i16, @intCast(self.width)) <= other.x or
-            other.x + @as(i16, @intCast(other.width)) <= self.x or
-            self.y + @as(i16, @intCast(self.height)) <= other.y or
-            other.y + @as(i16, @intCast(other.height)) <= self.y);
-    }
-
-    pub fn toBounds(self: Rect) Bounds {
-        return Bounds{
-            .x = self.x,
-            .y = self.y,
-            .width = self.width,
-            .height = self.height,
-        };
-    }
-};
+// Re-export Rect as BoundsI16 for backward compatibility
+pub const Rect = @import("../../types.zig").BoundsI16;
 
 /// Style information for rendering
 pub const Style = struct {

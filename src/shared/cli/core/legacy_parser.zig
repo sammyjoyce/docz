@@ -1,3 +1,10 @@
+// DEPRECATED: This is legacy CLI parser code being phased out.
+// DEPRECATED: This is legacy CLI parser code being phased out.
+// This file provides backward compatibility but should not be used for new development.
+// Please migrate to the new CLI system using src/core/agent_main.zig for standardized
+// agent entry points and CLI parsing.
+// This file will be removed in the next major version.
+
 //! Enhanced CLI parser that combines the modular architecture with legacy functionality
 //! Provides backward compatibility while using the new modular system
 

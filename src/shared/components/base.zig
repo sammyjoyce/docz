@@ -4,17 +4,17 @@
 //! interfaces, enabling code reuse and consistent behavior across different presentation modes.
 
 const std = @import("std");
-const term_shared = @import("../term/mod.zig");
+const term_shared = @import("term_shared");
 const term = term_shared.term;
-const graphics = term_shared.graphics_manager;
-const theme_manager = @import("../theme_manager/mod.zig");
+const graphics = term_shared.graphics;
+const theme_manager = @import("theme_manager");
 
 const Terminal = term.Terminal;
 const Color = term.Color;
 const Style = term.Style;
 const Point = term.Point;
 const Rect = term.Rect;
-const GraphicsManager = graphics.GraphicsManager;
+const GraphicsManager = graphics.Graphics;
 
 /// Unique identifier for components
 pub const ComponentId = u32;
@@ -436,8 +436,6 @@ pub const Animation = struct {
         return start + (end - start) * t;
     }
 };
-
-
 
 test "component state" {
     var state = ComponentState{};

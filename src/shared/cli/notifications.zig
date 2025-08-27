@@ -12,8 +12,8 @@
 //! - Multiple display styles (minimal, detailed, system)
 
 const std = @import("std");
-const components = @import("../components/mod.zig");
-const term_shared = @import("../term/mod.zig");
+const components = @import("components_shared");
+const term_shared = @import("term_shared");
 const unified = term_shared.unified;
 const terminal_bridge = @import("./core/terminal_bridge.zig");
 const components_shared = @import("./components/mod.zig");

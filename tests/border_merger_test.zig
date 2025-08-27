@@ -1,7 +1,7 @@
 const std = @import("std");
 const testing = std.testing;
 const BorderMerger = @import("BorderMerger").BorderMerger;
-const Point = @import("Point").Point;
+const Point = @import("Bounds").Point;
 
 test "BorderMerger initialization and cleanup" {
     const allocator = testing.allocator;

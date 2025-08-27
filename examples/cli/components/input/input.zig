@@ -1,4 +1,4 @@
-//! Smart Input Component with Advanced Terminal Features
+//! Input Component with Terminal Features
 //!
 //! Features:
 //! - Mouse support for text selection and cursor positioning
@@ -11,11 +11,11 @@
 //! - Multi-line support with proper line wrapping
 
 const std = @import("std");
-const unified = @import("../../../src/shared/term/unified.zig");
+const terminal_mod = @import("../../../src/shared/term/terminal_mod.zig");
 const capabilities = @import("../../../src/shared/term/caps.zig");
 const terminal_abstraction = @import("../../core/terminal_abstraction.zig");
 
-// Advanced input handling
+// Input handling
 const input_events = @import("../../../src/shared/term/input/input_driver.zig");
 const mouse_handler = @import("../../../src/shared/term/input/mouse.zig");
 const focus_events = @import("../../../src/shared/term/input/focus.zig");

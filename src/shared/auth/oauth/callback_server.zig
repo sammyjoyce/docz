@@ -16,7 +16,7 @@ const oauth = @import("mod.zig");
 const print = std.debug.print;
 
 // Terminal rendering support
-const term = @import("../../term/mod.zig");
+const term = @import("term_shared");
 const ansi = term.ansi;
 
 /// Server configuration

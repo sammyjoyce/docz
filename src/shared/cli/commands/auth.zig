@@ -2,8 +2,7 @@
 //! Auth commands with CLI features
 
 const std = @import("std");
-const components = @import("../../components/mod.zig");
-const term_shared = @import("../../term/mod.zig");
+const term_shared = @import("term_shared");
 const term_ansi = term_shared.ansi.color;
 const term_caps = term_shared.caps;
 const term_hyperlink = term_shared.ansi.hyperlink;
@@ -11,8 +10,8 @@ const notification_manager = @import("../notifications.zig");
 const workflow_runner = @import("../workflows/workflow_runner.zig");
 const workflow_step = @import("../workflows/workflow_step.zig");
 const ProgressBar = @import("../components/mod.zig").ProgressBar;
-const SmartInput = @import("../../components/smart_input.zig").SmartInput;
-const SelectMenu = @import("../components/select_menu.zig").SelectMenu;
+const SmartInput = @import("components_shared").SmartInput;
+const SelectMenu = @import("../components/mod.zig").SelectMenu;
 const colors = @import("../themes/colors.zig");
 const Allocator = std.mem.Allocator;
 

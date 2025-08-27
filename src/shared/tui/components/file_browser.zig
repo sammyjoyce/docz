@@ -7,11 +7,11 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 
 // File tree widget
-const file_tree_mod = @import("../widgets/core/file_tree.zig");
-const focus_mod = @import("../core/input/focus.zig");
-const components = @import("../../components/mod.zig");
+const file_tree_mod = @import("tui_shared").widgets.core.file_tree;
+const focus_mod = @import("tui_shared").core.input;
+const components = @import("components_shared");
 const mouse_mod = components.input.Mouse;
-const term_ansi = @import("../../term/ansi/color.zig");
+const term_ansi = @import("term_shared").ansi.color;
 
 /// Enhanced file browser component with Git integration
 pub const FileBrowser = struct {

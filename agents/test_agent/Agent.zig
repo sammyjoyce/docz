@@ -23,11 +23,11 @@ pub const Test = struct {
         /// Load configuration from file with defaults fallback
         pub fn loadFromFile(allocator: Allocator, path: []const u8) !Config {
             const config_utils = @import("config_shared");
-        const defaults = Config{
-            .agent_config = config_utils.createValidatedAgentConfig("test_agent", "Example agent demonstrating best practices", "Developer"),
-            .maxOperations = 100,
-            .enableFeature = true,
-        };
+            const defaults = Config{
+                .agent_config = config_utils.createValidatedAgentConfig("test_agent", "Example agent demonstrating best practices", "Developer"),
+                .maxOperations = 100,
+                .enableFeature = true,
+            };
             return config_utils.loadWithDefaults(Config, allocator, path, defaults);
         }
 

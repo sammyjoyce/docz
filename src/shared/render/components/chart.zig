@@ -3,12 +3,12 @@ const Renderer = @import("../renderer.zig").Renderer;
 const RenderTier = Renderer.RenderTier;
 const QualityTiers = @import("../quality_tiers.zig").QualityTiers;
 const ChartConfig = @import("../quality_tiers.zig").ChartConfig;
-const term_mod = @import("../../term/mod.zig");
-const term_sgr = @import("../../term/ansi/sgr.zig");
+const term_mod = @import("term_shared");
+const term_sgr = term_mod.ansi.sgr;
 const Color = term_mod.ansi.color.Color;
 const cacheKey = @import("../renderer.zig").cacheKey;
-const graphics_manager = @import("../../term/graphics_manager.zig");
-const GraphicsManager = graphics_manager.GraphicsManager;
+const term_graphics = term_mod.graphics;
+const GraphicsManager = term_graphics.Graphics;
 
 /// Chart data structure
 pub const Chart = struct {
@@ -73,7 +73,7 @@ pub const Chart = struct {
 };
 
 /// Render chart using unified renderer
-pub fn renderChart(renderer: *@import("../Renderer.zig").Renderer, chart: Chart) !void {
+pub fn renderChart(renderer: *@import("../renderer.zig").Renderer, chart: Chart) !void {
     try chart.validate();
 
     const key = cacheKey("chart_{d}_{s}_{?s}", .{ chart.data_series.len, @tagName(chart.chart_type), chart.title });
@@ -88,7 +88,7 @@ pub fn renderChart(renderer: *@import("../Renderer.zig").Renderer, chart: Chart)
 
     switch (renderer.render_tier) {
         .ultra => try renderHigh(renderer, chart, &output),
-        .enhanced => try renderMedium(renderer, chart, &output),
+        .rich => try renderMedium(renderer, chart, &output),
         .standard => try renderLow(renderer, chart, &output),
         .minimal => try renderBasic(renderer, chart, &output),
     }

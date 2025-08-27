@@ -59,12 +59,12 @@ const input_components = @import("components_shared");
 const mouse_mod = input_components.input.Mouse;
 
 // File tree widget
-const file_tree_mod = @import("widgets/core/file_tree.zig");
-const focus_mod = @import("core/input/focus.zig");
-const term_ansi = @import("../term/ansi/color.zig");
+const file_tree_mod = @import("tui_shared").widgets.core.file_tree;
+const focus_mod = @import("tui_shared").core.input;
+const term_ansi = @import("term_shared").ansi.color;
 
 // Component imports
-const components_mod = @import("../components/mod.zig");
+// const components_mod = @import("../components/mod.zig");
 const CommandPalette = @import("components/command_palette.zig").CommandPalette;
 const NotificationSystem = @import("components/notification_system.zig").NotificationSystem;
 const ProgressTracker = @import("components/progress_tracker.zig").ProgressTracker;

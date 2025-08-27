@@ -21,7 +21,7 @@ const Point = term.Point;
 const Rect = term.Rect;
 
 /// Smart input enhancement features
-pub const Feature = packed struct {
+pub const SmartFeature = packed struct {
     autocomplete: bool = true,
     syntaxHighlighting: bool = true,
     multiLine: bool = false,
@@ -52,9 +52,9 @@ pub const SuggestionProvider = *const fn (input: []const u8, allocator: std.mem.
 pub const Validator = *const fn (input: []const u8) Validation;
 
 /// Smart input configuration
-pub const Config = struct {
+pub const SmartConfig = struct {
     placeholder: ?[]const u8 = null,
-    features: Feature = .{},
+    features: SmartFeature = .{},
     suggestionProvider: ?SuggestionProvider = null,
     validator: ?Validator = null,
     maxLength: ?u32 = null,
@@ -68,7 +68,7 @@ pub const SmartInput = struct {
 
     allocator: std.mem.Allocator,
     state: ComponentState,
-    config: Config,
+    config: SmartConfig,
 
     // Input state
     buffer: std.ArrayList(u8),
@@ -103,7 +103,7 @@ pub const SmartInput = struct {
         .update = update,
     };
 
-    pub fn create(allocator: std.mem.Allocator, config: Config) !*Component {
+    pub fn create(allocator: std.mem.Allocator, config: SmartConfig) !*Component {
         const self = try allocator.create(Self);
         self.* = Self{
             .allocator = allocator,

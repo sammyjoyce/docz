@@ -118,5 +118,6 @@
         .oauth = "docz --oauth",
         .auth_status = "docz auth status",
         .interactive = "docz --interactive",
+        .interactive_ux = "docz --interactive-ux",
     },
 }

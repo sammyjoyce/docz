@@ -20,6 +20,8 @@ pub const editor = @import("editor.zig");
 pub const pty = @import("pty.zig");
 pub const writer = @import("writer.zig");
 pub const reader = @import("reader.zig");
+// Screen manager
+pub const screen_manager = @import("screen_manager.zig");
 
 // Clipboard support is available through ansi/clipboard.zig (consolidated implementation)
 

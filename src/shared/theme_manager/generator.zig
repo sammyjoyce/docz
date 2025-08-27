@@ -1,6 +1,6 @@
 const std = @import("std");
 const Color = @import("color.zig").Color;
-const ansi_color = @import("../term/ansi/color.zig");
+const ansi_color = @import("term_shared").ansi.color;
 
 /// Theme configuration for terminal applications
 pub const Theme = struct {

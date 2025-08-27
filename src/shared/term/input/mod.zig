@@ -45,6 +45,8 @@ pub const focus = @import("focus.zig");
 pub const paste = @import("paste.zig");
 pub const mouse_events = @import("mouse_events.zig");
 pub const input_events = @import("input_events.zig");
+// Export mouse protocol module for higher-level imports
+pub const mouse = @import("mouse.zig");
 
 test "input module exports" {
     // Basic test to ensure module compiles

@@ -2,9 +2,9 @@
 //! Uses terminal capabilities from @src/term for user experience
 
 const std = @import("std");
-const components = @import("../../components/mod.zig");
+const components = @import("components_shared");
 const completion = @import("completion.zig");
-const term_shared = @import("../../term/mod.zig");
+const term_shared = @import("term_shared");
 const term_ansi = term_shared.ansi.color;
 const term_cursor = term_shared.ansi.cursor;
 const term_screen = term_shared.ansi.screen;

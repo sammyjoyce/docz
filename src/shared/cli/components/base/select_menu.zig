@@ -3,9 +3,9 @@
 //! while maintaining backward compatibility with basic terminals.
 
 const std = @import("std");
-const components = @import("../../../components/mod.zig");
-const input = @import("../../../components/input.zig");
-const term_shared = @import("../../../term/mod.zig");
+const components = @import("components_shared");
+const input = components.input;
+const term_shared = @import("term_shared");
 const term_ansi = term_shared.ansi.color;
 const term_cursor = term_shared.ansi.cursor;
 const term_screen = term_shared.ansi.screen;
@@ -126,13 +126,13 @@ pub const SelectMenu = struct {
     scrollOffset: usize,
 
     // Mouse interaction
-    menu_start_row: u32,
-    menu_start_col: u32,
-    mouse_enabled: bool,
+    menuStartRow: u32,
+    menuStartCol: u32,
+    mouseEnabled: bool,
 
     // Rich features
-    use_graphics: bool,
-    use_hyperlinks: bool,
+    useGraphics: bool,
+    useHyperlinks: bool,
 
     pub fn init(
         allocator: Allocator,
@@ -158,12 +158,12 @@ pub const SelectMenu = struct {
             .showIcons = true,
             .showMouseHints = caps.supportsEnhancedMouse,
             .maxVisibleItems = 10,
-            .scroll_offset = 0,
-            .menu_start_row = 0,
-            .menu_start_col = 0,
-            .mouse_enabled = caps.supportsEnhancedMouse,
-            .use_graphics = caps.supportsKittyGraphics or caps.supportsSixel,
-            .use_hyperlinks = caps.supportsHyperlinks,
+            .scrollOffset = 0,
+            .menuStartRow = 0,
+            .menuStartCol = 0,
+            .mouseEnabled = caps.supportsEnhancedMouse,
+            .useGraphics = caps.supportsKittyGraphics or caps.supportsSixel,
+            .useHyperlinks = caps.supportsHyperlinks,
         };
     }
 

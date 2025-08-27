@@ -3,11 +3,11 @@
 //! date ranges, event markers, and customizable styles.
 
 const std = @import("std");
-const term_ansi = @import("../../../term/ansi/color.zig");
-const term_cursor = @import("../../../term/ansi/cursor.zig");
-const term_mod = @import("../../../term/mod.zig");
-const terminal_cursor = @import("../../components/terminal_cursor.zig");
-const input_mod = @import("../../../components/input.zig");
+const term_ansi = @import("term_shared").ansi.color;
+const term_cursor = @import("term_shared").ansi.cursor;
+const term_mod = @import("term_shared");
+const terminal_cursor = @import("components_shared").TerminalCursor;
+const input_mod = @import("components_shared").input;
 const print = std.debug.print;
 
 /// Date representation

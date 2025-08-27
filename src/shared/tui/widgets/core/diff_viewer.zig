@@ -4,7 +4,7 @@
 //! navigation controls, and interactive features.
 
 const std = @import("std");
-const diff_mod = @import("../../../render/diff.zig");
+const diff_mod = @import("render_shared").diff;
 const renderer_mod = @import("../../core/renderer.zig");
 const bounds_mod = @import("../../core/bounds.zig");
 const events_mod = @import("../../core/events.zig");

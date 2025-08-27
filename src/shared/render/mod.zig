@@ -50,6 +50,7 @@
 //!
 
 const std = @import("std");
+const term_mod = @import("term_shared");
 
 // Core exports - Renderer System
 pub const Renderer = @import("renderer.zig").Renderer;
@@ -79,7 +80,7 @@ pub const Constraints = Renderer.Constraints;
 pub const Layout = Renderer.Layout;
 
 // Graphics system
-pub const Graphics = @import("../term/graphics.zig").Graphics;
+pub const Graphics = term_mod.graphics.Graphics;
 
 // Diff rendering module
 pub const diff = @import("diff.zig");
@@ -90,14 +91,25 @@ pub const BrailleCanvas = braille.BrailleCanvas;
 pub const BraillePatterns = braille.BraillePatterns;
 pub const BrailleUtils = braille.BrailleUtils;
 
+// Multi-resolution canvas module
+pub const multi_resolution_canvas = @import("multi_resolution_canvas.zig");
+pub const MultiResolutionCanvas = multi_resolution_canvas.MultiResolutionCanvas;
+pub const ResolutionMode = multi_resolution_canvas.ResolutionMode;
+pub const CanvasPoint = multi_resolution_canvas.Point;
+pub const CanvasRect = multi_resolution_canvas.Rect;
+pub const CanvasStyle = multi_resolution_canvas.Style;
+pub const LineStyle = multi_resolution_canvas.LineStyle;
+pub const FillPattern = multi_resolution_canvas.FillPattern;
+
 // Component modules
 const table_mod = @import("components/table.zig");
 const chart_mod = @import("components/chart.zig");
 
-// Progress bar exports from consolidated module
-pub const Progress = @import("../components/progress.zig").Progress;
-pub const renderProgress = @import("../components/progress.zig").renderProgress;
-pub const AnimatedProgress = @import("../components/progress.zig").AnimatedProgress;
+// Progress exports from shared components (avoid cross-module duplication)
+const shared_components = @import("components_shared");
+pub const Progress = shared_components.AdaptiveProgress;
+pub const renderProgress = shared_components.progress.renderProgress;
+pub const AnimatedProgress = shared_components.AnimatedProgress;
 
 pub const Table = table_mod.Table;
 pub const renderTable = table_mod.renderTable;
@@ -156,7 +168,7 @@ pub const RendererAPI = struct {
     }
 
     pub fn renderProgress(self: *RendererAPI, progress: Progress) !void {
-        return @import("../components/progress.zig").renderProgress(self.renderer, progress);
+        return shared_components.progress.renderProgress(self.renderer, progress);
     }
 
     pub fn renderTable(self: *RendererAPI, table: Table) !void {
@@ -171,7 +183,7 @@ pub const RendererAPI = struct {
         return self.renderer.getRenderingInfo();
     }
 
-    pub fn writeText(self: *RendererAPI, text: []const u8, color: ?@import("../term/unified.zig").Color, bold: bool) !void {
+    pub fn writeText(self: *RendererAPI, text: []const u8, color: ?term_mod.unified.Color, bold: bool) !void {
         return self.renderer.writeText(text, color, bold);
     }
 
@@ -194,7 +206,7 @@ pub const RendererAPI = struct {
 
         // Title
         if (dashboard.title) |title| {
-            try self.writeText(title, @import("../term/unified.zig").Color.CYAN, true);
+            try self.writeText(title, term_mod.unified.Color.CYAN, true);
             try self.writeText("\n\n", null, false);
         }
 

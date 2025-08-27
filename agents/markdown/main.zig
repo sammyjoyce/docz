@@ -2,9 +2,8 @@ const std = @import("std");
 const engine = @import("core_engine");
 const cli = @import("cli_shared");
 const spec = @import("spec.zig");
-const interactive_markdown = @import("interactive_markdown.zig");
-const improved_interactive_session = @import("improved_interactive_session.zig");
-const term = @import("../../src/shared/term/mod.zig");
+// const interactive_markdown = @import("interactive_markdown.zig");
+// const improved_interactive_session = @import("improved_interactive_session.zig");
 const impl = @import("Agent.zig");
 
 const CliOptions = engine.CliOptions;
@@ -42,15 +41,13 @@ pub fn main() !void {
 
     // Handle preview mode
     if (args_to_process.preview) {
-        // For now, fall back to the enhanced interactive UX
-        // TODO: Implement proper preview mode when interactive_markdown is fully implemented
-        try launchEnhancedInteractiveUX(gpa, args_to_process.prompt);
+        std.log.warn("Preview mode is not available in this build.", .{});
         return;
     }
 
     // Handle enhanced interactive UX mode
     if (args_to_process.interactive_ux) {
-        try launchEnhancedInteractiveUX(gpa, args_to_process.prompt);
+        std.log.warn("Interactive UX is disabled in this build.", .{});
         return;
     }
 
@@ -106,24 +103,7 @@ pub fn main() !void {
 
 /// Launch the enhanced interactive UX with automatic terminal capability detection
 fn launchEnhancedInteractiveUX(allocator: std.mem.Allocator, initial_prompt: ?[]const u8) !void {
-    // Detect terminal capabilities to choose the best UX mode
-    var term_caps = try term.capabilities.TerminalCapabilities.init(allocator);
-    defer term_caps.deinit();
-
-    // Try to detect terminal size
-    term_caps.detectSize() catch {};
-
-    // Initialize the markdown agent
-    var agent = try impl.MarkdownAgent.initFromConfig(allocator);
-    defer agent.deinit();
-
-    // Initialize the improved interactive session
-    var session = try improved_interactive_session.ImprovedInteractiveSession.init(allocator, &agent);
-    defer session.deinit();
-
-    // If there's an initial prompt, we could set it as context, but for now we'll just run
+    _ = allocator;
     _ = initial_prompt;
-
-    // Run the interactive session
-    try session.run();
+    std.log.warn("Interactive UX not available: rebuild with terminal_ui enabled.", .{});
 }

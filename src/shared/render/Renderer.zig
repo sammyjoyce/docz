@@ -10,19 +10,19 @@
 //! - Graphics Renderer (advanced graphics rendering)
 
 const std = @import("std");
-const term_mod = @import("../term/mod.zig");
-const terminal = @import("../term/term.zig");
-const graphics_manager = @import("../term/graphics_manager.zig");
-const canvas = @import("../tui/core/canvas.zig");
+const term_mod = @import("term_shared");
+const terminal = term_mod.term;
+const term_graphics = term_mod.graphics;
+const canvas = @import("tui_shared").core.canvas;
 // Backward compatibility alias
 const canvas_engine = canvas;
-const term_sgr = @import("../term/ansi/sgr.zig");
-const theme_manager = @import("../theme_manager/mod.zig");
+const term_sgr = term_mod.ansi.sgr;
+const theme_manager = @import("theme_manager");
 const Allocator = std.mem.Allocator;
 const UnifiedTerminal = terminal.UnifiedTerminal;
 const Color = terminal.Color;
-const GraphicsManager = graphics_manager.GraphicsManager;
-const TermCaps = @import("../term/capabilities.zig").TermCaps;
+const GraphicsManager = term_graphics.Graphics;
+const TermCaps = term_mod.capabilities.TermCaps;
 
 /// Unified renderer that adapts to terminal capabilities and provides
 /// progressive enhancement for all rendering needs

@@ -219,10 +219,10 @@ pub const Parser = struct {
                     result.flags.pretty = true;
                 } else if (comptime std.mem.eql(u8, field_name, "debug")) {
                     result.flags.debug = true;
-                 } else if (comptime std.mem.eql(u8, field_name, "interactive")) {
-                     result.flags.interactive = true;
-                 } else if (comptime std.mem.eql(u8, field_name, "interactive_ux")) {
-                     result.flags.interactive_ux = true;
+                } else if (comptime std.mem.eql(u8, field_name, "interactive")) {
+                    result.flags.interactive = true;
+                } else if (comptime std.mem.eql(u8, field_name, "interactive_ux")) {
+                    result.flags.interactive_ux = true;
                 }
                 return true;
             }

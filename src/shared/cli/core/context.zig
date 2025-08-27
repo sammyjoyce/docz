@@ -3,7 +3,7 @@
 //! This replaces the fragmented initialization patterns from multiple CLI entry points
 
 const std = @import("std");
-const term = @import("../../term/mod.zig");
+const term = @import("term_shared");
 const ansi_clipboard = term.ansi.clipboard;
 const ansi_notification = term.ansi.notification;
 const ansi_graphics = term.ansi.graphics;

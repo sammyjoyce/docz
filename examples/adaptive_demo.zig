@@ -308,7 +308,7 @@ fn demoAnimatedProgress(renderer: *AdaptiveRenderer) !void {
 
 /// Demo render mode comparison
 fn demoRenderModeComparison(allocator: std.mem.Allocator) !void {
-    const modes = [_]RenderMode{ .enhanced, .standard, .compatible, .minimal };
+    const modes = [_]RenderMode{ .standard, .compatible, .minimal };
 
     for (modes) |mode| {
         const renderer = try AdaptiveRenderer.initWithMode(allocator, mode);

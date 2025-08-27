@@ -1,8 +1,8 @@
 const std = @import("std");
 const term = @import("term_shared");
 const CellBuffer = term.cellbuf.CellBuffer;
-const Point = @import("bounds.zig").Point;
-const Rect = @import("renderer.zig").Rect;
+const Point = @import("../../types.zig").PointU32;
+const Rect = @import("../../types.zig").BoundsI16;
 const BorderStyle = @import("../widgets/core/block.zig").BorderStyle;
 
 /// Border merger handles seamless connections between adjacent widgets

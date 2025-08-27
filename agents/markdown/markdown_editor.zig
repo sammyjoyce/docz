@@ -150,7 +150,7 @@ const components = @import("components_shared");
 // Advanced UI components
 const smart_input = @import("../../src/shared/components/smart_input.zig");
 const split_pane = @import("../../src/shared/tui/widgets/core/split_pane.zig");
-const file_tree = @import("../../src/shared/tui/widgets/core/file_tree.zig");
+const file_tree = tui.widgets.core.file_tree;
 const modal = @import("../../src/shared/tui/widgets/modal.zig");
 const canvas_mod = @import("../../src/shared/tui/core/canvas.zig");
 // Backward compatibility alias

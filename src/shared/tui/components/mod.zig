@@ -2,7 +2,10 @@
 //! Shared terminal user interface components
 
 // Core components
-pub const Dashboard = @import("Dashboard.zig");
+// Note: This is the old dashboard that has been moved to examples/
+// The new dashboard is in the dashboard/ subdirectory
+// This line is commented for migration reference
+// pub const Dashboard = @import("Dashboard.zig");
 pub const DiffViewer = @import("DiffViewer.zig");
 pub const Authentication = @import("AuthenticationManager.zig").Authentication;
 pub const Session = @import("SessionManager.zig").Session;
