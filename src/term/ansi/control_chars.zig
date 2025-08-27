@@ -394,7 +394,7 @@ test "control character names" {
     try testing.expectEqualStrings("ESC", controlCharName(ESC).?);
     try testing.expectEqualStrings("BEL", controlCharName(BEL).?);
     try testing.expectEqualStrings("CSI", controlCharName(CSI).?);
-    
+
     // Test unknown character
     try testing.expect(controlCharName('A') == null);
 }
@@ -438,7 +438,7 @@ test "character value correctness" {
     try testing.expect(ESC == 0x1B);
     try testing.expect(SP == 0x20);
     try testing.expect(DEL == 0x7F);
-    
+
     // C1 characters
     try testing.expect(CSI == 0x9B);
     try testing.expect(OSC == 0x9D);

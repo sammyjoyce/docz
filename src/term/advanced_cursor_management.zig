@@ -3,16 +3,15 @@ const advanced_color = @import("advanced_color_conversion.zig");
 
 /// Advanced cursor management for modern terminals
 /// Supports cursor styling, positioning, visibility, and color changes
-
 /// Cursor shape styles supported by modern terminals
 pub const CursorShape = enum(u8) {
-    default = 0,         // Terminal default
-    block_blink = 1,     // Blinking block (default in most terminals)
-    block_steady = 2,    // Steady block
+    default = 0, // Terminal default
+    block_blink = 1, // Blinking block (default in most terminals)
+    block_steady = 2, // Steady block
     underline_blink = 3, // Blinking underline
     underline_steady = 4, // Steady underline
-    bar_blink = 5,       // Blinking vertical bar (I-beam)
-    bar_steady = 6,      // Steady vertical bar (I-beam)
+    bar_blink = 5, // Blinking vertical bar (I-beam)
+    bar_steady = 6, // Steady vertical bar (I-beam)
 
     /// Get ANSI escape sequence for this cursor shape
     pub fn toAnsiSequence(self: CursorShape) []const u8 {
@@ -97,7 +96,7 @@ pub const CursorState = struct {
     shape: CursorShape = .default,
     blink: bool = true,
     color: ?advanced_color.RGBColor = null,
-    
+
     /// Save current position for later restoration
     saved_positions: std.ArrayList(CursorPosition),
 
@@ -239,7 +238,7 @@ pub const CursorController = struct {
     /// Set cursor shape if supported
     pub fn setShape(self: *CursorController, shape: CursorShape) !void {
         if (!self.supports_cursor_shapes) return;
-        
+
         self.state.shape = shape;
         try self.writer.writeAll(shape.toAnsiSequence());
     }
@@ -247,7 +246,7 @@ pub const CursorController = struct {
     /// Set cursor color if supported
     pub fn setColor(self: *CursorController, color: ?advanced_color.RGBColor) !void {
         if (!self.supports_cursor_color) return;
-        
+
         self.state.color = color;
         if (color) |c| {
             // Set cursor color using OSC escape sequence
@@ -261,7 +260,7 @@ pub const CursorController = struct {
     /// Set mouse pointer shape if supported
     pub fn setPointerShape(self: *CursorController, shape: PointerShape) !void {
         if (!self.supports_pointer_shapes) return;
-        
+
         try self.writer.print("\x1b]22;{s}\x1b\\", .{shape.shapeName()});
     }
 
@@ -321,20 +320,20 @@ pub const CursorController = struct {
     pub fn setState(self: *CursorController, new_state: CursorState) !void {
         // Restore position
         try self.moveTo(new_state.position.to0Based().col, new_state.position.to0Based().row);
-        
+
         // Restore visibility
         try self.setVisible(new_state.visible);
-        
+
         // Restore shape if changed
         if (new_state.shape != self.state.shape) {
             try self.setShape(new_state.shape);
         }
-        
+
         // Restore color if changed
         if (new_state.color != self.state.color) {
             try self.setColor(new_state.color);
         }
-        
+
         self.state = new_state;
     }
 
@@ -417,7 +416,7 @@ test "cursor position creation" {
     const pos = CursorPosition.init(5, 10);
     try testing.expectEqual(@as(u16, 6), pos.col); // 1-based
     try testing.expectEqual(@as(u16, 11), pos.row); // 1-based
-    
+
     const zero_based = pos.to0Based();
     try testing.expectEqual(@as(u16, 5), zero_based.col);
     try testing.expectEqual(@as(u16, 10), zero_based.row);
@@ -431,13 +430,13 @@ test "cursor shape sequences" {
 test "cursor state management" {
     var cursor_state = CursorState.init(testing.allocator);
     defer cursor_state.deinit(testing.allocator);
-    
+
     const pos1 = CursorPosition{ .col = 5, .row = 10 };
     cursor_state.position = pos1;
-    
+
     try cursor_state.savePosition(testing.allocator);
     cursor_state.position = CursorPosition{ .col = 20, .row = 30 };
-    
+
     const restored = cursor_state.restorePosition(testing.allocator).?;
     try testing.expectEqual(pos1.col, restored.col);
     try testing.expectEqual(pos1.row, restored.row);

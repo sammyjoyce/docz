@@ -158,12 +158,12 @@ fn colorDistance(r1: f32, g1: f32, b1: f32, r2: f32, g2: f32, b2: f32) f32 {
     const dr = r1 - r2;
     const dg = g1 - g2;
     const db = b1 - b2;
-    
+
     // Use perceptual weights (roughly based on human eye sensitivity)
     const wr: f32 = 0.3;
     const wg: f32 = 0.59;
     const wb: f32 = 0.11;
-    
+
     return @sqrt(wr * dr * dr + wg * dg * dg + wb * db * db);
 }
 
@@ -430,9 +430,9 @@ const ansi_hex = [256]RGBA{
 /// Mapping from 256-color ANSI palette to 16-color ANSI palette.
 const ansi256To16 = [256]BasicColor{
     // Colors 0-15: Direct mapping to 16-color palette
-    .black, .red, .green, .yellow, .blue, .magenta, .cyan, .white,
-    .bright_black, .bright_red, .bright_green, .bright_yellow,
-    .bright_blue, .bright_magenta, .bright_cyan, .bright_white,
+    .black,        .red,        .green,        .yellow,        .blue,        .magenta,        .cyan,        .white,
+    .bright_black, .bright_red, .bright_green, .bright_yellow, .bright_blue, .bright_magenta, .bright_cyan,
+    .bright_white,
     // Colors 16-231: 6x6x6 color cube mapped to nearest 16-color equivalent
     .black, .blue, .blue, .blue, .bright_blue, .bright_blue, // 16-21
     .green, .cyan, .blue, .blue, .bright_blue, .bright_blue, // 22-27

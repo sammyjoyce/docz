@@ -6,11 +6,12 @@
 
 const std = @import("std");
 const component_mod = @import("../component.zig");
-const unified = @import("../../term/unified.zig");
-const graphics = @import("../../term/graphics_manager.zig");
-const advanced_color = @import("../../term/ansi/advanced_color.zig");
+const term_shared = @import("../../term/mod.zig");
+const unified = term_shared.unified;
+const graphics = term_shared.graphics_manager;
+const advanced_color = term_shared.ansi.advanced_color;
 const unicode_renderer = @import("../../term/unicode_image_renderer.zig");
-const term_caps = @import("../../term/caps.zig");
+const term_caps = term_shared.caps;
 
 const Component = component_mod.Component;
 const ComponentState = component_mod.ComponentState;
@@ -79,30 +80,30 @@ pub const ProgressBarConfig = struct {
 /// Unified progress bar component
 pub const ProgressBar = struct {
     const Self = @This();
-    
+
     allocator: std.mem.Allocator,
     state: ComponentState,
     config: ProgressBarConfig,
-    
+
     // Animation state
     animation_time: f32 = 0.0,
     start_time: ?i64 = null,
     last_progress: f32 = 0.0,
     animation_progress: f32 = 0.0,
-    
+
     // Rate calculation state
     last_update_time: ?i64 = null,
     last_bytes_processed: u64 = 0,
     calculated_rate: f32 = 0.0,
-    
+
     // Advanced rendering state
     rainbow_offset: f32 = 0.0,
     wave_position: f32 = 0.0,
-    
+
     // Cached measurements and optimizations
     cached_text_width: u32 = 0,
     cached_terminal_caps: ?term_caps.TermCaps = null,
-    
+
     const vtable = Component.VTable{
         .init = init,
         .deinit = deinit,
@@ -116,7 +117,7 @@ pub const ProgressBar = struct {
         .getChildren = null,
         .update = update,
     };
-    
+
     pub fn create(allocator: std.mem.Allocator, config: ProgressBarConfig) !*Component {
         const self = try allocator.create(Self);
         self.* = Self{
@@ -124,53 +125,53 @@ pub const ProgressBar = struct {
             .state = ComponentState{},
             .config = config,
         };
-        
+
         const component = try allocator.create(Component);
         component.* = Component{
             .vtable = &vtable,
             .impl = self,
             .id = 0, // Will be set by ComponentManager
         };
-        
+
         return component;
     }
-    
+
     /// Update progress value (triggers animation if enabled)
     pub fn setProgress(self: *Self, progress: f32) void {
         const clamped = @max(0.0, @min(1.0, progress));
-        
+
         if (self.config.progress != clamped) {
             self.last_progress = self.config.progress;
             self.config.progress = clamped;
             self.animation_time = 0.0;
             self.state.markDirty();
-            
+
             // Start timing for ETA calculation
             if (self.start_time == null and clamped > 0.0) {
                 self.start_time = std.time.timestamp();
             }
         }
     }
-    
+
     /// Set progress bar label
     pub fn setLabel(self: *Self, label: ?[]const u8) void {
         if (label == null and self.config.label == null) return;
         if (label != null and self.config.label != null and std.mem.eql(u8, label.?, self.config.label.?)) return;
-        
+
         self.config.label = label;
         self.state.markDirty();
     }
-    
+
     /// Configure progress bar options
     pub fn configure(self: *Self, config: ProgressBarConfig) void {
         self.config = config;
         self.state.markDirty();
     }
-    
+
     /// Update bytes processed and recalculate rate
     pub fn updateBytes(self: *Self, bytes: u64) void {
         const now = std.time.timestamp();
-        
+
         if (self.last_update_time) |last_time| {
             const dt = @as(f32, @floatFromInt(now - last_time));
             if (dt > 0.0) {
@@ -178,62 +179,62 @@ pub const ProgressBar = struct {
                 self.calculated_rate = bytes_delta / dt;
             }
         }
-        
+
         self.config.bytes_processed = bytes;
         self.last_bytes_processed = bytes;
         self.last_update_time = now;
         self.state.markDirty();
     }
-    
+
     /// Get estimated time of arrival in seconds
     pub fn getEta(self: *Self) ?i64 {
         if (self.start_time == null or self.config.progress <= 0.01) return null;
-        
+
         const elapsed = std.time.timestamp() - self.start_time.?;
         const rate = self.config.progress / @as(f32, @floatFromInt(elapsed));
         if (rate <= 0.0) return null;
-        
+
         const remaining = (1.0 - self.config.progress) / rate;
         return @intFromFloat(remaining);
     }
-    
+
     // Component implementation
-    
+
     fn init(impl: *anyopaque, allocator: std.mem.Allocator) anyerror!void {
         _ = allocator;
         const self: *Self = @ptrCast(@alignCast(impl));
         self.state = ComponentState{};
     }
-    
+
     fn deinit(impl: *anyopaque) void {
         // Nothing to clean up for progress bars
         _ = impl;
     }
-    
+
     fn getState(impl: *anyopaque) *ComponentState {
         const self: *Self = @ptrCast(@alignCast(impl));
         return &self.state;
     }
-    
+
     fn setState(impl: *anyopaque, state: ComponentState) void {
         const self: *Self = @ptrCast(@alignCast(impl));
         self.state = state;
     }
-    
+
     fn render(impl: *anyopaque, ctx: RenderContext) anyerror!void {
         const self: *Self = @ptrCast(@alignCast(impl));
-        
+
         // Cache terminal capabilities for performance
         const caps = ctx.terminal.getCapabilities();
         self.cached_terminal_caps = caps;
-        
+
         // Determine best style for terminal capabilities
         const actual_style = chooseStyle(self.config.style, caps);
-        
+
         // Get colors from theme or config
         const progress_color = self.config.color orelse ctx.theme.colors.primary;
         const bg_color = self.config.background_color orelse ctx.theme.colors.background;
-        
+
         // Calculate display progress (with animation)
         var display_progress = self.config.progress;
         if (self.config.animated and ctx.theme.animation.enabled) {
@@ -246,10 +247,10 @@ pub const ProgressBar = struct {
             };
             display_progress = Animation.interpolate(self.last_progress, self.config.progress, eased_t);
         }
-        
+
         // Position at component bounds
         try ctx.terminal.moveTo(self.state.bounds.x, self.state.bounds.y);
-        
+
         // Render based on style
         switch (actual_style) {
             .ascii => try self.renderAscii(ctx, display_progress, progress_color),
@@ -262,33 +263,33 @@ pub const ProgressBar = struct {
             .graphical => try self.renderGraphical(ctx, display_progress),
             .auto => unreachable, // Should have been resolved to a concrete style
         }
-        
+
         // Render additional info (percentage, ETA, rate, etc.)
         if (self.config.show_percentage or self.config.show_eta or self.config.show_rate or self.config.label != null) {
             try self.renderInfo(ctx, display_progress);
         }
     }
-    
+
     fn measure(impl: *anyopaque, available: Rect) Rect {
         const self: *Self = @ptrCast(@alignCast(impl));
-        
+
         // Calculate required width based on content
         var width: u32 = @max(20, @min(60, available.width)); // Default progress bar width
-        
+
         // Add space for percentage
         if (self.config.show_percentage) width += 6; // " 100%"
-        
+
         // Add space for label
         if (self.config.label) |label| {
             width += @as(u32, @intCast(label.len)) + 2; // "label: "
         }
-        
+
         // Add space for ETA
         if (self.config.show_eta) width += 12; // " (ETA: 60s)"
-        
+
         // Add space for rate display
         if (self.config.show_rate) width += 10; // " 999.9MB/s"
-        
+
         return Rect{
             .x = 0,
             .y = 0,
@@ -296,64 +297,64 @@ pub const ProgressBar = struct {
             .height = if (self.config.label != null) 2 else 1, // Extra line for info if labeled
         };
     }
-    
+
     fn handleEvent(impl: *anyopaque, event: Event) anyerror!bool {
         _ = impl;
         _ = event;
         // Progress bars don't handle events by default
         return false;
     }
-    
+
     fn update(impl: *anyopaque, dt: f32) anyerror!void {
         const self: *Self = @ptrCast(@alignCast(impl));
-        
+
         if (self.config.animated) {
             self.animation_time += dt * self.config.animation_speed;
-            
+
             // Update rainbow offset for rainbow style
             self.rainbow_offset += dt * self.config.animation_speed * 60.0; // degrees per second
             if (self.rainbow_offset >= 360.0) self.rainbow_offset -= 360.0;
-            
+
             // Update wave position for animated style
             self.wave_position += dt * self.config.animation_speed * 2.0; // relative units per second
             if (self.wave_position >= 1.0) self.wave_position -= 1.0;
-            
+
             // Mark dirty during animation transitions
             const needs_animation_update = switch (self.config.style) {
                 .animated, .rainbow => true,
                 .gradient => self.animation_time < 1.0, // Only during progress transitions
                 else => self.animation_time < 1.0,
             };
-            
+
             if (needs_animation_update) {
                 self.state.markDirty();
             }
         }
     }
-    
+
     // Rendering implementations
-    
+
     fn renderAscii(self: *Self, ctx: RenderContext, progress: f32, color: Color) !void {
         const bar_width = @as(i32, @intCast(@max(10, self.state.bounds.width -| 10))); // Reserve space for brackets and info
         const filled_chars = @as(i32, @intFromFloat(@as(f32, @floatFromInt(bar_width)) * progress));
-        
+
         const style = Style{ .fg_color = color };
-        
+
         try ctx.terminal.print("[", style);
-        
+
         var i: i32 = 0;
         while (i < bar_width) : (i += 1) {
             const char = if (i < filled_chars) "=" else " ";
             try ctx.terminal.print(char, style);
         }
-        
+
         try ctx.terminal.print("]", style);
     }
-    
+
     fn renderUnicodeBlocks(self: *Self, ctx: RenderContext, progress: f32, fg_color: Color, bg_color: Color) !void {
         const bar_width = @as(i32, @intCast(@max(10, self.state.bounds.width -| 6))); // Reserve space for info
         const filled_chars = @as(i32, @intFromFloat(@as(f32, @floatFromInt(bar_width)) * progress));
-        
+
         var i: i32 = 0;
         while (i < bar_width) : (i += 1) {
             const char = if (i < filled_chars) "█" else "░";
@@ -362,17 +363,17 @@ pub const ProgressBar = struct {
             try ctx.terminal.print(char, style);
         }
     }
-    
+
     fn renderUnicodeSmooth(self: *Self, ctx: RenderContext, progress: f32, fg_color: Color, bg_color: Color) !void {
         const bar_width = @as(i32, @intCast(@max(10, self.state.bounds.width -| 6)));
         const filled_pixels = @as(f32, @floatFromInt(bar_width)) * progress;
-        
+
         var i: i32 = 0;
         while (i < bar_width) : (i += 1) {
             const pos = @as(f32, @floatFromInt(i));
             var char: []const u8 = undefined;
             var color: Color = undefined;
-            
+
             if (pos + 1.0 <= filled_pixels) {
                 // Fully filled
                 char = "█";
@@ -395,16 +396,16 @@ pub const ProgressBar = struct {
                 char = "░";
                 color = bg_color;
             }
-            
+
             const style = Style{ .fg_color = color };
             try ctx.terminal.print(char, style);
         }
     }
-    
+
     fn renderGradient(self: *Self, ctx: RenderContext, progress: f32) !void {
         const bar_width = @as(i32, @intCast(@max(10, self.state.bounds.width -| 6)));
         const filled_chars = @as(i32, @intFromFloat(@as(f32, @floatFromInt(bar_width)) * progress));
-        
+
         var i: i32 = 0;
         while (i < bar_width) : (i += 1) {
             if (i < filled_chars) {
@@ -415,14 +416,14 @@ pub const ProgressBar = struct {
                         .r = @as(u8, @intFromFloat(255.0 * pos * 2.0)),
                         .g = 255,
                         .b = 0,
-                    }}
+                    } }
                 else
                     Color{ .rgb = .{
                         .r = 255,
                         .g = @as(u8, @intFromFloat(255.0 * (1.0 - pos))),
                         .b = 0,
-                    }};
-                
+                    } };
+
                 const style = Style{ .fg_color = color };
                 try ctx.terminal.print("█", style);
             } else {
@@ -431,22 +432,22 @@ pub const ProgressBar = struct {
             }
         }
     }
-    
+
     fn renderAnimated(self: *Self, ctx: RenderContext, progress: f32, fg_color: Color, bg_color: Color) !void {
         const bar_width = @as(i32, @intCast(@max(10, self.state.bounds.width -| 6)));
         const filled_chars = @as(i32, @intFromFloat(@as(f32, @floatFromInt(bar_width)) * progress));
-        
+
         // Create wave effect
         const wave_pos = @mod(@as(i32, @intFromFloat(self.animation_time * 10.0)), bar_width);
-        
+
         var i: i32 = 0;
         while (i < bar_width) : (i += 1) {
             const is_filled = i < filled_chars;
             const is_wave = (i == wave_pos or i == wave_pos - 1) and is_filled;
-            
+
             var char: []const u8 = undefined;
             var color: Color = undefined;
-            
+
             if (is_wave) {
                 char = "▓";
                 color = unified.Colors.BRIGHT_WHITE;
@@ -457,12 +458,12 @@ pub const ProgressBar = struct {
                 char = "░";
                 color = bg_color;
             }
-            
+
             const style = Style{ .fg_color = color };
             try ctx.terminal.print(char, style);
         }
     }
-    
+
     fn renderRainbow(self: *Self, ctx: RenderContext, progress: f32) !void {
         const caps = self.cached_terminal_caps orelse ctx.terminal.getCapabilities();
         if (!caps.supportsTruecolor) {
@@ -470,20 +471,20 @@ pub const ProgressBar = struct {
             try self.renderUnicodeBlocks(ctx, progress, ctx.theme.colors.primary, ctx.theme.colors.background);
             return;
         }
-        
+
         const bar_width = @as(i32, @intCast(@max(10, self.state.bounds.width -| 6)));
         const filled_chars = @as(i32, @intFromFloat(@as(f32, @floatFromInt(bar_width)) * progress));
-        
+
         var i: i32 = 0;
         while (i < bar_width) : (i += 1) {
             const is_filled = i < filled_chars;
-            
+
             if (is_filled) {
                 // Calculate HSV rainbow color with animation offset
                 const pos = @as(f32, @floatFromInt(i)) / @as(f32, @floatFromInt(bar_width));
                 const hue = @mod(pos * 360.0 + self.rainbow_offset, 360.0);
                 const rgb = hsvToRgb(hue, 1.0, 1.0);
-                
+
                 const color = Color{ .rgb = .{ .r = rgb.r, .g = rgb.g, .b = rgb.b } };
                 const style = Style{ .fg_color = color };
                 try ctx.terminal.print("█", style);
@@ -493,52 +494,52 @@ pub const ProgressBar = struct {
             }
         }
     }
-    
+
     fn renderMosaic(self: *Self, ctx: RenderContext, progress: f32) !void {
         // Create a small image for mosaic rendering
         const img_width = @as(u32, @intCast(@max(20, self.state.bounds.width))) * 2; // 2x2 pixels per char
         const img_height = 4; // Small height for progress bar
-        
+
         var img = unicode_renderer.Image.init(self.allocator, img_width, img_height) catch {
             // Fallback to gradient if image creation fails
             try self.renderGradient(ctx, progress);
             return;
         };
         defer img.deinit();
-        
+
         // Fill image with progress pattern
         const progress_width = @as(u32, @intFromFloat(progress * @as(f32, @floatFromInt(img_width))));
-        
+
         for (0..img_height) |y| {
             for (0..img_width) |x| {
-                const color = if (x < progress_width) 
+                const color = if (x < progress_width)
                     calculateGradientColor(@as(f32, @floatFromInt(x)) / @as(f32, @floatFromInt(img_width)), progress)
-                else 
+                else
                     unicode_renderer.RGB{ .r = 60, .g = 60, .b = 60 };
-                
+
                 img.setPixel(@intCast(x), @intCast(y), color);
             }
         }
-        
+
         // Render using Unicode mosaic
         const renderer = unicode_renderer.UnicodeImageRenderer.init(self.allocator)
             .width(@as(u32, @intCast(@max(10, self.state.bounds.width))))
             .height(2)
             .symbolType(.all);
-            
+
         const mosaic_output = renderer.render(img) catch {
             // Fallback to gradient rendering
             try self.renderGradient(ctx, progress);
             return;
         };
         defer self.allocator.free(mosaic_output);
-        
+
         // Write the mosaic output (remove trailing newlines)
         const trimmed = std.mem.trimRight(u8, mosaic_output, "\n");
         const style = Style{ .fg_color = ctx.theme.colors.foreground };
         try ctx.terminal.print(trimmed, style);
     }
-    
+
     fn renderGraphical(self: *Self, ctx: RenderContext, progress: f32) !void {
         if (ctx.graphics) |gfx| {
             // Create graphical progress bar using graphics manager
@@ -547,50 +548,50 @@ pub const ProgressBar = struct {
                 .height = self.state.bounds.height,
                 .style = .gradient,
             };
-            
+
             const image_id = try gfx.createProgressVisualization(progress, style);
             defer gfx.removeImage(image_id);
-            
+
             try gfx.renderImage(image_id, Point{ .x = 0, .y = 0 }, graphics.RenderOptions{});
         } else {
             // Fallback to mosaic rendering
             try self.renderMosaic(ctx, progress);
         }
     }
-    
+
     fn renderInfo(self: *Self, ctx: RenderContext, progress: f32) !void {
         // Move to next line or to the right of progress bar
         const info_x = if (self.config.label != null) self.state.bounds.x else self.state.bounds.x + @as(i32, @intCast(self.state.bounds.width - 20));
         const info_y = if (self.config.label != null) self.state.bounds.y + 1 else self.state.bounds.y;
-        
+
         try ctx.terminal.moveTo(info_x, info_y);
-        
+
         var info = std.ArrayList(u8).init(self.allocator);
         defer info.deinit();
         const writer = info.writer();
-        
+
         // Add label
         if (self.config.label) |label| {
             try writer.print("{s}: ", .{label});
         }
-        
+
         // Add percentage
         if (self.config.show_percentage) {
             try writer.print("{d:.1}%", .{progress * 100.0});
         }
-        
+
         // Add ETA
         if (self.config.show_eta and self.start_time != null and progress > 0.01) {
             const elapsed = std.time.timestamp() - self.start_time.?;
             const total_estimated = @as(f32, @floatFromInt(elapsed)) / progress;
             const remaining = @as(i64, @intFromFloat(total_estimated)) - elapsed;
-            
+
             if (remaining > 0) {
                 const separator = if (self.config.show_percentage) " " else "";
                 try writer.print("{s}(ETA: {d}s)", .{ separator, remaining });
             }
         }
-        
+
         // Add processing rate
         if (self.config.show_rate and self.calculated_rate > 0.0) {
             const separator = if (self.config.show_percentage or self.config.show_eta) " " else "";
@@ -602,7 +603,7 @@ pub const ProgressBar = struct {
                 try writer.print("{s}{d:.1}B/s", .{ separator, self.calculated_rate });
             }
         }
-        
+
         if (info.items.len > 0) {
             const style = Style{ .fg_color = ctx.theme.colors.foreground };
             try ctx.terminal.print(info.items, style);
@@ -623,17 +624,23 @@ fn hsvToRgb(h: f32, s: f32, v: f32) struct { r: u8, g: u8, b: u8 } {
     var b: f32 = 0;
 
     if (h >= 0.0 and h < 60.0) {
-        r = c; g = x;
+        r = c;
+        g = x;
     } else if (h >= 60.0 and h < 120.0) {
-        r = x; g = c;
+        r = x;
+        g = c;
     } else if (h >= 120.0 and h < 180.0) {
-        g = c; b = x;
+        g = c;
+        b = x;
     } else if (h >= 180.0 and h < 240.0) {
-        g = x; b = c;
+        g = x;
+        b = c;
     } else if (h >= 240.0 and h < 300.0) {
-        r = x; b = c;
+        r = x;
+        b = c;
     } else {
-        r = c; b = x;
+        r = c;
+        b = x;
     }
 
     return .{
@@ -647,11 +654,11 @@ fn hsvToRgb(h: f32, s: f32, v: f32) struct { r: u8, g: u8, b: u8 } {
 fn calculateGradientColor(position: f32, overall_progress: f32) unicode_renderer.RGB {
     // Enhanced gradient that considers both position and overall progress
     const weighted_pos = position * 0.7 + overall_progress * 0.3;
-    
+
     // Linear interpolation from red to green
     const r = @as(u8, @intFromFloat(255.0 * (1.0 - weighted_pos)));
     const g = @as(u8, @intFromFloat(255.0 * weighted_pos));
-    
+
     return unicode_renderer.RGB{ .r = r, .g = g, .b = 0 };
 }
 

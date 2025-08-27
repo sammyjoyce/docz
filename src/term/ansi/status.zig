@@ -6,24 +6,24 @@ pub const TermCaps = caps_mod.TermCaps;
 
 // Device Status Report (DSR)
 // CSI Ps n (ANSI), CSI ? Ps n (DEC)
-fn buildDsr(buf: []u8, dec: bool, statuses: []const u32) []const u8 {
+fn buildDsr(buf: []u8, dec: bool, statuses: []const u32) ![]const u8 {
     var fbs = std.io.fixedBufferStream(buf);
     var w = fbs.writer();
-    _ = w.write("\x1b[") catch unreachable;
-    if (dec) _ = w.write("?") catch unreachable;
+    try w.write("\x1b[");
+    if (dec) try w.write("?");
     var first = true;
     for (statuses) |s| {
-        if (!first) _ = w.write(";") catch unreachable;
+        if (!first) try w.write(";");
         first = false;
-        _ = std.fmt.format(w, "{d}", .{s}) catch unreachable;
+        try std.fmt.format(w, "{d}", .{s});
     }
-    _ = w.write("n") catch unreachable;
+    try w.write("n");
     return fbs.getWritten();
 }
 
 pub fn deviceStatusReport(writer: anytype, caps: TermCaps, dec: bool, statuses: []const u32) !void {
     var tmp: [48]u8 = undefined;
-    const seq = buildDsr(&tmp, dec, statuses);
+    const seq = try buildDsr(&tmp, dec, statuses);
     try passthrough.writeWithPassthrough(writer, caps, seq);
 }
 
@@ -41,7 +41,7 @@ pub fn cursorPositionReport(writer: anytype, caps: TermCaps, row: u32, col: u32)
     const w = fbs.writer();
     const rr = if (row == 0) 1 else row;
     const cc = if (col == 0) 1 else col;
-    _ = std.fmt.format(w, "\x1b[{d};{d}R", .{ rr, cc }) catch unreachable;
+    try std.fmt.format(w, "\x1b[{d};{d}R", .{ rr, cc });
     try passthrough.writeWithPassthrough(writer, caps, fbs.getWritten());
 }
 
@@ -52,11 +52,11 @@ pub fn extendedCursorPositionReport(writer: anytype, caps: TermCaps, row: u32, c
     var w = fbs.writer();
     const rr = if (row == 0) 1 else row;
     const cc = if (col == 0) 1 else col;
-    _ = w.write("\x1b[?") catch unreachable;
+    try w.write("\x1b[?");
     if (page) |p| {
-        _ = std.fmt.format(w, "{d};{d};{d}R", .{ rr, cc, p }) catch unreachable;
+        try std.fmt.format(w, "{d};{d};{d}R", .{ rr, cc, p });
     } else {
-        _ = std.fmt.format(w, "{d};{d}R", .{ rr, cc }) catch unreachable;
+        try std.fmt.format(w, "{d};{d}R", .{ rr, cc });
     }
     try passthrough.writeWithPassthrough(writer, caps, fbs.getWritten());
 }

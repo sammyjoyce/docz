@@ -4,7 +4,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
-/// CLI parsing errors  
+/// CLI parsing errors
 pub const CliError = error{
     UnknownOption,
     MissingValue,
@@ -33,13 +33,33 @@ pub const AuthSubcommand = enum {
 };
 
 /// Available CLI commands
-pub const Command = union(enum) {
-    chat: void, // Default command for normal operation
-    auth: AuthSubcommand,
+pub const UnifiedCommand = enum {
+    chat,
+    auth,
+    interactive,
+    help,
+    version,
+    tui_demo,
 
-    pub fn fromString(str: []const u8) ?Command {
-        if (std.mem.eql(u8, str, "auth")) return Command{ .auth = undefined }; // Will be filled in later
+    pub fn fromString(str: []const u8) ?UnifiedCommand {
+        if (std.mem.eql(u8, str, "chat")) return .chat;
+        if (std.mem.eql(u8, str, "auth")) return .auth;
+        if (std.mem.eql(u8, str, "interactive")) return .interactive;
+        if (std.mem.eql(u8, str, "help")) return .help;
+        if (std.mem.eql(u8, str, "version")) return .version;
+        if (std.mem.eql(u8, str, "tui-demo")) return .tui_demo;
         return null;
+    }
+
+    pub fn toString(self: UnifiedCommand) []const u8 {
+        return switch (self) {
+            .chat => "chat",
+            .auth => "auth",
+            .interactive => "interactive",
+            .help => "help",
+            .version => "version",
+            .tui_demo => "tui-demo",
+        };
     }
 };
 
@@ -68,7 +88,7 @@ pub const ParsedFlags = struct {
 
 /// Parsed positional arguments
 pub const ParsedPositionals = struct {
-    command: Command = Command.chat,
+    command: UnifiedCommand = UnifiedCommand.chat,
     prompt: ?[]const u8 = null,
 };
 
@@ -90,68 +110,36 @@ pub const ParsedArgs = struct {
     }
 };
 
-// ============================================================================
-// New Unified CLI Types
-// ============================================================================
-
-/// Enhanced command system for unified CLI
-pub const UnifiedCommand = enum {
-    chat,
-    auth,
-    interactive,
-    help,
-    version,
-    
-    pub fn fromString(str: []const u8) ?UnifiedCommand {
-        if (std.mem.eql(u8, str, "chat")) return .chat;
-        if (std.mem.eql(u8, str, "auth")) return .auth;
-        if (std.mem.eql(u8, str, "interactive")) return .interactive;
-        if (std.mem.eql(u8, str, "help")) return .help;
-        if (std.mem.eql(u8, str, "version")) return .version;
-        return null;
-    }
-    
-    pub fn toString(self: UnifiedCommand) []const u8 {
-        return switch (self) {
-            .chat => "chat",
-            .auth => "auth", 
-            .interactive => "interactive",
-            .help => "help",
-            .version => "version",
-        };
-    }
-};
-
 /// CLI Configuration for unified system
 pub const Config = struct {
     // Core settings
     model: []const u8 = "claude-3-5-sonnet-20241022",
     temperature: f32 = 1.0,
     max_tokens: u32 = 4096,
-    
+
     // Output formatting
     format: OutputFormat = .enhanced,
     theme: []const u8 = "default",
     color: bool = true,
-    
+
     // Terminal features
     hyperlinks: bool = true,
     clipboard: bool = true,
     notifications: bool = true,
-    
+
     // Interaction settings
     stream: bool = false,
     interactive: bool = false,
     verbose: bool = false,
-    
+
     allocator: Allocator,
-    
+
     pub const OutputFormat = enum {
         simple,
-        enhanced, 
+        enhanced,
         json,
         markdown,
-        
+
         pub fn fromString(str: []const u8) ?OutputFormat {
             if (std.mem.eql(u8, str, "simple")) return .simple;
             if (std.mem.eql(u8, str, "enhanced")) return .enhanced;
@@ -160,13 +148,13 @@ pub const Config = struct {
             return null;
         }
     };
-    
+
     pub fn loadDefault(allocator: Allocator) Config {
         return Config{
             .allocator = allocator,
         };
     }
-    
+
     pub fn deinit(self: *Config, allocator: Allocator) void {
         // Clean up any allocated strings if needed
         _ = self;
@@ -180,14 +168,14 @@ pub const CommandResult = struct {
     output: ?[]const u8 = null,
     error_msg: ?[]const u8 = null,
     exit_code: u8 = 0,
-    
+
     pub fn ok(output: ?[]const u8) CommandResult {
         return CommandResult{
             .success = true,
             .output = output,
         };
     }
-    
+
     pub fn err(msg: []const u8, exit_code: u8) CommandResult {
         return CommandResult{
             .success = false,
@@ -203,34 +191,34 @@ pub const ParsedArgsUnified = struct {
     model: []const u8,
     temperature: f32,
     max_tokens: u32,
-    
+
     // Output options
     format: Config.OutputFormat,
     theme: []const u8,
     color: bool,
-    
+
     // Terminal features
     hyperlinks: bool,
     clipboard: bool,
     notifications: bool,
-    
+
     // Mode flags
     stream: bool,
     interactive: bool,
     verbose: bool,
     help: bool,
     version: bool,
-    
+
     // Command structure
     command: ?UnifiedCommand,
     auth_subcommand: ?AuthSubcommand,
     positional_args: [][]const u8,
-    
+
     // Raw input
     raw_message: ?[]const u8,
-    
+
     allocator: Allocator,
-    
+
     pub fn fromConfig(config: Config, allocator: Allocator) ParsedArgsUnified {
         return ParsedArgsUnified{
             .model = config.model,
@@ -254,7 +242,7 @@ pub const ParsedArgsUnified = struct {
             .allocator = allocator,
         };
     }
-    
+
     pub fn deinit(self: *ParsedArgsUnified) void {
         // Clean up allocated arrays if needed
         if (self.positional_args.len > 0) {

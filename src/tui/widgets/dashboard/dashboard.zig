@@ -28,7 +28,7 @@ pub const Dashboard = struct {
     update_interval_ms: u32,
     responsive: bool,
     min_terminal_size: bounds_mod.TerminalSize,
-    
+
     // Terminal integration
     terminal_caps: ?terminal_mod.TermCaps,
     render_mode: RenderMode,
@@ -47,18 +47,18 @@ pub const Dashboard = struct {
         cols: u32,
         cells: []Cell,
         bounds: Bounds,
-        
+
         pub const Cell = struct {
             bounds: Bounds,
             widget_id: ?u32 = null,
             span_rows: u32 = 1,
             span_cols: u32 = 1,
         };
-        
+
         pub fn init(allocator: std.mem.Allocator, rows: u32, cols: u32) !GridLayout {
             const total_cells = rows * cols;
             const cells = try allocator.alloc(Cell, total_cells);
-            
+
             return GridLayout{
                 .rows = rows,
                 .cols = cols,
@@ -66,17 +66,17 @@ pub const Dashboard = struct {
                 .bounds = Bounds.init(0, 0, 0, 0),
             };
         }
-        
+
         pub fn deinit(self: *GridLayout, allocator: std.mem.Allocator) void {
             allocator.free(self.cells);
         }
-        
+
         pub fn calculateLayout(self: *GridLayout, terminal_bounds: Bounds) void {
             self.bounds = terminal_bounds;
-            
+
             const cell_width = terminal_bounds.width / self.cols;
             const cell_height = terminal_bounds.height / self.rows;
-            
+
             for (0..self.rows) |row| {
                 for (0..self.cols) |col| {
                     const index = row * self.cols + col;
@@ -89,16 +89,16 @@ pub const Dashboard = struct {
                 }
             }
         }
-        
+
         pub fn getCellBounds(self: *GridLayout, row: u32, col: u32, span_rows: u32, span_cols: u32) ?Bounds {
             if (row >= self.rows or col >= self.cols) return null;
             if (row + span_rows > self.rows or col + span_cols > self.cols) return null;
-            
+
             const start_cell = &self.cells[row * self.cols + col];
             const end_row = row + span_rows - 1;
             const end_col = col + span_cols - 1;
             const end_cell = &self.cells[end_row * self.cols + end_col];
-            
+
             return Bounds.init(
                 start_cell.bounds.x,
                 start_cell.bounds.y,
@@ -111,21 +111,21 @@ pub const Dashboard = struct {
     pub const WidgetRegistry = struct {
         widgets: std.ArrayList(*DashboardWidget),
         next_id: u32,
-        
+
         pub fn init(allocator: std.mem.Allocator) WidgetRegistry {
             return WidgetRegistry{
                 .widgets = std.ArrayList(*DashboardWidget).init(allocator),
                 .next_id = 1,
             };
         }
-        
+
         pub fn deinit(self: *WidgetRegistry) void {
             for (self.widgets.items) |widget| {
                 widget.deinit();
             }
             self.widgets.deinit();
         }
-        
+
         pub fn register(self: *WidgetRegistry, widget: *DashboardWidget) !u32 {
             const id = self.next_id;
             self.next_id += 1;
@@ -133,7 +133,7 @@ pub const Dashboard = struct {
             try self.widgets.append(widget);
             return id;
         }
-        
+
         pub fn getWidget(self: *WidgetRegistry, id: u32) ?*DashboardWidget {
             for (self.widgets.items) |widget| {
                 if (widget.id == id) return widget;
@@ -144,13 +144,13 @@ pub const Dashboard = struct {
 
     pub const DataSourceRegistry = struct {
         sources: std.HashMap([]const u8, *DataSource, std.hash_map.StringContext, std.hash_map.default_max_load_percentage),
-        
+
         pub fn init(allocator: std.mem.Allocator) DataSourceRegistry {
             return DataSourceRegistry{
                 .sources = std.HashMap([]const u8, *DataSource, std.hash_map.StringContext, std.hash_map.default_max_load_percentage).init(allocator),
             };
         }
-        
+
         pub fn deinit(self: *DataSourceRegistry) void {
             var iterator = self.sources.iterator();
             while (iterator.next()) |entry| {
@@ -158,11 +158,11 @@ pub const Dashboard = struct {
             }
             self.sources.deinit();
         }
-        
+
         pub fn register(self: *DataSourceRegistry, name: []const u8, source: *DataSource) !void {
             try self.sources.put(name, source);
         }
-        
+
         pub fn getSource(self: *DataSourceRegistry, name: []const u8) ?*DataSource {
             return self.sources.get(name);
         }
@@ -173,24 +173,24 @@ pub const Dashboard = struct {
         position: GridPosition,
         bounds: Bounds = Bounds.init(0, 0, 0, 0),
         visible: bool = true,
-        
+
         // Widget interface
         vtable: *const VTable,
         impl: *anyopaque,
-        
+
         pub const GridPosition = struct {
             row: u32,
             col: u32,
             span_rows: u32 = 1,
             span_cols: u32 = 1,
         };
-        
+
         pub const VTable = struct {
-            render: *const fn(*anyopaque, *Renderer, RenderContext) anyerror!void,
-            handleInput: *const fn(*anyopaque, InputEvent) anyerror!void,
-            deinit: *const fn(*anyopaque) void,
+            render: *const fn (*anyopaque, *Renderer, RenderContext) anyerror!void,
+            handleInput: *const fn (*anyopaque, InputEvent) anyerror!void,
+            deinit: *const fn (*anyopaque) void,
         };
-        
+
         pub fn init(impl: anytype, position: GridPosition) DashboardWidget {
             const T = @TypeOf(impl);
             const vtable = &VTable{
@@ -213,36 +213,36 @@ pub const Dashboard = struct {
                     }
                 }.deinit,
             };
-            
+
             return DashboardWidget{
                 .position = position,
                 .vtable = vtable,
                 .impl = impl,
             };
         }
-        
+
         pub fn render(self: *DashboardWidget, renderer: *Renderer, ctx: RenderContext) !void {
             if (!self.visible) return;
             var widget_ctx = ctx;
             widget_ctx.bounds = self.bounds;
             return self.vtable.render(self.impl, renderer, widget_ctx);
         }
-        
+
         pub fn handleInput(self: *DashboardWidget, event: InputEvent) !void {
             if (!self.visible) return;
             return self.vtable.handleInput(self.impl, event);
         }
-        
+
         pub fn deinit(self: *DashboardWidget) void {
             self.vtable.deinit(self.impl);
         }
     };
 
     pub const DataSource = struct {
-        update_fn: *const fn(*DataSource) anyerror!void,
+        update_fn: *const fn (*DataSource) anyerror!void,
         data: *anyopaque,
         last_update: i64 = 0,
-        
+
         pub fn update(self: *DataSource) !void {
             self.last_update = std.time.timestamp();
             return self.update_fn(self);
@@ -256,7 +256,7 @@ pub const Dashboard = struct {
         notifications: bool,
         hyperlinks: bool,
         mouse: bool,
-        
+
         pub const GraphicsMode = enum {
             kitty,
             sixel,
@@ -264,7 +264,7 @@ pub const Dashboard = struct {
             ascii,
             none,
         };
-        
+
         pub const ColorMode = enum {
             truecolor,
             indexed256,
@@ -281,7 +281,7 @@ pub const Dashboard = struct {
 
     pub fn init(allocator: std.mem.Allocator, config: Config) !Self {
         const layout = try GridLayout.init(allocator, config.grid_rows, config.grid_cols);
-        
+
         return Self{
             .allocator = allocator,
             .layout = layout,
@@ -320,15 +320,9 @@ pub const Dashboard = struct {
     }
 
     fn selectRenderMode(_: *Self, caps: terminal_mod.TermCaps) RenderMode {
-        
         return RenderMode{
-            .graphics = if (caps.supportsKittyGraphics) .kitty
-                       else if (caps.supportsSixel) .sixel
-                       else if (caps.supportsUnicode) .unicode
-                       else .ascii,
-            .colors = if (caps.supportsTrueColor) .truecolor
-                     else if (caps.supports256Color) .indexed256
-                     else .ansi16,
+            .graphics = if (caps.supportsKittyGraphics) .kitty else if (caps.supportsSixel) .sixel else if (caps.supportsUnicode) .unicode else .ascii,
+            .colors = if (caps.supportsTrueColor) .truecolor else if (caps.supports256Color) .indexed256 else .ansi16,
             .clipboard = caps.supportsClipboardOsc52,
             .notifications = caps.supportsNotifyOsc9,
             .hyperlinks = caps.supportsHyperlinkOsc8,
@@ -338,17 +332,12 @@ pub const Dashboard = struct {
 
     pub fn addWidget(self: *Self, widget: *DashboardWidget) !u32 {
         const id = try self.widgets.register(widget);
-        
+
         // Calculate widget bounds based on grid position
-        if (self.layout.getCellBounds(
-            widget.position.row,
-            widget.position.col,
-            widget.position.span_rows,
-            widget.position.span_cols
-        )) |bounds| {
+        if (self.layout.getCellBounds(widget.position.row, widget.position.col, widget.position.span_rows, widget.position.span_cols)) |bounds| {
             widget.bounds = bounds;
         }
-        
+
         return id;
     }
 
@@ -377,19 +366,14 @@ pub const Dashboard = struct {
     pub fn render(self: *Self, renderer: *Renderer, ctx: RenderContext) !void {
         // Update layout for current terminal size
         self.layout.calculateLayout(ctx.bounds);
-        
+
         // Update widget bounds
         for (self.widgets.widgets.items) |widget| {
-            if (self.layout.getCellBounds(
-                widget.position.row,
-                widget.position.col,
-                widget.position.span_rows,
-                widget.position.span_cols
-            )) |bounds| {
+            if (self.layout.getCellBounds(widget.position.row, widget.position.col, widget.position.span_rows, widget.position.span_cols)) |bounds| {
                 widget.bounds = bounds;
             }
         }
-        
+
         // Render all widgets
         for (self.widgets.widgets.items) |widget| {
             try widget.render(renderer, ctx);
@@ -406,7 +390,7 @@ pub const Dashboard = struct {
             },
             else => {},
         }
-        
+
         // Forward input to appropriate widgets
         for (self.widgets.widgets.items) |widget| {
             // Check if input is within widget bounds for mouse events
@@ -426,47 +410,45 @@ pub const Dashboard = struct {
     pub fn runInteractive(self: *Self, renderer: *Renderer) !void {
         // Try to detect terminal capabilities
         try self.detectCapabilities(renderer);
-        
+
         // Main render loop
         var update_timer: i64 = 0;
         const update_interval = @as(i64, @intCast(self.update_interval_ms));
-        
+
         while (true) {
             const now = std.time.timestamp() * 1000; // Convert to milliseconds
-            
+
             // Update data sources if interval has passed
             if (now - update_timer >= update_interval) {
                 try self.updateData();
                 update_timer = now;
             }
-            
+
             // Get terminal size
             const terminal_size = bounds_mod.getTerminalSize() catch |err| switch (err) {
                 error.NotATTY => bounds_mod.TerminalSize{ .width = 80, .height = 24 },
                 else => return err,
             };
-            
+
             // Check minimum size requirements
-            if (self.responsive and 
+            if (self.responsive and
                 (terminal_size.width < self.min_terminal_size.width or
-                 terminal_size.height < self.min_terminal_size.height)) {
+                    terminal_size.height < self.min_terminal_size.height))
+            {
                 // Display size warning
                 try renderer.setForeground(.red);
-                try renderer.writeText("Terminal too small. Minimum size: {}x{}", .{
-                    self.min_terminal_size.width,
-                    self.min_terminal_size.height
-                });
+                try renderer.writeText("Terminal too small. Minimum size: {}x{}", .{ self.min_terminal_size.width, self.min_terminal_size.height });
                 try renderer.resetStyle();
                 std.time.sleep(100 * std.time.ns_per_ms);
                 continue;
             }
-            
+
             // Render dashboard
             const ctx = RenderContext{
                 .bounds = Bounds.init(0, 0, terminal_size.width, terminal_size.height),
             };
             try self.render(renderer, ctx);
-            
+
             // Handle input (non-blocking)
             // This would need to be implemented based on the input system
             // For now, we'll add a small delay to prevent tight loop

@@ -8,14 +8,14 @@ const cacheKey = @import("../adaptive_renderer.zig").cacheKey;
 
 /// Progress bar data and configuration
 pub const Progress = struct {
-    value: f32,              // 0.0 to 1.0
+    value: f32, // 0.0 to 1.0
     label: ?[]const u8 = null,
     show_percentage: bool = true,
     show_eta: bool = false,
     eta_seconds: ?u64 = null,
     color: ?Color = null,
     background_color: ?Color = null,
-    
+
     pub fn validate(self: Progress) !void {
         if (self.value < 0.0 or self.value > 1.0) {
             return error.InvalidProgressValue;
@@ -26,30 +26,27 @@ pub const Progress = struct {
 /// Render progress bar using adaptive renderer
 pub fn renderProgress(renderer: *AdaptiveRenderer, progress: Progress) !void {
     try progress.validate();
-    
-    const key = cacheKey("progress_{d}_{?s}_{}_{}_{?d}", .{
-        progress.value, progress.label, progress.show_percentage, 
-        progress.show_eta, progress.eta_seconds
-    });
-    
+
+    const key = cacheKey("progress_{d}_{?s}_{}_{}_{?d}", .{ progress.value, progress.label, progress.show_percentage, progress.show_eta, progress.eta_seconds });
+
     if (renderer.cache.get(key, renderer.render_mode)) |cached| {
         try renderer.unified_terminal.writeText(cached);
         return;
     }
-    
+
     var output = std.ArrayList(u8).init(renderer.allocator);
     defer output.deinit();
-    
+
     switch (renderer.render_mode) {
         .enhanced => try renderEnhanced(renderer, progress, &output),
         .standard => try renderStandard(renderer, progress, &output),
         .compatible => try renderCompatible(renderer, progress, &output),
         .minimal => try renderMinimal(renderer, progress, &output),
     }
-    
+
     const content = try output.toOwnedSlice();
     defer renderer.allocator.free(content);
-    
+
     try renderer.cache.put(key, content, renderer.render_mode);
     try renderer.unified_terminal.writeText(content);
 }
@@ -58,25 +55,25 @@ pub fn renderProgress(renderer: *AdaptiveRenderer, progress: Progress) !void {
 fn renderEnhanced(renderer: *AdaptiveRenderer, progress: Progress, output: *std.ArrayList(u8)) !void {
     const config = QualityTiers.ProgressBar.enhanced;
     const writer = output.writer();
-    
+
     // Label
     if (progress.label) |label| {
         try writer.print("{s}: ", .{label});
     }
-    
+
     // Calculate progress bar width and filled amount
     const filled_width = @as(u16, @intFromFloat(@as(f32, @floatFromInt(config.width)) * progress.value));
     const partial_index = @as(usize, @intFromFloat((@as(f32, @floatFromInt(config.width)) * progress.value - @as(f32, @floatFromInt(filled_width))) * @as(f32, @floatFromInt(config.bar_chars.partial.len))));
-    
+
     // Start color gradient
     if (config.supports_color) {
         const color = progress.color orelse Color.rgb(0, 200, 100); // Default green
         try setProgressColor(renderer, color, writer);
     }
-    
+
     // Render progress bar with gradient
     try writer.writeAll("[");
-    
+
     // Filled portion with gradient
     for (0..filled_width) |i| {
         if (config.use_gradient) {
@@ -89,30 +86,30 @@ fn renderEnhanced(renderer: *AdaptiveRenderer, progress: Progress, output: *std.
         }
         try writer.writeAll(config.bar_chars.filled);
     }
-    
+
     // Partial character
     if (partial_index < config.bar_chars.partial.len and filled_width < config.width) {
         try writer.writeAll(config.bar_chars.partial[partial_index]);
     }
-    
+
     // Empty portion
     const empty_width = config.width - filled_width - (if (partial_index < config.bar_chars.partial.len and filled_width < config.width) 1 else 0);
     for (0..empty_width) |_| {
         try writer.writeAll(config.bar_chars.empty);
     }
-    
+
     try writer.writeAll("]");
-    
+
     // Reset color
     if (config.supports_color) {
         try writer.writeAll("\x1b[0m");
     }
-    
+
     // Percentage
     if (progress.show_percentage and config.supports_percentage) {
         try writer.print(" {d:3.1}%", .{progress.value * 100});
     }
-    
+
     // ETA
     if (progress.show_eta and config.supports_eta and progress.eta_seconds) |eta| {
         try writer.print(" (ETA: {d}s)", .{eta});
@@ -123,53 +120,53 @@ fn renderEnhanced(renderer: *AdaptiveRenderer, progress: Progress, output: *std.
 fn renderStandard(renderer: *AdaptiveRenderer, progress: Progress, output: *std.ArrayList(u8)) !void {
     const config = QualityTiers.ProgressBar.standard;
     const writer = output.writer();
-    
+
     // Label
     if (progress.label) |label| {
         try writer.print("{s}: ", .{label});
     }
-    
+
     // Calculate progress bar width and filled amount
     const filled_width = @as(u16, @intFromFloat(@as(f32, @floatFromInt(config.width)) * progress.value));
     const partial_index = @as(usize, @intFromFloat((@as(f32, @floatFromInt(config.width)) * progress.value - @as(f32, @floatFromInt(filled_width))) * @as(f32, @floatFromInt(config.bar_chars.partial.len))));
-    
+
     // Color
     if (config.supports_color) {
         const color = progress.color orelse Color.ansi(.green);
         try setProgressColor(renderer, color, writer);
     }
-    
+
     // Render progress bar
     try writer.writeAll("[");
-    
+
     // Filled portion
     for (0..filled_width) |_| {
         try writer.writeAll(config.bar_chars.filled);
     }
-    
+
     // Partial character
     if (partial_index < config.bar_chars.partial.len and filled_width < config.width) {
         try writer.writeAll(config.bar_chars.partial[partial_index]);
     }
-    
+
     // Empty portion
     const empty_width = config.width - filled_width - (if (partial_index < config.bar_chars.partial.len and filled_width < config.width) 1 else 0);
     for (0..empty_width) |_| {
         try writer.writeAll(config.bar_chars.empty);
     }
-    
+
     try writer.writeAll("]");
-    
+
     // Reset color
     if (config.supports_color) {
         try writer.writeAll("\x1b[0m");
     }
-    
+
     // Percentage
     if (progress.show_percentage and config.supports_percentage) {
         try writer.print(" {d:3.1}%", .{progress.value * 100});
     }
-    
+
     // ETA
     if (progress.show_eta and config.supports_eta and progress.eta_seconds) |eta| {
         try writer.print(" (ETA: {d}s)", .{eta});
@@ -180,31 +177,31 @@ fn renderStandard(renderer: *AdaptiveRenderer, progress: Progress, output: *std.
 fn renderCompatible(_: *AdaptiveRenderer, progress: Progress, output: *std.ArrayList(u8)) !void {
     const config = QualityTiers.ProgressBar.compatible;
     const writer = output.writer();
-    
+
     // Label
     if (progress.label) |label| {
         try writer.print("{s}: ", .{label});
     }
-    
+
     // Calculate progress bar width
     const filled_width = @as(u16, @intFromFloat(@as(f32, @floatFromInt(config.width)) * progress.value));
-    
+
     // Render progress bar
     try writer.writeAll("[");
-    
+
     // Filled portion
     for (0..filled_width) |_| {
         try writer.writeAll(config.bar_chars.filled);
     }
-    
+
     // Empty portion
     const empty_width = config.width - filled_width;
     for (0..empty_width) |_| {
         try writer.writeAll(config.bar_chars.empty);
     }
-    
+
     try writer.writeAll("]");
-    
+
     // Percentage
     if (progress.show_percentage and config.supports_percentage) {
         try writer.print(" {d:3.0}%", .{progress.value * 100});
@@ -215,12 +212,12 @@ fn renderCompatible(_: *AdaptiveRenderer, progress: Progress, output: *std.Array
 fn renderMinimal(_: *AdaptiveRenderer, progress: Progress, output: *std.ArrayList(u8)) !void {
     const config = QualityTiers.ProgressBar.minimal;
     const writer = output.writer();
-    
+
     // Label
     if (progress.label) |label| {
         try writer.print("{s}: ", .{label});
     }
-    
+
     // Just percentage
     if (progress.show_percentage and config.supports_percentage) {
         try writer.print("{d:3.0}%", .{progress.value * 100});
@@ -276,7 +273,7 @@ pub const AnimatedProgress = struct {
     renderer: *AdaptiveRenderer,
     progress: Progress,
     start_time: i64,
-    
+
     pub fn init(renderer: *AdaptiveRenderer, progress: Progress) AnimatedProgress {
         return AnimatedProgress{
             .renderer = renderer,
@@ -284,10 +281,10 @@ pub const AnimatedProgress = struct {
             .start_time = std.time.milliTimestamp(),
         };
     }
-    
+
     pub fn update(self: *AnimatedProgress, new_value: f32) !void {
         self.progress.value = new_value;
-        
+
         // Calculate ETA if not manually set
         if (self.progress.show_eta and self.progress.eta_seconds == null) {
             const elapsed_ms = std.time.milliTimestamp() - self.start_time;
@@ -297,12 +294,12 @@ pub const AnimatedProgress = struct {
                 self.progress.eta_seconds = @as(u64, @intFromFloat(remaining_ms / 1000));
             }
         }
-        
+
         // Clear line and render updated progress
         try self.renderer.unified_terminal.writeText("\r\x1b[K");
         try renderProgress(self.renderer, self.progress);
     }
-    
+
     pub fn finish(self: *AnimatedProgress) !void {
         self.progress.value = 1.0;
         self.progress.eta_seconds = 0;
@@ -314,18 +311,18 @@ pub const AnimatedProgress = struct {
 // Tests
 test "progress bar rendering" {
     const testing = std.testing;
-    
+
     var renderer = try AdaptiveRenderer.initWithMode(testing.allocator, .standard);
     defer renderer.deinit();
-    
+
     const progress = Progress{
         .value = 0.75,
         .label = "Test Progress",
         .show_percentage = true,
     };
-    
+
     try renderProgress(renderer, progress);
-    
+
     // Test validation
     const invalid_progress = Progress{ .value = 1.5 };
     try testing.expectError(error.InvalidProgressValue, invalid_progress.validate());

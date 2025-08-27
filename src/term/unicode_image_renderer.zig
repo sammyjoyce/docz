@@ -1,8 +1,8 @@
 /// Unicode Image Renderer (Mosaic) for Terminal Applications
-/// 
+///
 /// This module provides functionality to render images in terminals using Unicode block characters.
 /// Inspired by charmbracelet/x/mosaic but implemented in Zig 0.15.1.
-/// 
+///
 /// The renderer analyzes 2x2 pixel blocks from images and maps them to the best matching
 /// Unicode block characters with appropriate foreground and background colors.
 ///
@@ -11,7 +11,7 @@
 /// var img = try Image.init(allocator, 64, 32);
 /// defer img.deinit();
 /// // ... populate image with pixels ...
-/// 
+///
 /// const output = try UnicodeImageRenderer
 ///     .init(allocator)
 ///     .width(32)
@@ -19,17 +19,16 @@
 ///     .symbolType(.all)
 ///     .render(img);
 /// defer allocator.free(output);
-/// 
+///
 /// std.log.info("{s}", .{output});
 /// ```
-
 const std = @import("std");
 const math = std.math;
 
 /// RGB color structure for image processing
 pub const RGB = struct {
     r: u8,
-    g: u8, 
+    g: u8,
     b: u8,
 
     pub fn fromU32(value: u32) RGB {
@@ -46,9 +45,9 @@ pub const RGB = struct {
 
     /// Calculate luminance for color comparison
     pub fn luminance(self: RGB) f32 {
-        return 0.299 * @as(f32, @floatFromInt(self.r)) + 
-               0.587 * @as(f32, @floatFromInt(self.g)) + 
-               0.114 * @as(f32, @floatFromInt(self.b));
+        return 0.299 * @as(f32, @floatFromInt(self.r)) +
+            0.587 * @as(f32, @floatFromInt(self.g)) +
+            0.114 * @as(f32, @floatFromInt(self.b));
     }
 
     /// Calculate color distance between two colors
@@ -65,7 +64,7 @@ pub const RGB = struct {
         const inv_w = 1.0 - w;
         return RGB{
             .r = @intFromFloat(@as(f32, @floatFromInt(self.r)) * inv_w + @as(f32, @floatFromInt(other.r)) * w),
-            .g = @intFromFloat(@as(f32, @floatFromInt(self.g)) * inv_w + @as(f32, @floatFromInt(other.g)) * w), 
+            .g = @intFromFloat(@as(f32, @floatFromInt(self.g)) * inv_w + @as(f32, @floatFromInt(other.g)) * w),
             .b = @intFromFloat(@as(f32, @floatFromInt(self.b)) * inv_w + @as(f32, @floatFromInt(other.b)) * w),
         };
     }
@@ -84,9 +83,9 @@ pub const Block = struct {
 
 /// Symbol type for rendering complexity
 pub const SymbolType = enum {
-    half,        // Only half blocks (▀▄ █)
-    quarter,     // Quarter blocks + half blocks  
-    all,         // All available block characters
+    half, // Only half blocks (▀▄ █)
+    quarter, // Quarter blocks + half blocks
+    all, // All available block characters
 
     pub fn getBlocks(self: SymbolType) []const Block {
         return switch (self) {
@@ -121,7 +120,7 @@ const QUARTER_BLOCKS = [_]Block{
     .{ .char = '▐', .coverage = .{ false, true, false, true }, .description = "Right half block" },
 };
 
-/// All available block characters  
+/// All available block characters
 const ALL_BLOCKS = [_]Block{
     // Include quarter blocks
     .{ .char = '▀', .coverage = .{ true, true, false, false }, .description = "Upper half block" },
@@ -255,7 +254,7 @@ pub const UnicodeImageRenderer = struct {
     /// Find the best matching block character for a given coverage pattern
     fn findBestBlock(self: UnicodeImageRenderer, coverage: [4]bool) Block {
         const blocks = self.symbol_type.getBlocks();
-        
+
         // First try to find exact match
         for (blocks) |block| {
             if (block.matches(coverage)) {
@@ -299,9 +298,9 @@ pub const UnicodeImageRenderer = struct {
                 const pixel = block.pixels[y][x];
                 const lum = pixel.luminance();
                 const is_fg = lum >= @as(f32, @floatFromInt(self.threshold_level));
-                
+
                 coverage[y * 2 + x] = if (self.invert_colors) !is_fg else is_fg;
-                
+
                 if (coverage[y * 2 + x]) {
                     fg_pixels.append(self.allocator, pixel) catch {};
                 } else {
@@ -328,7 +327,7 @@ pub const UnicodeImageRenderer = struct {
         if (colors.len == 0) return RGB{ .r = 0, .g = 0, .b = 0 };
 
         var sum_r: u32 = 0;
-        var sum_g: u32 = 0; 
+        var sum_g: u32 = 0;
         var sum_b: u32 = 0;
 
         for (colors) |color| {
@@ -347,7 +346,7 @@ pub const UnicodeImageRenderer = struct {
     /// Scale image to target dimensions
     fn scaleImage(self: UnicodeImageRenderer, src: Image, target_width: u32, target_height: u32) !Image {
         var scaled = try Image.init(self.allocator, target_width, target_height);
-        
+
         const scale_x = @as(f32, @floatFromInt(src.width)) / @as(f32, @floatFromInt(target_width));
         const scale_y = @as(f32, @floatFromInt(src.height)) / @as(f32, @floatFromInt(target_height));
 
@@ -355,7 +354,7 @@ pub const UnicodeImageRenderer = struct {
             for (0..target_width) |x| {
                 const src_x = @as(u32, @intFromFloat(@as(f32, @floatFromInt(x)) * scale_x));
                 const src_y = @as(u32, @intFromFloat(@as(f32, @floatFromInt(y)) * scale_y));
-                
+
                 const color = src.getPixel(src_x, src_y) orelse RGB{ .r = 0, .g = 0, .b = 0 };
                 scaled.setPixel(@intCast(x), @intCast(y), color);
             }
@@ -402,16 +401,12 @@ pub const UnicodeImageRenderer = struct {
                 // Add ANSI color codes if color support is enabled
                 if (self.use_color) {
                     // Foreground color
-                    const fg_ansi = try std.fmt.allocPrint(self.allocator, "\x1b[38;2;{d};{d};{d}m", .{ 
-                        analyzed.best_fg_color.r, analyzed.best_fg_color.g, analyzed.best_fg_color.b 
-                    });
+                    const fg_ansi = try std.fmt.allocPrint(self.allocator, "\x1b[38;2;{d};{d};{d}m", .{ analyzed.best_fg_color.r, analyzed.best_fg_color.g, analyzed.best_fg_color.b });
                     defer self.allocator.free(fg_ansi);
                     try output.appendSlice(self.allocator, fg_ansi);
 
                     // Background color
-                    const bg_ansi = try std.fmt.allocPrint(self.allocator, "\x1b[48;2;{d};{d};{d}m", .{ 
-                        analyzed.best_bg_color.r, analyzed.best_bg_color.g, analyzed.best_bg_color.b 
-                    });
+                    const bg_ansi = try std.fmt.allocPrint(self.allocator, "\x1b[48;2;{d};{d};{d}m", .{ analyzed.best_bg_color.r, analyzed.best_bg_color.g, analyzed.best_bg_color.b });
                     defer self.allocator.free(bg_ansi);
                     try output.appendSlice(self.allocator, bg_ansi);
                 }
@@ -426,7 +421,7 @@ pub const UnicodeImageRenderer = struct {
                     try output.appendSlice(self.allocator, "\x1b[0m");
                 }
             }
-            
+
             // Add newline at end of each row
             try output.append(self.allocator, '\n');
         }
@@ -444,7 +439,7 @@ pub fn render(allocator: std.mem.Allocator, img: Image, width: u32, height: u32)
 /// Create a test image with a simple pattern
 pub fn createTestImage(allocator: std.mem.Allocator) !Image {
     var img = try Image.init(allocator, 32, 32);
-    
+
     // Create a simple gradient pattern
     for (0..32) |y| {
         for (0..32) |x| {
@@ -452,7 +447,7 @@ pub fn createTestImage(allocator: std.mem.Allocator) !Image {
             img.setPixel(@intCast(x), @intCast(y), RGB{ .r = intensity, .g = intensity, .b = intensity });
         }
     }
-    
+
     return img;
 }
 
@@ -466,7 +461,7 @@ test "RGB color operations" {
     // Test luminance calculation
     try testing.expect(red.luminance() > blue.luminance());
 
-    // Test color mixing  
+    // Test color mixing
     const purple = red.mix(blue, 0.5);
     try testing.expect(purple.r > 0 and purple.b > 0 and purple.g == 0);
 }
@@ -490,12 +485,12 @@ test "Block character matching" {
     const testing = std.testing;
 
     const renderer = UnicodeImageRenderer.init(testing.allocator);
-    
+
     // Test exact match
     const upper_half = [4]bool{ true, true, false, false };
     const block = renderer.findBestBlock(upper_half);
     try testing.expect(block.char == '▀');
-    
+
     // Test full block
     const full = [4]bool{ true, true, true, true };
     const full_block = renderer.findBestBlock(full);

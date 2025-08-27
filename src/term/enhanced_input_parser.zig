@@ -2,7 +2,6 @@ const std = @import("std");
 
 /// Enhanced input event parsing for modern terminals
 /// Supports advanced mouse modes, kitty keyboard protocol, and complex key combinations
-
 /// Key modifiers that can be combined
 pub const KeyModifiers = packed struct {
     shift: bool = false,
@@ -103,8 +102,30 @@ pub const KeyCode = enum {
     right,
 
     // Function keys
-    f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12,
-    f13, f14, f15, f16, f17, f18, f19, f20, f21, f22, f23, f24,
+    f1,
+    f2,
+    f3,
+    f4,
+    f5,
+    f6,
+    f7,
+    f8,
+    f9,
+    f10,
+    f11,
+    f12,
+    f13,
+    f14,
+    f15,
+    f16,
+    f17,
+    f18,
+    f19,
+    f20,
+    f21,
+    f22,
+    f23,
+    f24,
 
     // Navigation keys
     home,
@@ -114,7 +135,16 @@ pub const KeyCode = enum {
     insert,
 
     // Keypad
-    kp_0, kp_1, kp_2, kp_3, kp_4, kp_5, kp_6, kp_7, kp_8, kp_9,
+    kp_0,
+    kp_1,
+    kp_2,
+    kp_3,
+    kp_4,
+    kp_5,
+    kp_6,
+    kp_7,
+    kp_8,
+    kp_9,
     kp_decimal,
     kp_divide,
     kp_multiply,
@@ -154,6 +184,29 @@ pub const KeyCode = enum {
     unknown,
 };
 
+/// Color types for terminal color queries
+pub const ColorType = enum {
+    foreground,
+    background,
+    cursor,
+};
+
+/// Terminal info types
+pub const TerminalInfoType = enum {
+    version,
+    capabilities,
+    device_attributes,
+};
+
+/// Mode status for mode reports
+pub const ModeStatus = enum {
+    not_recognized,
+    set,
+    reset,
+    permanently_set,
+    permanently_reset,
+};
+
 /// Input event types
 pub const InputEvent = union(enum) {
     /// Character input (UTF-8 codepoint with modifiers)
@@ -166,6 +219,12 @@ pub const InputEvent = union(enum) {
     key: struct {
         code: KeyCode,
         modifiers: KeyModifiers,
+        /// Whether this is a key repeat event (from Kitty protocol or Windows Console)
+        is_repeat: bool = false,
+        /// The base key according to PC-101 layout (for international keyboards)
+        base_code: ?u21 = null,
+        /// The actual shifted character (e.g., 'A' when shift+a is pressed)
+        shifted_code: ?u21 = null,
     },
 
     /// Mouse event
@@ -185,6 +244,36 @@ pub const InputEvent = union(enum) {
     /// Paste event (bracketed paste)
     paste: struct {
         text: []const u8,
+    },
+
+    /// Terminal color query responses
+    color_report: struct {
+        color_type: ColorType, // foreground, background, cursor
+        rgb: [3]u8, // Red, Green, Blue values
+    },
+
+    /// Clipboard content (from OSC 52)
+    clipboard: struct {
+        selection: u8, // 'c' for clipboard, 'p' for primary, etc.
+        content: []const u8,
+    },
+
+    /// Terminal version/capabilities report
+    terminal_info: struct {
+        info_type: TerminalInfoType,
+        data: []const u8,
+    },
+
+    /// Kitty graphics protocol events
+    kitty_graphics: struct {
+        command: []const u8,
+        payload: ?[]const u8,
+    },
+
+    /// Mode report events (e.g., bracket paste mode status)
+    mode_report: struct {
+        mode: u32,
+        status: ModeStatus,
     },
 
     /// Unknown escape sequence
@@ -258,7 +347,7 @@ pub const InputParser = struct {
     /// Parse a regular character (not escape sequence)
     fn parseCharacter(self: *InputParser) !InputEvent {
         const byte = self.consumeByte();
-        
+
         // Handle control characters
         switch (byte) {
             0x08 => return InputEvent{ .key = .{ .code = .backspace, .modifiers = .{} } },
@@ -273,23 +362,13 @@ pub const InputParser = struct {
         // Handle Ctrl+key combinations
         if (byte < 0x20) {
             const ctrl_char = byte + '@';
-            return InputEvent{ 
-                .char = .{ 
-                    .codepoint = ctrl_char, 
-                    .modifiers = .{ .ctrl = true } 
-                } 
-            };
+            return InputEvent{ .char = .{ .codepoint = ctrl_char, .modifiers = .{ .ctrl = true } } };
         }
 
         // Handle UTF-8 characters
         if (byte < 0x80) {
             // ASCII character
-            return InputEvent{ 
-                .char = .{ 
-                    .codepoint = byte, 
-                    .modifiers = .{} 
-                } 
-            };
+            return InputEvent{ .char = .{ .codepoint = byte, .modifiers = .{} } };
         } else {
             // Multi-byte UTF-8 sequence
             const seq_len = try std.unicode.utf8ByteSequenceLength(byte);
@@ -305,12 +384,7 @@ pub const InputParser = struct {
             }
 
             const codepoint = try std.unicode.utf8Decode(utf8_bytes[0..seq_len]);
-            return InputEvent{ 
-                .char = .{ 
-                    .codepoint = codepoint, 
-                    .modifiers = .{} 
-                } 
-            };
+            return InputEvent{ .char = .{ .codepoint = codepoint, .modifiers = .{} } };
         }
     }
 
@@ -318,7 +392,7 @@ pub const InputParser = struct {
     fn parseEscapeSequence(self: *InputParser) !?InputEvent {
         // Consume the ESC
         _ = self.consumeByte(); // 0x1B
-        
+
         if (self.buffer.items.len == 0) {
             self.unconsumeByte();
             return null;
@@ -353,7 +427,7 @@ pub const InputParser = struct {
     /// Parse CSI (Control Sequence Introducer) sequences
     fn parseCSI(self: *InputParser) !?InputEvent {
         _ = self.consumeByte(); // '['
-        
+
         try self.partial_sequence.append(self.allocator, '\x1b');
         try self.partial_sequence.append(self.allocator, '[');
 
@@ -376,13 +450,13 @@ pub const InputParser = struct {
     /// Parse complete CSI sequence
     fn parseCompleteCSI(self: *InputParser) !InputEvent {
         defer self.partial_sequence.clearRetainingCapacity();
-        
+
         const sequence = self.partial_sequence.items[2..]; // Skip ESC[
-        
+
         if (sequence.len == 0) return self.unknownSequence();
 
         const final_char = sequence[sequence.len - 1];
-        const params = sequence[0..sequence.len - 1];
+        const params = sequence[0 .. sequence.len - 1];
 
         switch (final_char) {
             'A' => return InputEvent{ .key = .{ .code = .up, .modifiers = self.parseCSIModifiers(params) } },
@@ -397,6 +471,8 @@ pub const InputParser = struct {
             't' => return try self.parseWindowOp(params),
             'I' => return InputEvent{ .focus = .{ .gained = true } },
             'O' => return InputEvent{ .focus = .{ .gained = false } },
+            'u' => return try self.parseKittyKeyboard(params),
+            '_' => return try self.parseWin32Input(params),
             else => return self.unknownSequence(),
         }
     }
@@ -404,7 +480,7 @@ pub const InputParser = struct {
     /// Parse OSC (Operating System Command) sequences
     fn parseOSC(self: *InputParser) !?InputEvent {
         _ = self.consumeByte(); // ']'
-        
+
         try self.partial_sequence.append(self.allocator, '\x1b');
         try self.partial_sequence.append(self.allocator, ']');
 
@@ -415,29 +491,96 @@ pub const InputParser = struct {
             _ = self.consumeByte();
 
             if (byte == 0x07) { // BEL
-                return self.unknownSequence();
+                return try self.parseCompleteOSC();
             }
-            
+
             if (byte == '\\' and self.partial_sequence.items.len >= 2 and
-                self.partial_sequence.items[self.partial_sequence.items.len - 2] == '\x1b') {
-                return self.unknownSequence();
+                self.partial_sequence.items[self.partial_sequence.items.len - 2] == '\x1b')
+            {
+                return try self.parseCompleteOSC();
             }
         }
 
         return null; // Incomplete
     }
 
+    /// Parse complete OSC sequence
+    fn parseCompleteOSC(self: *InputParser) !InputEvent {
+        defer self.partial_sequence.clearRetainingCapacity();
+
+        const sequence = self.partial_sequence.items[2..]; // Skip ESC]
+        if (sequence.len < 2) return self.unknownSequence();
+
+        // Remove terminator (BEL or ST)
+        const content = if (sequence[sequence.len - 1] == '\\' and
+            sequence.len >= 2 and sequence[sequence.len - 2] == '\x1b')
+            sequence[0 .. sequence.len - 2]
+        else if (sequence[sequence.len - 1] == 0x07)
+            sequence[0 .. sequence.len - 1]
+        else
+            sequence;
+
+        // Parse OSC command number
+        var semicolon_pos: ?usize = null;
+        for (content, 0..) |byte, i| {
+            if (byte == ';') {
+                semicolon_pos = i;
+                break;
+            }
+        }
+
+        const cmd_str = if (semicolon_pos) |pos| content[0..pos] else content;
+        const data = if (semicolon_pos) |pos| content[pos + 1 ..] else "";
+
+        const cmd = std.fmt.parseInt(u32, cmd_str, 10) catch return self.unknownSequence();
+
+        return switch (cmd) {
+            10 => try self.parseColorResponse(.foreground, data),
+            11 => try self.parseColorResponse(.background, data),
+            12 => try self.parseColorResponse(.cursor, data),
+            52 => try self.parseClipboard(data),
+            else => self.unknownSequence(),
+        };
+    }
+
+    /// Parse color response data
+    fn parseColorResponse(_: *InputParser, color_type: ColorType, _: []const u8) !InputEvent {
+        // For now, return a simple RGB color (parsing full color syntax is complex)
+        return InputEvent{
+            .color_report = .{
+                .color_type = color_type,
+                .rgb = [3]u8{ 128, 128, 128 }, // Default gray - would parse actual color
+            },
+        };
+    }
+
+    /// Parse clipboard data from OSC 52
+    fn parseClipboard(self: *InputParser, data: []const u8) !InputEvent {
+        if (data.len < 2) return self.unknownSequence();
+
+        const selection = data[0];
+        const encoded_content = if (data.len > 2 and data[1] == ';') data[2..] else data[1..];
+
+        // In a full implementation, we'd decode base64 here
+        return InputEvent{
+            .clipboard = .{
+                .selection = selection,
+                .content = encoded_content,
+            },
+        };
+    }
+
     /// Parse SS3 (Single Shift 3) sequences - function keys
     fn parseSS3(self: *InputParser) !?InputEvent {
         _ = self.consumeByte(); // 'O'
-        
+
         if (self.buffer.items.len == 0) {
             self.unconsumeByte();
             return null;
         }
 
         const key_char = self.consumeByte();
-        
+
         const key_code: KeyCode = switch (key_char) {
             'P' => .f1,
             'Q' => .f2,
@@ -455,10 +598,10 @@ pub const InputParser = struct {
     fn parsePaste(self: *InputParser) !?InputEvent {
         // Look for paste end sequence ESC[201~
         const end_seq = "\x1b[201~";
-        
+
         while (self.buffer.items.len > 0) {
             const byte = self.consumeByte();
-            
+
             // Check if we're starting the end sequence
             if (byte == '\x1b' and self.buffer.items.len >= end_seq.len - 1) {
                 const remaining = self.buffer.items[0..@min(end_seq.len - 1, self.buffer.items.len)];
@@ -468,12 +611,12 @@ pub const InputParser = struct {
                         _ = self.consumeByte();
                     }
                     self.in_paste = false;
-                    
+
                     const paste_text = try self.paste_buffer.toOwnedSlice(self.allocator);
                     return InputEvent{ .paste = .{ .text = paste_text } };
                 }
             }
-            
+
             try self.paste_buffer.append(self.allocator, byte);
         }
 
@@ -484,36 +627,36 @@ pub const InputParser = struct {
     fn parseMouseEvent(self: *InputParser, params: []const u8) !InputEvent {
         // Standard mouse format: ESC[M<btn><x><y>
         // SGR format: ESC[<btn;x;y[mM]
-        
+
         if (params.len >= 3 and params[0] == '<') {
             // SGR format
             return try self.parseSGRMouse(params[1..]);
         } else if (params.len == 0) {
             // Standard format - next 3 bytes are button, x, y
             if (self.buffer.items.len < 3) return self.unknownSequence();
-            
+
             const btn = self.consumeByte();
             const x = self.consumeByte();
             const y = self.consumeByte();
-            
+
             return self.buildMouseEvent(btn, x - 33, y - 33); // Adjust for offset
         }
-        
+
         return self.unknownSequence();
     }
 
     /// Parse SGR mouse event
     fn parseSGRMouse(self: *InputParser, params: []const u8) !InputEvent {
         var parts = std.mem.splitSequence(u8, params, ";");
-        
+
         const btn_str = parts.next() orelse return self.unknownSequence();
         const x_str = parts.next() orelse return self.unknownSequence();
         const y_str = parts.next() orelse return self.unknownSequence();
-        
+
         const btn = std.fmt.parseInt(u8, btn_str, 10) catch return self.unknownSequence();
         const x = std.fmt.parseInt(u16, x_str, 10) catch return self.unknownSequence();
         const y = std.fmt.parseInt(u16, y_str, 10) catch return self.unknownSequence();
-        
+
         return self.buildMouseEvent(btn, x - 1, y - 1); // SGR is 1-based
     }
 
@@ -521,12 +664,12 @@ pub const InputParser = struct {
     fn buildMouseEvent(_: *InputParser, btn: u8, x: u16, y: u16) InputEvent {
         const button = MouseButton.fromCode(btn);
         const event_type: MouseEventType = if (btn & 0x20 != 0) .drag else if (btn & 0x40 != 0) .wheel else .press;
-        
+
         var modifiers = KeyModifiers{};
         if (btn & 0x04 != 0) modifiers.shift = true;
         if (btn & 0x08 != 0) modifiers.alt = true;
         if (btn & 0x10 != 0) modifiers.ctrl = true;
-        
+
         return InputEvent{
             .mouse = .{
                 .event_type = event_type,
@@ -540,7 +683,7 @@ pub const InputParser = struct {
     /// Parse special key from ~ sequence
     fn parseSpecialKey(self: *InputParser, params: []const u8) !InputEvent {
         const key_num = std.fmt.parseInt(u8, params, 10) catch return self.unknownSequence();
-        
+
         const key_code: KeyCode = switch (key_num) {
             1 => .home,
             2 => .insert,
@@ -587,43 +730,204 @@ pub const InputParser = struct {
     fn parseWindowOp(self: *InputParser, params: []const u8) !InputEvent {
         // Window size report: ESC[8;height;widtht
         var parts = std.mem.splitSequence(u8, params, ";");
-        
+
         const op_str = parts.next() orelse return self.unknownSequence();
         const op = std.fmt.parseInt(u8, op_str, 10) catch return self.unknownSequence();
-        
+
         if (op == 8) {
             const height_str = parts.next() orelse return self.unknownSequence();
             const width_str = parts.next() orelse return self.unknownSequence();
-            
+
             const height = std.fmt.parseInt(u16, height_str, 10) catch return self.unknownSequence();
             const width = std.fmt.parseInt(u16, width_str, 10) catch return self.unknownSequence();
-            
+
             return InputEvent{ .resize = .{ .width = width, .height = height } };
         }
-        
+
         return self.unknownSequence();
+    }
+
+    /// Parse Kitty keyboard protocol sequences (CSI <unicode>;<modifiers>;<event_type>;<base_code>;u)
+    fn parseKittyKeyboard(self: *InputParser, params: []const u8) !InputEvent {
+        var parts = std.mem.splitSequence(u8, params, ";");
+
+        const unicode_str = parts.next() orelse return self.unknownSequence();
+        const unicode = std.fmt.parseInt(u21, unicode_str, 10) catch return self.unknownSequence();
+
+        var modifiers = KeyModifiers{};
+        if (parts.next()) |mod_str| {
+            const mod_num = std.fmt.parseInt(u8, mod_str, 10) catch 1;
+            if (mod_num > 1) {
+                modifiers = self.parseKittyModifiers(mod_num - 1);
+            }
+        }
+
+        var event_type: u8 = 1; // Default to press
+        if (parts.next()) |event_str| {
+            event_type = std.fmt.parseInt(u8, event_str, 10) catch 1;
+        }
+
+        var base_code: ?u21 = null;
+        if (parts.next()) |base_str| {
+            base_code = std.fmt.parseInt(u21, base_str, 10) catch null;
+        }
+
+        // Map Kitty key codes to our KeyCode enum
+        if (unicode >= 32 and unicode <= 126) {
+            // Printable ASCII
+            return InputEvent{
+                .char = .{
+                    .codepoint = unicode,
+                    .modifiers = modifiers,
+                },
+            };
+        }
+
+        const key_code = self.mapKittyKeyCode(unicode);
+        const is_release = event_type == 2;
+        const is_repeat = event_type == 3;
+
+        if (is_release) {
+            return InputEvent{
+                .key = .{
+                    .code = key_code,
+                    .modifiers = modifiers,
+                    .base_code = base_code,
+                },
+            };
+        } else {
+            return InputEvent{
+                .key = .{
+                    .code = key_code,
+                    .modifiers = modifiers,
+                    .is_repeat = is_repeat,
+                    .base_code = base_code,
+                },
+            };
+        }
+    }
+
+    /// Parse Windows ConPTY input sequences (CSI <vk>;<sc>;<uc>;<kd>;<cs>;<rc>;_)
+    fn parseWin32Input(self: *InputParser, params: []const u8) !InputEvent {
+        var parts = std.mem.splitSequence(u8, params, ";");
+
+        const vk_str = parts.next() orelse return self.unknownSequence();
+        _ = std.fmt.parseInt(u16, vk_str, 10) catch return self.unknownSequence();
+
+        const sc_str = parts.next() orelse return self.unknownSequence();
+        _ = std.fmt.parseInt(u16, sc_str, 10) catch return self.unknownSequence();
+
+        const uc_str = parts.next() orelse return self.unknownSequence();
+        const uc = std.fmt.parseInt(u21, uc_str, 10) catch return self.unknownSequence();
+
+        const kd_str = parts.next() orelse return self.unknownSequence();
+        const is_down = (std.fmt.parseInt(u8, kd_str, 10) catch return self.unknownSequence()) == 1;
+
+        const cs_str = parts.next() orelse return self.unknownSequence();
+        const ctrl_state = std.fmt.parseInt(u32, cs_str, 10) catch return self.unknownSequence();
+
+        const rc_str = parts.next() orelse return self.unknownSequence();
+        const repeat_count = std.fmt.parseInt(u16, rc_str, 10) catch 1;
+
+        var modifiers = KeyModifiers{};
+        // Windows console control key state flags
+        if (ctrl_state & 0x08 != 0 or ctrl_state & 0x04 != 0) modifiers.alt = true;
+        if (ctrl_state & 0x10 != 0 or ctrl_state & 0x08 != 0) modifiers.ctrl = true;
+        if (ctrl_state & 0x02 != 0 or ctrl_state & 0x01 != 0) modifiers.shift = true;
+
+        if (!is_down) {
+            // Key release - not commonly handled in most applications
+            return self.unknownSequence();
+        }
+
+        if (uc >= 32 and uc <= 126) {
+            return InputEvent{
+                .char = .{
+                    .codepoint = uc,
+                    .modifiers = modifiers,
+                },
+            };
+        }
+
+        // Map to special key if possible
+        const key_code = if (uc <= 127) self.mapAsciiToKeyCode(@intCast(uc)) else .unknown;
+
+        return InputEvent{
+            .key = .{
+                .code = key_code,
+                .modifiers = modifiers,
+                .is_repeat = repeat_count > 1,
+            },
+        };
+    }
+
+    /// Parse Kitty-style modifiers (different bit layout)
+    fn parseKittyModifiers(_: *InputParser, mod_bits: u8) KeyModifiers {
+        return KeyModifiers{
+            .shift = (mod_bits & 0x01) != 0,
+            .alt = (mod_bits & 0x02) != 0,
+            .ctrl = (mod_bits & 0x04) != 0,
+            .super = (mod_bits & 0x08) != 0,
+            .hyper = (mod_bits & 0x10) != 0,
+            .meta = (mod_bits & 0x20) != 0,
+            .caps_lock = (mod_bits & 0x40) != 0,
+            .num_lock = (mod_bits & 0x80) != 0,
+        };
+    }
+
+    /// Map Kitty key codes to our KeyCode enum
+    fn mapKittyKeyCode(_: *InputParser, kitty_code: u21) KeyCode {
+        return switch (kitty_code) {
+            9 => .tab,
+            13 => .enter,
+            27 => .escape,
+            127 => .backspace,
+            57344 => .up, // Kitty uses Unicode private use area
+            57345 => .down,
+            57346 => .right,
+            57347 => .left,
+            57348 => .home,
+            57349 => .end,
+            57350 => .page_up,
+            57351 => .page_down,
+            57352 => .insert,
+            57353 => .delete,
+            57354...57365 => KeyCode.f1, // F1-F12 would need proper mapping
+            else => .unknown,
+        };
+    }
+
+    /// Map ASCII codes to KeyCode enum
+    fn mapAsciiToKeyCode(_: *InputParser, ascii: u8) KeyCode {
+        return switch (ascii) {
+            9 => .tab,
+            13 => .enter,
+            27 => .escape,
+            8, 127 => .backspace,
+            32 => .space,
+            else => .unknown,
+        };
     }
 
     /// Parse modifiers from CSI parameters
     fn parseCSIModifiers(_: *InputParser, params: []const u8) KeyModifiers {
-        
         if (params.len == 0) return .{};
-        
+
         // Parse modifier parameter (usually last semicolon-separated number)
         var parts = std.mem.splitSequence(u8, params, ";");
         var last_part: []const u8 = "";
         while (parts.next()) |part| {
             last_part = part;
         }
-        
+
         const mod_num = std.fmt.parseInt(u8, last_part, 10) catch return .{};
-        
+
         var modifiers = KeyModifiers{};
         if (mod_num & 0x01 != 0) modifiers.shift = true;
         if (mod_num & 0x02 != 0) modifiers.alt = true;
         if (mod_num & 0x04 != 0) modifiers.ctrl = true;
         if (mod_num & 0x08 != 0) modifiers.super = true;
-        
+
         return modifiers;
     }
 
@@ -652,10 +956,10 @@ const testing = std.testing;
 test "basic character parsing" {
     var parser = InputParser.init(testing.allocator);
     defer parser.deinit();
-    
+
     try parser.feedBytes("A");
     const event = try parser.nextEvent();
-    
+
     switch (event.?) {
         .char => |char_event| {
             try testing.expectEqual(@as(u21, 'A'), char_event.codepoint);
@@ -668,10 +972,10 @@ test "basic character parsing" {
 test "escape sequence parsing" {
     var parser = InputParser.init(testing.allocator);
     defer parser.deinit();
-    
+
     try parser.feedBytes("\x1b[A"); // Up arrow
     const event = try parser.nextEvent();
-    
+
     switch (event.?) {
         .key => |key_event| {
             try testing.expectEqual(KeyCode.up, key_event.code);
@@ -683,10 +987,10 @@ test "escape sequence parsing" {
 test "ctrl key combinations" {
     var parser = InputParser.init(testing.allocator);
     defer parser.deinit();
-    
+
     try parser.feedBytes("\x01"); // Ctrl+A
     const event = try parser.nextEvent();
-    
+
     switch (event.?) {
         .char => |char_event| {
             try testing.expectEqual(@as(u21, 'A'), char_event.codepoint);
@@ -699,10 +1003,10 @@ test "ctrl key combinations" {
 test "mouse event parsing" {
     var parser = InputParser.init(testing.allocator);
     defer parser.deinit();
-    
+
     try parser.feedBytes("\x1b[M !!"); // Mouse click at 1,1
     const event = try parser.nextEvent();
-    
+
     switch (event.?) {
         .mouse => |mouse_event| {
             try testing.expectEqual(@as(u16, 0), mouse_event.coordinates.x);

@@ -202,6 +202,7 @@ pub fn detectCapsFromEnv(env: *const std.process.EnvMap) TermCaps {
         .Xterm => capsForProgram(.Xterm),
         .VSCode => capsForProgram(.VSCode),
         .WindowsTerminal => capsForProgram(.WindowsTerminal),
+        .LinuxConsole => capsForProgram(.LinuxConsole),
         .Unknown => capsForProgram(.Unknown),
     };
 

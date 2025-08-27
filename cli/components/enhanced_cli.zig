@@ -22,7 +22,7 @@ pub const EnhancedCLI = struct {
 
     pub fn init(allocator: Allocator) !Self {
         const terminal = try UnifiedTerminal.init(allocator);
-        
+
         return Self{
             .allocator = allocator,
             .terminal = terminal,
@@ -49,7 +49,7 @@ pub const EnhancedCLI = struct {
     /// Main CLI entry point with feature detection and progressive enhancement
     pub fn run(self: *Self, args: []const []const u8) !u8 {
         try self.displayCapabilities();
-        
+
         if (args.len > 1 and std.mem.eql(u8, args[1], "dashboard")) {
             return self.runDashboard();
         } else if (args.len > 1 and std.mem.eql(u8, args[1], "demo")) {
@@ -62,14 +62,14 @@ pub const EnhancedCLI = struct {
     /// Display terminal capabilities with progressive enhancement showcase
     fn displayCapabilities(self: *Self) !void {
         const w = self.terminal.writer();
-        
+
         try self.terminal.clearScreen();
         try self.terminal.setForeground(Color.CYAN);
         try w.writeAll("🚀 Enhanced CLI with Progressive Terminal Capabilities\n");
         try self.terminal.resetStyles();
-        
+
         try w.writeAll("\n📊 Detected Terminal Features:\n");
-        
+
         // Check each feature and display with appropriate styling
         const features = [_]struct {
             feature: UnifiedTerminal.Feature,
@@ -87,11 +87,11 @@ pub const EnhancedCLI = struct {
 
         for (features) |feature_info| {
             try w.writeAll("  ");
-            
+
             if (self.terminal.hasFeature(feature_info.feature)) {
                 try self.terminal.setForeground(Color.GREEN);
                 try w.print("✓ {s} {s}", .{ feature_info.icon, feature_info.name });
-                
+
                 // Demonstrate the feature if possible
                 switch (feature_info.feature) {
                     .truecolor => {
@@ -113,7 +113,7 @@ pub const EnhancedCLI = struct {
                 try self.terminal.setForeground(Color.RED);
                 try w.print("✗ {s} {s} (not supported)", .{ "❌", feature_info.name });
             }
-            
+
             try self.terminal.resetStyles();
             try w.writeByte('\n');
         }
@@ -139,10 +139,10 @@ pub const EnhancedCLI = struct {
 
         if (self.dashboard) |*dash| {
             self.running = true;
-            
+
             try dash.render();
             try self.terminal.flush();
-            
+
             const w = self.terminal.writer();
             try w.writeAll("\n\n🎯 Dashboard Demo Complete!\n");
             try w.writeAll("   This showcases:\n");
@@ -151,16 +151,16 @@ pub const EnhancedCLI = struct {
             try w.writeAll("   • Rich progress indicators with multiple styles\n");
             try w.writeAll("   • Automatic terminal capability detection\n");
             try w.writeAll("   • Graphics fallback chain for maximum compatibility\n");
-            
+
             if (self.terminal.hasFeature(.clipboard)) {
                 try w.writeAll("\n📋 Dashboard data copied to clipboard!\n");
                 try self.terminal.copyToClipboard("Enhanced CLI Dashboard Demo - Terminal capabilities detected and utilized!");
             }
-            
+
             if (self.terminal.hasFeature(.notifications)) {
                 try self.terminal.sendNotification("Enhanced CLI", "Dashboard demo completed successfully!");
             }
-            
+
             try self.terminal.flush();
         }
 
@@ -170,19 +170,19 @@ pub const EnhancedCLI = struct {
     /// Run feature demonstration
     fn runFeatureDemo(self: *Self) !u8 {
         const w = self.terminal.writer();
-        
+
         try w.writeAll("\n🧪 Terminal Feature Demonstration\n");
         try w.writeAll("==================================\n\n");
 
         // Color demonstration
         try self.demoColors();
-        
-        // Progress bar demonstration  
+
+        // Progress bar demonstration
         try self.demoProgressBars();
-        
+
         // Graphics demonstration
         try self.demoGraphics();
-        
+
         // Interactive features demonstration
         try self.demoInteractiveFeatures();
 
@@ -193,9 +193,9 @@ pub const EnhancedCLI = struct {
 
     fn demoColors(self: *Self) !void {
         const w = self.terminal.writer();
-        
+
         try w.writeAll("🌈 Color Capabilities:\n");
-        
+
         if (self.terminal.hasFeature(.truecolor)) {
             try w.writeAll("  24-bit RGB Colors: ");
             for (0..20) |i| {
@@ -215,17 +215,17 @@ pub const EnhancedCLI = struct {
             try self.terminal.resetStyles();
             try w.writeAll("\n");
         }
-        
+
         try w.writeAll("\n");
     }
 
     fn demoProgressBars(self: *Self) !void {
         const w = self.terminal.writer();
-        
+
         try w.writeAll("⚡ Progress Bar Styles:\n");
-        
+
         const rich_progress = @import("../../src/cli/components/base/rich_progress_bar.zig");
-        
+
         const styles = [_]struct {
             style: rich_progress.ProgressStyle,
             name: []const u8,
@@ -239,38 +239,33 @@ pub const EnhancedCLI = struct {
         };
 
         for (styles) |style_info| {
-            var progress_bar = rich_progress.RichProgressBar.init(
-                self.allocator, 
-                style_info.style, 
-                35, 
-                style_info.name
-            );
+            var progress_bar = rich_progress.RichProgressBar.init(self.allocator, style_info.style, 35, style_info.name);
             defer progress_bar.deinit();
-            
+
             if (self.terminal.graphics) |graphics| {
                 progress_bar.setGraphicsManager(graphics);
             }
-            
+
             try progress_bar.setProgress(style_info.progress);
             try w.writeAll("  ");
             try progress_bar.render(w);
             try w.writeAll("\n");
         }
-        
+
         try w.writeAll("\n");
     }
 
     fn demoGraphics(self: *Self) !void {
         const w = self.terminal.writer();
-        
+
         try w.writeAll("🖼️  Graphics Capabilities:\n");
-        
+
         if (self.terminal.hasFeature(.graphics)) {
             try w.writeAll("  Graphics Mode: ");
             try self.terminal.setForeground(Color.GREEN);
             try w.writeAll("Enhanced (Kitty/Sixel supported)\n");
             try self.terminal.resetStyles();
-            
+
             // Simple ASCII art as placeholder for graphics
             try w.writeAll("  Sample Chart:\n");
             try w.writeAll("    ▄▄▄▄▄▄▄▄▄▄\n");
@@ -281,20 +276,20 @@ pub const EnhancedCLI = struct {
             try self.terminal.setForeground(Color.YELLOW);
             try w.writeAll("Text-based (Unicode/ASCII fallback)\n");
             try self.terminal.resetStyles();
-            
+
             // ASCII art chart
             try w.writeAll("  Sample Chart:\n");
             try w.writeAll("    ▁▂▃▅▆▇█▇▆▅▃▂▁  📊 Text-based visualization\n");
         }
-        
+
         try w.writeAll("\n");
     }
 
     fn demoInteractiveFeatures(self: *Self) !void {
         const w = self.terminal.writer();
-        
+
         try w.writeAll("🔧 Interactive Features:\n");
-        
+
         if (self.terminal.hasFeature(.hyperlinks)) {
             try w.writeAll("  Hyperlinks: ");
             try self.terminal.writeHyperlink("https://github.com/sam/docz", "Project Repository");
@@ -302,27 +297,27 @@ pub const EnhancedCLI = struct {
             try self.terminal.writeHyperlink("https://docs.example.com", "Documentation");
             try w.writeAll("\n");
         }
-        
+
         if (self.terminal.hasFeature(.clipboard)) {
             try w.writeAll("  Clipboard: ");
             try self.terminal.setForeground(Color.GREEN);
             try w.writeAll("✓ OSC 52 clipboard integration available\n");
             try self.terminal.resetStyles();
         }
-        
+
         if (self.terminal.hasFeature(.notifications)) {
             try w.writeAll("  Notifications: ");
             try self.terminal.setForeground(Color.GREEN);
             try w.writeAll("✓ System notification support available\n");
             try self.terminal.resetStyles();
         }
-        
+
         try w.writeAll("\n");
     }
 
     fn showHelp(self: *Self) !u8 {
         const w = self.terminal.writer();
-        
+
         try w.writeAll("Enhanced CLI with Graphics Dashboard\n");
         try w.writeAll("=====================================\n\n");
         try w.writeAll("Usage: enhanced_cli [COMMAND]\n\n");
@@ -330,7 +325,7 @@ pub const EnhancedCLI = struct {
         try w.writeAll("  dashboard    Display graphics-enhanced dashboard\n");
         try w.writeAll("  demo         Run terminal feature demonstrations\n");
         try w.writeAll("  help         Show this help message\n\n");
-        
+
         try w.writeAll("Features:\n");
         try w.writeAll("• Progressive enhancement (Kitty → Sixel → Unicode → ASCII)\n");
         try w.writeAll("• Real-time data visualization with rich graphics\n");
@@ -338,7 +333,7 @@ pub const EnhancedCLI = struct {
         try w.writeAll("• Automatic terminal capability detection\n");
         try w.writeAll("• Hyperlinks, clipboard integration, and notifications\n");
         try w.writeAll("• True color support with graceful fallbacks\n\n");
-        
+
         try self.terminal.flush();
         return 0;
     }
@@ -349,25 +344,31 @@ fn hsvToRgb(h: f32, s: f32, v: f32) [3]u8 {
     const c = v * s;
     const x = c * (1.0 - @abs(@mod(h / 60.0, 2.0) - 1.0));
     const m = v - c;
-    
+
     var r: f32 = 0;
     var g: f32 = 0;
     var b: f32 = 0;
-    
+
     if (h >= 0.0 and h < 60.0) {
-        r = c; g = x;
+        r = c;
+        g = x;
     } else if (h >= 60.0 and h < 120.0) {
-        r = x; g = c;
+        r = x;
+        g = c;
     } else if (h >= 120.0 and h < 180.0) {
-        g = c; b = x;
+        g = c;
+        b = x;
     } else if (h >= 180.0 and h < 240.0) {
-        g = x; b = c;
+        g = x;
+        b = c;
     } else if (h >= 240.0 and h < 300.0) {
-        r = x; b = c;
+        r = x;
+        b = c;
     } else {
-        r = c; b = x;
+        r = c;
+        b = x;
     }
-    
+
     return [3]u8{
         @intFromFloat((r + m) * 255.0),
         @intFromFloat((g + m) * 255.0),

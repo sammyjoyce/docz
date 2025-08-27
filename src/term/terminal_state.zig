@@ -175,7 +175,7 @@ fn getSizeUnix(fd: std.posix.fd_t) !struct { width: u16, height: u16 } {
     };
 }
 
-// Windows-specific implementations  
+// Windows-specific implementations
 fn makeRawWindows(fd: std.posix.fd_t) !TerminalState {
     const handle = @as(std.os.windows.HANDLE, @ptrFromInt(@as(usize, @intCast(fd))));
 
@@ -197,11 +197,9 @@ fn makeRawWindows(fd: std.posix.fd_t) !TerminalState {
     };
 
     // Set raw input mode
-    const new_input_mode = input_mode & ~@as(std.os.windows.DWORD, 
-        std.os.windows.ENABLE_ECHO_INPUT | 
+    const new_input_mode = input_mode & ~@as(std.os.windows.DWORD, std.os.windows.ENABLE_ECHO_INPUT |
         std.os.windows.ENABLE_LINE_INPUT |
-        std.os.windows.ENABLE_PROCESSED_INPUT
-    );
+        std.os.windows.ENABLE_PROCESSED_INPUT);
 
     if (std.os.windows.kernel32.SetConsoleMode(handle, new_input_mode) == 0) {
         return error.SetConsoleModeFailed;
@@ -249,7 +247,7 @@ fn setStateWindows(fd: std.posix.fd_t, state: *const WindowsState) !void {
 fn getSizeWindows(_: std.posix.fd_t) !struct { width: u16, height: u16 } {
     const handle = std.os.windows.kernel32.GetStdHandle(std.os.windows.STD_OUTPUT_HANDLE);
     var info: std.os.windows.CONSOLE_SCREEN_BUFFER_INFO = undefined;
-    
+
     if (std.os.windows.kernel32.GetConsoleScreenBufferInfo(handle, &info) == 0) {
         return error.GetConsoleInfoFailed;
     }
@@ -266,31 +264,31 @@ pub const utils = struct {
     pub fn supportsColor() bool {
         const term = std.posix.getenv("TERM") orelse return false;
         const colorterm = std.posix.getenv("COLORTERM");
-        
+
         if (colorterm != null) return true;
-        
+
         const color_terms = [_][]const u8{
-            "xterm", "xterm-256color", "xterm-color",
-            "screen", "screen-256color",
-            "tmux", "tmux-256color",
-            "rxvt", "konsole", "gnome", "iterm",
+            "xterm",         "xterm-256color",  "xterm-color",
+            "screen",        "screen-256color", "tmux",
+            "tmux-256color", "rxvt",            "konsole",
+            "gnome",         "iterm",
         };
-        
+
         for (color_terms) |color_term| {
             if (std.mem.indexOf(u8, term, color_term) != null) {
                 return true;
             }
         }
-        
+
         return false;
     }
-    
+
     /// Check if terminal supports true color (24-bit)
     pub fn supportsTrueColor() bool {
         const colorterm = std.posix.getenv("COLORTERM") orelse return false;
         return std.mem.eql(u8, colorterm, "truecolor") or std.mem.eql(u8, colorterm, "24bit");
     }
-    
+
     /// Get terminal type
     pub fn getTerminalType() []const u8 {
         return std.posix.getenv("TERM") orelse "unknown";
@@ -301,7 +299,7 @@ pub const utils = struct {
 test "isTerminal check" {
     // Test with stdin
     _ = isTerminal(std.posix.STDIN_FILENO);
-    
+
     // Test with invalid fd should not crash
     _ = isTerminal(999);
 }
@@ -312,7 +310,7 @@ test "terminal size" {
         error.IoctlFailed, error.GetConsoleInfoFailed => return, // Expected in non-terminal
         else => return err,
     };
-    
+
     try std.testing.expect(size.width > 0);
     try std.testing.expect(size.height > 0);
 }

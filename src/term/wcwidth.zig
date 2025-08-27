@@ -23,11 +23,11 @@ pub const WidthOptions = struct {
     terminal_type: TerminalType = .xterm,
 
     pub const TerminalType = enum {
-        xterm,    // Standard xterm behavior
-        kitty,    // Kitty terminal (better emoji support)
+        xterm, // Standard xterm behavior
+        kitty, // Kitty terminal (better emoji support)
         alacritty, // Alacritty terminal
-        wezterm,  // WezTerm
-        other,    // Unknown terminal
+        wezterm, // WezTerm
+        other, // Unknown terminal
     };
 };
 
@@ -76,7 +76,7 @@ pub fn stringWidth(text: []const u8, options: WidthOptions) u32 {
 
         // Handle grapheme cluster composition (simplified)
         const char_width = codepointWidth(codepoint, options);
-        
+
         // Check for emoji variation selectors and combining marks
         if (char_width == 0 and i > 0) {
             // This is a combining character or variation selector
@@ -88,7 +88,7 @@ pub fn stringWidth(text: []const u8, options: WidthOptions) u32 {
         } else {
             width += char_width;
         }
-        
+
         i += cp_len;
     }
 
@@ -104,7 +104,7 @@ pub fn stringWidthAscii(text: []const u8) u32 {
             return stringWidth(text, .{});
         }
     }
-    
+
     // Pure ASCII - width equals length (minus control characters)
     var width: u32 = 0;
     for (text) |byte| {
@@ -229,7 +229,7 @@ fn isWide(cp: u21) bool {
     if (cp >= 0x2600 and cp <= 0x26FF) return true; // Miscellaneous Symbols
     if (cp >= 0x2700 and cp <= 0x27BF) return true; // Dingbats
     if (cp >= 0xFE0F and cp <= 0xFE0F) return true; // Variation Selector-16 (emoji style)
-    
+
     // More emoji ranges found in practice
     if (cp >= 0x1F004 and cp <= 0x1F004) return true; // Mahjong Red Dragon
     if (cp >= 0x1F0CF and cp <= 0x1F0CF) return true; // Playing Card Back
@@ -317,26 +317,26 @@ pub const GraphemeIterator = struct {
         if (self.pos >= self.text.len) return null;
 
         const start = self.pos;
-        
+
         // Get first character
         const first_len = std.unicode.utf8ByteSequenceLength(self.text[self.pos]) catch 1;
         if (self.pos + first_len > self.text.len) {
             self.pos = self.text.len;
             return self.text[start..self.pos];
         }
-        
+
         self.pos += first_len;
-        
+
         // Look for combining marks and continuation characters
         while (self.pos < self.text.len) {
             const next_len = std.unicode.utf8ByteSequenceLength(self.text[self.pos]) catch 1;
             if (self.pos + next_len > self.text.len) break;
-            
-            const codepoint = std.unicode.utf8Decode(self.text[self.pos..self.pos + next_len]) catch break;
-            
+
+            const codepoint = std.unicode.utf8Decode(self.text[self.pos .. self.pos + next_len]) catch break;
+
             // Stop if this isn't a combining character
             if (!isZeroWidth(codepoint) and codepoint != 0xFE0F) break;
-            
+
             self.pos += next_len;
         }
 
@@ -347,23 +347,23 @@ pub const GraphemeIterator = struct {
 // Calculate width of a grapheme cluster
 pub fn graphemeWidth(cluster: []const u8, options: WidthOptions) u32 {
     if (cluster.len == 0) return 0;
-    
+
     // Get the base character
     const first_len = std.unicode.utf8ByteSequenceLength(cluster[0]) catch return 0;
     if (first_len > cluster.len) return 0;
-    
+
     const base_char = std.unicode.utf8Decode(cluster[0..first_len]) catch return 0;
     var width = codepointWidth(base_char, options);
-    
+
     // Check for emoji variation selector
     if (options.emoji_variation and cluster.len > first_len) {
         var pos = first_len;
         while (pos < cluster.len) {
             const seq_len = std.unicode.utf8ByteSequenceLength(cluster[pos]) catch break;
             if (pos + seq_len > cluster.len) break;
-            
-            const codepoint = std.unicode.utf8Decode(cluster[pos..pos + seq_len]) catch break;
-            
+
+            const codepoint = std.unicode.utf8Decode(cluster[pos .. pos + seq_len]) catch break;
+
             if (codepoint == 0xFE0F) { // Emoji variation selector
                 // Make the base character wide if it wasn't already
                 if (width == 1 and !isWide(base_char)) {
@@ -371,11 +371,11 @@ pub fn graphemeWidth(cluster: []const u8, options: WidthOptions) u32 {
                 }
                 break;
             }
-            
+
             pos += seq_len;
         }
     }
-    
+
     return width;
 }
 
@@ -383,17 +383,17 @@ pub fn graphemeWidth(cluster: []const u8, options: WidthOptions) u32 {
 pub fn stringWidthGraphemes(text: []const u8, options: WidthOptions) u32 {
     var width: u32 = 0;
     var iter = GraphemeIterator.init(text);
-    
+
     while (iter.next()) |cluster| {
         width += graphemeWidth(cluster, options);
     }
-    
+
     return width;
 }
 
 test "grapheme cluster handling" {
     const testing = std.testing;
-    
+
     var iter = GraphemeIterator.init("a\u{0300}"); // a with combining grave accent
     const cluster = iter.next().?;
     try testing.expect(cluster.len == 3); // 'a' + combining accent
@@ -416,7 +416,7 @@ test "wide character width" {
 test "string width calculation" {
     try std.testing.expectEqual(@as(u32, 5), stringWidth("hello", .{}));
     try std.testing.expectEqual(@as(u32, 4), stringWidth("中文", .{})); // Two wide chars = 4 columns
-    
+
     // Test ASCII fast path
     try std.testing.expectEqual(@as(u32, 5), stringWidthAscii("hello"));
     try std.testing.expectEqual(@as(u32, 13), stringWidthAscii("Hello, world!"));
@@ -433,7 +433,7 @@ test "ambiguous character handling" {
     const alpha = 0x03B1; // α
     try std.testing.expectEqual(@as(u8, 1), codepointWidth(alpha, .{}));
     try std.testing.expectEqual(@as(u8, 2), codepointWidth(alpha, .{ .ambiguous_as_wide = true }));
-    
+
     // Box drawing characters are ambiguous
     const box_char = 0x2500; // ─
     try std.testing.expectEqual(@as(u8, 1), codepointWidth(box_char, .{}));

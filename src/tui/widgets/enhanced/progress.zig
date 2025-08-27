@@ -1,7 +1,7 @@
 //! Progress bar widget for visual progress indication
 const std = @import("std");
 const print = std.debug.print;
-const TermCaps = @import("../../term/caps.zig").TermCaps;
+const TermCaps = @import("../../../term/caps.zig").TermCaps;
 
 /// Progress bar component for visual progress indication
 pub const ProgressBar = struct {
@@ -114,7 +114,7 @@ pub const ProgressBar = struct {
     }
 
     fn drawGradient(self: ProgressBar, filled: u32, caps: TermCaps) void {
-        const sgr = @import("../../term/ansi/sgr.zig");
+        const sgr = @import("../../../term/ansi/sgr.zig");
         var buffer: [1024]u8 = undefined;
         var stream = std.io.fixedBufferStream(&buffer);
         const writer = stream.writer();

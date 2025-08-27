@@ -23,7 +23,7 @@ pub fn main() !void {
     // Detect terminal capabilities
     const caps = tui.detectCapabilities();
     const tier = dashboard.DashboardEngine.CapabilityTier.detectFromCaps(caps);
-    
+
     std.debug.print("🚀 Advanced Dashboard Demo\n", .{});
     std.debug.print("Terminal Capability Tier: {s}\n", .{@tagName(tier)});
     std.debug.print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n", .{});
@@ -39,71 +39,69 @@ pub fn main() !void {
         .enableMouse(true)
         .enableAnimations(true)
         .withTargetFPS(60)
-        
+
         // Main line chart - CPU usage over time
         .addLineChart(0, 0, 50, 15)
-            .withTitle("CPU Usage")
-            .withLabels("Time (s)", "Usage (%)")
-            .withGrid(true)
-            .withAnimation(true)
-            .done()
-            
+        .withTitle("CPU Usage")
+        .withLabels("Time (s)", "Usage (%)")
+        .withGrid(true)
+        .withAnimation(true)
+        .done()
+
         // Area chart - Memory usage
         .addAreaChart(50, 0, 30, 15)
-            .withTitle("Memory Usage")
-            .withLabels("Time (s)", "Memory (GB)")
-            .withGrid(true)
-            .done()
-            
+        .withTitle("Memory Usage")
+        .withLabels("Time (s)", "Memory (GB)")
+        .withGrid(true)
+        .done()
+
         // Gauge - Disk usage
         .addGauge(0, 15, 25, 10)
-            .withTitle("Disk Usage")
-            .done()
-            
+        .withTitle("Disk Usage")
+        .done()
+
         // KPI cards for key metrics
         .addKPICard(25, 15, 20, 5)
-            .withTitle("Uptime")
-            .done()
-            
+        .withTitle("Uptime")
+        .done()
         .addKPICard(25, 20, 20, 5)
-            .withTitle("Active Users")
-            .done()
-            
+        .withTitle("Active Users")
+        .done()
+
         // Bar chart - Process resource usage
         .addBarChart(45, 15, 35, 12)
-            .withTitle("Top Processes")
-            .withLabels("Process", "CPU %")
-            .done()
-            
+        .withTitle("Top Processes")
+        .withLabels("Process", "CPU %")
+        .done()
+
         // Data grid - System logs
         .addDataGrid(0, 25, 80, 10)
-            .withTitle("System Logs")
-            .done()
-            
+        .withTitle("System Logs")
+        .done()
+
         // Sparklines for quick metrics
         .addSparkline(60, 0, 20, 3)
-            .withTitle("Network I/O")
-            .done()
-            
+        .withTitle("Network I/O")
+        .done()
+
         // Heatmap - System load by core
         .addHeatmap(0, 35, 40, 12)
-            .withTitle("CPU Core Load")
-            .done()
-            
+        .withTitle("CPU Core Load")
+        .done()
         .build();
-    
+
     std.debug.print("\n📊 Dashboard Components Created:\n", .{});
-    
+
     // Simulate real-time dashboard updates
     try runDashboardDemo(demo_dashboard, tier);
-    
+
     // Cleanup
     demo_dashboard.deinit();
 }
 
 fn runDashboardDemo(demo_dashboard: *dashboard.Dashboard, tier: dashboard.DashboardEngine.CapabilityTier) !void {
     std.debug.print("\n🎬 Starting Dashboard Simulation...\n\n", .{});
-    
+
     // Display capability-specific features
     switch (tier) {
         .ultra_enhanced => {
@@ -136,30 +134,30 @@ fn runDashboardDemo(demo_dashboard: *dashboard.Dashboard, tier: dashboard.Dashbo
             std.debug.print("  ✓ Basic terminal support\n", .{});
         },
     }
-    
+
     std.debug.print("\n📈 Live Dashboard Rendering:\n", .{});
     std.debug.print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n", .{});
-    
+
     // Simulate dashboard frames with different data
     const frame_count = 5;
     for (0..frame_count) |frame| {
         std.debug.print("\n🖼️  FRAME {} - Dashboard Update:\n", .{frame + 1});
-        
+
         // Render the dashboard (this would show actual widgets in a real implementation)
         try demo_dashboard.render();
-        
+
         // Show progressive enhancement examples
         try demonstrateProgressiveEnhancement(tier, frame);
-        
+
         // Simulate input events
         if (frame == 2) {
             try simulateInteraction(demo_dashboard, tier);
         }
-        
+
         // Simulate frame timing
         std.time.sleep(500_000_000); // 500ms
     }
-    
+
     std.debug.print("\n🏁 Dashboard Demo Complete!\n", .{});
     try showCapabilitySummary(tier);
 }
@@ -167,16 +165,12 @@ fn runDashboardDemo(demo_dashboard: *dashboard.Dashboard, tier: dashboard.Dashbo
 fn demonstrateProgressiveEnhancement(tier: dashboard.DashboardEngine.CapabilityTier, frame: usize) !void {
     const cpu_usage = 45.0 + @as(f64, @floatFromInt(frame)) * 8.3;
     const memory_usage = 62.5 + @as(f64, @floatFromInt(frame)) * 3.2;
-    
+
     switch (tier) {
         .ultra_enhanced => {
             // Simulate Kitty graphics output
             std.debug.print("    🎨 [Kitty Graphics] Smooth antialiased line chart: CPU {d:.1}%\n", .{cpu_usage});
-            std.debug.print("    🌈 [Truecolor] RGB({d},{d},{d}) gradient area chart\n", .{ 
-                @as(u8, @intFromFloat(cpu_usage * 2.5)), 
-                @as(u8, @intFromFloat(100 - cpu_usage)), 
-                200 
-            });
+            std.debug.print("    🌈 [Truecolor] RGB({d},{d},{d}) gradient area chart\n", .{ @as(u8, @intFromFloat(cpu_usage * 2.5)), @as(u8, @intFromFloat(100 - cpu_usage)), 200 });
             std.debug.print("    🖱️  [Pixel Mouse] Hover coordinates: ({d}, {d})\n", .{ frame * 15 + 120, frame * 8 + 45 });
         },
         .enhanced => {
@@ -203,17 +197,14 @@ fn demonstrateProgressiveEnhancement(tier: dashboard.DashboardEngine.CapabilityT
                 }
             }
             std.debug.print("] {d:.1}%\n", .{cpu_usage});
-            std.debug.print("    MEM: ({s}) {d:.1}%\n", .{ 
-                if (memory_usage < 30) "|" else if (memory_usage < 60) "/" else if (memory_usage < 90) "-" else "\\",
-                memory_usage 
-            });
+            std.debug.print("    MEM: ({s}) {d:.1}%\n", .{ if (memory_usage < 30) "|" else if (memory_usage < 60) "/" else if (memory_usage < 90) "-" else "\\", memory_usage });
         },
     }
 }
 
 fn simulateInteraction(demo_dashboard: *dashboard.Dashboard, tier: dashboard.DashboardEngine.CapabilityTier) !void {
     std.debug.print("\n🎮 INTERACTION SIMULATION:\n", .{});
-    
+
     // Simulate mouse interaction
     const mouse_event = dashboard.InputEvent{
         .mouse = .{
@@ -224,7 +215,7 @@ fn simulateInteraction(demo_dashboard: *dashboard.Dashboard, tier: dashboard.Das
             .modifiers = .{},
         },
     };
-    
+
     const consumed = try demo_dashboard.handleInput(mouse_event);
     if (consumed) {
         switch (tier) {
@@ -233,7 +224,7 @@ fn simulateInteraction(demo_dashboard: *dashboard.Dashboard, tier: dashboard.Das
             .minimal => std.debug.print("    ⌨️  Keyboard navigation: Selected chart region\n", .{}),
         }
     }
-    
+
     // Simulate keyboard shortcut
     const key_event = dashboard.InputEvent{
         .key = .{
@@ -241,7 +232,7 @@ fn simulateInteraction(demo_dashboard: *dashboard.Dashboard, tier: dashboard.Das
             .modifiers = .{},
         },
     };
-    
+
     _ = try demo_dashboard.handleInput(key_event);
     std.debug.print("    ⌨️  Keyboard shortcut 'R': Chart viewport reset\n", .{});
 }
@@ -249,7 +240,7 @@ fn simulateInteraction(demo_dashboard: *dashboard.Dashboard, tier: dashboard.Das
 fn showCapabilitySummary(tier: dashboard.DashboardEngine.CapabilityTier) !void {
     std.debug.print("\n📋 CAPABILITY SUMMARY:\n", .{});
     std.debug.print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n", .{});
-    
+
     switch (tier) {
         .ultra_enhanced => {
             std.debug.print("🌟 ULTRA ENHANCED FEATURES DEMONSTRATED:\n", .{});
@@ -288,7 +279,7 @@ fn showCapabilitySummary(tier: dashboard.DashboardEngine.CapabilityTier) !void {
             std.debug.print("  🎭 Effects: Text-based progress indicators\n", .{});
         },
     }
-    
+
     std.debug.print("\n🎯 ADVANCED CAPABILITIES SHOWCASED:\n", .{});
     std.debug.print("  ✅ Progressive Enhancement: Automatic adaptation to terminal capabilities\n", .{});
     std.debug.print("  ✅ Multi-Layer Rendering: Background, data, interactive, and overlay layers\n", .{});
@@ -298,6 +289,6 @@ fn showCapabilitySummary(tier: dashboard.DashboardEngine.CapabilityTier) !void {
     std.debug.print("  ✅ Fluent Builder API: Developer-friendly dashboard creation\n", .{});
     std.debug.print("  ✅ Widget Ecosystem: Comprehensive charting and visualization library\n", .{});
     std.debug.print("  ✅ Terminal Integration: Full utilization of @src/term capabilities\n", .{});
-    
+
     std.debug.print("\n💡 This demonstrates the full potential of modern terminal applications!\n", .{});
 }

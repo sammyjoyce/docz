@@ -2,10 +2,10 @@
 //! Supports Kitty Graphics Protocol and Sixel graphics
 
 const std = @import("std");
-const term_caps = @import("../../term/caps.zig");
-const term_graphics = @import("../../term/ansi/graphics.zig");
-const term_cursor = @import("../../term/ansi/cursor.zig");
-const bounds_mod = @import("../core/bounds.zig");
+const term_caps = @import("../../../term/caps.zig");
+const term_graphics = @import("../../../term/ansi/graphics.zig");
+const term_cursor = @import("../../../term/ansi/cursor.zig");
+const bounds_mod = @import("../../core/bounds.zig");
 
 pub const GraphicsError = error{
     UnsupportedFormat,

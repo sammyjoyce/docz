@@ -120,6 +120,7 @@
         .{ .command = "\"What is 2+2?\"", .description = "Chat with Claude" },
         .{ .command = "auth login", .description = "Setup OAuth" },
         .{ .command = "auth status", .description = "Check auth status" },
+        .{ .command = "tui-demo", .description = "Run TUI demonstration" },
         .{ .command = "--help", .description = "Show this help" },
         .{ .command = "-m claude-3-5-sonnet-20241022 \"Explain quantum physics\"", .description = "Use specific model" },
         .{ .command = "-i input.md -o output.md", .description = "Process file input/output" },

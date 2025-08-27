@@ -273,8 +273,12 @@ pub const HttpClient = struct {
         defer if (header_list) |list| c.curl_slist_free_all(list);
 
         for (req.headers) |header| {
+            // Debug: Check header data
+            if (header.value.len == 0) {
+                return HttpError.InvalidUrl;
+            }
+
             const header_str = try std.fmt.allocPrint(self.allocator, "{s}: {s}\x00", .{ header.name, header.value });
-            defer self.allocator.free(header_str);
 
             header_list = c.curl_slist_append(header_list, header_str.ptr);
         }

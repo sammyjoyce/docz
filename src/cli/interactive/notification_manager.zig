@@ -2,9 +2,10 @@
 //! Integrates with terminal notification capabilities and provides fallback options
 
 const std = @import("std");
-const term_notification = @import("../../term/ansi/notification.zig");
-const term_caps = @import("../../term/caps.zig");
-const term_ansi = @import("../../term/ansi/color.zig");
+const term_shared = @import("../../term/mod.zig");
+const term_notification = term_shared.ansi.notification;
+const term_caps = term_shared.caps;
+const term_ansi = term_shared.ansi.color;
 const Allocator = std.mem.Allocator;
 
 pub const NotificationType = enum {
@@ -73,7 +74,7 @@ pub const NotificationManager = struct {
     enable_desktop_notifications: bool,
     enable_inline_notifications: bool,
     enable_sound: bool,
-    writer: ?*std.io.AnyWriter,
+    writer: ?*std.Io.Writer,
 
     pub fn init(allocator: Allocator) NotificationManager {
         return .{
@@ -92,7 +93,7 @@ pub const NotificationManager = struct {
         self.active_notifications.deinit();
     }
 
-    pub fn setWriter(self: *NotificationManager, writer: *std.io.AnyWriter) void {
+    pub fn setWriter(self: *NotificationManager, writer: *std.Io.Writer) void {
         self.writer = writer;
     }
 

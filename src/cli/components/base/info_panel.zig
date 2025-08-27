@@ -2,9 +2,9 @@
 //! Displays structured information with icons, colors, and hyperlinks
 
 const std = @import("std");
-const term_ansi = @import("../../../term/ansi/color.zig");
-const term_cursor = @import("../../../term/ansi/cursor.zig");
-const term_caps = @import("../../../term/caps.zig");
+const term_ansi = @import("../../../term/mod.zig").ansi.color;
+const term_cursor = @import("../../../term/mod.zig").ansi.cursor;
+const term_caps = @import("../../../term/mod.zig").caps;
 const hyperlinks = @import("../../utils/hyperlinks.zig");
 
 const Allocator = std.mem.Allocator;
@@ -31,7 +31,7 @@ pub const InfoPanel = struct {
     title: []const u8,
     show_icons: bool,
     max_width: usize,
-    
+
     pub fn init(allocator: Allocator, title: []const u8) InfoPanel {
         return InfoPanel{
             .allocator = allocator,
@@ -42,15 +42,15 @@ pub const InfoPanel = struct {
             .max_width = 80,
         };
     }
-    
+
     pub fn deinit(self: *InfoPanel) void {
         self.items.deinit();
     }
-    
+
     pub fn addItem(self: *InfoPanel, item: InfoItem) !void {
         try self.items.append(item);
     }
-    
+
     pub fn addInfo(self: *InfoPanel, title: []const u8, content: []const u8) !void {
         try self.addItem(InfoItem{
             .level = .info,
@@ -58,7 +58,7 @@ pub const InfoPanel = struct {
             .content = content,
         });
     }
-    
+
     pub fn addSuccess(self: *InfoPanel, title: []const u8, content: []const u8) !void {
         try self.addItem(InfoItem{
             .level = .success,
@@ -66,7 +66,7 @@ pub const InfoPanel = struct {
             .content = content,
         });
     }
-    
+
     pub fn addError(self: *InfoPanel, title: []const u8, content: []const u8) !void {
         try self.addItem(InfoItem{
             .level = .@"error",
@@ -74,7 +74,7 @@ pub const InfoPanel = struct {
             .content = content,
         });
     }
-    
+
     pub fn render(self: *InfoPanel, writer: anytype) !void {
         // Render title
         if (self.caps.supportsTrueColor()) {
@@ -82,21 +82,21 @@ pub const InfoPanel = struct {
         } else {
             try term_ansi.setForeground256(writer, self.caps, 12);
         }
-        
+
         try writer.print("┌─ {s} ─┐\n", .{self.title});
-        
+
         // Render items
         for (self.items.items) |item| {
             try self.renderItem(writer, item);
         }
-        
+
         try writer.writeAll("└────────┘\n");
         try term_ansi.resetStyle(writer, self.caps);
     }
-    
+
     fn renderItem(self: *InfoPanel, writer: anytype, item: InfoItem) !void {
         try writer.writeAll("│ ");
-        
+
         // Icon based on level
         if (self.show_icons) {
             const icon = switch (item.level) {
@@ -108,7 +108,7 @@ pub const InfoPanel = struct {
             };
             try writer.print("{s} ", .{icon});
         }
-        
+
         // Title with color and potential hyperlink
         try self.setLevelColor(writer, item.level);
         if (item.url != null) {
@@ -118,12 +118,12 @@ pub const InfoPanel = struct {
             try writer.writeAll(item.title);
         }
         try writer.writeAll(": ");
-        
+
         // Content
         try term_ansi.resetStyle(writer, self.caps);
         try writer.print("{s} │\n", .{item.content});
     }
-    
+
     fn setLevelColor(self: *InfoPanel, writer: anytype, level: InfoLevel) !void {
         if (self.caps.supportsTrueColor()) {
             switch (level) {

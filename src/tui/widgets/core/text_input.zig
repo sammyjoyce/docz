@@ -1,10 +1,10 @@
 //! Enhanced text input widget with clipboard integration
 const std = @import("std");
 const print = std.debug.print;
-const Bounds = @import("../core/bounds.zig").Bounds;
-const Color = @import("../themes/default.zig").Color;
-const Box = @import("../themes/default.zig").Box;
-const TermCaps = @import("../../term/caps.zig").TermCaps;
+const Bounds = @import("../../core/bounds.zig").Bounds;
+const Color = @import("../../themes/default.zig").Color;
+const Box = @import("../../themes/default.zig").Box;
+const TermCaps = @import("../../../term/caps.zig").TermCaps;
 
 /// Enhanced text input field with clipboard support
 pub const TextInput = struct {
@@ -198,7 +198,7 @@ pub const TextInput = struct {
     /// Copy selected text to clipboard using OSC 52
     pub fn copySelection(self: *TextInput) !void {
         if (self.getSelectedText()) |text| {
-            const clipboard = @import("../../term/ansi/clipboard.zig");
+            const clipboard = @import("../../../term/ansi/clipboard.zig");
             try clipboard.setClipboard(text, self.caps);
         }
     }
@@ -206,7 +206,7 @@ pub const TextInput = struct {
     /// Cut selected text to clipboard
     pub fn cutSelection(self: *TextInput) !void {
         if (self.getSelectedText()) |text| {
-            const clipboard = @import("../../term/ansi/clipboard.zig");
+            const clipboard = @import("../../../term/ansi/clipboard.zig");
             try clipboard.setClipboard(text, self.caps);
             self.deleteSelection();
         }
@@ -214,7 +214,7 @@ pub const TextInput = struct {
 
     /// Paste text from clipboard using OSC 52
     pub fn paste(self: *TextInput) !void {
-        const clipboard = @import("../../term/ansi/clipboard.zig");
+        const clipboard = @import("../../../term/ansi/clipboard.zig");
         if (try clipboard.getClipboard(self.caps)) |text| {
             defer self.content.allocator.free(text);
             try self.insertText(text);
@@ -247,10 +247,6 @@ pub const TextInput = struct {
     }
 
     pub fn getDisplayText(self: TextInput) []const u8 {
-        if (self.is_password) {
-            // TODO: Return masked text in real implementation
-            return self.content.items; // For now, return actual text
-        }
         return self.content.items;
     }
 
@@ -261,7 +257,12 @@ pub const TextInput = struct {
         self.drawBorder();
 
         // Draw content
-        const display_text = self.getDisplayText();
+        var display_buf: [1024]u8 = undefined; // Temporary buffer for masked text
+        const display_text = if (self.is_password) blk: {
+            const len = @min(self.content.items.len, display_buf.len);
+            @memset(display_buf[0..len], '*');
+            break :blk display_buf[0..len];
+        } else self.content.items;
         const visible_text = self.getVisibleText(display_text);
 
         // Position cursor inside the input field

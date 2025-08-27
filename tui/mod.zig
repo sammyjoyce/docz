@@ -1,5 +1,5 @@
 //! Consolidated TUI Framework - Main Module
-//! 
+//!
 //! This module provides a unified interface to all TUI components with advanced graphics
 //! capabilities, progressive enhancement, and comprehensive terminal integration.
 
@@ -54,7 +54,7 @@ pub const TextInput = widgets.core.TextInput;
 pub const TabContainer = widgets.core.TabContainer;
 pub const Table = widgets.core.Table;
 
-// Enhanced widget exports  
+// Enhanced widget exports
 pub const ProgressBar = widgets.enhanced.ProgressBar;
 pub const SmartInput = widgets.enhanced.SmartInput;
 pub const Notification = widgets.enhanced.Notification;

@@ -4,7 +4,7 @@ const std = @import("std");
 pub const CursorStyle = enum(u8) {
     /// Blinking block cursor (default)
     blinking_block = 0,
-    /// Blinking block cursor (same as default)  
+    /// Blinking block cursor (same as default)
     blinking_block_default = 1,
     /// Steady (non-blinking) block cursor
     steady_block = 2,

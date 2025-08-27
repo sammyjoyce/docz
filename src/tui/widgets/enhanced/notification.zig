@@ -2,12 +2,12 @@
 //! Supports both terminal notifications (OSC 9) and in-terminal notification banners
 
 const std = @import("std");
-const term_caps = @import("../../term/caps.zig");
-const term_notification = @import("../../term/ansi/notification.zig");
-const term_ansi = @import("../../term/ansi/color.zig");
-const term_cursor = @import("../../term/ansi/cursor.zig");
-const term_screen = @import("../../term/ansi/screen.zig");
-const bounds_mod = @import("../core/bounds.zig");
+const term_caps = @import("../../../term/caps.zig");
+const term_notification = @import("../../../term/ansi/notification.zig");
+const term_ansi = @import("../../../term/ansi/color.zig");
+const term_cursor = @import("../../../term/ansi/cursor.zig");
+const term_screen = @import("../../../term/ansi/screen.zig");
+const bounds_mod = @import("../../core/bounds.zig");
 
 pub const NotificationLevel = enum {
     info,

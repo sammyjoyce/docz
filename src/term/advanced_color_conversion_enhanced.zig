@@ -264,7 +264,7 @@ pub fn formatHex(alloc: std.mem.Allocator, color: Color) ![]u8 {
     return std.fmt.allocPrint(alloc, "#{:02x}{:02x}{:02x}", .{ color.r, color.g, color.b });
 }
 
-/// Format color as X11 RGB string (e.g., "rgb:ff00/ff00/ff00") 
+/// Format color as X11 RGB string (e.g., "rgb:ff00/ff00/ff00")
 pub fn formatX11Rgb(alloc: std.mem.Allocator, color: Color) ![]u8 {
     // X11 uses 16-bit values, so duplicate the 8-bit values
     const r16 = @as(u16, color.r) | (@as(u16, color.r) << 8);

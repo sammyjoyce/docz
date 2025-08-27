@@ -15,49 +15,49 @@ pub const Gauge = struct {
     thresholds: std.ArrayList(Threshold),
     style: Style,
     render_mode: RenderMode,
-    
+
     pub const Threshold = struct {
         value: f64,
         color: Color,
         label: ?[]const u8,
-        
+
         pub const Color = union(enum) {
             rgb: struct { r: u8, g: u8, b: u8 },
             ansi: u8,
         };
     };
-    
+
     pub const Style = enum {
-        radial,      // Circular gauge
-        linear,      // Linear progress bar
+        radial, // Circular gauge
+        linear, // Linear progress bar
         semi_circle, // Half-circle gauge
     };
-    
+
     pub const RenderMode = union(enum) {
-        graphics: GraphicsMode,     // Kitty/Sixel with smooth graphics
-        unicode: UnicodeMode,       // Unicode block characters and shapes
-        ascii: AsciiMode,           // Simple ASCII representation
-        
+        graphics: GraphicsMode, // Kitty/Sixel with smooth graphics
+        unicode: UnicodeMode, // Unicode block characters and shapes
+        ascii: AsciiMode, // Simple ASCII representation
+
         pub const GraphicsMode = struct {
             anti_aliasing: bool = true,
             shadows: bool = true,
             gradients: bool = true,
         };
-        
+
         pub const UnicodeMode = struct {
             use_block_chars: bool = true,
             use_circles: bool = true,
         };
-        
+
         pub const AsciiMode = struct {
             bracket_style: BracketStyle = .square,
             fill_char: u8 = '#',
             empty_char: u8 = '-',
-            
+
             pub const BracketStyle = enum { square, round, angle };
         };
     };
-    
+
     pub fn init(allocator: std.mem.Allocator, capability_tier: engine_mod.DashboardEngine.CapabilityTier) !*Gauge {
         const gauge = try allocator.create(Gauge);
         gauge.* = .{
@@ -77,20 +77,20 @@ pub const Gauge = struct {
         };
         return gauge;
     }
-    
+
     pub fn deinit(self: *Gauge) void {
         self.thresholds.deinit();
         self.allocator.destroy(self);
     }
-    
+
     pub fn setValue(self: *Gauge, value: f64) void {
         self.value = std.math.clamp(value, self.min_value, self.max_value);
     }
-    
+
     pub fn addThreshold(self: *Gauge, threshold: Threshold) !void {
         try self.thresholds.append(threshold);
     }
-    
+
     pub fn render(self: *Gauge, render_pipeline: anytype, bounds: anytype) !void {
         switch (self.render_mode) {
             .graphics => try self.renderGraphics(bounds),
@@ -99,7 +99,7 @@ pub const Gauge = struct {
         }
         _ = render_pipeline;
     }
-    
+
     fn renderGraphics(self: *Gauge, bounds: anytype) !void {
         switch (self.style) {
             .radial => try self.renderRadialGraphics(bounds),
@@ -107,7 +107,7 @@ pub const Gauge = struct {
             .semi_circle => try self.renderSemiCircleGraphics(bounds),
         }
     }
-    
+
     fn renderUnicode(self: *Gauge, bounds: anytype) !void {
         switch (self.style) {
             .radial => try self.renderRadialUnicode(bounds),
@@ -115,7 +115,7 @@ pub const Gauge = struct {
             .semi_circle => try self.renderSemiCircleUnicode(bounds),
         }
     }
-    
+
     fn renderASCII(self: *Gauge, bounds: anytype) !void {
         switch (self.style) {
             .radial => try self.renderRadialASCII(bounds),
@@ -123,23 +123,23 @@ pub const Gauge = struct {
             .semi_circle => try self.renderRadialASCII(bounds), // Fallback to radial
         }
     }
-    
+
     // Implementation stubs
     fn renderRadialGraphics(self: *Gauge, bounds: anytype) !void {
         _ = bounds;
         std.debug.print("🎯 Radial Gauge (Graphics): {d:.1}%\n", .{self.value});
     }
-    
+
     fn renderLinearGraphics(self: *Gauge, bounds: anytype) !void {
         _ = bounds;
         std.debug.print("▰▰▰▰▱▱ Linear Gauge (Graphics): {d:.1}%\n", .{self.value});
     }
-    
+
     fn renderSemiCircleGraphics(self: *Gauge, bounds: anytype) !void {
         _ = bounds;
         std.debug.print("◐ Semi-Circle Gauge (Graphics): {d:.1}%\n", .{self.value});
     }
-    
+
     fn renderRadialUnicode(self: *Gauge, bounds: anytype) !void {
         _ = bounds;
         const chars = "○◔◐◕●";
@@ -147,13 +147,13 @@ pub const Gauge = struct {
         const char_index = @min(index, chars.len - 1);
         std.debug.print("{c} Radial Gauge (Unicode): {d:.1}%\n", .{ chars[char_index], self.value });
     }
-    
+
     fn renderLinearUnicode(self: *Gauge, bounds: anytype) !void {
         _ = bounds;
         const progress = self.value / (self.max_value - self.min_value);
         const bar_width = 20;
         const filled = @as(u32, @intFromFloat(progress * @as(f64, @floatFromInt(bar_width))));
-        
+
         std.debug.print("▕", .{});
         var i: u32 = 0;
         while (i < bar_width) : (i += 1) {
@@ -165,26 +165,26 @@ pub const Gauge = struct {
         }
         std.debug.print("▏ {d:.1}%\n", .{self.value});
     }
-    
+
     fn renderSemiCircleUnicode(self: *Gauge, bounds: anytype) !void {
         _ = bounds;
         std.debug.print("◜◝◞◟ Semi-Circle Gauge (Unicode): {d:.1}%\n", .{self.value});
     }
-    
+
     fn renderRadialASCII(self: *Gauge, bounds: anytype) !void {
         _ = bounds;
         const progress = self.value / (self.max_value - self.min_value);
         const indicator = if (progress < 0.25) "|" else if (progress < 0.5) "/" else if (progress < 0.75) "-" else "\\";
         std.debug.print("({s}) {d:.1}%\n", .{ indicator, self.value });
     }
-    
+
     fn renderLinearASCII(self: *Gauge, bounds: anytype) !void {
         _ = bounds;
         const ascii_mode = self.render_mode.ascii;
         const progress = self.value / (self.max_value - self.min_value);
         const bar_width = 20;
         const filled = @as(u32, @intFromFloat(progress * @as(f64, @floatFromInt(bar_width))));
-        
+
         const open = switch (ascii_mode.bracket_style) {
             .square => '[',
             .round => '(',
@@ -195,7 +195,7 @@ pub const Gauge = struct {
             .round => ')',
             .angle => '>',
         };
-        
+
         std.debug.print("{c}", .{open});
         var i: u32 = 0;
         while (i < bar_width) : (i += 1) {

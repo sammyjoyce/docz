@@ -69,7 +69,7 @@ pub const PasteBuffer = struct {
             const cp_len = std.unicode.utf8ByteSequenceLength(self.data.items[i]) catch 1;
             if (i + cp_len > self.data.items.len) break;
 
-            const codepoint = std.unicode.utf8Decode(self.data.items[i..i + cp_len]) catch {
+            const codepoint = std.unicode.utf8Decode(self.data.items[i .. i + cp_len]) catch {
                 i += 1;
                 continue;
             };
@@ -114,14 +114,14 @@ test "paste buffer accumulation" {
     try std.testing.expectEqual(PasteEvent.start, start_result.?);
     try std.testing.expect(paste_buffer.isPasting());
 
-    // Test content accumulation  
+    // Test content accumulation
     _ = try paste_buffer.processInput("Hello ");
     _ = try paste_buffer.processInput("World");
 
     // Test paste end
     const end_result = try paste_buffer.processInput("\x1b[201~");
     try std.testing.expect(!paste_buffer.isPasting());
-    
+
     // Verify content
     switch (end_result.?) {
         .content => |content| {
@@ -138,12 +138,12 @@ test "paste buffer unicode handling" {
 
     // Start pasting
     _ = try paste_buffer.processInput("\x1b[200~");
-    
+
     // Add Unicode content
     _ = try paste_buffer.processInput("Hello 🌟 World");
-    
+
     const end_result = try paste_buffer.processInput("\x1b[201~");
-    
+
     switch (end_result.?) {
         .content => |content| {
             defer std.testing.allocator.free(content);

@@ -1,7 +1,6 @@
 /// Advanced cursor movement optimizer inspired by charmbracelet/x cellbuf
 /// Implements sophisticated cursor movement algorithms to minimize terminal escape sequences
 /// Compatible with Zig 0.15.1 and follows proper error handling patterns
-
 const std = @import("std");
 const ansi = @import("ansi/mod.zig");
 
@@ -20,7 +19,7 @@ pub const TabStops = struct {
         for (stops, 0..) |*stop, i| {
             stop.* = (i % 8) == 0;
         }
-        
+
         return Self{
             .stops = stops,
             .width = width,
@@ -36,15 +35,15 @@ pub const TabStops = struct {
     pub fn resize(self: *Self, new_width: usize) !void {
         const new_stops = try self.allocator.alloc(bool, new_width);
         const copy_width = @min(self.width, new_width);
-        
+
         // Copy existing stops
         @memcpy(new_stops[0..copy_width], self.stops[0..copy_width]);
-        
+
         // Initialize new stops with standard 8-column pattern
         for (copy_width..new_width) |i| {
             new_stops[i] = (i % 8) == 0;
         }
-        
+
         self.allocator.free(self.stops);
         self.stops = new_stops;
         self.width = new_width;
@@ -93,7 +92,7 @@ pub const TabStops = struct {
 pub const Capabilities = struct {
     /// Vertical Position Absolute (VPA)
     vpa: bool = true,
-    /// Horizontal Position Absolute (HPA) 
+    /// Horizontal Position Absolute (HPA)
     hpa: bool = true,
     /// Cursor Horizontal Tab (CHT)
     cht: bool = true,
@@ -121,26 +120,18 @@ pub const Capabilities = struct {
         };
 
         return switch (std.hash_map.hashString(term_base)) {
-            std.hash_map.hashString("xterm"),
-            std.hash_map.hashString("tmux"),
-            std.hash_map.hashString("foot"),
-            std.hash_map.hashString("kitty"),
-            std.hash_map.hashString("wezterm"),
-            std.hash_map.hashString("contour"),
-            std.hash_map.hashString("ghostty"),
-            std.hash_map.hashString("rio"),
-            std.hash_map.hashString("st") => Capabilities{}, // All supported
-            
+            std.hash_map.hashString("xterm"), std.hash_map.hashString("tmux"), std.hash_map.hashString("foot"), std.hash_map.hashString("kitty"), std.hash_map.hashString("wezterm"), std.hash_map.hashString("contour"), std.hash_map.hashString("ghostty"), std.hash_map.hashString("rio"), std.hash_map.hashString("st") => Capabilities{}, // All supported
+
             std.hash_map.hashString("alacritty") => Capabilities{
                 // Alacritty doesn't support CHT reliably in older versions
                 .cht = false,
             },
-            
+
             std.hash_map.hashString("screen") => Capabilities{
                 // Screen doesn't support REP
                 .rep = false,
             },
-            
+
             std.hash_map.hashString("linux") => Capabilities{
                 // Linux console has limited support
                 .cht = false,
@@ -149,7 +140,7 @@ pub const Capabilities = struct {
                 .sd = false,
                 .su = false,
             },
-            
+
             else => Capabilities{
                 // Conservative defaults for unknown terminals
                 .cht = false,
@@ -181,7 +172,7 @@ pub const CursorOptimizer = struct {
     options: OptimizerOptions,
     screen_width: usize,
     screen_height: usize,
-    
+
     const Self = @This();
 
     pub fn init(allocator: std.mem.Allocator, term_type: []const u8, width: usize, height: usize, options: OptimizerOptions) !Self {
@@ -207,10 +198,10 @@ pub const CursorOptimizer = struct {
     /// Check if movement is considered "local" (worth optimizing)
     fn isLocal(self: Self, from_x: usize, from_y: usize, to_x: usize, to_y: usize) bool {
         const long_dist = 8; // Threshold for "long distance" movement
-        
-        return !(to_x > long_dist and 
-                to_x < self.screen_width - 1 - long_dist and
-                (absDiff(to_y, from_y) + absDiff(to_x, from_x)) > long_dist);
+
+        return !(to_x > long_dist and
+            to_x < self.screen_width - 1 - long_dist and
+            (absDiff(to_y, from_y) + absDiff(to_x, from_x)) > long_dist);
     }
 
     /// Generate relative cursor movement sequence
@@ -221,7 +212,7 @@ pub const CursorOptimizer = struct {
         // Vertical movement
         if (to_y != from_y) {
             var y_seq: []const u8 = "";
-            
+
             if (self.capabilities.vpa and !self.options.relative_cursor) {
                 y_seq = try std.fmt.allocPrint(allocator, "\x1b[{d}d", .{to_y + 1});
             } else if (to_y > from_y) {
@@ -239,20 +230,20 @@ pub const CursorOptimizer = struct {
                     y_seq = try std.fmt.allocPrint(allocator, "\x1b[{d}A", .{up_count});
                 }
             }
-            
+
             try seq.appendSlice(y_seq);
         }
 
-        // Horizontal movement  
+        // Horizontal movement
         if (to_x != from_x) {
             var x_seq: []const u8 = "";
-            
+
             if (self.capabilities.hpa and !self.options.relative_cursor) {
                 x_seq = try std.fmt.allocPrint(allocator, "\x1b[{d}G", .{to_x + 1});
             } else if (to_x > from_x) {
                 var distance = to_x - from_x;
                 var current_x = from_x;
-                
+
                 // Try using tabs if enabled
                 if (use_tabs) {
                     var tab_count: usize = 0;
@@ -262,14 +253,14 @@ pub const CursorOptimizer = struct {
                         current_x = next_tab;
                         tab_count += 1;
                     }
-                    
+
                     if (tab_count > 0) {
                         const tab_seq = try std.fmt.allocPrint(allocator, "{s}", .{"\t" ** @min(tab_count, 10)});
                         try seq.appendSlice(tab_seq);
                         distance = to_x - current_x;
                     }
                 }
-                
+
                 if (distance > 0) {
                     if (distance == 1) {
                         x_seq = "\x1b[C";
@@ -280,7 +271,7 @@ pub const CursorOptimizer = struct {
             } else if (to_x < from_x) {
                 var distance = from_x - to_x;
                 var current_x = from_x;
-                
+
                 // Try backward tabs if supported
                 if (use_tabs and self.capabilities.cbt) {
                     var tab_count: usize = 0;
@@ -290,14 +281,14 @@ pub const CursorOptimizer = struct {
                         current_x = prev_tab;
                         tab_count += 1;
                     }
-                    
+
                     if (tab_count > 0) {
                         const cbt_seq = try std.fmt.allocPrint(allocator, "\x1b[{d}Z", .{tab_count});
                         try seq.appendSlice(cbt_seq);
                         distance = current_x - to_x;
                     }
                 }
-                
+
                 if (distance > 0) {
                     if (use_backspace and distance <= 4) {
                         // Use backspace for short distances
@@ -310,7 +301,7 @@ pub const CursorOptimizer = struct {
                     }
                 }
             }
-            
+
             try seq.appendSlice(x_seq);
         }
 
@@ -324,7 +315,7 @@ pub const CursorOptimizer = struct {
         const safe_from_y = @min(from_y, self.screen_height - 1);
         const safe_to_x = @min(to_x, self.screen_width - 1);
         const safe_to_y = @min(to_y, self.screen_height - 1);
-        
+
         // No movement needed
         if (safe_from_x == safe_to_x and safe_from_y == safe_to_y) {
             return try allocator.dupe(u8, "");
@@ -332,19 +323,19 @@ pub const CursorOptimizer = struct {
 
         // Try direct positioning first for long distances
         if (!self.options.relative_cursor or !self.isLocal(safe_from_x, safe_from_y, safe_to_x, safe_to_y)) {
-            return try std.fmt.allocPrint(allocator, "\x1b[{d};{d}H", .{safe_to_y + 1, safe_to_x + 1});
+            return try std.fmt.allocPrint(allocator, "\x1b[{d};{d}H", .{ safe_to_y + 1, safe_to_x + 1 });
         }
 
         // Try different optimization combinations
-        var best_seq: []u8 = try std.fmt.allocPrint(allocator, "\x1b[{d};{d}H", .{safe_to_y + 1, safe_to_x + 1});
-        
+        var best_seq: []u8 = try std.fmt.allocPrint(allocator, "\x1b[{d};{d}H", .{ safe_to_y + 1, safe_to_x + 1 });
+
         // Method 1: Pure relative movement
         const rel_seq = self.relativeMove(allocator, safe_from_x, safe_from_y, safe_to_x, safe_to_y, false, false) catch best_seq;
         if (rel_seq.len < best_seq.len) {
             allocator.free(best_seq);
             best_seq = rel_seq;
         }
-        
+
         // Method 2: Relative with tabs
         if (self.options.hard_tabs) {
             const tab_seq = self.relativeMove(allocator, safe_from_x, safe_from_y, safe_to_x, safe_to_y, true, false) catch best_seq;
@@ -353,7 +344,7 @@ pub const CursorOptimizer = struct {
                 best_seq = tab_seq;
             }
         }
-        
+
         // Method 3: Relative with backspace
         if (self.options.backspace) {
             const bs_seq = self.relativeMove(allocator, safe_from_x, safe_from_y, safe_to_x, safe_to_y, false, true) catch best_seq;
@@ -362,8 +353,8 @@ pub const CursorOptimizer = struct {
                 best_seq = bs_seq;
             }
         }
-        
-        // Method 4: Carriage return + relative movement  
+
+        // Method 4: Carriage return + relative movement
         const cr_seq = blk: {
             var cr_buf = std.ArrayList(u8).init(allocator);
             try cr_buf.append('\r');
@@ -372,25 +363,25 @@ pub const CursorOptimizer = struct {
             try cr_buf.appendSlice(rel_part);
             break :blk try cr_buf.toOwnedSlice();
         };
-        
+
         if (cr_seq.len < best_seq.len) {
             if (cr_seq.ptr != best_seq.ptr) allocator.free(best_seq);
             best_seq = cr_seq;
         }
-        
+
         return best_seq;
     }
-    
+
     /// Generate sequence to move to home position (0, 0)
     pub fn moveToHome(_: Self, allocator: std.mem.Allocator) ![]u8 {
         return try allocator.dupe(u8, "\x1b[H");
     }
-    
-    /// Generate sequence to save cursor position  
+
+    /// Generate sequence to save cursor position
     pub fn saveCursor(_: Self, allocator: std.mem.Allocator) ![]u8 {
         return try allocator.dupe(u8, "\x1b[s");
     }
-    
+
     /// Generate sequence to restore cursor position
     pub fn restoreCursor(_: Self, allocator: std.mem.Allocator) ![]u8 {
         return try allocator.dupe(u8, "\x1b[u");
@@ -406,15 +397,15 @@ fn absDiff(a: usize, b: usize) usize {
 test "tab stops basic functionality" {
     const testing = std.testing;
     const allocator = testing.allocator;
-    
+
     var tabs = try TabStops.init(allocator, 40);
     defer tabs.deinit();
-    
+
     try testing.expect(tabs.next(0) == 0);
     try testing.expect(tabs.next(1) == 8);
     try testing.expect(tabs.next(8) == 8);
     try testing.expect(tabs.next(9) == 16);
-    
+
     try testing.expect(tabs.prev(16) == 16);
     try testing.expect(tabs.prev(15) == 8);
     try testing.expect(tabs.prev(7) == 0);
@@ -422,15 +413,15 @@ test "tab stops basic functionality" {
 
 test "capabilities for different terminals" {
     const testing = std.testing;
-    
+
     const xterm_caps = Capabilities.forTerminal("xterm-256color");
     try testing.expect(xterm_caps.vpa);
     try testing.expect(xterm_caps.hpa);
-    
+
     const linux_caps = Capabilities.forTerminal("linux");
     try testing.expect(!linux_caps.cht);
     try testing.expect(!linux_caps.cbt);
-    
+
     const alacritty_caps = Capabilities.forTerminal("alacritty");
     try testing.expect(!alacritty_caps.cht);
 }
@@ -438,27 +429,27 @@ test "capabilities for different terminals" {
 test "cursor movement optimization" {
     const testing = std.testing;
     const allocator = testing.allocator;
-    
+
     var optimizer = try CursorOptimizer.init(allocator, "xterm", 80, 24, .{});
     defer optimizer.deinit();
-    
+
     // Test simple movement
     const seq = try optimizer.moveCursor(allocator, 0, 0, 5, 0);
     defer allocator.free(seq);
-    
+
     try testing.expect(seq.len > 0);
 }
 
 test "local vs long distance detection" {
     const testing = std.testing;
     const allocator = testing.allocator;
-    
+
     var optimizer = try CursorOptimizer.init(allocator, "xterm", 80, 24, .{});
     defer optimizer.deinit();
-    
+
     // Short distance should be local
     try testing.expect(optimizer.isLocal(0, 0, 5, 0));
-    
+
     // Long distance should not be local
     try testing.expect(!optimizer.isLocal(0, 0, 40, 10));
 }
@@ -466,14 +457,14 @@ test "local vs long distance detection" {
 test "tab optimization" {
     const testing = std.testing;
     const allocator = testing.allocator;
-    
+
     var optimizer = try CursorOptimizer.init(allocator, "xterm", 80, 24, .{ .hard_tabs = true });
     defer optimizer.deinit();
-    
+
     // Moving to a tab stop should be shorter than individual moves
     const seq = try optimizer.moveCursor(allocator, 0, 0, 16, 0);
     defer allocator.free(seq);
-    
+
     try testing.expect(seq.len > 0);
     try testing.expect(seq.len <= 3); // Should be very short with tabs
 }

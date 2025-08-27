@@ -1,5 +1,5 @@
 //! Advanced Dashboard Engine
-//! 
+//!
 //! Leverages extensive terminal capabilities from @src/term to provide sophisticated
 //! data visualization and interactive dashboard components with progressive enhancement.
 
@@ -22,24 +22,24 @@ pub const DashboardEngine = struct {
     event_dispatcher: *EventDispatcher,
     render_pipeline: *RenderPipeline,
     performance_optimizer: *PerformanceOptimizer,
-    
+
     /// Terminal capability tiers for progressive enhancement
     pub const CapabilityTier = enum {
         /// Kitty graphics, Sixel, 24-bit color, pixel mouse, synchronized output
         ultra_enhanced,
-        /// Unicode blocks, 256 colors, SGR mouse, double buffering  
+        /// Unicode blocks, 256 colors, SGR mouse, double buffering
         enhanced,
         /// ASCII art, 16 colors, basic mouse, partial redraws
         standard,
         /// Plain text, no mouse, full redraws
         minimal,
-        
+
         pub fn detectFromCaps(caps: term_caps.TermCaps) CapabilityTier {
             const has_kitty = caps.supportsKittyGraphics() catch false;
             const has_sixel = caps.supportsSixel() catch false;
             const has_truecolor = caps.supportsTruecolor() catch false;
             const has_mouse = caps.supportsMouseTracking() catch false;
-            
+
             if (has_kitty and has_truecolor and has_mouse) {
                 return .ultra_enhanced;
             } else if (has_sixel or (has_truecolor and has_mouse)) {
@@ -50,14 +50,14 @@ pub const DashboardEngine = struct {
             return .minimal;
         }
     };
-    
+
     pub fn init(allocator: std.mem.Allocator) !*DashboardEngine {
         const engine = try allocator.create(DashboardEngine);
-        
+
         // Detect terminal capabilities
         const caps = capability_detector.detectCapabilities();
         const tier = CapabilityTier.detectFromCaps(caps);
-        
+
         engine.* = .{
             .allocator = allocator,
             .renderer = try AdaptiveRenderer.init(allocator, tier),
@@ -69,10 +69,10 @@ pub const DashboardEngine = struct {
             .render_pipeline = try RenderPipeline.init(allocator, tier),
             .performance_optimizer = try PerformanceOptimizer.init(allocator),
         };
-        
+
         return engine;
     }
-    
+
     pub fn deinit(self: *DashboardEngine) void {
         self.performance_optimizer.deinit();
         self.render_pipeline.deinit();
@@ -83,25 +83,25 @@ pub const DashboardEngine = struct {
         self.renderer.deinit();
         self.allocator.destroy(self);
     }
-    
+
     pub fn createWidget(self: *DashboardEngine, widget_type: WidgetType) !*DashboardWidget {
         return try self.widget_factory.create(widget_type);
     }
-    
+
     pub fn render(self: *DashboardEngine, widgets: []const *DashboardWidget) !void {
         // Performance budgeting
         const frame_start = std.time.nanoTimestamp();
-        
+
         // Multi-layer rendering pipeline
         try self.render_pipeline.beginFrame();
-        
+
         for (widgets) |widget| {
             try widget.render(self.render_pipeline);
         }
-        
+
         try self.render_pipeline.composite();
         try self.render_pipeline.present();
-        
+
         // Performance tracking
         const frame_time = std.time.nanoTimestamp() - frame_start;
         self.performance_optimizer.recordFrameTime(frame_time);
@@ -114,7 +114,7 @@ pub const RenderPipeline = struct {
     layers: [4]RenderLayer,
     compositor: *Compositor,
     capability_tier: DashboardEngine.CapabilityTier,
-    
+
     pub const RenderLayer = struct {
         id: LayerID,
         buffer: *DoubleBuffer,
@@ -122,14 +122,14 @@ pub const RenderPipeline = struct {
         z_order: u8,
         opacity: f32 = 1.0,
         blend_mode: BlendMode = .normal,
-        
+
         pub const LayerID = enum {
-            background,    // Static background, gradients
-            data,         // Charts, graphs, visualizations
-            interactive,  // UI controls, selections
-            overlay,      // Tooltips, popups, notifications
+            background, // Static background, gradients
+            data, // Charts, graphs, visualizations
+            interactive, // UI controls, selections
+            overlay, // Tooltips, popups, notifications
         };
-        
+
         pub const BlendMode = enum {
             normal,
             multiply,
@@ -137,7 +137,7 @@ pub const RenderPipeline = struct {
             overlay,
         };
     };
-    
+
     pub fn init(allocator: std.mem.Allocator, tier: DashboardEngine.CapabilityTier) !*RenderPipeline {
         const pipeline = try allocator.create(RenderPipeline);
         pipeline.* = .{
@@ -146,7 +146,7 @@ pub const RenderPipeline = struct {
             .compositor = try Compositor.init(allocator, tier),
             .capability_tier = tier,
         };
-        
+
         // Initialize layers
         const layer_names = [_]RenderLayer.LayerID{ .background, .data, .interactive, .overlay };
         for (&pipeline.layers, layer_names, 0..) |*layer, id, i| {
@@ -157,10 +157,10 @@ pub const RenderPipeline = struct {
                 .z_order = @intCast(i),
             };
         }
-        
+
         return pipeline;
     }
-    
+
     pub fn deinit(self: *RenderPipeline) void {
         for (&self.layers) |*layer| {
             layer.buffer.deinit();
@@ -169,18 +169,18 @@ pub const RenderPipeline = struct {
         self.compositor.deinit();
         self.allocator.destroy(self);
     }
-    
+
     pub fn beginFrame(self: *RenderPipeline) !void {
         for (&self.layers) |*layer| {
             try layer.buffer.clear();
             layer.dirty_regions.clear();
         }
     }
-    
+
     pub fn composite(self: *RenderPipeline) !void {
         try self.compositor.composite(self.layers[0..]);
     }
-    
+
     pub fn present(self: *RenderPipeline) !void {
         try self.compositor.present();
     }
@@ -191,14 +191,14 @@ pub const Compositor = struct {
     allocator: std.mem.Allocator,
     mode: CompositorMode,
     output_buffer: *OutputBuffer,
-    
+
     const CompositorMode = enum {
         ultra_enhanced, // Alpha blending with Kitty graphics
-        enhanced,       // Dithering with Sixel/Unicode
-        standard,       // Simple alpha simulation
-        minimal,        // Plain text overlay
+        enhanced, // Dithering with Sixel/Unicode
+        standard, // Simple alpha simulation
+        minimal, // Plain text overlay
     };
-    
+
     pub fn init(allocator: std.mem.Allocator, tier: DashboardEngine.CapabilityTier) !*Compositor {
         const compositor = try allocator.create(Compositor);
         compositor.* = .{
@@ -213,12 +213,12 @@ pub const Compositor = struct {
         };
         return compositor;
     }
-    
+
     pub fn deinit(self: *Compositor) void {
         self.output_buffer.deinit();
         self.allocator.destroy(self);
     }
-    
+
     pub fn composite(self: *Compositor, layers: []RenderPipeline.RenderLayer) !void {
         switch (self.mode) {
             .ultra_enhanced => try self.compositeWithAlphaBlending(layers),
@@ -227,11 +227,11 @@ pub const Compositor = struct {
             .minimal => try self.compositePlainText(layers),
         }
     }
-    
+
     pub fn present(self: *Compositor) !void {
         try self.output_buffer.flush();
     }
-    
+
     fn compositeWithAlphaBlending(self: *Compositor, layers: []RenderPipeline.RenderLayer) !void {
         // Use Kitty graphics protocol for sophisticated blending
         for (layers) |layer| {
@@ -240,7 +240,7 @@ pub const Compositor = struct {
             }
         }
     }
-    
+
     fn compositeWithDithering(self: *Compositor, layers: []RenderPipeline.RenderLayer) !void {
         // Use dithering algorithms for color mixing without true alpha
         const dither_matrix = [8][8]u8{
@@ -253,14 +253,14 @@ pub const Compositor = struct {
             .{ 15, 47, 7, 39, 13, 45, 5, 37 },
             .{ 63, 31, 55, 23, 61, 29, 53, 21 },
         };
-        
+
         for (layers) |layer| {
             if (layer.opacity > 0.0) {
                 try self.blendLayerWithDithering(layer, dither_matrix);
             }
         }
     }
-    
+
     fn compositeSimple(self: *Compositor, layers: []RenderPipeline.RenderLayer) !void {
         // Simple overlay without alpha blending
         for (layers) |layer| {
@@ -269,34 +269,34 @@ pub const Compositor = struct {
             }
         }
     }
-    
+
     fn compositePlainText(self: *Compositor, layers: []RenderPipeline.RenderLayer) !void {
         // Text-only composition
         for (layers) |layer| {
             try self.renderTextLayer(layer);
         }
     }
-    
+
     // Implementation stubs - would be fully implemented
     fn blendLayerWithKitty(self: *Compositor, layer: RenderPipeline.RenderLayer) !void {
         _ = self;
         _ = layer;
         // Implementation would use Kitty graphics protocol
     }
-    
+
     fn blendLayerWithDithering(self: *Compositor, layer: RenderPipeline.RenderLayer, dither_matrix: [8][8]u8) !void {
         _ = self;
         _ = layer;
         _ = dither_matrix;
         // Implementation would apply dithering algorithms
     }
-    
+
     fn overlayLayer(self: *Compositor, layer: RenderPipeline.RenderLayer) !void {
         _ = self;
         _ = layer;
         // Implementation would perform simple overlay
     }
-    
+
     fn renderTextLayer(self: *Compositor, layer: RenderPipeline.RenderLayer) !void {
         _ = self;
         _ = layer;
@@ -310,17 +310,17 @@ pub const AdaptiveRenderer = struct {
     strategy: RenderingStrategy,
     graphics_manager: ?*graphics_manager.GraphicsManager,
     color_manager: *ColorManager,
-    
+
     const RenderingStrategy = union(enum) {
         kitty_graphics: KittyRenderer,
-        sixel_graphics: SixelRenderer, 
+        sixel_graphics: SixelRenderer,
         unicode_blocks: UnicodeRenderer,
         ascii_art: AsciiRenderer,
     };
-    
+
     pub fn init(allocator: std.mem.Allocator, tier: DashboardEngine.CapabilityTier) !*AdaptiveRenderer {
         const renderer = try allocator.create(AdaptiveRenderer);
-        
+
         renderer.* = .{
             .allocator = allocator,
             .strategy = switch (tier) {
@@ -329,14 +329,16 @@ pub const AdaptiveRenderer = struct {
                 .standard => .{ .unicode_blocks = try UnicodeRenderer.init(allocator) },
                 .minimal => .{ .ascii_art = try AsciiRenderer.init(allocator) },
             },
-            .graphics_manager = if (tier == .ultra_enhanced or tier == .enhanced) 
-                try allocator.create(graphics_manager.GraphicsManager) else null,
+            .graphics_manager = if (tier == .ultra_enhanced or tier == .enhanced)
+                try allocator.create(graphics_manager.GraphicsManager)
+            else
+                null,
             .color_manager = try ColorManager.init(allocator, tier),
         };
-        
+
         return renderer;
     }
-    
+
     pub fn deinit(self: *AdaptiveRenderer) void {
         self.color_manager.deinit();
         if (self.graphics_manager) |gm| {
@@ -345,7 +347,7 @@ pub const AdaptiveRenderer = struct {
         switch (self.strategy) {
             .kitty_graphics => |*kr| kr.deinit(),
             .sixel_graphics => |*sr| sr.deinit(),
-            .unicode_blocks => |*ur| ur.deinit(), 
+            .unicode_blocks => |*ur| ur.deinit(),
             .ascii_art => |*ar| ar.deinit(),
         }
         self.allocator.destroy(self);
@@ -356,7 +358,7 @@ pub const AdaptiveRenderer = struct {
 pub const WidgetFactory = struct {
     allocator: std.mem.Allocator,
     capability_tier: DashboardEngine.CapabilityTier,
-    
+
     pub fn init(allocator: std.mem.Allocator, tier: DashboardEngine.CapabilityTier) !*WidgetFactory {
         const factory = try allocator.create(WidgetFactory);
         factory.* = .{
@@ -365,11 +367,11 @@ pub const WidgetFactory = struct {
         };
         return factory;
     }
-    
+
     pub fn deinit(self: *WidgetFactory) void {
         self.allocator.destroy(self);
     }
-    
+
     pub fn create(self: *WidgetFactory, widget_type: WidgetType) !*DashboardWidget {
         return switch (widget_type) {
             .line_chart => try self.createLineChart(),
@@ -381,38 +383,38 @@ pub const WidgetFactory = struct {
             .kpi_card => try self.createKPICard(),
         };
     }
-    
+
     // Widget creation methods - implementation stubs
     fn createLineChart(self: *WidgetFactory) !*DashboardWidget {
         _ = self;
         return error.NotImplemented;
     }
-    
+
     fn createBarChart(self: *WidgetFactory) !*DashboardWidget {
         _ = self;
         return error.NotImplemented;
     }
-    
+
     fn createHeatmap(self: *WidgetFactory) !*DashboardWidget {
         _ = self;
         return error.NotImplemented;
     }
-    
+
     fn createDataGrid(self: *WidgetFactory) !*DashboardWidget {
         _ = self;
         return error.NotImplemented;
     }
-    
+
     fn createGauge(self: *WidgetFactory) !*DashboardWidget {
         _ = self;
         return error.NotImplemented;
     }
-    
+
     fn createSparkline(self: *WidgetFactory) !*DashboardWidget {
         _ = self;
         return error.NotImplemented;
     }
-    
+
     fn createKPICard(self: *WidgetFactory) !*DashboardWidget {
         _ = self;
         return error.NotImplemented;
@@ -424,21 +426,21 @@ pub const PerformanceOptimizer = struct {
     allocator: std.mem.Allocator,
     frame_budget: FrameBudget,
     render_scheduler: RenderScheduler,
-    
+
     pub const FrameBudget = struct {
         target_fps: u32 = 60,
         max_frame_time_ns: u64,
-        frame_times: std.RingBuffer(u64),
+        frame_times: RingBuffer(u64),
         quality_level: f32 = 1.0,
-        
+
         pub fn init(allocator: std.mem.Allocator, target_fps: u32) !FrameBudget {
             return .{
                 .target_fps = target_fps,
                 .max_frame_time_ns = 1_000_000_000 / target_fps,
-                .frame_times = try std.RingBuffer(u64).init(allocator, 60),
+                .frame_times = try RingBuffer(u64).init(allocator, 60),
             };
         }
-        
+
         pub fn adjustQuality(self: *FrameBudget, last_frame_time: u64) void {
             if (last_frame_time > self.max_frame_time_ns) {
                 self.quality_level = @max(0.1, self.quality_level - 0.1);
@@ -447,7 +449,7 @@ pub const PerformanceOptimizer = struct {
             }
         }
     };
-    
+
     pub fn init(allocator: std.mem.Allocator) !*PerformanceOptimizer {
         const optimizer = try allocator.create(PerformanceOptimizer);
         optimizer.* = .{
@@ -457,11 +459,12 @@ pub const PerformanceOptimizer = struct {
         };
         return optimizer;
     }
-    
+
     pub fn deinit(self: *PerformanceOptimizer) void {
+        self.frame_budget.frame_times.deinit();
         self.allocator.destroy(self);
     }
-    
+
     pub fn recordFrameTime(self: *PerformanceOptimizer, frame_time_ns: u64) void {
         self.frame_budget.frame_times.push(frame_time_ns) catch {};
         self.frame_budget.adjustQuality(frame_time_ns);
@@ -492,7 +495,7 @@ pub const LayoutEngine = struct {
         const engine = try allocator.create(LayoutEngine);
         return engine;
     }
-    
+
     pub fn deinit(self: *LayoutEngine) void {
         _ = self;
     }
@@ -503,7 +506,7 @@ pub const DataPipeline = struct {
         const pipeline = try allocator.create(DataPipeline);
         return pipeline;
     }
-    
+
     pub fn deinit(self: *DataPipeline) void {
         _ = self;
     }
@@ -514,7 +517,7 @@ pub const EventDispatcher = struct {
         const dispatcher = try allocator.create(EventDispatcher);
         return dispatcher;
     }
-    
+
     pub fn deinit(self: *EventDispatcher) void {
         _ = self;
     }
@@ -525,11 +528,11 @@ const DoubleBuffer = struct {
     pub fn init(allocator: std.mem.Allocator) !*DoubleBuffer {
         return try allocator.create(DoubleBuffer);
     }
-    
+
     pub fn deinit(self: *DoubleBuffer) void {
         _ = self;
     }
-    
+
     pub fn clear(self: *DoubleBuffer) !void {
         _ = self;
     }
@@ -540,11 +543,11 @@ const DirtyRegionTracker = struct {
         _ = allocator;
         return .{};
     }
-    
+
     pub fn deinit(self: *DirtyRegionTracker) void {
         _ = self;
     }
-    
+
     pub fn clear(self: *DirtyRegionTracker) void {
         _ = self;
     }
@@ -554,11 +557,11 @@ const OutputBuffer = struct {
     pub fn init(allocator: std.mem.Allocator) !*OutputBuffer {
         return try allocator.create(OutputBuffer);
     }
-    
+
     pub fn deinit(self: *OutputBuffer) void {
         _ = self;
     }
-    
+
     pub fn flush(self: *OutputBuffer) !void {
         _ = self;
     }
@@ -569,7 +572,7 @@ const ColorManager = struct {
         _ = tier;
         return try allocator.create(ColorManager);
     }
-    
+
     pub fn deinit(self: *ColorManager) void {
         _ = self;
     }
@@ -580,7 +583,7 @@ const KittyRenderer = struct {
         _ = allocator;
         return .{};
     }
-    
+
     pub fn deinit(self: *KittyRenderer) void {
         _ = self;
     }
@@ -591,7 +594,7 @@ const SixelRenderer = struct {
         _ = allocator;
         return .{};
     }
-    
+
     pub fn deinit(self: *SixelRenderer) void {
         _ = self;
     }
@@ -602,7 +605,7 @@ const UnicodeRenderer = struct {
         _ = allocator;
         return .{};
     }
-    
+
     pub fn deinit(self: *UnicodeRenderer) void {
         _ = self;
     }
@@ -613,7 +616,7 @@ const AsciiRenderer = struct {
         _ = allocator;
         return .{};
     }
-    
+
     pub fn deinit(self: *AsciiRenderer) void {
         _ = self;
     }
@@ -624,3 +627,38 @@ const RenderScheduler = struct {
         return .{};
     }
 };
+
+/// Simple ring buffer implementation to replace deprecated std.RingBuffer
+fn RingBuffer(comptime T: type) type {
+    return struct {
+        const Self = @This();
+        allocator: std.mem.Allocator,
+        data: []T,
+        head: usize = 0,
+        tail: usize = 0,
+        capacity: usize,
+
+        pub fn init(allocator: std.mem.Allocator, capacity: usize) !*Self {
+            const self = try allocator.create(Self);
+            self.* = .{
+                .allocator = allocator,
+                .data = try allocator.alloc(T, capacity),
+                .capacity = capacity,
+            };
+            return self;
+        }
+
+        pub fn deinit(self: *Self) void {
+            self.allocator.free(self.data);
+            self.allocator.destroy(self);
+        }
+
+        pub fn push(self: *Self, item: T) !void {
+            self.data[self.head] = item;
+            self.head = (self.head + 1) % self.capacity;
+            if (self.head == self.tail) {
+                self.tail = (self.tail + 1) % self.capacity;
+            }
+        }
+    };
+}

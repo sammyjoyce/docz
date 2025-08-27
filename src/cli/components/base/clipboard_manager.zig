@@ -2,9 +2,10 @@
 //! Provides copy/paste functionality using OSC 52 and fallback methods
 
 const std = @import("std");
-const term_clipboard = @import("../../../term/ansi/clipboard.zig");
-const term_caps = @import("../../../term/caps.zig");
-const term_ansi = @import("../../../term/ansi/color.zig");
+const term_shared = @import("../../../term/mod.zig");
+const term_clipboard = term_shared.ansi.clipboard;
+const term_caps = term_shared.caps;
+const term_ansi = term_shared.ansi.color;
 const notification_manager = @import("../../interactive/notification_manager.zig");
 const Allocator = std.mem.Allocator;
 
@@ -39,12 +40,41 @@ pub const ClipboardManager = struct {
     max_history_size: usize,
     auto_trim_large_content: bool,
     max_content_size: usize,
-    writer: ?*std.io.AnyWriter,
+    writer: ?*std.Io.Writer,
 
     pub fn init(allocator: Allocator) ClipboardManager {
         return .{
             .allocator = allocator,
-            .caps = term_caps.getTermCaps(),
+            .caps = term_caps.detectCaps(allocator) catch term_caps.TermCaps{
+                .supportsTruecolor = false,
+                .supportsKittyGraphics = false,
+                .supportsSixel = false,
+                .supportsHyperlinkOsc8 = false,
+                .supportsClipboardOsc52 = false,
+                .supportsNotifyOsc9 = false,
+                .supportsTitleOsc012 = false,
+                .supportsWorkingDirOsc7 = false,
+                .supportsFinalTermOsc133 = false,
+                .supportsITerm2Osc1337 = false,
+                .supportsColorOsc10_12 = false,
+                .supportsKittyKeyboard = false,
+                .supportsModifyOtherKeys = false,
+                .supportsXtwinops = false,
+                .supportsBracketedPaste = false,
+                .supportsFocusEvents = false,
+                .supportsSgrMouse = false,
+                .supportsSgrPixelMouse = false,
+                .supportsLightDarkReport = false,
+                .supportsLinuxPaletteOscP = false,
+                .supportsDeviceAttributes = false,
+                .supportsCursorStyle = false,
+                .supportsCursorPositionReport = false,
+                .supportsPointerShape = false,
+                .needsTmuxPassthrough = false,
+                .needsScreenPassthrough = false,
+                .screenChunkLimit = 4096,
+                .widthMethod = .grapheme,
+            },
             .notification_manager = null,
             .history = std.ArrayList(ClipboardEntry).init(allocator),
             .max_history_size = 50,
@@ -62,7 +92,7 @@ pub const ClipboardManager = struct {
         self.history.deinit();
     }
 
-    pub fn setWriter(self: *ClipboardManager, writer: *std.io.AnyWriter) void {
+    pub fn setWriter(self: *ClipboardManager, writer: *std.Io.Writer) void {
         self.writer = writer;
     }
 
@@ -352,20 +382,11 @@ pub const ClipboardManager = struct {
         try writer.print("{d}. ", .{index});
 
         // Content type badge
-        const type_color = switch (entry.content_type[0]) {
-            't' => if (std.mem.eql(u8, entry.content_type, "text")) [3]u8{ 100, 149, 237 } else [3]u8{ 200, 200, 200 },
-            'j' => [3]u8{ 255, 165, 0 }, // JSON
-            'c' => [3]u8{ 50, 205, 50 }, // Command
-            'u' => [3]u8{ 147, 112, 219 }, // URL
-            else => [3]u8{ 200, 200, 200 },
-        };
-
         if (self.caps.supportsTrueColor()) {
-            try term_ansi.setForegroundRgb(writer.*, self.caps, type_color[0], type_color[1], type_color[2]);
+            try term_ansi.setForegroundRgb(writer.*, self.caps, 100, 149, 237);
         } else {
             try term_ansi.setForeground256(writer.*, self.caps, 12);
         }
-
         try writer.print("[{s}] ", .{entry.content_type});
 
         // Content preview

@@ -18,7 +18,7 @@ const terminal_abstraction = @import("../../core/terminal_abstraction.zig");
 // Advanced input handling
 const input_events = @import("../../../src/term/input/advanced_input_driver.zig");
 const mouse_handler = @import("../../../src/term/input/mouse.zig");
-const focus_events = @import("../../../src/term/input/focus.zig"); 
+const focus_events = @import("../../../src/term/input/focus.zig");
 const paste_handler = @import("../../../src/term/input/paste.zig");
 
 const Allocator = std.mem.Allocator;
@@ -29,11 +29,11 @@ pub const ValidationResult = union(enum) {
     valid: void,
     invalid: []const u8, // Error message
     warning: []const u8, // Warning message
-    info: []const u8,    // Info message
+    info: []const u8, // Info message
 };
 
 /// Smart input validator function type
-pub const ValidatorFn = *const fn(input: []const u8, context: ?*anyopaque) ValidationResult;
+pub const ValidatorFn = *const fn (input: []const u8, context: ?*anyopaque) ValidationResult;
 
 /// Auto-completion suggestion
 pub const Suggestion = struct {
@@ -43,7 +43,7 @@ pub const Suggestion = struct {
 };
 
 /// Auto-completion provider function type
-pub const CompletionProviderFn = *const fn(input: []const u8, cursor_pos: usize, context: ?*anyopaque, allocator: Allocator) anyerror![]Suggestion;
+pub const CompletionProviderFn = *const fn (input: []const u8, cursor_pos: usize, context: ?*anyopaque, allocator: Allocator) anyerror![]Suggestion;
 
 /// Smart input configuration
 pub const SmartInputConfig = struct {
@@ -95,30 +95,30 @@ pub const SmartInput = struct {
     config: SmartInputConfig,
     terminal: TerminalAbstraction,
     features: terminal_abstraction.TerminalAbstraction.Features,
-    
+
     // Input state
     state: InputState,
     history: std.ArrayList([]u8),
     history_index: ?usize,
-    
+
     // Mouse and interaction state
     mouse_enabled: bool,
     focus_enabled: bool,
     paste_enabled: bool,
     last_mouse_x: u16,
     last_mouse_y: u16,
-    
+
     // Display metrics
     prompt_width: usize,
     display_width: usize,
     display_height: usize,
-    
+
     // Buffers for rendering
     render_buffer: std.ArrayList(u8),
-    
+
     pub fn init(allocator: Allocator, terminal: TerminalAbstraction, config: SmartInputConfig) !SmartInput {
         const features = terminal.getFeatures();
-        
+
         return SmartInput{
             .allocator = allocator,
             .config = config,
@@ -149,14 +149,14 @@ pub const SmartInput = struct {
             .render_buffer = std.ArrayList(u8).init(allocator),
         };
     }
-    
+
     pub fn deinit(self: *SmartInput) void {
         // Clean up history
         for (self.history.items) |item| {
             self.allocator.free(item);
         }
         self.history.deinit();
-        
+
         // Clean up suggestions
         if (self.state.suggestions.len > 0) {
             for (self.state.suggestions) |suggestion| {
@@ -167,36 +167,36 @@ pub const SmartInput = struct {
             }
             self.allocator.free(self.state.suggestions);
         }
-        
+
         self.state.text.deinit();
         self.render_buffer.deinit();
     }
-    
+
     /// Initialize terminal features for input
     pub fn setup(self: *SmartInput) !void {
         const writer = self.render_buffer.writer();
         self.render_buffer.clearRetainingCapacity();
-        
+
         // Enable mouse reporting if supported
         if (self.mouse_enabled) {
             try writer.writeAll("\x1b[?1000h\x1b[?1002h\x1b[?1015h\x1b[?1006h");
         }
-        
+
         // Enable focus reporting if supported
         if (self.focus_enabled) {
             try writer.writeAll("\x1b[?1004h");
         }
-        
+
         // Enable bracketed paste if supported
         if (self.paste_enabled) {
             try writer.writeAll("\x1b[?2004h");
         }
-        
+
         // Send setup commands to terminal
         if (self.render_buffer.items.len > 0) {
             try self.terminal.print(self.render_buffer.items, null);
         }
-        
+
         // Load history from file if configured
         if (self.config.history_file) |file_path| {
             self.loadHistory(file_path) catch |err| {
@@ -205,32 +205,32 @@ pub const SmartInput = struct {
             };
         }
     }
-    
+
     /// Clean up terminal features after input
     pub fn cleanup(self: *SmartInput) !void {
         const writer = self.render_buffer.writer();
         self.render_buffer.clearRetainingCapacity();
-        
+
         // Disable mouse reporting
         if (self.mouse_enabled) {
             try writer.writeAll("\x1b[?1000l\x1b[?1002l\x1b[?1015l\x1b[?1006l");
         }
-        
-        // Disable focus reporting  
+
+        // Disable focus reporting
         if (self.focus_enabled) {
             try writer.writeAll("\x1b[?1004l");
         }
-        
+
         // Disable bracketed paste
         if (self.paste_enabled) {
             try writer.writeAll("\x1b[?2004l");
         }
-        
+
         // Send cleanup commands to terminal
         if (self.render_buffer.items.len > 0) {
             try self.terminal.print(self.render_buffer.items, null);
         }
-        
+
         // Save history to file if configured
         if (self.config.history_file) |file_path| {
             self.saveHistory(file_path) catch |err| {
@@ -238,38 +238,38 @@ pub const SmartInput = struct {
             };
         }
     }
-    
+
     /// Read input with all smart features enabled
     pub fn readInput(self: *SmartInput) ![]const u8 {
         try self.setup();
         defer self.cleanup() catch {};
-        
+
         // Show cursor and initial render
         try self.terminal.showCursor(true);
         try self.render();
-        
+
         while (true) {
             // Read input event (this would be implemented with proper input handling)
             const event = try self.readInputEvent();
-            
+
             const should_exit = try self.handleInputEvent(event);
             if (should_exit) {
                 break;
             }
-            
+
             // Re-render if needed
             try self.render();
         }
-        
+
         // Add to history if not empty and not duplicate
         if (self.state.text.items.len > 0 and !self.isDuplicateHistory()) {
             const history_entry = try self.allocator.dupe(u8, self.state.text.items);
             try self.history.append(history_entry);
         }
-        
+
         return try self.allocator.dupe(u8, self.state.text.items);
     }
-    
+
     /// Handle a single input event
     fn handleInputEvent(self: *SmartInput, event: InputEvent) !bool {
         switch (event) {
@@ -281,7 +281,7 @@ pub const SmartInput = struct {
         }
         return false;
     }
-    
+
     /// Handle keyboard input
     fn handleKeyEvent(self: *SmartInput, key: KeyEvent) !bool {
         switch (key.key) {
@@ -316,7 +316,7 @@ pub const SmartInput = struct {
         }
         return false;
     }
-    
+
     /// Handle control key combinations
     fn handleControlKey(self: *SmartInput, c: u8) !bool {
         switch (c) {
@@ -351,11 +351,11 @@ pub const SmartInput = struct {
         }
         return false;
     }
-    
+
     /// Handle mouse events
     fn handleMouseEvent(self: *SmartInput, mouse: MouseEvent) !void {
         if (!self.mouse_enabled) return;
-        
+
         switch (mouse.action) {
             .click => {
                 // Position cursor at click location
@@ -386,42 +386,42 @@ pub const SmartInput = struct {
                 }
             },
         }
-        
+
         self.last_mouse_x = mouse.x;
         self.last_mouse_y = mouse.y;
     }
-    
+
     /// Render the complete input interface
     fn render(self: *SmartInput) !void {
         self.render_buffer.clearRetainingCapacity();
         const writer = self.render_buffer.writer();
-        
+
         // Clear line and render prompt
         try writer.writeAll("\r\x1b[K");
-        
+
         // Render prompt with styling
         try self.renderPrompt(writer);
-        
+
         // Render input text with syntax highlighting if enabled
         try self.renderInputText(writer);
-        
+
         // Render cursor
         try self.renderCursor(writer);
-        
+
         // Render validation feedback
         if (self.config.enable_validation and self.state.validation_result != null) {
             try self.renderValidation(writer);
         }
-        
+
         // Render suggestions if enabled and visible
         if (self.config.enable_completion and self.state.show_suggestions) {
             try self.renderSuggestions(writer);
         }
-        
+
         // Send to terminal
         try self.terminal.print(self.render_buffer.items, null);
     }
-    
+
     /// Render the input prompt
     fn renderPrompt(self: *SmartInput, writer: anytype) !void {
         // Apply accent styling if terminal supports it
@@ -430,11 +430,11 @@ pub const SmartInput = struct {
         }
         try writer.writeAll(self.config.prompt);
     }
-    
-    /// Render input text with optional syntax highlighting  
+
+    /// Render input text with optional syntax highlighting
     fn renderInputText(self: *SmartInput, writer: anytype) !void {
         const text = self.state.text.items;
-        
+
         if (self.config.enable_syntax_highlighting and self.features.truecolor) {
             try self.renderSyntaxHighlighted(writer, text);
         } else {
@@ -446,7 +446,7 @@ pub const SmartInput = struct {
             }
         }
     }
-    
+
     /// Render text with syntax highlighting
     fn renderSyntaxHighlighted(self: *SmartInput, writer: anytype, text: []const u8) !void {
         // Basic syntax highlighting based on type
@@ -460,13 +460,13 @@ pub const SmartInput = struct {
             .regex => try self.renderRegexSyntax(writer, text),
         }
     }
-    
+
     /// Render validation feedback
     fn renderValidation(self: *SmartInput, writer: anytype) !void {
         const validation = self.state.validation_result orelse return;
-        
+
         try writer.writeAll("\n  ");
-        
+
         switch (validation) {
             .valid => {
                 if (self.features.truecolor) {
@@ -493,54 +493,54 @@ pub const SmartInput = struct {
                 try writer.print("ℹ {s}", .{msg});
             },
         }
-        
+
         // Move cursor back to input position
         try writer.writeAll("\x1b[A\x1b[G"); // Up one line, beginning of line
         try writer.print("\x1b[{d}C", .{self.prompt_width + self.getDisplayCursorPos()});
     }
-    
+
     /// Render auto-completion suggestions
     fn renderSuggestions(self: *SmartInput, writer: anytype) !void {
         if (self.state.suggestions.len == 0) return;
-        
+
         try writer.writeAll("\n");
-        
+
         const max_suggestions = @min(5, self.state.suggestions.len);
         for (self.state.suggestions[0..max_suggestions], 0..) |suggestion, i| {
             const is_selected = self.state.selected_suggestion == i;
-            
+
             if (is_selected and self.features.truecolor) {
                 // Apply selection background
             }
-            
+
             try writer.print("  {s}", .{suggestion.text});
             if (suggestion.description) |desc| {
                 try writer.print(" - {s}", .{desc});
             }
-            
+
             if (i < max_suggestions - 1) {
                 try writer.writeAll("\n");
             }
         }
-        
+
         // Move cursor back to input position
         const lines_to_move = max_suggestions;
         try writer.print("\x1b[{d}A\x1b[G", .{lines_to_move}); // Up N lines, beginning of line
         try writer.print("\x1b[{d}C", .{self.prompt_width + self.getDisplayCursorPos()});
     }
-    
+
     /// Update validation status
     fn updateValidation(self: *SmartInput) !void {
         if (!self.config.enable_validation or self.config.validator == null) return;
-        
+
         const validator = self.config.validator.?;
         self.state.validation_result = validator(self.state.text.items, self.config.validator_context);
     }
-    
+
     /// Update auto-completion suggestions
     fn updateCompletion(self: *SmartInput) !void {
         if (!self.config.enable_completion or self.config.completion_provider == null) return;
-        
+
         // Clear existing suggestions
         if (self.state.suggestions.len > 0) {
             for (self.state.suggestions) |suggestion| {
@@ -551,134 +551,129 @@ pub const SmartInput = struct {
             }
             self.allocator.free(self.state.suggestions);
         }
-        
+
         // Get new suggestions
         const provider = self.config.completion_provider.?;
-        self.state.suggestions = try provider(
-            self.state.text.items,
-            self.state.cursor_position,
-            self.config.validator_context,
-            self.allocator
-        );
-        
+        self.state.suggestions = try provider(self.state.text.items, self.state.cursor_position, self.config.validator_context, self.allocator);
+
         self.state.show_suggestions = self.state.suggestions.len > 0;
         self.state.selected_suggestion = if (self.state.suggestions.len > 0) 0 else null;
     }
-    
+
     // ========== HELPER FUNCTIONS ==========
-    
+
     fn insertChar(self: *SmartInput, c: u8) !void {
         if (self.config.max_length != null and self.state.text.items.len >= self.config.max_length.?) {
             return;
         }
-        
+
         try self.state.text.insert(self.state.cursor_position, c);
         self.state.cursor_position += 1;
     }
-    
+
     fn deleteChar(self: *SmartInput) !void {
         if (self.state.cursor_position > 0) {
             _ = self.state.text.orderedRemove(self.state.cursor_position - 1);
             self.state.cursor_position -= 1;
         }
     }
-    
+
     fn deleteCharForward(self: *SmartInput) !void {
         if (self.state.cursor_position < self.state.text.items.len) {
             _ = self.state.text.orderedRemove(self.state.cursor_position);
         }
     }
-    
+
     fn moveCursorLeft(self: *SmartInput) !void {
         if (self.state.cursor_position > 0) {
             self.state.cursor_position -= 1;
         }
     }
-    
+
     fn moveCursorRight(self: *SmartInput) !void {
         if (self.state.cursor_position < self.state.text.items.len) {
             self.state.cursor_position += 1;
         }
     }
-    
+
     fn getDisplayCursorPos(self: SmartInput) usize {
         return self.state.cursor_position - self.state.scroll_offset;
     }
-    
+
     fn screenPosToTextPos(self: SmartInput, screen_x: u16, screen_y: u16) usize {
         _ = screen_y;
         // Simple conversion - would be more complex for multi-line
         const relative_x = if (screen_x >= self.prompt_width) screen_x - self.prompt_width else 0;
         return @min(self.state.text.items.len, self.state.scroll_offset + relative_x);
     }
-    
+
     fn isDuplicateHistory(self: SmartInput) bool {
         if (self.history.items.len == 0) return false;
         return std.mem.eql(u8, self.history.items[self.history.items.len - 1], self.state.text.items);
     }
-    
+
     // ========== PLACEHOLDER IMPLEMENTATIONS ==========
     // These would be fully implemented in a complete version
-    
+
     fn readInputEvent(self: *SmartInput) !InputEvent {
         _ = self;
         // This would integrate with the actual input system
         return InputEvent{ .key = KeyEvent{ .key = .enter, .modifiers = KeyModifiers{} } };
     }
-    
+
     fn loadHistory(self: *SmartInput, file_path: []const u8) !void {
         _ = self;
         _ = file_path;
         // Load history from file
     }
-    
+
     fn saveHistory(self: *SmartInput, file_path: []const u8) !void {
         _ = self;
         _ = file_path;
         // Save history to file
     }
-    
+
     fn renderShellSyntax(self: *SmartInput, writer: anytype, text: []const u8) !void {
         _ = self;
         try writer.writeAll(text);
     }
-    
+
     fn renderPathSyntax(self: *SmartInput, writer: anytype, text: []const u8) !void {
         _ = self;
         try writer.writeAll(text);
     }
-    
+
     fn renderUrlSyntax(self: *SmartInput, writer: anytype, text: []const u8) !void {
         _ = self;
         try writer.writeAll(text);
     }
-    
+
     fn renderEmailSyntax(self: *SmartInput, writer: anytype, text: []const u8) !void {
         _ = self;
         try writer.writeAll(text);
     }
-    
+
     fn renderJsonSyntax(self: *SmartInput, writer: anytype, text: []const u8) !void {
         _ = self;
         try writer.writeAll(text);
     }
-    
+
     fn renderRegexSyntax(self: *SmartInput, writer: anytype, text: []const u8) !void {
         _ = self;
         try writer.writeAll(text);
     }
-    
+
     fn renderWithSelection(self: *SmartInput, writer: anytype, text: []const u8) !void {
         _ = self;
         try writer.writeAll(text);
     }
-    
+
     fn renderCursor(self: *SmartInput, writer: anytype) !void {
         _ = self;
         _ = writer;
         // Position and render cursor
     }
-    
+
     fn handleTabCompletion(self: *SmartInput) !void {
         if (self.state.selected_suggestion) |idx| {
             if (idx < self.state.suggestions.len) {
@@ -691,15 +686,15 @@ pub const SmartInput = struct {
             }
         }
     }
-    
+
     fn handleEscape(self: *SmartInput) !void {
         self.state.show_suggestions = false;
         self.state.selected_suggestion = null;
     }
-    
+
     fn navigateHistory(self: *SmartInput, direction: enum { up, down }) !void {
         if (self.history.items.len == 0) return;
-        
+
         switch (direction) {
             .up => {
                 if (self.history_index == null) {
@@ -718,7 +713,7 @@ pub const SmartInput = struct {
                 }
             },
         }
-        
+
         // Update input text
         self.state.text.clearRetainingCapacity();
         if (self.history_index) |idx| {
@@ -726,7 +721,7 @@ pub const SmartInput = struct {
         }
         self.state.cursor_position = self.state.text.items.len;
     }
-    
+
     fn deleteWordBackward(self: *SmartInput) !void {
         while (self.state.cursor_position > 0 and self.state.text.items[self.state.cursor_position - 1] == ' ') {
             try self.deleteChar();
@@ -735,35 +730,35 @@ pub const SmartInput = struct {
             try self.deleteChar();
         }
     }
-    
+
     fn deleteToEndOfLine(self: *SmartInput) !void {
         self.state.text.shrinkRetainingCapacity(self.state.cursor_position);
     }
-    
+
     fn requestPaste(self: *SmartInput) !void {
         _ = self;
         // This would request paste from clipboard
     }
-    
+
     fn handlePaste(self: *SmartInput, data: []const u8) !void {
         try self.state.text.insertSlice(self.state.cursor_position, data);
         self.state.cursor_position += data.len;
     }
-    
+
     fn handleFocus(self: *SmartInput, focus_event: FocusEvent) !void {
         _ = self;
         _ = focus_event;
         // Handle focus in/out events
     }
-    
+
     fn handleResize(self: *SmartInput, size: TerminalSize) !void {
         self.display_width = size.width;
         self.display_height = size.height;
     }
-    
+
     fn scrollSuggestions(self: *SmartInput, direction: enum { up, down }) !void {
         if (self.state.selected_suggestion == null) return;
-        
+
         switch (direction) {
             .up => {
                 if (self.state.selected_suggestion.? > 0) {
@@ -777,7 +772,7 @@ pub const SmartInput = struct {
             },
         }
     }
-    
+
     fn scrollInput(self: *SmartInput, direction: enum { up, down }) !void {
         _ = self;
         _ = direction;

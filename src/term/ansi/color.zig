@@ -502,7 +502,7 @@ pub const ColorValidator = struct {
     /// Validate if a string is a valid hex color format (#RRGGBB or RRGGBB)
     pub fn isValidHex(hex: []const u8) bool {
         var hex_clean = hex;
-        
+
         // Remove leading # if present
         if (hex.len > 0 and hex[0] == '#') {
             hex_clean = hex[1..];
@@ -526,16 +526,16 @@ pub const ColorValidator = struct {
     /// Validate if a string is a valid RGB color format (rgb:RRRR/GGGG/BBBB)
     pub fn isValidXRgb(rgb: []const u8) bool {
         if (!std.mem.startsWith(u8, rgb, "rgb:")) return false;
-        
+
         const components = rgb[4..]; // Skip "rgb:"
         var parts = std.mem.split(u8, components, "/");
-        
+
         var part_count: u8 = 0;
         while (parts.next()) |part| {
             part_count += 1;
             if (part_count > 3) return false; // Too many parts
             if (part.len != 4) return false; // Each part should be 4 hex chars
-            
+
             // Validate hex characters
             for (part) |char| {
                 switch (char) {
@@ -544,23 +544,23 @@ pub const ColorValidator = struct {
                 }
             }
         }
-        
+
         return part_count == 3; // Must have exactly 3 parts
     }
 
     /// Validate if a string is a valid RGBA color format (rgba:RRRR/GGGG/BBBB/AAAA)
     pub fn isValidXRgba(rgba: []const u8) bool {
         if (!std.mem.startsWith(u8, rgba, "rgba:")) return false;
-        
+
         const components = rgba[5..]; // Skip "rgba:"
         var parts = std.mem.split(u8, components, "/");
-        
+
         var part_count: u8 = 0;
         while (parts.next()) |part| {
             part_count += 1;
             if (part_count > 4) return false; // Too many parts
             if (part.len != 4) return false; // Each part should be 4 hex chars
-            
+
             // Validate hex characters
             for (part) |char| {
                 switch (char) {
@@ -569,7 +569,7 @@ pub const ColorValidator = struct {
                 }
             }
         }
-        
+
         return part_count == 4; // Must have exactly 4 parts
     }
 
@@ -726,22 +726,22 @@ pub const ColorConverter = struct {
 
     /// Mapping table for 256-color to 16-color conversion
     const ansi256_to_16 = [_]BasicColor{
-        0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, // 0-15 (direct)
-        0,  4,  4,  4,  12, 12, 2,  6,  4,  4,  12, 12, 2,  2,  6,  4,  // 16-31
-        12, 12, 2,  2,  2,  6,  12, 12, 10, 10, 10, 10, 14, 12, 10, 10, // 32-47
-        10, 10, 10, 14, 1,  5,  4,  4,  12, 12, 3,  8,  4,  4,  12, 12, // 48-63
-        2,  2,  6,  4,  12, 12, 2,  2,  2,  6,  12, 12, 10, 10, 10, 10, // 64-79
-        14, 12, 10, 10, 10, 10, 10, 14, 1,  1,  5,  4,  12, 12, 1,  1,  // 80-95
-        1,  5,  12, 12, 1,  1,  1,  5,  12, 12, 3,  3,  3,  7,  12, 12, // 96-111
-        10, 10, 10, 10, 14, 12, 10, 10, 10, 10, 10, 14, 9,  9,  9,  9,  // 112-127
-        13, 12, 9,  9,  9,  9,  13, 12, 9,  9,  9,  9,  13, 12, 9,  9,  // 128-143
-        9,  9,  13, 12, 11, 11, 11, 11, 7,  12, 10, 10, 10, 10, 10, 14, // 144-159
-        9,  9,  9,  9,  9,  13, 9,  9,  9,  9,  9,  13, 9,  9,  9,  9,  // 160-175
-        9,  13, 9,  9,  9,  9,  9,  13, 9,  9,  9,  9,  9,  13, 11, 11, // 176-191
-        11, 11, 11, 15, 0,  0,  0,  0,  0,  0,  8,  8,  8,  8,  8,  8,  // 192-207
-        7,  7,  7,  7,  7,  7,  15, 15, 15, 15, 15, 15, // 208-223
-        0,  0,  0,  0,  0,  0,  8,  8,  8,  8,  8,  8,  7,  7,  7,  7,  // 224-239
-        7,  7,  15, 15, 15, 15, 15, 15, // 240-255
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, // 0-15 (direct)
+        0, 4, 4, 4, 12, 12, 2, 6, 4, 4, 12, 12, 2, 2, 6, 4, // 16-31
+        12, 12, 2, 2, 2, 6, 12, 12, 10, 10, 10, 10, 14, 12, 10, 10, // 32-47
+        10, 10, 10, 14, 1, 5, 4, 4, 12, 12, 3, 8, 4, 4, 12, 12, // 48-63
+        2, 2, 6, 4, 12, 12, 2, 2, 2, 6, 12, 12, 10, 10, 10, 10, // 64-79
+        14, 12, 10, 10, 10, 10, 10, 14, 1, 1, 5, 4, 12, 12, 1, 1, // 80-95
+        1, 5, 12, 12, 1, 1, 1, 5, 12, 12, 3, 3, 3, 7, 12, 12, // 96-111
+        10, 10, 10, 10, 14, 12, 10, 10, 10, 10, 10, 14, 9, 9, 9, 9, // 112-127
+        13, 12, 9, 9, 9, 9, 13, 12, 9, 9, 9, 9, 13, 12, 9, 9, // 128-143
+        9, 9, 13, 12, 11, 11, 11, 11, 7, 12, 10, 10, 10, 10, 10, 14, // 144-159
+        9, 9, 9, 9, 9, 13, 9, 9, 9, 9, 9, 13, 9, 9, 9, 9, // 160-175
+        9, 13, 9, 9, 9, 9, 9, 13, 9, 9, 9, 9, 9, 13, 11, 11, // 176-191
+        11, 11, 11, 15, 0, 0, 0, 0, 0, 0, 8, 8, 8, 8, 8, 8, // 192-207
+        7, 7, 7, 7, 7, 7, 15, 15, 15, 15, 15, 15, // 208-223
+        0, 0, 0, 0, 0, 0, 8, 8, 8, 8, 8, 8, 7, 7, 7, 7, // 224-239
+        7, 7, 15, 15, 15, 15, 15, 15, // 240-255
     };
 
     /// Convert 256-color to 16-color ANSI
@@ -870,8 +870,8 @@ test "color validation" {
     try testing.expect(ColorValidator.isValidHex("ff0000"));
 
     // Invalid hex colors
-    try testing.expect(!ColorValidator.isValidHex("#FF00"));     // Too short
-    try testing.expect(!ColorValidator.isValidHex("GG0000"));    // Invalid character
+    try testing.expect(!ColorValidator.isValidHex("#FF00")); // Too short
+    try testing.expect(!ColorValidator.isValidHex("GG0000")); // Invalid character
     try testing.expect(!ColorValidator.isValidHex("#FF0000AA")); // Too long
 
     // Valid XRGB colors
@@ -879,21 +879,21 @@ test "color validation" {
     try testing.expect(ColorValidator.isValidXRgb("rgb:FFFF/FFFF/FFFF"));
 
     // Invalid XRGB colors
-    try testing.expect(!ColorValidator.isValidXRgb("rgb:ff/00/00"));        // Too short
-    try testing.expect(!ColorValidator.isValidXRgb("rgb:ffff/ffff"));       // Missing component
+    try testing.expect(!ColorValidator.isValidXRgb("rgb:ff/00/00")); // Too short
+    try testing.expect(!ColorValidator.isValidXRgb("rgb:ffff/ffff")); // Missing component
     try testing.expect(!ColorValidator.isValidXRgb("rgb:ffff/ffff/ffff/ff")); // Too many components
 
     // Valid XRGBA colors
     try testing.expect(ColorValidator.isValidXRgba("rgba:ffff/0000/0000/8080"));
-    
+
     // Invalid XRGBA colors
-    try testing.expect(!ColorValidator.isValidXRgba("rgba:ff/00/00/80"));      // Too short
-    try testing.expect(!ColorValidator.isValidXRgba("rgba:ffff/ffff/ffff"));   // Missing alpha
+    try testing.expect(!ColorValidator.isValidXRgba("rgba:ff/00/00/80")); // Too short
+    try testing.expect(!ColorValidator.isValidXRgba("rgba:ffff/ffff/ffff")); // Missing alpha
 
     // RGB value validation
     try testing.expect(ColorValidator.isValidRgb(255, 128, 0));
     try testing.expect(!ColorValidator.isValidRgb(256, 0, 0));
-    
+
     // RGBA value validation
     try testing.expect(ColorValidator.isValidRgba(255, 128, 0, 200));
     try testing.expect(!ColorValidator.isValidRgba(256, 0, 0, 0));
@@ -925,15 +925,15 @@ test "safe color creation" {
 
 test "rgb color creation and hex conversion" {
     const testing = std.testing;
-    
+
     // Test RGB color creation
     const red = RgbColor.init(255, 0, 0);
     try testing.expect(red.r == 255 and red.g == 0 and red.b == 0);
-    
+
     // Test hex conversion
     const red_hex = red.toHex();
     try testing.expect(red_hex == 0xFF0000);
-    
+
     // Test white
     const white = RgbColor.init(255, 255, 255);
     try testing.expect(white.toHex() == 0xFFFFFF);
@@ -941,49 +941,49 @@ test "rgb color creation and hex conversion" {
 
 test "basic color palette accuracy" {
     const testing = std.testing;
-    
+
     // Test standard ANSI colors
     const black = ColorConverter.basicToRgb(0);
     try testing.expect(black.r == 0x00 and black.g == 0x00 and black.b == 0x00);
-    
+
     const red = ColorConverter.basicToRgb(1);
     try testing.expect(red.r == 0x80 and red.g == 0x00 and red.b == 0x00);
-    
+
     const bright_white = ColorConverter.basicToRgb(15);
     try testing.expect(bright_white.r == 0xFF and bright_white.g == 0xFF and bright_white.b == 0xFF);
 }
 
 test "256-color conversion accuracy" {
     const testing = std.testing;
-    
+
     // Test exact matches should return correct values
     const pure_red = RgbColor.init(255, 0, 0);
     const red_indexed = ColorConverter.convertToIndexed(pure_red);
-    
+
     // Pure red should map to a specific index in the palette
     // Let's verify it maps to a reasonable value
     try testing.expect(red_indexed >= 16); // Should not be in basic 16-color range for pure red
-    
+
     // Test that conversion round-trip preserves major colors reasonably
     const converted_back = ColorConverter.indexedToRgb(red_indexed);
-    
+
     // Should be reasonably close to original (allowing for palette quantization)
-    const r_diff = if (converted_back.r > pure_red.r) 
-        converted_back.r - pure_red.r 
-    else 
+    const r_diff = if (converted_back.r > pure_red.r)
+        converted_back.r - pure_red.r
+    else
         pure_red.r - converted_back.r;
     try testing.expect(r_diff <= 64); // Allow reasonable quantization error
 }
 
 test "16-color conversion from 256-color" {
     const testing = std.testing;
-    
+
     // Test direct mapping for basic colors
     for (0..16) |i| {
         const basic = ColorConverter.convertToBasic(@as(IndexedColor, @intCast(i)));
         try testing.expect(basic == i);
     }
-    
+
     // Test some extended color mappings
     const high_index: IndexedColor = 200; // A bright color in extended range
     const basic = ColorConverter.convertToBasic(high_index);
@@ -992,22 +992,22 @@ test "16-color conversion from 256-color" {
 
 test "rgb to basic color conversion" {
     const testing = std.testing;
-    
+
     // Test pure colors
     const pure_red = RgbColor.init(255, 0, 0);
     const red_basic = ColorConverter.rgbToBasic(pure_red);
-    
+
     // Should map to either red (1) or bright red (9)
     try testing.expect(red_basic == 1 or red_basic == 9);
-    
+
     const pure_blue = RgbColor.init(0, 0, 255);
     const blue_basic = ColorConverter.rgbToBasic(pure_blue);
     try testing.expect(blue_basic == 4 or blue_basic == 12); // Blue or bright blue
-    
+
     // Test black and white
     const black = RgbColor.init(0, 0, 0);
     try testing.expect(ColorConverter.rgbToBasic(black) == 0);
-    
+
     const white = RgbColor.init(255, 255, 255);
     const white_basic = ColorConverter.rgbToBasic(white);
     try testing.expect(white_basic == 7 or white_basic == 15); // White or bright white
@@ -1015,50 +1015,44 @@ test "rgb to basic color conversion" {
 
 test "grayscale color conversion" {
     const testing = std.testing;
-    
+
     // Test grayscale colors map appropriately
     const dark_gray = RgbColor.init(64, 64, 64);
     const dark_indexed = ColorConverter.convertToIndexed(dark_gray);
-    
+
     // Should map to grayscale range (232-255) or dark basic colors
     try testing.expect(dark_indexed <= 255);
-    
+
     const light_gray = RgbColor.init(192, 192, 192);
     const light_indexed = ColorConverter.convertToIndexed(light_gray);
     try testing.expect(light_indexed <= 255);
-    
+
     // Verify the round-trip maintains grayness reasonably
     const converted_back = ColorConverter.indexedToRgb(light_indexed);
-    const max_diff = @max(
-        @max(
-            if (converted_back.r > light_gray.r) converted_back.r - light_gray.r else light_gray.r - converted_back.r,
-            if (converted_back.g > light_gray.g) converted_back.g - light_gray.g else light_gray.g - converted_back.g
-        ),
-        if (converted_back.b > light_gray.b) converted_back.b - light_gray.b else light_gray.b - converted_back.b
-    );
+    const max_diff = @max(@max(if (converted_back.r > light_gray.r) converted_back.r - light_gray.r else light_gray.r - converted_back.r, if (converted_back.g > light_gray.g) converted_back.g - light_gray.g else light_gray.g - converted_back.g), if (converted_back.b > light_gray.b) converted_back.b - light_gray.b else light_gray.b - converted_back.b);
     try testing.expect(max_diff <= 32); // Allow reasonable quantization error for grays
 }
 
 test "color cube mapping accuracy" {
     const testing = std.testing;
-    
+
     // Test specific color cube coordinates
     // RGB(0, 95, 135) should map to cube coordinate (0, 1, 2)
     const test_color = RgbColor.init(0, 95, 135);
     const indexed = ColorConverter.convertToIndexed(test_color);
-    
+
     // Verify it maps to extended palette (beyond basic 16)
     try testing.expect(indexed >= 16);
     try testing.expect(indexed <= 255);
-    
+
     // Test that similar colors map to nearby indices
     const similar_color = RgbColor.init(5, 90, 130);
     const similar_indexed = ColorConverter.convertToIndexed(similar_color);
-    
+
     // Should be reasonably close in the palette
-    const index_diff = if (similar_indexed > indexed) 
-        similar_indexed - indexed 
-    else 
+    const index_diff = if (similar_indexed > indexed)
+        similar_indexed - indexed
+    else
         indexed - similar_indexed;
     try testing.expect(index_diff <= 20); // Allow reasonable neighborhood variance
 }

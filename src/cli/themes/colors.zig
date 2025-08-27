@@ -2,8 +2,9 @@
 //! Provides semantic color names and terminal capability adaptation
 
 const std = @import("std");
-const term_ansi = @import("../../term/ansi/color.zig");
-const term_caps = @import("../../term/caps.zig");
+const term_shared = @import("../../term/mod.zig");
+const term_ansi = term_shared.ansi.color;
+const term_caps = term_shared.caps;
 
 /// RGB color values for true color terminals
 pub const RgbColor = struct {

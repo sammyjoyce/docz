@@ -2,8 +2,8 @@
 //! Uses advanced terminal capabilities for rich color support
 
 const std = @import("std");
-const term_ansi = @import("../../term/ansi/color.zig");
-const term_caps = @import("../../term/caps.zig");
+const term_ansi = @import("../../../term/ansi/color.zig");
+const term_caps = @import("../../../term/caps.zig");
 const Allocator = std.mem.Allocator;
 
 /// Color definitions with fallbacks for different terminal capabilities

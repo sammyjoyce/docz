@@ -48,6 +48,7 @@ pub const AgentSpec = struct {
 fn mapAuthError(err: auth.core.AuthError) anthropic.Error {
     return switch (err) {
         auth.core.AuthError.MissingAPIKey => anthropic.Error.MissingAPIKey,
+        auth.core.AuthError.InvalidApiKey => anthropic.Error.InvalidFormat,
         auth.core.AuthError.TokenExpired => anthropic.Error.TokenExpired,
         auth.core.AuthError.NetworkError => anthropic.Error.NetworkError,
         else => anthropic.Error.AuthError,
@@ -66,7 +67,14 @@ fn initAnthropicClient(allocator: std.mem.Allocator) !anthropic.AnthropicClient 
     switch (auth_client.credentials) {
         .oauth => |creds| {
             std.log.info("Using OAuth authentication", .{});
-            return try anthropic.AnthropicClient.initWithOAuth(allocator, creds, auth_client.credentials_path orelse "claude_oauth_creds.json");
+            // Convert oauth.OAuthCredentials to anthropic.OAuthCredentials
+            const anthropic_creds = anthropic.OAuthCredentials{
+                .type = creds.type,
+                .access_token = creds.access_token,
+                .refresh_token = creds.refresh_token,
+                .expires_at = creds.expires_at,
+            };
+            return try anthropic.AnthropicClient.initWithOAuth(allocator, anthropic_creds, auth_client.credentials_path orelse "claude_oauth_creds.json");
         },
         .api_key => |key| {
             std.log.info("Using API key authentication", .{});
@@ -82,17 +90,36 @@ fn initAnthropicClient(allocator: std.mem.Allocator) !anthropic.AnthropicClient 
 /// Start OAuth flow using the new auth TUI system
 pub fn setupOAuth(allocator: std.mem.Allocator) !void {
     std.log.info("Starting Claude Pro/Max OAuth setup...", .{});
-    try auth.runAuthTUI(allocator, .oauth_setup);
+    try auth.runAuthCommand(allocator, .login);
 }
 
 /// Display current authentication status using the new auth system
 pub fn showAuthStatus(allocator: std.mem.Allocator) !void {
-    try auth.runAuthTUI(allocator, .status);
+    try auth.runAuthCommand(allocator, .status);
 }
 
 /// Refresh authentication tokens using the new auth system
 pub fn refreshAuth(allocator: std.mem.Allocator) !void {
-    try auth.runAuthTUI(allocator, .refresh);
+    // Load existing OAuth credentials
+    const oauth_path = "claude_oauth_creds.json";
+    if (auth.loadCredentials(allocator, oauth_path)) |credentials| {
+        defer credentials.deinit(allocator);
+
+        // Only refresh OAuth tokens
+        if (credentials.getMethod() == .oauth) {
+            const oauth_creds = credentials.oauth;
+            const new_creds = try auth.refreshTokens(allocator, oauth_creds.refresh_token);
+
+            // Create new credentials with refreshed tokens
+            var updated_credentials = credentials;
+            updated_credentials.oauth = new_creds;
+
+            // Save the refreshed credentials
+            try auth.saveCredentials(allocator, oauth_path, updated_credentials);
+        }
+    } else |_| {
+        return error.NoCredentialsFound;
+    }
 }
 
 /// Global stdout writer with buffer for streaming output

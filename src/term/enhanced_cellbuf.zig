@@ -5,7 +5,6 @@ const ansi = @import("ansi/ansi.zon");
 /// Enhanced cell-based terminal display buffer with advanced features
 /// Based on charmbracelet/x/cellbuf with Zig 0.15.1 compatibility
 /// Supports combining characters, hyperlinks, and sophisticated styling
-
 /// Underline style for text
 pub const UnderlineStyle = enum(u8) {
     none = 0,
@@ -14,11 +13,11 @@ pub const UnderlineStyle = enum(u8) {
     curly = 3,
     dotted = 4,
     dashed = 5,
-    
+
     pub fn toAnsiCode(self: UnderlineStyle) []const u8 {
         return switch (self) {
             .none => "24",
-            .single => "4", 
+            .single => "4",
             .double => "21",
             .curly => "4:3",
             .dotted => "4:4",
@@ -37,12 +36,12 @@ pub const AttrMask = packed struct {
     reverse: bool = false,
     conceal: bool = false,
     strikethrough: bool = false,
-    
+
     pub fn isEmpty(self: AttrMask) bool {
         const as_int: u8 = @bitCast(self);
         return as_int == 0;
     }
-    
+
     pub fn eql(self: AttrMask, other: AttrMask) bool {
         const self_int: u8 = @bitCast(self);
         const other_int: u8 = @bitCast(other);
@@ -53,46 +52,46 @@ pub const AttrMask = packed struct {
 /// Color representation that supports ANSI colors and RGB
 pub const Color = union(enum) {
     default,
-    ansi: u8, // 0-15 basic colors  
+    ansi: u8, // 0-15 basic colors
     ansi256: u8, // 0-255 extended palette
     rgb: struct { r: u8, g: u8, b: u8 },
-    
+
     pub fn eql(self: Color, other: Color) bool {
         return switch (self) {
             .default => other == .default,
             .ansi => |c| other == .ansi and other.ansi == c,
             .ansi256 => |c| other == .ansi256 and other.ansi256 == c,
-            .rgb => |rgb| other == .rgb and 
-                other.rgb.r == rgb.r and 
-                other.rgb.g == rgb.g and 
+            .rgb => |rgb| other == .rgb and
+                other.rgb.r == rgb.r and
+                other.rgb.g == rgb.g and
                 other.rgb.b == rgb.b,
         };
     }
-    
+
     /// Convert to ANSI escape sequence
     pub fn toAnsiSeq(self: Color, allocator: std.mem.Allocator, is_bg: bool) ![]u8 {
         var seq = std.ArrayList(u8).init(allocator);
         defer seq.deinit();
-        
+
         const prefix = if (is_bg) "48" else "38";
-        
+
         switch (self) {
             .default => return allocator.dupe(u8, if (is_bg) "49" else "39"),
             .ansi => |c| {
                 if (c < 8) {
-                    try seq.writer().print("{s};5;{d}", .{prefix, c});
+                    try seq.writer().print("{s};5;{d}", .{ prefix, c });
                 } else {
-                    try seq.writer().print("{s};5;{d}", .{prefix, c});
+                    try seq.writer().print("{s};5;{d}", .{ prefix, c });
                 }
             },
             .ansi256 => |c| {
-                try seq.writer().print("{s};5;{d}", .{prefix, c});
+                try seq.writer().print("{s};5;{d}", .{ prefix, c });
             },
             .rgb => |rgb| {
-                try seq.writer().print("{s};2;{d};{d};{d}", .{prefix, rgb.r, rgb.g, rgb.b});
+                try seq.writer().print("{s};2;{d};{d};{d}", .{ prefix, rgb.r, rgb.g, rgb.b });
             },
         }
-        
+
         return seq.toOwnedSlice();
     }
 };
@@ -101,27 +100,27 @@ pub const Color = union(enum) {
 pub const Link = struct {
     url: ?[]const u8 = null,
     params: ?[]const u8 = null,
-    
+
     pub fn isEmpty(self: Link) bool {
         return self.url == null and self.params == null;
     }
-    
+
     pub fn eql(self: Link, other: Link) bool {
         const url_match = blk: {
             if (self.url == null and other.url == null) break :blk true;
             if (self.url == null or other.url == null) break :blk false;
             break :blk std.mem.eql(u8, self.url.?, other.url.?);
         };
-        
+
         const params_match = blk: {
             if (self.params == null and other.params == null) break :blk true;
             if (self.params == null or other.params == null) break :blk false;
             break :blk std.mem.eql(u8, self.params.?, other.params.?);
         };
-        
+
         return url_match and params_match;
     }
-    
+
     pub fn reset(self: *Link) void {
         self.url = null;
         self.params = null;
@@ -135,7 +134,7 @@ pub const Style = struct {
     ul_color: Color = .default, // Underline color
     attrs: AttrMask = .{},
     ul_style: UnderlineStyle = .none,
-    
+
     pub fn eql(self: Style, other: Style) bool {
         return self.fg.eql(other.fg) and
             self.bg.eql(other.bg) and
@@ -143,31 +142,31 @@ pub const Style = struct {
             self.attrs.eql(other.attrs) and
             self.ul_style == other.ul_style;
     }
-    
+
     pub fn isEmpty(self: Style) bool {
-        return self.fg == .default and 
+        return self.fg == .default and
             self.bg == .default and
             self.ul_color == .default and
             self.attrs.isEmpty() and
             self.ul_style == .none;
     }
-    
+
     pub fn reset(self: *Style) void {
         self.* = Style{};
     }
-    
+
     /// Generate ANSI sequence for this style
     pub fn toAnsiSeq(self: Style, allocator: std.mem.Allocator) ![]u8 {
         if (self.isEmpty()) {
             return allocator.dupe(u8, "\x1b[0m");
         }
-        
+
         var seq = std.ArrayList(u8).init(allocator);
         errdefer seq.deinit();
-        
+
         try seq.appendSlice("\x1b[");
         var first = true;
-        
+
         // Attributes
         if (self.attrs.bold) {
             if (!first) try seq.append(';');
@@ -209,14 +208,14 @@ pub const Style = struct {
             try seq.appendSlice("9");
             first = false;
         }
-        
+
         // Underline style
         if (self.ul_style != .none) {
             if (!first) try seq.append(';');
             try seq.appendSlice(self.ul_style.toAnsiCode());
             first = false;
         }
-        
+
         // Colors
         if (self.fg != .default) {
             if (!first) try seq.append(';');
@@ -225,7 +224,7 @@ pub const Style = struct {
             try seq.appendSlice(fg_seq);
             first = false;
         }
-        
+
         if (self.bg != .default) {
             if (!first) try seq.append(';');
             const bg_seq = try self.bg.toAnsiSeq(allocator, true);
@@ -233,20 +232,16 @@ pub const Style = struct {
             try seq.appendSlice(bg_seq);
             first = false;
         }
-        
+
         if (self.ul_color != .default) {
             if (!first) try seq.append(';');
             try seq.appendSlice("58;2;");
             if (self.ul_color == .rgb) {
-                try seq.writer().print("{d};{d};{d}", .{
-                    self.ul_color.rgb.r, 
-                    self.ul_color.rgb.g, 
-                    self.ul_color.rgb.b
-                });
+                try seq.writer().print("{d};{d};{d}", .{ self.ul_color.rgb.r, self.ul_color.rgb.g, self.ul_color.rgb.b });
             }
             first = false;
         }
-        
+
         try seq.append('m');
         return seq.toOwnedSlice();
     }
@@ -264,22 +259,22 @@ pub const Cell = struct {
     style: Style = .{},
     /// Hyperlink data
     link: Link = .{},
-    
+
     pub fn isEmpty(self: Cell) bool {
-        return self.rune == 0 and self.width == 0 and 
+        return self.rune == 0 and self.width == 0 and
             (self.comb == null or self.comb.?.len == 0);
     }
-    
+
     pub fn isWide(self: Cell) bool {
         return self.width > 1;
     }
-    
+
     pub fn isBlank(self: Cell) bool {
-        return self.rune == ' ' and 
+        return self.rune == ' ' and
             (self.comb == null or self.comb.?.len == 0) and
             self.width == 1 and self.style.isEmpty() and self.link.isEmpty();
     }
-    
+
     pub fn eql(self: Cell, other: Cell) bool {
         const comb_match = blk: {
             if (self.comb == null and other.comb == null) break :blk true;
@@ -290,14 +285,14 @@ pub const Cell = struct {
             }
             break :blk true;
         };
-        
+
         return self.rune == other.rune and
             self.width == other.width and
             self.style.eql(other.style) and
             self.link.eql(other.link) and
             comb_match;
     }
-    
+
     pub fn reset(self: *Cell) void {
         self.rune = 0;
         self.comb = null;
@@ -305,35 +300,35 @@ pub const Cell = struct {
         self.style.reset();
         self.link.reset();
     }
-    
+
     pub fn makeBlank(self: *Cell) void {
         self.rune = ' ';
         self.comb = null;
         self.width = 1;
         // Keep style and link
     }
-    
+
     /// Convert cell content to string
     pub fn toString(self: Cell, allocator: std.mem.Allocator) ![]u8 {
         if (self.isEmpty()) return allocator.dupe(u8, "");
-        
+
         var result = std.ArrayList(u8).init(allocator);
         errdefer result.deinit();
-        
+
         var buf: [4]u8 = undefined;
         const len = std.unicode.utf8Encode(self.rune, &buf) catch return result.toOwnedSlice();
         try result.appendSlice(buf[0..len]);
-        
+
         if (self.comb) |comb| {
             for (comb) |c| {
                 const comb_len = std.unicode.utf8Encode(c, &buf) catch continue;
                 try result.appendSlice(buf[0..comb_len]);
             }
         }
-        
+
         return result.toOwnedSlice();
     }
-    
+
     /// Add combining character to this cell
     pub fn addCombining(self: *Cell, allocator: std.mem.Allocator, combining_char: u21) !void {
         if (self.comb == null) {
@@ -353,22 +348,22 @@ pub const Rectangle = struct {
     y: i32,
     width: u32,
     height: u32,
-    
+
     pub fn contains(self: Rectangle, px: i32, py: i32) bool {
         return px >= self.x and px < self.x + @as(i32, @intCast(self.width)) and
-               py >= self.y and py < self.y + @as(i32, @intCast(self.height));
+            py >= self.y and py < self.y + @as(i32, @intCast(self.height));
     }
-    
+
     pub fn intersect(self: Rectangle, other: Rectangle) Rectangle {
         const x1 = @max(self.x, other.x);
         const y1 = @max(self.y, other.y);
         const x2 = @min(self.x + @as(i32, @intCast(self.width)), other.x + @as(i32, @intCast(other.width)));
         const y2 = @min(self.y + @as(i32, @intCast(self.height)), other.y + @as(i32, @intCast(other.height)));
-        
+
         if (x2 <= x1 or y2 <= y1) {
             return Rectangle{ .x = 0, .y = 0, .width = 0, .height = 0 };
         }
-        
+
         return Rectangle{
             .x = x1,
             .y = y1,
@@ -384,18 +379,18 @@ pub const EnhancedCellBuffer = struct {
     width: u32,
     height: u32,
     cells: []Cell,
-    
+
     const Self = @This();
-    
+
     pub fn init(allocator: std.mem.Allocator, width: u32, height: u32) !Self {
         const total = width * height;
         const cells = try allocator.alloc(Cell, total);
-        
+
         // Initialize all cells as empty
         for (cells) |*cell| {
             cell.reset();
         }
-        
+
         return Self{
             .allocator = allocator,
             .width = width,
@@ -403,7 +398,7 @@ pub const EnhancedCellBuffer = struct {
             .cells = cells,
         };
     }
-    
+
     pub fn deinit(self: *Self) void {
         // Free combining characters
         for (self.cells) |*cell| {
@@ -413,31 +408,31 @@ pub const EnhancedCellBuffer = struct {
         }
         self.allocator.free(self.cells);
     }
-    
+
     fn cellIndex(self: Self, x: u32, y: u32) ?usize {
         if (x >= self.width or y >= self.height) return null;
         return y * self.width + x;
     }
-    
+
     pub fn getCell(self: Self, x: u32, y: u32) ?*Cell {
         const idx = self.cellIndex(x, y) orelse return null;
         return &self.cells[idx];
     }
-    
+
     pub fn setCell(self: *Self, x: u32, y: u32, cell: Cell) bool {
         const idx = self.cellIndex(x, y) orelse return false;
-        
+
         // Handle wide character cleanup
         self.cleanupWideCell(x, y);
-        
+
         // Clone the cell data
         var new_cell = cell;
         if (cell.comb) |comb| {
             new_cell.comb = self.allocator.dupe(u21, comb) catch null;
         }
-        
+
         self.cells[idx] = new_cell;
-        
+
         // Mark subsequent cells for wide characters
         if (new_cell.isWide()) {
             var i: u32 = 1;
@@ -446,13 +441,13 @@ pub const EnhancedCellBuffer = struct {
                 self.cells[wide_idx].reset(); // Mark as continuation
             }
         }
-        
+
         return true;
     }
-    
+
     fn cleanupWideCell(self: *Self, x: u32, y: u32) void {
         const current_cell = self.getCell(x, y) orelse return;
-        
+
         // If overwriting a wide character, blank out all its cells
         if (current_cell.isWide()) {
             var i: u32 = 0;
@@ -463,7 +458,7 @@ pub const EnhancedCellBuffer = struct {
                 }
             }
         }
-        
+
         // If overwriting part of a wide character, find and blank the whole thing
         if (current_cell.isEmpty() and x > 0) {
             var check_x = x - 1;
@@ -486,20 +481,20 @@ pub const EnhancedCellBuffer = struct {
             }
         }
     }
-    
+
     pub fn resize(self: *Self, new_width: u32, new_height: u32) !void {
         const new_total = new_width * new_height;
         const new_cells = try self.allocator.alloc(Cell, new_total);
-        
+
         // Initialize new cells
         for (new_cells) |*cell| {
             cell.reset();
         }
-        
+
         // Copy existing content
         const copy_height = @min(self.height, new_height);
         const copy_width = @min(self.width, new_width);
-        
+
         for (0..copy_height) |y| {
             for (0..copy_width) |x| {
                 const old_idx = y * self.width + x;
@@ -509,14 +504,14 @@ pub const EnhancedCellBuffer = struct {
                 self.cells[old_idx].comb = null;
             }
         }
-        
+
         // Free old cells without touching moved combining chars
         self.allocator.free(self.cells);
         self.cells = new_cells;
         self.width = new_width;
         self.height = new_height;
     }
-    
+
     pub fn clear(self: *Self) void {
         for (self.cells) |*cell| {
             if (cell.comb) |comb| {
@@ -525,14 +520,10 @@ pub const EnhancedCellBuffer = struct {
             cell.reset();
         }
     }
-    
+
     pub fn fillRect(self: *Self, rect: Rectangle, cell: Cell) void {
-        const intersected = rect.intersect(Rectangle{
-            .x = 0, .y = 0,
-            .width = self.width,
-            .height = self.height
-        });
-        
+        const intersected = rect.intersect(Rectangle{ .x = 0, .y = 0, .width = self.width, .height = self.height });
+
         var y: u32 = @intCast(intersected.y);
         while (y < @as(u32, @intCast(intersected.y)) + intersected.height) : (y += 1) {
             var x: u32 = @intCast(intersected.x);
@@ -541,14 +532,14 @@ pub const EnhancedCellBuffer = struct {
             }
         }
     }
-    
+
     /// Insert lines at position y, shifting existing content down
     pub fn insertLines(self: *Self, y: u32, count: u32, fill_cell: Cell) void {
         if (y >= self.height or count == 0) return;
-        
+
         const available_lines = self.height - y;
         const actual_count = @min(count, available_lines);
-        
+
         // Shift existing lines down
         var src_y = self.height - 1;
         while (src_y >= y + actual_count) : (src_y -= 1) {
@@ -562,7 +553,7 @@ pub const EnhancedCellBuffer = struct {
             }
             if (src_y == 0) break;
         }
-        
+
         // Fill inserted lines
         for (y..y + actual_count) |line_y| {
             for (0..self.width) |x| {
@@ -570,14 +561,14 @@ pub const EnhancedCellBuffer = struct {
             }
         }
     }
-    
+
     /// Delete lines at position y, shifting remaining content up
     pub fn deleteLines(self: *Self, y: u32, count: u32, fill_cell: Cell) void {
         if (y >= self.height or count == 0) return;
-        
+
         const available_lines = self.height - y;
         const actual_count = @min(count, available_lines);
-        
+
         // Shift lines up
         for (y..self.height - actual_count) |dst_y| {
             const src_y = dst_y + actual_count;
@@ -587,7 +578,7 @@ pub const EnhancedCellBuffer = struct {
                 }
             }
         }
-        
+
         // Fill remaining lines at bottom
         for (self.height - actual_count..self.height) |line_y| {
             for (0..self.width) |x| {
@@ -595,15 +586,15 @@ pub const EnhancedCellBuffer = struct {
             }
         }
     }
-    
+
     /// Convert buffer to string representation
     pub fn toString(self: Self, allocator: std.mem.Allocator) ![]u8 {
         var result = std.ArrayList(u8).init(allocator);
         errdefer result.deinit();
-        
+
         for (0..self.height) |y| {
             if (y > 0) try result.appendSlice("\r\n");
-            
+
             for (0..self.width) |x| {
                 if (self.getCell(@intCast(x), @intCast(y))) |cell| {
                     if (!cell.isEmpty()) {
@@ -615,13 +606,13 @@ pub const EnhancedCellBuffer = struct {
                     }
                 }
             }
-            
+
             // Trim trailing spaces
             while (result.items.len > 0 and result.items[result.items.len - 1] == ' ') {
                 _ = result.pop();
             }
         }
-        
+
         return result.toOwnedSlice();
     }
 };

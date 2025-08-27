@@ -15,7 +15,7 @@ pub const Section = core.Section;
 pub const TextInput = core.TextInput;
 pub const TabContainer = core.TabContainer;
 
-// Enhanced widgets  
+// Enhanced widgets
 pub const GraphicsWidget = enhanced.GraphicsWidget;
 pub const SmartNotification = enhanced.SmartNotification;
 pub const SmartNotificationManager = enhanced.SmartNotificationManager;

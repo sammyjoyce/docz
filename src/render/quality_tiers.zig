@@ -4,7 +4,6 @@ const RenderMode = AdaptiveRenderer.RenderMode;
 
 /// Defines quality tiers and characteristics for different rendering modes
 pub const QualityTiers = struct {
-    
     /// Progress bar rendering characteristics for each mode
     pub const ProgressBar = struct {
         pub const enhanced = ProgressBarConfig{
@@ -20,7 +19,7 @@ pub const QualityTiers = struct {
             .supports_eta = true,
             .width = 40,
         };
-        
+
         pub const standard = ProgressBarConfig{
             .use_gradient = false,
             .use_animations = false,
@@ -34,7 +33,7 @@ pub const QualityTiers = struct {
             .supports_eta = true,
             .width = 30,
         };
-        
+
         pub const compatible = ProgressBarConfig{
             .use_gradient = false,
             .use_animations = false,
@@ -48,7 +47,7 @@ pub const QualityTiers = struct {
             .supports_eta = false,
             .width = 20,
         };
-        
+
         pub const minimal = ProgressBarConfig{
             .use_gradient = false,
             .use_animations = false,
@@ -62,7 +61,7 @@ pub const QualityTiers = struct {
             .supports_eta = false,
             .width = 0,
         };
-        
+
         pub fn getConfig(mode: RenderMode) ProgressBarConfig {
             return switch (mode) {
                 .enhanced => enhanced,
@@ -72,7 +71,7 @@ pub const QualityTiers = struct {
             };
         }
     };
-    
+
     /// Table rendering characteristics for each mode
     pub const Table = struct {
         pub const enhanced = TableConfig{
@@ -84,7 +83,7 @@ pub const QualityTiers = struct {
             .supports_sorting_indicators = true,
             .border_style = .rounded_heavy,
         };
-        
+
         pub const standard = TableConfig{
             .use_box_drawing = true,
             .use_rounded_corners = false,
@@ -94,7 +93,7 @@ pub const QualityTiers = struct {
             .supports_sorting_indicators = true,
             .border_style = .double_line,
         };
-        
+
         pub const compatible = TableConfig{
             .use_box_drawing = false,
             .use_rounded_corners = false,
@@ -104,7 +103,7 @@ pub const QualityTiers = struct {
             .supports_sorting_indicators = false,
             .border_style = .ascii,
         };
-        
+
         pub const minimal = TableConfig{
             .use_box_drawing = false,
             .use_rounded_corners = false,
@@ -114,7 +113,7 @@ pub const QualityTiers = struct {
             .supports_sorting_indicators = false,
             .border_style = .none,
         };
-        
+
         pub fn getConfig(mode: RenderMode) TableConfig {
             return switch (mode) {
                 .enhanced => enhanced,
@@ -124,7 +123,7 @@ pub const QualityTiers = struct {
             };
         }
     };
-    
+
     /// Chart rendering characteristics for each mode
     pub const Chart = struct {
         pub const enhanced = ChartConfig{
@@ -137,7 +136,7 @@ pub const QualityTiers = struct {
             .max_resolution = .{ .width = 800, .height = 400 },
             .render_style = .graphics,
         };
-        
+
         pub const standard = ChartConfig{
             .use_graphics = false,
             .use_gradients = false,
@@ -148,7 +147,7 @@ pub const QualityTiers = struct {
             .max_resolution = .{ .width = 80, .height = 20 },
             .render_style = .unicode_blocks,
         };
-        
+
         pub const compatible = ChartConfig{
             .use_graphics = false,
             .use_gradients = false,
@@ -159,7 +158,7 @@ pub const QualityTiers = struct {
             .max_resolution = .{ .width = 60, .height = 15 },
             .render_style = .ascii_art,
         };
-        
+
         pub const minimal = ChartConfig{
             .use_graphics = false,
             .use_gradients = false,
@@ -170,7 +169,7 @@ pub const QualityTiers = struct {
             .max_resolution = .{ .width = 40, .height = 10 },
             .render_style = .text_summary,
         };
-        
+
         pub fn getConfig(mode: RenderMode) ChartConfig {
             return switch (mode) {
                 .enhanced => enhanced,
@@ -191,7 +190,7 @@ pub const ProgressBarConfig = struct {
     supports_percentage: bool,
     supports_eta: bool,
     width: u8,
-    
+
     pub const BarCharSet = struct {
         filled: []const u8,
         partial: []const []const u8,
@@ -208,14 +207,14 @@ pub const TableConfig = struct {
     supports_color: bool,
     supports_sorting_indicators: bool,
     border_style: BorderStyle,
-    
+
     pub const BorderStyle = enum {
         none,
         ascii,
         single_line,
         double_line,
         rounded_heavy,
-        
+
         pub fn getChars(self: BorderStyle) BorderChars {
             return switch (self) {
                 .none => BorderChars{
@@ -286,7 +285,7 @@ pub const TableConfig = struct {
             };
         }
     };
-    
+
     pub const BorderChars = struct {
         horizontal: []const u8,
         vertical: []const u8,
@@ -312,16 +311,16 @@ pub const ChartConfig = struct {
     supports_tooltips: bool,
     max_resolution: Resolution,
     render_style: RenderStyle,
-    
+
     pub const Resolution = struct {
         width: u16,
         height: u16,
     };
-    
+
     pub const RenderStyle = enum {
-        graphics,        // Kitty/Sixel graphics
-        unicode_blocks,  // Unicode block characters
-        ascii_art,       // ASCII character art
-        text_summary,    // Plain text data summary
+        graphics, // Kitty/Sixel graphics
+        unicode_blocks, // Unicode block characters
+        ascii_art, // ASCII character art
+        text_summary, // Plain text data summary
     };
 };

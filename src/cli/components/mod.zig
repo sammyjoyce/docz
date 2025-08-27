@@ -13,9 +13,9 @@ pub const base = struct {
     pub const StatusIndicator = @import("base/status_indicator.zig");
     pub const BreadcrumbTrail = @import("base/breadcrumb_trail.zig");
     pub const ClipboardManager = @import("base/clipboard_manager.zig");
-    pub const InputManager = @import("base/input_manager.zig");
-    pub const EnhancedSelectMenu = @import("base/enhanced_select_menu.zig");
-    pub const RichProgressBar = @import("base/rich_progress_bar.zig");
+    // pub const InputManager = @import("base/input_manager.zig"); // Temporarily disabled due to module conflict
+    // pub const EnhancedSelectMenu = @import("base/enhanced_select_menu.zig"); // Temporarily disabled due to module conflict
+    // pub const RichProgressBar = @import("base/rich_progress_bar.zig"); // Temporarily disabled due to module conflict
 };
 
 // Convenience re-exports for common components
@@ -31,9 +31,9 @@ pub const InfoPanel = base.InfoPanel;
 pub const StatusIndicator = base.StatusIndicator;
 pub const BreadcrumbTrail = base.BreadcrumbTrail;
 pub const ClipboardManager = base.ClipboardManager;
-pub const InputManager = base.InputManager;
-pub const EnhancedSelectMenu = base.EnhancedSelectMenu;
-pub const RichProgressBar = base.RichProgressBar;
+// pub const InputManager = base.InputManager; // Temporarily disabled due to module conflict
+// pub const EnhancedSelectMenu = base.EnhancedSelectMenu; // Temporarily disabled due to module conflict
+// pub const RichProgressBar = base.RichProgressBar; // Temporarily disabled due to module conflict
 
 // Component types and utilities
 pub const InputEvent = base.InputManager.InputEvent;

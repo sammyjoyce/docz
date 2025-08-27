@@ -22,14 +22,14 @@ pub const EventSystem = struct {
     window_resize_handlers: std.ArrayListUnmanaged(WindowResizeHandler),
     keyboard_handlers: std.ArrayListUnmanaged(KeyboardHandler),
     mouse_handlers: std.ArrayListUnmanaged(MouseHandler),
-    
+
     // Focus state
     has_focus: bool,
-    
+
     // Paste state
     paste_buffer: std.ArrayListUnmanaged(u8),
     is_pasting: bool,
-    
+
     pub fn init(allocator: std.mem.Allocator) EventSystem {
         return EventSystem{
             .allocator = allocator,
@@ -44,7 +44,7 @@ pub const EventSystem = struct {
             .is_pasting = false,
         };
     }
-    
+
     pub fn deinit(self: *EventSystem) void {
         self.parser.deinit();
         self.focus_handlers.deinit(self.allocator);
@@ -54,7 +54,7 @@ pub const EventSystem = struct {
         self.mouse_handlers.deinit(self.allocator);
         self.paste_buffer.deinit(self.allocator);
     }
-    
+
     /// Process raw input data and dispatch events
     pub fn processInput(self: *EventSystem, data: []const u8) !void {
         const events = try self.parser.parse(data);
@@ -69,12 +69,12 @@ pub const EventSystem = struct {
             }
             self.allocator.free(events);
         }
-        
+
         for (events) |event| {
             try self.dispatchEvent(event);
         }
     }
-    
+
     fn dispatchEvent(self: *EventSystem, event: InputEvent) !void {
         switch (event) {
             .key_press => |key_event| {
@@ -119,7 +119,7 @@ pub const EventSystem = struct {
                 self.is_pasting = false;
                 const paste_content = try self.paste_buffer.toOwnedSlice(self.allocator);
                 defer self.allocator.free(paste_content);
-                
+
                 for (self.paste_handlers.items) |handler| {
                     handler.func(paste_content);
                 }
@@ -132,37 +132,37 @@ pub const EventSystem = struct {
             .unknown => {},
         }
     }
-    
+
     /// Register focus event handler
     pub fn addFocusHandler(self: *EventSystem, handler: FocusHandler) !void {
         try self.focus_handlers.append(self.allocator, handler);
     }
-    
+
     /// Register paste event handler
     pub fn addPasteHandler(self: *EventSystem, handler: PasteHandler) !void {
         try self.paste_handlers.append(self.allocator, handler);
     }
-    
+
     /// Register window resize handler
     pub fn addWindowResizeHandler(self: *EventSystem, handler: WindowResizeHandler) !void {
         try self.window_resize_handlers.append(self.allocator, handler);
     }
-    
+
     /// Register keyboard event handler
     pub fn addKeyboardHandler(self: *EventSystem, handler: KeyboardHandler) !void {
         try self.keyboard_handlers.append(self.allocator, handler);
     }
-    
+
     /// Register mouse event handler
     pub fn addMouseHandler(self: *EventSystem, handler: MouseHandler) !void {
         try self.mouse_handlers.append(self.allocator, handler);
     }
-    
+
     /// Get current focus state
     pub fn hasFocus(self: *const EventSystem) bool {
         return self.has_focus;
     }
-    
+
     /// Check if currently in bracketed paste mode
     pub fn isPasting(self: *const EventSystem) bool {
         return self.is_pasting;
@@ -201,7 +201,7 @@ pub const compat = struct {
     /// Convert enhanced key event to legacy key event (for backward compatibility)
     pub fn toLegacyKeyEvent(enhanced: KeyPressEvent) ?@import("../events.zig").KeyEvent {
         const legacy_events = @import("../events.zig");
-        
+
         const key: legacy_events.KeyEvent.Key = switch (enhanced.code) {
             .escape => .escape,
             .enter => .enter,
@@ -246,7 +246,7 @@ pub const compat = struct {
                 return null;
             },
         };
-        
+
         return legacy_events.KeyEvent{
             .key = key,
             .modifiers = .{
@@ -257,12 +257,12 @@ pub const compat = struct {
             },
         };
     }
-    
+
     /// Convert enhanced mouse event to legacy mouse event (for backward compatibility)
     pub fn toLegacyMouseEvent(enhanced: MouseEvent) ?@import("../events.zig").MouseEvent {
         const legacy_events = @import("../events.zig");
         const mouse = enhanced.mouse();
-        
+
         const button: legacy_events.MouseEvent.Button = switch (enhanced) {
             .mouse => |m| switch (m.button) {
                 .left => .left,
@@ -273,7 +273,7 @@ pub const compat = struct {
             .scroll => |s| if (s.direction == .up) .scroll_up else .scroll_down,
             else => return null,
         };
-        
+
         const action: legacy_events.MouseEvent.Action = switch (enhanced) {
             .mouse => |m| switch (m.action) {
                 .press => .press,
@@ -283,7 +283,7 @@ pub const compat = struct {
             .scroll => .scroll,
             else => return null,
         };
-        
+
         return legacy_events.MouseEvent{
             .button = button,
             .action = action,
@@ -302,7 +302,7 @@ pub const compat = struct {
 test "enhanced event system initialization" {
     var event_system = EventSystem.init(std.testing.allocator);
     defer event_system.deinit();
-    
+
     try std.testing.expect(event_system.hasFocus());
     try std.testing.expect(!event_system.isPasting());
 }
@@ -310,19 +310,19 @@ test "enhanced event system initialization" {
 test "focus event handling" {
     var event_system = EventSystem.init(std.testing.allocator);
     defer event_system.deinit();
-    
+
     const TestContext = struct {
         focus_received: bool = false,
-        
+
         fn handle(ctx: *@This(), has_focus: bool) void {
             _ = has_focus;
             ctx.focus_received = true;
         }
     };
-    
+
     var test_ctx = TestContext{};
     _ = &test_ctx; // Make it mutable
-    
+
     const handler = FocusHandler{
         .func = struct {
             fn handle(has_focus: bool) void {
@@ -331,9 +331,9 @@ test "focus event handling" {
             }
         }.handle,
     };
-    
+
     try event_system.addFocusHandler(handler);
-    
+
     // Test handler registration
     try std.testing.expect(event_system.focus_handlers.items.len == 1);
 }

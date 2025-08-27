@@ -3,7 +3,6 @@ const builtin = @import("builtin");
 
 /// Modern terminal capability detection system
 /// Detects advanced features of contemporary terminals like Kitty, Alacritty, iTerm2, WezTerm, etc.
-
 /// Terminal types with their modern capabilities
 pub const TerminalType = enum {
     unknown,
@@ -50,54 +49,54 @@ pub const TerminalType = enum {
 pub const TerminalCapabilities = struct {
     /// Terminal type detected
     terminal_type: TerminalType = .unknown,
-    
+
     /// Color support levels
     supports_24bit_color: bool = false,
     supports_256_color: bool = false,
     supports_16_color: bool = true, // Most terminals support at least 16 colors
-    
+
     /// Advanced text styling
     supports_italic: bool = false,
     supports_strikethrough: bool = false,
     supports_underline_styles: bool = false, // Curly, double, colored underlines
     supports_hyperlinks: bool = false,
-    
-    /// Cursor capabilities  
+
+    /// Cursor capabilities
     supports_cursor_shapes: bool = false,
     supports_cursor_blinking: bool = false,
     supports_cursor_colors: bool = false,
-    
+
     /// Window/screen capabilities
     supports_window_title: bool = false,
     supports_resize_events: bool = false,
     supports_focus_events: bool = false,
     supports_bracketed_paste: bool = false,
     supports_synchronized_output: bool = false,
-    
+
     /// Mouse support
     supports_mouse: bool = false,
     supports_mouse_sgr: bool = false, // SGR (1006) mouse mode
     supports_mouse_pixels: bool = false, // Pixel-precise mouse coordinates
-    
+
     /// Keyboard enhancements
     supports_kitty_keyboard: bool = false,
     supports_win32_input: bool = false,
     supports_alt_screen: bool = false,
-    
+
     /// Graphics and images
     supports_images: bool = false,
     supports_sixel: bool = false,
     supports_kitty_graphics: bool = false,
     supports_iterm2_images: bool = false,
-    
+
     /// Terminal size and positioning
     terminal_width: u16 = 80,
     terminal_height: u16 = 24,
-    
+
     /// Performance features
     supports_unicode: bool = true,
     supports_bce: bool = false, // Background Color Erase
-    
+
     /// Terminal-specific features
     kitty_version: ?[]const u8 = null,
     iterm2_version: ?[]const u8 = null,
@@ -141,25 +140,26 @@ pub fn detectTerminalType() TerminalType {
     for (TERMINAL_PATTERNS) |pattern| {
         if (std.process.getEnvVarOwned(std.heap.page_allocator, pattern.env_var)) |env_value| {
             defer std.heap.page_allocator.free(env_value);
-            
+
             if (pattern.pattern.len == 0 or std.mem.indexOf(u8, env_value, pattern.pattern) != null) {
                 return pattern.terminal_type;
             }
         } else |_| {}
     }
-    
+
     // Check TERM variable patterns
     for (TERM_PATTERNS) |pattern| {
         if (std.process.getEnvVarOwned(std.heap.page_allocator, pattern.env_var)) |env_value| {
             defer std.heap.page_allocator.free(env_value);
-            
-            if (std.mem.eql(u8, env_value, pattern.pattern) or 
-                std.mem.indexOf(u8, env_value, pattern.pattern) != null) {
+
+            if (std.mem.eql(u8, env_value, pattern.pattern) or
+                std.mem.indexOf(u8, env_value, pattern.pattern) != null)
+            {
                 return pattern.terminal_type;
             }
         } else |_| {}
     }
-    
+
     return .unknown;
 }
 
@@ -179,12 +179,12 @@ fn getTerminalSizeUnix() !struct { width: u16, height: u16 } {
         @cInclude("sys/ioctl.h");
         @cInclude("unistd.h");
     });
-    
+
     var ws: c.winsize = undefined;
     if (c.ioctl(c.STDOUT_FILENO, c.TIOCGWINSZ, &ws) == 0) {
         return .{ .width = ws.ws_col, .height = ws.ws_row };
     }
-    
+
     return error.IoctlFailed;
 }
 
@@ -192,36 +192,36 @@ fn getTerminalSizeWindows() !struct { width: u16, height: u16 } {
     // Windows Console API implementation
     const kernel32 = std.os.windows.kernel32;
     const STDOUT_HANDLE = kernel32.GetStdHandle(std.os.windows.STD_OUTPUT_HANDLE);
-    
+
     var csbi: std.os.windows.CONSOLE_SCREEN_BUFFER_INFO = undefined;
     if (kernel32.GetConsoleScreenBufferInfo(STDOUT_HANDLE, &csbi) != 0) {
         const width = @as(u16, @intCast(csbi.srWindow.Right - csbi.srWindow.Left + 1));
         const height = @as(u16, @intCast(csbi.srWindow.Bottom - csbi.srWindow.Top + 1));
         return .{ .width = width, .height = height };
     }
-    
+
     return error.GetConsoleInfoFailed;
 }
 
 /// Detect comprehensive terminal capabilities
 pub fn detectCapabilities(allocator: std.mem.Allocator) !TerminalCapabilities {
     var caps = TerminalCapabilities{};
-    
+
     // Detect terminal type
     caps.terminal_type = detectTerminalType();
-    
+
     // Get terminal size
     const size = getTerminalSize();
     caps.terminal_width = size.width;
     caps.terminal_height = size.height;
-    
+
     // Set capabilities based on terminal type
     setCoreCapabilities(&caps);
-    
+
     // Environment-based capability detection
     detectColorSupport(&caps);
     detectSpecialFeatures(&caps, allocator);
-    
+
     return caps;
 }
 
@@ -391,11 +391,11 @@ fn detectColorSupport(caps: *TerminalCapabilities) void {
             caps.supports_24bit_color = true;
         }
     } else |_| {}
-    
+
     // Check TERM for color support indicators
     if (std.process.getEnvVarOwned(std.heap.page_allocator, "TERM")) |term| {
         defer std.heap.page_allocator.free(term);
-        
+
         if (std.mem.indexOf(u8, term, "256color") != null) {
             caps.supports_256_color = true;
         } else if (std.mem.indexOf(u8, term, "color") != null) {
@@ -407,7 +407,7 @@ fn detectColorSupport(caps: *TerminalCapabilities) void {
 /// Detect special features from environment
 fn detectSpecialFeatures(caps: *TerminalCapabilities, allocator: std.mem.Allocator) void {
     _ = allocator; // For future use
-    
+
     // Check for specific version information
     if (std.process.getEnvVarOwned(std.heap.page_allocator, "KITTY_VERSION")) |version| {
         // Note: In real implementation, we'd clone this string with the passed allocator
@@ -415,12 +415,12 @@ fn detectSpecialFeatures(caps: *TerminalCapabilities, allocator: std.mem.Allocat
         defer std.heap.page_allocator.free(version);
         // caps.kitty_version would be set here with proper allocation
     } else |_| {}
-    
+
     if (std.process.getEnvVarOwned(std.heap.page_allocator, "TERM_PROGRAM_VERSION")) |version| {
         defer std.heap.page_allocator.free(version);
         // Version info would be stored here
     } else |_| {}
-    
+
     // Force enable certain features in SSH sessions
     if (std.process.getEnvVarOwned(std.heap.page_allocator, "SSH_CONNECTION")) |_| {
         // Conservative settings for SSH
@@ -444,8 +444,8 @@ pub fn supportsTrueColor(caps: *const TerminalCapabilities) bool {
 }
 
 pub fn supportsImages(caps: *const TerminalCapabilities) bool {
-    return caps.supports_images or caps.supports_sixel or 
-           caps.supports_kitty_graphics or caps.supports_iterm2_images;
+    return caps.supports_images or caps.supports_sixel or
+        caps.supports_kitty_graphics or caps.supports_iterm2_images;
 }
 
 pub fn supportsAdvancedMouse(caps: *const TerminalCapabilities) bool {
@@ -453,17 +453,17 @@ pub fn supportsAdvancedMouse(caps: *const TerminalCapabilities) bool {
 }
 
 pub fn isModernTerminal(caps: *const TerminalCapabilities) bool {
-    return caps.supports_24bit_color and caps.supports_unicode and 
-           caps.supports_bracketed_paste and caps.supports_mouse_sgr;
+    return caps.supports_24bit_color and caps.supports_unicode and
+        caps.supports_bracketed_paste and caps.supports_mouse_sgr;
 }
 
 /// Generate capability report string for debugging
 pub fn generateCapabilityReport(caps: *const TerminalCapabilities, allocator: std.mem.Allocator) ![]u8 {
     var report = std.ArrayList(u8){};
     defer report.deinit(allocator);
-    
+
     const writer = report.writer(allocator);
-    
+
     try writer.print("Terminal Type: {s}\n", .{caps.terminal_type.name()});
     try writer.print("Terminal Size: {}x{}\n", .{ caps.terminal_width, caps.terminal_height });
     try writer.print("Color Support:\n", .{});
@@ -490,7 +490,7 @@ pub fn generateCapabilityReport(caps: *const TerminalCapabilities, allocator: st
     try writer.print("  Focus events: {}\n", .{caps.supports_focus_events});
     try writer.print("  Resize events: {}\n", .{caps.supports_resize_events});
     try writer.print("  Unicode: {}\n", .{caps.supports_unicode});
-    
+
     return try report.toOwnedSlice(allocator);
 }
 
@@ -507,7 +507,7 @@ test "capability initialization" {
     var caps = TerminalCapabilities{};
     caps.terminal_type = .kitty;
     setCoreCapabilities(&caps);
-    
+
     try testing.expect(caps.supports_24bit_color);
     try testing.expect(caps.supports_kitty_graphics);
     try testing.expect(caps.supports_unicode);
@@ -517,7 +517,7 @@ test "modern terminal detection" {
     var caps = TerminalCapabilities{};
     caps.terminal_type = .kitty;
     setCoreCapabilities(&caps);
-    
+
     try testing.expect(isModernTerminal(&caps));
     try testing.expect(supportsTrueColor(&caps));
     try testing.expect(supportsImages(&caps));
@@ -528,10 +528,10 @@ test "capability report generation" {
     var caps = TerminalCapabilities{};
     caps.terminal_type = .kitty;
     setCoreCapabilities(&caps);
-    
+
     const report = try generateCapabilityReport(&caps, allocator);
     defer allocator.free(report);
-    
+
     try testing.expect(std.mem.indexOf(u8, report, "kitty") != null);
     try testing.expect(std.mem.indexOf(u8, report, "24-bit color: true") != null);
 }

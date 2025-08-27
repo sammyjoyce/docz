@@ -1,13 +1,12 @@
 /// Enhanced input event handler inspired by charmbracelet/x input
 /// Provides advanced input parsing with multi-event support and bracketed paste
 /// Compatible with Zig 0.15.1 and follows proper error handling patterns
-
 const std = @import("std");
 
 /// Input event types
 pub const Event = union(enum) {
     key_press: KeyEvent,
-    paste: PasteEvent, 
+    paste: PasteEvent,
     paste_start: void,
     paste_end: void,
     mouse: MouseEvent,
@@ -19,7 +18,7 @@ pub const Event = union(enum) {
     pub fn format(self: Event, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
         _ = fmt;
         _ = options;
-        
+
         switch (self) {
             .key_press => |key| try writer.print("KeyPress({s})", .{key.key}),
             .paste => |paste| try writer.print("Paste({d} runes)", .{paste.content.len}),
@@ -38,7 +37,7 @@ pub const Event = union(enum) {
 pub const KeyEvent = struct {
     key: []const u8,
     modifiers: KeyModifiers = .{},
-    
+
     pub const KeyModifiers = struct {
         ctrl: bool = false,
         alt: bool = false,
@@ -51,22 +50,22 @@ pub const KeyEvent = struct {
 pub const PasteEvent = struct {
     content: []const u21, // Unicode codepoints
     allocator: std.mem.Allocator,
-    
+
     pub fn deinit(self: *PasteEvent) void {
         self.allocator.free(self.content);
     }
-    
+
     /// Convert paste content to UTF-8 string
     pub fn toUtf8(self: PasteEvent, allocator: std.mem.Allocator) ![]u8 {
         var result = std.ArrayList(u8).init(allocator);
         errdefer result.deinit();
-        
+
         for (self.content) |codepoint| {
             var buf: [4]u8 = undefined;
             const len = try std.unicode.utf8Encode(codepoint, &buf);
             try result.appendSlice(buf[0..len]);
         }
-        
+
         return result.toOwnedSlice();
     }
 };
@@ -78,7 +77,7 @@ pub const MouseEvent = struct {
     y: u16,
     button: MouseButton = .none,
     modifiers: KeyEvent.KeyModifiers = .{},
-    
+
     pub const MouseAction = enum {
         press,
         release,
@@ -89,7 +88,7 @@ pub const MouseEvent = struct {
         wheel_left,
         wheel_right,
     };
-    
+
     pub const MouseButton = enum {
         none,
         left,
@@ -110,7 +109,7 @@ pub const ResizeEvent = struct {
 pub const UnknownEvent = struct {
     sequence: []const u8,
     allocator: std.mem.Allocator,
-    
+
     pub fn deinit(self: *UnknownEvent) void {
         self.allocator.free(self.sequence);
     }
@@ -120,7 +119,7 @@ pub const UnknownEvent = struct {
 pub const MultiEvent = struct {
     events: []Event,
     allocator: std.mem.Allocator,
-    
+
     pub fn deinit(self: *MultiEvent) void {
         for (self.events) |*event| {
             switch (event.*) {
@@ -138,41 +137,41 @@ pub const EnhancedInputParser = struct {
     allocator: std.mem.Allocator,
     paste_buffer: ?std.ArrayList(u8) = null,
     logger: ?Logger = null,
-    
+
     const Self = @This();
-    
+
     /// Simple logger interface
     pub const Logger = struct {
         logFn: *const fn (ctx: ?*anyopaque, comptime format: []const u8, args: anytype) void,
         context: ?*anyopaque = null,
-        
+
         pub fn log(self: Logger, comptime format: []const u8, args: anytype) void {
             self.logFn(self.context, format, args);
         }
     };
-    
+
     pub fn init(allocator: std.mem.Allocator) Self {
         return Self{
             .allocator = allocator,
         };
     }
-    
+
     pub fn deinit(self: *Self) void {
         if (self.paste_buffer) |*buffer| {
             buffer.deinit();
         }
     }
-    
+
     pub fn setLogger(self: *Self, logger: Logger) void {
         self.logger = logger;
     }
-    
+
     /// Parse input sequence into events
     pub fn parseSequence(self: *Self, input: []const u8) ![]Event {
         if (self.logger) |logger| {
             logger.log("input: parsing {d} bytes: {s}", .{ input.len, std.fmt.fmtSliceEscapeLower(input) });
         }
-        
+
         var events = std.ArrayList(Event).init(self.allocator);
         errdefer {
             for (events.items) |*event| {
@@ -184,11 +183,11 @@ pub const EnhancedInputParser = struct {
             }
             events.deinit();
         }
-        
+
         var i: usize = 0;
         while (i < input.len) {
             const bytes_consumed, const event = try self.parseOneEvent(input[i..]);
-            
+
             if (event) |ev| {
                 // Handle bracketed paste mode
                 if (self.paste_buffer != null) {
@@ -204,7 +203,7 @@ pub const EnhancedInputParser = struct {
                         },
                         else => {
                             // Accumulate data during paste
-                            try self.accumulatePasteData(input[i..i+bytes_consumed]);
+                            try self.accumulatePasteData(input[i .. i + bytes_consumed]);
                         },
                     }
                 } else {
@@ -219,54 +218,54 @@ pub const EnhancedInputParser = struct {
                     }
                 }
             }
-            
+
             i += @max(1, bytes_consumed);
         }
-        
+
         return events.toOwnedSlice();
     }
-    
+
     /// Parse a single event from input
     fn parseOneEvent(self: *Self, input: []const u8) !struct { usize, ?Event } {
         if (input.len == 0) return .{ 0, null };
-        
+
         // ESC sequences
         if (input[0] == 0x1B) {
             return try self.parseEscapeSequence(input);
         }
-        
+
         // Control characters
         if (input[0] < 0x20) {
             return try self.parseControlChar(input);
         }
-        
+
         // Regular printable characters
         return try self.parseRegularChar(input);
     }
-    
+
     /// Parse escape sequences
     fn parseEscapeSequence(self: *Self, input: []const u8) !struct { usize, ?Event } {
         if (input.len < 2) return .{ 1, .{ .unknown = .{ .sequence = try self.allocator.dupe(u8, input), .allocator = self.allocator } } };
-        
+
         // CSI sequences (ESC [)
         if (input[1] == '[') {
             return try self.parseCSISequence(input);
         }
-        
-        // OSC sequences (ESC ])  
+
+        // OSC sequences (ESC ])
         if (input[1] == ']') {
             return try self.parseOSCSequence(input);
         }
-        
+
         // Simple ESC + char combinations
         if (input.len >= 2) {
             const key_name = try std.fmt.allocPrint(self.allocator, "alt+{c}", .{input[1]});
             return .{ 2, .{ .key_press = .{ .key = key_name, .modifiers = .{ .alt = true } } } };
         }
-        
+
         return .{ 1, .{ .unknown = .{ .sequence = try self.allocator.dupe(u8, input[0..1]), .allocator = self.allocator } } };
     }
-    
+
     /// Parse CSI (Control Sequence Introducer) sequences
     fn parseCSISequence(self: *Self, input: []const u8) !struct { usize, ?Event } {
         // Find the end of the CSI sequence
@@ -279,24 +278,24 @@ pub const EnhancedInputParser = struct {
             }
             end += 1;
         }
-        
+
         if (end > input.len) {
             return .{ input.len, .{ .unknown = .{ .sequence = try self.allocator.dupe(u8, input), .allocator = self.allocator } } };
         }
-        
+
         const sequence = input[0..end];
-        
+
         // Mouse sequences
         if (sequence.len >= 6 and sequence[2] == 'M') {
             return try self.parseMouseEvent(sequence);
         }
-        
+
         // Window resize
         if (std.mem.eql(u8, sequence, "\x1b[8;")) {
             // This is incomplete - need full implementation
             return .{ end, null };
         }
-        
+
         // Focus events
         if (std.mem.eql(u8, sequence, "\x1b[I")) {
             return .{ end, .{ .focus_in = {} } };
@@ -304,7 +303,7 @@ pub const EnhancedInputParser = struct {
         if (std.mem.eql(u8, sequence, "\x1b[O")) {
             return .{ end, .{ .focus_out = {} } };
         }
-        
+
         // Bracketed paste
         if (std.mem.startsWith(u8, sequence, "\x1b[200~")) {
             return .{ end, .{ .paste_start = {} } };
@@ -312,8 +311,8 @@ pub const EnhancedInputParser = struct {
         if (std.mem.startsWith(u8, sequence, "\x1b[201~")) {
             return .{ end, .{ .paste_end = {} } };
         }
-        
-        // Arrow keys and function keys  
+
+        // Arrow keys and function keys
         if (sequence.len >= 3) {
             const final_char = sequence[sequence.len - 1];
             switch (final_char) {
@@ -326,10 +325,10 @@ pub const EnhancedInputParser = struct {
                 else => {},
             }
         }
-        
+
         return .{ end, .{ .unknown = .{ .sequence = try self.allocator.dupe(u8, sequence), .allocator = self.allocator } } };
     }
-    
+
     /// Parse OSC (Operating System Command) sequences
     fn parseOSCSequence(self: *Self, input: []const u8) !struct { usize, ?Event } {
         // Find terminator (BEL or ST)
@@ -345,17 +344,17 @@ pub const EnhancedInputParser = struct {
             }
             end += 1;
         }
-        
+
         return .{ end, .{ .unknown = .{ .sequence = try self.allocator.dupe(u8, input[0..end]), .allocator = self.allocator } } };
     }
-    
+
     /// Parse control characters
     fn parseControlChar(self: *Self, input: []const u8) !struct { usize, ?Event } {
         const char = input[0];
-        
+
         const key_name = switch (char) {
             0x01 => "ctrl+a",
-            0x02 => "ctrl+b", 
+            0x02 => "ctrl+b",
             0x03 => "ctrl+c",
             0x04 => "ctrl+d",
             0x05 => "ctrl+e",
@@ -387,31 +386,31 @@ pub const EnhancedInputParser = struct {
             0x1F => "ctrl+_",
             else => null,
         };
-        
+
         if (key_name) |name| {
-            return .{ 1, .{ .key_press = .{ 
+            return .{ 1, .{ .key_press = .{
                 .key = try self.allocator.dupe(u8, name),
                 .modifiers = if (std.mem.startsWith(u8, name, "ctrl+")) .{ .ctrl = true } else .{},
             } } };
         }
-        
+
         return .{ 1, .{ .unknown = .{ .sequence = try self.allocator.dupe(u8, input[0..1]), .allocator = self.allocator } } };
     }
-    
+
     /// Parse regular printable characters
     fn parseRegularChar(self: *Self, input: []const u8) !struct { usize, ?Event } {
         // Handle UTF-8 sequences
         const seq_len = std.unicode.utf8ByteSequenceLength(input[0]) catch 1;
         const end = @min(seq_len, input.len);
-        
+
         const char_data = input[0..end];
-        
+
         // Convert to string for the key name
         const key_name = try self.allocator.dupe(u8, char_data);
-        
+
         return .{ end, .{ .key_press = .{ .key = key_name } } };
     }
-    
+
     /// Parse mouse event from CSI sequence
     fn parseMouseEvent(self: *Self, sequence: []const u8) !struct { usize, ?Event } {
         // Basic mouse parsing - would need full implementation for production use
@@ -419,34 +418,34 @@ pub const EnhancedInputParser = struct {
             const button_byte = sequence[3];
             const x = sequence[4] -% 32; // Remove bias
             const y = sequence[5] -% 32;
-            
+
             const button: MouseEvent.MouseButton = switch (button_byte & 0x03) {
                 0 => .left,
                 1 => .middle,
                 2 => .right,
                 else => .none,
             };
-            
+
             const action: MouseEvent.MouseAction = if (button_byte & 0x20 != 0) .motion else .press;
-            
-            return .{ sequence.len, .{ .mouse = .{ 
+
+            return .{ sequence.len, .{ .mouse = .{
                 .action = action,
                 .x = x,
                 .y = y,
                 .button = button,
             } } };
         }
-        
+
         return .{ sequence.len, .{ .unknown = .{ .sequence = try self.allocator.dupe(u8, sequence), .allocator = self.allocator } } };
     }
-    
+
     /// Accumulate paste data
     fn accumulatePasteData(self: *Self, data: []const u8) !void {
         if (self.paste_buffer) |*buffer| {
             try buffer.appendSlice(data);
         }
     }
-    
+
     /// Finalize paste and convert to runes
     fn finalizePaste(self: *Self) !PasteEvent {
         if (self.paste_buffer) |buffer| {
@@ -454,30 +453,30 @@ pub const EnhancedInputParser = struct {
                 buffer.deinit();
                 self.paste_buffer = null;
             }
-            
+
             var runes = std.ArrayList(u21).init(self.allocator);
             errdefer runes.deinit();
-            
+
             var i: usize = 0;
             while (i < buffer.items.len) {
                 const seq_len = std.unicode.utf8ByteSequenceLength(buffer.items[i]) catch 1;
                 if (i + seq_len > buffer.items.len) break;
-                
-                const codepoint = std.unicode.utf8Decode(buffer.items[i..i + seq_len]) catch {
+
+                const codepoint = std.unicode.utf8Decode(buffer.items[i .. i + seq_len]) catch {
                     i += 1;
                     continue;
                 };
-                
+
                 try runes.append(codepoint);
                 i += seq_len;
             }
-            
+
             return PasteEvent{
                 .content = try runes.toOwnedSlice(),
                 .allocator = self.allocator,
             };
         }
-        
+
         return PasteEvent{
             .content = &[_]u21{},
             .allocator = self.allocator,
@@ -489,10 +488,10 @@ pub const EnhancedInputParser = struct {
 test "basic key parsing" {
     const testing = std.testing;
     const allocator = testing.allocator;
-    
+
     var parser = EnhancedInputParser.init(allocator);
     defer parser.deinit();
-    
+
     const events = try parser.parseSequence("a");
     defer {
         for (events) |*event| {
@@ -503,7 +502,7 @@ test "basic key parsing" {
         }
         allocator.free(events);
     }
-    
+
     try testing.expect(events.len == 1);
     try testing.expect(events[0] == .key_press);
     try testing.expectEqualStrings("a", events[0].key_press.key);
@@ -512,10 +511,10 @@ test "basic key parsing" {
 test "control character parsing" {
     const testing = std.testing;
     const allocator = testing.allocator;
-    
+
     var parser = EnhancedInputParser.init(allocator);
     defer parser.deinit();
-    
+
     const events = try parser.parseSequence("\x03"); // Ctrl+C
     defer {
         for (events) |*event| {
@@ -526,7 +525,7 @@ test "control character parsing" {
         }
         allocator.free(events);
     }
-    
+
     try testing.expect(events.len == 1);
     try testing.expect(events[0] == .key_press);
     try testing.expectEqualStrings("ctrl+c", events[0].key_press.key);
@@ -536,10 +535,10 @@ test "control character parsing" {
 test "arrow key parsing" {
     const testing = std.testing;
     const allocator = testing.allocator;
-    
+
     var parser = EnhancedInputParser.init(allocator);
     defer parser.deinit();
-    
+
     const events = try parser.parseSequence("\x1b[A"); // Up arrow
     defer {
         for (events) |*event| {
@@ -550,7 +549,7 @@ test "arrow key parsing" {
         }
         allocator.free(events);
     }
-    
+
     try testing.expect(events.len == 1);
     try testing.expect(events[0] == .key_press);
     try testing.expectEqualStrings("up", events[0].key_press.key);
@@ -559,10 +558,10 @@ test "arrow key parsing" {
 test "paste event handling" {
     const testing = std.testing;
     const allocator = testing.allocator;
-    
+
     var parser = EnhancedInputParser.init(allocator);
     defer parser.deinit();
-    
+
     // Simulate bracketed paste
     const events = try parser.parseSequence("\x1b[200~Hello\x1b[201~");
     defer {
@@ -574,10 +573,10 @@ test "paste event handling" {
         }
         allocator.free(events);
     }
-    
+
     try testing.expect(events.len >= 2);
     try testing.expect(events[0] == .paste_start);
-    
+
     // Find the paste event
     var found_paste = false;
     for (events) |event| {

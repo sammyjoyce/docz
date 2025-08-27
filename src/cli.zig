@@ -5,11 +5,12 @@ const std = @import("std");
 
 // Import the modular CLI system
 const cli_mod = @import("cli/mod.zig");
+const cli_types = @import("cli/core/types.zig");
 
 // Re-export the main public interface
 pub const EnhancedParser = cli_mod.EnhancedParser;
 pub const ParsedArgs = cli_mod.ParsedArgs;
-pub const CliError = cli_mod.CliError;
+pub const CliError = cli_types.CliError;
 pub const parseArgs = cli_mod.parseArgs;
 pub const parseAndHandle = cli_mod.parseAndHandle;
 
@@ -37,4 +38,11 @@ pub fn main(allocator: std.mem.Allocator, args: [][]const u8) !?ParsedArgs {
 /// Use this if you want to handle all commands yourself
 pub fn parse(allocator: std.mem.Allocator, args: [][]const u8) !ParsedArgs {
     return try parseArgs(allocator, args);
+}
+
+/// Print a CLI error with optional context
+pub fn printError(allocator: std.mem.Allocator, err: CliError, context: ?[]const u8) !void {
+    const enhanced_formatter = @import("cli/formatters/enhanced.zig");
+    var formatter = enhanced_formatter.CliFormatter.init(allocator);
+    try formatter.printEnhancedError(err, context);
 }

@@ -8,14 +8,14 @@ const print = std.debug.print;
 /// Color representation for terminal operations
 pub const Color = struct {
     r: u16,
-    g: u16, 
+    g: u16,
     b: u16,
     a: u16 = 0xFFFF,
 
     pub fn fromRGB(r: u8, g: u8, b: u8) Color {
         return Color{
             .r = @as(u16, r) << 8 | r,
-            .g = @as(u16, g) << 8 | g, 
+            .g = @as(u16, g) << 8 | g,
             .b = @as(u16, b) << 8 | b,
         };
     }
@@ -28,22 +28,22 @@ pub const Color = struct {
             .a = @as(u16, a) << 8 | a,
         };
     }
-    
+
     pub fn fromHex(hex_str: []const u8) !Color {
         var hex = hex_str;
         if (std.mem.startsWith(u8, hex, "#")) {
             hex = hex[1..];
         }
-        
+
         if (hex.len != 6 and hex.len != 8) {
             return error.InvalidHexLength;
         }
-        
+
         const rgb_val = try std.fmt.parseInt(u32, hex[0..6], 16);
         const r = @as(u8, @truncate((rgb_val >> 16) & 0xFF));
-        const g = @as(u8, @truncate((rgb_val >> 8) & 0xFF)); 
+        const g = @as(u8, @truncate((rgb_val >> 8) & 0xFF));
         const b = @as(u8, @truncate(rgb_val & 0xFF));
-        
+
         if (hex.len == 8) {
             const a_val = try std.fmt.parseInt(u8, hex[6..8], 16);
             return fromRGBA(r, g, b, a_val);
@@ -60,7 +60,7 @@ pub const HexColor = struct {
     pub fn init(color: Color) HexColor {
         return HexColor{ .color = color };
     }
-    
+
     pub fn fromHex(hex_str: []const u8) !HexColor {
         const color = try Color.fromHex(hex_str);
         return init(color);
@@ -95,7 +95,7 @@ pub const XRGBColor = struct {
     pub fn toString(self: XRGBColor, allocator: std.mem.Allocator) ![]u8 {
         return try std.fmt.allocPrint(allocator, "rgb:{x:0>4}/{x:0>4}/{x:0>4}", .{
             self.color.r,
-            self.color.g, 
+            self.color.g,
             self.color.b,
         });
     }
@@ -104,18 +104,18 @@ pub const XRGBColor = struct {
         if (!std.mem.startsWith(u8, rgb_str, "rgb:")) {
             return error.InvalidFormat;
         }
-        
+
         const parts_str = rgb_str[4..];
         var parts = std.mem.splitSequence(u8, parts_str, "/");
-        
+
         const r_str = parts.next() orelse return error.InvalidFormat;
         const g_str = parts.next() orelse return error.InvalidFormat;
         const b_str = parts.next() orelse return error.InvalidFormat;
-        
+
         const r = try std.fmt.parseInt(u16, r_str, 16);
         const g = try std.fmt.parseInt(u16, g_str, 16);
         const b = try std.fmt.parseInt(u16, b_str, 16);
-        
+
         return XRGBColor{
             .color = Color{ .r = r, .g = g, .b = b },
         };
@@ -143,20 +143,20 @@ pub const XRGBAColor = struct {
         if (!std.mem.startsWith(u8, rgba_str, "rgba:")) {
             return error.InvalidFormat;
         }
-        
+
         const parts_str = rgba_str[5..];
         var parts = std.mem.splitSequence(u8, parts_str, "/");
-        
+
         const r_str = parts.next() orelse return error.InvalidFormat;
-        const g_str = parts.next() orelse return error.InvalidFormat; 
+        const g_str = parts.next() orelse return error.InvalidFormat;
         const b_str = parts.next() orelse return error.InvalidFormat;
         const a_str = parts.next() orelse return error.InvalidFormat;
-        
+
         const r = try std.fmt.parseInt(u16, r_str, 16);
         const g = try std.fmt.parseInt(u16, g_str, 16);
         const b = try std.fmt.parseInt(u16, b_str, 16);
         const a = try std.fmt.parseInt(u16, a_str, 16);
-        
+
         return XRGBAColor{
             .color = Color{ .r = r, .g = g, .b = b, .a = a },
         };
@@ -165,7 +165,6 @@ pub const XRGBAColor = struct {
 
 /// OSC (Operating System Command) sequences for terminal color operations
 pub const OSC = struct {
-    
     /// Set terminal foreground color (OSC 10)
     pub fn setForegroundColor(allocator: std.mem.Allocator, color_str: []const u8) ![]u8 {
         return try std.fmt.allocPrint(allocator, "\x1b]10;{s}\x07", .{color_str});
@@ -177,7 +176,7 @@ pub const OSC = struct {
     /// Reset terminal foreground color (OSC 110)
     pub const reset_foreground_color = "\x1b]110\x07";
 
-    /// Set terminal background color (OSC 11)  
+    /// Set terminal background color (OSC 11)
     pub fn setBackgroundColor(allocator: std.mem.Allocator, color_str: []const u8) ![]u8 {
         return try std.fmt.allocPrint(allocator, "\x1b]11;{s}\x07", .{color_str});
     }
@@ -209,38 +208,38 @@ pub const BackgroundDetection = struct {
         const r = @as(f64, @floatFromInt(color.r >> 8)) / 255.0;
         const g = @as(f64, @floatFromInt(color.g >> 8)) / 255.0;
         const b = @as(f64, @floatFromInt(color.b >> 8)) / 255.0;
-        
+
         // Apply gamma correction
         const r_linear = if (r <= 0.03928) r / 12.92 else std.math.pow(f64, (r + 0.055) / 1.055, 2.4);
         const g_linear = if (g <= 0.03928) g / 12.92 else std.math.pow(f64, (g + 0.055) / 1.055, 2.4);
         const b_linear = if (b <= 0.03928) b / 12.92 else std.math.pow(f64, (b + 0.055) / 1.055, 2.4);
-        
+
         // Calculate relative luminance
         return 0.2126 * r_linear + 0.7152 * g_linear + 0.0722 * b_linear;
     }
-    
+
     /// Determine if a color is considered "dark" (luminance < 0.5)
     pub fn isDark(color: Color) bool {
         return getLuminance(color) < 0.5;
     }
-    
+
     /// Determine if a color is considered "light" (luminance >= 0.5)
     pub fn isLight(color: Color) bool {
         return !isDark(color);
     }
-    
+
     /// Calculate contrast ratio between two colors
     /// Returns ratio from 1:1 (no contrast) to 21:1 (maximum contrast)
     pub fn getContrastRatio(color1: Color, color2: Color) f64 {
         const l1 = getLuminance(color1);
         const l2 = getLuminance(color2);
-        
+
         const lighter = @max(l1, l2);
         const darker = @min(l1, l2);
-        
+
         return (lighter + 0.05) / (darker + 0.05);
     }
-    
+
     /// Check if contrast meets WCAG accessibility guidelines
     pub fn meetsWCAGContrast(fg_color: Color, bg_color: Color, level: WCAGLevel) bool {
         const ratio = getContrastRatio(fg_color, bg_color);
@@ -251,36 +250,36 @@ pub const BackgroundDetection = struct {
             .AAA_large => ratio >= 4.5,
         };
     }
-    
+
     /// WCAG contrast levels
     pub const WCAGLevel = enum {
-        AA_normal,   // Normal text - 4.5:1 minimum
-        AA_large,    // Large text - 3:1 minimum  
-        AAA_normal,  // Enhanced normal text - 7:1 minimum
-        AAA_large,   // Enhanced large text - 4.5:1 minimum
+        AA_normal, // Normal text - 4.5:1 minimum
+        AA_large, // Large text - 3:1 minimum
+        AAA_normal, // Enhanced normal text - 7:1 minimum
+        AAA_large, // Enhanced large text - 4.5:1 minimum
     };
-    
+
     /// Suggest optimal foreground color for a background
     pub fn suggestForegroundColor(bg_color: Color) Color {
-        return if (isDark(bg_color)) 
+        return if (isDark(bg_color))
             Color.fromRGB(255, 255, 255) // White text on dark background
-        else 
+        else
             Color.fromRGB(0, 0, 0); // Black text on light background
     }
-    
+
     /// Parse color response from terminal OSC query
     /// Handles both hex and XParseColor formats
     pub fn parseColorResponse(response: []const u8) !Color {
         if (response.len < 4) return error.InvalidResponse;
-        
+
         // Expected format: ESC ] code ; color BEL/ST
         if (!std.mem.startsWith(u8, response, "\x1b]")) {
             return error.InvalidResponse;
         }
-        
+
         // Find semicolon separator
         const semi_pos = std.mem.indexOf(u8, response, ";") orelse return error.InvalidResponse;
-        
+
         // Find terminator
         var end_pos: usize = response.len;
         if (std.mem.lastIndexOf(u8, response, "\x07")) |bel_pos| {
@@ -288,11 +287,11 @@ pub const BackgroundDetection = struct {
         } else if (std.mem.lastIndexOf(u8, response, "\x1b\\")) |st_pos| {
             end_pos = st_pos;
         }
-        
+
         if (end_pos <= semi_pos + 1) return error.InvalidResponse;
-        
+
         const color_str = response[semi_pos + 1 .. end_pos];
-        
+
         // Try different color format parsers
         if (std.mem.startsWith(u8, color_str, "#")) {
             return Color.fromHex(color_str);
@@ -303,7 +302,7 @@ pub const BackgroundDetection = struct {
             const xrgba = try XRGBAColor.fromString(color_str);
             return xrgba.color;
         }
-        
+
         return error.UnsupportedColorFormat;
     }
 };
@@ -313,7 +312,7 @@ pub const BackgroundManager = struct {
     allocator: std.mem.Allocator,
     detected_bg: ?Color,
     detected_fg: ?Color,
-    
+
     pub fn init(allocator: std.mem.Allocator) BackgroundManager {
         return BackgroundManager{
             .allocator = allocator,
@@ -321,24 +320,24 @@ pub const BackgroundManager = struct {
             .detected_fg = null,
         };
     }
-    
+
     /// Query terminal for current background color
     /// Note: This requires reading the response from terminal input
     pub fn queryBackgroundColor(_: *BackgroundManager, writer: anytype) !void {
         try writer.writeAll(OSC.request_background_color);
         try writer.flush();
     }
-    
-    /// Query terminal for current foreground color  
+
+    /// Query terminal for current foreground color
     pub fn queryForegroundColor(_: *BackgroundManager, writer: anytype) !void {
         try writer.writeAll(OSC.request_foreground_color);
         try writer.flush();
     }
-    
+
     /// Process color response from terminal
     pub fn processColorResponse(self: *BackgroundManager, response: []const u8) !void {
         const color = try BackgroundDetection.parseColorResponse(response);
-        
+
         // Determine if this is background or foreground based on OSC code
         if (std.mem.indexOf(u8, response, "]10;")) |_| {
             // Foreground color response
@@ -348,17 +347,17 @@ pub const BackgroundManager = struct {
             self.detected_bg = color;
         }
     }
-    
+
     /// Get detected background color
     pub fn getBackground(self: BackgroundManager) ?Color {
         return self.detected_bg;
     }
-    
+
     /// Get detected foreground color
     pub fn getForeground(self: BackgroundManager) ?Color {
         return self.detected_fg;
     }
-    
+
     /// Check if terminal has dark theme
     pub fn hasDarkTheme(self: BackgroundManager) ?bool {
         if (self.detected_bg) |bg| {
@@ -366,7 +365,7 @@ pub const BackgroundManager = struct {
         }
         return null;
     }
-    
+
     /// Get optimal text color for current background
     pub fn getOptimalTextColor(self: BackgroundManager) ?Color {
         if (self.detected_bg) |bg| {
@@ -374,7 +373,7 @@ pub const BackgroundManager = struct {
         }
         return null;
     }
-    
+
     /// Check contrast between detected colors
     pub fn checkContrast(self: BackgroundManager, level: BackgroundDetection.WCAGLevel) ?bool {
         if (self.detected_fg) |fg| {
@@ -384,7 +383,7 @@ pub const BackgroundManager = struct {
         }
         return null;
     }
-    
+
     /// Adaptive color scheme based on detected background
     pub fn getAdaptiveColors(self: BackgroundManager) AdaptiveColorScheme {
         if (self.detected_bg) |bg| {
@@ -411,7 +410,7 @@ pub const BackgroundManager = struct {
                 };
             }
         }
-        
+
         // Default neutral scheme
         return AdaptiveColorScheme{
             .primary = Color.fromRGB(128, 128, 128),
@@ -423,7 +422,6 @@ pub const BackgroundManager = struct {
             .err = Color.fromRGB(192, 64, 64),
         };
     }
-    
 };
 
 /// Adaptive color scheme for different terminal themes
@@ -459,7 +457,7 @@ pub const TerminalColorWriter = struct {
             else => @compileError("Unsupported color type"),
         };
         defer if (@TypeOf(color) != []const u8) self.allocator.free(color_str);
-        
+
         const seq = try OSC.setForegroundColor(self.allocator, color_str);
         defer self.allocator.free(seq);
         try self.writer.write(seq);
@@ -476,24 +474,24 @@ pub const TerminalColorWriter = struct {
             else => @compileError("Unsupported color type"),
         };
         defer if (@TypeOf(color) != []const u8) self.allocator.free(color_str);
-        
+
         const seq = try OSC.setBackgroundColor(self.allocator, color_str);
         defer self.allocator.free(seq);
         try self.writer.write(seq);
         try self.writer.flush();
     }
 
-    /// Set cursor color using various color formats  
+    /// Set cursor color using various color formats
     pub fn setCursor(self: TerminalColorWriter, color: anytype) !void {
         const color_str = switch (@TypeOf(color)) {
             HexColor => try color.toHex(self.allocator),
-            XRGBColor => try color.toString(self.allocator), 
+            XRGBColor => try color.toString(self.allocator),
             XRGBAColor => try color.toString(self.allocator),
             []const u8 => color,
             else => @compileError("Unsupported color type"),
         };
         defer if (@TypeOf(color) != []const u8) self.allocator.free(color_str);
-        
+
         const seq = try OSC.setCursorColor(self.allocator, color_str);
         defer self.allocator.free(seq);
         try self.writer.write(seq);
@@ -512,7 +510,7 @@ pub const TerminalColorWriter = struct {
         try self.writer.flush();
     }
 
-    /// Request cursor color from terminal  
+    /// Request cursor color from terminal
     pub fn requestCursor(self: TerminalColorWriter) !void {
         try self.writer.write(OSC.request_cursor_color);
         try self.writer.flush();
@@ -557,7 +555,7 @@ test "color parsing and formatting" {
 
 test "xparsecolor parsing" {
     const testing = std.testing;
-    
+
     // Test RGB parsing
     const xrgb = try XRGBColor.fromString("rgb:ff00/8000/4000");
     try testing.expectEqual(@as(u16, 0xff00), xrgb.color.r);
@@ -591,16 +589,16 @@ test "OSC sequence generation" {
 
 test "luminance calculation" {
     const testing = std.testing;
-    
+
     // Test pure colors
     const white = Color.fromRGB(255, 255, 255);
     const white_luminance = BackgroundDetection.getLuminance(white);
     try testing.expect(white_luminance > 0.9); // White should be very bright
-    
+
     const black = Color.fromRGB(0, 0, 0);
     const black_luminance = BackgroundDetection.getLuminance(black);
     try testing.expect(black_luminance < 0.1); // Black should be very dark
-    
+
     const red = Color.fromRGB(255, 0, 0);
     const red_luminance = BackgroundDetection.getLuminance(red);
     try testing.expect(red_luminance > 0.1 and red_luminance < 0.5); // Red should be medium-dark
@@ -608,11 +606,11 @@ test "luminance calculation" {
 
 test "dark and light detection" {
     const testing = std.testing;
-    
+
     const dark_gray = Color.fromRGB(64, 64, 64);
     try testing.expect(BackgroundDetection.isDark(dark_gray));
     try testing.expect(!BackgroundDetection.isLight(dark_gray));
-    
+
     const light_gray = Color.fromRGB(192, 192, 192);
     try testing.expect(!BackgroundDetection.isDark(light_gray));
     try testing.expect(BackgroundDetection.isLight(light_gray));
@@ -620,13 +618,13 @@ test "dark and light detection" {
 
 test "contrast ratio calculation" {
     const testing = std.testing;
-    
+
     const white = Color.fromRGB(255, 255, 255);
     const black = Color.fromRGB(0, 0, 0);
-    
+
     const contrast = BackgroundDetection.getContrastRatio(white, black);
     try testing.expect(contrast > 20.0); // Should be close to 21:1 (maximum contrast)
-    
+
     // Same color should have 1:1 contrast
     const same_contrast = BackgroundDetection.getContrastRatio(white, white);
     try testing.expect(same_contrast >= 1.0 and same_contrast <= 1.1);
@@ -634,16 +632,16 @@ test "contrast ratio calculation" {
 
 test "WCAG contrast compliance" {
     const testing = std.testing;
-    
+
     const white = Color.fromRGB(255, 255, 255);
     const black = Color.fromRGB(0, 0, 0);
-    
+
     // White on black should meet all WCAG levels
     try testing.expect(BackgroundDetection.meetsWCAGContrast(white, black, .AA_normal));
     try testing.expect(BackgroundDetection.meetsWCAGContrast(white, black, .AA_large));
     try testing.expect(BackgroundDetection.meetsWCAGContrast(white, black, .AAA_normal));
     try testing.expect(BackgroundDetection.meetsWCAGContrast(white, black, .AAA_large));
-    
+
     // Low contrast colors should fail strict requirements
     const light_gray = Color.fromRGB(200, 200, 200);
     const medium_gray = Color.fromRGB(128, 128, 128);
@@ -652,11 +650,11 @@ test "WCAG contrast compliance" {
 
 test "foreground color suggestion" {
     const testing = std.testing;
-    
+
     const dark_bg = Color.fromRGB(32, 32, 32);
     const suggested_fg = BackgroundDetection.suggestForegroundColor(dark_bg);
     try testing.expect(BackgroundDetection.isLight(suggested_fg)); // Should suggest light text
-    
+
     const light_bg = Color.fromRGB(240, 240, 240);
     const suggested_fg2 = BackgroundDetection.suggestForegroundColor(light_bg);
     try testing.expect(BackgroundDetection.isDark(suggested_fg2)); // Should suggest dark text
@@ -664,21 +662,21 @@ test "foreground color suggestion" {
 
 test "color response parsing" {
     const testing = std.testing;
-    
+
     // Test hex format response
     const hex_response = "\x1b]11;#ff0000\x07";
     const hex_color = try BackgroundDetection.parseColorResponse(hex_response);
     try testing.expect(hex_color.r >> 8 == 255);
     try testing.expect(hex_color.g >> 8 == 0);
     try testing.expect(hex_color.b >> 8 == 0);
-    
+
     // Test XParseColor RGB format response
     const rgb_response = "\x1b]11;rgb:ff00/8000/4000\x07";
     const rgb_color = try BackgroundDetection.parseColorResponse(rgb_response);
     try testing.expect(rgb_color.r == 0xff00);
     try testing.expect(rgb_color.g == 0x8000);
     try testing.expect(rgb_color.b == 0x4000);
-    
+
     // Test invalid responses
     try testing.expectError(error.InvalidResponse, BackgroundDetection.parseColorResponse("invalid"));
     try testing.expectError(error.InvalidResponse, BackgroundDetection.parseColorResponse("\x1b]11"));
@@ -687,21 +685,21 @@ test "color response parsing" {
 test "background manager functionality" {
     const testing = std.testing;
     const allocator = testing.allocator;
-    
+
     var manager = BackgroundManager.init(allocator);
-    
+
     // Initially no colors detected
     try testing.expect(manager.getBackground() == null);
     try testing.expect(manager.getForeground() == null);
     try testing.expect(manager.hasDarkTheme() == null);
-    
+
     // Simulate processing a background color response
     const bg_response = "\x1b]11;#2d2d2d\x07"; // Dark background
     try manager.processColorResponse(bg_response);
-    
+
     try testing.expect(manager.getBackground() != null);
     try testing.expect(manager.hasDarkTheme() == true);
-    
+
     const optimal_text = manager.getOptimalTextColor();
     try testing.expect(optimal_text != null);
     try testing.expect(BackgroundDetection.isLight(optimal_text.?)); // Should be light text for dark bg
@@ -710,21 +708,21 @@ test "background manager functionality" {
 test "adaptive color scheme generation" {
     const testing = std.testing;
     const allocator = testing.allocator;
-    
+
     var manager = BackgroundManager.init(allocator);
-    
+
     // Test with dark background
     const dark_bg_response = "\x1b]11;#1a1a1a\x07";
     try manager.processColorResponse(dark_bg_response);
-    
+
     const dark_scheme = manager.getAdaptiveColors();
     try testing.expect(BackgroundDetection.isLight(dark_scheme.primary)); // Primary text should be light
-    
-    // Test with light background  
+
+    // Test with light background
     manager.detected_bg = Color.fromRGB(240, 240, 240);
     const light_scheme = manager.getAdaptiveColors();
     try testing.expect(BackgroundDetection.isDark(light_scheme.primary)); // Primary text should be dark
-    
+
     // Test default scheme (no background detected)
     manager.detected_bg = null;
     const default_scheme = manager.getAdaptiveColors();

@@ -359,23 +359,21 @@ pub const AnthropicClient = struct {
         defer client.deinit();
 
         // Prepare headers with auth
-        var auth_header_buffer: [512]u8 = undefined;
-        var auth_header_value: []const u8 = undefined;
+        var auth_header_value: ?[]const u8 = null;
+        defer if (auth_header_value) |value| self.allocator.free(value);
 
         const headers = switch (self.auth) {
-            .api_key => |key| blk: {
-                break :blk [_]curl.Header{
-                    .{ .name = "x-api-key", .value = key },
-                    .{ .name = "accept", .value = "text/event-stream" },
-                    .{ .name = "content-type", .value = "application/json" },
-                    .{ .name = "anthropic-version", .value = "2023-06-01" },
-                    .{ .name = "user-agent", .value = "docz/1.0 (libcurl)" },
-                };
+            .api_key => |key| [_]curl.Header{
+                .{ .name = "x-api-key", .value = key },
+                .{ .name = "accept", .value = "text/event-stream" },
+                .{ .name = "content-type", .value = "application/json" },
+                .{ .name = "anthropic-version", .value = "2023-06-01" },
+                .{ .name = "user-agent", .value = "docz/1.0 (libcurl)" },
             },
             .oauth => |creds| blk: {
-                auth_header_value = try std.fmt.bufPrint(&auth_header_buffer, "Bearer {s}", .{creds.access_token});
+                auth_header_value = try std.fmt.allocPrint(self.allocator, "Bearer {s}", .{creds.access_token});
                 break :blk [_]curl.Header{
-                    .{ .name = "authorization", .value = auth_header_value },
+                    .{ .name = "authorization", .value = auth_header_value.? },
                     .{ .name = "accept", .value = "text/event-stream" },
                     .{ .name = "content-type", .value = "application/json" },
                     .{ .name = "anthropic-version", .value = "2023-06-01" },

@@ -2,9 +2,10 @@
 //! Comprehensive auth commands with enhanced CLI features
 
 const std = @import("std");
-const term_ansi = @import("../../term/ansi/color.zig");
-const term_caps = @import("../../term/caps.zig");
-const term_hyperlink = @import("../../term/ansi/hyperlink.zig");
+const term_shared = @import("../../term/mod.zig");
+const term_ansi = term_shared.ansi.color;
+const term_caps = term_shared.caps;
+const term_hyperlink = term_shared.ansi.hyperlink;
 const notification_manager = @import("../interactive/notification_manager.zig");
 const workflow_runner = @import("../workflows/workflow_runner.zig");
 const workflow_step = @import("../workflows/workflow_step.zig");
@@ -35,12 +36,12 @@ pub const AuthCommands = struct {
     allocator: Allocator,
     caps: term_caps.TermCaps,
     notification_manager: *notification_manager.NotificationManager,
-    writer: *std.io.AnyWriter,
+    writer: *std.Io.Writer,
 
     pub fn init(
         allocator: Allocator,
         notification_mgr: *notification_manager.NotificationManager,
-        writer: *std.io.AnyWriter,
+        writer: *std.Io.Writer,
     ) AuthCommands {
         return .{
             .allocator = allocator,

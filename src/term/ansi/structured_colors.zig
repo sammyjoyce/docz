@@ -45,7 +45,7 @@ pub const HexColor = struct {
     /// Parse a hex color string (#RRGGBB or #RRGGBBAA or RRGGBB or RRGGBBAA)
     pub fn fromHex(hex: []const u8) ColorError!Self {
         var hex_clean = hex;
-        
+
         // Remove leading # if present
         if (hex.len > 0 and hex[0] == '#') {
             hex_clean = hex[1..];
@@ -108,7 +108,7 @@ pub const XRGBColor = struct {
         const r16: u16 = (@as(u16, self.rgba.r) << 8) | self.rgba.r;
         const g16: u16 = (@as(u16, self.rgba.g) << 8) | self.rgba.g;
         const b16: u16 = (@as(u16, self.rgba.b) << 8) | self.rgba.b;
-        
+
         return try std.fmt.allocPrint(allocator, "rgb:{X:0>4}/{X:0>4}/{X:0>4}", .{ r16, g16, b16 });
     }
 
@@ -131,14 +131,14 @@ pub const XRGBAColor = struct {
         return Self{ .rgba = RGBA.initWithAlpha(r, g, b, a) };
     }
 
-    /// Format the color as an XParseColor rgba: string  
+    /// Format the color as an XParseColor rgba: string
     pub fn toXRgba(self: Self, allocator: std.mem.Allocator) ![]u8 {
         // Convert 8-bit values to 16-bit for X11 color format
         const r16: u16 = (@as(u16, self.rgba.r) << 8) | self.rgba.r;
         const g16: u16 = (@as(u16, self.rgba.g) << 8) | self.rgba.g;
         const b16: u16 = (@as(u16, self.rgba.b) << 8) | self.rgba.b;
         const a16: u16 = (@as(u16, self.rgba.a) << 8) | self.rgba.a;
-        
+
         return try std.fmt.allocPrint(allocator, "rgba:{X:0>4}/{X:0>4}/{X:0>4}/{X:0>4}", .{ r16, g16, b16, a16 });
     }
 
@@ -150,7 +150,7 @@ pub const XRGBAColor = struct {
 // Helper function to parse a 2-character hex string to a byte
 fn parseHexByte(hex: []const u8) ColorError!u8 {
     if (hex.len != 2) return ColorError.InvalidHexLength;
-    
+
     var result: u8 = 0;
     for (hex) |char| {
         result <<= 4;
@@ -169,7 +169,7 @@ pub const ColorValidator = struct {
     /// Validate if a string is a valid hex color format
     pub fn isValidHex(hex: []const u8) bool {
         var hex_clean = hex;
-        
+
         // Remove leading # if present
         if (hex.len > 0 and hex[0] == '#') {
             hex_clean = hex[1..];

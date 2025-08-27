@@ -1,5 +1,5 @@
 //! Table selection management and operations
-//! 
+//!
 //! Handles selection state, multi-cell operations, and selection rendering.
 
 const std = @import("std");
@@ -19,22 +19,22 @@ pub const SelectionManager = struct {
     pub fn extendSelection(state: *TableState, key: KeyEvent, row_count: usize, col_count: usize) void {
         _ = row_count;
         _ = col_count;
-        
+
         if (!key.modifiers.shift) {
             // Clear selection if not extending
             state.selection = null;
             return;
         }
-        
+
         // Create or extend existing selection
         if (state.selection == null) {
             state.selection = Selection.singleCell(state.cursor);
         }
-        
+
         if (state.selection) |*selection| {
             // Update end point of selection based on new cursor position
             selection.end = state.cursor;
-            
+
             // Determine selection mode based on movement
             if (key.modifiers.ctrl) {
                 // Ctrl+Shift for rectangular selection
@@ -45,16 +45,16 @@ pub const SelectionManager = struct {
             }
         }
     }
-    
+
     /// Get selected cells data for clipboard operations
     pub fn getSelectedData(selection: Selection, headers: [][]const u8, rows: [][]Cell, allocator: std.mem.Allocator) ![]u8 {
         const norm_selection = selection.normalize();
-        
+
         var result = std.ArrayList(u8).init(allocator);
         defer result.deinit();
-        
+
         const writer = result.writer();
-        
+
         switch (selection.mode) {
             .cell => {
                 // Single cell
@@ -71,10 +71,10 @@ pub const SelectionManager = struct {
                 // Entire row(s)
                 const start_y = @as(usize, @intCast(norm_selection.start.y));
                 const end_y = @as(usize, @intCast(norm_selection.end.y));
-                
+
                 for (start_y..end_y + 1) |row_idx| {
                     if (row_idx >= rows.len) break;
-                    
+
                     const row = rows[row_idx];
                     for (row, 0..) |cell, col_idx| {
                         if (cell.copyable) {
@@ -84,7 +84,7 @@ pub const SelectionManager = struct {
                             }
                         }
                     }
-                    
+
                     if (row_idx < end_y) {
                         try writer.writeAll("\n");
                     }
@@ -93,13 +93,13 @@ pub const SelectionManager = struct {
             .column => {
                 // Entire column(s)
                 const col_idx = @as(usize, @intCast(norm_selection.start.x));
-                
+
                 // Include header if available
                 if (col_idx < headers.len) {
                     try writer.writeAll(headers[col_idx]);
                     if (rows.len > 0) try writer.writeAll("\n");
                 }
-                
+
                 for (rows, 0..) |row, row_idx| {
                     if (col_idx < row.len and row[col_idx].copyable) {
                         try writer.writeAll(row[col_idx].value);
@@ -115,14 +115,14 @@ pub const SelectionManager = struct {
                 const end_y = @as(usize, @intCast(norm_selection.end.y));
                 const start_x = @as(usize, @intCast(norm_selection.start.x));
                 const end_x = @as(usize, @intCast(norm_selection.end.x));
-                
+
                 for (start_y..end_y + 1) |row_idx| {
                     if (row_idx >= rows.len) break;
-                    
+
                     const row = rows[row_idx];
                     for (start_x..end_x + 1) |col_idx| {
                         if (col_idx >= row.len) break;
-                        
+
                         const cell = row[col_idx];
                         if (cell.copyable) {
                             try writer.writeAll(cell.value);
@@ -131,17 +131,17 @@ pub const SelectionManager = struct {
                             }
                         }
                     }
-                    
+
                     if (row_idx < end_y) {
                         try writer.writeAll("\n");
                     }
                 }
             },
         }
-        
+
         return result.toOwnedSlice();
     }
-    
+
     /// Get selection in different formats for clipboard
     pub fn formatSelectedData(selection: Selection, headers: [][]const u8, rows: [][]Cell, allocator: std.mem.Allocator, format: ClipboardFormat) ![]u8 {
         switch (format) {
@@ -150,21 +150,21 @@ pub const SelectionManager = struct {
             .markdown => return formatAsMarkdown(selection, headers, rows, allocator),
         }
     }
-    
+
     /// Format selection as CSV
     fn formatAsCSV(selection: Selection, headers: [][]const u8, rows: [][]Cell, allocator: std.mem.Allocator) ![]u8 {
         const norm_selection = selection.normalize();
-        
+
         var result = std.ArrayList(u8).init(allocator);
         defer result.deinit();
-        
+
         const writer = result.writer();
-        
+
         const start_x = @as(usize, @intCast(norm_selection.start.x));
         const end_x = @as(usize, @intCast(norm_selection.end.x));
         const start_y = @as(usize, @intCast(norm_selection.start.y));
         const end_y = @as(usize, @intCast(norm_selection.end.y));
-        
+
         // CSV header row for range/column selections
         if (selection.mode == .range or selection.mode == .column) {
             for (start_x..end_x + 1) |col_idx| {
@@ -177,47 +177,47 @@ pub const SelectionManager = struct {
             }
             try writer.writeAll("\n");
         }
-        
+
         // CSV data rows
         for (start_y..end_y + 1) |row_idx| {
             if (row_idx >= rows.len) break;
-            
+
             const row = rows[row_idx];
             for (start_x..end_x + 1) |col_idx| {
                 if (col_idx >= row.len) break;
-                
+
                 const cell = row[col_idx];
                 if (cell.copyable) {
                     try writeCSVField(writer, cell.value);
                 }
-                
+
                 if (col_idx < end_x) {
                     try writer.writeAll(",");
                 }
             }
-            
+
             if (row_idx < end_y) {
                 try writer.writeAll("\n");
             }
         }
-        
+
         return result.toOwnedSlice();
     }
-    
+
     /// Format selection as Markdown table
     fn formatAsMarkdown(selection: Selection, headers: [][]const u8, rows: [][]Cell, allocator: std.mem.Allocator) ![]u8 {
         const norm_selection = selection.normalize();
-        
+
         var result = std.ArrayList(u8).init(allocator);
         defer result.deinit();
-        
+
         const writer = result.writer();
-        
+
         const start_x = @as(usize, @intCast(norm_selection.start.x));
         const end_x = @as(usize, @intCast(norm_selection.end.x));
         const start_y = @as(usize, @intCast(norm_selection.start.y));
         const end_y = @as(usize, @intCast(norm_selection.end.y));
-        
+
         // Markdown header row
         try writer.writeAll("|");
         for (start_x..end_x + 1) |col_idx| {
@@ -226,18 +226,18 @@ pub const SelectionManager = struct {
             }
         }
         try writer.writeAll("\n");
-        
+
         // Markdown separator row
         try writer.writeAll("|");
         for (start_x..end_x + 1) |_| {
             try writer.writeAll("---|");
         }
         try writer.writeAll("\n");
-        
+
         // Markdown data rows
         for (start_y..end_y + 1) |row_idx| {
             if (row_idx >= rows.len) break;
-            
+
             try writer.writeAll("|");
             const row = rows[row_idx];
             for (start_x..end_x + 1) |col_idx| {
@@ -249,16 +249,16 @@ pub const SelectionManager = struct {
             }
             try writer.writeAll("\n");
         }
-        
+
         return result.toOwnedSlice();
     }
-    
+
     /// Write a CSV field, escaping quotes and commas as needed
     fn writeCSVField(writer: anytype, field: []const u8) !void {
-        const needs_quotes = std.mem.containsAtLeast(u8, field, 1, ",") or 
-                           std.mem.containsAtLeast(u8, field, 1, "\"") or
-                           std.mem.containsAtLeast(u8, field, 1, "\n");
-        
+        const needs_quotes = std.mem.containsAtLeast(u8, field, 1, ",") or
+            std.mem.containsAtLeast(u8, field, 1, "\"") or
+            std.mem.containsAtLeast(u8, field, 1, "\n");
+
         if (needs_quotes) {
             try writer.writeAll("\"");
             for (field) |c| {
@@ -280,7 +280,7 @@ pub const ClipboardFormat = enum {
     plain_text,
     csv,
     markdown,
-    
+
     pub fn getFileExtension(self: ClipboardFormat) []const u8 {
         return switch (self) {
             .plain_text => ".txt",
@@ -288,7 +288,7 @@ pub const ClipboardFormat = enum {
             .markdown => ".md",
         };
     }
-    
+
     pub fn getMimeType(self: ClipboardFormat) []const u8 {
         return switch (self) {
             .plain_text => "text/plain",

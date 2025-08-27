@@ -19,7 +19,7 @@ pub const XTVERSION = RequestNameVersion;
 pub const RequestPrimaryDeviceAttributes = "\x1b[c";
 pub const REQUEST_DA1 = RequestPrimaryDeviceAttributes;
 
-/// Request secondary device attributes (DA2) 
+/// Request secondary device attributes (DA2)
 /// CSI > c
 /// Terminal responds with: CSI > Ps ; Ps ; Ps c
 pub const RequestSecondaryDeviceAttributes = "\x1b[>c";
@@ -65,7 +65,7 @@ pub fn requestNameVersion(
     try passthrough.writeWithPassthrough(writer, caps, RequestNameVersion);
 }
 
-/// Send primary device attributes request  
+/// Send primary device attributes request
 pub fn requestPrimaryDeviceAttributes(
     writer: anytype,
     caps: TermCaps,
@@ -134,7 +134,7 @@ pub fn buildSecondaryDeviceAttributesResponse(
     return try buf.toOwnedSlice();
 }
 
-/// Build tertiary device attributes response sequence  
+/// Build tertiary device attributes response sequence
 /// DCS ! | UnitID ST
 pub fn buildTertiaryDeviceAttributesResponse(
     alloc: std.mem.Allocator,
@@ -236,7 +236,7 @@ pub fn parseSecondaryDeviceAttributes(response: []const u8) !SecondaryDeviceAttr
     const middle = response[3 .. response.len - 1]; // Skip "\x1b[>" and "c"
 
     var parts = std.mem.split(u8, middle, ";");
-    
+
     const terminal_id_str = parts.next() orelse "0";
     const version_str = parts.next() orelse "0";
     const rom_cartridge_str = parts.next() orelse "0";
@@ -339,7 +339,7 @@ pub const TerminalId = enum(u32) {
     pub fn toString(self: TerminalId) []const u8 {
         return switch (self) {
             .vt100 => "VT100",
-            .vt220 => "VT220", 
+            .vt220 => "VT220",
             .vt240 => "VT240",
             .vt320 => "VT320",
             .vt420 => "VT420",
@@ -383,7 +383,7 @@ test "secondary device attributes parsing" {
 
     const response = "\x1b[>1;95;0c";
     const result = try parseSecondaryDeviceAttributes(response);
-    
+
     try testing.expect(result.terminal_id == 1);
     try testing.expect(result.version == 95);
     try testing.expect(result.rom_cartridge == 0);

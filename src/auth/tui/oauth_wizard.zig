@@ -4,8 +4,69 @@
 
 const std = @import("std");
 const print = std.debug.print;
-const tui = @import("tui_shared");
 const oauth = @import("../oauth/mod.zig");
+
+// Minimal TUI interface with basic ANSI escape codes
+const tui = struct {
+    fn getTerminalSize() struct { width: u16, height: u16 } {
+        // Use a reasonable default since we don't have access to full TUI
+        return .{ .width = 80, .height = 24 };
+    }
+
+    fn clearScreen() void {
+        print("\x1b[2J\x1b[H", .{});
+    }
+
+    const Color = struct {
+        pub const BRIGHT_BLUE = "\x1b[94m";
+        pub const BRIGHT_GREEN = "\x1b[92m";
+        pub const BRIGHT_RED = "\x1b[91m";
+        pub const BRIGHT_CYAN = "\x1b[96m";
+        pub const DIM = "\x1b[2m";
+        pub const BOLD = "\x1b[1m";
+        pub const RESET = "\x1b[0m";
+    };
+
+    const ProgressBar = struct {
+        width: u32,
+        total_steps: u32,
+        current_step: u32,
+
+        pub fn init(width: u32, total_steps: u32) ProgressBar {
+            return ProgressBar{
+                .width = width,
+                .total_steps = total_steps,
+                .current_step = 0,
+            };
+        }
+
+        pub fn update(self: *ProgressBar, step: f32) void {
+            self.current_step = @intFromFloat(step);
+        }
+
+        pub fn draw(self: ProgressBar) void {
+            const progress = @min(self.current_step, self.total_steps);
+            const percentage = @as(f32, @floatFromInt(progress)) / @as(f32, @floatFromInt(self.total_steps));
+            const filled = @as(u32, @intFromFloat(percentage * @as(f32, @floatFromInt(self.width - 2))));
+            const percent_display = @as(u32, @intFromFloat(@round(percentage * 100)));
+
+            print("[{s}", .{Color.BRIGHT_BLUE});
+            var i: u32 = 0;
+            while (i < filled) : (i += 1) {
+                print("█", .{});
+            }
+            while (i < self.width - 2) : (i += 1) {
+                print("░", .{});
+            }
+            print("{s}] {d}%", .{ Color.RESET, percent_display });
+        }
+    };
+
+    const TerminalSize = struct {
+        width: u16,
+        height: u16,
+    };
+};
 
 /// OAuth setup states for progress tracking
 const OAuthState = enum {
@@ -200,17 +261,39 @@ pub fn setupOAuth(allocator: std.mem.Allocator) !void {
 /// Display the OAuth setup header using TUI framework
 fn displayOAuthHeader() void {
     const terminal_size = tui.getTerminalSize();
-    const width = @min(terminal_size.width, 80);
+    const width = terminal_size.width;
 
     tui.clearScreen();
 
-    // Main title section with consistent formatting
-    print("{s}╔{s}╗{s}\n", .{ tui.Color.BRIGHT_BLUE, "═" ** (width - 4), tui.Color.RESET });
-    print("{s}║{s} 🔐 Claude Pro/Max OAuth Setup {s}║{s}\n", .{ tui.Color.BRIGHT_BLUE, " " ** ((width - 34) / 2), " " ** ((width - 34) / 2), tui.Color.RESET });
-    print("{s}╚{s}╝{s}\n\n", .{ tui.Color.BRIGHT_BLUE, "═" ** (width - 4), tui.Color.RESET });
+    // Display header with border
+    print("{s}╔", .{tui.Color.BRIGHT_BLUE});
+    var i: u16 = 0;
+    while (i < width - 4) : (i += 1) {
+        print("═", .{});
+    }
+    print("╗{s}\n", .{tui.Color.RESET});
+    print("{s}║", .{tui.Color.BRIGHT_BLUE});
+    const spaces = (width - 34) / 2;
+    var j: u16 = 0;
+    while (j < spaces) : (j += 1) {
+        print(" ", .{});
+    }
+    print(" 🔐 Claude Pro/Max OAuth Setup ", .{});
+    j = 0;
+    while (j < spaces) : (j += 1) {
+        print(" ", .{});
+    }
+    print("║{s}\n", .{tui.Color.RESET});
 
-    print("Connect your Claude Pro or Claude Max subscription for unlimited usage\n");
-    print("This setup only needs to be done once per machine\n\n");
+    print("{s}╚", .{tui.Color.BRIGHT_BLUE});
+    j = 0;
+    while (j < width - 4) : (j += 1) {
+        print("═", .{});
+    }
+    print("╝{s}\n\n", .{tui.Color.RESET});
+
+    print("Connect your Claude Pro or Claude Max subscription for unlimited usage\n", .{});
+    print("This setup only needs to be done once per machine\n\n", .{});
 }
 
 /// Display progress information using TUI components
@@ -232,7 +315,7 @@ fn displayProgress(progress: *OAuthProgress) void {
 
     print("{s}Progress: {s}", .{ tui.Color.BRIGHT_BLUE, tui.Color.RESET });
     progress_bar.draw();
-    print("\n\n");
+    print("\n\n", .{});
     lines_used += 2;
 
     // Current status with appropriate icon
@@ -262,7 +345,7 @@ fn displayProgress(progress: *OAuthProgress) void {
     if (progress.error_message) |error_msg| {
         print("{s}❌ Error Details{s}\n", .{ tui.Color.BRIGHT_RED, tui.Color.RESET });
         print("{s}\n", .{error_msg});
-        print("Please check the message above and try again\n\n");
+        print("Please check the message above and try again\n\n", .{});
         lines_used += 4;
     }
 
@@ -271,7 +354,7 @@ fn displayProgress(progress: *OAuthProgress) void {
         const clear_lines = progress.progress_lines_count - lines_used;
         var i: u32 = 0;
         while (i < clear_lines) : (i += 1) {
-            print("\x1b[K\n"); // Clear line and move down
+            print("\x1b[K\n", .{}); // Clear line and move down
         }
         // Move cursor back up
         print("\x1b[{}A", .{clear_lines});
@@ -287,14 +370,19 @@ fn displayBrowserInstructions(auth_url: []const u8) void {
     const width = @min(terminal_size.width, 80);
 
     print("\n{s}Browser Authorization{s}\n", .{ tui.Color.BRIGHT_BLUE, tui.Color.RESET });
-    print("{s}\n", .{"─" ** @min(width, 50)});
+    const sep_width = @min(width, 50);
+    var k: u16 = 0;
+    while (k < sep_width) : (k += 1) {
+        print("─", .{});
+    }
+    print("\n", .{});
 
-    print("🌐 Your browser should open automatically\n");
-    print("📋 If it doesn't, copy and paste this URL:\n\n");
+    print("🌐 Your browser should open automatically\n", .{});
+    print("📋 If it doesn't, copy and paste this URL:\n\n", .{});
     print("{s}{s}{s}\n\n", .{ tui.Color.DIM, auth_url, tui.Color.RESET });
-    print("✅ Complete the authorization in your browser\n");
-    print("🔄 You'll be redirected to a callback page with the authorization code\n");
-    print("💡 Copy the code from the callback page and return here\n\n");
+    print("✅ Complete the authorization in your browser\n", .{});
+    print("🔄 You'll be redirected to a callback page with the authorization code\n", .{});
+    print("💡 Copy the code from the callback page and return here\n\n", .{});
 }
 
 /// Display manual code entry screen
@@ -304,30 +392,52 @@ fn displayManualCodeEntry() void {
 
     tui.clearScreen();
 
-    print("{s}╔{s}╗{s}\n", .{ tui.Color.BRIGHT_CYAN, "═" ** (width - 4), tui.Color.RESET });
-    print("{s}║{s} 📋 Manual Code Entry {s}║{s}\n", .{ tui.Color.BRIGHT_CYAN, " " ** ((width - 24) / 2), " " ** ((width - 24) / 2), tui.Color.RESET });
-    print("{s}╚{s}╝{s}\n\n", .{ tui.Color.BRIGHT_CYAN, "═" ** (width - 4), tui.Color.RESET });
+    print("{s}╔", .{tui.Color.BRIGHT_CYAN});
+    var m: u16 = 0;
+    while (m < width - 4) : (m += 1) {
+        print("═", .{});
+    }
+    print("╗{s}\n", .{tui.Color.RESET});
+    print("{s}║", .{tui.Color.BRIGHT_CYAN});
+    const spaces2 = (width - 24) / 2;
+    var n: u16 = 0;
+    while (n < spaces2) : (n += 1) {
+        print(" ", .{});
+    }
+    print(" 📋 Manual Code Entry ", .{});
+    n = 0;
+    while (n < spaces2) : (n += 1) {
+        print(" ", .{});
+    }
+    print("║{s}\n", .{tui.Color.RESET});
+    print("{s}╚", .{tui.Color.BRIGHT_CYAN});
+    var p: u16 = 0;
+    while (p < width - 4) : (p += 1) {
+        print("═", .{});
+    }
+    print("╝{s}\n\n", .{tui.Color.RESET});
 
-    print("1. Complete the authorization in your browser\n");
-    print("2. You'll be redirected to a URL that starts with:\n");
+    print("1. Complete the authorization in your browser\n", .{});
+    print("2. You'll be redirected to a URL that starts with:\n", .{});
     print("   {s}https://console.anthropic.com/oauth/code/callback?code=...{s}\n", .{ tui.Color.DIM, tui.Color.RESET });
-    print("3. Copy the authorization code from that URL\n\n");
-    print("💡 TIP: The code appears after 'code=' and before '&state='\n");
-    print("       Example: ...?code=AUTH_CODE_HERE&state=...\n\n");
-    print("⌨️  INPUT FEATURES:\n");
-    print("   • Paste support: Ctrl+V or right-click paste\n");
-    print("   • Ctrl+U: Clear entire input line\n");
-    print("   • Ctrl+C: Cancel and exit setup\n\n");
+    print("3. Copy the authorization code from that URL\n\n", .{});
+    print("💡 TIP: The code appears after 'code=' and before '&state='\n", .{});
+    print("       Example: ...?code=AUTH_CODE_HERE&state=...\n\n", .{});
+    print("⌨️  INPUT FEATURES:\n", .{});
+    print("   • Paste support: Ctrl+V or right-click paste\n", .{});
+    print("   • Ctrl+U: Clear entire input line\n", .{});
+    print("   • Ctrl+C: Cancel and exit setup\n\n", .{});
 }
 
 /// Enhanced authorization code input
 fn readAuthorizationCode(allocator: std.mem.Allocator) ![]u8 {
-    print("Please enter the authorization code: ");
+    print("Please enter the authorization code: ", .{});
 
     const stdin = std.fs.File.stdin();
     var buffer: [1024]u8 = undefined;
 
-    if (try stdin.readAll(buffer[0..])) |bytes_read| {
+    const bytes_read = try stdin.readAll(buffer[0..]);
+    if (bytes_read > 0) {
         if (bytes_read == 0) {
             return error.NoInput;
         }
@@ -355,21 +465,44 @@ fn displaySuccess() void {
 
     tui.clearScreen();
 
-    print("{s}╔{s}╗{s}\n", .{ tui.Color.BRIGHT_GREEN, "═" ** (width - 4), tui.Color.RESET });
-    print("{s}║{s} 🚀 Setup Complete! {s}║{s}\n", .{ tui.Color.BRIGHT_GREEN, " " ** ((width - 21) / 2), " " ** ((width - 21) / 2), tui.Color.RESET });
-    print("{s}╚{s}╝{s}\n\n", .{ tui.Color.BRIGHT_GREEN, "═" ** (width - 4), tui.Color.RESET });
+    print("{s}╔", .{tui.Color.BRIGHT_GREEN});
+    var q: u16 = 0;
+    while (q < width - 4) : (q += 1) {
+        print("═", .{});
+    }
+    print("╗{s}\n", .{tui.Color.RESET});
 
-    print("🎉 OAuth setup completed successfully!\n\n");
-    print("✅ Your Claude Pro/Max authentication is now configured\n");
-    print("🔒 Credentials saved securely to claude_oauth_creds.json\n");
-    print("💰 Usage costs are covered by your subscription\n");
-    print("🔄 Tokens will be automatically refreshed as needed\n\n");
-    print("Next steps:\n");
-    print("• Run regular CLI commands to test the setup\n");
-    print("• Your authentication will work seamlessly\n");
-    print("• No need to set ANTHROPIC_API_KEY anymore\n\n");
+    print("{s}║", .{tui.Color.BRIGHT_GREEN});
+    const spaces3 = (width - 21) / 2;
+    var r: u16 = 0;
+    while (r < spaces3) : (r += 1) {
+        print(" ", .{});
+    }
+    print(" 🚀 Setup Complete! ", .{});
+    r = 0;
+    while (r < spaces3) : (r += 1) {
+        print(" ", .{});
+    }
+    print("║{s}\n", .{tui.Color.RESET});
 
-    print("Press any key to continue...");
+    print("{s}╚", .{tui.Color.BRIGHT_GREEN});
+    q = 0;
+    while (q < width - 4) : (q += 1) {
+        print("═", .{});
+    }
+    print("╝{s}\n\n", .{tui.Color.RESET});
+
+    print("🎉 OAuth setup completed successfully!\n\n", .{});
+    print("✅ Your Claude Pro/Max authentication is now configured\n", .{});
+    print("🔒 Credentials saved securely to claude_oauth_creds.json\n", .{});
+    print("💰 Usage costs are covered by your subscription\n", .{});
+    print("🔄 Tokens will be automatically refreshed as needed\n\n", .{});
+    print("Next steps:\n", .{});
+    print("• Run regular CLI commands to test the setup\n", .{});
+    print("• Your authentication will work seamlessly\n", .{});
+    print("• No need to set ANTHROPIC_API_KEY anymore\n\n", .{});
+
+    print("Press any key to continue...", .{});
     const stdin = std.fs.File.stdin();
     var buffer: [1]u8 = undefined;
     _ = stdin.read(buffer[0..]) catch {};
@@ -382,20 +515,43 @@ fn displayGenericError(error_msg: []const u8, suggestions: []const []const u8) v
 
     tui.clearScreen();
 
-    print("{s}╔{s}╗{s}\n", .{ tui.Color.BRIGHT_RED, "═" ** (width - 4), tui.Color.RESET });
-    print("{s}║{s} 🚨 Setup Error {s}║{s}\n", .{ tui.Color.BRIGHT_RED, " " ** ((width - 16) / 2), " " ** ((width - 16) / 2), tui.Color.RESET });
-    print("{s}╚{s}╝{s}\n\n", .{ tui.Color.BRIGHT_RED, "═" ** (width - 4), tui.Color.RESET });
+    print("{s}╔", .{tui.Color.BRIGHT_RED});
+    var s: u16 = 0;
+    while (s < width - 4) : (s += 1) {
+        print("═", .{});
+    }
+    print("╗{s}\n", .{tui.Color.RESET});
+
+    print("{s}║", .{tui.Color.BRIGHT_RED});
+    const spaces4 = (width - 16) / 2;
+    var t: u16 = 0;
+    while (t < spaces4) : (t += 1) {
+        print(" ", .{});
+    }
+    print(" 🚨 Setup Error ", .{});
+    t = 0;
+    while (t < spaces4) : (t += 1) {
+        print(" ", .{});
+    }
+    print("║{s}\n", .{tui.Color.RESET});
+
+    print("{s}╚", .{tui.Color.BRIGHT_RED});
+    s = 0;
+    while (s < width - 4) : (s += 1) {
+        print("═", .{});
+    }
+    print("╝{s}\n\n", .{tui.Color.RESET});
 
     print("{s}\n\n", .{error_msg});
-    print("🔧 Troubleshooting suggestions:\n");
+    print("🔧 Troubleshooting suggestions:\n", .{});
 
     for (suggestions) |suggestion| {
         print("{s}\n", .{suggestion});
     }
 
-    print("\n🔄 Try running: docz auth login\n\n");
+    print("\n🔄 Try running: docz auth login\n\n", .{});
 
-    print("Press any key to continue...");
+    print("Press any key to continue...", .{});
     const stdin = std.fs.File.stdin();
     var buffer: [1]u8 = undefined;
     _ = stdin.read(buffer[0..]) catch {};

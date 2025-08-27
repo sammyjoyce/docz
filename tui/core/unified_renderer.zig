@@ -14,17 +14,17 @@ const GraphicsManager = graphics_manager.GraphicsManager;
 /// Widget rendering interface
 pub const Widget = struct {
     const Self = @This();
-    
+
     // Core widget data
     bounds: Rect,
     visible: bool,
     focused: bool,
-    
+
     // Function pointers for widget behavior
     render: *const fn (self: *Widget, renderer: *UnifiedRenderer) anyerror!void,
     handleInput: *const fn (self: *Widget, input: InputEvent) anyerror!bool,
     measure: *const fn (self: *Widget, available: Size) Size,
-    
+
     // Optional advanced features
     onFocusChanged: ?*const fn (self: *Widget, focused: bool) void,
     onBoundsChanged: ?*const fn (self: *Widget, old_bounds: Rect) void,
@@ -76,19 +76,19 @@ pub const Rect = struct {
     y: i16,
     width: u16,
     height: u16,
-    
+
     pub fn contains(self: Rect, point: Point) bool {
-        return point.x >= self.x and 
-               point.x < self.x + @as(i16, @intCast(self.width)) and
-               point.y >= self.y and 
-               point.y < self.y + @as(i16, @intCast(self.height));
+        return point.x >= self.x and
+            point.x < self.x + @as(i16, @intCast(self.width)) and
+            point.y >= self.y and
+            point.y < self.y + @as(i16, @intCast(self.height));
     }
-    
+
     pub fn intersects(self: Rect, other: Rect) bool {
-        return !(self.x + @as(i16, @intCast(self.width)) <= other.x or 
-                 other.x + @as(i16, @intCast(other.width)) <= self.x or
-                 self.y + @as(i16, @intCast(self.height)) <= other.y or
-                 other.y + @as(i16, @intCast(other.height)) <= self.y);
+        return !(self.x + @as(i16, @intCast(self.width)) <= other.x or
+            other.x + @as(i16, @intCast(other.width)) <= self.x or
+            self.y + @as(i16, @intCast(self.height)) <= other.y or
+            other.y + @as(i16, @intCast(other.height)) <= self.y);
     }
 };
 
@@ -98,19 +98,19 @@ pub const InputEvent = union(enum) {
     mouse: MouseEvent,
     resize: Size,
     focus: bool,
-    
+
     pub const KeyEvent = struct {
         key: Key,
         modifiers: Modifiers,
     };
-    
+
     pub const MouseEvent = struct {
         x: u16,
         y: u16,
         button: MouseButton,
         action: MouseAction,
     };
-    
+
     pub const Key = enum {
         char,
         enter,
@@ -126,15 +126,26 @@ pub const InputEvent = union(enum) {
         end,
         page_up,
         page_down,
-        f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12,
+        f1,
+        f2,
+        f3,
+        f4,
+        f5,
+        f6,
+        f7,
+        f8,
+        f9,
+        f10,
+        f11,
+        f12,
     };
-    
+
     pub const Modifiers = struct {
         ctrl: bool = false,
         alt: bool = false,
         shift: bool = false,
     };
-    
+
     pub const MouseButton = enum {
         left,
         right,
@@ -142,7 +153,7 @@ pub const InputEvent = union(enum) {
         wheel_up,
         wheel_down,
     };
-    
+
     pub const MouseAction = enum {
         press,
         release,
@@ -157,14 +168,14 @@ pub const Layout = struct {
         horizontal,
         vertical,
     };
-    
+
     pub const Alignment = enum {
         start,
         center,
         end,
         stretch,
     };
-    
+
     /// Simple flex layout implementation
     pub fn flexLayout(
         container: Rect,
@@ -173,14 +184,14 @@ pub const Layout = struct {
         alignment: Alignment,
     ) void {
         if (children.len == 0) return;
-        
+
         const available_space = switch (direction) {
             .horizontal => container.width,
             .vertical => container.height,
         };
-        
+
         const child_size = available_space / @as(u16, @intCast(children.len));
-        
+
         for (children, 0..) |*child, i| {
             const index = @as(u16, @intCast(i));
             switch (direction) {
@@ -201,16 +212,13 @@ pub const Layout = struct {
                     };
                 },
             }
-            
+
             // Apply alignment
             switch (alignment) {
                 .start => {}, // Already positioned at start
                 .center => {
                     // Center the widget in its allocated space
-                    const measured = child.measure(child, Size{ 
-                        .width = child.bounds.width, 
-                        .height = child.bounds.height 
-                    });
+                    const measured = child.measure(child, Size{ .width = child.bounds.width, .height = child.bounds.height });
                     switch (direction) {
                         .horizontal => {
                             const extra_height = child.bounds.height - measured.height;
@@ -226,10 +234,7 @@ pub const Layout = struct {
                 },
                 .end => {
                     // Align to end of allocated space
-                    const measured = child.measure(child, Size{ 
-                        .width = child.bounds.width, 
-                        .height = child.bounds.height 
-                    });
+                    const measured = child.measure(child, Size{ .width = child.bounds.width, .height = child.bounds.height });
                     switch (direction) {
                         .horizontal => {
                             child.bounds.y += @as(i16, @intCast(child.bounds.height - measured.height));
@@ -253,17 +258,17 @@ pub const Theme = struct {
     background: Color,
     foreground: Color,
     accent: Color,
-    
+
     // State colors
     focused: Color,
     selected: Color,
     disabled: Color,
-    
+
     // Status colors
     success: Color,
     warning: Color,
     danger: Color,
-    
+
     pub fn defaultLight() Theme {
         return Theme{
             .background = Color.WHITE,
@@ -277,7 +282,7 @@ pub const Theme = struct {
             .danger = Color.RED,
         };
     }
-    
+
     pub fn defaultDark() Theme {
         return Theme{
             .background = Color.BLACK,
@@ -296,17 +301,17 @@ pub const Theme = struct {
 /// Unified renderer that consolidates TUI systems
 pub const UnifiedRenderer = struct {
     const Self = @This();
-    
+
     allocator: Allocator,
     terminal: UnifiedTerminal,
     theme: Theme,
     widgets: std.ArrayList(*Widget),
     focused_widget: ?*Widget,
     needs_redraw: bool,
-    
+
     pub fn init(allocator: Allocator, theme: Theme) !Self {
         const terminal = try UnifiedTerminal.init(allocator);
-        
+
         return Self{
             .allocator = allocator,
             .terminal = terminal,
@@ -316,30 +321,30 @@ pub const UnifiedRenderer = struct {
             .needs_redraw = true,
         };
     }
-    
+
     pub fn deinit(self: *Self) void {
         self.widgets.deinit();
         self.terminal.deinit();
     }
-    
+
     /// Add a widget to the renderer
     pub fn addWidget(self: *Self, widget: *Widget) !void {
         try self.widgets.append(widget);
-        
+
         // Focus the first widget if none is focused
         if (self.focused_widget == null) {
             self.setFocus(widget);
         }
-        
+
         self.needs_redraw = true;
     }
-    
+
     /// Remove a widget from the renderer
     pub fn removeWidget(self: *Self, widget: *Widget) void {
         for (self.widgets.items, 0..) |w, i| {
             if (w == widget) {
                 _ = self.widgets.orderedRemove(i);
-                
+
                 // Update focus if removing focused widget
                 if (self.focused_widget == widget) {
                     if (self.widgets.items.len > 0) {
@@ -348,13 +353,13 @@ pub const UnifiedRenderer = struct {
                         self.focused_widget = null;
                     }
                 }
-                
+
                 self.needs_redraw = true;
                 break;
             }
         }
     }
-    
+
     /// Set focus to a specific widget
     pub fn setFocus(self: *Self, widget: *Widget) void {
         if (self.focused_widget) |old_focus| {
@@ -363,17 +368,17 @@ pub const UnifiedRenderer = struct {
                 callback(old_focus, false);
             }
         }
-        
+
         widget.focused = true;
         self.focused_widget = widget;
-        
+
         if (widget.onFocusChanged) |callback| {
             callback(widget, true);
         }
-        
+
         self.needs_redraw = true;
     }
-    
+
     /// Handle input events
     pub fn handleInput(self: *Self, event: InputEvent) !bool {
         // Try focused widget first
@@ -382,7 +387,7 @@ pub const UnifiedRenderer = struct {
                 return true;
             }
         }
-        
+
         // Try other widgets in reverse order (top-most first)
         var i: usize = self.widgets.items.len;
         while (i > 0) {
@@ -395,7 +400,7 @@ pub const UnifiedRenderer = struct {
                 }
             }
         }
-        
+
         // Handle system events
         switch (event) {
             .resize => |size| {
@@ -407,23 +412,23 @@ pub const UnifiedRenderer = struct {
             },
             else => {},
         }
-        
+
         return false;
     }
-    
+
     fn handleResize(self: *Self, size: Size) void {
         _ = size;
         // Trigger layout recalculation
         self.needs_redraw = true;
     }
-    
+
     fn handleSystemKey(self: *Self, key_event: InputEvent.KeyEvent) bool {
         switch (key_event.key) {
             .tab => {
                 // Cycle focus between widgets
                 if (self.widgets.items.len > 1) {
                     var next_index: usize = 0;
-                    
+
                     if (self.focused_widget) |current| {
                         for (self.widgets.items, 0..) |widget, i| {
                             if (widget == current) {
@@ -432,92 +437,85 @@ pub const UnifiedRenderer = struct {
                             }
                         }
                     }
-                    
+
                     self.setFocus(self.widgets.items[next_index]);
                     return true;
                 }
             },
             else => {},
         }
-        
+
         return false;
     }
-    
+
     /// Render all widgets to the terminal
     pub fn render(self: *Self) !void {
         if (!self.needs_redraw) return;
-        
+
         try self.terminal.beginSynchronizedOutput();
         defer self.terminal.endSynchronizedOutput() catch {};
-        
+
         // Clear screen
         try self.terminal.clearScreen();
-        
+
         // Set theme background
         try self.terminal.setBackground(self.theme.background);
         try self.terminal.setForeground(self.theme.foreground);
-        
+
         // Render all widgets in order
         for (self.widgets.items) |widget| {
             if (widget.visible) {
                 try widget.render(widget, self);
             }
         }
-        
+
         try self.terminal.resetStyles();
         try self.terminal.flush();
-        
+
         self.needs_redraw = false;
     }
-    
+
     /// Force a redraw on the next render cycle
     pub fn invalidate(self: *Self) void {
         self.needs_redraw = true;
     }
-    
+
     /// Get the current theme
     pub fn getTheme(self: Self) Theme {
         return self.theme;
     }
-    
+
     /// Set a new theme
     pub fn setTheme(self: *Self, theme: Theme) void {
         self.theme = theme;
         self.needs_redraw = true;
     }
-    
+
     /// Get terminal capabilities for progressive enhancement
     pub fn getTerminal(self: *Self) *UnifiedTerminal {
         return &self.terminal;
     }
-    
+
     /// Draw text at a specific position with optional styling
-    pub fn drawText(
-        self: *Self, 
-        x: i16, 
-        y: i16, 
-        text: []const u8, 
-        color: ?Color,
-        background: ?Color
-    ) !void {
+    pub fn drawText(self: *Self, x: i16, y: i16, text: []const u8, color: ?Color, background: ?Color) !void {
         try self.terminal.moveCursor(@intCast(y), @intCast(x));
-        
+
         if (color) |fg| {
             try self.terminal.setForeground(fg);
         }
-        
+
         if (background) |bg| {
             try self.terminal.setBackground(bg);
         }
-        
+
         const w = self.terminal.writer();
         try w.writeAll(text);
-        
+
         if (color != null or background != null) {
             try self.terminal.resetStyles();
         }
     }
-    
+
     /// Draw a box with optional borders
     pub fn drawBox(self: *Self, bounds: Rect, border: bool, title: ?[]const u8) !void {
         if (border) {
@@ -530,27 +528,27 @@ pub const UnifiedRenderer = struct {
                 const horizontal = "─";
                 const vertical = "│";
             };
-            
+
             // Top border
             try self.drawText(bounds.x, bounds.y, box_chars.top_left, null, null);
             for (1..bounds.width - 1) |i| {
                 try self.drawText(bounds.x + @as(i16, @intCast(i)), bounds.y, box_chars.horizontal, null, null);
             }
             try self.drawText(bounds.x + @as(i16, @intCast(bounds.width)) - 1, bounds.y, box_chars.top_right, null, null);
-            
+
             // Sides
             for (1..bounds.height - 1) |i| {
                 try self.drawText(bounds.x, bounds.y + @as(i16, @intCast(i)), box_chars.vertical, null, null);
                 try self.drawText(bounds.x + @as(i16, @intCast(bounds.width)) - 1, bounds.y + @as(i16, @intCast(i)), box_chars.vertical, null, null);
             }
-            
+
             // Bottom border
             try self.drawText(bounds.x, bounds.y + @as(i16, @intCast(bounds.height)) - 1, box_chars.bottom_left, null, null);
             for (1..bounds.width - 1) |i| {
                 try self.drawText(bounds.x + @as(i16, @intCast(i)), bounds.y + @as(i16, @intCast(bounds.height)) - 1, box_chars.horizontal, null, null);
             }
             try self.drawText(bounds.x + @as(i16, @intCast(bounds.width)) - 1, bounds.y + @as(i16, @intCast(bounds.height)) - 1, box_chars.bottom_right, null, null);
-            
+
             // Title
             if (title) |t| {
                 const title_x = bounds.x + @as(i16, @intCast((bounds.width - @min(t.len, bounds.width - 4)) / 2));

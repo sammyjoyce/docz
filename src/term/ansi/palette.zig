@@ -13,14 +13,14 @@ pub fn setPalette(writer: anytype, caps: TermCaps, index: u8, r: u8, g: u8, b: u
     var fbs = std.io.fixedBufferStream(&tmp);
     var w = fbs.writer();
     // OSC P
-    _ = w.write("\x1b]P") catch unreachable;
+    try w.write("\x1b]P");
     // index in hex (single nibble)
     const hex = "0123456789abcdef";
-    _ = w.writeByte(hex[index & 0x0f]) catch unreachable;
+    try w.writeByte(hex[index & 0x0f]);
     // rrggbb
-    _ = std.fmt.format(w, "{x:0>2}{x:0>2}{x:0>2}", .{ r, g, b }) catch unreachable;
+    try std.fmt.format(w, "{x:0>2}{x:0>2}{x:0>2}", .{ r, g, b });
     // BEL terminator, per console_codes(4)
-    _ = w.write("\x07") catch unreachable;
+    try w.write("\x07");
     try passthrough.writeWithPassthrough(writer, caps, fbs.getWritten());
 }
 

@@ -1,0 +1,22 @@
+        // Configure headers
+        var header_list: ?*c.curl_slist = null;
+        defer if (header_list) |list| c.curl_slist_free_all(list);
+
+        var header_strings = std.ArrayList([]const u8).init(self.allocator);
+        defer {
+            for (header_strings.items) |header_str| {
+                self.allocator.free(header_str);
+            }
+            header_strings.deinit();
+        }
+
+        for (req.headers) |header| {
+            const header_str = try std.fmt.allocPrint(self.allocator, "{s}: {s}\x00", .{ header.name, header.value });
+            try header_strings.append(header_str);
+
+            header_list = c.curl_slist_append(header_list, header_str.ptr);
+        }
+
+        if (header_list) |list| {
+            _ = c.curl_easy_setopt(handle, c.CURLOPT_HTTPHEADER, list);
+        }

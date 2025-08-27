@@ -45,3 +45,14 @@ pub const cwd = @import("cwd.zig");
 pub const winop = @import("winop.zig");
 pub const advanced_cursor_management = @import("advanced_cursor_management.zig");
 pub const advanced_color_conversion = @import("advanced_color_conversion.zig");
+
+// Charmbracelet-inspired enhancements
+pub const charmbracelet_color = @import("charmbracelet_color.zig");
+pub const charmbracelet_cursor = @import("charmbracelet_cursor.zig");
+pub const charmbracelet_clipboard = @import("charmbracelet_clipboard.zig");
+pub const charmbracelet_background = @import("charmbracelet_background.zig");
+pub const charmbracelet_device_attributes = @import("charmbracelet_device_attributes.zig");
+
+// Modern ANSI features (2020+)
+pub const modern_features = @import("modern_features.zig");
+pub const bidirectional_text = @import("bidirectional_text.zig");

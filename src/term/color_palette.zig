@@ -4,33 +4,32 @@ const capability_detector = @import("capability_detector.zig");
 /// Sophisticated color palette management system
 /// Provides intelligent color conversion, palette optimization, and theme management
 /// Inspired by charmbracelet color handling capabilities
-
 /// RGB color representation with high precision
 pub const RGBColor = struct {
     r: u8,
     g: u8,
     b: u8,
-    
+
     /// Convert to HSL color space for better color manipulation
     pub fn toHSL(self: RGBColor) HSLColor {
         const r = @as(f32, @floatFromInt(self.r)) / 255.0;
         const g = @as(f32, @floatFromInt(self.g)) / 255.0;
         const b = @as(f32, @floatFromInt(self.b)) / 255.0;
-        
+
         const max_val = @max(@max(r, g), b);
         const min_val = @min(@min(r, g), b);
         const delta = max_val - min_val;
-        
+
         // Lightness
         const l = (max_val + min_val) / 2.0;
-        
+
         // Saturation and Hue
         var s: f32 = 0;
         var h: f32 = 0;
-        
+
         if (delta > 0.0001) { // Avoid division by zero
             s = if (l > 0.5) delta / (2.0 - max_val - min_val) else delta / (max_val + min_val);
-            
+
             if (max_val == r) {
                 h = (g - b) / delta + (if (g < b) 6.0 else 0.0);
             } else if (max_val == g) {
@@ -40,83 +39,83 @@ pub const RGBColor = struct {
             }
             h /= 6.0;
         }
-        
+
         return HSLColor{
             .h = h * 360.0,
             .s = s * 100.0,
             .l = l * 100.0,
         };
     }
-    
+
     /// Calculate perceptual distance using CIEDE2000 (simplified)
     pub fn perceptualDistance(self: RGBColor, other: RGBColor) f32 {
         const lab1 = self.toLAB();
         const lab2 = other.toLAB();
-        
+
         const delta_l = lab1.l - lab2.l;
         const delta_a = lab1.a - lab2.a;
         const delta_b = lab1.b - lab2.b;
-        
+
         // Simplified CIEDE2000 approximation
         return @sqrt(delta_l * delta_l + delta_a * delta_a + delta_b * delta_b);
     }
-    
+
     /// Convert to LAB color space for perceptual calculations
     fn toLAB(self: RGBColor) LABColor {
         // Convert RGB to XYZ first
         var r = @as(f32, @floatFromInt(self.r)) / 255.0;
         var g = @as(f32, @floatFromInt(self.g)) / 255.0;
         var b = @as(f32, @floatFromInt(self.b)) / 255.0;
-        
+
         // Apply gamma correction
         r = if (r > 0.04045) std.math.pow(f32, (r + 0.055) / 1.055, 2.4) else r / 12.92;
         g = if (g > 0.04045) std.math.pow(f32, (g + 0.055) / 1.055, 2.4) else g / 12.92;
         b = if (b > 0.04045) std.math.pow(f32, (b + 0.055) / 1.055, 2.4) else b / 12.92;
-        
+
         // Convert to XYZ (D65 illuminant)
         const x = r * 0.4124564 + g * 0.3575761 + b * 0.1804375;
         const y = r * 0.2126729 + g * 0.7151522 + b * 0.0721750;
         const z = r * 0.0193339 + g * 0.1191920 + b * 0.9503041;
-        
+
         // Normalize for D65 white point
         const xn = x / 0.95047;
         const yn = y / 1.00000;
         const zn = z / 1.08883;
-        
+
         // Convert to LAB
-        const fx = if (xn > 0.008856) std.math.cbrt(xn) else (7.787 * xn + 16.0/116.0);
-        const fy = if (yn > 0.008856) std.math.cbrt(yn) else (7.787 * yn + 16.0/116.0);
-        const fz = if (zn > 0.008856) std.math.cbrt(zn) else (7.787 * zn + 16.0/116.0);
-        
+        const fx = if (xn > 0.008856) std.math.cbrt(xn) else (7.787 * xn + 16.0 / 116.0);
+        const fy = if (yn > 0.008856) std.math.cbrt(yn) else (7.787 * yn + 16.0 / 116.0);
+        const fz = if (zn > 0.008856) std.math.cbrt(zn) else (7.787 * zn + 16.0 / 116.0);
+
         return LABColor{
             .l = 116.0 * fy - 16.0,
             .a = 500.0 * (fx - fy),
             .b = 200.0 * (fy - fz),
         };
     }
-    
+
     /// Create from hex string (e.g., "#FF0000" or "FF0000")
     pub fn fromHex(hex: []const u8) !RGBColor {
         const clean_hex = if (hex.len > 0 and hex[0] == '#') hex[1..] else hex;
         if (clean_hex.len != 6) return error.InvalidHexFormat;
-        
+
         const r = try std.fmt.parseInt(u8, clean_hex[0..2], 16);
         const g = try std.fmt.parseInt(u8, clean_hex[2..4], 16);
         const b = try std.fmt.parseInt(u8, clean_hex[4..6], 16);
-        
+
         return RGBColor{ .r = r, .g = g, .b = b };
     }
-    
+
     /// Convert to hex string
     pub fn toHex(self: RGBColor, allocator: std.mem.Allocator) ![]u8 {
         return try std.fmt.allocPrint(allocator, "{X:0>2}{X:0>2}{X:0>2}", .{ self.r, self.g, self.b });
     }
-    
+
     /// Blend two colors with given weight (0.0 = self, 1.0 = other)
     pub fn blend(self: RGBColor, other: RGBColor, weight: f32) RGBColor {
         const w = std.math.clamp(weight, 0.0, 1.0);
         const inv_w = 1.0 - w;
-        
+
         return RGBColor{
             .r = @intFromFloat(@as(f32, @floatFromInt(self.r)) * inv_w + @as(f32, @floatFromInt(other.r)) * w),
             .g = @intFromFloat(@as(f32, @floatFromInt(self.g)) * inv_w + @as(f32, @floatFromInt(other.g)) * w),
@@ -130,38 +129,62 @@ pub const HSLColor = struct {
     h: f32, // Hue 0-360
     s: f32, // Saturation 0-100
     l: f32, // Lightness 0-100
-    
+
     /// Convert back to RGB
     pub fn toRGB(self: HSLColor) RGBColor {
         const h = self.h / 360.0;
         const s = self.s / 100.0;
         const l = self.l / 100.0;
-        
+
         const c = (1.0 - @abs(2.0 * l - 1.0)) * s;
         const x = c * (1.0 - @abs(@mod(h * 6.0, 2.0) - 1.0));
         const m = l - c / 2.0;
-        
+
         var r: f32 = 0;
         var g: f32 = 0;
         var b: f32 = 0;
-        
+
         const h_sector = @as(u8, @intFromFloat(h * 6.0));
         switch (h_sector) {
-            0 => { r = c; g = x; b = 0; },
-            1 => { r = x; g = c; b = 0; },
-            2 => { r = 0; g = c; b = x; },
-            3 => { r = 0; g = x; b = c; },
-            4 => { r = x; g = 0; b = c; },
-            else => { r = c; g = 0; b = x; },
+            0 => {
+                r = c;
+                g = x;
+                b = 0;
+            },
+            1 => {
+                r = x;
+                g = c;
+                b = 0;
+            },
+            2 => {
+                r = 0;
+                g = c;
+                b = x;
+            },
+            3 => {
+                r = 0;
+                g = x;
+                b = c;
+            },
+            4 => {
+                r = x;
+                g = 0;
+                b = c;
+            },
+            else => {
+                r = c;
+                g = 0;
+                b = x;
+            },
         }
-        
+
         return RGBColor{
             .r = @intFromFloat((r + m) * 255.0),
             .g = @intFromFloat((g + m) * 255.0),
             .b = @intFromFloat((b + m) * 255.0),
         };
     }
-    
+
     /// Adjust lightness by percentage (-100 to 100)
     pub fn adjustLightness(self: HSLColor, adjustment: f32) HSLColor {
         return HSLColor{
@@ -170,7 +193,7 @@ pub const HSLColor = struct {
             .l = std.math.clamp(self.l + adjustment, 0.0, 100.0),
         };
     }
-    
+
     /// Adjust saturation by percentage (-100 to 100)
     pub fn adjustSaturation(self: HSLColor, adjustment: f32) HSLColor {
         return HSLColor{
@@ -191,36 +214,36 @@ const LABColor = struct {
 /// ANSI 256-color palette with intelligent color matching
 pub const ANSI256Palette = struct {
     colors: [256]RGBColor,
-    
+
     /// Initialize with standard ANSI 256-color palette
     pub fn init() ANSI256Palette {
         var palette = ANSI256Palette{ .colors = undefined };
-        
+
         // Standard 16 ANSI colors
         const standard_colors = [_]RGBColor{
-            RGBColor{ .r = 0, .g = 0, .b = 0 },       // Black
-            RGBColor{ .r = 128, .g = 0, .b = 0 },     // Dark Red
-            RGBColor{ .r = 0, .g = 128, .b = 0 },     // Dark Green
-            RGBColor{ .r = 128, .g = 128, .b = 0 },   // Dark Yellow
-            RGBColor{ .r = 0, .g = 0, .b = 128 },     // Dark Blue
-            RGBColor{ .r = 128, .g = 0, .b = 128 },   // Dark Magenta
-            RGBColor{ .r = 0, .g = 128, .b = 128 },   // Dark Cyan
+            RGBColor{ .r = 0, .g = 0, .b = 0 }, // Black
+            RGBColor{ .r = 128, .g = 0, .b = 0 }, // Dark Red
+            RGBColor{ .r = 0, .g = 128, .b = 0 }, // Dark Green
+            RGBColor{ .r = 128, .g = 128, .b = 0 }, // Dark Yellow
+            RGBColor{ .r = 0, .g = 0, .b = 128 }, // Dark Blue
+            RGBColor{ .r = 128, .g = 0, .b = 128 }, // Dark Magenta
+            RGBColor{ .r = 0, .g = 128, .b = 128 }, // Dark Cyan
             RGBColor{ .r = 192, .g = 192, .b = 192 }, // Light Gray
             RGBColor{ .r = 128, .g = 128, .b = 128 }, // Dark Gray
-            RGBColor{ .r = 255, .g = 0, .b = 0 },     // Red
-            RGBColor{ .r = 0, .g = 255, .b = 0 },     // Green
-            RGBColor{ .r = 255, .g = 255, .b = 0 },   // Yellow
-            RGBColor{ .r = 0, .g = 0, .b = 255 },     // Blue
-            RGBColor{ .r = 255, .g = 0, .b = 255 },   // Magenta
-            RGBColor{ .r = 0, .g = 255, .b = 255 },   // Cyan
+            RGBColor{ .r = 255, .g = 0, .b = 0 }, // Red
+            RGBColor{ .r = 0, .g = 255, .b = 0 }, // Green
+            RGBColor{ .r = 255, .g = 255, .b = 0 }, // Yellow
+            RGBColor{ .r = 0, .g = 0, .b = 255 }, // Blue
+            RGBColor{ .r = 255, .g = 0, .b = 255 }, // Magenta
+            RGBColor{ .r = 0, .g = 255, .b = 255 }, // Cyan
             RGBColor{ .r = 255, .g = 255, .b = 255 }, // White
         };
-        
+
         // Copy standard colors
         for (standard_colors, 0..) |color, i| {
             palette.colors[i] = color;
         }
-        
+
         // 216-color 6x6x6 RGB cube (colors 16-231)
         var idx: usize = 16;
         for (0..6) |r| {
@@ -234,21 +257,21 @@ pub const ANSI256Palette = struct {
                 }
             }
         }
-        
+
         // 24-color grayscale ramp (colors 232-255)
         for (0..24) |i| {
             const gray: u8 = @intCast(8 + i * 10);
             palette.colors[232 + i] = RGBColor{ .r = gray, .g = gray, .b = gray };
         }
-        
+
         return palette;
     }
-    
+
     /// Find closest color in palette using perceptual distance
     pub fn findClosest(self: ANSI256Palette, target: RGBColor) u8 {
         var best_idx: u8 = 0;
         var best_distance: f32 = std.math.inf(f32);
-        
+
         for (self.colors, 0..) |color, idx| {
             const distance = target.perceptualDistance(color);
             if (distance < best_distance) {
@@ -256,10 +279,10 @@ pub const ANSI256Palette = struct {
                 best_idx = @intCast(idx);
             }
         }
-        
+
         return best_idx;
     }
-    
+
     /// Get RGB color for ANSI color index
     pub fn getRGB(self: ANSI256Palette, index: u8) RGBColor {
         return self.colors[index];
@@ -273,16 +296,16 @@ pub const ColorPaletteManager = struct {
     capabilities: capability_detector.Capabilities,
     current_theme: Theme = .auto,
     custom_colors: std.StringHashMap(RGBColor),
-    
+
     const Self = @This();
-    
+
     pub const Theme = enum {
-        auto,    // Detect from terminal
-        light,   // Light theme
-        dark,    // Dark theme
-        custom,  // User-defined theme
+        auto, // Detect from terminal
+        light, // Light theme
+        dark, // Dark theme
+        custom, // User-defined theme
     };
-    
+
     pub fn init(allocator: std.mem.Allocator, capabilities: capability_detector.Capabilities) Self {
         return Self{
             .allocator = allocator,
@@ -291,11 +314,11 @@ pub const ColorPaletteManager = struct {
             .custom_colors = std.StringHashMap(RGBColor).init(allocator),
         };
     }
-    
+
     pub fn deinit(self: *Self) void {
         self.custom_colors.deinit();
     }
-    
+
     /// Convert any color to the best available format for current terminal
     pub fn adaptColor(self: Self, color: RGBColor) TerminalColor {
         if (self.capabilities.supports_truecolor) {
@@ -310,7 +333,7 @@ pub const ColorPaletteManager = struct {
             return TerminalColor{ .ansi16 = ansi16_index };
         }
     }
-    
+
     /// Convert 256-color index to 16-color approximation
     fn convertTo16Color(self: Self, ansi256_index: u8) u8 {
         _ = self;
@@ -326,31 +349,31 @@ pub const ColorPaletteManager = struct {
             const r = cube_index / 36;
             const g = (cube_index % 36) / 6;
             const b = cube_index % 6;
-            
+
             // Convert to 16-color approximation
             const r16 = if (r >= 3) 1 else 0;
             const g16 = if (g >= 3) 1 else 0;
             const b16 = if (b >= 3) 1 else 0;
-            
+
             return @intCast(r16 * 4 + g16 * 2 + b16 + (if (r + g + b > 9) @as(u32, 8) else 0));
         }
     }
-    
+
     /// Define a named color in the palette
     pub fn defineColor(self: *Self, name: []const u8, color: RGBColor) !void {
         try self.custom_colors.put(try self.allocator.dupe(u8, name), color);
     }
-    
+
     /// Get a named color from the palette
     pub fn getNamedColor(self: Self, name: []const u8) ?TerminalColor {
         if (self.custom_colors.get(name)) |color| {
             return self.adaptColor(color);
         }
-        
+
         // Check for standard color names
         return self.getStandardColor(name);
     }
-    
+
     /// Get standard color by name (red, green, blue, etc.)
     fn getStandardColor(self: Self, name: []const u8) ?TerminalColor {
         const color_map = std.ComptimeStringMap(RGBColor, .{
@@ -365,20 +388,20 @@ pub const ColorPaletteManager = struct {
             .{ "gray", RGBColor{ .r = 128, .g = 128, .b = 128 } },
             .{ "grey", RGBColor{ .r = 128, .g = 128, .b = 128 } },
         });
-        
+
         if (color_map.get(name)) |color| {
             return self.adaptColor(color);
         }
-        
+
         return null;
     }
-    
+
     /// Generate a color scheme based on a base color
     pub fn generateColorScheme(self: Self, allocator: std.mem.Allocator, base_color: RGBColor) !ColorScheme {
         _ = allocator;
         const base_hsl = base_color.toHSL();
         const complement_hue = if (base_hsl.h >= 180) base_hsl.h - 180 else base_hsl.h + 180;
-        
+
         // Create intermediate colors
         const secondary_hsl = base_hsl.adjustLightness(-20);
         const accent_hsl = HSLColor{ .h = complement_hue, .s = base_hsl.s, .l = base_hsl.l };
@@ -387,7 +410,7 @@ pub const ColorPaletteManager = struct {
         const err_hsl = HSLColor{ .h = 0, .s = 70, .l = 55 };
         const info_hsl = HSLColor{ .h = 200, .s = 60, .l = 55 };
         const muted_hsl = base_hsl.adjustSaturation(-30).adjustLightness(20);
-        
+
         return ColorScheme{
             .primary = self.adaptColor(base_color),
             .secondary = self.adaptColor(secondary_hsl.toRGB()),
@@ -403,10 +426,10 @@ pub const ColorPaletteManager = struct {
 
 /// Terminal-adapted color representation
 pub const TerminalColor = union(enum) {
-    rgb: RGBColor,      // 24-bit true color
-    ansi256: u8,        // 256-color palette index
-    ansi16: u8,         // 16-color ANSI index
-    
+    rgb: RGBColor, // 24-bit true color
+    ansi256: u8, // 256-color palette index
+    ansi16: u8, // 16-color ANSI index
+
     /// Get ANSI escape sequence for foreground color
     pub fn toANSIForeground(self: TerminalColor, allocator: std.mem.Allocator) ![]u8 {
         return switch (self) {
@@ -418,7 +441,7 @@ pub const TerminalColor = union(enum) {
                 try std.fmt.allocPrint(allocator, "\x1b[9{}m", .{idx - 8}),
         };
     }
-    
+
     /// Get ANSI escape sequence for background color
     pub fn toANSIBackground(self: TerminalColor, allocator: std.mem.Allocator) ![]u8 {
         return switch (self) {
@@ -447,10 +470,10 @@ pub const ColorScheme = struct {
 // Tests
 test "RGB to HSL conversion" {
     const testing = std.testing;
-    
+
     const red = RGBColor{ .r = 255, .g = 0, .b = 0 };
     const hsl = red.toHSL();
-    
+
     try testing.expectApproxEqAbs(hsl.h, 0.0, 1.0);
     try testing.expectApproxEqAbs(hsl.s, 100.0, 1.0);
     try testing.expectApproxEqAbs(hsl.l, 50.0, 1.0);
@@ -458,12 +481,12 @@ test "RGB to HSL conversion" {
 
 test "hex color parsing" {
     const testing = std.testing;
-    
+
     const color = try RGBColor.fromHex("#FF0080");
     try testing.expect(color.r == 255);
     try testing.expect(color.g == 0);
     try testing.expect(color.b == 128);
-    
+
     const color2 = try RGBColor.fromHex("00FF80");
     try testing.expect(color2.r == 0);
     try testing.expect(color2.g == 255);
@@ -472,14 +495,14 @@ test "hex color parsing" {
 
 test "ANSI 256 palette initialization" {
     const testing = std.testing;
-    
+
     const palette = ANSI256Palette.init();
-    
+
     // Test standard colors
     try testing.expect(palette.colors[0].r == 0); // Black
     try testing.expect(palette.colors[9].r == 255); // Bright Red
     try testing.expect(palette.colors[15].r == 255); // White
-    
+
     // Test grayscale ramp
     const dark_gray = palette.colors[232];
     const light_gray = palette.colors[255];
@@ -489,23 +512,23 @@ test "ANSI 256 palette initialization" {
 
 test "color distance calculation" {
     const testing = std.testing;
-    
+
     const red = RGBColor{ .r = 255, .g = 0, .b = 0 };
     const green = RGBColor{ .r = 0, .g = 255, .b = 0 };
     const dark_red = RGBColor{ .r = 128, .g = 0, .b = 0 };
-    
+
     const red_green_dist = red.perceptualDistance(green);
     const red_dark_red_dist = red.perceptualDistance(dark_red);
-    
+
     try testing.expect(red_dark_red_dist < red_green_dist);
 }
 
 test "color blending" {
     const testing = std.testing;
-    
+
     const red = RGBColor{ .r = 255, .g = 0, .b = 0 };
     const blue = RGBColor{ .r = 0, .g = 0, .b = 255 };
-    
+
     const blend = red.blend(blue, 0.5);
     try testing.expect(blend.r == 127); // Should be halfway between 255 and 0
     try testing.expect(blend.g == 0);

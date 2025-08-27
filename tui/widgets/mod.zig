@@ -9,11 +9,11 @@ pub const core = struct {
     // Consolidate from existing src/tui.zig legacy components
     pub const Menu = @import("../../src/tui.zig").Menu;
     pub const Section = @import("../../src/tui.zig").Section;
-    
+
     // Enhanced widgets from existing modular system
     pub const TextInput = @import("../../src/tui/widgets/core/text_input.zig").TextInput;
     pub const TabContainer = @import("../../src/tui/widgets/core/tabs.zig").TabContainer;
-    
+
     // Placeholder implementations for widgets to be extracted
     pub const Table = struct {
         pub fn init(allocator: std.mem.Allocator) !@This() {

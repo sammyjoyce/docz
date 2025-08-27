@@ -2,14 +2,14 @@
 //! Extracted from monolithic tui.zig for better modularity
 
 const std = @import("std");
-const term_ansi = @import("../../term/ansi/color.zig");
-const term_caps = @import("../../term/caps.zig");
+const term_ansi = @import("../../../term/ansi/color.zig");
+const term_caps = @import("../../../term/caps.zig");
 const print = std.debug.print;
 
 /// Enhanced Section widget with collapsible content and rich styling
 pub const Section = struct {
     title: []const u8,
-    content: std.ArrayList([]const u8),
+    content: std.ArrayListUnmanaged([]const u8),
     is_expanded: bool,
     has_border: bool,
     indent_level: u32,
@@ -62,7 +62,7 @@ pub const Section = struct {
     pub fn init(allocator: std.mem.Allocator, title: []const u8) Section {
         return Section{
             .title = title,
-            .content = std.ArrayList([]const u8).init(allocator),
+            .content = std.ArrayListUnmanaged([]const u8){},
             .is_expanded = true,
             .has_border = true,
             .indent_level = 0,
@@ -75,7 +75,7 @@ pub const Section = struct {
     pub fn initWithTheme(allocator: std.mem.Allocator, title: []const u8, theme: ThemeColors) Section {
         return Section{
             .title = title,
-            .content = std.ArrayList([]const u8).init(allocator),
+            .content = std.ArrayListUnmanaged([]const u8){},
             .is_expanded = true,
             .has_border = true,
             .indent_level = 0,
@@ -86,7 +86,7 @@ pub const Section = struct {
     }
 
     pub fn deinit(self: *Section) void {
-        self.content.deinit();
+        self.content.deinit(self.allocator);
     }
 
     pub fn setIcon(self: *Section, icon: []const u8) void {
@@ -106,12 +106,12 @@ pub const Section = struct {
     }
 
     pub fn addLine(self: *Section, line: []const u8) !void {
-        try self.content.append(line);
+        try self.content.append(self.allocator, line);
     }
 
     pub fn addFormattedLine(self: *Section, comptime fmt: []const u8, args: anytype) !void {
         const line = try std.fmt.allocPrint(self.allocator, fmt, args);
-        try self.content.append(line);
+        try self.content.append(self.allocator, line);
     }
 
     pub fn toggle(self: *Section) void {
@@ -128,17 +128,22 @@ pub const Section = struct {
 
     /// Enhanced drawing with terminal capabilities
     pub fn draw(self: Section) void {
-        self.drawWithWriter(std.fs.File.stdout().writer().any());
+        var stdout_buffer: [4096]u8 = undefined;
+        var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+        const writer = &stdout_writer.interface;
+        self.drawWithWriter(writer);
     }
 
-    pub fn drawWithWriter(self: Section, writer: anytype) void {
+    pub fn drawWithWriter(self: Section, writer: *std.Io.Writer) void {
         self.drawImpl(writer) catch |err| {
             std.log.err("Failed to draw section: {}", .{err});
         };
     }
 
-    fn drawImpl(self: Section, writer: anytype) !void {
-        const indent = "  " ** @min(self.indent_level, 10); // Limit indent to prevent overflow
+    fn drawImpl(self: Section, writer: *std.Io.Writer) !void {
+        const indent_level = @min(self.indent_level, 10);
+        var indent_buf: [20]u8 = [_]u8{' '} ** 20; // Max 10 * 2 = 20 chars
+        const indent = indent_buf[0..(indent_level * 2)];
         const expand_icon = if (self.is_expanded) "▼" else "▶";
         const section_icon = self.icon orelse "";
 
@@ -159,7 +164,9 @@ pub const Section = struct {
 
         // Content (only if expanded)
         if (self.is_expanded) {
-            const content_indent = if (self.indent_level > 0) "    " ** self.indent_level else "  ";
+            const content_indent_level = if (self.indent_level > 0) self.indent_level else 1;
+            var content_indent_buf: [40]u8 = [_]u8{' '} ** 40; // Max indent
+            const content_indent = content_indent_buf[0..(content_indent_level * 4)];
 
             try writer.writeAll(self.theme_colors.content);
 

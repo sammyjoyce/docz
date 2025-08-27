@@ -4,9 +4,35 @@
 //! authentication status display, and credential management.
 
 const std = @import("std");
-const tui = @import("tui_shared");
 const oauth = @import("../oauth/mod.zig");
 const core = @import("../core/mod.zig");
+
+// Minimal TUI interface with basic ANSI escape codes
+const tui = struct {
+    fn getTerminalSize() struct { width: u16, height: u16 } {
+        // Use a reasonable default since we don't have access to full TUI
+        return .{ .width = 80, .height = 24 };
+    }
+
+    fn clearScreen() void {
+        print("\x1b[2J\x1b[H", .{});
+    }
+
+    const Color = struct {
+        pub const BRIGHT_BLUE = "\x1b[94m";
+        pub const BRIGHT_GREEN = "\x1b[92m";
+        pub const BRIGHT_RED = "\x1b[91m";
+        pub const BRIGHT_CYAN = "\x1b[96m";
+        pub const DIM = "\x1b[2m";
+        pub const BOLD = "\x1b[1m";
+        pub const RESET = "\x1b[0m";
+    };
+
+    const TerminalSize = struct {
+        width: u16,
+        height: u16,
+    };
+};
 
 // Re-export individual TUI components
 pub const oauth_wizard = @import("oauth_wizard.zig");

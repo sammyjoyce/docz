@@ -2,11 +2,12 @@
 //! Leverages @src/term for rich terminal interactions
 
 const std = @import("std");
-const term_ansi = @import("../../term/ansi/color.zig");
-const term_cursor = @import("../../term/ansi/cursor.zig");
-const term_screen = @import("../../term/ansi/screen.zig");
-const term_hyperlink = @import("../../term/ansi/hyperlink.zig");
-const term_caps = @import("../../term/caps.zig");
+const term_shared = @import("../../term/mod.zig");
+const term_ansi = term_shared.ansi.color;
+const term_cursor = term_shared.ansi.cursor;
+const term_screen = term_shared.ansi.screen;
+const term_hyperlink = term_shared.ansi.hyperlink;
+const term_caps = term_shared.caps;
 const Allocator = std.mem.Allocator;
 const print = std.debug.print;
 

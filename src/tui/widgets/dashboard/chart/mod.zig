@@ -1,5 +1,5 @@
 //! Chart module exports
-//! 
+//!
 //! This module provides the public interface for the modular chart system.
 
 const std = @import("std");
@@ -38,24 +38,24 @@ pub fn createLineChart(allocator: std.mem.Allocator, series_name: []const u8, va
         .color = null,
         .style = .solid,
     };
-    
+
     const chart_data = base.ChartData{
         .series = &[_]base.ChartData.Series{series},
         .x_labels = null,
         .y_range = null,
     };
-    
+
     const config = base.Config{
         .chart_type = .line,
         .title = series_name,
         .show_grid = true,
         .show_axes = true,
     };
-    
+
     return Chart.init(allocator, chart_data, config);
 }
 
-/// Create a simple bar chart with default styling  
+/// Create a simple bar chart with default styling
 pub fn createBarChart(allocator: std.mem.Allocator, series_name: []const u8, values: []const f64) Chart {
     const series = base.ChartData.Series{
         .name = series_name,
@@ -63,20 +63,20 @@ pub fn createBarChart(allocator: std.mem.Allocator, series_name: []const u8, val
         .color = null,
         .style = .solid,
     };
-    
+
     const chart_data = base.ChartData{
         .series = &[_]base.ChartData.Series{series},
         .x_labels = null,
         .y_range = null,
     };
-    
+
     const config = base.Config{
         .chart_type = .bar,
         .title = series_name,
         .show_grid = true,
         .show_axes = true,
     };
-    
+
     return Chart.init(allocator, chart_data, config);
 }
 
@@ -87,7 +87,7 @@ pub fn createMultiLineChart(allocator: std.mem.Allocator, title: []const u8, ser
         .x_labels = null,
         .y_range = null,
     };
-    
+
     const config = base.Config{
         .chart_type = .line,
         .title = title,
@@ -95,7 +95,7 @@ pub fn createMultiLineChart(allocator: std.mem.Allocator, title: []const u8, ser
         .show_axes = true,
         .show_legend = true,
     };
-    
+
     return Chart.init(allocator, chart_data, config);
 }
 
@@ -107,20 +107,20 @@ pub fn createAreaChart(allocator: std.mem.Allocator, series_name: []const u8, va
         .color = null,
         .style = .solid,
     };
-    
+
     const chart_data = base.ChartData{
         .series = &[_]base.ChartData.Series{series},
         .x_labels = null,
         .y_range = null,
     };
-    
+
     const config = base.Config{
         .chart_type = .area,
         .title = series_name,
         .show_grid = true,
         .show_axes = true,
     };
-    
+
     return Chart.init(allocator, chart_data, config);
 }
 

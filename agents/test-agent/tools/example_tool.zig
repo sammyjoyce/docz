@@ -10,7 +10,7 @@ pub fn execute(allocator: std.mem.Allocator, input: []const u8) tools_mod.ToolEr
         uppercase: bool = false,
         repeat: u32 = 1,
     };
-    
+
     const Request = struct {
         message: []const u8,
         options: ?Options = null,

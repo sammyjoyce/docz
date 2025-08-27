@@ -45,7 +45,10 @@ pub fn main() !void {
 }
 
 fn showUsage() !void {
-    const stdout = std.io.getStdOut().writer();
+    var stdout_buffer: [4096]u8 = undefined;
+    var stdout_writer = std.io.getStdOut().writer(&stdout_buffer);
+    const stdout = &stdout_writer.interface;
+
     try stdout.writeAll(
         \\Enhanced CLI/TUI Demonstration
         \\=============================
@@ -54,7 +57,7 @@ fn showUsage() !void {
         \\
         \\Modes:
         \\  cli   - CLI-only demonstration with graphics dashboard
-        \\  tui   - TUI-only demonstration with unified widgets  
+        \\  tui   - TUI-only demonstration with unified widgets
         \\  both  - Integrated demonstration showing both systems
         \\
         \\Features Demonstrated:
@@ -73,6 +76,7 @@ fn showUsage() !void {
         \\  enhanced_demo both
         \\
     );
+    try stdout.flush();
 }
 
 /// Run CLI demonstration
@@ -191,30 +195,32 @@ fn runTUIDemo(allocator: Allocator) !void {
 
 /// Run integrated demonstration showing both systems
 fn runIntegratedDemo(allocator: Allocator) !void {
-    const stdout = std.io.getStdOut().writer();
-    
+    var stdout_buffer: [4096]u8 = undefined;
+    var stdout_writer = std.io.getStdOut().writer(&stdout_buffer);
+    const stdout = &stdout_writer.interface;
+
     try stdout.writeAll("🚀 Integrated CLI/TUI Demonstration\n");
     try stdout.writeAll("===================================\n\n");
 
     // First, run CLI demo to show terminal capabilities
     try stdout.writeAll("Phase 1: CLI Graphics Dashboard\n");
     try stdout.writeAll("-------------------------------\n");
-    
+
     var cli = try EnhancedCLI.init(allocator);
     defer cli.deinit();
-    
+
     const cli_args = [_][]const u8{ "enhanced_demo", "dashboard" };
     _ = try cli.run(&cli_args);
-    
+
     try stdout.writeAll("\n\nPress Enter to continue to TUI demonstration...\n");
     _ = try std.io.getStdIn().reader().readByte();
 
     // Then run TUI demo to show widget system
     try stdout.writeAll("\nPhase 2: Unified TUI System\n");
     try stdout.writeAll("---------------------------\n");
-    
+
     try runTUIDemo(allocator);
-    
+
     try stdout.writeAll("\n\n✅ Integration Complete!\n");
     try stdout.writeAll("This demonstration showcased:\n");
     try stdout.writeAll("• CLI with graphics-enhanced dashboard\n");
@@ -222,6 +228,7 @@ fn runIntegratedDemo(allocator: Allocator) !void {
     try stdout.writeAll("• Progressive enhancement across both systems\n");
     try stdout.writeAll("• Shared terminal capability detection\n");
     try stdout.writeAll("• Consistent theming and component interfaces\n");
+    try stdout.flush();
 }
 
 /// Show TUI startup message with terminal capability info

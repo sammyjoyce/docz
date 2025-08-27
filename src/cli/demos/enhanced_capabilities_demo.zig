@@ -9,7 +9,8 @@
 //! - Clipboard integration and hyperlink support
 
 const std = @import("std");
-const unified = @import("../../term/unified.zig");
+const term_shared = @import("../../term/mod.zig");
+const unified = term_shared.unified;
 const terminal_bridge = @import("../core/terminal_bridge.zig");
 const components = @import("../../components/mod.zig");
 const enhanced_notification = @import("../components/enhanced/notification.zig");
@@ -30,7 +31,7 @@ pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
-    
+
     // Initialize terminal bridge
     const bridge_config = terminal_bridge.Config{
         .enable_buffering = true,
@@ -38,40 +39,40 @@ pub fn main() !void {
         .enable_notifications = true,
         .enable_clipboard = true,
     };
-    
+
     var bridge = try terminal_bridge.TerminalBridge.init(allocator, bridge_config);
     defer bridge.deinit();
-    
+
     const demo_config = DemoConfig{};
-    
+
     // Welcome message
     try showWelcome(&bridge);
-    
+
     // Demo sections
     if (demo_config.show_capabilities) {
         try showCapabilities(&bridge);
         if (demo_config.pause_between_demos) try waitForEnter(&bridge);
     }
-    
+
     if (demo_config.run_progress_demo) {
         try runProgressDemo(&bridge);
         if (demo_config.pause_between_demos) try waitForEnter(&bridge);
     }
-    
+
     if (demo_config.run_notification_demo) {
         try runNotificationDemo(&bridge);
         if (demo_config.pause_between_demos) try waitForEnter(&bridge);
     }
-    
+
     if (demo_config.run_input_demo) {
         try runInputDemo(&bridge);
         if (demo_config.pause_between_demos) try waitForEnter(&bridge);
     }
-    
+
     if (demo_config.run_integration_demo) {
         try runIntegrationDemo(&bridge);
     }
-    
+
     // Farewell
     try showFarewell(&bridge);
 }
@@ -79,28 +80,28 @@ pub fn main() !void {
 /// Show welcome message with terminal capabilities
 fn showWelcome(bridge: *terminal_bridge.TerminalBridge) !void {
     try bridge.clearScreen();
-    
+
     const title_style = unified.Style{
         .fg_color = unified.Color{ .rgb = .{ .r = 100, .g = 200, .b = 255 } },
         .bold = true,
     };
-    
+
     try bridge.print("╔══════════════════════════════════════════════════════════════╗\n", title_style);
     try bridge.print("║               Enhanced CLI Capabilities Demo                 ║\n", title_style);
     try bridge.print("║          Progressive Terminal Enhancement Showcase          ║\n", title_style);
     try bridge.print("╚══════════════════════════════════════════════════════════════╝\n", title_style);
     try bridge.print("\n", null);
-    
+
     // Show brief introduction
     try bridge.print("Welcome to the Enhanced CLI Capabilities Demo!\n\n", null);
     try bridge.print("This demonstration showcases advanced terminal features with\n", null);
     try bridge.print("progressive enhancement - automatically adapting to your\n", null);
     try bridge.print("terminal's capabilities for the best possible experience.\n\n", null);
-    
+
     // Show current strategy
     const strategy = bridge.getRenderStrategy();
     try bridge.print("Current Rendering Strategy: ", terminal_bridge.Styles.INFO);
-    
+
     const strategy_name = switch (strategy) {
         .full_graphics => "Full Graphics (Kitty Protocol)",
         .sixel_graphics => "Sixel Graphics",
@@ -109,7 +110,7 @@ fn showWelcome(bridge: *terminal_bridge.TerminalBridge) !void {
         .basic_ascii => "Basic ASCII (16 colors)",
         .fallback => "Fallback (Minimal support)",
     };
-    
+
     const strategy_color = switch (strategy) {
         .full_graphics, .sixel_graphics => unified.Colors.GREEN,
         .rich_text => unified.Colors.CYAN,
@@ -117,7 +118,7 @@ fn showWelcome(bridge: *terminal_bridge.TerminalBridge) !void {
         .basic_ascii => unified.Colors.MAGENTA,
         .fallback => unified.Colors.RED,
     };
-    
+
     try bridge.print(strategy_name, unified.Style{ .fg_color = strategy_color, .bold = true });
     try bridge.print("\n\n", null);
 }
@@ -125,9 +126,9 @@ fn showWelcome(bridge: *terminal_bridge.TerminalBridge) !void {
 /// Show detailed terminal capabilities
 fn showCapabilities(bridge: *terminal_bridge.TerminalBridge) !void {
     try bridge.print("═══ Terminal Capabilities Detection ═══\n\n", terminal_bridge.Styles.HIGHLIGHT);
-    
+
     const caps = bridge.getCapabilities();
-    
+
     const capabilities_list = [_]struct { name: []const u8, supported: bool }{
         .{ .name = "Truecolor (24-bit RGB)", .supported = caps.supportsTruecolor },
         .{ .name = "Kitty Graphics Protocol", .supported = caps.supportsKittyGraphics },
@@ -141,35 +142,35 @@ fn showCapabilities(bridge: *terminal_bridge.TerminalBridge) !void {
         .{ .name = "Pixel Mouse Support", .supported = caps.supportsSgrPixelMouse },
         .{ .name = "Kitty Keyboard Protocol", .supported = caps.supportsKittyKeyboard },
     };
-    
+
     for (capabilities_list) |cap| {
         const status_icon = if (cap.supported) "✅" else "❌";
         const status_color = if (cap.supported) unified.Colors.GREEN else unified.Colors.RED;
-        
+
         try bridge.printf("{s} ", .{status_icon}, unified.Style{ .fg_color = status_color });
         try bridge.printf("{s}\n", .{cap.name}, null);
     }
-    
+
     try bridge.print("\n", null);
-    
+
     // Show color count
     const strategy = bridge.getRenderStrategy();
     const color_count = strategy.colorCount();
     try bridge.printf("Available Colors: ", .{}, terminal_bridge.Styles.INFO);
-    
+
     if (color_count > 1000000) {
         try bridge.printf("16.7M (Truecolor)\n", .{}, unified.Style{ .fg_color = unified.Colors.GREEN });
     } else {
         try bridge.printf("{d}\n", .{color_count}, unified.Style{ .fg_color = unified.Colors.YELLOW });
     }
-    
+
     try bridge.print("\n", null);
 }
 
 /// Demonstrate progressive progress bar rendering
 fn runProgressDemo(bridge: *terminal_bridge.TerminalBridge) !void {
     try bridge.print("═══ Progressive Progress Bar Demo ═══\n\n", terminal_bridge.Styles.HIGHLIGHT);
-    
+
     // Create different progress bar configurations
     const progress_configs = [_]struct { name: []const u8, config: components.ProgressConfig }{
         .{
@@ -205,40 +206,40 @@ fn runProgressDemo(bridge: *terminal_bridge.TerminalBridge) !void {
             },
         },
     };
-    
+
     for (progress_configs) |demo_config| {
         try bridge.printf("🔄 {s}\n", .{demo_config.name}, terminal_bridge.Styles.INFO);
-        
+
         var progress_bar = components.UnifiedProgressBar.init(bridge, demo_config.config);
         defer progress_bar.deinit();
-        
+
         // Animate progress
         var progress: f64 = 0.0;
         while (progress <= 1.0) : (progress += 0.02) {
             try bridge.moveTo(0, 0); // Move to start of line
             try progress_bar.setProgress(progress, true);
-            
+
             std.time.sleep(50_000_000); // 50ms delay
         }
-        
+
         try bridge.print("\n✅ Complete!\n\n", terminal_bridge.Styles.SUCCESS);
         std.time.sleep(500_000_000); // 500ms pause
     }
-    
+
     // Demonstrate scoped progress
     try bridge.print("🔄 Scoped Progress Operation\n", terminal_bridge.Styles.INFO);
     var progress_bar = components.ProgressBarPresets.download(bridge);
     defer progress_bar.deinit();
-    
+
     var scoped_progress = progress_bar.scopedOperation(100.0);
     defer scoped_progress.deinit();
-    
+
     // Simulate file download
     for (0..100) |i| {
         try scoped_progress.update(@as(f64, @floatFromInt(i + 1)));
         std.time.sleep(30_000_000); // 30ms delay
     }
-    
+
     try scoped_progress.finish();
     try bridge.print("\n✅ Download Complete!\n\n", terminal_bridge.Styles.SUCCESS);
 }
@@ -246,7 +247,7 @@ fn runProgressDemo(bridge: *terminal_bridge.TerminalBridge) !void {
 /// Demonstrate enhanced notification system
 fn runNotificationDemo(bridge: *terminal_bridge.TerminalBridge) !void {
     try bridge.print("═══ Enhanced Notification Demo ═══\n\n", terminal_bridge.Styles.HIGHLIGHT);
-    
+
     const notification_config = enhanced_notification.NotificationConfig{
         .enable_system_notifications = true,
         .show_timestamp = true,
@@ -254,9 +255,9 @@ fn runNotificationDemo(bridge: *terminal_bridge.TerminalBridge) !void {
         .enable_clipboard_actions = true,
         .enable_hyperlinks = true,
     };
-    
+
     var notifications = enhanced_notification.EnhancedNotification.init(bridge, notification_config);
-    
+
     // Demonstrate different notification types
     const notification_demos = [_]struct {
         type: enhanced_notification.NotificationType,
@@ -269,14 +270,14 @@ fn runNotificationDemo(bridge: *terminal_bridge.TerminalBridge) !void {
         .{ .type = .@"error", .title = "Error", .message = "Something went wrong, but it's recoverable" },
         .{ .type = .critical, .title = "Critical", .message = "This requires immediate attention!" },
     };
-    
+
     for (notification_demos) |demo| {
         try bridge.printf("Showing {s} notification...\n", .{@tagName(demo.type)}, null);
         try notifications.show(demo.type, demo.title, demo.message);
         try bridge.print("\n", null);
         std.time.sleep(1_000_000_000); // 1 second delay
     }
-    
+
     // Demonstrate notification with actions
     try bridge.print("Showing notification with actions...\n", null);
     const actions = [_]enhanced_notification.NotificationAction{
@@ -293,16 +294,11 @@ fn runNotificationDemo(bridge: *terminal_bridge.TerminalBridge) !void {
             .action = .{ .execute_command = "retry --force" },
         },
     };
-    
-    try notifications.showWithActions(
-        .@"error",
-        "Network Timeout",
-        "Failed to connect to remote server",
-        &actions
-    );
-    
+
+    try notifications.showWithActions(.@"error", "Network Timeout", "Failed to connect to remote server", &actions);
+
     try bridge.print("\n", null);
-    
+
     // Show notification statistics
     const stats = notifications.getStats();
     try bridge.printf("📊 Notifications sent: {d}\n\n", .{stats.total_count}, terminal_bridge.Styles.INFO);
@@ -311,10 +307,10 @@ fn runNotificationDemo(bridge: *terminal_bridge.TerminalBridge) !void {
 /// Demonstrate smart input components
 fn runInputDemo(bridge: *terminal_bridge.TerminalBridge) !void {
     try bridge.print("═══ Smart Input Demo ═══\n\n", terminal_bridge.Styles.HIGHLIGHT);
-    
+
     // Note: This demo shows the input components but doesn't actually collect input
     // In a real implementation, you would handle keyboard events properly
-    
+
     const input_demos = [_]struct {
         name: []const u8,
         config: smart_input.SmartInputConfig,
@@ -354,27 +350,27 @@ fn runInputDemo(bridge: *terminal_bridge.TerminalBridge) !void {
             .sample_input = "secret123",
         },
     };
-    
+
     for (input_demos) |demo| {
         try bridge.printf("🔤 {s}\n", .{demo.name}, terminal_bridge.Styles.INFO);
-        
+
         var input_component = smart_input.SmartInput.init(bridge.allocator, bridge, demo.config);
         defer input_component.deinit();
-        
+
         // Simulate the input (in a real app, this would be interactive)
         try input_component.current_input.appendSlice(demo.sample_input);
-        
+
         // Show what the input would look like
         const prompt_text = demo.config.input_type.getPrompt();
         try bridge.printf("{s}: ", .{prompt_text}, demo.config.prompt_style);
-        
+
         // Show syntax highlighting based on input type
         switch (demo.config.input_type) {
             .email => {
                 if (std.mem.indexOf(u8, demo.sample_input, "@")) |at_pos| {
                     const username = demo.sample_input[0..at_pos];
                     const domain = demo.sample_input[at_pos..];
-                    
+
                     try bridge.print(username, unified.Style{ .fg_color = unified.Colors.CYAN });
                     try bridge.print(domain, unified.Style{ .fg_color = unified.Colors.GREEN });
                 }
@@ -397,7 +393,7 @@ fn runInputDemo(bridge: *terminal_bridge.TerminalBridge) !void {
                 try bridge.print(demo.sample_input, null);
             },
         }
-        
+
         // Show validation status
         const validation = input_component.validateInput();
         switch (validation) {
@@ -405,7 +401,7 @@ fn runInputDemo(bridge: *terminal_bridge.TerminalBridge) !void {
             .invalid => |msg| try bridge.printf(" ✗ {s}", .{msg}, terminal_bridge.Styles.ERROR),
             .warning => |msg| try bridge.printf(" ⚠ {s}", .{msg}, unified.Style{ .fg_color = unified.Colors.YELLOW }),
         }
-        
+
         try bridge.print("\n\n", null);
         std.time.sleep(1_000_000_000); // 1 second delay
     }
@@ -414,27 +410,27 @@ fn runInputDemo(bridge: *terminal_bridge.TerminalBridge) !void {
 /// Demonstrate integration between components
 fn runIntegrationDemo(bridge: *terminal_bridge.TerminalBridge) !void {
     try bridge.print("═══ Component Integration Demo ═══\n\n", terminal_bridge.Styles.HIGHLIGHT);
-    
+
     // Create notification system
     const notification_config = enhanced_notification.NotificationConfig{};
     var notifications = enhanced_notification.EnhancedNotification.init(bridge, notification_config);
-    
+
     // Simulate a complex operation with progress, notifications, and potential user input
     try bridge.print("🚀 Starting Complex Operation...\n\n", terminal_bridge.Styles.INFO);
-    
+
     // Step 1: Initialization with notification
     try notifications.show(.info, "Initialization", "Setting up operation parameters");
     std.time.sleep(500_000_000);
-    
+
     // Step 2: Progress bar for main work
     try bridge.print("📊 Processing data...\n", null);
     var progress_bar = components.ProgressBarPresets.rich(bridge);
     defer progress_bar.deinit();
-    
+
     const total_items = 50;
     for (0..total_items) |i| {
         try progress_bar.update(@as(f64, @floatFromInt(i + 1)), total_items, true);
-        
+
         // Simulate some warnings during processing
         if (i == 15) {
             try notifications.show(.warning, "Performance", "Processing is slower than expected");
@@ -442,12 +438,12 @@ fn runIntegrationDemo(bridge: *terminal_bridge.TerminalBridge) !void {
         if (i == 35) {
             try notifications.show(.success, "Checkpoint", "Halfway point reached successfully");
         }
-        
+
         std.time.sleep(100_000_000); // 100ms delay
     }
-    
+
     try bridge.print("\n", null);
-    
+
     // Step 3: Final notification with actions
     const completion_actions = [_]enhanced_notification.NotificationAction{
         .{
@@ -459,18 +455,13 @@ fn runIntegrationDemo(bridge: *terminal_bridge.TerminalBridge) !void {
             .action = .{ .copy_text = "Operation completed: 50/50 items processed successfully" },
         },
     };
-    
-    try notifications.showWithActions(
-        .success,
-        "Operation Complete",
-        "All 50 items processed successfully!",
-        &completion_actions
-    );
-    
+
+    try notifications.showWithActions(.success, "Operation Complete", "All 50 items processed successfully!", &completion_actions);
+
     // Show final statistics
     const stats = notifications.getStats();
     const metrics = bridge.getMetrics();
-    
+
     try bridge.print("\n📈 Performance Metrics:\n", terminal_bridge.Styles.INFO);
     try bridge.printf("  • Total notifications: {d}\n", .{stats.total_count}, null);
     try bridge.printf("  • Render operations: {d}\n", .{metrics.render_calls}, null);
@@ -484,9 +475,9 @@ fn showFarewell(bridge: *terminal_bridge.TerminalBridge) !void {
     try bridge.print("                    Demo Complete! 🎉                          \n", terminal_bridge.Styles.SUCCESS);
     try bridge.print("═══════════════════════════════════════════════════════════════\n", terminal_bridge.Styles.HIGHLIGHT);
     try bridge.print("\n", null);
-    
+
     try bridge.print("Thank you for exploring the Enhanced CLI Capabilities!\n\n", null);
-    
+
     try bridge.print("Key features demonstrated:\n", terminal_bridge.Styles.INFO);
     try bridge.print("  ✅ Progressive enhancement based on terminal capabilities\n", null);
     try bridge.print("  ✅ Rich progress bars with multiple rendering modes\n", null);
@@ -494,9 +485,9 @@ fn showFarewell(bridge: *terminal_bridge.TerminalBridge) !void {
     try bridge.print("  ✅ Enhanced input components with validation\n", null);
     try bridge.print("  ✅ Clipboard integration and hyperlink support\n", null);
     try bridge.print("  ✅ Performance monitoring and optimization\n", null);
-    
+
     try bridge.print("\n", null);
-    
+
     const strategy = bridge.getRenderStrategy();
     try bridge.print("Your terminal supports: ", null);
     try bridge.print(switch (strategy) {
@@ -507,13 +498,13 @@ fn showFarewell(bridge: *terminal_bridge.TerminalBridge) !void {
         .basic_ascii => "Basic Colors! 🎪",
         .fallback => "Text Mode! 📝",
     }, unified.Style{ .bold = true });
-    
+
     try bridge.print("\n\n", null);
-    
+
     // Try to copy demo summary to clipboard
     const summary = "Enhanced CLI Demo completed - progressive terminal capabilities showcased!";
     bridge.copyToClipboard(summary) catch {};
-    
+
     try bridge.print("💾 Demo summary copied to clipboard (if supported)\n", terminal_bridge.Styles.MUTED);
     try bridge.print("\nPress any key to exit...\n", terminal_bridge.Styles.MUTED);
 }
@@ -521,7 +512,7 @@ fn showFarewell(bridge: *terminal_bridge.TerminalBridge) !void {
 /// Wait for user to press Enter (simplified)
 fn waitForEnter(bridge: *terminal_bridge.TerminalBridge) !void {
     try bridge.print("\n⏸️  Press Enter to continue...", terminal_bridge.Styles.MUTED);
-    
+
     // In a real implementation, this would wait for actual keyboard input
     std.time.sleep(2_000_000_000); // 2 second delay for demo
     try bridge.print("\n\n", null);
@@ -531,7 +522,7 @@ fn waitForEnter(bridge: *terminal_bridge.TerminalBridge) !void {
 pub fn runDemo(allocator: std.mem.Allocator, args: []const []const u8) !void {
     _ = allocator;
     _ = args;
-    
+
     try main();
 }
 

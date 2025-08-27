@@ -1,5 +1,5 @@
 //! Terminal Abstraction Layer
-//! 
+//!
 //! This provides a unified interface to all terminal capabilities, standardizing
 //! how CLI components interact with terminal features while providing progressive
 //! enhancement based on detected capabilities.
@@ -12,7 +12,7 @@ const caps = @import("../../src/term/caps.zig");
 pub const TerminalAbstraction = struct {
     terminal: *unified.Terminal,
     capabilities: caps.TermCaps,
-    
+
     /// Feature flags for quick capability checking
     pub const Features = struct {
         truecolor: bool,
@@ -24,16 +24,16 @@ pub const TerminalAbstraction = struct {
         synchronized_output: bool,
         shell_integration: bool,
     };
-    
+
     pub fn init(terminal: *unified.Terminal) TerminalAbstraction {
         const terminal_caps = terminal.getCapabilities();
-        
+
         return TerminalAbstraction{
             .terminal = terminal,
             .capabilities = terminal_caps,
         };
     }
-    
+
     /// Get feature flags for quick capability checking
     pub fn getFeatures(self: TerminalAbstraction) Features {
         return Features{
@@ -47,52 +47,52 @@ pub const TerminalAbstraction = struct {
             .shell_integration = self.capabilities.supportsFinalTermOsc133 or self.capabilities.supportsITerm2Osc1337,
         };
     }
-    
+
     /// Standardized text output with optional styling
     pub fn print(self: TerminalAbstraction, text: []const u8, style: ?unified.Style) !void {
         try self.terminal.print(text, style);
     }
-    
-    /// Standardized formatted output 
+
+    /// Standardized formatted output
     pub fn printf(self: TerminalAbstraction, comptime fmt: []const u8, args: anytype, style: ?unified.Style) !void {
         try self.terminal.printf(fmt, args, style);
     }
-    
+
     /// Clear screen with capability detection
     pub fn clear(self: TerminalAbstraction) !void {
         try self.terminal.clear();
     }
-    
+
     /// Create hyperlink with fallback
     pub fn hyperlink(self: TerminalAbstraction, url: []const u8, text: []const u8, style: ?unified.Style) !void {
         try self.terminal.hyperlink(url, text, style);
     }
-    
+
     /// Copy to clipboard with capability detection
     pub fn copyToClipboard(self: TerminalAbstraction, text: []const u8) !void {
         try self.terminal.copyToClipboard(text);
     }
-    
+
     /// Send notification with fallback
     pub fn notify(self: TerminalAbstraction, level: unified.NotificationLevel, title: []const u8, message: []const u8) !void {
         try self.terminal.notification(level, title, message);
     }
-    
+
     /// Move cursor to position
     pub fn moveTo(self: TerminalAbstraction, x: i32, y: i32) !void {
         try self.terminal.moveTo(x, y);
     }
-    
+
     /// Show/hide cursor
     pub fn showCursor(self: TerminalAbstraction, visible: bool) !void {
         try self.terminal.showCursor(visible);
     }
-    
+
     /// Create scoped context for automatic state restoration
     pub fn scopedContext(self: TerminalAbstraction) !unified.ScopedContext {
         return try self.terminal.scopedContext();
     }
-    
+
     /// Access to underlying terminal for advanced operations
     pub fn getTerminal(self: TerminalAbstraction) *unified.Terminal {
         return self.terminal;

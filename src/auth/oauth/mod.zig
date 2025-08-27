@@ -212,26 +212,26 @@ pub fn launchBrowser(url: []const u8) !void {
 /// High-level OAuth setup function - simplified implementation without TUI
 pub fn setupOAuth(allocator: std.mem.Allocator) !OAuthCredentials {
     std.log.info("🔐 Starting OAuth setup...", .{});
-    
+
     // Generate PKCE parameters
     const pkce_params = try generatePkceParams(allocator);
     defer pkce_params.deinit(allocator);
-    
+
     // Build authorization URL
     const auth_url = try buildAuthorizationUrl(allocator, pkce_params);
     defer allocator.free(auth_url);
-    
+
     std.log.info("Please visit this URL to authorize the application:", .{});
     std.log.info("{s}", .{auth_url});
-    
+
     // Try to launch browser
     launchBrowser(auth_url) catch {
         std.log.warn("Could not launch browser automatically. Please copy and paste the URL above.", .{});
     };
-    
+
     std.log.info("After authorization, you'll be redirected to a URL containing the authorization code.", .{});
     std.log.info("Enter the authorization code from the redirect URL:");
-    
+
     // Read authorization code from stdin
     const stdin = std.fs.File.stdin();
     var buffer: [1024]u8 = undefined;
@@ -239,16 +239,16 @@ pub fn setupOAuth(allocator: std.mem.Allocator) !OAuthCredentials {
     if (bytes_read == 0) {
         return OAuthError.AuthError;
     }
-    
+
     const auth_code = std.mem.trim(u8, buffer[0..bytes_read], " \t\r\n");
-    
+
     // Exchange code for tokens
     const credentials = try exchangeCodeForTokens(allocator, auth_code, pkce_params);
-    
+
     // Save credentials
     try saveCredentials(allocator, "claude_oauth_creds.json", credentials);
-    
+
     std.log.info("✅ OAuth setup completed successfully!", .{});
-    
+
     return credentials;
 }

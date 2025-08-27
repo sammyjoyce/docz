@@ -2,7 +2,7 @@
 //!
 //! This renderer leverages advanced terminal capabilities including:
 //! - Truecolor support
-//! - Graphics protocols (Kitty/Sixel)  
+//! - Graphics protocols (Kitty/Sixel)
 //! - Hyperlinks (OSC 8)
 //! - Clipboard integration (OSC 52)
 //! - System notifications (OSC 9)
@@ -11,7 +11,7 @@
 
 const std = @import("std");
 const renderer_mod = @import("../renderer.zig");
-const term_mod = @import("term_shared");
+const term_mod = @import("../../../term/mod.zig");
 const term_caps = term_mod.caps;
 
 // Import terminal capabilities modules
@@ -36,7 +36,7 @@ const TermCaps = renderer_mod.TermCaps;
 /// Enhanced renderer implementation
 pub const EnhancedRenderer = struct {
     const Self = @This();
-    
+
     allocator: std.mem.Allocator,
     caps: TermCaps,
     writer: std.fs.File.Writer,
@@ -44,10 +44,10 @@ pub const EnhancedRenderer = struct {
     cursor_visible: bool,
     current_hyperlink: ?[]const u8,
     frame_in_progress: bool,
-    
+
     /// Buffer for building output sequences
     output_buffer: std.ArrayList(u8),
-    
+
     pub fn init(allocator: std.mem.Allocator, caps: TermCaps) !*Self {
         const self = try allocator.create(Self);
         self.* = Self{
@@ -60,10 +60,10 @@ pub const EnhancedRenderer = struct {
             .frame_in_progress = false,
             .output_buffer = std.ArrayList(u8).init(allocator),
         };
-        
+
         return self;
     }
-    
+
     pub fn deinit(self: *Self) void {
         self.output_buffer.deinit();
         if (self.current_hyperlink) |url| {
@@ -71,14 +71,14 @@ pub const EnhancedRenderer = struct {
         }
         self.allocator.destroy(self);
     }
-    
+
     pub fn toRenderer(self: *Self) Renderer {
         return Renderer{
             .vtable = &vtable,
             .impl = self,
         };
     }
-    
+
     const vtable = Renderer.VTable{
         .begin_frame = beginFrame,
         .end_frame = endFrame,
@@ -99,43 +99,43 @@ pub const EnhancedRenderer = struct {
         .get_capabilities = getCapabilities,
         .deinit = deinitVTable,
     };
-    
+
     // VTable implementations
     fn beginFrame(impl: *anyopaque) anyerror!void {
         const self: *Self = @ptrCast(@alignCast(impl));
         self.frame_in_progress = true;
         self.output_buffer.clearRetainingCapacity();
-        
+
         // Enable alternative screen buffer if supported
         if (self.caps.supportsXtwinops) {
             try term_ansi_screen.enableAlternateScreen(self.writer, self.caps);
         }
     }
-    
+
     fn endFrame(impl: *anyopaque) anyerror!void {
         const self: *Self = @ptrCast(@alignCast(impl));
         if (!self.frame_in_progress) return;
-        
+
         // Flush all buffered output
         if (self.output_buffer.items.len > 0) {
             try self.writer.writeAll(self.output_buffer.items);
             self.output_buffer.clearRetainingCapacity();
         }
-        
+
         // Reset styles to clean state
         try term_ansi_color.resetStyle(self.writer, self.caps);
-        
+
         self.frame_in_progress = false;
     }
-    
+
     fn clear(impl: *anyopaque, bounds: Bounds) anyerror!void {
         const self: *Self = @ptrCast(@alignCast(impl));
-        
+
         // Clear the specified region
         var y = bounds.y;
         while (y < bounds.y + @as(i32, @intCast(bounds.height))) : (y += 1) {
             try term_ansi_cursor.setCursor(self.writer, self.caps, @intCast(y), @intCast(bounds.x));
-            
+
             // Clear the line within the bounds
             var x: u32 = 0;
             while (x < bounds.width) : (x += 1) {
@@ -143,85 +143,85 @@ pub const EnhancedRenderer = struct {
             }
         }
     }
-    
+
     fn drawText(impl: *anyopaque, ctx: RenderContext, text: []const u8) anyerror!void {
         const self: *Self = @ptrCast(@alignCast(impl));
-        
+
         // Apply styles if they've changed
         try self.applyStyle(ctx.style);
-        
+
         // Position cursor
         try term_ansi_cursor.setCursor(self.writer, self.caps, @intCast(ctx.bounds.y), @intCast(ctx.bounds.x));
-        
+
         // Handle text wrapping and clipping
         const lines = std.mem.split(u8, text, "\n");
         var current_y: i32 = ctx.bounds.y;
         var line_iter = lines;
-        
+
         while (line_iter.next()) |line| {
             if (current_y >= ctx.bounds.y + @as(i32, @intCast(ctx.bounds.height))) break;
-            
+
             // Clip line to bounds
             const max_width = if (ctx.clip_region) |clip|
                 @min(ctx.bounds.width, @as(u32, @intCast(@max(0, clip.x + @as(i32, @intCast(clip.width)) - ctx.bounds.x))))
             else
                 ctx.bounds.width;
-            
+
             const clipped_line = if (line.len > max_width) line[0..max_width] else line;
-            
+
             try self.output_buffer.appendSlice(clipped_line);
             current_y += 1;
-            
+
             // Move to next line if not the last line
             if (line_iter.buffer.len > 0) {
                 try term_ansi_cursor.setCursor(self.writer, self.caps, @intCast(current_y), @intCast(ctx.bounds.x));
             }
         }
     }
-    
+
     fn measureText(impl: *anyopaque, text: []const u8, style: Style) anyerror!Point {
         _ = impl;
         _ = style;
-        
+
         const lines = std.mem.split(u8, text, "\n");
         var max_width: u32 = 0;
         var height: u32 = 0;
         var line_iter = lines;
-        
+
         while (line_iter.next()) |line| {
             // Use grapheme-aware width calculation
             const line_width = std.unicode.utf8CountCodepoints(line) catch line.len;
             max_width = @max(max_width, @as(u32, @intCast(line_width)));
             height += 1;
         }
-        
+
         return Point{ .x = @intCast(max_width), .y = @intCast(height) };
     }
-    
+
     fn drawBox(impl: *anyopaque, ctx: RenderContext, box_style: BoxStyle) anyerror!void {
         const self: *Self = @ptrCast(@alignCast(impl));
-        
+
         // Fill background if specified
         if (box_style.background) |bg_color| {
             try self.fillRectImpl(ctx, bg_color);
         }
-        
+
         // Draw border if specified
         if (box_style.border) |border| {
             try self.drawBorder(ctx, border);
         }
     }
-    
+
     fn drawLine(impl: *anyopaque, ctx: RenderContext, from: Point, to: Point) anyerror!void {
         const self: *Self = @ptrCast(@alignCast(impl));
-        
+
         // Apply line style
         try self.applyStyle(ctx.style);
-        
+
         // Simple line drawing using Unicode box drawing characters
         const dx = to.x - from.x;
         const dy = to.y - from.y;
-        
+
         if (dx == 0) {
             // Vertical line
             const start_y = @min(from.y, to.y);
@@ -251,15 +251,15 @@ pub const EnhancedRenderer = struct {
             }
         }
     }
-    
+
     fn fillRect(impl: *anyopaque, ctx: RenderContext, color: Style.Color) anyerror!void {
         const self: *Self = @ptrCast(@alignCast(impl));
         try self.fillRectImpl(ctx, color);
     }
-    
+
     fn drawImage(impl: *anyopaque, ctx: RenderContext, image: Image) anyerror!void {
         const self: *Self = @ptrCast(@alignCast(impl));
-        
+
         switch (image.format) {
             .kitty => {
                 if (self.caps.supportsKittyGraphics) {
@@ -282,76 +282,76 @@ pub const EnhancedRenderer = struct {
             },
         }
     }
-    
+
     fn setHyperlink(impl: *anyopaque, url: []const u8) anyerror!void {
         const self: *Self = @ptrCast(@alignCast(impl));
-        
+
         if (!self.caps.supportsHyperlinkOsc8) return;
-        
+
         // Store current hyperlink for clearing later
         if (self.current_hyperlink) |old_url| {
             self.allocator.free(old_url);
         }
         self.current_hyperlink = try self.allocator.dupe(u8, url);
-        
+
         try term_ansi_hyperlink.startHyperlink(self.writer, self.allocator, self.caps, url, null);
     }
-    
+
     fn clearHyperlink(impl: *anyopaque) anyerror!void {
         const self: *Self = @ptrCast(@alignCast(impl));
-        
+
         if (!self.caps.supportsHyperlinkOsc8) return;
-        
+
         if (self.current_hyperlink) |url| {
             self.allocator.free(url);
             self.current_hyperlink = null;
         }
-        
+
         try term_ansi_hyperlink.endHyperlink(self.writer, self.caps);
     }
-    
+
     fn copyToClipboard(impl: *anyopaque, text: []const u8) anyerror!void {
         const self: *Self = @ptrCast(@alignCast(impl));
-        
+
         if (!self.caps.supportsClipboardOsc52) return;
-        
+
         try term_ansi_clipboard.setClipboard(self.writer, self.allocator, self.caps, text);
     }
-    
+
     fn sendNotification(impl: *anyopaque, title: []const u8, body: []const u8) anyerror!void {
         const self: *Self = @ptrCast(@alignCast(impl));
-        
+
         if (!self.caps.supportsNotifyOsc9) return;
-        
+
         // Format notification message
         var arena = std.heap.ArenaAllocator.init(self.allocator);
         defer arena.deinit();
         const temp_allocator = arena.allocator();
-        
+
         const notification_text = try std.fmt.allocPrint(temp_allocator, "{s}: {s}", .{ title, body });
         try term_ansi_notification.writeNotification(self.writer, temp_allocator, self.caps, notification_text);
     }
-    
+
     fn setCursorPosition(impl: *anyopaque, pos: Point) anyerror!void {
         const self: *Self = @ptrCast(@alignCast(impl));
         try term_ansi_cursor.setCursor(self.writer, self.caps, @intCast(pos.y), @intCast(pos.x));
     }
-    
+
     fn getCursorPosition(impl: *anyopaque) anyerror!Point {
         const self: *Self = @ptrCast(@alignCast(impl));
-        
+
         if (!self.caps.supportsCursorPositionReport) {
             return error.Unsupported;
         }
-        
+
         // This would normally involve sending a cursor position report request
         // and parsing the response, but for now we'll return a placeholder
         return Point{ .x = 0, .y = 0 };
     }
-    
+
     fn showCursor(impl: *anyopaque, visible: bool) anyerror!void {
         const self: *Self = @ptrCast(@alignCast(impl));
-        
+
         if (visible != self.cursor_visible) {
             if (visible) {
                 try term_ansi_cursor.showCursor(self.writer, self.caps);
@@ -361,35 +361,35 @@ pub const EnhancedRenderer = struct {
             self.cursor_visible = visible;
         }
     }
-    
+
     fn getCapabilities(impl: *anyopaque) TermCaps {
         const self: *Self = @ptrCast(@alignCast(impl));
         return self.caps;
     }
-    
+
     fn deinitVTable(impl: *anyopaque) void {
         const self: *Self = @ptrCast(@alignCast(impl));
         self.deinit();
     }
-    
+
     // Helper methods
     fn applyStyle(self: *Self, style: Style) !void {
         // Only update if style has changed
         if (std.meta.eql(style, self.current_style)) return;
-        
+
         // Reset to clean state
         try term_ansi_color.resetStyle(self.writer, self.caps);
-        
+
         // Apply foreground color
         if (style.fg_color) |fg| {
             try self.setColor(fg, true);
         }
-        
+
         // Apply background color
         if (style.bg_color) |bg| {
             try self.setColor(bg, false);
         }
-        
+
         // Apply text attributes
         if (style.bold) {
             try term_ansi_color.bold(self.writer, self.caps);
@@ -403,10 +403,10 @@ pub const EnhancedRenderer = struct {
         if (style.strikethrough) {
             try term_ansi_color.strikethrough(self.writer, self.caps);
         }
-        
+
         self.current_style = style;
     }
-    
+
     fn setColor(self: *Self, color: Style.Color, is_foreground: bool) !void {
         switch (color) {
             .ansi => |ansi_color| {
@@ -442,32 +442,32 @@ pub const EnhancedRenderer = struct {
             },
         }
     }
-    
+
     fn fillRectImpl(self: *Self, ctx: RenderContext, color: Style.Color) !void {
         const fill_style = Style{ .bg_color = color };
         try self.applyStyle(fill_style);
-        
+
         var y = ctx.bounds.y;
         while (y < ctx.bounds.y + @as(i32, @intCast(ctx.bounds.height))) : (y += 1) {
             try term_ansi_cursor.setCursor(self.writer, self.caps, @intCast(y), @intCast(ctx.bounds.x));
-            
+
             var x: u32 = 0;
             while (x < ctx.bounds.width) : (x += 1) {
                 try self.output_buffer.append(' ');
             }
         }
     }
-    
+
     fn drawBorder(self: *Self, ctx: RenderContext, border: BoxStyle.BorderStyle) !void {
         const border_chars = getBorderChars(border.style);
-        
+
         if (border.color) |color| {
             const border_style = Style{ .fg_color = color };
             try self.applyStyle(border_style);
         }
-        
+
         const bounds = ctx.bounds;
-        
+
         // Top border
         try term_ansi_cursor.setCursor(self.writer, self.caps, @intCast(bounds.y), @intCast(bounds.x));
         try self.output_buffer.appendSlice(border_chars.top_left);
@@ -478,19 +478,19 @@ pub const EnhancedRenderer = struct {
         if (bounds.width > 1) {
             try self.output_buffer.appendSlice(border_chars.top_right);
         }
-        
+
         // Side borders
         var y: u32 = 1;
         while (y < bounds.height - 1) : (y += 1) {
             try term_ansi_cursor.setCursor(self.writer, self.caps, @intCast(bounds.y + @as(i32, @intCast(y))), @intCast(bounds.x));
             try self.output_buffer.appendSlice(border_chars.vertical);
-            
+
             if (bounds.width > 1) {
                 try term_ansi_cursor.setCursor(self.writer, self.caps, @intCast(bounds.y + @as(i32, @intCast(y))), @intCast(bounds.x + @as(i32, @intCast(bounds.width - 1))));
                 try self.output_buffer.appendSlice(border_chars.vertical);
             }
         }
-        
+
         // Bottom border
         if (bounds.height > 1) {
             try term_ansi_cursor.setCursor(self.writer, self.caps, @intCast(bounds.y + @as(i32, @intCast(bounds.height - 1))), @intCast(bounds.x));
@@ -504,11 +504,11 @@ pub const EnhancedRenderer = struct {
             }
         }
     }
-    
+
     fn drawKittyImage(self: *Self, ctx: RenderContext, image: Image) !void {
         // Position cursor
         try term_ansi_cursor.setCursor(self.writer, self.caps, @intCast(ctx.bounds.y), @intCast(ctx.bounds.x));
-        
+
         // Draw using Kitty graphics protocol
         try term_ansi_graphics.transmitKittyImage(
             self.writer,
@@ -520,15 +520,15 @@ pub const EnhancedRenderer = struct {
             .png, // Assume PNG for now
         );
     }
-    
+
     fn drawSixelImage(self: *Self, ctx: RenderContext, image: Image) !void {
         // Position cursor
         try term_ansi_cursor.setCursor(self.writer, self.caps, @intCast(ctx.bounds.y), @intCast(ctx.bounds.x));
-        
+
         // Sixel data should be pre-encoded
         try self.output_buffer.appendSlice(image.data);
     }
-    
+
     fn drawFallbackImage(self: *Self, ctx: RenderContext, image: Image) !void {
         // Fallback to ASCII representation
         _ = image;

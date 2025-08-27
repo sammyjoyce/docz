@@ -14,7 +14,7 @@ pub const ThemeType = enum {
     dark,
     light,
     high_contrast,
-    
+
     /// Get theme name as string
     pub fn toString(self: ThemeType) []const u8 {
         return switch (self) {
@@ -24,7 +24,7 @@ pub const ThemeType = enum {
             .high_contrast => "high_contrast",
         };
     }
-    
+
     /// Parse theme name from string
     pub fn fromString(name: []const u8) ?ThemeType {
         if (std.mem.eql(u8, name, "default")) return .default;
@@ -38,17 +38,17 @@ pub const ThemeType = enum {
 /// Theme manager for switching and applying themes
 pub const ThemeManager = struct {
     current_theme: ThemeType = .default,
-    
+
     /// Initialize theme manager
     pub fn init() ThemeManager {
         return .{};
     }
-    
+
     /// Set current theme
     pub fn setTheme(self: *ThemeManager, theme: ThemeType) void {
         self.current_theme = theme;
     }
-    
+
     /// Get current theme colors
     pub fn getColors(self: ThemeManager) colors.SemanticColors {
         return switch (self.current_theme) {
@@ -58,7 +58,7 @@ pub const ThemeManager = struct {
             .high_contrast => high_contrast_theme.high_contrast_theme.colors,
         };
     }
-    
+
     /// Get theme description
     pub fn getDescription(self: ThemeManager) []const u8 {
         return switch (self.current_theme) {
@@ -68,7 +68,7 @@ pub const ThemeManager = struct {
             .high_contrast => high_contrast_theme.high_contrast_theme.getDescription(),
         };
     }
-    
+
     /// Check if current theme is compatible with terminal capabilities
     pub fn isCompatible(self: ThemeManager, caps: anytype) bool {
         return switch (self.current_theme) {
@@ -78,7 +78,7 @@ pub const ThemeManager = struct {
             .high_contrast => high_contrast_theme.high_contrast_theme.isCompatible(caps),
         };
     }
-    
+
     /// Apply current theme settings
     pub fn applySettings(self: ThemeManager, writer: anytype, caps: anytype) !void {
         switch (self.current_theme) {
@@ -88,24 +88,25 @@ pub const ThemeManager = struct {
             .high_contrast => try high_contrast_theme.high_contrast_theme.applySettings(writer, caps),
         }
     }
-    
+
     /// Get list of all available themes
     pub fn getAvailableThemes() []const ThemeType {
         return &[_]ThemeType{ .default, .dark, .light, .high_contrast };
     }
-    
+
     /// Auto-detect best theme based on environment
     pub fn detectBestTheme(self: *ThemeManager) void {
         // Simple heuristics for theme detection
         // Could be enhanced with environment variable checks, time-based switching, etc.
         if (std.os.getenv("TERM_PROGRAM")) |term_program| {
-            if (std.mem.indexOf(u8, term_program, "iTerm") != null or 
-                std.mem.indexOf(u8, term_program, "Terminal") != null) {
+            if (std.mem.indexOf(u8, term_program, "iTerm") != null or
+                std.mem.indexOf(u8, term_program, "Terminal") != null)
+            {
                 self.current_theme = .dark; // Default to dark for modern terminals
                 return;
             }
         }
-        
+
         // Default fallback
         self.current_theme = .default;
     }
@@ -122,7 +123,7 @@ pub const ColorUtils = struct {
             @as(u8, @intFromFloat(@as(f32, @floatFromInt(color1.b)) * inv_ratio + @as(f32, @floatFromInt(color2.b)) * ratio)),
         );
     }
-    
+
     /// Calculate color contrast ratio
     pub fn contrastRatio(color1: colors.RgbColor, color2: colors.RgbColor) f32 {
         const lum1 = luminance(color1);
@@ -131,7 +132,7 @@ pub const ColorUtils = struct {
         const darker = @min(lum1, lum2);
         return (lighter + 0.05) / (darker + 0.05);
     }
-    
+
     /// Calculate relative luminance of a color
     fn luminance(color: colors.RgbColor) f32 {
         const r = srgbToLinear(@as(f32, @floatFromInt(color.r)) / 255.0);
@@ -139,7 +140,7 @@ pub const ColorUtils = struct {
         const b = srgbToLinear(@as(f32, @floatFromInt(color.b)) / 255.0);
         return 0.2126 * r + 0.7152 * g + 0.0722 * b;
     }
-    
+
     /// Convert sRGB to linear RGB
     fn srgbToLinear(c: f32) f32 {
         if (c <= 0.03928) {

@@ -21,17 +21,17 @@ pub const StatusBarError = error{
 
 pub const StatusBar = struct {
     const Self = @This();
-    
+
     allocator: std.mem.Allocator,
     config: Config,
     state: StatusState,
     items: StatusItemList,
     bounds: Bounds = Bounds.init(0, 0, 0, 0),
-    
+
     // Live update system
     update_timer: std.time.Timer,
     last_update: i64 = 0,
-    
+
     pub const Config = struct {
         position: Position = .bottom,
         height: u32 = 1,
@@ -42,7 +42,7 @@ pub const StatusBar = struct {
         separator: []const u8 = " | ",
         use_colors: bool = true,
         show_shortcuts: bool = true,
-        
+
         pub const Position = enum {
             top,
             bottom,
@@ -54,12 +54,12 @@ pub const StatusBar = struct {
         notification_count: u32 = 0,
         last_notification: ?Notification = null,
         system_metrics: ?SystemMetrics = null,
-        
+
         pub const Notification = struct {
             message: []const u8,
             level: NotificationLevel,
             timestamp: i64,
-            
+
             pub const NotificationLevel = enum {
                 info,
                 warning,
@@ -67,7 +67,7 @@ pub const StatusBar = struct {
                 success,
             };
         };
-        
+
         pub const SystemMetrics = struct {
             cpu_usage: f64 = 0.0,
             memory_usage: f64 = 0.0,
@@ -84,17 +84,17 @@ pub const StatusBar = struct {
         style: Style = Style{},
         clickable: bool = false,
         priority: u32 = 0, // Higher priority items shown first when space is limited
-        
+
         pub const Content = union(enum) {
             text: []const u8,
             formatted: struct {
                 format: []const u8,
                 args: []const std.fmt.ArgSetType(.{}).Arg,
             },
-            dynamic: *const fn() []const u8,
+            dynamic: *const fn () []const u8,
             metric: Metric,
         };
-        
+
         pub const Style = struct {
             color: ?terminal_mod.Color = null,
             background_color: ?terminal_mod.Color = null,
@@ -102,13 +102,13 @@ pub const StatusBar = struct {
             italic: bool = false,
             blink: bool = false,
         };
-        
+
         pub const Metric = struct {
             value: f64,
             unit: []const u8,
             format: []const u8 = "{d:.1}{s}",
             thresholds: ?[]Threshold = null,
-            
+
             pub const Threshold = struct {
                 value: f64,
                 color: terminal_mod.Color,
@@ -119,7 +119,7 @@ pub const StatusBar = struct {
 
     pub fn init(allocator: std.mem.Allocator, config: Config) !Self {
         var timer = try std.time.Timer.start();
-        
+
         return Self{
             .allocator = allocator,
             .config = config,
@@ -172,20 +172,20 @@ pub const StatusBar = struct {
 
     pub fn render(self: *Self, renderer: *Renderer, ctx: RenderContext) !void {
         self.bounds = ctx.bounds;
-        
+
         // Update live data if interval has passed
         const now = self.update_timer.read();
         if (now - self.last_update >= self.config.update_interval_ms * 1_000_000) { // Convert ms to ns
             try self.updateLiveData();
             self.last_update = now;
         }
-        
+
         // Clear the status bar area
         try self.clearStatusBar(renderer, ctx);
-        
+
         // Render status items
         try self.renderStatusItems(renderer, ctx);
-        
+
         // Render notification if present
         if (self.state.last_notification) |notif| {
             try self.renderNotification(renderer, ctx, notif);
@@ -198,18 +198,18 @@ pub const StatusBar = struct {
                 .top => ctx.bounds.y + @as(u32, @intCast(row)),
                 .bottom => ctx.bounds.y + ctx.bounds.height - self.config.height + @as(u32, @intCast(row)),
             };
-            
+
             try renderer.moveCursor(ctx.bounds.x, y);
-            
+
             // Fill with background color if configured
             if (self.config.use_colors) {
                 try renderer.setBackground(terminal_mod.Color.black);
             }
-            
+
             for (0..ctx.bounds.width) |_| {
                 try renderer.writeText(" ");
             }
-            
+
             try renderer.resetStyle();
         }
     }
@@ -219,61 +219,61 @@ pub const StatusBar = struct {
             .top => ctx.bounds.y,
             .bottom => ctx.bounds.y + ctx.bounds.height - 1,
         };
-        
+
         var current_x = ctx.bounds.x;
         const max_x = ctx.bounds.x + ctx.bounds.width;
-        
+
         // Add built-in items first
         var items_to_render = std.ArrayList(StatusItem).init(self.allocator);
         defer items_to_render.deinit();
-        
+
         // Time item
         if (self.config.show_time) {
             const time_item = try self.createTimeItem();
             try items_to_render.append(time_item);
         }
-        
+
         // System info items
         if (self.config.show_system_info and self.state.system_metrics != null) {
             const sys_items = try self.createSystemItems();
             defer self.allocator.free(sys_items);
             try items_to_render.appendSlice(sys_items);
         }
-        
+
         // User-defined items
         try items_to_render.appendSlice(self.items.items);
-        
+
         // Render items with available space
         for (items_to_render.items, 0..) |item, i| {
             const content = try self.resolveItemContent(item);
             defer self.allocator.free(content);
-            
+
             const item_width = content.len;
             const separator_width = if (i > 0) self.config.separator.len else 0;
             const total_width = separator_width + item_width;
-            
+
             if (current_x + total_width > max_x) break; // Not enough space
-            
+
             try renderer.moveCursor(current_x, status_y);
-            
+
             // Render separator
             if (i > 0) {
                 try renderer.writeText("{s}", .{self.config.separator});
                 current_x += @intCast(separator_width);
             }
-            
+
             // Apply item styling
             if (self.config.use_colors) {
                 try self.applyItemStyle(renderer, item);
             }
-            
+
             // Render content
             try renderer.writeText("{s}", .{content});
             try renderer.resetStyle();
-            
+
             current_x += @intCast(item_width);
         }
-        
+
         // Render shortcuts on the right side if space allows
         if (self.config.show_shortcuts) {
             try self.renderShortcuts(renderer, ctx, current_x, status_y);
@@ -281,18 +281,18 @@ pub const StatusBar = struct {
     }
 
     fn createTimeItem(self: *Self) !StatusItem {
-        
+
         // Get current time
         const timestamp = std.time.timestamp();
         const epoch_seconds = @as(u64, @intCast(timestamp));
-        
+
         // Simple time formatting (this is a simplified implementation)
         const hours = (epoch_seconds / 3600) % 24;
         const minutes = (epoch_seconds / 60) % 60;
         const seconds = epoch_seconds % 60;
-        
+
         const time_str = try std.fmt.allocPrint(self.allocator, "{d:0>2}:{d:0>2}:{d:0>2}", .{ hours, minutes, seconds });
-        
+
         return StatusItem{
             .id = "time",
             .content = StatusItem.Content{ .text = time_str },
@@ -303,41 +303,37 @@ pub const StatusBar = struct {
     fn createSystemItems(self: *Self) ![]StatusItem {
         if (self.state.system_metrics) |metrics| {
             var items = std.ArrayList(StatusItem).init(self.allocator);
-            
+
             // CPU usage
             try items.append(StatusItem{
                 .id = "cpu",
-                .content = StatusItem.Content{ 
-                    .metric = StatusItem.Metric{
-                        .value = metrics.cpu_usage,
-                        .unit = "%",
-                        .format = "CPU:{d:.0}{s}",
-                        .thresholds = &[_]StatusItem.Metric.Threshold{
-                            .{ .value = 80, .color = terminal_mod.Color.yellow },
-                            .{ .value = 95, .color = terminal_mod.Color.red },
-                        },
-                    }
-                },
+                .content = StatusItem.Content{ .metric = StatusItem.Metric{
+                    .value = metrics.cpu_usage,
+                    .unit = "%",
+                    .format = "CPU:{d:.0}{s}",
+                    .thresholds = &[_]StatusItem.Metric.Threshold{
+                        .{ .value = 80, .color = terminal_mod.Color.yellow },
+                        .{ .value = 95, .color = terminal_mod.Color.red },
+                    },
+                } },
                 .priority = 90,
             });
-            
+
             // Memory usage
             try items.append(StatusItem{
                 .id = "memory",
-                .content = StatusItem.Content{ 
-                    .metric = StatusItem.Metric{
-                        .value = metrics.memory_usage,
-                        .unit = "%",
-                        .format = "MEM:{d:.0}{s}",
-                        .thresholds = &[_]StatusItem.Metric.Threshold{
-                            .{ .value = 80, .color = terminal_mod.Color.yellow },
-                            .{ .value = 90, .color = terminal_mod.Color.red },
-                        },
-                    }
-                },
+                .content = StatusItem.Content{ .metric = StatusItem.Metric{
+                    .value = metrics.memory_usage,
+                    .unit = "%",
+                    .format = "MEM:{d:.0}{s}",
+                    .thresholds = &[_]StatusItem.Metric.Threshold{
+                        .{ .value = 80, .color = terminal_mod.Color.yellow },
+                        .{ .value = 90, .color = terminal_mod.Color.red },
+                    },
+                } },
                 .priority = 85,
             });
-            
+
             // Network activity indicator
             if (metrics.network_activity) {
                 try items.append(StatusItem{
@@ -347,10 +343,10 @@ pub const StatusBar = struct {
                     .priority = 70,
                 });
             }
-            
+
             return items.toOwnedSlice();
         }
-        
+
         return &[_]StatusItem{};
     }
 
@@ -375,49 +371,49 @@ pub const StatusBar = struct {
 
     fn applyItemStyle(self: *Self, renderer: *Renderer, item: StatusItem) !void {
         _ = self;
-        
+
         var style = renderer_mod.Style{};
-        
+
         if (item.style.color) |color| {
             style.foreground_color = color;
         }
-        
+
         if (item.style.background_color) |bg| {
             style.background_color = bg;
         }
-        
+
         style.bold = item.style.bold;
         style.italic = item.style.italic;
-        
+
         // TODO: Implement blink support
-        
+
         try renderer.setStyleEx(style);
     }
 
     fn renderShortcuts(self: *Self, renderer: *Renderer, ctx: RenderContext, start_x: u32, y: u32) !void {
         const shortcuts = "F1:Help F10:Quit";
         const shortcuts_width = shortcuts.len;
-        
+
         if (start_x + shortcuts_width + 4 <= ctx.bounds.x + ctx.bounds.width) {
             const shortcuts_x = ctx.bounds.x + ctx.bounds.width - shortcuts_width;
             try renderer.moveCursor(shortcuts_x, y);
-            
+
             if (self.config.use_colors) {
                 try renderer.setStyle(.{ .dim = true });
             }
-            
+
             try renderer.writeText("{s}", .{shortcuts});
             try renderer.resetStyle();
         }
     }
 
     fn renderNotification(self: *Self, renderer: *Renderer, ctx: RenderContext, notification: StatusState.Notification) !void {
-        
+
         // Render notification in a special area (could be a popup or overlay)
         const notif_y = ctx.bounds.y + if (self.config.position == .top) 1 else ctx.bounds.height - 2;
-        
+
         try renderer.moveCursor(ctx.bounds.x, notif_y);
-        
+
         // Apply notification styling based on level
         const style = switch (notification.level) {
             .info => renderer_mod.Style{ .foreground_color = terminal_mod.Color.blue },
@@ -425,7 +421,7 @@ pub const StatusBar = struct {
             .err => renderer_mod.Style{ .foreground_color = terminal_mod.Color.red, .bold = true },
             .success => renderer_mod.Style{ .foreground_color = terminal_mod.Color.green },
         };
-        
+
         try renderer.setStyleEx(style);
         try renderer.writeText("● {s}", .{notification.message});
         try renderer.resetStyle();
@@ -445,15 +441,15 @@ pub const StatusBar = struct {
         if (self.state.last_notification) |old_notif| {
             self.allocator.free(old_notif.message);
         }
-        
+
         self.state.last_notification = StatusState.Notification{
             .message = try self.allocator.dupe(u8, message),
             .level = level,
             .timestamp = std.time.timestamp(),
         };
-        
+
         self.state.notification_count += 1;
-        
+
         // Try to send system notification if supported
         if (self.config.show_notifications) {
             notification_mod.systemNotification(message, level) catch {

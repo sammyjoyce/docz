@@ -4,7 +4,8 @@
 const std = @import("std");
 const print = std.debug.print;
 // const tui = @import("tui_shared"); // Disabled to avoid module conflicts
-const caps_mod = @import("../../term/caps.zig");
+const term_shared = @import("../../term/mod.zig");
+const caps_mod = term_shared.caps;
 
 // Minimal TUI replacements
 const SimpleTui = struct {
@@ -15,11 +16,11 @@ const SimpleTui = struct {
         const BRIGHT_YELLOW = "";
         const RESET = "";
     };
-    
+
     fn getTerminalSize() struct { width: u16, height: u16 } {
         return .{ .width = 80, .height = 24 };
     }
-    
+
     const TerminalSize = struct { width: u16, height: u16 };
 };
 

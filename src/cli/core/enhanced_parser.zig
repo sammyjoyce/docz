@@ -20,21 +20,21 @@ pub const ParsedArgs = struct {
     quiet: bool,
     verbose: bool,
     no_color: bool,
-    
+
     // Flags
     help: bool,
     version: bool,
-    
+
     // Commands and subcommands
     command: ?types.UnifiedCommand,
     auth_subcommand: ?types.AuthSubcommand,
-    
+
     // Positional arguments
     prompt: ?[]const u8,
-    
+
     // Raw arguments for debugging
     raw_args: [][]const u8,
-    
+
     allocator: Allocator,
 
     pub fn deinit(self: *ParsedArgs) void {
@@ -43,7 +43,7 @@ pub const ParsedArgs = struct {
             self.allocator.free(arg);
         }
         self.allocator.free(self.raw_args);
-        
+
         if (self.prompt) |p| {
             self.allocator.free(p);
         }
@@ -83,14 +83,21 @@ pub const EnhancedParser = struct {
 
     pub fn parse(self: *EnhancedParser, args: [][]const u8) !ParsedArgs {
         var parsed = ParsedArgs.init(self.allocator);
-        
+
         // Store raw args for debugging
         parsed.raw_args = try self.allocator.alloc([]const u8, args.len);
+        errdefer {
+            // Clean up raw_args on error
+            for (parsed.raw_args) |arg| {
+                self.allocator.free(arg);
+            }
+            self.allocator.free(parsed.raw_args);
+        }
         for (args, 0..) |arg, i| {
             parsed.raw_args[i] = try self.allocator.dupe(u8, arg);
         }
 
-        var i: usize = 1; // Skip program name
+        var i: usize = 0; // Program name already stripped by caller
         var prompt_parts = std.array_list.Managed([]const u8).init(self.allocator);
         defer prompt_parts.deinit();
 
@@ -164,8 +171,14 @@ pub const EnhancedParser = struct {
                         if (cmd == .auth) {
                             // Next arg should be auth subcommand
                             i += 1;
-                            if (i >= args.len) return CliError.UnknownSubcommand;
-                            parsed.auth_subcommand = types.AuthSubcommand.fromString(args[i]) orelse return CliError.UnknownSubcommand;
+                            if (i >= args.len) {
+                                // Pass "auth" as context for better error messages
+                                return error.UnknownSubcommand;
+                            }
+                            parsed.auth_subcommand = types.AuthSubcommand.fromString(args[i]) orelse {
+                                // Pass "auth" as context for better error messages
+                                return error.UnknownSubcommand;
+                            };
                         }
                     } else {
                         // This is likely the start of a prompt
@@ -176,17 +189,20 @@ pub const EnhancedParser = struct {
                     try prompt_parts.append(arg);
                 }
             }
-            
+
             i += 1;
         }
 
         // Join prompt parts
         if (prompt_parts.items.len > 0) {
             var total_len: usize = 0;
-            for (prompt_parts.items) |part| {
-                total_len += part.len + 1; // +1 for space
+            for (prompt_parts.items, 0..) |part, idx| {
+                total_len += part.len;
+                if (idx < prompt_parts.items.len - 1) {
+                    total_len += 1; // +1 for space between parts
+                }
             }
-            
+
             const prompt = try self.allocator.alloc(u8, total_len);
             var pos: usize = 0;
             for (prompt_parts.items, 0..) |part, idx| {
@@ -194,10 +210,15 @@ pub const EnhancedParser = struct {
                     prompt[pos] = ' ';
                     pos += 1;
                 }
-                std.mem.copyForwards(u8, prompt[pos..pos + part.len], part);
+                std.mem.copyForwards(u8, prompt[pos .. pos + part.len], part);
                 pos += part.len;
             }
             parsed.prompt = prompt[0..pos];
+
+            // Set default command to chat if we have a prompt but no explicit command
+            if (parsed.command == null) {
+                parsed.command = .chat;
+            }
         }
 
         return parsed;
@@ -218,9 +239,11 @@ pub const EnhancedParser = struct {
             switch (cmd) {
                 .help => {
                     try self.formatter.printEnhancedHelp(cli_config);
+                    return;
                 },
                 .version => {
                     try self.formatter.printEnhancedVersion(cli_config);
+                    return;
                 },
                 .auth => {
                     if (parsed.auth_subcommand) |sub| {
@@ -228,6 +251,19 @@ pub const EnhancedParser = struct {
                     } else {
                         return CliError.UnknownSubcommand;
                     }
+                    return;
+                },
+                .chat => {
+                    // Chat command should be handled by caller
+                    return;
+                },
+                .interactive => {
+                    // Interactive command should be handled by caller
+                    return;
+                },
+                .tui_demo => {
+                    // TUI demo should be handled by caller
+                    return;
                 },
             }
         } else if (parsed.prompt == null) {
@@ -240,19 +276,19 @@ pub const EnhancedParser = struct {
     fn handleAuthCommand(self: *EnhancedParser, subcommand: types.AuthSubcommand) !void {
         switch (subcommand) {
             .login => {
-                print("{}{}🔐 Starting authentication...{}{}\n", .{ self.formatter.colors.bold, self.formatter.colors.primary, self.formatter.colors.reset, self.formatter.colors.reset });
+                print("{s}{s}🔐 Starting authentication...{s}{s}\n", .{ self.formatter.colors.bold, self.formatter.colors.primary, self.formatter.colors.reset, self.formatter.colors.reset });
                 // Authentication logic would go here
-                print("{}✅ Please complete authentication in your browser{}\n", .{ self.formatter.colors.success, self.formatter.colors.reset });
+                print("{s}✅ Please complete authentication in your browser{s}\n", .{ self.formatter.colors.success, self.formatter.colors.reset });
             },
             .status => {
-                print("{}{}📊 Authentication Status{}{}\n", .{ self.formatter.colors.bold, self.formatter.colors.primary, self.formatter.colors.reset, self.formatter.colors.reset });
+                print("{s}{s}📊 Authentication Status{s}{s}\n", .{ self.formatter.colors.bold, self.formatter.colors.primary, self.formatter.colors.reset, self.formatter.colors.reset });
                 // Status check logic would go here
-                print("{}✅ Authenticated{}\n", .{ self.formatter.colors.success, self.formatter.colors.reset });
+                print("{s}✅ Authenticated{s}\n", .{ self.formatter.colors.success, self.formatter.colors.reset });
             },
             .refresh => {
-                print("{}{}🔄 Refreshing authentication...{}{}\n", .{ self.formatter.colors.bold, self.formatter.colors.primary, self.formatter.colors.reset, self.formatter.colors.reset });
+                print("{s}{s}🔄 Refreshing authentication...{s}{s}\n", .{ self.formatter.colors.bold, self.formatter.colors.primary, self.formatter.colors.reset, self.formatter.colors.reset });
                 // Refresh logic would go here
-                print("{}✅ Authentication refreshed{}\n", .{ self.formatter.colors.success, self.formatter.colors.reset });
+                print("{s}✅ Authentication refreshed{s}\n", .{ self.formatter.colors.success, self.formatter.colors.reset });
             },
         }
     }
@@ -272,17 +308,21 @@ pub fn parseArgsEnhanced(allocator: Allocator, args: [][]const u8) !ParsedArgs {
 pub fn parseAndHandle(allocator: Allocator, args: [][]const u8) !?ParsedArgs {
     var parser = EnhancedParser.init(allocator);
     var parsed = parser.parse(args) catch |err| {
-        try parser.printError(err, if (args.len > 1) args[1] else null);
+        // For auth-related errors, use the command as context instead of the failing argument
+        const context = if (args.len > 0 and std.mem.eql(u8, args[0], "auth")) "auth"
+                       else if (args.len > 1) args[1]
+                       else null;
+        try parser.printError(err, context);
         return null;
     };
-    
+
     // Handle built-in commands (help, version, auth)
     parser.handleParsedArgs(&parsed) catch |err| {
         try parser.printError(err, null);
         parsed.deinit();
         return null;
     };
-    
+
     // Return parsed args if there's a prompt to process
     if (parsed.prompt != null) {
         return parsed;

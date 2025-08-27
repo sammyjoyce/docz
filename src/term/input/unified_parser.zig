@@ -41,22 +41,22 @@ pub const InputEvent = union(enum) {
 pub const InputParser = struct {
     allocator: std.mem.Allocator,
     buffer: std.ArrayListUnmanaged(u8),
-    
+
     pub fn init(allocator: std.mem.Allocator) InputParser {
         return InputParser{
             .allocator = allocator,
             .buffer = std.ArrayListUnmanaged(u8){},
         };
     }
-    
+
     pub fn deinit(self: *InputParser) void {
         self.buffer.deinit(self.allocator);
     }
-    
+
     /// Parse input data and return completed events
     pub fn parse(self: *InputParser, data: []const u8) ![]InputEvent {
         try self.buffer.appendSlice(self.allocator, data);
-        
+
         var events = std.ArrayListUnmanaged(InputEvent){};
         errdefer {
             for (events.items) |event| {
@@ -69,7 +69,7 @@ pub const InputParser = struct {
             }
             events.deinit(self.allocator);
         }
-        
+
         var pos: usize = 0;
         while (pos < self.buffer.items.len) {
             if (try self.tryParseEvent(self.buffer.items[pos..])) |result| {
@@ -80,31 +80,31 @@ pub const InputParser = struct {
                 pos += 1;
             }
         }
-        
+
         // Remove consumed bytes from buffer
         if (pos > 0) {
             std.mem.copyForwards(u8, self.buffer.items[0..], self.buffer.items[pos..]);
             self.buffer.shrinkRetainingCapacity(self.buffer.items.len - pos);
         }
-        
+
         return try events.toOwnedSlice(self.allocator);
     }
-    
+
     const ParseResult = struct {
         event: InputEvent,
         consumed: usize,
     };
-    
+
     fn tryParseEvent(self: *InputParser, data: []const u8) !?ParseResult {
         if (data.len == 0) return null;
-        
+
         const first = data[0];
-        
+
         // Handle escape sequences
         if (first == 0x1B) {
             return try self.parseEscapeSequence(data);
         }
-        
+
         // Handle regular characters
         if (first < 0x80) {
             const key_event = try enhanced_keyboard.parseChar(first, self.allocator);
@@ -113,31 +113,31 @@ pub const InputParser = struct {
                 .consumed = 1,
             };
         }
-        
+
         // Handle UTF-8 multi-byte characters
         const seq_len = std.unicode.utf8ByteSequenceLength(first) catch return null;
         if (data.len < seq_len) return null;
-        
+
         const codepoint = std.unicode.utf8Decode(data[0..seq_len]) catch return null;
         var text_buf: [4]u8 = undefined;
         const text_len = std.unicode.utf8Encode(codepoint, &text_buf) catch return null;
         const text = try self.allocator.dupe(u8, text_buf[0..text_len]);
-        
+
         const key_event = enhanced_keyboard.KeyEvent{
             .text = text,
             .code = .unknown,
             .mod = enhanced_keyboard.KeyMod{},
         };
-        
+
         return ParseResult{
             .event = .{ .key_press = key_event },
             .consumed = seq_len,
         };
     }
-    
+
     fn parseEscapeSequence(self: *InputParser, data: []const u8) !?ParseResult {
         if (data.len < 2) return null;
-        
+
         return switch (data[1]) {
             '[' => try self.parseCSI(data),
             'O' => try self.parseSSSequence(data),
@@ -156,20 +156,20 @@ pub const InputParser = struct {
             },
         };
     }
-    
+
     fn parseCSI(self: *InputParser, data: []const u8) !?ParseResult {
         // Find the end of CSI sequence
         var i: usize = 2; // Skip "ESC["
         var params = std.ArrayListUnmanaged(u32){};
         defer params.deinit(self.allocator);
-        
+
         // Parse parameters
         var current_param: u32 = 0;
         var has_param = false;
-        
+
         while (i < data.len) {
             const ch = data[i];
-            
+
             if (ch >= '0' and ch <= '9') {
                 current_param = current_param * 10 + (ch - '0');
                 has_param = true;
@@ -192,15 +192,15 @@ pub const InputParser = struct {
                 i += 1;
                 continue;
             }
-            
+
             i += 1;
         }
-        
+
         if (i >= data.len) return null; // Incomplete sequence
-        
+
         const final_char = data[i];
-        const sequence = data[0..i + 1];
-        
+        const sequence = data[0 .. i + 1];
+
         // Handle mouse events
         if ((final_char == 'M' or final_char == 'm') and data.len > 2 and data[2] == '<') {
             if (enhanced_mouse.parseSGRMouseEvent(final_char, params.items)) |mouse_event| {
@@ -210,7 +210,7 @@ pub const InputParser = struct {
                 };
             }
         }
-        
+
         // Handle keyboard events
         if (try self.parseCSIKeyboard(sequence, final_char, params.items)) |key_event| {
             return ParseResult{
@@ -218,7 +218,7 @@ pub const InputParser = struct {
                 .consumed = i + 1,
             };
         }
-        
+
         // Handle special events
         if (try self.parseCSISpecial(sequence, final_char, params.items)) |special_event| {
             return ParseResult{
@@ -226,7 +226,7 @@ pub const InputParser = struct {
                 .consumed = i + 1,
             };
         }
-        
+
         // Unknown sequence
         const unknown_data = try self.allocator.dupe(u8, sequence);
         return ParseResult{
@@ -234,10 +234,10 @@ pub const InputParser = struct {
             .consumed = i + 1,
         };
     }
-    
+
     fn parseCSIKeyboard(self: *InputParser, _: []const u8, final_char: u8, params: []const u32) !?enhanced_keyboard.KeyEvent {
         const text = try self.allocator.dupe(u8, "");
-        
+
         const key: enhanced_keyboard.Key = switch (final_char) {
             'A' => .up,
             'B' => .down,
@@ -268,36 +268,34 @@ pub const InputParser = struct {
             } else .unknown,
             else => return null,
         };
-        
+
         return enhanced_keyboard.KeyEvent{
             .text = text,
             .code = key,
             .mod = enhanced_keyboard.KeyMod{},
         };
     }
-    
+
     fn parseCSISpecial(_: *InputParser, _: []const u8, final_char: u8, params: []const u32) !?InputEvent {
         return switch (final_char) {
             't' => {
                 // Window operations
                 if (params.len >= 3 and params[0] == 8) {
                     // Window size report
-                    return InputEvent{
-                        .window_size = .{
-                            .height = @as(u16, @intCast(params[1])),
-                            .width = @as(u16, @intCast(params[2])),
-                        }
-                    };
+                    return InputEvent{ .window_size = .{
+                        .height = @as(u16, @intCast(params[1])),
+                        .width = @as(u16, @intCast(params[2])),
+                    } };
                 }
                 return null;
             },
             else => null,
         };
     }
-    
+
     fn parseSSSequence(self: *InputParser, data: []const u8) !?ParseResult {
         if (data.len < 3) return null;
-        
+
         const key_event = enhanced_keyboard.parseEscapeSequence(data[0..3], self.allocator) catch return null;
         if (key_event) |event| {
             return ParseResult{
@@ -305,10 +303,10 @@ pub const InputParser = struct {
                 .consumed = 3,
             };
         }
-        
+
         return null;
     }
-    
+
     fn parseOSC(self: *InputParser, data: []const u8) !?ParseResult {
         // Find OSC terminator (BEL or ST)
         var i: usize = 2; // Skip "ESC]"
@@ -322,11 +320,11 @@ pub const InputParser = struct {
             }
             i += 1;
         }
-        
+
         if (i >= data.len) return null; // Incomplete sequence
-        
-        const sequence = data[0..i + 1];
-        
+
+        const sequence = data[0 .. i + 1];
+
         // Check for specific OSC sequences
         if (std.mem.startsWith(u8, sequence, "\x1b]0;")) {
             // Window title - ignore for now
@@ -335,7 +333,7 @@ pub const InputParser = struct {
                 .consumed = i + 1,
             };
         }
-        
+
         if (std.mem.startsWith(u8, sequence, "\x1b]52;")) {
             // Clipboard operation - could be implemented later
             return ParseResult{
@@ -343,7 +341,7 @@ pub const InputParser = struct {
                 .consumed = i + 1,
             };
         }
-        
+
         const unknown_data = try self.allocator.dupe(u8, sequence);
         return ParseResult{
             .event = .{ .unknown = unknown_data },
@@ -356,7 +354,7 @@ pub const InputParser = struct {
 test "basic character parsing" {
     var parser = InputParser.init(std.testing.allocator);
     defer parser.deinit();
-    
+
     const events = try parser.parse("a");
     defer {
         for (events) |event| {
@@ -367,7 +365,7 @@ test "basic character parsing" {
         }
         std.testing.allocator.free(events);
     }
-    
+
     try std.testing.expect(events.len == 1);
     try std.testing.expect(events[0] == .key_press);
     try std.testing.expectEqualStrings("a", events[0].key_press.text);
@@ -376,7 +374,7 @@ test "basic character parsing" {
 test "escape sequence parsing" {
     var parser = InputParser.init(std.testing.allocator);
     defer parser.deinit();
-    
+
     const events = try parser.parse("\x1b[A"); // Up arrow
     defer {
         for (events) |event| {
@@ -387,7 +385,7 @@ test "escape sequence parsing" {
         }
         std.testing.allocator.free(events);
     }
-    
+
     try std.testing.expect(events.len == 1);
     try std.testing.expect(events[0] == .key_press);
     try std.testing.expectEqual(enhanced_keyboard.Key.up, events[0].key_press.code);
@@ -396,7 +394,7 @@ test "escape sequence parsing" {
 test "mouse event parsing" {
     var parser = InputParser.init(std.testing.allocator);
     defer parser.deinit();
-    
+
     const events = try parser.parse("\x1b[<0;12;5M"); // Left click at (11, 4)
     defer {
         for (events) |event| {
@@ -408,10 +406,10 @@ test "mouse event parsing" {
         }
         std.testing.allocator.free(events);
     }
-    
+
     try std.testing.expect(events.len == 1);
     try std.testing.expect(events[0] == .mouse);
-    
+
     const mouse = events[0].mouse.mouse();
     try std.testing.expectEqual(@as(i32, 11), mouse.x);
     try std.testing.expectEqual(@as(i32, 4), mouse.y);

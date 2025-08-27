@@ -2,7 +2,6 @@ const std = @import("std");
 
 /// Enhanced input system based on charmbracelet/x/input with Zig 0.15.1 compatibility
 /// Supports comprehensive key events, mouse events, and modern terminal features
-
 /// Key modifier flags
 pub const KeyMod = packed struct {
     ctrl: bool = false,
@@ -11,31 +10,31 @@ pub const KeyMod = packed struct {
     meta: bool = false,
     hyper: bool = false,
     super: bool = false,
-    
+
     pub fn isEmpty(self: KeyMod) bool {
         const as_int: u8 = @bitCast(self);
         return as_int == 0;
     }
-    
+
     pub fn contains(self: KeyMod, other: KeyMod) bool {
         const self_int: u8 = @bitCast(self);
         const other_int: u8 = @bitCast(other);
         return (self_int & other_int) == other_int;
     }
-    
+
     pub fn toString(self: KeyMod, allocator: std.mem.Allocator) ![]u8 {
         var parts = std.ArrayList([]const u8).init(allocator);
         defer parts.deinit();
-        
+
         if (self.ctrl) try parts.append("ctrl");
         if (self.alt) try parts.append("alt");
         if (self.shift) try parts.append("shift");
         if (self.meta) try parts.append("meta");
         if (self.hyper) try parts.append("hyper");
         if (self.super) try parts.append("super");
-        
+
         if (parts.items.len == 0) return allocator.dupe(u8, "");
-        
+
         return std.mem.join(allocator, "+", parts.items);
     }
 };
@@ -43,7 +42,7 @@ pub const KeyMod = packed struct {
 /// Extended key codes beyond normal unicode range
 pub const ExtendedKeyCodes = struct {
     pub const KEY_EXTENDED: u21 = std.unicode.max_codepoint + 1;
-    
+
     // Navigation keys
     pub const UP = KEY_EXTENDED + 1;
     pub const DOWN = KEY_EXTENDED + 2;
@@ -58,7 +57,7 @@ pub const ExtendedKeyCodes = struct {
     pub const PAGE_DOWN = KEY_EXTENDED + 11;
     pub const HOME = KEY_EXTENDED + 12;
     pub const END = KEY_EXTENDED + 13;
-    
+
     // Keypad keys
     pub const KP_ENTER = KEY_EXTENDED + 20;
     pub const KP_EQUAL = KEY_EXTENDED + 21;
@@ -78,7 +77,7 @@ pub const ExtendedKeyCodes = struct {
     pub const KP_7 = KEY_EXTENDED + 35;
     pub const KP_8 = KEY_EXTENDED + 36;
     pub const KP_9 = KEY_EXTENDED + 37;
-    
+
     // Function keys F1-F63
     pub const F1 = KEY_EXTENDED + 100;
     pub const F2 = KEY_EXTENDED + 101;
@@ -101,7 +100,7 @@ pub const ExtendedKeyCodes = struct {
     pub const F19 = KEY_EXTENDED + 118;
     pub const F20 = KEY_EXTENDED + 119;
     // ... more function keys available up to F63
-    
+
     // System keys
     pub const CAPS_LOCK = KEY_EXTENDED + 200;
     pub const SCROLL_LOCK = KEY_EXTENDED + 201;
@@ -109,7 +108,7 @@ pub const ExtendedKeyCodes = struct {
     pub const PRINT_SCREEN = KEY_EXTENDED + 203;
     pub const PAUSE = KEY_EXTENDED + 204;
     pub const MENU = KEY_EXTENDED + 205;
-    
+
     // Media keys
     pub const MEDIA_PLAY = KEY_EXTENDED + 220;
     pub const MEDIA_PAUSE = KEY_EXTENDED + 221;
@@ -117,12 +116,12 @@ pub const ExtendedKeyCodes = struct {
     pub const MEDIA_NEXT = KEY_EXTENDED + 223;
     pub const MEDIA_PREV = KEY_EXTENDED + 224;
     pub const MEDIA_RECORD = KEY_EXTENDED + 225;
-    
+
     // Audio keys
     pub const VOLUME_UP = KEY_EXTENDED + 240;
     pub const VOLUME_DOWN = KEY_EXTENDED + 241;
     pub const MUTE = KEY_EXTENDED + 242;
-    
+
     // Individual modifier keys
     pub const LEFT_SHIFT = KEY_EXTENDED + 260;
     pub const RIGHT_SHIFT = KEY_EXTENDED + 261;
@@ -132,20 +131,20 @@ pub const ExtendedKeyCodes = struct {
     pub const RIGHT_ALT = KEY_EXTENDED + 265;
     pub const LEFT_SUPER = KEY_EXTENDED + 266;
     pub const RIGHT_SUPER = KEY_EXTENDED + 267;
-    
+
     // Common key names
     pub const BACKSPACE: u21 = 0x7F;
     pub const TAB: u21 = 0x09;
     pub const ENTER: u21 = 0x0D;
     pub const ESCAPE: u21 = 0x1B;
     pub const SPACE: u21 = 0x20;
-    
+
     /// Get string representation of key code
     pub fn toString(code: u21) []const u8 {
         return switch (code) {
             UP => "up",
             DOWN => "down",
-            LEFT => "left", 
+            LEFT => "left",
             RIGHT => "right",
             HOME => "home",
             END => "end",
@@ -195,7 +194,7 @@ pub const MouseButton = enum(u8) {
     forward = 9,
     button10 = 10,
     button11 = 11,
-    
+
     pub fn toString(self: MouseButton) []const u8 {
         return switch (self) {
             .none => "none",
@@ -212,10 +211,10 @@ pub const MouseButton = enum(u8) {
             .button11 => "button11",
         };
     }
-    
+
     pub fn isWheel(self: MouseButton) bool {
-        return self == .wheel_up or self == .wheel_down or 
-               self == .wheel_left or self == .wheel_right;
+        return self == .wheel_up or self == .wheel_down or
+            self == .wheel_left or self == .wheel_right;
     }
 };
 
@@ -233,33 +232,36 @@ pub const Key = struct {
     base_code: u21 = 0,
     /// Whether this is a repeat event
     is_repeat: bool = false,
-    
+
     /// Get string representation of the key
     pub fn toString(self: Key, allocator: std.mem.Allocator) ![]u8 {
         // If we have printable text, use that (except for space)
         if (self.text.len > 0 and !std.mem.eql(u8, self.text, " ")) {
             return allocator.dupe(u8, self.text);
         }
-        
+
         return self.toKeystroke(allocator);
     }
-    
+
     /// Get keystroke representation with modifiers
     pub fn toKeystroke(self: Key, allocator: std.mem.Allocator) ![]u8 {
         var result = std.ArrayList(u8).init(allocator);
         errdefer result.deinit();
-        
+
         // Add modifiers in order: ctrl, alt, shift, meta, hyper, super
-        if (self.mod.ctrl and self.code != ExtendedKeyCodes.LEFT_CTRL and 
-            self.code != ExtendedKeyCodes.RIGHT_CTRL) {
+        if (self.mod.ctrl and self.code != ExtendedKeyCodes.LEFT_CTRL and
+            self.code != ExtendedKeyCodes.RIGHT_CTRL)
+        {
             try result.appendSlice("ctrl+");
         }
-        if (self.mod.alt and self.code != ExtendedKeyCodes.LEFT_ALT and 
-            self.code != ExtendedKeyCodes.RIGHT_ALT) {
+        if (self.mod.alt and self.code != ExtendedKeyCodes.LEFT_ALT and
+            self.code != ExtendedKeyCodes.RIGHT_ALT)
+        {
             try result.appendSlice("alt+");
         }
-        if (self.mod.shift and self.code != ExtendedKeyCodes.LEFT_SHIFT and 
-            self.code != ExtendedKeyCodes.RIGHT_SHIFT) {
+        if (self.mod.shift and self.code != ExtendedKeyCodes.LEFT_SHIFT and
+            self.code != ExtendedKeyCodes.RIGHT_SHIFT)
+        {
             try result.appendSlice("shift+");
         }
         if (self.mod.meta) {
@@ -268,11 +270,12 @@ pub const Key = struct {
         if (self.mod.hyper) {
             try result.appendSlice("hyper+");
         }
-        if (self.mod.super and self.code != ExtendedKeyCodes.LEFT_SUPER and 
-            self.code != ExtendedKeyCodes.RIGHT_SUPER) {
+        if (self.mod.super and self.code != ExtendedKeyCodes.LEFT_SUPER and
+            self.code != ExtendedKeyCodes.RIGHT_SUPER)
+        {
             try result.appendSlice("super+");
         }
-        
+
         // Add the key name
         const key_name = ExtendedKeyCodes.toString(self.code);
         if (!std.mem.eql(u8, key_name, "unknown")) {
@@ -280,7 +283,7 @@ pub const Key = struct {
         } else {
             // Use base code if available, otherwise use main code
             const display_code = if (self.base_code != 0) self.base_code else self.code;
-            
+
             switch (display_code) {
                 ExtendedKeyCodes.SPACE => try result.appendSlice("space"),
                 ExtendedKeyCodes.KEY_EXTENDED => try result.appendSlice(self.text),
@@ -291,7 +294,7 @@ pub const Key = struct {
                 },
             }
         }
-        
+
         return result.toOwnedSlice();
     }
 };
@@ -302,22 +305,22 @@ pub const Mouse = struct {
     y: i32,
     button: MouseButton,
     mod: KeyMod = .{},
-    
+
     pub fn toString(self: Mouse, allocator: std.mem.Allocator) ![]u8 {
         var result = std.ArrayList(u8).init(allocator);
         errdefer result.deinit();
-        
+
         // Add modifiers
         if (self.mod.ctrl) try result.appendSlice("ctrl+");
         if (self.mod.alt) try result.appendSlice("alt+");
         if (self.mod.shift) try result.appendSlice("shift+");
-        
+
         // Add button name
         const button_name = self.button.toString();
         if (!std.mem.eql(u8, button_name, "none")) {
             try result.appendSlice(button_name);
         }
-        
+
         return result.toOwnedSlice();
     }
 };
@@ -335,7 +338,7 @@ pub const InputEvent = union(enum) {
     paste_start,
     paste_end,
     paste_data: []const u8,
-    
+
     pub fn toString(self: InputEvent, allocator: std.mem.Allocator) ![]u8 {
         return switch (self) {
             .key_press => |k| k.toString(allocator),
@@ -365,61 +368,61 @@ pub const InputEvent = union(enum) {
 pub const InputParser = struct {
     allocator: std.mem.Allocator,
     buffer: std.ArrayList(u8),
-    
+
     pub fn init(allocator: std.mem.Allocator) InputParser {
         return InputParser{
             .allocator = allocator,
             .buffer = std.ArrayList(u8).init(allocator),
         };
     }
-    
+
     pub fn deinit(self: *InputParser) void {
         self.buffer.deinit();
     }
-    
+
     /// Parse input bytes into events
     pub fn parse(self: *InputParser, input: []const u8) ![]InputEvent {
         var events = std.ArrayList(InputEvent).init(self.allocator);
         errdefer events.deinit();
-        
+
         for (input) |byte| {
             try self.buffer.append(byte);
-            
+
             if (try self.tryParseEvent()) |event| {
                 try events.append(event);
                 self.buffer.clearAndFree();
             }
         }
-        
+
         return events.toOwnedSlice();
     }
-    
+
     fn tryParseEvent(self: *InputParser) !?InputEvent {
         if (self.buffer.items.len == 0) return null;
-        
+
         // Check for escape sequences
         if (self.buffer.items[0] == 0x1B) {
             return self.parseEscapeSequence();
         }
-        
+
         // Single character input
         if (self.buffer.items.len == 1) {
             const byte = self.buffer.items[0];
             return self.parseCharacter(byte);
         }
-        
+
         return null;
     }
-    
+
     fn parseEscapeSequence(self: *InputParser) !?InputEvent {
         const buf = self.buffer.items;
         if (buf.len < 2) return null; // Need at least ESC + one more char
-        
+
         // CSI sequences: ESC [ ...
         if (buf[1] == '[') {
             return self.parseCSISequence();
         }
-        
+
         // Alt + key sequences
         if (buf.len == 2) {
             const key = Key{
@@ -429,14 +432,14 @@ pub const InputParser = struct {
             };
             return InputEvent{ .key_press = key };
         }
-        
+
         return null;
     }
-    
+
     fn parseCSISequence(self: *InputParser) !?InputEvent {
         const buf = self.buffer.items;
         if (buf.len < 3) return null; // Need at least ESC [ + terminator
-        
+
         // Look for terminator
         var terminator_pos: ?usize = null;
         for (buf[2..], 2..) |byte, i| {
@@ -445,21 +448,21 @@ pub const InputParser = struct {
                 break;
             }
         }
-        
+
         const term_pos = terminator_pos orelse return null;
         const terminator = buf[term_pos];
-        
+
         // Parse parameters
         const params_str = buf[2..term_pos];
         var params = std.ArrayList(i32).init(self.allocator);
         defer params.deinit();
-        
+
         var param_iter = std.mem.split(u8, params_str, ";");
         while (param_iter.next()) |param_str| {
             const param = std.fmt.parseInt(i32, param_str, 10) catch 0;
             try params.append(param);
         }
-        
+
         // Parse based on terminator
         switch (terminator) {
             'A' => return self.createKeyEvent(ExtendedKeyCodes.UP, .{}),
@@ -471,17 +474,16 @@ pub const InputParser = struct {
             'M' => return self.parseX10Mouse(),
             '~' => return self.parseSpecialKey(params.items),
             '<' => {
-                // Check for SGR mouse (ends with 'm' or 'M')
-                if (buf.len > term_pos + 1) return null; // Need more data
-                return null; // TODO: Implement SGR mouse parsing
+                // SGR mouse format: ESC [ < param1 ; param2 ; param3 m/M
+                return self.parseSgrMouse(params.items, buf[buf.len - 1]);
             },
             else => return null,
         }
     }
-    
+
     fn parseSpecialKey(_: *InputParser, params: []const i32) !?InputEvent {
         if (params.len == 0) return null;
-        
+
         const code = switch (params[0]) {
             1 => ExtendedKeyCodes.HOME,
             2 => ExtendedKeyCodes.INSERT,
@@ -503,7 +505,7 @@ pub const InputParser = struct {
             24 => ExtendedKeyCodes.F12,
             else => return null,
         };
-        
+
         // Parse modifiers from second parameter
         var mod = KeyMod{};
         if (params.len > 1) {
@@ -512,30 +514,30 @@ pub const InputParser = struct {
             if (mod_param & 2 != 0) mod.alt = true;
             if (mod_param & 4 != 0) mod.ctrl = true;
         }
-        
+
         return InputEvent{ .key_press = Key{ .code = code, .mod = mod } };
     }
-    
+
     fn parseX10Mouse(self: *InputParser) !?InputEvent {
         const buf = self.buffer.items;
         if (buf.len < 6) return null; // ESC [ M + 3 bytes
-        
+
         const b = buf[3] - 32;
         const x = @as(i32, buf[4]) - 32 - 1; // Convert to 0-based
         const y = @as(i32, buf[5]) - 32 - 1;
-        
+
         const mod = self.parseMouseMod(b);
         const button = self.parseMouseButton(b);
         const is_motion = (b & 0x20) != 0;
         const is_release = !is_motion and (b & 0x03) == 0x03;
-        
+
         const mouse = Mouse{
             .x = x,
             .y = y,
             .button = button,
             .mod = mod,
         };
-        
+
         if (button.isWheel()) {
             return InputEvent{ .mouse_wheel = mouse };
         } else if (is_motion) {
@@ -546,7 +548,7 @@ pub const InputParser = struct {
             return InputEvent{ .mouse_click = mouse };
         }
     }
-    
+
     fn parseMouseMod(_: *InputParser, b: u8) KeyMod {
         return KeyMod{
             .shift = (b & 0x04) != 0,
@@ -554,12 +556,12 @@ pub const InputParser = struct {
             .ctrl = (b & 0x10) != 0,
         };
     }
-    
+
     fn parseMouseButton(_: *InputParser, b: u8) MouseButton {
         const btn_bits = b & 0x03;
         const wheel = (b & 0x40) != 0;
         const additional = (b & 0x80) != 0;
-        
+
         if (additional) {
             return @enumFromInt(@as(u8, @intFromEnum(MouseButton.backward)) + btn_bits);
         } else if (wheel) {
@@ -568,7 +570,74 @@ pub const InputParser = struct {
             return @enumFromInt(@as(u8, @intFromEnum(MouseButton.left)) + btn_bits);
         }
     }
-    
+
+    /// Parse SGR (Select Graphic Rendition) mouse events
+    /// Format: ESC [ < button ; x ; y m/M
+    /// 'm' indicates button release, 'M' indicates button press/drag
+    fn parseSgrMouse(self: *InputParser, params: []const i32, terminator: u8) !?InputEvent {
+        _ = self;
+        if (params.len < 3) return null; // Need at least button, x, y
+
+        const button_param = params[0];
+        const x = params[1] - 1; // Convert to 0-based coordinates
+        const y = params[2] - 1; // Convert to 0-based coordinates
+
+        // Parse button and modifiers from first parameter
+        const base_button = button_param & 0x03;
+        const is_wheel = (button_param & 0x40) != 0;
+        const is_motion = (button_param & 0x20) != 0;
+        const is_release = terminator == 'm';
+
+        // Parse modifiers from button parameter
+        const mod = KeyMod{
+            .shift = (button_param & 0x04) != 0,
+            .alt = (button_param & 0x08) != 0,
+            .ctrl = (button_param & 0x10) != 0,
+        };
+
+        // Determine button type
+        var button: MouseButton = undefined;
+        if (is_wheel) {
+            // Wheel events: 64-67 (up, down, left, right)
+            button = switch (button_param) {
+                64 => MouseButton.wheel_up,
+                65 => MouseButton.wheel_down,
+                66 => MouseButton.wheel_left,
+                67 => MouseButton.wheel_right,
+                else => MouseButton.wheel_up,
+            };
+        } else if (button_param >= 128) {
+            // Additional buttons (8-11)
+            button = MouseButton.backward;
+        } else {
+            // Standard buttons (left, middle, right)
+            button = switch (base_button) {
+                0 => MouseButton.left,
+                1 => MouseButton.middle,
+                2 => MouseButton.right,
+                else => MouseButton.left,
+            };
+        }
+
+        const mouse = Mouse{
+            .x = x,
+            .y = y,
+            .button = button,
+            .mod = mod,
+        };
+
+        // Determine event type based on parameters and terminator
+        if (button.isWheel()) {
+            return InputEvent{ .mouse_wheel = mouse };
+        } else if (is_motion) {
+            return InputEvent{ .mouse_motion = mouse };
+        } else if (is_release) {
+            return InputEvent{ .mouse_release = mouse };
+        } else {
+            return InputEvent{ .mouse_click = mouse };
+        }
+    }
+
     fn parseCharacter(self: *InputParser, byte: u8) !?InputEvent {
         _ = self;
         const key = Key{
@@ -577,7 +646,7 @@ pub const InputParser = struct {
         };
         return InputEvent{ .key_press = key };
     }
-    
+
     fn createKeyEvent(self: *InputParser, code: u21, mod: KeyMod) !InputEvent {
         _ = self;
         const key = Key{
@@ -591,30 +660,21 @@ pub const InputParser = struct {
 // Helper functions for creating common events
 
 pub fn createKeyPress(code: u21, mod: KeyMod) InputEvent {
-    return InputEvent{ 
-        .key_press = Key{ 
-            .code = code, 
-            .mod = mod 
-        } 
-    };
+    return InputEvent{ .key_press = Key{ .code = code, .mod = mod } };
 }
 
 pub fn createMouseClick(x: i32, y: i32, button: MouseButton, mod: KeyMod) InputEvent {
-    return InputEvent{
-        .mouse_click = Mouse{
-            .x = x,
-            .y = y,
-            .button = button,
-            .mod = mod,
-        }
-    };
+    return InputEvent{ .mouse_click = Mouse{
+        .x = x,
+        .y = y,
+        .button = button,
+        .mod = mod,
+    } };
 }
 
 pub fn createCharPress(char: u8) InputEvent {
-    return InputEvent{
-        .key_press = Key{
-            .code = char,
-            .text = if (std.ascii.isPrint(char)) &[_]u8{char} else "",
-        }
-    };
+    return InputEvent{ .key_press = Key{
+        .code = char,
+        .text = if (std.ascii.isPrint(char)) &[_]u8{char} else "",
+    } };
 }

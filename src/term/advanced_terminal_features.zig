@@ -2,7 +2,6 @@
 /// Combines all the enhanced terminal capabilities inspired by charmbracelet/x
 /// Provides a unified interface for advanced TUI/CLI applications
 /// Compatible with Zig 0.15.1
-
 const std = @import("std");
 
 pub const cellbuf = @import("cellbuf.zig");
@@ -39,17 +38,17 @@ pub const AdvancedTerminal = struct {
     height: usize,
     cursor_x: usize = 0,
     cursor_y: usize = 0,
-    
+
     const Self = @This();
-    
+
     /// Initialize advanced terminal with automatic size detection
     pub fn init(allocator: std.mem.Allocator, term_type: ?[]const u8) !Self {
         const detected_term = term_type orelse std.posix.getenv("TERM") orelse "xterm";
-        
+
         // Try to get terminal size
         var width: usize = 80;
         var height: usize = 24;
-        
+
         // This is a simplified size detection - in practice you'd use ioctl
         if (std.posix.getenv("COLUMNS")) |w| {
             width = std.fmt.parseInt(usize, w, 10) catch 80;
@@ -57,11 +56,11 @@ pub const AdvancedTerminal = struct {
         if (std.posix.getenv("LINES")) |h| {
             height = std.fmt.parseInt(usize, h, 10) catch 24;
         }
-        
+
         const buffer = try CellBuffer.init(allocator, width, height);
         const optimizer = try CursorOptimizer.init(allocator, detected_term, width, height, .{});
         const parser = EnhancedInputParser.init(allocator);
-        
+
         return Self{
             .allocator = allocator,
             .buffer = buffer,
@@ -71,13 +70,13 @@ pub const AdvancedTerminal = struct {
             .height = height,
         };
     }
-    
+
     pub fn deinit(self: *Self) void {
         self.buffer.deinit();
         self.cursor_optimizer.deinit();
         self.input_parser.deinit();
     }
-    
+
     /// Resize terminal to new dimensions
     pub fn resize(self: *Self, new_width: usize, new_height: usize) !void {
         try self.buffer.resize(new_width, new_height);
@@ -85,57 +84,57 @@ pub const AdvancedTerminal = struct {
         self.width = new_width;
         self.height = new_height;
     }
-    
+
     /// Set cell with character and styling
     pub fn setCell(self: *Self, x: usize, y: usize, codepoint: u21, fg: CellColor, bg: CellColor, cell_attrs: CellAttrs) !void {
         try self.buffer.setCell(x, y, codepoint, fg, bg, cell_attrs);
     }
-    
+
     /// Write text at position
     pub fn writeText(self: *Self, x: usize, y: usize, text: []const u8, fg: CellColor, bg: CellColor, cell_attrs: CellAttrs) !usize {
         return try self.buffer.writeText(x, y, text, fg, bg, cell_attrs);
     }
-    
+
     /// Clear entire buffer
     pub fn clear(self: *Self) void {
         self.buffer.clear();
     }
-    
+
     /// Fill rectangular area
     pub fn fillRect(self: *Self, x: usize, y: usize, w: usize, h: usize, codepoint: u21, fg: CellColor, bg: CellColor, cell_attrs: CellAttrs) !void {
         try self.buffer.fillRect(x, y, w, h, codepoint, fg, bg, cell_attrs);
     }
-    
+
     /// Draw box with borders
     pub fn drawBox(self: *Self, x: usize, y: usize, w: usize, h: usize, style: cellbuf.CellBuffer.BoxStyle, fg: CellColor, bg: CellColor, cell_attrs: CellAttrs) !void {
         try self.buffer.drawBox(x, y, w, h, style, fg, bg, cell_attrs);
     }
-    
+
     /// Set cursor position
     pub fn setCursor(self: *Self, x: usize, y: usize) void {
         self.cursor_x = @min(x, self.width - 1);
         self.cursor_y = @min(y, self.height - 1);
         self.buffer.setCursor(self.cursor_x, self.cursor_y);
     }
-    
+
     /// Generate optimized cursor movement sequence
     pub fn moveCursorTo(self: *Self, x: usize, y: usize) ![]u8 {
         const movement = try self.cursor_optimizer.moveCursor(self.allocator, self.cursor_x, self.cursor_y, x, y);
         self.setCursor(x, y);
         return movement;
     }
-    
+
     /// Render buffer changes to output sequences
     pub fn render(self: *Self, writer: anytype) !void {
         const diffs = try self.buffer.getDifferences(self.allocator);
         defer self.allocator.free(diffs);
-        
+
         var last_x: usize = 0;
         var last_y: usize = 0;
         var last_fg = cellbuf.defaultColor();
         var last_bg = cellbuf.defaultColor();
         var last_attrs = CellAttrs{};
-        
+
         for (diffs) |diff| {
             // Move cursor if needed
             if (diff.x != last_x or diff.y != last_y) {
@@ -145,7 +144,7 @@ pub const AdvancedTerminal = struct {
                 last_x = diff.x;
                 last_y = diff.y;
             }
-            
+
             // Update colors and attributes if changed
             if (!diff.cell.fg_color.eql(last_fg) or !diff.cell.bg_color.eql(last_bg) or !diff.cell.attrs.eql(last_attrs)) {
                 try writeColorAndAttrs(writer, diff.cell.fg_color, diff.cell.bg_color, diff.cell.attrs);
@@ -153,7 +152,7 @@ pub const AdvancedTerminal = struct {
                 last_bg = diff.cell.bg_color;
                 last_attrs = diff.cell.attrs;
             }
-            
+
             // Write character if not a continuation cell
             if (!diff.cell.is_continuation and diff.cell.codepoint > 0) {
                 var buf: [4]u8 = undefined;
@@ -166,26 +165,26 @@ pub const AdvancedTerminal = struct {
                 last_x += 1;
             }
         }
-        
+
         // Mark frame as rendered
         self.buffer.swapBuffers();
     }
-    
+
     /// Parse input events
     pub fn parseInput(self: *Self, input: []const u8) ![]Event {
         return try self.input_parser.parseSequence(input);
     }
-    
+
     /// Open file in external editor
     pub fn openInEditor(self: *Self, app_name: []const u8, file_path: []const u8) !std.process.Child {
         return editor.openFile(self.allocator, app_name, file_path);
     }
-    
+
     /// Open file in external editor at specific line
     pub fn openInEditorAtLine(self: *Self, app_name: []const u8, file_path: []const u8, line: u32) !std.process.Child {
         return editor.openFileAtLine(self.allocator, app_name, file_path, line);
     }
-    
+
     /// Enable logging for input events
     pub fn enableInputLogging(self: *Self, log_fn: *const fn (ctx: ?*anyopaque, comptime format: []const u8, args: anytype) void, context: ?*anyopaque) void {
         const logger = EnhancedInputParser.Logger{
@@ -200,21 +199,21 @@ pub const AdvancedTerminal = struct {
 fn writeColorAndAttrs(writer: anytype, fg: CellColor, bg: CellColor, cell_attrs: CellAttrs) !void {
     // Reset if needed
     try writer.writeAll("\x1b[0m");
-    
+
     // Foreground color
     switch (fg) {
         .default => {},
         .indexed => |idx| try writer.print("\x1b[38;5;{d}m", .{idx}),
         .rgb => |rgb| try writer.print("\x1b[38;2;{d};{d};{d}m", .{ rgb.r, rgb.g, rgb.b }),
     }
-    
-    // Background color  
+
+    // Background color
     switch (bg) {
         .default => {},
         .indexed => |idx| try writer.print("\x1b[48;5;{d}m", .{idx}),
         .rgb => |rgb| try writer.print("\x1b[48;2;{d};{d};{d}m", .{ rgb.r, rgb.g, rgb.b }),
     }
-    
+
     // Attributes
     if (cell_attrs.bold) try writer.writeAll("\x1b[1m");
     if (cell_attrs.dim) try writer.writeAll("\x1b[2m");
@@ -227,10 +226,16 @@ fn writeColorAndAttrs(writer: anytype, fg: CellColor, bg: CellColor, cell_attrs:
 
 // Convenience color functions
 pub const colors = struct {
-    pub fn default() CellColor { return .default; }
-    pub fn indexed(idx: u8) CellColor { return .{ .indexed = idx }; }
-    pub fn rgb(r: u8, g: u8, b: u8) CellColor { return .{ .rgb = .{ .r = r, .g = g, .b = b } }; }
-    
+    pub fn default() CellColor {
+        return .default;
+    }
+    pub fn indexed(idx: u8) CellColor {
+        return .{ .indexed = idx };
+    }
+    pub fn rgb(r: u8, g: u8, b: u8) CellColor {
+        return .{ .rgb = .{ .r = r, .g = g, .b = b } };
+    }
+
     // Common colors
     pub const black = indexed(0);
     pub const red = indexed(1);
@@ -240,7 +245,7 @@ pub const colors = struct {
     pub const magenta = indexed(5);
     pub const cyan = indexed(6);
     pub const white = indexed(7);
-    
+
     pub const bright_black = indexed(8);
     pub const bright_red = indexed(9);
     pub const bright_green = indexed(10);
@@ -261,7 +266,7 @@ pub const attrs = struct {
     pub const blink = CellAttrs{ .blink = true };
     pub const reverse = CellAttrs{ .reverse = true };
     pub const strikethrough = CellAttrs{ .strikethrough = true };
-    
+
     pub const bold_underline = CellAttrs{ .bold = true, .underline = true };
     pub const italic_dim = CellAttrs{ .italic = true, .dim = true };
 };
@@ -270,10 +275,10 @@ pub const attrs = struct {
 test "advanced terminal initialization" {
     const testing = std.testing;
     const allocator = testing.allocator;
-    
+
     var terminal = try AdvancedTerminal.init(allocator, "xterm");
     defer terminal.deinit();
-    
+
     try testing.expect(terminal.width > 0);
     try testing.expect(terminal.height > 0);
 }
@@ -281,17 +286,17 @@ test "advanced terminal initialization" {
 test "advanced terminal text writing and rendering" {
     const testing = std.testing;
     const allocator = testing.allocator;
-    
+
     var terminal = try AdvancedTerminal.init(allocator, "xterm");
     defer terminal.deinit();
-    
+
     // Write some text
     _ = try terminal.writeText(0, 0, "Hello, World!", colors.green, colors.default(), attrs.bold);
-    
+
     // Test rendering to a buffer
     var output = std.ArrayList(u8).init(allocator);
     defer output.deinit();
-    
+
     try terminal.render(output.writer().interface);
     try testing.expect(output.items.len > 0);
 }
@@ -299,10 +304,10 @@ test "advanced terminal text writing and rendering" {
 test "input event parsing integration" {
     const testing = std.testing;
     const allocator = testing.allocator;
-    
+
     var terminal = try AdvancedTerminal.init(allocator, "xterm");
     defer terminal.deinit();
-    
+
     const events = try terminal.parseInput("hello");
     defer {
         for (events) |*event| {
@@ -313,20 +318,20 @@ test "input event parsing integration" {
         }
         allocator.free(events);
     }
-    
+
     try testing.expect(events.len > 0);
 }
 
 test "cursor movement optimization" {
     const testing = std.testing;
     const allocator = testing.allocator;
-    
+
     var terminal = try AdvancedTerminal.init(allocator, "xterm");
     defer terminal.deinit();
-    
+
     const movement = try terminal.moveCursorTo(10, 5);
     defer allocator.free(movement);
-    
+
     try testing.expect(movement.len > 0);
     try testing.expect(terminal.cursor_x == 10);
     try testing.expect(terminal.cursor_y == 5);

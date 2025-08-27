@@ -8,9 +8,9 @@ fn writeCsi2(writer: anytype, caps: TermCaps, code: u8, a: u32, b: u32) !void {
     var tmp: [48]u8 = undefined;
     var fbs = std.io.fixedBufferStream(&tmp);
     var w = fbs.writer();
-    _ = w.write("\x1b[") catch unreachable;
-    _ = std.fmt.format(w, "{d};{d}", .{ a, b }) catch unreachable;
-    _ = w.writeByte(code) catch unreachable;
+    try w.write("\x1b[");
+    try std.fmt.format(w, "{d};{d}", .{ a, b });
+    try w.writeByte(code);
     try passthrough.writeWithPassthrough(writer, caps, fbs.getWritten());
 }
 
@@ -18,9 +18,9 @@ fn writeCsi1(writer: anytype, caps: TermCaps, code: u8, n: u32) !void {
     var tmp: [32]u8 = undefined;
     var fbs = std.io.fixedBufferStream(&tmp);
     var w = fbs.writer();
-    _ = w.write("\x1b[") catch unreachable;
-    _ = std.fmt.format(w, "{d}", .{if (n == 0) 1 else n}) catch unreachable;
-    _ = w.writeByte(code) catch unreachable;
+    try w.write("\x1b[");
+    try std.fmt.format(w, "{d}", .{if (n == 0) 1 else n});
+    try w.writeByte(code);
     try passthrough.writeWithPassthrough(writer, caps, fbs.getWritten());
 }
 
@@ -28,8 +28,8 @@ fn writeCsi0(writer: anytype, caps: TermCaps, code: u8) !void {
     var tmp: [8]u8 = undefined;
     var fbs = std.io.fixedBufferStream(&tmp);
     var w = fbs.writer();
-    _ = w.write("\x1b[") catch unreachable;
-    _ = w.writeByte(code) catch unreachable;
+    try w.write("\x1b[");
+    try w.writeByte(code);
     try passthrough.writeWithPassthrough(writer, caps, fbs.getWritten());
 }
 

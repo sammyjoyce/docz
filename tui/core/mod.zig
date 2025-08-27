@@ -1,10 +1,10 @@
 //! Core TUI System Module
-//! 
+//!
 //! Re-exports and bridges existing src/tui/core components with the consolidated structure
 
 // Re-export existing core components from src/tui/core
 pub const events = @import("../../src/tui/core/events.zig");
-pub const bounds = @import("../../src/tui/core/bounds.zig"); 
+pub const bounds = @import("../../src/tui/core/bounds.zig");
 pub const layout = @import("../../src/tui/core/layout.zig");
 pub const screen = @import("../../src/tui/core/screen.zig");
 pub const renderer = @import("../../src/tui/core/renderer.zig");

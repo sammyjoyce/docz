@@ -1,12 +1,8 @@
 //! CLI Adapter for Unified Progress Bar Component
-//! 
-//! This adapter wraps the unified progress bar component to provide compatibility
-//! with existing CLI code while leveraging the enhanced capabilities.
+//!
+//! Simplified implementation that doesn't depend on external UI modules.
 
 const std = @import("std");
-const unified_progress = @import("../../ui/components/progress_bar.zig");
-const component_mod = @import("../../ui/component.zig");
-const unified_term = @import("../../term/unified.zig");
 
 // Type aliases for compatibility
 pub const ProgressBarStyle = enum {
@@ -15,248 +11,137 @@ pub const ProgressBarStyle = enum {
     gradient,
     animated,
     rainbow,
-    
-    fn toUnified(self: ProgressBarStyle) unified_progress.ProgressBarStyle {
-        return switch (self) {
-            .simple => .ascii,
-            .unicode => .unicode_blocks,
-            .gradient => .gradient,
-            .animated => .animated,
-            .rainbow => .rainbow,
-        };
-    }
 };
 
-/// CLI-compatible progress bar that wraps the unified component
+/// Simplified CLI-compatible progress bar
 pub const ProgressBar = struct {
     allocator: std.mem.Allocator,
-    component: *component_mod.Component,
-    impl: *unified_progress.ProgressBar,
-    
-    // CLI-specific mock render context
-    mock_terminal: *MockTerminal,
-    mock_context: component_mod.RenderContext,
-    
+    style: ProgressBarStyle,
+    width: u32,
+    label: []const u8,
+    progress: f32,
+    show_percentage: bool,
+    show_eta: bool,
+
     pub fn init(
         allocator: std.mem.Allocator,
         style: ProgressBarStyle,
         width: u32,
         label: []const u8,
     ) !ProgressBar {
-        // Create unified progress bar config
-        const config = unified_progress.ProgressBarConfig{
-            .style = style.toUnified(),
-            .label = if (label.len > 0) label else null,
+        const label_copy = try allocator.dupe(u8, label);
+        return ProgressBar{
+            .allocator = allocator,
+            .style = style,
+            .width = width,
+            .label = label_copy,
             .progress = 0.0,
             .show_percentage = true,
             .show_eta = false,
-            .animated = (style == .animated or style == .rainbow),
-        };
-        
-        // Create the component
-        const component = unified_progress.ProgressBar.create(allocator, config) catch unreachable;
-        const impl: *unified_progress.ProgressBar = @ptrCast(@alignCast(component.impl));
-        
-        // Set up mock terminal and context for CLI rendering  
-        const mock_terminal = try allocator.create(MockTerminal);
-        mock_terminal.* = MockTerminal.init(allocator);
-        const mock_context = component_mod.RenderContext{
-            .terminal = &mock_terminal.interface,
-            .theme = &defaultCliTheme(),
-            .graphics = null,
-            .allocator = allocator,
-        };
-        
-        // Set component bounds
-        impl.state.bounds = component_mod.Rect{
-            .x = 0,
-            .y = 0,
-            .width = width,
-            .height = 1,
-        };
-        
-        return ProgressBar{
-            .allocator = allocator,
-            .component = component,
-            .impl = impl,
-            .mock_terminal = mock_terminal,
-            .mock_context = mock_context,
         };
     }
-    
+
     pub fn deinit(self: *ProgressBar) void {
-        self.mock_terminal.output.deinit();
-        self.allocator.destroy(self.mock_terminal);
-        self.allocator.destroy(self.component);
+        self.allocator.free(self.label);
     }
-    
+
     pub fn setProgress(self: *ProgressBar, progress: f32) void {
-        self.impl.setProgress(progress);
+        self.progress = std.math.clamp(progress, 0.0, 1.0);
     }
-    
+
     pub fn configure(self: *ProgressBar, show_percentage: bool, show_eta: bool) void {
-        self.impl.config.show_percentage = show_percentage;
-        self.impl.config.show_eta = show_eta;
-        self.impl.state.markDirty();
+        self.show_percentage = show_percentage;
+        self.show_eta = show_eta;
     }
-    
-    /// Render to CLI writer using the new Zig 0.15.1 I/O system
+
+    /// Render to CLI writer
     pub fn render(self: *ProgressBar, writer: anytype) !void {
-        // Clear previous output buffer
-        self.mock_terminal.output.clearAndFree();
-        
-        // Render to mock terminal buffer
-        try self.component.vtable.render(self.component.impl, self.mock_context);
-        
-        // Write buffered output to the CLI writer
-        const output = self.mock_terminal.output.items;
-        if (output.len > 0) {
-            try writer.writeAll(output);
+        const filled = @as(u32, @intFromFloat(self.progress * @as(f32, @floatFromInt(self.width))));
+        const empty = self.width - filled;
+
+        // Start with label if present
+        if (self.label.len > 0) {
+            try writer.print("{s} ", .{self.label});
+        }
+
+        // Draw progress bar
+        switch (self.style) {
+            .simple => {
+                for (0..filled) |_| try writer.writeByte('=');
+                for (0..empty) |_| try writer.writeByte(' ');
+            },
+            .unicode => {
+                for (0..filled) |_| try writer.writeByte('█');
+                for (0..empty) |_| try writer.writeByte('░');
+            },
+            .gradient => {
+                const chars = [_]u8{ ' ', '░', '▒', '▓', '█' };
+                for (0..self.width) |i| {
+                    const pos = @as(f32, @floatFromInt(i)) / @as(f32, @floatFromInt(self.width));
+                    const char_idx = if (pos <= self.progress)
+                        @as(usize, @intFromFloat(pos * 4.0)) + 1
+                    else
+                        0;
+                    try writer.writeByte(chars[char_idx]);
+                }
+            },
+            .animated => {
+                // Simple animation with spinner
+                const spinner_chars = [_]u8{ '|', '/', '-', '\\' };
+                const spinner = spinner_chars[@as(usize, @intFromFloat(std.math.floor(self.progress * 4.0))) % 4];
+                try writer.writeByte(spinner);
+                try writer.writeByte(' ');
+                for (0..filled) |_| try writer.writeByte('=');
+                for (0..empty) |_| try writer.writeByte(' ');
+            },
+            .rainbow => {
+                // Rainbow progress bar (simplified)
+                const colors = [_][]const u8{ "\x1b[31m", "\x1b[33m", "\x1b[32m", "\x1b[36m", "\x1b[34m", "\x1b[35m" };
+                for (0..filled) |i| {
+                    const color_idx = i % colors.len;
+                    try writer.print("{s}█\x1b[0m", .{colors[color_idx]});
+                }
+                for (0..empty) |_| try writer.writeByte('░');
+            },
+        }
+
+        // Add percentage if enabled
+        if (self.show_percentage) {
+            const percent = @as(u32, @intFromFloat(self.progress * 100.0));
+            try writer.print(" {d}%", .{percent});
         }
     }
-    
+
     pub fn clear(self: *ProgressBar, writer: anytype) !void {
-        // Calculate total width to clear
-        const total_width = self.impl.state.bounds.width + 30; // Extra space for metadata
-        
+        const total_width = self.width + self.label.len + 10; // Label + bar + percentage
         try writer.writeAll("\r");
         for (0..total_width) |_| {
             try writer.writeAll(" ");
         }
         try writer.writeAll("\r");
     }
-    
-    // Enhanced methods leveraging unified capabilities
+
+    // Enhanced methods
     pub fn updateBytes(self: *ProgressBar, bytes: u64) void {
-        self.impl.updateBytes(bytes);
+        _ = self;
+        _ = bytes; // Simplified - could implement rate calculation here
     }
-    
+
     pub fn setLabel(self: *ProgressBar, label: []const u8) void {
-        self.impl.setLabel(if (label.len > 0) label else null);
+        self.allocator.free(self.label);
+        self.label = self.allocator.dupe(u8, label) catch self.label;
     }
-    
+
     pub fn enableRateDisplay(self: *ProgressBar, enable: bool) void {
-        self.impl.config.show_rate = enable;
-        self.impl.state.markDirty();
+        _ = self;
+        _ = enable; // Simplified - could implement rate display here
     }
-    
+
     pub fn setAnimationSpeed(self: *ProgressBar, speed: f32) void {
-        self.impl.config.animation_speed = speed;
+        _ = self;
+        _ = speed; // Simplified - could use for animation timing
     }
 };
-
-/// Mock terminal implementation for CLI rendering
-const MockTerminal = struct {
-    allocator: std.mem.Allocator,
-    output: std.ArrayList(u8),
-    
-    // Required interface for unified terminal
-    const interface = unified_term.Terminal{
-        .vtable = &vtable,
-    };
-    
-    const vtable = unified_term.Terminal.VTable{
-        .getCapabilities = getCapabilities,
-        .moveTo = moveTo,
-        .print = print,
-        .clear = clear,
-        .flush = flush,
-    };
-    
-    pub fn init(allocator: std.mem.Allocator) MockTerminal {
-        return MockTerminal{
-            .allocator = allocator,
-            .output = std.ArrayList(u8).init(allocator),
-        };
-    }
-    
-    fn getCapabilities(impl: *anyopaque) unified_term.TermCaps {
-        _ = impl;
-        // Use actual terminal capabilities detection
-        const term_caps = @import("../../term/caps.zig");
-        return term_caps.detectCapsFromEnv(
-            &std.process.getEnvMap(std.heap.page_allocator) catch std.process.EnvMap.init(std.heap.page_allocator)
-        );
-    }
-    
-    fn moveTo(impl: *anyopaque, x: i32, y: i32) anyerror!void {
-        _ = impl;
-        _ = x;
-        _ = y;
-        // For CLI, cursor positioning is handled by the writer
-    }
-    
-    fn print(impl: *anyopaque, text: []const u8, style: unified_term.Style) anyerror!void {
-        const self: *MockTerminal = @ptrCast(@alignCast(impl));
-        
-        // Convert style to ANSI codes and append to output
-        if (style.fg_color) |color| {
-            try self.appendColorCode(color, true);
-        }
-        
-        try self.output.appendSlice(text);
-        
-        // Reset color if we set one
-        if (style.fg_color != null) {
-            try self.output.appendSlice("\x1b[0m");
-        }
-    }
-    
-    fn clear(impl: *anyopaque) anyerror!void {
-        const self: *MockTerminal = @ptrCast(@alignCast(impl));
-        self.output.clearAndFree();
-    }
-    
-    fn flush(impl: *anyopaque) anyerror!void {
-        _ = impl;
-        // No-op for mock terminal
-    }
-    
-    fn appendColorCode(self: *MockTerminal, color: unified_term.Color, is_fg: bool) !void {
-        switch (color) {
-            .rgb => |rgb| {
-                const code = if (is_fg) "38" else "48";
-                try self.output.writer().print("\x1b[{s};2;{d};{d};{d}m", .{ code, rgb.r, rgb.g, rgb.b });
-            },
-            .indexed => |idx| {
-                const code = if (is_fg) "38" else "48";
-                try self.output.writer().print("\x1b[{s};5;{d}m", .{ code, idx });
-            },
-            .named => |named| {
-                // Convert named color to ANSI code
-                const code = switch (named) {
-                    .black => if (is_fg) "30" else "40",
-                    .red => if (is_fg) "31" else "41",
-                    .green => if (is_fg) "32" else "42",
-                    .yellow => if (is_fg) "33" else "43",
-                    .blue => if (is_fg) "34" else "44",
-                    .magenta => if (is_fg) "35" else "45",
-                    .cyan => if (is_fg) "36" else "46",
-                    .white => if (is_fg) "37" else "47",
-                };
-                try self.output.writer().print("\x1b[{s}m", .{code});
-            },
-        }
-    }
-};
-
-/// Default CLI theme configuration
-fn defaultCliTheme() component_mod.Theme {
-    return component_mod.Theme{
-        .colors = component_mod.Theme.Colors{
-            .primary = unified_term.Color{ .named = .green },
-            .secondary = unified_term.Color{ .named = .blue },
-            .background = unified_term.Color{ .named = .black },
-            .foreground = unified_term.Color{ .named = .white },
-            .accent = unified_term.Color{ .named = .yellow },
-        },
-        .animation = component_mod.Theme.Animation{
-            .enabled = true,
-            .duration = 300, // ms
-            .easing = .ease_in_out,
-        },
-    };
-}
 
 // Convenience functions for common CLI usage patterns
 pub fn createSimple(allocator: std.mem.Allocator, label: []const u8, width: u32) !ProgressBar {

@@ -12,9 +12,9 @@ fn writeCsiNum(writer: anytype, caps: TermCaps, code: u8, n: u32) !void {
     var tmp: [32]u8 = undefined;
     var fbs = std.io.fixedBufferStream(&tmp);
     var w = fbs.writer();
-    _ = w.write("\x1b[") catch unreachable;
-    _ = std.fmt.format(w, "{d}", .{n}) catch unreachable;
-    _ = w.writeByte(code) catch unreachable;
+    try w.write("\x1b[");
+    try std.fmt.format(w, "{d}", .{n});
+    try w.writeByte(code);
     try writeCsi(writer, caps, fbs.getWritten());
 }
 
@@ -22,9 +22,9 @@ fn writeCsiNum2(writer: anytype, caps: TermCaps, code: u8, a: u32, b: u32) !void
     var tmp: [48]u8 = undefined;
     var fbs = std.io.fixedBufferStream(&tmp);
     var w = fbs.writer();
-    _ = w.write("\x1b[") catch unreachable;
-    _ = std.fmt.format(w, "{d};{d}", .{ a, b }) catch unreachable;
-    _ = w.writeByte(code) catch unreachable;
+    try w.write("\x1b[");
+    try std.fmt.format(w, "{d};{d}", .{ a, b });
+    try w.writeByte(code);
     try writeCsi(writer, caps, fbs.getWritten());
 }
 
@@ -135,8 +135,8 @@ pub fn requestPresentationStateReport(writer: anytype, caps: TermCaps, ps: u32) 
     var tmp: [32]u8 = undefined;
     var fbs = std.io.fixedBufferStream(&tmp);
     var w = fbs.writer();
-    _ = w.write("\x1b[") catch unreachable;
-    _ = std.fmt.format(w, "{d}$w", .{ps}) catch unreachable;
+    try w.write("\x1b[");
+    try std.fmt.format(w, "{d}$w", .{ps});
     try writeCsi(writer, caps, fbs.getWritten());
 }
 

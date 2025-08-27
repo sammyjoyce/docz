@@ -1,10 +1,10 @@
 //! Tab container widget with keyboard navigation
 const std = @import("std");
 const print = std.debug.print;
-const Bounds = @import("../core/bounds.zig").Bounds;
-const Color = @import("../themes/default.zig").Color;
-const Box = @import("../themes/default.zig").Box;
-const KeyEvent = @import("../core/events.zig").KeyEvent;
+const Bounds = @import("../../core/bounds.zig").Bounds;
+const Color = @import("../../themes/default.zig").Color;
+const Box = @import("../../themes/default.zig").Box;
+const KeyEvent = @import("../../core/events.zig").KeyEvent;
 
 /// Tab container widget for organizing multiple views
 pub const TabContainer = struct {

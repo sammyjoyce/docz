@@ -4,7 +4,6 @@ const color_conversion = @import("ansi/advanced_color_conversion.zig");
 /// Terminal theme generator for TUI applications
 /// Creates cohesive color schemes with proper contrast and accessibility
 /// Inspired by charmbracelet/x theming capabilities
-
 const RGBColor = color_conversion.RGBColor;
 const ColorUtils = color_conversion.ColorUtils;
 const IndexedColor = color_conversion.IndexedColor;
@@ -14,7 +13,7 @@ pub const Theme = struct {
     // Primary colors
     background: RGBColor,
     foreground: RGBColor,
-    
+
     // Accent colors
     primary: RGBColor,
     secondary: RGBColor,
@@ -22,12 +21,12 @@ pub const Theme = struct {
     warning: RGBColor,
     danger: RGBColor,
     info: RGBColor,
-    
+
     // UI element colors
     border: RGBColor,
     highlight: RGBColor,
     muted: RGBColor,
-    
+
     // Syntax highlighting colors (for code display)
     syntax_comment: RGBColor,
     syntax_keyword: RGBColor,
@@ -35,7 +34,7 @@ pub const Theme = struct {
     syntax_number: RGBColor,
     syntax_operator: RGBColor,
     syntax_function: RGBColor,
-    
+
     /// Convert theme colors to ANSI 256-color palette
     pub fn toAnsi256(self: Theme) Ansi256Theme {
         return Ansi256Theme{
@@ -58,7 +57,7 @@ pub const Theme = struct {
             .syntax_function = color_conversion.convertRgbTo256(self.syntax_function),
         };
     }
-    
+
     /// Convert theme colors to ANSI 16-color palette for compatibility
     pub fn toAnsi16(self: Theme) Ansi16Theme {
         return Ansi16Theme{
@@ -75,11 +74,11 @@ pub const Theme = struct {
             .muted = color_conversion.convertRgbTo16(self.muted),
         };
     }
-    
+
     /// Validate theme for accessibility compliance
     pub fn validateAccessibility(self: Theme) AccessibilityReport {
         var report = AccessibilityReport{};
-        
+
         // Check primary text contrast
         if (ColorUtils.meetsAccessibility(self.foreground, self.background, .aa_normal)) {
             report.foreground_contrast = .aa;
@@ -88,17 +87,17 @@ pub const Theme = struct {
         } else {
             report.foreground_contrast = .insufficient;
         }
-        
+
         // Check if AAA compliance is met
         if (ColorUtils.meetsAccessibility(self.foreground, self.background, .aaa_normal)) {
             report.foreground_contrast = .aaa;
         }
-        
+
         // Check accent color contrasts
         report.primary_contrast = if (ColorUtils.meetsAccessibility(self.primary, self.background, .aa_normal)) .sufficient else .insufficient;
         report.danger_contrast = if (ColorUtils.meetsAccessibility(self.danger, self.background, .aa_normal)) .sufficient else .insufficient;
         report.success_contrast = if (ColorUtils.meetsAccessibility(self.success, self.background, .aa_normal)) .sufficient else .insufficient;
-        
+
         return report;
     }
 };
@@ -145,7 +144,7 @@ pub const AccessibilityReport = struct {
     primary_contrast: ContrastLevel = .insufficient,
     danger_contrast: ContrastLevel = .insufficient,
     success_contrast: ContrastLevel = .insufficient,
-    
+
     pub const ContrastLevel = enum {
         insufficient,
         aa_large_only,
@@ -153,7 +152,7 @@ pub const AccessibilityReport = struct {
         aaa,
         sufficient, // Generic sufficient for non-text elements
     };
-    
+
     pub fn isFullyAccessible(self: AccessibilityReport) bool {
         return self.foreground_contrast == .aa or self.foreground_contrast == .aaa;
     }
@@ -192,14 +191,14 @@ pub const ThemeGenerator = struct {
             .dracula => generateDraculaTheme(allocator),
         };
     }
-    
+
     /// Generate a dark theme based on a primary color
     fn generateDarkTheme(primary_color: RGBColor, allocator: std.mem.Allocator) !Theme {
         _ = allocator; // May be used for complex color calculations in the future
-        
+
         const background = RGBColor.init(30, 30, 35);
         const foreground = RGBColor.init(220, 220, 220);
-        
+
         return Theme{
             .background = background,
             .foreground = foreground,
@@ -220,14 +219,14 @@ pub const ThemeGenerator = struct {
             .syntax_function = RGBColor.init(120, 180, 255),
         };
     }
-    
+
     /// Generate a light theme based on a primary color
     fn generateLightTheme(primary_color: RGBColor, allocator: std.mem.Allocator) !Theme {
         _ = allocator;
-        
+
         const background = RGBColor.init(250, 250, 250);
         const foreground = RGBColor.init(40, 40, 45);
-        
+
         return Theme{
             .background = background,
             .foreground = foreground,
@@ -248,11 +247,11 @@ pub const ThemeGenerator = struct {
             .syntax_function = RGBColor.init(80, 120, 180),
         };
     }
-    
+
     /// Generate high contrast dark theme for accessibility
     fn generateHighContrastDark(primary_color: RGBColor, allocator: std.mem.Allocator) !Theme {
         _ = allocator;
-        
+
         return Theme{
             .background = RGBColor.init(0, 0, 0),
             .foreground = RGBColor.init(255, 255, 255),
@@ -273,11 +272,11 @@ pub const ThemeGenerator = struct {
             .syntax_function = RGBColor.init(128, 255, 255),
         };
     }
-    
+
     /// Generate high contrast light theme for accessibility
     fn generateHighContrastLight(primary_color: RGBColor, allocator: std.mem.Allocator) !Theme {
         _ = allocator;
-        
+
         return Theme{
             .background = RGBColor.init(255, 255, 255),
             .foreground = RGBColor.init(0, 0, 0),
@@ -298,23 +297,23 @@ pub const ThemeGenerator = struct {
             .syntax_function = RGBColor.init(0, 64, 128),
         };
     }
-    
+
     /// Generate Solarized Dark theme (popular color scheme)
     fn generateSolarizedDark(allocator: std.mem.Allocator) !Theme {
         _ = allocator;
-        
+
         return Theme{
-            .background = RGBColor.init(0, 43, 54),   // base03
+            .background = RGBColor.init(0, 43, 54), // base03
             .foreground = RGBColor.init(131, 148, 150), // base0
-            .primary = RGBColor.init(38, 139, 210),    // blue
-            .secondary = RGBColor.init(42, 161, 152),  // cyan
-            .success = RGBColor.init(133, 153, 0),     // green
-            .warning = RGBColor.init(181, 137, 0),     // yellow
-            .danger = RGBColor.init(220, 50, 47),       // red
-            .info = RGBColor.init(108, 113, 196),      // violet
-            .border = RGBColor.init(7, 54, 66),        // base02
+            .primary = RGBColor.init(38, 139, 210), // blue
+            .secondary = RGBColor.init(42, 161, 152), // cyan
+            .success = RGBColor.init(133, 153, 0), // green
+            .warning = RGBColor.init(181, 137, 0), // yellow
+            .danger = RGBColor.init(220, 50, 47), // red
+            .info = RGBColor.init(108, 113, 196), // violet
+            .border = RGBColor.init(7, 54, 66), // base02
             .highlight = RGBColor.init(253, 246, 227), // base3
-            .muted = RGBColor.init(88, 110, 117),      // base01
+            .muted = RGBColor.init(88, 110, 117), // base01
             .syntax_comment = RGBColor.init(88, 110, 117),
             .syntax_keyword = RGBColor.init(220, 50, 47),
             .syntax_string = RGBColor.init(133, 153, 0),
@@ -323,23 +322,23 @@ pub const ThemeGenerator = struct {
             .syntax_function = RGBColor.init(38, 139, 210),
         };
     }
-    
+
     /// Generate Solarized Light theme
     fn generateSolarizedLight(allocator: std.mem.Allocator) !Theme {
         _ = allocator;
-        
+
         return Theme{
             .background = RGBColor.init(253, 246, 227), // base3
-            .foreground = RGBColor.init(101, 123, 131),  // base00
-            .primary = RGBColor.init(38, 139, 210),      // blue
-            .secondary = RGBColor.init(42, 161, 152),    // cyan
-            .success = RGBColor.init(133, 153, 0),       // green
-            .warning = RGBColor.init(181, 137, 0),       // yellow
-            .danger = RGBColor.init(220, 50, 47),         // red
-            .info = RGBColor.init(108, 113, 196),        // violet
-            .border = RGBColor.init(238, 232, 213),      // base2
-            .highlight = RGBColor.init(0, 43, 54),       // base03
-            .muted = RGBColor.init(147, 161, 161),       // base1
+            .foreground = RGBColor.init(101, 123, 131), // base00
+            .primary = RGBColor.init(38, 139, 210), // blue
+            .secondary = RGBColor.init(42, 161, 152), // cyan
+            .success = RGBColor.init(133, 153, 0), // green
+            .warning = RGBColor.init(181, 137, 0), // yellow
+            .danger = RGBColor.init(220, 50, 47), // red
+            .info = RGBColor.init(108, 113, 196), // violet
+            .border = RGBColor.init(238, 232, 213), // base2
+            .highlight = RGBColor.init(0, 43, 54), // base03
+            .muted = RGBColor.init(147, 161, 161), // base1
             .syntax_comment = RGBColor.init(147, 161, 161),
             .syntax_keyword = RGBColor.init(220, 50, 47),
             .syntax_string = RGBColor.init(133, 153, 0),
@@ -348,23 +347,23 @@ pub const ThemeGenerator = struct {
             .syntax_function = RGBColor.init(38, 139, 210),
         };
     }
-    
+
     /// Generate Nord theme (Arctic-inspired color scheme)
     fn generateNordTheme(allocator: std.mem.Allocator) !Theme {
         _ = allocator;
-        
+
         return Theme{
-            .background = RGBColor.init(46, 52, 64),    // nord0
+            .background = RGBColor.init(46, 52, 64), // nord0
             .foreground = RGBColor.init(236, 239, 244), // nord4
-            .primary = RGBColor.init(129, 161, 193),    // nord10
-            .secondary = RGBColor.init(136, 192, 208),  // nord8
-            .success = RGBColor.init(163, 190, 140),    // nord14
-            .warning = RGBColor.init(235, 203, 139),    // nord13
-            .danger = RGBColor.init(191, 97, 106),       // nord11
-            .info = RGBColor.init(94, 129, 172),        // nord10
-            .border = RGBColor.init(59, 66, 82),        // nord1
-            .highlight = RGBColor.init(76, 86, 106),    // nord2
-            .muted = RGBColor.init(124, 135, 159),      // nord3
+            .primary = RGBColor.init(129, 161, 193), // nord10
+            .secondary = RGBColor.init(136, 192, 208), // nord8
+            .success = RGBColor.init(163, 190, 140), // nord14
+            .warning = RGBColor.init(235, 203, 139), // nord13
+            .danger = RGBColor.init(191, 97, 106), // nord11
+            .info = RGBColor.init(94, 129, 172), // nord10
+            .border = RGBColor.init(59, 66, 82), // nord1
+            .highlight = RGBColor.init(76, 86, 106), // nord2
+            .muted = RGBColor.init(124, 135, 159), // nord3
             .syntax_comment = RGBColor.init(124, 135, 159),
             .syntax_keyword = RGBColor.init(129, 161, 193),
             .syntax_string = RGBColor.init(163, 190, 140),
@@ -373,11 +372,11 @@ pub const ThemeGenerator = struct {
             .syntax_function = RGBColor.init(136, 192, 208),
         };
     }
-    
+
     /// Generate Gruvbox Dark theme
     fn generateGruvboxDark(allocator: std.mem.Allocator) !Theme {
         _ = allocator;
-        
+
         return Theme{
             .background = RGBColor.init(40, 40, 40),
             .foreground = RGBColor.init(235, 219, 178),
@@ -398,11 +397,11 @@ pub const ThemeGenerator = struct {
             .syntax_function = RGBColor.init(142, 192, 124),
         };
     }
-    
+
     /// Generate Gruvbox Light theme
     fn generateGruvboxLight(allocator: std.mem.Allocator) !Theme {
         _ = allocator;
-        
+
         return Theme{
             .background = RGBColor.init(251, 241, 199),
             .foreground = RGBColor.init(60, 56, 54),
@@ -423,11 +422,11 @@ pub const ThemeGenerator = struct {
             .syntax_function = RGBColor.init(104, 157, 106),
         };
     }
-    
+
     /// Generate Monokai theme
     fn generateMonokaiTheme(allocator: std.mem.Allocator) !Theme {
         _ = allocator;
-        
+
         return Theme{
             .background = RGBColor.init(39, 40, 34),
             .foreground = RGBColor.init(248, 248, 242),
@@ -448,11 +447,11 @@ pub const ThemeGenerator = struct {
             .syntax_function = RGBColor.init(166, 226, 46),
         };
     }
-    
+
     /// Generate Dracula theme
     fn generateDraculaTheme(allocator: std.mem.Allocator) !Theme {
         _ = allocator;
-        
+
         return Theme{
             .background = RGBColor.init(40, 42, 54),
             .foreground = RGBColor.init(248, 248, 242),
@@ -496,7 +495,7 @@ pub const THEMES = struct {
         .syntax_operator = RGBColor.init(180, 180, 180),
         .syntax_function = RGBColor.init(120, 180, 255),
     };
-    
+
     pub const LIGHT_MINIMAL = Theme{
         .background = RGBColor.init(255, 255, 255),
         .foreground = RGBColor.init(50, 50, 50),
@@ -522,10 +521,10 @@ pub const THEMES = struct {
 test "theme generation" {
     const testing = std.testing;
     const allocator = testing.allocator;
-    
+
     const base_color = RGBColor.init(100, 150, 200);
     const theme = try ThemeGenerator.generate(base_color, .dark, allocator);
-    
+
     // Verify theme has all required colors
     try testing.expect(theme.background.r < 100); // Should be dark
     try testing.expect(theme.foreground.r > 150); // Should be light
@@ -534,7 +533,7 @@ test "theme generation" {
 
 test "theme accessibility validation" {
     const testing = std.testing;
-    
+
     const high_contrast_theme = Theme{
         .background = RGBColor.init(0, 0, 0),
         .foreground = RGBColor.init(255, 255, 255),
@@ -554,7 +553,7 @@ test "theme accessibility validation" {
         .syntax_operator = RGBColor.init(255, 255, 255),
         .syntax_function = RGBColor.init(128, 255, 255),
     };
-    
+
     const report = high_contrast_theme.validateAccessibility();
     try testing.expect(report.isFullyAccessible());
 }
@@ -562,12 +561,12 @@ test "theme accessibility validation" {
 test "theme ANSI conversion" {
     const testing = std.testing;
     const allocator = testing.allocator;
-    
+
     const theme = try ThemeGenerator.generate(RGBColor.init(100, 150, 200), .dark, allocator);
-    
+
     const ansi256_theme = theme.toAnsi256();
     const ansi16_theme = theme.toAnsi16();
-    
+
     // Verify conversions produce valid ANSI colors
     try testing.expect(ansi256_theme.background <= 255);
     try testing.expect(@intFromEnum(ansi16_theme.foreground) <= 15);
@@ -575,10 +574,10 @@ test "theme ANSI conversion" {
 
 test "predefined themes" {
     const testing = std.testing;
-    
+
     const dark_theme = THEMES.DARK_BLUE;
     const light_theme = THEMES.LIGHT_MINIMAL;
-    
+
     // Verify themes are properly structured
     try testing.expect(dark_theme.background.r < 100); // Dark background
     try testing.expect(light_theme.background.r > 200); // Light background

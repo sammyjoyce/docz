@@ -26,41 +26,41 @@ pub const PointerShape = enum {
     text,
     wait,
     crosshair,
-    
+
     // Resize shapes
-    n_resize,       // north (up) resize
-    s_resize,       // south (down) resize  
-    e_resize,       // east (right) resize
-    w_resize,       // west (left) resize
-    ne_resize,      // northeast resize
-    nw_resize,      // northwest resize
-    se_resize,      // southeast resize
-    sw_resize,      // southwest resize
-    ns_resize,      // north-south (vertical) resize
-    ew_resize,      // east-west (horizontal) resize
-    all_resize,     // all directions resize
-    
+    n_resize, // north (up) resize
+    s_resize, // south (down) resize
+    e_resize, // east (right) resize
+    w_resize, // west (left) resize
+    ne_resize, // northeast resize
+    nw_resize, // northwest resize
+    se_resize, // southeast resize
+    sw_resize, // southwest resize
+    ns_resize, // north-south (vertical) resize
+    ew_resize, // east-west (horizontal) resize
+    all_resize, // all directions resize
+
     // Action shapes
-    pointer,        // pointing hand
-    grab,           // open hand
-    grabbing,       // closed hand/grabbing
-    copy,           // copy cursor
-    move,           // move cursor
-    not_allowed,    // not allowed/forbidden
-    
+    pointer, // pointing hand
+    grab, // open hand
+    grabbing, // closed hand/grabbing
+    copy, // copy cursor
+    move, // move cursor
+    not_allowed, // not allowed/forbidden
+
     // Special shapes
-    help,           // help/question mark
-    progress,       // progress/working
-    cell,           // cell selection
-    context_menu,   // context menu
-    
+    help, // help/question mark
+    progress, // progress/working
+    cell, // cell selection
+    context_menu, // context menu
+
     const Self = @This();
-    
+
     /// Get the string representation of the pointer shape for OSC 22
     pub fn toString(self: Self) []const u8 {
         return switch (self) {
             .default => "default",
-            .arrow => "arrow", 
+            .arrow => "arrow",
             .text => "text",
             .wait => "wait",
             .crosshair => "crosshair",
@@ -73,7 +73,7 @@ pub const PointerShape = enum {
             .se_resize => "se-resize",
             .sw_resize => "sw-resize",
             .ns_resize => "ns-resize",
-            .ew_resize => "ew-resize", 
+            .ew_resize => "ew-resize",
             .all_resize => "all-scroll",
             .pointer => "pointer",
             .grab => "grab",
@@ -133,31 +133,27 @@ pub fn PointerShapeGuard(comptime WriterType: type) type {
         original_shape: ?PointerShape,
         writer: WriterType,
         caps: TermCaps,
-        
+
         const Self = @This();
-        
-        pub fn init(
-            writer: WriterType,
-            caps: TermCaps,
-            new_shape: PointerShape
-        ) !Self {
+
+        pub fn init(writer: WriterType, caps: TermCaps, new_shape: PointerShape) !Self {
             // Set the new shape
             try setPointerShapeTyped(writer, caps, new_shape);
-            
+
             return Self{
                 .original_shape = .default, // We assume default as original
                 .writer = writer,
                 .caps = caps,
             };
         }
-        
+
         pub fn restore(self: *Self) !void {
             if (self.original_shape) |shape| {
                 try setPointerShapeTyped(self.writer, self.caps, shape);
                 self.original_shape = null;
             }
         }
-        
+
         pub fn deinit(self: *Self) void {
             if (self.original_shape != null) {
                 // Try to restore, but ignore errors since we're cleaning up
@@ -173,27 +169,27 @@ pub const PointerUtils = struct {
     pub fn enableTextCursor(writer: anytype, caps: TermCaps) !void {
         try setPointerShapeTyped(writer, caps, .text);
     }
-    
+
     /// Set appropriate cursor for interactive/clickable elements
     pub fn enablePointerCursor(writer: anytype, caps: TermCaps) !void {
         try setPointerShapeTyped(writer, caps, .pointer);
     }
-    
+
     /// Set appropriate cursor for draggable elements
     pub fn enableGrabCursor(writer: anytype, caps: TermCaps) !void {
         try setPointerShapeTyped(writer, caps, .grab);
     }
-    
+
     /// Set cursor for active drag operations
     pub fn enableGrabbingCursor(writer: anytype, caps: TermCaps) !void {
         try setPointerShapeTyped(writer, caps, .grabbing);
     }
-    
+
     /// Set wait cursor
     pub fn enableWaitCursor(writer: anytype, caps: TermCaps) !void {
         try setPointerShapeTyped(writer, caps, .wait);
     }
-    
+
     /// Set crosshair cursor
     pub fn enableCrosshairCursor(writer: anytype, caps: TermCaps) !void {
         try setPointerShapeTyped(writer, caps, .crosshair);
@@ -203,7 +199,7 @@ pub const PointerUtils = struct {
 // Tests
 test "PointerShape string conversion" {
     const testing = std.testing;
-    
+
     try testing.expectEqualStrings("default", PointerShape.default.toString());
     try testing.expectEqualStrings("text", PointerShape.text.toString());
     try testing.expectEqualStrings("wait", PointerShape.wait.toString());

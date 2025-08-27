@@ -1,7 +1,6 @@
 /// Enhanced terminal capabilities inspired by charmbracelet/x
 /// This module provides improved color conversion and cursor control
 /// following Zig 0.15.1 patterns and best practices.
-
 const std = @import("std");
 
 pub const enhanced_color_conversion = @import("enhanced_color_conversion.zig");
@@ -10,7 +9,7 @@ pub const enhanced_cursor_control = @import("enhanced_cursor_control.zig");
 // Re-export main types for convenience
 pub const Color = enhanced_color_conversion.Color;
 pub const BasicColor = enhanced_color_conversion.BasicColor;
-pub const IndexedColor = enhanced_color_conversion.IndexedColor; 
+pub const IndexedColor = enhanced_color_conversion.IndexedColor;
 pub const RGBColor = enhanced_color_conversion.RGBColor;
 pub const RGBA = enhanced_color_conversion.RGBA;
 
@@ -123,26 +122,26 @@ pub const ColorAnalysis = struct {
     pub fn colorDistance(c1: Color, c2: Color) f32 {
         const rgba1 = c1.rgba();
         const rgba2 = c2.rgba();
-        
+
         const dr = @as(f32, @floatFromInt(rgba1.r)) - @as(f32, @floatFromInt(rgba2.r));
         const dg = @as(f32, @floatFromInt(rgba1.g)) - @as(f32, @floatFromInt(rgba2.g));
         const db = @as(f32, @floatFromInt(rgba1.b)) - @as(f32, @floatFromInt(rgba2.b));
-        
+
         // Perceptual weights
         const wr: f32 = 0.3;
-        const wg: f32 = 0.59; 
+        const wg: f32 = 0.59;
         const wb: f32 = 0.11;
-        
+
         return @sqrt(wr * dr * dr + wg * dg * dg + wb * db * db);
     }
 
     /// Find the closest color in a palette.
     pub fn findClosestColor(target: Color, palette: []const Color) ?struct { Color, f32 } {
         if (palette.len == 0) return null;
-        
+
         var closest = palette[0];
         var min_distance = colorDistance(target, closest);
-        
+
         for (palette[1..]) |color| {
             const distance = colorDistance(target, color);
             if (distance < min_distance) {
@@ -150,16 +149,16 @@ pub const ColorAnalysis = struct {
                 min_distance = distance;
             }
         }
-        
+
         return .{ closest, min_distance };
     }
 
     /// Check if a color is considered "dark" (useful for theme adaptation).
     pub fn isDark(color: Color) bool {
         const rgba = color.rgba();
-        const luminance = 0.299 * @as(f32, @floatFromInt(rgba.r)) + 
-                         0.587 * @as(f32, @floatFromInt(rgba.g)) + 
-                         0.114 * @as(f32, @floatFromInt(rgba.b));
+        const luminance = 0.299 * @as(f32, @floatFromInt(rgba.r)) +
+            0.587 * @as(f32, @floatFromInt(rgba.g)) +
+            0.114 * @as(f32, @floatFromInt(rgba.b));
         return luminance < 128.0;
     }
 
@@ -172,19 +171,19 @@ pub const ColorAnalysis = struct {
 test "terminal enhancer functionality" {
     const allocator = std.testing.allocator;
     const enhancer = TerminalEnhancer.init(allocator);
-    
+
     // Test color analysis
     const red = Color{ .basic = .red };
     const blue = Color{ .basic = .blue };
     const distance = ColorAnalysis.colorDistance(red, blue);
     try std.testing.expect(distance > 0);
-    
+
     // Test dark/light detection
     const black = Color{ .basic = .black };
     const white = Color{ .basic = .white };
     try std.testing.expect(ColorAnalysis.isDark(black));
     try std.testing.expect(ColorAnalysis.isLight(white));
-    
+
     // Test cursor operation batching
     const ops = [_]CursorOp{
         .save,
@@ -192,10 +191,10 @@ test "terminal enhancer functionality" {
         .{ .set_style = .steady_block },
         .restore,
     };
-    
+
     const result = try enhancer.batchCursorOps(&ops);
     defer allocator.free(result);
-    
+
     // Should contain all expected sequences
     try std.testing.expect(std.mem.indexOf(u8, result, "\x1b7") != null); // save
     try std.testing.expect(std.mem.indexOf(u8, result, "\x1b[5;10H") != null); // move

@@ -37,14 +37,14 @@ pub const GraphicsDashboard = struct {
     allocator: Allocator,
     terminal: UnifiedTerminal,
     config: DashboardConfig,
-    
+
     // Data storage
     data_sets: std.HashMap([]const u8, DataSet),
     metrics: std.HashMap([]const u8, Metric),
-    
+
     // Visual components
     progress_bars: std.ArrayList(*RichProgressBar),
-    
+
     // State
     last_update: i64,
     animation_frame: u32,
@@ -73,7 +73,7 @@ pub const GraphicsDashboard = struct {
 
     pub fn init(allocator: Allocator, config: DashboardConfig) !Self {
         const terminal = try UnifiedTerminal.init(allocator);
-        
+
         return Self{
             .allocator = allocator,
             .terminal = terminal,
@@ -101,7 +101,7 @@ pub const GraphicsDashboard = struct {
         }
         self.data_sets.deinit();
         self.metrics.deinit();
-        
+
         self.terminal.deinit();
     }
 
@@ -149,7 +149,7 @@ pub const GraphicsDashboard = struct {
     pub fn addProgressBar(self: *Self, label: []const u8, style: rich_progress.ProgressStyle, width: u32) !*RichProgressBar {
         const bar = try self.allocator.create(RichProgressBar);
         bar.* = RichProgressBar.init(self.allocator, style, width, label);
-        
+
         // Connect graphics manager if available
         if (self.terminal.graphics) |graphics| {
             bar.setGraphicsManager(graphics);
@@ -168,19 +168,19 @@ pub const GraphicsDashboard = struct {
         self.animation_frame +%= 1;
 
         const size = self.terminal.getSize() orelse .{ .width = 80, .height = 24 };
-        
+
         // Header with title and capabilities
         try self.renderHeader(size);
-        
+
         // Metrics row
         try self.renderMetrics(size);
-        
+
         // Charts and visualizations
         try self.renderCharts(size);
-        
+
         // Progress bars
         try self.renderProgressBars(size);
-        
+
         // Footer with status
         try self.renderFooter(size);
     }
@@ -188,27 +188,27 @@ pub const GraphicsDashboard = struct {
     fn renderHeader(self: *Self, size: UnifiedTerminal.Size) !void {
         try self.terminal.moveCursor(1, 1);
         try self.terminal.setForeground(Color.CYAN);
-        
+
         const w = self.terminal.writer();
-        
+
         // Title with border
         const title_len = self.config.title.len;
         const padding = (size.width - title_len - 4) / 2;
-        
+
         // Top border
         try w.writeByteNTimes('═', size.width);
         try w.writeByte('\n');
-        
+
         // Title line
         try w.writeByteNTimes(' ', padding);
         try w.print("╣ {s} ╠", .{self.config.title});
         try w.writeByte('\n');
-        
+
         // Capabilities line
         try self.terminal.resetStyles();
         try self.terminal.setForeground(Color.GRAY);
         try w.writeAll("  Features: ");
-        
+
         if (self.terminal.hasFeature(.graphics)) {
             try self.terminal.setForeground(Color.GREEN);
             try w.writeAll("Graphics ");
@@ -225,10 +225,10 @@ pub const GraphicsDashboard = struct {
             try self.terminal.setForeground(Color.GREEN);
             try w.writeAll("Clipboard ");
         }
-        
+
         try w.writeByte('\n');
         try self.terminal.resetStyles();
-        
+
         // Separator
         try w.writeByteNTimes('─', size.width);
         try w.writeByte('\n');
@@ -236,7 +236,7 @@ pub const GraphicsDashboard = struct {
 
     fn renderMetrics(self: *Self, size: UnifiedTerminal.Size) !void {
         const w = self.terminal.writer();
-        
+
         if (self.metrics.count() == 0) return;
 
         try self.terminal.setForeground(Color.YELLOW);
@@ -244,25 +244,25 @@ pub const GraphicsDashboard = struct {
         try self.terminal.resetStyles();
 
         const metrics_per_row = @min(4, size.width / 18);
-        
+
         var count: usize = 0;
         var metric_iter = self.metrics.iterator();
         while (metric_iter.next()) |entry| {
             const metric = entry.value_ptr.*;
-            
+
             if (count % metrics_per_row == 0 and count > 0) {
                 try w.writeByte('\n');
             }
 
             try self.terminal.setForeground(metric.color);
-            
+
             // Format metric with trend indicator
             const trend_indicator = if (metric.trend > 0.1) "↗" else if (metric.trend < -0.1) "↘" else "→";
             try w.print(" {s:<10} {d:.1}{s} {s} ", .{ metric.name, metric.value, metric.unit, trend_indicator });
-            
+
             count += 1;
         }
-        
+
         try w.writeByte('\n');
         try w.writeByteNTimes('─', size.width);
         try w.writeByte('\n');
@@ -271,7 +271,7 @@ pub const GraphicsDashboard = struct {
 
     fn renderCharts(self: *Self, size: UnifiedTerminal.Size) !void {
         const w = self.terminal.writer();
-        
+
         if (self.data_sets.count() == 0) return;
 
         const chart_height = @min(8, (size.height - 10) / 2);
@@ -281,7 +281,7 @@ pub const GraphicsDashboard = struct {
         while (set_iter.next()) |entry| {
             const name = entry.key_ptr.*;
             const data_set = entry.value_ptr.*;
-            
+
             if (data_set.points.items.len < 2) continue;
 
             try self.terminal.setForeground(data_set.color);
@@ -303,61 +303,65 @@ pub const GraphicsDashboard = struct {
     fn renderSparkline(self: *Self, data_set: DataSet, width: u16) !void {
         const w = self.terminal.writer();
         const sparkline_chars = [_][]const u8{ "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█" };
-        
+
         // Find min/max for normalization
         var min_val: f32 = std.math.floatMax(f32);
         var max_val: f32 = -std.math.floatMax(f32);
-        
+
         for (data_set.points.items) |point| {
             min_val = @min(min_val, point.value);
             max_val = @max(max_val, point.value);
         }
-        
+
         const range = max_val - min_val;
         if (range == 0) return;
 
         try w.writeAll("  ");
-        
+
         const data_points = @min(width - 4, data_set.points.items.len);
-        const start_idx = if (data_set.points.items.len > data_points) 
-            data_set.points.items.len - data_points else 0;
+        const start_idx = if (data_set.points.items.len > data_points)
+            data_set.points.items.len - data_points
+        else
+            0;
 
         for (0..data_points) |i| {
             const point = data_set.points.items[start_idx + i];
             const normalized = (point.value - min_val) / range;
             const char_idx: usize = @intFromFloat(normalized * 7.0);
-            
+
             try self.terminal.setForeground(data_set.color);
             try w.writeAll(sparkline_chars[@min(char_idx, sparkline_chars.len - 1)]);
         }
-        
+
         try self.terminal.resetStyles();
         try w.print(" (min: {d:.1}, max: {d:.1})\n", .{ min_val, max_val });
     }
 
     fn renderBarChart(self: *Self, data_set: DataSet, width: u16, height: u16) !void {
         const w = self.terminal.writer();
-        
+
         // Simplified bar chart using Unicode blocks
         const data_points = @min(width / 3, data_set.points.items.len);
         if (data_points == 0) return;
-        
-        const start_idx = if (data_set.points.items.len > data_points) 
-            data_set.points.items.len - data_points else 0;
+
+        const start_idx = if (data_set.points.items.len > data_points)
+            data_set.points.items.len - data_points
+        else
+            0;
 
         // Find max for scaling
         var max_val: f32 = 0;
         for (start_idx..start_idx + data_points) |i| {
             max_val = @max(max_val, data_set.points.items[i].value);
         }
-        
+
         if (max_val == 0) return;
 
         // Render bars
         for (0..height) |row| {
             try w.writeAll("  ");
             const threshold = ((@as(f32, @floatFromInt(height - row - 1))) / @as(f32, @floatFromInt(height))) * max_val;
-            
+
             for (0..data_points) |i| {
                 const point = data_set.points.items[start_idx + i];
                 if (point.value >= threshold) {
@@ -369,7 +373,7 @@ pub const GraphicsDashboard = struct {
             }
             try w.writeByte('\n');
         }
-        
+
         try self.terminal.resetStyles();
     }
 
@@ -387,16 +391,16 @@ pub const GraphicsDashboard = struct {
     fn renderGauge(self: *Self, data_set: DataSet, width: u16) !void {
         _ = width; // Unused in simplified implementation
         const w = self.terminal.writer();
-        
+
         if (data_set.points.items.len == 0) return;
-        
+
         const latest = data_set.points.items[data_set.points.items.len - 1];
         const progress = std.math.clamp(latest.value / 100.0, 0.0, 1.0); // Assume 0-100 scale
-        
+
         // Create circular gauge using Unicode characters
         const gauge_chars = [_][]const u8{ "○", "◔", "◑", "◕", "●" };
         const gauge_level: usize = @intFromFloat(progress * 4.0);
-        
+
         try w.writeAll("  ");
         try self.terminal.setForeground(data_set.color);
         try w.print("{s} {d:.1}%", .{ gauge_chars[@min(gauge_level, gauge_chars.len - 1)], progress * 100.0 });
@@ -407,7 +411,7 @@ pub const GraphicsDashboard = struct {
     fn renderProgressBars(self: *Self, size: UnifiedTerminal.Size) !void {
         _ = size; // Size not used in current implementation
         const w = self.terminal.writer();
-        
+
         if (self.progress_bars.items.len == 0) return;
 
         try self.terminal.setForeground(Color.MAGENTA);
@@ -423,22 +427,22 @@ pub const GraphicsDashboard = struct {
 
     fn renderFooter(self: *Self, size: UnifiedTerminal.Size) !void {
         const w = self.terminal.writer();
-        
+
         try self.terminal.moveCursor(size.height - 1, 1);
         try self.terminal.setForeground(Color.GRAY);
-        
+
         const now = std.time.timestamp();
         const uptime = now - self.last_update;
-        
+
         try w.print(" Last update: {}s ago | Frame: {} | ", .{ uptime, self.animation_frame });
-        
+
         // Show keyboard shortcuts
         if (self.terminal.hasFeature(.hyperlinks)) {
             try self.terminal.writeHyperlink("https://github.com/sam/docz", "GitHub");
         } else {
             try w.writeAll("q=quit r=refresh");
         }
-        
+
         try self.terminal.resetStyles();
     }
 
@@ -465,11 +469,11 @@ pub const GraphicsDashboard = struct {
         // Generate random data points
         const now = std.time.timestamp();
         var rng = std.rand.DefaultPrng.init(@as(u64, @intCast(now)));
-        
+
         for (0..50) |i| {
             // Generate timestamp for demo data (not used in simplified version)
             _ = now - 50 + @as(i64, @intCast(i));
-            
+
             // CPU data - oscillating around 45%
             const cpu_base: f32 = 45.0;
             const cpu_noise = (rng.random().float(f32) - 0.5) * 20.0;
@@ -493,7 +497,7 @@ pub const GraphicsDashboard = struct {
         const progress1 = try self.addProgressBar("Download Progress", .gradient, 40);
         try progress1.setProgress(0.65);
 
-        const progress2 = try self.addProgressBar("System Health", .sparkline, 35);  
+        const progress2 = try self.addProgressBar("System Health", .sparkline, 35);
         try progress2.setProgress(0.82);
 
         const progress3 = try self.addProgressBar("Task Queue", .animated, 30);

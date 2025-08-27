@@ -106,7 +106,7 @@ pub const MouseEvent = union(enum) {
 /// Mouse button click event
 pub const MouseClickEvent = Mouse;
 
-/// Mouse button release event  
+/// Mouse button release event
 pub const MouseReleaseEvent = Mouse;
 
 /// Mouse wheel event
@@ -147,7 +147,7 @@ pub fn parseSGRMouseEvent(cmd_final: u8, params: []const u32) ?MouseEvent {
     } else if (is_motion) {
         return MouseEvent{ .motion = MouseMotionEvent(m) };
     }
-    
+
     return MouseEvent{ .click = MouseClickEvent(m) };
 }
 
@@ -166,7 +166,7 @@ pub fn parseX10MouseEvent(buf: []const u8) ?MouseEvent {
 
     const mod, const btn, const is_release, const is_motion = parseMouseButtonX10(@as(u32, @intCast(b)));
 
-    // Convert to 0-based coordinates  
+    // Convert to 0-based coordinates
     const x = @as(i32, v[1]) - x10_mouse_byte_offset - 1;
     const y = @as(i32, v[2]) - x10_mouse_byte_offset - 1;
 
@@ -184,7 +184,7 @@ pub fn parseX10MouseEvent(buf: []const u8) ?MouseEvent {
     } else if (is_release) {
         return MouseEvent{ .release = MouseReleaseEvent(m) };
     }
-    
+
     return MouseEvent{ .click = MouseClickEvent(m) };
 }
 
@@ -221,7 +221,7 @@ fn parseMouseButton(b: u32) struct { KeyMod, MouseButton, bool } {
     return .{ mod, btn, is_motion };
 }
 
-/// Parse mouse button encoding for X10 format  
+/// Parse mouse button encoding for X10 format
 fn parseMouseButtonX10(b: u32) struct { KeyMod, MouseButton, bool, bool } {
     const bit_shift = 0b0000_0100;
     const bit_alt = 0b0000_1000;
@@ -240,7 +240,7 @@ fn parseMouseButtonX10(b: u32) struct { KeyMod, MouseButton, bool, bool } {
     // Parse button
     var btn: MouseButton = .none;
     var is_release = false;
-    
+
     if ((b & bit_add) != 0) {
         btn = @enumFromInt(@intFromEnum(MouseButton.backward) + (b & bits_mask));
     } else if ((b & bit_wheel) != 0) {
@@ -262,18 +262,18 @@ fn parseMouseButtonX10(b: u32) struct { KeyMod, MouseButton, bool, bool } {
 
 /// Check if button is a wheel event
 fn isWheel(btn: MouseButton) bool {
-    return @intFromEnum(btn) >= @intFromEnum(MouseButton.wheel_up) and 
-           @intFromEnum(btn) <= @intFromEnum(MouseButton.wheel_right);
+    return @intFromEnum(btn) >= @intFromEnum(MouseButton.wheel_up) and
+        @intFromEnum(btn) <= @intFromEnum(MouseButton.wheel_right);
 }
 
 // Tests
 test "SGR mouse click parsing" {
     const params = [_]u32{ 0, 12, 5 }; // Left button at (11, 4) zero-based
     const event = parseSGRMouseEvent('M', &params);
-    
+
     try std.testing.expect(event != null);
     try std.testing.expect(event.? == .click);
-    
+
     const m = event.?.mouse();
     try std.testing.expectEqual(@as(i32, 11), m.x);
     try std.testing.expectEqual(@as(i32, 4), m.y);
@@ -283,10 +283,10 @@ test "SGR mouse click parsing" {
 test "SGR mouse wheel parsing" {
     const params = [_]u32{ 64, 5, 6 }; // Wheel up at (4, 5) zero-based
     const event = parseSGRMouseEvent('M', &params);
-    
+
     try std.testing.expect(event != null);
     try std.testing.expect(event.? == .wheel);
-    
+
     const m = event.?.mouse();
     try std.testing.expectEqual(MouseButton.wheel_up, m.button);
 }
@@ -294,10 +294,10 @@ test "SGR mouse wheel parsing" {
 test "SGR mouse release parsing" {
     const params = [_]u32{ 0, 3, 9 }; // Left button release
     const event = parseSGRMouseEvent('m', &params);
-    
+
     try std.testing.expect(event != null);
     try std.testing.expect(event.? == .release);
-    
+
     const m = event.?.mouse();
     try std.testing.expectEqual(MouseButton.left, m.button);
 }
@@ -305,11 +305,11 @@ test "SGR mouse release parsing" {
 test "modifier key parsing" {
     const params = [_]u32{ 0x04 | 0x08 | 0x10, 1, 1 }; // Shift + Alt + Ctrl
     const event = parseSGRMouseEvent('M', &params);
-    
+
     try std.testing.expect(event != null);
-    
+
     const m = event.?.mouse();
     try std.testing.expect(m.mod.shift);
-    try std.testing.expect(m.mod.alt); 
+    try std.testing.expect(m.mod.alt);
     try std.testing.expect(m.mod.ctrl);
 }

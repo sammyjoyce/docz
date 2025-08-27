@@ -1,0 +1,641 @@
+const std = @import("std");
+const charmbracelet_color = @import("charmbracelet_color.zig");
+
+/// Adaptive colors that automatically adjust based on terminal theme
+/// Inspired by charmbracelet/x colors package
+/// Provides beautiful, ready-to-use color palettes for TUI applications
+/// Adaptive color that has different values for light and dark themes
+pub const AdaptiveColor = struct {
+    light: charmbracelet_color.Color,
+    dark: charmbracelet_color.Color,
+
+    /// Get the appropriate color based on theme
+    pub fn resolve(self: AdaptiveColor, is_dark_theme: bool) charmbracelet_color.Color {
+        return if (is_dark_theme) self.dark else self.light;
+    }
+
+    /// Create an adaptive color from hex values
+    pub fn fromHex(light_hex: u32, dark_hex: u32) AdaptiveColor {
+        return AdaptiveColor{
+            .light = charmbracelet_color.hex(light_hex),
+            .dark = charmbracelet_color.hex(dark_hex),
+        };
+    }
+
+    /// Create an adaptive color from RGB values
+    pub fn fromRgb(light_r: u8, light_g: u8, light_b: u8, dark_r: u8, dark_g: u8, dark_b: u8) AdaptiveColor {
+        return AdaptiveColor{
+            .light = charmbracelet_color.rgb(light_r, light_g, light_b),
+            .dark = charmbracelet_color.rgb(dark_r, dark_g, dark_b),
+        };
+    }
+};
+
+/// Beautiful color palette inspired by charmbracelet designs
+pub const Palette = struct {
+    // Base colors
+    pub const white_bright = AdaptiveColor.fromHex(0xFFFDF5, 0xFFFDF5);
+
+    pub const normal = AdaptiveColor.fromHex(0x1A1A1A, 0xDDDDDD);
+    pub const normal_dim = AdaptiveColor.fromHex(0xA49FA5, 0x777777);
+
+    // Grays
+    pub const gray = AdaptiveColor.fromHex(0x909090, 0x626262);
+    pub const gray_mid = AdaptiveColor.fromHex(0xB2B2B2, 0x4A4A4A);
+    pub const gray_dark = AdaptiveColor.fromHex(0xDDDADA, 0x222222);
+    pub const gray_bright = AdaptiveColor.fromHex(0x847A85, 0x979797);
+    pub const gray_bright_dim = AdaptiveColor.fromHex(0xC2B8C2, 0x4D4D4D);
+
+    // Indigo/Purple spectrum
+    pub const indigo = AdaptiveColor.fromHex(0x5A56E0, 0x7571F9);
+    pub const indigo_dim = AdaptiveColor.fromHex(0x9498FF, 0x494690);
+    pub const indigo_subtle = AdaptiveColor.fromHex(0x7D79F6, 0x514DC1);
+    pub const indigo_subtle_dim = AdaptiveColor.fromHex(0xBBBDFF, 0x383584);
+
+    // Green spectrum
+    pub const yellow_green = AdaptiveColor.fromHex(0x04B575, 0xECFD65);
+    pub const yellow_green_dull = AdaptiveColor.fromHex(0x6BCB94, 0x9BA92F);
+    pub const green = AdaptiveColor{
+        .light = charmbracelet_color.hex(0x04B575),
+        .dark = charmbracelet_color.hex(0x04B575),
+    };
+    pub const green_dim = AdaptiveColor.fromHex(0x72D2B0, 0x0B5137);
+
+    // Fuschia/Pink spectrum
+    pub const fuschia = AdaptiveColor.fromHex(0xEE6FF8, 0xEE6FF8);
+    pub const fuschia_dim = AdaptiveColor.fromHex(0xF1A8FF, 0x99519E);
+    pub const fuschia_dull = AdaptiveColor.fromHex(0xF793FF, 0xAD58B4);
+    pub const fuschia_dull_dim = AdaptiveColor.fromHex(0xF6C9FF, 0x6B3A6F);
+
+    // Red spectrum
+    pub const red = AdaptiveColor.fromHex(0xFF4672, 0xED567A);
+    pub const red_dull = AdaptiveColor.fromHex(0xFF6F91, 0xC74665);
+
+    /// Get a color by name for dynamic color selection
+    pub fn getByName(name: []const u8) ?AdaptiveColor {
+        const ColorMap = std.StaticStringMap(AdaptiveColor);
+        const color_map = ColorMap.initComptime(.{
+            .{ "white_bright", white_bright },
+            .{ "normal", normal },
+            .{ "normal_dim", normal_dim },
+            .{ "gray", gray },
+            .{ "gray_mid", gray_mid },
+            .{ "gray_dark", gray_dark },
+            .{ "gray_bright", gray_bright },
+            .{ "gray_bright_dim", gray_bright_dim },
+            .{ "indigo", indigo },
+            .{ "indigo_dim", indigo_dim },
+            .{ "indigo_subtle", indigo_subtle },
+            .{ "indigo_subtle_dim", indigo_subtle_dim },
+            .{ "yellow_green", yellow_green },
+            .{ "yellow_green_dull", yellow_green_dull },
+            .{ "green", green },
+            .{ "green_dim", green_dim },
+            .{ "fuschia", fuschia },
+            .{ "fuschia_dim", fuschia_dim },
+            .{ "fuschia_dull", fuschia_dull },
+            .{ "fuschia_dull_dim", fuschia_dull_dim },
+            .{ "red", red },
+            .{ "red_dull", red_dull },
+        });
+
+        return color_map.get(name);
+    }
+
+    /// Get all available color names
+    pub fn getAllNames(allocator: std.mem.Allocator) ![][]const u8 {
+        const names = [_][]const u8{
+            "white_bright", "normal",            "normal_dim",    "gray",
+            "gray_mid",     "gray_dark",         "gray_bright",   "gray_bright_dim",
+            "indigo",       "indigo_dim",        "indigo_subtle", "indigo_subtle_dim",
+            "yellow_green", "yellow_green_dull", "green",         "green_dim",
+            "fuschia",      "fuschia_dim",       "fuschia_dull",  "fuschia_dull_dim",
+            "red",          "red_dull",
+        };
+
+        return try allocator.dupe([]const u8, &names);
+    }
+};
+
+/// Predefined themes for common UI patterns
+pub const Themes = struct {
+    /// Dark theme optimized for readability
+    pub const dark = Theme{
+        .background = Palette.gray_dark.dark,
+        .foreground = Palette.normal.dark,
+        .primary = Palette.indigo.dark,
+        .secondary = Palette.yellow_green.dark,
+        .accent = Palette.fuschia.dark,
+        .muted = Palette.gray_bright_dim.dark,
+        .err = Palette.red.dark,
+        .warn = Palette.yellow_green_dull.dark,
+        .success = Palette.green.dark,
+        .info = Palette.indigo_subtle.dark,
+    };
+
+    /// Light theme optimized for readability
+    pub const light = Theme{
+        .background = Palette.white_bright.light,
+        .foreground = Palette.normal.light,
+        .primary = Palette.indigo.light,
+        .secondary = Palette.yellow_green.light,
+        .accent = Palette.fuschia.light,
+        .muted = Palette.gray_bright_dim.light,
+        .err = Palette.red.light,
+        .warn = Palette.yellow_green_dull.light,
+        .success = Palette.green.light,
+        .info = Palette.indigo_subtle.light,
+    };
+
+    /// High contrast theme for accessibility
+    pub const high_contrast = Theme{
+        .background = charmbracelet_color.basic(.black),
+        .foreground = charmbracelet_color.basic(.bright_white),
+        .primary = charmbracelet_color.basic(.bright_blue),
+        .secondary = charmbracelet_color.basic(.bright_green),
+        .accent = charmbracelet_color.basic(.bright_magenta),
+        .muted = charmbracelet_color.basic(.bright_black),
+        .err = charmbracelet_color.basic(.bright_red),
+        .warn = charmbracelet_color.basic(.bright_yellow),
+        .success = charmbracelet_color.basic(.bright_green),
+        .info = charmbracelet_color.basic(.bright_cyan),
+    };
+
+    /// Grayscale theme for minimal UIs
+    pub const grayscale = Theme{
+        .background = Palette.gray_dark.resolve(true),
+        .foreground = Palette.normal.resolve(true),
+        .primary = Palette.gray_bright.resolve(true),
+        .secondary = Palette.gray.resolve(true),
+        .accent = Palette.gray_bright_dim.resolve(true),
+        .muted = Palette.gray_mid.resolve(true),
+        .err = Palette.gray.resolve(true),
+        .warn = Palette.gray_bright.resolve(true),
+        .success = Palette.gray_bright_dim.resolve(true),
+        .info = Palette.gray.resolve(true),
+    };
+};
+
+/// Theme structure for consistent UI coloring
+pub const Theme = struct {
+    background: charmbracelet_color.Color,
+    foreground: charmbracelet_color.Color,
+    primary: charmbracelet_color.Color,
+    secondary: charmbracelet_color.Color,
+    accent: charmbracelet_color.Color,
+    muted: charmbracelet_color.Color,
+    err: charmbracelet_color.Color,
+    warn: charmbracelet_color.Color,
+    success: charmbracelet_color.Color,
+    info: charmbracelet_color.Color,
+
+    /// Create a custom adaptive theme
+    pub fn adaptive(
+        background: AdaptiveColor,
+        foreground: AdaptiveColor,
+        primary: AdaptiveColor,
+        secondary: AdaptiveColor,
+        accent: AdaptiveColor,
+        muted: AdaptiveColor,
+        err_color: AdaptiveColor,
+        warn_color: AdaptiveColor,
+        success: AdaptiveColor,
+        info: AdaptiveColor,
+        is_dark: bool,
+    ) Theme {
+        return Theme{
+            .background = background.resolve(is_dark),
+            .foreground = foreground.resolve(is_dark),
+            .primary = primary.resolve(is_dark),
+            .secondary = secondary.resolve(is_dark),
+            .accent = accent.resolve(is_dark),
+            .muted = muted.resolve(is_dark),
+            .err = err_color.resolve(is_dark),
+            .warn = warn_color.resolve(is_dark),
+            .success = success.resolve(is_dark),
+            .info = info.resolve(is_dark),
+        };
+    }
+
+    /// Get the default adaptive theme (resolves based on is_dark)
+    pub fn defaultAdaptive(is_dark: bool) Theme {
+        return adaptive(
+            Palette.gray_dark,
+            Palette.normal,
+            Palette.indigo,
+            Palette.yellow_green,
+            Palette.fuschia,
+            Palette.gray_bright_dim,
+            Palette.red,
+            Palette.yellow_green_dull,
+            Palette.green,
+            Palette.indigo_subtle,
+            is_dark,
+        );
+    }
+
+    /// Convert theme to ANSI 16-color palette for compatibility
+    pub fn to16Color(self: Theme) Theme16 {
+        return Theme16{
+            .background = charmbracelet_color.convert16(self.background),
+            .foreground = charmbracelet_color.convert16(self.foreground),
+            .primary = charmbracelet_color.convert16(self.primary),
+            .secondary = charmbracelet_color.convert16(self.secondary),
+            .accent = charmbracelet_color.convert16(self.accent),
+            .muted = charmbracelet_color.convert16(self.muted),
+            .err = charmbracelet_color.convert16(self.err),
+            .warn = charmbracelet_color.convert16(self.warn),
+            .success = charmbracelet_color.convert16(self.success),
+            .info = charmbracelet_color.convert16(self.info),
+        };
+    }
+
+    /// Convert theme to ANSI 256-color palette
+    pub fn to256Color(self: Theme) Theme256 {
+        return Theme256{
+            .background = charmbracelet_color.convert256(self.background),
+            .foreground = charmbracelet_color.convert256(self.foreground),
+            .primary = charmbracelet_color.convert256(self.primary),
+            .secondary = charmbracelet_color.convert256(self.secondary),
+            .accent = charmbracelet_color.convert256(self.accent),
+            .muted = charmbracelet_color.convert256(self.muted),
+            .err = charmbracelet_color.convert256(self.err),
+            .warn = charmbracelet_color.convert256(self.warn),
+            .success = charmbracelet_color.convert256(self.success),
+            .info = charmbracelet_color.convert256(self.info),
+        };
+    }
+};
+
+/// Theme using 16-color ANSI palette
+pub const Theme16 = struct {
+    background: charmbracelet_color.BasicColor,
+    foreground: charmbracelet_color.BasicColor,
+    primary: charmbracelet_color.BasicColor,
+    secondary: charmbracelet_color.BasicColor,
+    accent: charmbracelet_color.BasicColor,
+    muted: charmbracelet_color.BasicColor,
+    err: charmbracelet_color.BasicColor,
+    warn: charmbracelet_color.BasicColor,
+    success: charmbracelet_color.BasicColor,
+    info: charmbracelet_color.BasicColor,
+};
+
+/// Theme using 256-color ANSI palette
+pub const Theme256 = struct {
+    background: charmbracelet_color.IndexedColor,
+    foreground: charmbracelet_color.IndexedColor,
+    primary: charmbracelet_color.IndexedColor,
+    secondary: charmbracelet_color.IndexedColor,
+    accent: charmbracelet_color.IndexedColor,
+    muted: charmbracelet_color.IndexedColor,
+    err: charmbracelet_color.IndexedColor,
+    warn: charmbracelet_color.IndexedColor,
+    success: charmbracelet_color.IndexedColor,
+    info: charmbracelet_color.IndexedColor,
+};
+
+/// Color scheme generator for automatic palette creation
+pub const ColorScheme = struct {
+    /// Generate a monochromatic color scheme from a base color
+    pub fn monochromatic(allocator: std.mem.Allocator, base_color: charmbracelet_color.RGBColor, steps: u8) ![]charmbracelet_color.Color {
+        var colors = try allocator.alloc(charmbracelet_color.Color, steps);
+
+        const base_hsv = rgbToHsv(base_color);
+
+        for (0..steps) |i| {
+            const lightness = @as(f64, @floatFromInt(i)) / @as(f64, @floatFromInt(steps - 1));
+            const hsv = HSV{
+                .h = base_hsv.h,
+                .s = base_hsv.s,
+                .v = lightness,
+            };
+            const rgb = hsvToRgb(hsv);
+            colors[i] = charmbracelet_color.Color{ .rgb = rgb };
+        }
+
+        return colors;
+    }
+
+    /// Generate an analogous color scheme (colors next to each other on color wheel)
+    pub fn analogous(allocator: std.mem.Allocator, base_color: charmbracelet_color.RGBColor) ![]charmbracelet_color.Color {
+        var colors = try allocator.alloc(charmbracelet_color.Color, 3);
+
+        const base_hsv = rgbToHsv(base_color);
+
+        // Base color
+        colors[0] = charmbracelet_color.Color{ .rgb = base_color };
+
+        // +30 degrees
+        const hsv1 = HSV{
+            .h = @mod(base_hsv.h + 30.0, 360.0),
+            .s = base_hsv.s,
+            .v = base_hsv.v,
+        };
+        colors[1] = charmbracelet_color.Color{ .rgb = hsvToRgb(hsv1) };
+
+        // -30 degrees
+        const hsv2 = HSV{
+            .h = @mod(base_hsv.h - 30.0 + 360.0, 360.0),
+            .s = base_hsv.s,
+            .v = base_hsv.v,
+        };
+        colors[2] = charmbracelet_color.Color{ .rgb = hsvToRgb(hsv2) };
+
+        return colors;
+    }
+
+    /// Generate a complementary color scheme (opposite colors on color wheel)
+    pub fn complementary(allocator: std.mem.Allocator, base_color: charmbracelet_color.RGBColor) ![]charmbracelet_color.Color {
+        var colors = try allocator.alloc(charmbracelet_color.Color, 2);
+
+        const base_hsv = rgbToHsv(base_color);
+
+        // Base color
+        colors[0] = charmbracelet_color.Color{ .rgb = base_color };
+
+        // Complementary (+180 degrees)
+        const hsv_comp = HSV{
+            .h = @mod(base_hsv.h + 180.0, 360.0),
+            .s = base_hsv.s,
+            .v = base_hsv.v,
+        };
+        colors[1] = charmbracelet_color.Color{ .rgb = hsvToRgb(hsv_comp) };
+
+        return colors;
+    }
+
+    /// Generate a triadic color scheme (3 colors evenly spaced on color wheel)
+    pub fn triadic(allocator: std.mem.Allocator, base_color: charmbracelet_color.RGBColor) ![]charmbracelet_color.Color {
+        var colors = try allocator.alloc(charmbracelet_color.Color, 3);
+
+        const base_hsv = rgbToHsv(base_color);
+
+        // Base color
+        colors[0] = charmbracelet_color.Color{ .rgb = base_color };
+
+        // +120 degrees
+        const hsv1 = HSV{
+            .h = @mod(base_hsv.h + 120.0, 360.0),
+            .s = base_hsv.s,
+            .v = base_hsv.v,
+        };
+        colors[1] = charmbracelet_color.Color{ .rgb = hsvToRgb(hsv1) };
+
+        // +240 degrees
+        const hsv2 = HSV{
+            .h = @mod(base_hsv.h + 240.0, 360.0),
+            .s = base_hsv.s,
+            .v = base_hsv.v,
+        };
+        colors[2] = charmbracelet_color.Color{ .rgb = hsvToRgb(hsv2) };
+
+        return colors;
+    }
+};
+
+/// HSV color representation for color scheme generation
+const HSV = struct {
+    h: f64, // 0-360
+    s: f64, // 0-1
+    v: f64, // 0-1
+};
+
+/// Convert RGB to HSV
+fn rgbToHsv(rgb: charmbracelet_color.RGBColor) HSV {
+    const r = @as(f64, @floatFromInt(rgb.r)) / 255.0;
+    const g = @as(f64, @floatFromInt(rgb.g)) / 255.0;
+    const b = @as(f64, @floatFromInt(rgb.b)) / 255.0;
+
+    const max_val = @max(@max(r, g), b);
+    const min_val = @min(@min(r, g), b);
+    const delta = max_val - min_val;
+
+    // Value
+    const v = max_val;
+
+    // Saturation
+    const s = if (max_val == 0.0) 0.0 else delta / max_val;
+
+    // Hue
+    var h: f64 = 0.0;
+    if (delta != 0.0) {
+        if (max_val == r) {
+            h = 60.0 * @mod((g - b) / delta, 6.0);
+        } else if (max_val == g) {
+            h = 60.0 * ((b - r) / delta + 2.0);
+        } else if (max_val == b) {
+            h = 60.0 * ((r - g) / delta + 4.0);
+        }
+    }
+
+    if (h < 0.0) h += 360.0;
+
+    return HSV{ .h = h, .s = s, .v = v };
+}
+
+/// Convert HSV to RGB
+fn hsvToRgb(hsv: HSV) charmbracelet_color.RGBColor {
+    const c = hsv.v * hsv.s;
+    const x = c * (1.0 - @abs(@mod(hsv.h / 60.0, 2.0) - 1.0));
+    const m = hsv.v - c;
+
+    var r_prime: f64 = 0;
+    var g_prime: f64 = 0;
+    var b_prime: f64 = 0;
+
+    if (hsv.h < 60.0) {
+        r_prime = c;
+        g_prime = x;
+        b_prime = 0;
+    } else if (hsv.h < 120.0) {
+        r_prime = x;
+        g_prime = c;
+        b_prime = 0;
+    } else if (hsv.h < 180.0) {
+        r_prime = 0;
+        g_prime = c;
+        b_prime = x;
+    } else if (hsv.h < 240.0) {
+        r_prime = 0;
+        g_prime = x;
+        b_prime = c;
+    } else if (hsv.h < 300.0) {
+        r_prime = x;
+        g_prime = 0;
+        b_prime = c;
+    } else {
+        r_prime = c;
+        g_prime = 0;
+        b_prime = x;
+    }
+
+    return charmbracelet_color.RGBColor{
+        .r = @as(u8, @intFromFloat((r_prime + m) * 255.0)),
+        .g = @as(u8, @intFromFloat((g_prime + m) * 255.0)),
+        .b = @as(u8, @intFromFloat((b_prime + m) * 255.0)),
+    };
+}
+
+/// Terminal theme detector (basic heuristic)
+pub const ThemeDetector = struct {
+    /// Try to detect if terminal is using dark theme
+    /// This is a best-effort approach since there's no reliable way to detect this
+    pub fn isDarkTheme(allocator: std.mem.Allocator) bool {
+        // Check environment variables first
+        if (std.process.getEnvVarOwned(allocator, "COLORFGBG")) |colorfgbg| {
+            defer allocator.free(colorfgbg);
+
+            // COLORFGBG format is usually "foreground;background"
+            // High background numbers typically indicate dark themes
+            if (std.mem.lastIndexOfScalar(u8, colorfgbg, ';')) |sep_pos| {
+                const bg_str = colorfgbg[sep_pos + 1 ..];
+                if (std.fmt.parseInt(u8, bg_str, 10)) |bg_num| {
+                    return bg_num < 8; // Colors 0-7 are dark, 8-15 are bright
+                } else |_| {}
+            }
+        } else |_| {}
+
+        // Check TERM_PROGRAM for known terminals with dark defaults
+        if (std.process.getEnvVarOwned(allocator, "TERM_PROGRAM")) |term_program| {
+            defer allocator.free(term_program);
+
+            if (std.mem.eql(u8, term_program, "vscode") or
+                std.mem.eql(u8, term_program, "Hyper") or
+                std.mem.indexOf(u8, term_program, "Dark") != null)
+            {
+                return true;
+            }
+        } else |_| {}
+
+        // Default to dark theme (most modern terminals default to dark)
+        return true;
+    }
+
+    /// Get the appropriate theme based on detection
+    pub fn getAdaptiveTheme(allocator: std.mem.Allocator) Theme {
+        const is_dark = isDarkTheme(allocator);
+        return Theme.defaultAdaptive(is_dark);
+    }
+};
+
+/// Convenience functions for quick color access
+pub fn primaryColor(is_dark: bool) charmbracelet_color.Color {
+    return Palette.indigo.resolve(is_dark);
+}
+
+pub fn secondaryColor(is_dark: bool) charmbracelet_color.Color {
+    return Palette.yellow_green.resolve(is_dark);
+}
+
+pub fn accentColor(is_dark: bool) charmbracelet_color.Color {
+    return Palette.fuschia.resolve(is_dark);
+}
+
+pub fn errorColor(is_dark: bool) charmbracelet_color.Color {
+    return Palette.red.resolve(is_dark);
+}
+
+pub fn successColor(is_dark: bool) charmbracelet_color.Color {
+    return Palette.green.resolve(is_dark);
+}
+
+pub fn warningColor(is_dark: bool) charmbracelet_color.Color {
+    return Palette.yellow_green_dull.resolve(is_dark);
+}
+
+pub fn infoColor(is_dark: bool) charmbracelet_color.Color {
+    return Palette.indigo_subtle.resolve(is_dark);
+}
+
+pub fn mutedColor(is_dark: bool) charmbracelet_color.Color {
+    return Palette.gray_bright_dim.resolve(is_dark);
+}
+
+// Tests
+test "adaptive color resolution" {
+    const testing = std.testing;
+
+    const adaptive = AdaptiveColor.fromHex(0xFF0000, 0x00FF00);
+
+    const light_result = adaptive.resolve(false);
+    const dark_result = adaptive.resolve(true);
+
+    // Should get different colors for different themes
+    try testing.expect(!light_result.equal(dark_result));
+}
+
+test "theme creation and conversion" {
+    const testing = std.testing;
+
+    const theme = Themes.dark;
+
+    // Test 256-color conversion
+    const theme256 = theme.to256Color();
+    try testing.expect(@intFromEnum(theme256.background) != @intFromEnum(theme256.foreground));
+
+    // Test 16-color conversion - just ensure it doesn't crash
+    const theme16 = theme.to16Color();
+    _ = theme16; // Suppress unused variable warning
+
+    // Test high contrast theme which should definitely have different colors
+    const hc_theme = Themes.high_contrast;
+    const hc_theme16 = hc_theme.to16Color();
+    try testing.expect(hc_theme16.background != hc_theme16.foreground);
+}
+
+test "color scheme generation" {
+    const testing = std.testing;
+    const allocator = testing.allocator;
+
+    const base_color = charmbracelet_color.RGBColor{ .r = 128, .g = 64, .b = 192 };
+
+    // Test monochromatic scheme
+    const mono_scheme = try ColorScheme.monochromatic(allocator, base_color, 5);
+    defer allocator.free(mono_scheme);
+    try testing.expect(mono_scheme.len == 5);
+
+    // Test complementary scheme
+    const comp_scheme = try ColorScheme.complementary(allocator, base_color);
+    defer allocator.free(comp_scheme);
+    try testing.expect(comp_scheme.len == 2);
+
+    // Test triadic scheme
+    const triadic_scheme = try ColorScheme.triadic(allocator, base_color);
+    defer allocator.free(triadic_scheme);
+    try testing.expect(triadic_scheme.len == 3);
+}
+
+test "color palette lookup" {
+    const testing = std.testing;
+
+    const indigo_color = Palette.getByName("indigo");
+    try testing.expect(indigo_color != null);
+
+    const nonexistent = Palette.getByName("nonexistent");
+    try testing.expect(nonexistent == null);
+}
+
+test "hsv color conversion" {
+    const testing = std.testing;
+
+    const rgb = charmbracelet_color.RGBColor{ .r = 255, .g = 0, .b = 0 }; // Red
+    const hsv = rgbToHsv(rgb);
+    const rgb_back = hsvToRgb(hsv);
+
+    // Should be close to original (allowing for rounding errors)
+    try testing.expect(@abs(@as(i16, rgb_back.r) - @as(i16, rgb.r)) <= 1);
+    try testing.expect(@abs(@as(i16, rgb_back.g) - @as(i16, rgb.g)) <= 1);
+    try testing.expect(@abs(@as(i16, rgb_back.b) - @as(i16, rgb.b)) <= 1);
+}
+
+test "theme detector" {
+    const testing = std.testing;
+    const allocator = testing.allocator;
+
+    // Theme detector should not crash and should return a valid theme
+    const detected_theme = ThemeDetector.getAdaptiveTheme(allocator);
+
+    // Basic sanity check - theme colors should be different
+    try testing.expect(!detected_theme.background.equal(detected_theme.foreground));
+}

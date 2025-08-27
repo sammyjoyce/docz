@@ -77,7 +77,7 @@ rm -rf .zig-cache zig-out
 
 ### Configuration System
 
-- **ZON-based configuration** (src/markdown_agent/config.zon)
+- **ZON-based configuration** (agents/markdown/config.zon)
 - **Multiple validation rulesets** (default, strict, academic, technical)
 - **Document templates** (article, blog, tutorial, documentation, etc.)
 - **Customizable formatting options**
@@ -86,7 +86,7 @@ rm -rf .zig-cache zig-out
 
 ```zig
 // Integration example
-const markdown_agent = @import("markdown_agent");
+const markdown_agent = @import("agents/markdown/agent.zig");
 
 const agent = markdown_agent.MarkdownAgent.init(allocator, config);
 const tools = try agent.getAvailableTools();
@@ -118,7 +118,7 @@ const result = try agent.executeCommand("document_transformer", params);
 
 ### Adding New Tools
 
-1. Create tool implementation in `src/markdown_agent/tools/`
+1. Create tool implementation in `agents/markdown/tools/`
 2. Add to `tools/mod.zig` registry
 3. Define schema in `tools.zon`
 4. Add tests and documentation
@@ -126,7 +126,7 @@ const result = try agent.executeCommand("document_transformer", params);
 
 ### Configuration Updates
 
-Edit `src/markdown_agent/config.zon`:
+Edit `agents/markdown/config.zon`:
 ```zig
 .default_settings = .{
     .text_wrap_width = 80,

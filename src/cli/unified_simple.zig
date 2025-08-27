@@ -20,14 +20,14 @@ pub const CommandResult = struct {
     output: ?[]const u8 = null,
     error_msg: ?[]const u8 = null,
     exit_code: u8 = 0,
-    
+
     pub fn ok(output: ?[]const u8) CommandResult {
         return CommandResult{
             .success = true,
             .output = output,
         };
     }
-    
+
     pub fn err(msg: []const u8, exit_code: u8) CommandResult {
         return CommandResult{
             .success = false,
@@ -48,39 +48,35 @@ pub const CapabilitySet = struct {
     graphics: bool = false,
     truecolor: bool = false,
     mouse: bool = false,
-    
+
     pub fn detect() CapabilitySet {
         // Simplified capability detection based on common terminal support
-        const term_program = std.process.getEnvVarOwned(
-            std.heap.page_allocator,
-            "TERM_PROGRAM"
-        ) catch null;
+        const term_program = std.process.getEnvVarOwned(std.heap.page_allocator, "TERM_PROGRAM") catch null;
         defer if (term_program) |tp| std.heap.page_allocator.free(tp);
-        
-        const colorterm = std.process.getEnvVarOwned(
-            std.heap.page_allocator,
-            "COLORTERM"
-        ) catch null;
+
+        const colorterm = std.process.getEnvVarOwned(std.heap.page_allocator, "COLORTERM") catch null;
         defer if (colorterm) |ct| std.heap.page_allocator.free(ct);
-        
+
         // Basic detection logic
-        const has_modern_term = if (term_program) |tp| 
-            std.mem.eql(u8, tp, "iTerm.app") or 
-            std.mem.eql(u8, tp, "WezTerm") or
-            std.mem.eql(u8, tp, "kitty")
-        else false;
-        
+        const has_modern_term = if (term_program) |tp|
+            std.mem.eql(u8, tp, "iTerm.app") or
+                std.mem.eql(u8, tp, "WezTerm") or
+                std.mem.eql(u8, tp, "kitty")
+        else
+            false;
+
         const has_truecolor = if (colorterm) |ct|
             std.mem.eql(u8, ct, "truecolor") or std.mem.eql(u8, ct, "24bit")
-        else false;
-        
+        else
+            false;
+
         return CapabilitySet{
-            .hyperlinks = true,  // OSC 8 widely supported
-            .clipboard = true,   // OSC 52 widely supported  
+            .hyperlinks = true, // OSC 8 widely supported
+            .clipboard = true, // OSC 52 widely supported
             .notifications = has_modern_term,
             .graphics = has_modern_term,
             .truecolor = has_truecolor or has_modern_term,
-            .mouse = true,       // Standard in most terminals
+            .mouse = true, // Standard in most terminals
         };
     }
 };
@@ -92,16 +88,16 @@ pub const CapabilitySet = struct {
 pub const NotificationManager = struct {
     capabilities: CapabilitySet,
     enabled: bool = true,
-    
+
     pub fn init(capabilities: CapabilitySet) NotificationManager {
         return NotificationManager{
             .capabilities = capabilities,
         };
     }
-    
+
     pub fn send(self: *NotificationManager, title: []const u8, message: ?[]const u8) !void {
         if (!self.enabled) return;
-        
+
         if (self.capabilities.notifications) {
             // Simulate system notification (would use OSC 9)
             std.debug.print("🔔 {s}", .{title});
@@ -122,11 +118,11 @@ pub const NotificationManager = struct {
 
 pub const ClipboardManager = struct {
     capabilities: CapabilitySet,
-    
+
     pub fn init(capabilities: CapabilitySet) ClipboardManager {
         return ClipboardManager{ .capabilities = capabilities };
     }
-    
+
     pub fn copy(self: *ClipboardManager, data: []const u8) !void {
         if (self.capabilities.clipboard) {
             // Would use OSC 52 to copy to clipboard
@@ -139,11 +135,11 @@ pub const ClipboardManager = struct {
 
 pub const HyperlinkManager = struct {
     capabilities: CapabilitySet,
-    
+
     pub fn init(capabilities: CapabilitySet) HyperlinkManager {
         return HyperlinkManager{ .capabilities = capabilities };
     }
-    
+
     pub fn writeLink(self: *HyperlinkManager, writer: anytype, url: []const u8, text: []const u8) !void {
         if (self.capabilities.hyperlinks) {
             // Would use OSC 8 for actual hyperlinks
@@ -165,10 +161,10 @@ pub const CliContext = struct {
     clipboard: ClipboardManager,
     hyperlink: HyperlinkManager,
     verbose: bool = false,
-    
+
     pub fn init(allocator: std.mem.Allocator) CliContext {
         const capabilities = CapabilitySet.detect();
-        
+
         return CliContext{
             .allocator = allocator,
             .capabilities = capabilities,
@@ -177,7 +173,7 @@ pub const CliContext = struct {
             .hyperlink = HyperlinkManager.init(capabilities),
         };
     }
-    
+
     pub fn hasFeature(self: *CliContext, feature: enum { hyperlinks, clipboard, notifications, graphics, truecolor, mouse }) bool {
         return switch (feature) {
             .hyperlinks => self.capabilities.hyperlinks,
@@ -188,7 +184,7 @@ pub const CliContext = struct {
             .mouse => self.capabilities.mouse,
         };
     }
-    
+
     pub fn capabilitySummary(self: *CliContext) []const u8 {
         if (self.capabilities.hyperlinks and self.capabilities.clipboard and self.capabilities.graphics) {
             return "Full Enhanced Terminal";
@@ -198,11 +194,11 @@ pub const CliContext = struct {
             return "Basic Terminal";
         }
     }
-    
+
     pub fn enableVerbose(self: *CliContext) void {
         self.verbose = true;
     }
-    
+
     pub fn verbose_log(self: *CliContext, comptime fmt: []const u8, args: anytype) void {
         if (self.verbose) {
             std.debug.print("[VERBOSE] " ++ fmt ++ "\n", args);
@@ -217,29 +213,29 @@ pub const CliContext = struct {
 pub const CommandRouter = struct {
     allocator: std.mem.Allocator,
     context: *CliContext,
-    
+
     pub fn init(allocator: std.mem.Allocator, ctx: *CliContext) CommandRouter {
         return CommandRouter{
             .allocator = allocator,
             .context = ctx,
         };
     }
-    
+
     pub fn execute(self: *CommandRouter, args: []const []const u8) !CommandResult {
         if (args.len == 0) {
             return self.executeHelp();
         }
-        
+
         const command = args[0];
-        
+
         // Check for pipeline syntax
         const full_command = try std.mem.join(self.allocator, " ", args);
         defer self.allocator.free(full_command);
-        
+
         if (std.mem.indexOf(u8, full_command, "|")) |_| {
             return self.executePipeline(full_command);
         }
-        
+
         // Route to command handlers
         if (std.mem.eql(u8, command, "help")) {
             return self.executeHelp();
@@ -256,18 +252,18 @@ pub const CommandRouter = struct {
             return self.executeChat(args);
         }
     }
-    
+
     fn executePipeline(self: *CommandRouter, pipeline: []const u8) !CommandResult {
         if (self.context.verbose) {
             self.context.verbose_log("Executing pipeline: {s}", .{pipeline});
         }
-        
+
         var stages = std.mem.splitScalar(u8, pipeline, '|');
         var current_output: ?[]const u8 = null;
-        
+
         while (stages.next()) |stage| {
             const trimmed_stage = std.mem.trim(u8, stage, " \t");
-            
+
             if (std.mem.eql(u8, trimmed_stage, "clipboard")) {
                 if (current_output) |output| {
                     try self.context.clipboard.copy(output);
@@ -275,11 +271,7 @@ pub const CommandRouter = struct {
                 }
             } else if (std.mem.eql(u8, trimmed_stage, "format json")) {
                 if (current_output) |output| {
-                    const json_output = try std.fmt.allocPrint(
-                        self.allocator, 
-                        "{{\"result\": \"{s}\"}}",
-                        .{output}
-                    );
+                    const json_output = try std.fmt.allocPrint(self.allocator, "{{\"result\": \"{s}\"}}", .{output});
                     if (current_output) |curr_out| {
                         if (curr_out.ptr != pipeline.ptr) {
                             self.allocator.free(curr_out);
@@ -307,12 +299,12 @@ pub const CommandRouter = struct {
                 }
             }
         }
-        
+
         return CommandResult.ok(current_output);
     }
-    
+
     fn executeHelp(self: *CommandRouter) !CommandResult {
-        const help_text = 
+        const help_text =
             \\Unified CLI with Smart Terminal Integration
             \\
             \\Commands:
@@ -331,103 +323,95 @@ pub const CommandRouter = struct {
             \\
             \\Terminal Features:
         ;
-        
+
         // Build capabilities list
         var capabilities_text: [256]u8 = undefined;
         var len: usize = 0;
-        
+
         if (self.context.hasFeature(.hyperlinks)) {
             const addition = "  ✓ Hyperlinks supported\n";
-            @memcpy(capabilities_text[len..len + addition.len], addition);
+            @memcpy(capabilities_text[len .. len + addition.len], addition);
             len += addition.len;
         }
         if (self.context.hasFeature(.clipboard)) {
             const addition = "  ✓ Clipboard integration\n";
-            @memcpy(capabilities_text[len..len + addition.len], addition);
+            @memcpy(capabilities_text[len .. len + addition.len], addition);
             len += addition.len;
         }
         if (self.context.hasFeature(.notifications)) {
             const addition = "  ✓ System notifications\n";
-            @memcpy(capabilities_text[len..len + addition.len], addition);
+            @memcpy(capabilities_text[len .. len + addition.len], addition);
             len += addition.len;
         }
-        
-        const full_text = try std.fmt.allocPrint(
-            self.allocator,
-            "{s}{s}",
-            .{ help_text, capabilities_text[0..len] }
-        );
-        
+
+        const full_text = try std.fmt.allocPrint(self.allocator, "{s}{s}", .{ help_text, capabilities_text[0..len] });
+
         return CommandResult.ok(full_text);
     }
-    
+
     fn executeVersion(self: *CommandRouter) !CommandResult {
-        const version_text = try std.fmt.allocPrint(
-            self.allocator,
-            "Unified CLI v1.0.0\nTerminal: {s}\nCapabilities: hyperlinks={}, clipboard={}, notifications={}",
-            .{ 
-                self.context.capabilitySummary(),
-                self.context.capabilities.hyperlinks,
-                self.context.capabilities.clipboard,
-                self.context.capabilities.notifications,
-            }
-        );
-        
+        const version_text = try std.fmt.allocPrint(self.allocator, "Unified CLI v1.0.0\nTerminal: {s}\nCapabilities: hyperlinks={}, clipboard={}, notifications={}", .{
+            self.context.capabilitySummary(),
+            self.context.capabilities.hyperlinks,
+            self.context.capabilities.clipboard,
+            self.context.capabilities.notifications,
+        });
+
         return CommandResult.ok(version_text);
     }
-    
+
     fn executeAuth(self: *CommandRouter, args: []const []const u8) !CommandResult {
         if (args.len == 0) {
             return CommandResult.err("Auth command requires subcommand (status|login)", 1);
         }
-        
+
         const subcommand = args[0];
-        
+
         if (std.mem.eql(u8, subcommand, "status")) {
             try self.context.notification.send("Auth Check", "Checking authentication status");
-            
+
             const status = if (self.context.hasFeature(.hyperlinks))
                 "✓ Authenticated (enhanced terminal features available)"
             else
                 "✓ Authenticated";
-            
+
             const output = try self.allocator.dupe(u8, status);
             return CommandResult.ok(output);
         } else if (std.mem.eql(u8, subcommand, "login")) {
             try self.context.notification.send("Authentication", "Starting login process");
-            
+
             const output = try self.allocator.dupe(u8, "✓ Login successful");
             return CommandResult.ok(output);
         } else {
             return CommandResult.err("Unknown auth subcommand", 1);
         }
     }
-    
+
     fn executeInteractive(self: *CommandRouter) !CommandResult {
         if (self.context.hasFeature(.hyperlinks)) {
             try self.context.notification.send("Interactive Mode", "Enhanced features available");
         }
-        
+
         const message = if (self.context.hasFeature(.hyperlinks) or self.context.hasFeature(.mouse))
             "🚀 Interactive mode with enhanced terminal features"
         else
             "📟 Interactive mode (basic terminal)";
-        
+
         const output = try self.allocator.dupe(u8, message);
         return CommandResult.ok(output);
     }
-    
+
     fn executeWorkflow(self: *CommandRouter, args: []const []const u8) !CommandResult {
         if (args.len == 0) {
             const workflows_list = "Available workflows:\n  • auth-setup - Authentication setup\n  • config-check - Configuration validation";
             const output = try self.allocator.dupe(u8, workflows_list);
             return CommandResult.ok(output);
         }
-        
+
         const workflow_name = args[0];
-        
+
         try self.context.notification.send("Workflow", "Starting workflow execution");
-        
+
         if (std.mem.eql(u8, workflow_name, "auth-setup")) {
             // Simulate workflow steps
             if (self.context.verbose) {
@@ -435,7 +419,7 @@ pub const CommandRouter = struct {
                 self.context.verbose_log("Step 2/3: Validating API key", .{});
                 self.context.verbose_log("Step 3/3: Testing authentication", .{});
             }
-            
+
             try self.context.notification.send("Workflow Complete", "Authentication setup finished");
             const output = try self.allocator.dupe(u8, "✅ Auth setup workflow completed successfully");
             return CommandResult.ok(output);
@@ -443,19 +427,15 @@ pub const CommandRouter = struct {
             return CommandResult.err("Unknown workflow", 1);
         }
     }
-    
+
     fn executeChat(self: *CommandRouter, args: []const []const u8) !CommandResult {
         const message = try std.mem.join(self.allocator, " ", args);
         defer self.allocator.free(message);
-        
+
         try self.context.notification.send("Chat", "Processing message with AI");
-        
-        const response = try std.fmt.allocPrint(
-            self.allocator,
-            "🤖 AI Response to: \"{s}\"\n(This would be the actual AI response in a real implementation)",
-            .{message}
-        );
-        
+
+        const response = try std.fmt.allocPrint(self.allocator, "🤖 AI Response to: \"{s}\"\n(This would be the actual AI response in a real implementation)", .{message});
+
         return CommandResult.ok(response);
     }
 };
@@ -468,18 +448,18 @@ pub const CliApp = struct {
     allocator: std.mem.Allocator,
     context: CliContext,
     router: CommandRouter,
-    
+
     pub fn init(allocator: std.mem.Allocator) CliApp {
         var context = CliContext.init(allocator);
         const router = CommandRouter.init(allocator, &context);
-        
+
         return CliApp{
             .allocator = allocator,
             .context = context,
             .router = router,
         };
     }
-    
+
     pub fn run(self: *CliApp, args: []const []const u8) !u8 {
         // Check for global flags
         for (args) |arg| {
@@ -487,14 +467,14 @@ pub const CliApp = struct {
                 self.context.enableVerbose();
             }
         }
-        
+
         if (self.context.verbose) {
             self.context.verbose_log("Terminal capabilities: {s}", .{self.context.capabilitySummary()});
         }
-        
+
         // Execute command
         const result = try self.router.execute(args);
-        
+
         // Handle result
         if (result.success) {
             if (result.output) |output| {
@@ -519,52 +499,52 @@ pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
-    
+
     std.debug.print("=== Unified CLI Architecture Demo ===\n\n", .{});
-    
+
     var app = CliApp.init(allocator);
-    
+
     // Demo 1: Show capabilities and help
     std.debug.print("1. Capability Detection and Help:\n", .{});
     std.debug.print("Terminal Type: {s}\n", .{app.context.capabilitySummary()});
     _ = try app.run(&[_][]const u8{"help"});
-    
+
     std.debug.print("\n==================================================\n", .{});
-    
+
     // Demo 2: Basic commands
     std.debug.print("2. Basic Commands:\n", .{});
     _ = try app.run(&[_][]const u8{"version"});
     std.debug.print("\n", .{});
-    _ = try app.run(&[_][]const u8{"auth", "status"});
-    
+    _ = try app.run(&[_][]const u8{ "auth", "status" });
+
     std.debug.print("\n==================================================\n", .{});
-    
+
     // Demo 3: Pipeline commands
     std.debug.print("3. Pipeline Commands:\n", .{});
     _ = try app.run(&[_][]const u8{"auth status | clipboard"});
     std.debug.print("\n", .{});
     _ = try app.run(&[_][]const u8{"auth status | format json"});
-    
+
     std.debug.print("\n==================================================\n", .{});
-    
+
     // Demo 4: Workflow execution
     std.debug.print("4. Workflow Execution:\n", .{});
-    _ = try app.run(&[_][]const u8{"workflow", "auth-setup", "--verbose"});
-    
+    _ = try app.run(&[_][]const u8{ "workflow", "auth-setup", "--verbose" });
+
     std.debug.print("\n==================================================\n", .{});
-    
+
     // Demo 5: Smart components showcase
     std.debug.print("5. Smart Components:\n", .{});
     demoSmartComponents(&app.context);
-    
+
     std.debug.print("\n=== Demo Complete ===\n", .{});
     std.debug.print("✅ Successfully demonstrated unified CLI architecture\n", .{});
 }
 
 fn demoSmartComponents(ctx: *CliContext) void {
     std.debug.print("Smart Component Examples:\n\n", .{});
-    
-    // Hyperlink example  
+
+    // Hyperlink example
     std.debug.print("Hyperlink Component:\n", .{});
     var stdout_buffer: [4096]u8 = undefined;
     var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
@@ -573,13 +553,13 @@ fn demoSmartComponents(ctx: *CliContext) void {
     stdout.flush() catch {};
     std.debug.print("\n", .{});
     ctx.hyperlink.writeLink(stdout, "https://api.example.com", "API Reference") catch {};
-    stdout.flush() catch {};  
+    stdout.flush() catch {};
     std.debug.print("\n\n", .{});
-    
+
     // Notification example
     std.debug.print("Notification Component:\n", .{});
     ctx.notification.send("Demo Notification", "This shows how notifications work") catch {};
-    
+
     // Clipboard example
     std.debug.print("Clipboard Component:\n", .{});
     ctx.clipboard.copy("Sample text for clipboard") catch {};

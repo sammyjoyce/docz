@@ -211,10 +211,10 @@ fn demoAdvancedFeatures(renderer: *tui.Renderer, caps: tui.TermCaps) !void {
         };
         const protocol = if (caps.supportsKittyGraphics) "Kitty" else "Sixel";
         
-        var gfx_text = std.ArrayList(u8).init(std.heap.page_allocator);
+        var gfx_text = std.array_list.Managed(u8).init(std.heap.page_allocator);
         defer gfx_text.deinit();
         try gfx_text.writer().print("🎨 Graphics protocol supported: {s}", .{protocol});
-        
+
         try renderer.drawText(gfx_ctx, gfx_text.items);
     }
     

@@ -40,20 +40,20 @@ pub const UIMode = enum {
 /// Shared UI context that adapts to different modes
 pub const UIContext = struct {
     const Self = @This();
-    
+
     allocator: std.mem.Allocator,
     terminal: Terminal,
     graphics: ?graphics.GraphicsManager,
     component_manager: ComponentManager,
     mode: UIMode,
     theme: Theme,
-    
+
     pub fn init(allocator: std.mem.Allocator, mode: UIMode) !Self {
         var terminal = try Terminal.init(allocator);
         const graphics_manager = graphics.GraphicsManager.init(allocator, &terminal);
         const component_manager = ComponentManager.init(allocator, &terminal);
         const theme = Theme.forTerminal(&terminal);
-        
+
         return Self{
             .allocator = allocator,
             .terminal = terminal,
@@ -63,13 +63,13 @@ pub const UIContext = struct {
             .theme = theme,
         };
     }
-    
+
     pub fn deinit(self: *Self) void {
         self.component_manager.deinit();
         if (self.graphics) |*gfx| gfx.deinit();
         self.terminal.deinit();
     }
-    
+
     /// Create a render context for components
     pub fn createRenderContext(self: *Self, bounds: Rect) RenderContext {
         return RenderContext{
@@ -81,7 +81,7 @@ pub const UIContext = struct {
             .frame_time = std.time.timestamp(),
         };
     }
-    
+
     /// Show a notification using the best available method
     pub fn notify(self: *Self, level: NotificationLevel, title: []const u8, message: []const u8) !void {
         switch (self.mode) {
@@ -98,12 +98,12 @@ pub const UIContext = struct {
                     .duration = 3000, // 3 seconds
                     .auto_dismiss = true,
                 });
-                
+
                 try self.component_manager.addComponent(notification);
             },
         }
     }
-    
+
     /// Show a progress bar using the best method for the current mode
     pub fn showProgress(self: *Self, progress: f32, label: ?[]const u8) !?*Component {
         switch (self.mode) {
@@ -115,12 +115,12 @@ pub const UIContext = struct {
                     .style = .auto,
                     .animated = false, // No animation in CLI mode
                 });
-                
+
                 // Render immediately
                 const ctx = self.createRenderContext(Rect{ .x = 0, .y = 0, .width = 80, .height = 1 });
                 try progress_bar.render(ctx);
                 try self.terminal.flush();
-                
+
                 return progress_bar;
             },
             .tui, .hybrid => {
@@ -131,19 +131,19 @@ pub const UIContext = struct {
                     .style = .auto,
                     .animated = true,
                 });
-                
+
                 try self.component_manager.addComponent(progress_bar);
                 return progress_bar;
             },
         }
     }
-    
+
     /// Update a progress bar's value
     pub fn updateProgress(self: *Self, progress_component: *Component, progress: f32) void {
         // Extract the ProgressBar from the component
         const progress_bar: *ProgressBar = @ptrCast(@alignCast(progress_component.impl));
         progress_bar.setProgress(progress);
-        
+
         if (self.mode == .cli) {
             // In CLI mode, re-render immediately
             const ctx = self.createRenderContext(Rect{ .x = 0, .y = 0, .width = 80, .height = 1 });
@@ -151,33 +151,33 @@ pub const UIContext = struct {
             self.terminal.flush() catch {};
         }
     }
-    
+
     /// Handle input events (mainly for TUI mode)
     pub fn handleEvent(self: *Self, event: Event) !bool {
         return self.component_manager.handleEvent(event);
     }
-    
+
     /// Render all components (mainly for TUI mode)
     pub fn render(self: *Self, bounds: Rect) !void {
         const ctx = self.createRenderContext(bounds);
         try self.component_manager.render(ctx);
     }
-    
+
     /// Update animations and time-based components
     pub fn update(self: *Self, dt: f32) !void {
         try self.component_manager.update(dt);
     }
-    
+
     /// Clear the screen
     pub fn clear(self: *Self) !void {
         try self.terminal.clear();
     }
-    
+
     /// Set the UI mode
     pub fn setMode(self: *Self, mode: UIMode) void {
         self.mode = mode;
     }
-    
+
     /// Get terminal capabilities
     pub fn getCapabilities(self: *Self) unified.TermCaps {
         return self.terminal.getCapabilities();
@@ -187,13 +187,13 @@ pub const UIContext = struct {
 /// Notification component for TUI mode
 pub const NotificationComponent = struct {
     const Self = @This();
-    
+
     allocator: std.mem.Allocator,
     state: ComponentState,
     config: NotificationConfig,
     creation_time: i64,
     animation_progress: f32 = 0.0,
-    
+
     const vtable = Component.VTable{
         .init = init,
         .deinit = deinit,
@@ -207,7 +207,7 @@ pub const NotificationComponent = struct {
         .getChildren = null,
         .update = update,
     };
-    
+
     pub fn create(allocator: std.mem.Allocator, config: NotificationConfig) !*Component {
         const self = try allocator.create(Self);
         self.* = Self{
@@ -216,17 +216,17 @@ pub const NotificationComponent = struct {
             .config = config,
             .creation_time = std.time.timestamp(),
         };
-        
+
         const component = try allocator.create(Component);
         component.* = Component{
             .vtable = &vtable,
             .impl = self,
             .id = 0,
         };
-        
+
         return component;
     }
-    
+
     fn init(impl: *anyopaque, allocator: std.mem.Allocator) anyerror!void {
         _ = allocator;
         const self: *Self = @ptrCast(@alignCast(impl));
@@ -234,26 +234,26 @@ pub const NotificationComponent = struct {
             .z_index = 1000, // High z-index for notifications
         };
     }
-    
+
     fn deinit(impl: *anyopaque) void {
         const self: *Self = @ptrCast(@alignCast(impl));
         self.allocator.free(self.config.title);
         self.allocator.free(self.config.message);
     }
-    
+
     fn getState(impl: *anyopaque) *ComponentState {
         const self: *Self = @ptrCast(@alignCast(impl));
         return &self.state;
     }
-    
+
     fn setState(impl: *anyopaque, state: ComponentState) void {
         const self: *Self = @ptrCast(@alignCast(impl));
         self.state = state;
     }
-    
+
     fn render(impl: *anyopaque, ctx: RenderContext) anyerror!void {
         const self: *Self = @ptrCast(@alignCast(impl));
-        
+
         // Get notification colors based on level
         const level_color = switch (self.config.level) {
             .info => ctx.theme.colors.primary,
@@ -262,7 +262,7 @@ pub const NotificationComponent = struct {
             .@"error" => ctx.theme.colors.error_color,
             .debug => Color{ .rgb = .{ .r = 138, .g = 43, .b = 226 } },
         };
-        
+
         const level_icon = switch (self.config.level) {
             .info => "ℹ",
             .success => "✓",
@@ -270,26 +270,26 @@ pub const NotificationComponent = struct {
             .@"error" => "✗",
             .debug => "🐛",
         };
-        
+
         // Animation for slide-in effect
         const elapsed = @as(f32, @floatFromInt(std.time.timestamp() - self.creation_time)) / 1000.0;
         const animation_t = @min(1.0, elapsed / 0.3); // 300ms slide-in
         const eased_t = component_mod.Animation.easeOut(animation_t);
-        
+
         // Calculate position with animation
         const target_y = self.state.bounds.y;
         const start_y = target_y - 5;
         const current_y = @as(i32, @intFromFloat(@as(f32, @floatFromInt(start_y)) + (@as(f32, @floatFromInt(target_y - start_y)) * eased_t)));
-        
+
         // Move to animated position
         try ctx.terminal.moveTo(self.state.bounds.x, current_y);
-        
+
         // Render notification content
         var content = std.ArrayList(u8).init(self.allocator);
         defer content.deinit();
-        
+
         try content.writer().print("┌─ {s} {s} ", .{ level_icon, self.config.title });
-        
+
         // Add padding to fill width
         const content_width = self.config.title.len + 6; // Icon + title + spacing
         const padding_needed = @max(0, self.state.bounds.width -| content_width -| 3); // -3 for border chars
@@ -298,17 +298,17 @@ pub const NotificationComponent = struct {
             try content.append('─');
         }
         try content.append('┐');
-        
+
         // Render title line
         const title_style = Style{ .fg_color = level_color, .bold = true };
         try ctx.terminal.print(content.items, title_style);
-        
+
         // Move to next line for message
         try ctx.terminal.moveTo(self.state.bounds.x, current_y + 1);
-        
+
         const message_style = Style{ .fg_color = ctx.theme.colors.foreground };
         try ctx.terminal.printf("│ {s}", .{self.config.message}, message_style);
-        
+
         // Add padding for message line
         const message_padding = @max(0, self.state.bounds.width -| self.config.message.len -| 3);
         i = 0;
@@ -316,7 +316,7 @@ pub const NotificationComponent = struct {
             try ctx.terminal.print(" ", message_style);
         }
         try ctx.terminal.print("│", title_style);
-        
+
         // Bottom border
         try ctx.terminal.moveTo(self.state.bounds.x, current_y + 2);
         try ctx.terminal.print("└", title_style);
@@ -326,15 +326,14 @@ pub const NotificationComponent = struct {
         }
         try ctx.terminal.print("┘", title_style);
     }
-    
+
     fn measure(impl: *anyopaque, available: Rect) Rect {
         const self: *Self = @ptrCast(@alignCast(impl));
-        
-        const width = @max(
-            self.config.title.len + 10, // Title + icon + padding
+
+        const width = @max(self.config.title.len + 10, // Title + icon + padding
             @min(self.config.message.len + 4, available.width) // Message + padding, clamped to available
-        );
-        
+            );
+
         return Rect{
             .x = available.x,
             .y = available.y,
@@ -342,10 +341,10 @@ pub const NotificationComponent = struct {
             .height = 3, // Title line + message line + border
         };
     }
-    
+
     fn handleEvent(impl: *anyopaque, event: Event) anyerror!bool {
         const self: *Self = @ptrCast(@alignCast(impl));
-        
+
         // Allow dismissing notifications with Escape or Enter
         switch (event) {
             .key => |key_event| {
@@ -356,14 +355,14 @@ pub const NotificationComponent = struct {
             },
             else => {},
         }
-        
+
         return false;
     }
-    
+
     fn update(impl: *anyopaque, dt: f32) anyerror!void {
         const self: *Self = @ptrCast(@alignCast(impl));
         _ = dt;
-        
+
         // Check if notification should be auto-dismissed
         if (self.config.auto_dismiss) {
             const elapsed = @as(u32, @intCast(std.time.timestamp() - self.creation_time)) * 1000;
@@ -371,7 +370,7 @@ pub const NotificationComponent = struct {
                 self.state.visible = false;
             }
         }
-        
+
         self.state.markDirty(); // Keep animating
     }
 };
@@ -386,7 +385,6 @@ pub const NotificationConfig = struct {
 };
 
 /// Utility functions for common UI operations
-
 /// Create a styled text span
 pub fn createTextStyle(color: ?Color, bold: bool) Style {
     return Style{
@@ -399,23 +397,32 @@ pub fn createTextStyle(color: ?Color, bold: bool) Style {
 pub const BorderStyle = struct {
     color: Color,
     style: enum { single, double, rounded },
-    
+
     pub fn getChars(self: BorderStyle) BorderChars {
         return switch (self.style) {
             .single => BorderChars{
-                .top_left = "┌", .top_right = "┐",
-                .bottom_left = "└", .bottom_right = "┘",
-                .horizontal = "─", .vertical = "│",
+                .top_left = "┌",
+                .top_right = "┐",
+                .bottom_left = "└",
+                .bottom_right = "┘",
+                .horizontal = "─",
+                .vertical = "│",
             },
             .double => BorderChars{
-                .top_left = "╔", .top_right = "╗",
-                .bottom_left = "╚", .bottom_right = "╝",
-                .horizontal = "═", .vertical = "║",
+                .top_left = "╔",
+                .top_right = "╗",
+                .bottom_left = "╚",
+                .bottom_right = "╝",
+                .horizontal = "═",
+                .vertical = "║",
             },
             .rounded => BorderChars{
-                .top_left = "╭", .top_right = "╮",
-                .bottom_left = "╰", .bottom_right = "╯",
-                .horizontal = "─", .vertical = "│",
+                .top_left = "╭",
+                .top_right = "╮",
+                .bottom_left = "╰",
+                .bottom_right = "╯",
+                .horizontal = "─",
+                .vertical = "│",
             },
         };
     }
@@ -434,7 +441,7 @@ pub const BorderChars = struct {
 pub fn drawBorder(terminal: *Terminal, bounds: Rect, border: BorderStyle) !void {
     const chars = border.getChars();
     const style = Style{ .fg_color = border.color };
-    
+
     // Top border
     try terminal.moveTo(bounds.x, bounds.y);
     try terminal.print(chars.top_left, style);
@@ -443,7 +450,7 @@ pub fn drawBorder(terminal: *Terminal, bounds: Rect, border: BorderStyle) !void 
         try terminal.print(chars.horizontal, style);
     }
     try terminal.print(chars.top_right, style);
-    
+
     // Side borders
     var y: u32 = 1;
     while (y < bounds.height - 1) : (y += 1) {
@@ -452,7 +459,7 @@ pub fn drawBorder(terminal: *Terminal, bounds: Rect, border: BorderStyle) !void 
         try terminal.moveTo(bounds.x + @as(i32, @intCast(bounds.width)) - 1, bounds.y + @as(i32, @intCast(y)));
         try terminal.print(chars.vertical, style);
     }
-    
+
     // Bottom border
     try terminal.moveTo(bounds.x, bounds.y + @as(i32, @intCast(bounds.height)) - 1);
     try terminal.print(chars.bottom_left, style);
@@ -468,17 +475,14 @@ pub fn centerText(terminal: *Terminal, bounds: Rect, text: []const u8, style: ?S
     const text_width = text.len;
     const x_offset = if (bounds.width > text_width) (bounds.width - text_width) / 2 else 0;
     const y_offset = bounds.height / 2;
-    
-    try terminal.moveTo(
-        bounds.x + @as(i32, @intCast(x_offset)),
-        bounds.y + @as(i32, @intCast(y_offset))
-    );
+
+    try terminal.moveTo(bounds.x + @as(i32, @intCast(x_offset)), bounds.y + @as(i32, @intCast(y_offset)));
     try terminal.print(text, style);
 }
 
 test "ui context creation" {
     var ui_ctx = try UIContext.init(std.testing.allocator, .cli);
     defer ui_ctx.deinit();
-    
+
     try std.testing.expect(ui_ctx.mode == .cli);
 }

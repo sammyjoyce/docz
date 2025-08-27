@@ -25,7 +25,7 @@ pub fn init(allocator: std.mem.Allocator) !void {
     _ = allocator; // Reserved for future use
 }
 
-/// Deinitialize shared components  
+/// Deinitialize shared components
 pub fn deinit() void {
     // Reserved for future cleanup
 }

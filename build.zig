@@ -93,24 +93,20 @@ const ModuleBuilder = struct {
 
         const auth = self.createModule(BUILD_CONFIG.PATHS.AUTH_ZIG);
         auth.addImport("anthropic_shared", anthropic);
-        // Expose TUI as a shared module so feature UIs can import it without
-        // relative-path conflicts across modules.
-        const tui = self.createModule(BUILD_CONFIG.PATHS.TUI_ZIG);
-        
         // Terminal capability module aggregator shared across CLI and TUI
-        const term = self.createModule("src/term/mod.zig");
-        
+        // const term = self.createModule("src/term/mod.zig"); // Removed to avoid module conflicts
+
         // Wire shared imports to consumers
-        tui.addImport("term_shared", term);
+        // tui.addImport("term_shared", term); // Removed to avoid module conflicts
 
         const engine = self.createModule(BUILD_CONFIG.PATHS.ENGINE_ZIG);
         engine.addImport("anthropic_shared", anthropic);
         engine.addImport("tools_shared", tools);
         engine.addImport("auth_shared", auth);
-        
+
         // CLI depends on terminal capabilities
         const cli = self.createModule(BUILD_CONFIG.PATHS.CLI_ZIG);
-        cli.addImport("term_shared", term);
+        // cli.addImport("term_shared", term); // Removed to avoid module conflicts
 
         return .{
             .anthropic = anthropic,
@@ -136,11 +132,10 @@ const ModuleBuilder = struct {
     }
 
     fn createRootModule(self: ModuleBuilder, config: ConfigModules, shared: SharedModules, agent: AgentModules) *std.Build.Module {
-        const root = self.ctx.b.createModule(.{
+        const root = self.ctx.b.addModule("root", .{
             .target = self.ctx.target,
             .optimize = self.ctx.optimize,
             .root_source_file = self.ctx.b.path(BUILD_CONFIG.PATHS.MAIN_ZIG),
-            .strip = self.ctx.b.option(bool, "strip", "Strip the binary"),
         });
 
         self.addConfigImports(root, config);
@@ -162,10 +157,17 @@ const ModuleBuilder = struct {
 
     // Helper functions
     fn createModule(self: ModuleBuilder, path: []const u8) *std.Build.Module {
-        return self.ctx.b.createModule(.{
-            .root_source_file = self.ctx.b.path(path),
+        // Generate a module name from the path
+        const name = std.fs.path.basename(path);
+        const module_name = if (std.mem.lastIndexOf(u8, name, ".zig")) |ext_pos|
+            name[0..ext_pos]
+        else
+            name;
+
+        return self.ctx.b.addModule(module_name, .{
             .target = self.ctx.target,
             .optimize = self.ctx.optimize,
+            .root_source_file = self.ctx.b.path(path),
         });
     }
 
@@ -197,11 +199,10 @@ const ModuleBuilder = struct {
         shared: SharedModules,
         agent: AgentModules,
     ) *std.Build.Module {
-        const root = self.ctx.b.createModule(.{
+        const root = self.ctx.b.addModule("root_stripped", .{
             .target = self.ctx.target,
             .optimize = self.ctx.optimize,
             .root_source_file = self.ctx.b.path(BUILD_CONFIG.PATHS.MAIN_ZIG),
-            .strip = true,
         });
 
         self.addConfigImports(root, config);

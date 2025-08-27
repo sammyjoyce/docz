@@ -1,8 +1,8 @@
 //! Advanced Progress Component with Full Terminal Feature Integration
-//! 
+//!
 //! This component demonstrates comprehensive usage of terminal capabilities including:
 //! - Kitty Graphics Protocol for real-time charts
-//! - iTerm2 integration (badges, notifications, marks) 
+//! - iTerm2 integration (badges, notifications, marks)
 //! - System notifications with OSC 9
 //! - Shell integration with OSC 133 (FinalTerm)
 //! - Advanced clipboard integration with structured data
@@ -40,7 +40,7 @@ pub const ProgressMode = enum {
     iterm2_integrated,
     /// FinalTerm with shell integration markers
     finalterm_integrated,
-    /// Rich Unicode with animations and gradients  
+    /// Rich Unicode with animations and gradients
     unicode_rich,
     /// Basic ASCII with color support
     ascii_enhanced,
@@ -79,30 +79,30 @@ pub const AdvancedProgressConfig = struct {
 pub const AdvancedProgress = struct {
     allocator: Allocator,
     config: AdvancedProgressConfig,
-    
+
     // Terminal interface
     terminal: *unified.Terminal,
     capabilities: caps_mod.TermCaps,
     mode: ProgressMode,
-    
+
     // Progress tracking
     current_progress: f32,
     total_items: ?u64,
     completed_items: u64,
     start_time: i64,
     last_update: i64,
-    
+
     // Data history and visualization
     history: std.ArrayList(ProgressDataPoint),
     chart_buffer: ?[]u8,
     chart_image_id: ?u32,
-    
+
     // Advanced features state
     shell_job_id: ?[]const u8,
     last_notification_threshold: f32,
     iterm2_badge_set: bool,
     clipboard_data_formatted: ?[]u8,
-    
+
     // Animation and rendering
     animation_frame: u32,
     render_buffer: std.ArrayList(u8),
@@ -110,7 +110,7 @@ pub const AdvancedProgress = struct {
     pub fn init(allocator: Allocator, terminal: *unified.Terminal, config: AdvancedProgressConfig) !AdvancedProgress {
         const capabilities = terminal.getCapabilities();
         const mode = detectBestMode(capabilities);
-        
+
         return AdvancedProgress{
             .allocator = allocator,
             .config = config,
@@ -133,7 +133,7 @@ pub const AdvancedProgress = struct {
             .render_buffer = std.ArrayList(u8).init(allocator),
         };
     }
-    
+
     pub fn deinit(self: *AdvancedProgress) void {
         // Clean up graphics resources
         if (self.chart_image_id) |image_id| {
@@ -141,13 +141,13 @@ pub const AdvancedProgress = struct {
                 kitty.deleteImage(self.render_buffer.writer(), self.capabilities, image_id) catch {};
             }
         }
-        
+
         // Clean up shell integration
         if (self.config.enable_shell_integration and self.shell_job_id != null) {
             finalterm.endCommand(self.render_buffer.writer(), self.capabilities, 0) catch {};
             self.terminal.flush() catch {};
         }
-        
+
         // Clean up allocations
         if (self.chart_buffer) |buffer| {
             self.allocator.free(buffer);
@@ -158,7 +158,7 @@ pub const AdvancedProgress = struct {
         if (self.shell_job_id) |job_id| {
             self.allocator.free(job_id);
         }
-        
+
         self.history.deinit();
         self.render_buffer.deinit();
     }
@@ -168,24 +168,24 @@ pub const AdvancedProgress = struct {
         self.total_items = total_items;
         self.start_time = std.time.timestamp();
         self.last_update = self.start_time;
-        
+
         // Initialize shell integration
-        if (self.config.enable_shell_integration and 
-           (self.capabilities.supportsFinalTermOsc133 or self.capabilities.supportsITerm2Osc1337)) {
-            
+        if (self.config.enable_shell_integration and
+            (self.capabilities.supportsFinalTermOsc133 or self.capabilities.supportsITerm2Osc1337))
+        {
             self.render_buffer.clearRetainingCapacity();
             const writer = self.render_buffer.writer();
-            
+
             // Generate unique job ID
             const job_id = try std.fmt.allocPrint(self.allocator, "progress_{d}", .{std.time.timestamp()});
             self.shell_job_id = job_id;
-            
+
             // Start command marker (using placeholder implementation)
             try finalterm.startCommand(writer, self.capabilities, job_id);
             try self.terminal.print(self.render_buffer.items, null);
             self.render_buffer.clearRetainingCapacity();
         }
-        
+
         // Initialize iTerm2 integration
         if (self.mode == .iterm2_integrated and self.capabilities.supportsITerm2Osc1337) {
             const writer = self.render_buffer.writer();
@@ -194,7 +194,7 @@ pub const AdvancedProgress = struct {
             self.render_buffer.clearRetainingCapacity();
             self.iterm2_badge_set = true;
         }
-        
+
         // Initialize graphics if supported
         if (self.mode == .kitty_enhanced and self.config.show_chart) {
             try self.initializeChart();
@@ -205,22 +205,22 @@ pub const AdvancedProgress = struct {
     pub fn update(self: *AdvancedProgress, progress: f32, completed_items: ?u64, custom_data: ?[]const u8) !void {
         const now = std.time.timestamp();
         self.current_progress = std.math.clamp(progress, 0.0, 1.0);
-        
+
         if (completed_items) |items| {
             self.completed_items = items;
         }
-        
+
         // Calculate rate
         const elapsed = now - self.start_time;
         const rate = if (elapsed > 0) @as(f32, @floatFromInt(self.completed_items)) / @as(f32, @floatFromInt(elapsed)) else 0.0;
-        
+
         // Calculate ETA
         const eta = if (self.current_progress > 0.01 and self.total_items != null) blk: {
             const remaining_items = self.total_items.? - self.completed_items;
             const eta_seconds = if (rate > 0.0) @as(i64, @intFromFloat(@as(f32, @floatFromInt(remaining_items)) / rate)) else null;
             break :blk eta_seconds;
         } else null;
-        
+
         // Add to history for visualization
         try self.history.append(ProgressDataPoint{
             .timestamp = now,
@@ -230,37 +230,37 @@ pub const AdvancedProgress = struct {
             .memory_usage = if (self.config.show_memory) self.getCurrentMemoryUsage() else null,
             .custom_data = custom_data,
         });
-        
+
         // Limit history size
         if (self.history.items.len > self.config.chart_history_size) {
             _ = self.history.orderedRemove(0);
         }
-        
+
         // Handle notifications
         if (self.config.enable_notifications) {
             try self.handleProgressNotifications();
         }
-        
+
         // Update iTerm2 badge
         if (self.iterm2_badge_set and self.capabilities.supportsITerm2Osc1337) {
             const badge_text = try std.fmt.allocPrint(self.allocator, "🔄 {d:.0}%", .{self.current_progress * 100});
             defer self.allocator.free(badge_text);
-            
+
             self.render_buffer.clearRetainingCapacity();
             try iterm2.setBadge(self.render_buffer.writer(), self.capabilities, badge_text);
             try self.terminal.print(self.render_buffer.items, null);
         }
-        
+
         // Update clipboard data
         if (self.config.enable_clipboard) {
             try self.updateClipboardData();
         }
-        
+
         // Update chart graphics
         if (self.config.show_chart and (self.mode == .kitty_enhanced or self.mode == .sixel_graphics)) {
             try self.updateChart();
         }
-        
+
         self.last_update = now;
     }
 
@@ -269,34 +269,34 @@ pub const AdvancedProgress = struct {
         if (!force_redraw and (std.time.timestamp() - self.last_update) < @as(i64, @intCast(self.config.update_interval_ms / 1000))) {
             return; // Skip render if too soon
         }
-        
+
         self.animation_frame +%= 1;
         self.render_buffer.clearRetainingCapacity();
         const writer = self.render_buffer.writer();
-        
+
         // Synchronized output for flicker-free rendering
         if (self.capabilities.supportsSynchronizedOutput) {
             try writer.writeAll("\x1b[?2026h"); // Begin sync
         }
-        
+
         // Clear line and render based on mode
         try writer.writeAll("\r\x1b[K");
-        
+
         switch (self.mode) {
             .kitty_enhanced => try self.renderKittyEnhanced(writer),
-            .sixel_graphics => try self.renderSixelGraphics(writer), 
+            .sixel_graphics => try self.renderSixelGraphics(writer),
             .iterm2_integrated => try self.renderITerm2Integrated(writer),
             .finalterm_integrated => try self.renderFinalTermIntegrated(writer),
             .unicode_rich => try self.renderUnicodeRich(writer),
             .ascii_enhanced => try self.renderASCIIEnhanced(writer),
             .text_only => try self.renderTextOnly(writer),
         }
-        
+
         // End synchronized output
         if (self.capabilities.supportsSynchronizedOutput) {
             try writer.writeAll("\x1b[?2026l"); // End sync
         }
-        
+
         // Send to terminal
         try self.terminal.print(self.render_buffer.items, null);
         self.terminal.flush() catch {};
@@ -305,24 +305,24 @@ pub const AdvancedProgress = struct {
     /// Complete the progress with cleanup and final notifications
     pub fn finish(self: *AdvancedProgress, success: bool, final_message: ?[]const u8) !void {
         self.current_progress = 1.0;
-        
+
         // Final render
         try self.render(true);
-        
+
         // Final notifications
         if (self.config.enable_notifications) {
             const message = final_message orelse if (success) "Task completed successfully!" else "Task failed";
             const level = if (success) unified.NotificationLevel.success else unified.NotificationLevel.@"error";
-            
+
             // System notification
             if (self.capabilities.supportsNotifyOsc9) {
                 try self.terminal.notification(level, "Progress Complete", message);
             }
-            
+
             // Terminal notification
             try self.terminal.notification(level, "Progress Complete", message);
         }
-        
+
         // Final iTerm2 badge
         if (self.iterm2_badge_set) {
             const badge = if (success) "✅ Done" else "❌ Failed";
@@ -330,12 +330,12 @@ pub const AdvancedProgress = struct {
             try iterm2.setBadge(self.render_buffer.writer(), self.capabilities, badge);
             try self.terminal.print(self.render_buffer.items, null);
         }
-        
+
         // Final clipboard data
         if (self.config.enable_clipboard) {
             try self.copyFinalDataToClipboard(success, final_message);
         }
-        
+
         // Shell integration completion
         if (self.config.enable_shell_integration and self.shell_job_id != null) {
             self.render_buffer.clearRetainingCapacity();
@@ -343,7 +343,7 @@ pub const AdvancedProgress = struct {
             try finalterm.endCommand(self.render_buffer.writer(), self.capabilities, exit_code);
             try self.terminal.print(self.render_buffer.items, null);
         }
-        
+
         try self.terminal.print("\n", null);
     }
 
@@ -370,7 +370,7 @@ pub const AdvancedProgress = struct {
 
     fn initializeChart(self: *AdvancedProgress) !void {
         if (self.mode != .kitty_enhanced) return;
-        
+
         // Create chart buffer
         const chart_size = self.config.width * self.config.height * 4; // RGBA
         self.chart_buffer = try self.allocator.alloc(u8, chart_size);
@@ -379,10 +379,10 @@ pub const AdvancedProgress = struct {
 
     fn updateChart(self: *AdvancedProgress) !void {
         if (self.chart_buffer == null or self.history.items.len < 2) return;
-        
+
         // Generate chart image data from history
         self.generateChartImageData();
-        
+
         // Upload to terminal via graphics protocol
         switch (self.mode) {
             .kitty_enhanced => try self.uploadKittyChart(),
@@ -393,16 +393,16 @@ pub const AdvancedProgress = struct {
 
     fn generateChartImageData(self: *AdvancedProgress) void {
         if (self.chart_buffer == null) return;
-        
+
         const width = self.config.width;
         const height = self.config.height;
         const buffer = self.chart_buffer.?;
-        
+
         // Clear to background color
         @memset(buffer, 0);
-        
+
         if (self.history.items.len < 2) return;
-        
+
         // Find min/max values for scaling
         var min_progress: f32 = 1.0;
         var max_progress: f32 = 0.0;
@@ -410,41 +410,41 @@ pub const AdvancedProgress = struct {
             min_progress = @min(min_progress, point.progress);
             max_progress = @max(max_progress, point.progress);
         }
-        
+
         const range = max_progress - min_progress;
         if (range <= 0) return;
-        
+
         // Draw progress line chart
         for (0..self.history.items.len - 1) |i| {
             if (i >= width - 1) break;
-            
+
             const curr = self.history.items[i];
             const next = self.history.items[i + 1];
-            
+
             const x1 = @as(u32, @intCast(i));
             const y1 = height - 1 - @as(u32, @intFromFloat(((curr.progress - min_progress) / range) * @as(f32, @floatFromInt(height - 1))));
             const x2 = @as(u32, @intCast(i + 1));
             const y2 = height - 1 - @as(u32, @intFromFloat(((next.progress - min_progress) / range) * @as(f32, @floatFromInt(height - 1))));
-            
+
             // Draw line between points (simplified Bresenham)
             self.drawLine(x1, y1, x2, y2, [4]u8{ 50, 205, 50, 255 }); // Green
         }
-        
-        // Draw rate data if available  
+
+        // Draw rate data if available
         if (self.config.show_rate) {
             var max_rate: f32 = 0;
             for (self.history.items) |point| {
                 max_rate = @max(max_rate, point.rate);
             }
-            
+
             if (max_rate > 0) {
                 for (0..self.history.items.len - 1) |i| {
                     if (i >= width - 1) break;
-                    
+
                     const point = self.history.items[i];
                     const x = @as(u32, @intCast(i));
                     const y = height - 1 - @as(u32, @intFromFloat((point.rate / max_rate) * @as(f32, @floatFromInt(height - 1))));
-                    
+
                     self.setPixel(x, y, [4]u8{ 255, 127, 14, 255 }); // Orange for rate
                 }
             }
@@ -453,17 +453,17 @@ pub const AdvancedProgress = struct {
 
     fn drawLine(self: *AdvancedProgress, x1: u32, y1: u32, x2: u32, y2: u32, color: [4]u8) void {
         _ = self.chart_buffer orelse return;
-        
+
         // Simple line drawing (could be improved with proper Bresenham)
         const dx = @as(i32, @intCast(x2)) - @as(i32, @intCast(x1));
         const dy = @as(i32, @intCast(y2)) - @as(i32, @intCast(y1));
         const steps = @max(@abs(dx), @abs(dy));
-        
+
         if (steps == 0) {
             self.setPixel(x1, y1, color);
             return;
         }
-        
+
         for (0..@as(u32, @intCast(steps))) |step| {
             const x = x1 + @as(u32, @intCast((@as(i32, @intCast(step)) * dx) / steps));
             const y = y1 + @as(u32, @intCast((@as(i32, @intCast(step)) * dy) / steps));
@@ -475,13 +475,13 @@ pub const AdvancedProgress = struct {
         const buffer = self.chart_buffer orelse return;
         const width = self.config.width;
         const height = self.config.height;
-        
+
         if (x >= width or y >= height) return;
-        
+
         const offset = (y * width + x) * 4;
         if (offset + 3 < buffer.len) {
-            buffer[offset] = color[0];     // R
-            buffer[offset + 1] = color[1]; // G  
+            buffer[offset] = color[0]; // R
+            buffer[offset + 1] = color[1]; // G
             buffer[offset + 2] = color[2]; // B
             buffer[offset + 3] = color[3]; // A
         }
@@ -489,18 +489,18 @@ pub const AdvancedProgress = struct {
 
     fn uploadKittyChart(self: *AdvancedProgress) !void {
         const buffer = self.chart_buffer orelse return;
-        
+
         // Encode image data as base64
         const encoded_size = std.base64.Encoder.calcSize(buffer.len);
         const encoded_buffer = try self.allocator.alloc(u8, encoded_size);
         defer self.allocator.free(encoded_buffer);
-        
+
         _ = std.base64.standard.Encoder.encode(encoded_buffer, buffer);
-        
+
         // Upload via Kitty graphics protocol
         self.render_buffer.clearRetainingCapacity();
         const writer = self.render_buffer.writer();
-        
+
         if (self.chart_image_id == null) {
             // Create new image
             self.chart_image_id = 1; // Simple ID for demo
@@ -521,7 +521,7 @@ pub const AdvancedProgress = struct {
                 .data = encoded_buffer,
             });
         }
-        
+
         try self.terminal.print(self.render_buffer.items, null);
     }
 
@@ -533,17 +533,17 @@ pub const AdvancedProgress = struct {
 
     fn handleProgressNotifications(self: *AdvancedProgress) !void {
         const thresholds = [_]f32{ 0.25, 0.50, 0.75, 1.0 };
-        
+
         for (thresholds) |threshold| {
             if (self.current_progress >= threshold and self.last_notification_threshold < threshold) {
                 const percentage = @as(u32, @intFromFloat(threshold * 100));
                 const message = try std.fmt.allocPrint(self.allocator, "{s} - {d}% complete", .{ self.config.label, percentage });
                 defer self.allocator.free(message);
-                
+
                 if (self.capabilities.supportsNotifyOsc9) {
                     try self.terminal.notification(.info, "Progress Update", message);
                 }
-                
+
                 self.last_notification_threshold = threshold;
                 break;
             }
@@ -554,11 +554,11 @@ pub const AdvancedProgress = struct {
         if (self.clipboard_data_formatted) |data| {
             self.allocator.free(data);
         }
-        
+
         // Format comprehensive progress data
         var buffer = std.ArrayList(u8).init(self.allocator);
         defer buffer.deinit();
-        
+
         const writer = buffer.writer();
         try writer.print("Progress Report: {s}\n", .{self.config.label});
         try writer.print("Status: {d:.1}% complete\n", .{self.current_progress * 100});
@@ -567,7 +567,7 @@ pub const AdvancedProgress = struct {
             try writer.print(" / {d}", .{total});
         }
         try writer.writeAll("\n");
-        
+
         if (self.history.items.len > 0) {
             const latest = self.history.items[self.history.items.len - 1];
             try writer.print("Rate: {d:.2} items/sec\n", .{latest.rate});
@@ -575,12 +575,12 @@ pub const AdvancedProgress = struct {
                 try writer.print("ETA: {d} seconds\n", .{eta});
             }
         }
-        
+
         const elapsed = std.time.timestamp() - self.start_time;
         try writer.print("Elapsed: {d} seconds\n", .{elapsed});
-        
+
         self.clipboard_data_formatted = try self.allocator.dupe(u8, buffer.items);
-        
+
         // Copy to clipboard
         try self.terminal.copyToClipboard(self.clipboard_data_formatted.?);
     }
@@ -588,23 +588,23 @@ pub const AdvancedProgress = struct {
     fn copyFinalDataToClipboard(self: *AdvancedProgress, success: bool, message: ?[]const u8) !void {
         var buffer = std.ArrayList(u8).init(self.allocator);
         defer buffer.deinit();
-        
+
         const writer = buffer.writer();
         try writer.print("=== Final Progress Report: {s} ===\n", .{self.config.label});
         try writer.print("Status: {s}\n", .{if (success) "SUCCESS" else "FAILED"});
         if (message) |msg| {
             try writer.print("Message: {s}\n", .{msg});
         }
-        
+
         try writer.print("Final Progress: {d:.1}%\n", .{self.current_progress * 100});
         try writer.print("Total Items: {d}\n", .{self.completed_items});
-        
+
         const total_time = std.time.timestamp() - self.start_time;
         try writer.print("Total Time: {d} seconds\n", .{total_time});
-        
+
         const avg_rate = if (total_time > 0) @as(f32, @floatFromInt(self.completed_items)) / @as(f32, @floatFromInt(total_time)) else 0.0;
         try writer.print("Average Rate: {d:.2} items/sec\n", .{avg_rate});
-        
+
         try self.terminal.copyToClipboard(buffer.items);
     }
 
@@ -620,29 +620,29 @@ pub const AdvancedProgress = struct {
     fn renderKittyEnhanced(self: *AdvancedProgress, writer: anytype) !void {
         // Enhanced label with emoji
         try writer.print("🚀 {s}: ", .{self.config.label});
-        
+
         // Display inline chart if available
         if (self.chart_image_id != null and self.config.show_chart) {
             // Chart is already uploaded, just position it
             try kitty.displayImage(writer, self.capabilities, self.chart_image_id.?, 0, 0);
             try writer.writeAll(" ");
         }
-        
+
         // Enhanced progress bar
         try self.renderProgressBar(writer, .unicode_blocks);
-        
+
         // Metadata
         try self.renderMetadata(writer);
     }
 
     fn renderSixelGraphics(self: *AdvancedProgress, writer: anytype) !void {
         try writer.print("📊 {s}: ", .{self.config.label});
-        
+
         // Sixel chart would be rendered here
         if (self.config.show_chart) {
             try writer.writeAll("[SIXEL CHART] ");
         }
-        
+
         try self.renderProgressBar(writer, .unicode_blocks);
         try self.renderMetadata(writer);
     }
@@ -652,11 +652,11 @@ pub const AdvancedProgress = struct {
         if (self.capabilities.supportsITerm2Osc1337) {
             try iterm2.setMark(writer, self.capabilities);
         }
-        
+
         try writer.print("🍎 {s}: ", .{self.config.label});
         try self.renderProgressBar(writer, .unicode_blocks);
         try self.renderMetadata(writer);
-        
+
         // Additional iTerm2 integration could include:
         // - Current directory reporting
         // - Application name setting
@@ -668,7 +668,7 @@ pub const AdvancedProgress = struct {
         if (self.shell_job_id) |job_id| {
             try finalterm.commandOutput(writer, self.capabilities, job_id);
         }
-        
+
         try writer.print("🖥️  {s}: ", .{self.config.label});
         try self.renderProgressBar(writer, .unicode_blocks);
         try self.renderMetadata(writer);
@@ -678,7 +678,7 @@ pub const AdvancedProgress = struct {
         try writer.print("✨ {s}: ", .{self.config.label});
         try self.renderProgressBar(writer, .gradient_blocks);
         try self.renderMetadata(writer);
-        
+
         // Add sparkline if history available
         if (self.history.items.len > 1) {
             try writer.writeAll(" ");
@@ -694,7 +694,7 @@ pub const AdvancedProgress = struct {
 
     fn renderTextOnly(self: *AdvancedProgress, writer: anytype) !void {
         try writer.print("{s}: {d:.1}%", .{ self.config.label, self.current_progress * 100 });
-        
+
         if (self.config.show_eta and self.history.items.len > 0) {
             const latest = self.history.items[self.history.items.len - 1];
             if (latest.eta_seconds) |eta| {
@@ -713,7 +713,7 @@ pub const AdvancedProgress = struct {
 
     fn renderProgressBar(self: *AdvancedProgress, writer: anytype, bar_type: ProgressBarType) !void {
         const filled_chars = @as(u32, @intFromFloat(self.current_progress * @as(f32, @floatFromInt(self.config.width))));
-        
+
         switch (bar_type) {
             .ascii_art => {
                 try writer.writeAll("[");
@@ -750,12 +750,12 @@ pub const AdvancedProgress = struct {
 
     fn renderMetadata(self: *AdvancedProgress, writer: anytype) !void {
         try writer.print(" {d:.1}%", .{self.current_progress * 100});
-        
+
         if (self.config.show_rate and self.history.items.len > 0) {
             const latest = self.history.items[self.history.items.len - 1];
             try writer.print(" ({d:.2}/s)", .{latest.rate});
         }
-        
+
         if (self.config.show_eta and self.history.items.len > 0) {
             const latest = self.history.items[self.history.items.len - 1];
             if (latest.eta_seconds) |eta| {
@@ -768,7 +768,7 @@ pub const AdvancedProgress = struct {
         const sparkline_chars = [_][]const u8{ "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█" };
         const data_points = @min(20, self.history.items.len);
         const start_idx = if (self.history.items.len > 20) self.history.items.len - 20 else 0;
-        
+
         try writer.writeAll("[");
         for (0..data_points) |i| {
             const data_idx = start_idx + i;
@@ -785,28 +785,34 @@ fn hsvToRgb(h: f32, s: f32, v: f32) [3]u8 {
     const c = v * s;
     const x = c * (1.0 - @abs(@mod(h / 60.0, 2.0) - 1.0));
     const m = v - c;
-    
+
     var r: f32 = 0;
     var g: f32 = 0;
     var b: f32 = 0;
-    
+
     if (h >= 0.0 and h < 60.0) {
-        r = c; g = x;
+        r = c;
+        g = x;
     } else if (h >= 60.0 and h < 120.0) {
-        r = x; g = c;
+        r = x;
+        g = c;
     } else if (h >= 120.0 and h < 180.0) {
-        g = c; b = x;
+        g = c;
+        b = x;
     } else if (h >= 180.0 and h < 240.0) {
-        g = x; b = c;
+        g = x;
+        b = c;
     } else if (h >= 240.0 and h < 300.0) {
-        r = x; b = c;
+        r = x;
+        b = c;
     } else {
-        r = c; b = x;
+        r = c;
+        b = x;
     }
-    
+
     return [3]u8{
         @intFromFloat((r + m) * 255.0),
-        @intFromFloat((g + m) * 255.0),  
+        @intFromFloat((g + m) * 255.0),
         @intFromFloat((b + m) * 255.0),
     };
 }
@@ -828,10 +834,10 @@ const kitty = struct {
         _ = caps;
         const format_code = switch (transmission.format) {
             .rgba => "f=32",
-            .rgb => "f=24", 
+            .rgb => "f=24",
             .png => "f=100",
         };
-        
+
         try writer.print("\x1b_G{s},i={d},s={d},v={d};{s}\x1b\\", .{
             format_code,
             transmission.image_id,
@@ -840,12 +846,12 @@ const kitty = struct {
             transmission.data,
         });
     }
-    
+
     fn displayImage(writer: anytype, caps: caps_mod.TermCaps, image_id: u32, x: u32, y: u32) !void {
         _ = caps;
         try writer.print("\x1b_Gi={d},c={d},r={d}\x1b\\", .{ image_id, x, y });
     }
-    
+
     fn deleteImage(writer: anytype, caps: caps_mod.TermCaps, image_id: u32) !void {
         _ = caps;
         try writer.print("\x1b_Gd=i,i={d}\x1b\\", .{image_id});
@@ -862,7 +868,7 @@ const iterm2 = struct {
             try writer.print("\x1b]1337;SetBadgeFormat={s}\x07", .{buffer[0..encoded]});
         }
     }
-    
+
     fn setMark(writer: anytype, caps: caps_mod.TermCaps) !void {
         _ = caps;
         try writer.writeAll("\x1b]1337;SetMark\x07");
@@ -874,12 +880,12 @@ const finalterm = struct {
         _ = caps;
         try writer.print("\x1b]133;C;{s}\x07", .{command_id});
     }
-    
+
     fn endCommand(writer: anytype, caps: caps_mod.TermCaps, exit_code: u8) !void {
         _ = caps;
         try writer.print("\x1b]133;D;{d}\x07", .{exit_code});
     }
-    
+
     fn commandOutput(writer: anytype, caps: caps_mod.TermCaps, command_id: []const u8) !void {
         _ = caps;
         try writer.print("\x1b]133;A;{s}\x07", .{command_id});

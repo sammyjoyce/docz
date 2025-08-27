@@ -4,20 +4,20 @@ const passthrough = @import("passthrough.zig");
 
 pub const TermCaps = caps_mod.TermCaps;
 
-fn buildCsiMode(buf: []u8, dec: bool, code: u32, set: bool) []const u8 {
+fn buildCsiMode(buf: []u8, dec: bool, code: u32, set: bool) ![]const u8 {
     // Formats: CSI [ ? ] <code> [ h|l ]
     var fbs = std.io.fixedBufferStream(buf);
     var w = fbs.writer();
-    _ = w.write("\x1b[") catch unreachable;
-    if (dec) _ = w.write("?") catch unreachable;
-    _ = std.fmt.format(w, "{d}", .{code}) catch unreachable;
-    _ = w.write(if (set) "h" else "l") catch unreachable;
+    try w.write("\x1b[");
+    if (dec) try w.write("?");
+    try std.fmt.format(w, "{d}", .{code});
+    try w.write(if (set) "h" else "l");
     return fbs.getWritten();
 }
 
 inline fn writeMode(writer: anytype, dec: bool, code: u32, set: bool, caps: TermCaps) !void {
     var tmp: [32]u8 = undefined;
-    const seq = buildCsiMode(&tmp, dec, code, set);
+    const seq = try buildCsiMode(&tmp, dec, code, set);
     try passthrough.writeWithPassthrough(writer, caps, seq);
 }
 

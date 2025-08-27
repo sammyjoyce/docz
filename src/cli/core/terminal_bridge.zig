@@ -1,6 +1,6 @@
 //! Terminal Bridge for CLI Components
 //!
-//! This module provides a unified interface between CLI components and the 
+//! This module provides a unified interface between CLI components and the
 //! advanced terminal capabilities in @src/term. It serves as a bridge that:
 //! - Caches terminal capabilities to avoid repeated detection
 //! - Provides progressive enhancement strategies
@@ -8,16 +8,17 @@
 //! - Manages buffered output for performance
 
 const std = @import("std");
-const unified = @import("../../term/unified.zig");
+const term_shared = @import("../../term/mod.zig");
+const unified = term_shared.unified;
 
 /// Rendering strategies based on terminal capabilities
 pub const RenderStrategy = enum {
-    full_graphics,     // Kitty graphics with full capabilities
-    sixel_graphics,    // Sixel graphics support
-    rich_text,         // Truecolor with Unicode
-    enhanced_ansi,     // 256 colors with basic Unicode  
-    basic_ascii,       // 16 colors, ASCII only
-    fallback,          // Minimal ANSI support
+    full_graphics, // Kitty graphics with full capabilities
+    sixel_graphics, // Sixel graphics support
+    rich_text, // Truecolor with Unicode
+    enhanced_ansi, // 256 colors with basic Unicode
+    basic_ascii, // 16 colors, ASCII only
+    fallback, // Minimal ANSI support
 
     pub fn fromCapabilities(caps: unified.TermCaps) RenderStrategy {
         if (caps.supportsKittyGraphics) return .full_graphics;
@@ -70,11 +71,11 @@ pub const TerminalBridge = struct {
     terminal: unified.Terminal,
     dashboard_terminal: ?unified.DashboardTerminal,
     config: Config,
-    
+
     // Cached capabilities and strategy
     capabilities: unified.TermCaps,
     render_strategy: RenderStrategy,
-    
+
     // Performance optimization
     render_buffer: std.ArrayList(u8),
     last_capabilities_check: i64,
@@ -83,11 +84,12 @@ pub const TerminalBridge = struct {
     pub fn init(allocator: std.mem.Allocator, config: Config) !Self {
         var terminal = try unified.Terminal.init(allocator);
         const capabilities = terminal.getCapabilities();
-        
+
         // Initialize dashboard terminal if graphics are supported
         var dashboard_terminal: ?unified.DashboardTerminal = null;
-        if (config.enable_graphics and 
-           (capabilities.supportsKittyGraphics or capabilities.supportsSixel)) {
+        if (config.enable_graphics and
+            (capabilities.supportsKittyGraphics or capabilities.supportsSixel))
+        {
             dashboard_terminal = try unified.DashboardTerminal.init(allocator);
         }
 
@@ -151,11 +153,11 @@ pub const TerminalBridge = struct {
     /// Print text with automatic style adaptation
     pub fn print(self: *Self, text: []const u8, style: ?unified.Style) !void {
         const adapted_style = if (style) |s| self.adaptStyle(s) else null;
-        
+
         if (self.config.enable_buffering) {
             self.render_buffer.clearRetainingCapacity();
             const buffer_writer = self.render_buffer.writer();
-            
+
             if (adapted_style) |s| {
                 try s.apply(buffer_writer, self.capabilities);
                 try buffer_writer.writeAll(text);
@@ -163,7 +165,7 @@ pub const TerminalBridge = struct {
             } else {
                 try buffer_writer.writeAll(text);
             }
-            
+
             try self.terminal.writer.writeAll(self.render_buffer.items);
         } else {
             try self.terminal.print(text, adapted_style);
@@ -200,14 +202,14 @@ pub const TerminalBridge = struct {
     /// Smart notification that adapts to terminal capabilities
     pub fn notify(self: *Self, level: unified.NotificationLevel, title: []const u8, message: []const u8) !void {
         if (!self.config.enable_notifications) return;
-        
+
         try self.terminal.notification(level, title, message);
     }
 
     /// Copy text to clipboard if supported
     pub fn copyToClipboard(self: *Self, text: []const u8) !void {
         if (!self.config.enable_clipboard) return;
-        
+
         try self.terminal.copyToClipboard(text);
     }
 
@@ -225,7 +227,7 @@ pub const TerminalBridge = struct {
             try self.printf("{d}x{d} ", .{ image.width, image.height }, null);
             try self.print(switch (image.format) {
                 .png => "PNG",
-                .jpeg => "JPEG", 
+                .jpeg => "JPEG",
                 .gif => "GIF",
                 .rgb24 => "RGB",
                 .rgba32 => "RGBA",
@@ -233,7 +235,7 @@ pub const TerminalBridge = struct {
             try self.print("]", .{ .fg_color = unified.Colors.CYAN });
             return;
         }
-        
+
         try self.terminal.renderImage(image, pos, max_size);
     }
 
@@ -253,7 +255,7 @@ pub const TerminalBridge = struct {
     /// Adapt a style to the current terminal capabilities
     fn adaptStyle(self: *Self, style: unified.Style) unified.Style {
         var adapted = style;
-        
+
         // Adapt colors based on capability
         if (adapted.fg_color) |fg| {
             adapted.fg_color = fg.adapt(self.capabilities);
@@ -277,7 +279,7 @@ pub const TerminalBridge = struct {
         buffer_flushes: u64 = 0,
         capability_checks: u64 = 0,
         total_render_time_ns: u64 = 0,
-        
+
         pub fn averageRenderTime(self: PerformanceMetrics) f64 {
             if (self.render_calls == 0) return 0.0;
             return @as(f64, @floatFromInt(self.total_render_time_ns)) / @as(f64, @floatFromInt(self.render_calls)) / 1_000_000.0;
@@ -311,7 +313,7 @@ pub const RenderContext = struct {
         const elapsed = self.start_time.read();
         TerminalBridge.global_metrics.render_calls += 1;
         TerminalBridge.global_metrics.total_render_time_ns += elapsed;
-        
+
         self.scoped_context.deinit();
     }
 
@@ -375,7 +377,7 @@ test "terminal bridge initialization" {
 
     const caps = bridge.getCapabilities();
     const strategy = bridge.getRenderStrategy();
-    
+
     // Should have some basic capabilities
     _ = caps;
     _ = strategy;

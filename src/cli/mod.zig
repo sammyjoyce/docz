@@ -7,7 +7,7 @@ pub const core = struct {
     pub const context = @import("core/context.zig");
     pub const router = @import("core/router.zig");
     pub const types = @import("core/types.zig");
-    
+
     // Legacy parsers for compatibility
     pub const parser = @import("core/parser.zig");
     pub const enhanced_parser = @import("core/enhanced_parser.zig");

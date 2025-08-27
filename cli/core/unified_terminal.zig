@@ -26,7 +26,7 @@ pub const UnifiedTerminal = struct {
     pub fn init(allocator: Allocator) !Self {
         const terminal = try Terminal.init(allocator);
         const terminal_caps = caps.getTermCaps();
-        
+
         // Initialize graphics manager if supported
         var graphics_mgr: ?*GraphicsManager = null;
         if (terminal_caps.supportsKittyGraphics or terminal_caps.supportsSixel) {
@@ -107,7 +107,7 @@ pub const UnifiedTerminal = struct {
         }
     }
 
-    /// Set background color with automatic fallback  
+    /// Set background color with automatic fallback
     pub fn setBackground(self: *Self, color: Color) !void {
         const w = self.writer();
         if (self.hasFeature(.truecolor)) {
@@ -157,7 +157,7 @@ pub const UnifiedTerminal = struct {
             const encoded = try std.base64.standard.Encoder.calcSize(text.len);
             const buf = try self.allocator.alloc(u8, encoded);
             defer self.allocator.free(buf);
-            
+
             _ = std.base64.standard.Encoder.encode(buf, text);
             try w.print("\x1b]52;c;{s}\x1b\\", .{buf});
             try self.flush();
@@ -229,7 +229,7 @@ pub const Color = struct {
             if (self.r > 248) return 231;
             return @intCast(232 + (self.r - 8) / 10);
         }
-        
+
         // Color cube: 16 + 36*r + 6*g + b
         const r = self.r * 5 / 255;
         const g = self.g * 5 / 255;

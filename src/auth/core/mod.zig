@@ -6,6 +6,7 @@ const oauth = @import("../oauth/mod.zig");
 /// Authentication error types
 pub const AuthError = error{
     MissingAPIKey,
+    InvalidApiKey,
     InvalidCredentials,
     TokenExpired,
     AuthenticationFailed,
@@ -144,11 +145,40 @@ pub fn createClient(allocator: std.mem.Allocator) AuthError!AuthClient {
     // Try API key from environment
     if (std.process.getEnvVarOwned(allocator, "ANTHROPIC_API_KEY")) |api_key| {
         if (api_key.len > 0) {
-            std.log.info("Using API key authentication", .{});
-            const credentials = AuthCredentials{ .api_key = api_key };
-            return AuthClient.init(allocator, credentials);
+            // Validate and sanitize the API key
+            if (std.unicode.utf8ValidateSlice(api_key)) {
+                // Sanitize the API key by replacing any control characters
+                const sanitized_key = try allocator.alloc(u8, api_key.len);
+                var valid_len: usize = 0;
+                for (api_key) |c| {
+                    if (c >= 32 and c != 127) { // Printable ASCII range (excluding DEL)
+                        sanitized_key[valid_len] = c;
+                        valid_len += 1;
+                    }
+                }
+
+                if (valid_len == 0) {
+                    std.log.err("ANTHROPIC_API_KEY contains only invalid characters", .{});
+                    allocator.free(api_key);
+                    allocator.free(sanitized_key);
+                    return AuthError.InvalidApiKey;
+                }
+
+                // Use the sanitized key
+                const final_key = if (valid_len < api_key.len) try allocator.realloc(sanitized_key, valid_len) else sanitized_key;
+                allocator.free(api_key);
+
+                std.log.info("Using API key authentication", .{});
+                const credentials = AuthCredentials{ .api_key = final_key };
+                return AuthClient.init(allocator, credentials);
+            } else {
+                std.log.err("ANTHROPIC_API_KEY contains invalid UTF-8 characters", .{});
+                allocator.free(api_key);
+                return AuthError.InvalidApiKey;
+            }
+        } else {
+            allocator.free(api_key);
         }
-        allocator.free(api_key);
     } else |_| {}
 
     std.log.err("No authentication method available", .{});

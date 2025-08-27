@@ -24,18 +24,18 @@ pub const DataTableError = error{
 
 pub const DataTable = struct {
     const Self = @This();
-    
+
     allocator: std.mem.Allocator,
     headers: [][]const u8,
     rows: [][]Cell,
     config: Config,
     state: TableState,
     bounds: Bounds = Bounds.init(0, 0, 0, 0),
-    
+
     // Clipboard integration
     clipboard_enabled: bool,
     last_copied_data: ?[]u8 = null,
-    
+
     pub const Config = struct {
         title: ?[]const u8 = null,
         show_headers: bool = true,
@@ -56,14 +56,14 @@ pub const DataTable = struct {
         style: ?CellStyle = null,
         copyable: bool = true,
         editable: bool = false,
-        
+
         pub const CellStyle = struct {
             foreground_color: ?terminal_mod.Color = null,
             background_color: ?terminal_mod.Color = null,
             bold: bool = false,
             italic: bool = false,
             alignment: Alignment = .left,
-            
+
             pub const Alignment = enum {
                 left,
                 center,
@@ -81,7 +81,7 @@ pub const DataTable = struct {
         editing_cell: ?Point = null,
         sort_column: ?u32 = null,
         sort_direction: SortDirection = .ascending,
-        
+
         pub const SortDirection = enum {
             ascending,
             descending,
@@ -92,34 +92,28 @@ pub const DataTable = struct {
         start: Point,
         end: Point,
         mode: SelectionMode,
-        
+
         pub const SelectionMode = enum {
-            cell,      // Single cell
-            row,       // Entire row(s)
-            column,    // Entire column(s)
-            range,     // Rectangular range
+            cell, // Single cell
+            row, // Entire row(s)
+            column, // Entire column(s)
+            range, // Rectangular range
         };
-        
+
         pub fn normalize(self: Selection) Selection {
             return Selection{
-                .start = Point.init(
-                    @min(self.start.x, self.end.x),
-                    @min(self.start.y, self.end.y)
-                ),
-                .end = Point.init(
-                    @max(self.start.x, self.end.x),
-                    @max(self.start.y, self.end.y)
-                ),
+                .start = Point.init(@min(self.start.x, self.end.x), @min(self.start.y, self.end.y)),
+                .end = Point.init(@max(self.start.x, self.end.x), @max(self.start.y, self.end.y)),
                 .mode = self.mode,
             };
         }
-        
+
         pub fn contains(self: Selection, point: Point) bool {
             const norm = self.normalize();
             return point.x >= norm.start.x and point.x <= norm.end.x and
-                   point.y >= norm.start.y and point.y <= norm.end.y;
+                point.y >= norm.start.y and point.y <= norm.end.y;
         }
-        
+
         pub fn getCellCount(self: Selection) u32 {
             const norm = self.normalize();
             return (norm.end.x - norm.start.x + 1) * (norm.end.y - norm.start.y + 1);
@@ -138,7 +132,7 @@ pub const DataTable = struct {
         for (headers, column_widths) |header, *width| {
             width.* = @max(@min(@as(u32, @intCast(header.len)), config.max_cell_width), config.min_cell_width);
         }
-        
+
         return Self{
             .allocator = allocator,
             .headers = headers,
@@ -161,12 +155,12 @@ pub const DataTable = struct {
 
     pub fn setData(self: *Self, rows: [][]Cell) !void {
         self.rows = rows;
-        
+
         // Recalculate column widths if needed
         if (self.config.resizable_columns) {
             try self.recalculateColumnWidths();
         }
-        
+
         // Reset cursor if it's out of bounds
         if (self.state.cursor.y >= self.rows.len) {
             self.state.cursor.y = if (self.rows.len > 0) @intCast(self.rows.len - 1) else 0;
@@ -176,22 +170,22 @@ pub const DataTable = struct {
     fn recalculateColumnWidths(self: *Self) !void {
         for (self.state.column_widths, 0..) |*width, col_idx| {
             var max_width = self.headers[col_idx].len;
-            
+
             for (self.rows) |row| {
                 if (col_idx < row.len) {
                     max_width = @max(max_width, row[col_idx].value.len);
                 }
             }
-            
+
             width.* = @max(@min(@as(u32, @intCast(max_width)), self.config.max_cell_width), self.config.min_cell_width);
         }
     }
 
     pub fn render(self: *Self, renderer: *Renderer, ctx: RenderContext) !void {
         self.bounds = ctx.bounds;
-        
+
         var current_y: u32 = ctx.bounds.y;
-        
+
         // Render title if present
         if (self.config.title) |title| {
             try renderer.moveCursor(ctx.bounds.x, current_y);
@@ -200,29 +194,29 @@ pub const DataTable = struct {
             try renderer.resetStyle();
             current_y += 2;
         }
-        
+
         // Render headers
         if (self.config.show_headers) {
             try self.renderHeaders(renderer, ctx.bounds.x, current_y);
             current_y += if (self.config.show_grid_lines) 2 else 1;
         }
-        
+
         // Render data rows
         const available_height = ctx.bounds.height - (current_y - ctx.bounds.y);
         try self.renderRows(renderer, ctx.bounds.x, current_y, available_height);
-        
+
         // Render status line
         try self.renderStatusLine(renderer, ctx);
     }
 
     fn renderHeaders(self: *Self, renderer: *Renderer, x: u32, y: u32) !void {
         try renderer.moveCursor(x, y);
-        
+
         // Row number column
         if (self.config.show_row_numbers) {
             try renderer.writeText("{s:>4} ", .{""});
         }
-        
+
         // Headers
         for (self.headers, self.state.column_widths, 0..) |header, width, col_idx| {
             // Highlight sorted column
@@ -237,15 +231,15 @@ pub const DataTable = struct {
                 try renderer.resetStyle();
             }
         }
-        
+
         // Grid line under headers
         if (self.config.show_grid_lines) {
             try renderer.moveCursor(x, y + 1);
-            
+
             if (self.config.show_row_numbers) {
                 try renderer.writeText("-----");
             }
-            
+
             for (self.state.column_widths) |width| {
                 for (0..width) |_| {
                     try renderer.writeText("-");
@@ -257,72 +251,74 @@ pub const DataTable = struct {
 
     fn renderRows(self: *Self, renderer: *Renderer, x: u32, start_y: u32, available_height: u32) !void {
         const visible_rows = @min(available_height, @as(u32, @intCast(self.rows.len - self.state.scroll_offset.y)));
-        
+
         for (0..visible_rows) |row_idx| {
             const actual_row_idx = row_idx + @as(usize, @intCast(self.state.scroll_offset.y));
             if (actual_row_idx >= self.rows.len) break;
-            
+
             const row = self.rows[actual_row_idx];
             const y = start_y + @as(u32, @intCast(row_idx));
-            
+
             try self.renderRow(renderer, x, y, row, @intCast(actual_row_idx));
         }
     }
 
     fn renderRow(self: *Self, renderer: *Renderer, x: u32, y: u32, row: []Cell, row_idx: u32) !void {
         try renderer.moveCursor(x, y);
-        
+
         // Row number
         if (self.config.show_row_numbers) {
-            const style = if (self.isRowSelected(row_idx)) 
-                renderer_mod.Style{ .background_color = .yellow } 
-                else renderer_mod.Style{};
-            
+            const style = if (self.isRowSelected(row_idx))
+                renderer_mod.Style{ .background_color = .yellow }
+            else
+                renderer_mod.Style{};
+
             try renderer.setStyleEx(style);
             try renderer.writeText("{d:>4} ", .{row_idx + 1});
             try renderer.resetStyle();
         }
-        
+
         // Cells
         for (row, self.state.column_widths, 0..) |cell, width, col_idx| {
             const cell_pos = Point.init(@intCast(col_idx), row_idx);
             const is_selected = self.isCellSelected(cell_pos);
             const is_cursor = self.state.cursor.x == col_idx and self.state.cursor.y == row_idx;
-            
+
             // Apply cell styling
             var style = renderer_mod.Style{};
-            
+
             if (cell.style) |cell_style| {
                 if (cell_style.foreground_color) |fg| style.foreground_color = fg;
                 if (cell_style.background_color) |bg| style.background_color = bg;
                 style.bold = cell_style.bold;
                 style.italic = cell_style.italic;
             }
-            
+
             // Selection and cursor highlighting
             if (is_selected) {
                 style.background_color = terminal_mod.Color.blue;
                 style.foreground_color = terminal_mod.Color.white;
             }
-            
+
             if (is_cursor and self.state.focused) {
                 style.background_color = terminal_mod.Color.cyan;
                 style.foreground_color = terminal_mod.Color.black;
             }
-            
+
             try renderer.setStyleEx(style);
-            
+
             // Render cell content with proper alignment
-            const content = if (cell.value.len > width) 
-                cell.value[0..@min(cell.value.len, width - 3)] ++ "..." 
-                else cell.value;
-                
+            const content = if (cell.value.len > width)
+                cell.value[0..@min(cell.value.len, width - 3)] ++ "..."
+            else
+                cell.value;
+
             switch ((cell.style orelse Cell.CellStyle{}).alignment) {
                 .left => try renderer.writeText("{s:<{}}|", .{ content, width }),
                 .center => try renderer.writeText("{s:^{}}|", .{ content, width }),
                 .right => try renderer.writeText("{s:>{}}|", .{ content, width }),
             }
-            
+
             try renderer.resetStyle();
         }
     }
@@ -330,14 +326,14 @@ pub const DataTable = struct {
     fn renderStatusLine(self: *Self, renderer: *Renderer, ctx: RenderContext) !void {
         const status_y = ctx.bounds.y + ctx.bounds.height - 1;
         try renderer.moveCursor(ctx.bounds.x, status_y);
-        
+
         // Clear the line
         for (0..ctx.bounds.width) |_| {
             try renderer.writeText(" ");
         }
-        
+
         try renderer.moveCursor(ctx.bounds.x, status_y);
-        
+
         // Selection info
         if (self.state.selection) |sel| {
             const cell_count = sel.getCellCount();
@@ -350,7 +346,7 @@ pub const DataTable = struct {
                 self.headers.len,
             });
         }
-        
+
         // Keyboard shortcuts
         if (self.clipboard_enabled) {
             try renderer.writeText(" | Ctrl+C: Copy, Ctrl+V: Paste");
@@ -394,7 +390,7 @@ pub const DataTable = struct {
     fn handleMouseInput(self: *Self, mouse: MouseEvent) !void {
         // Convert mouse coordinates to cell coordinates
         const cell_pos = self.mouseToCellPos(Point.init(mouse.x, mouse.y));
-        
+
         switch (mouse.button) {
             .left => {
                 if (mouse.pressed) {
@@ -431,15 +427,15 @@ pub const DataTable = struct {
     fn moveCursor(self: *Self, dx: i32, dy: i32) void {
         const new_x = @as(i32, @intCast(self.state.cursor.x)) + dx;
         const new_y = @as(i32, @intCast(self.state.cursor.y)) + dy;
-        
+
         if (new_x >= 0 and new_x < self.headers.len) {
             self.state.cursor.x = @intCast(new_x);
         }
-        
+
         if (new_y >= 0 and new_y < self.rows.len) {
             self.state.cursor.y = @intCast(new_y);
         }
-        
+
         // Auto-scroll if needed
         self.ensureCursorVisible();
     }
@@ -454,7 +450,7 @@ pub const DataTable = struct {
     fn ensureCursorVisible(self: *Self) void {
         // Implement scrolling logic to keep cursor visible
         const visible_height = self.bounds.height - 3; // Account for headers and status
-        
+
         if (self.state.cursor.y < self.state.scroll_offset.y) {
             self.state.scroll_offset.y = self.state.cursor.y;
         } else if (self.state.cursor.y >= self.state.scroll_offset.y + visible_height) {
@@ -526,36 +522,36 @@ pub const DataTable = struct {
     // Clipboard operations
     fn copySelection(self: *Self) !void {
         if (!self.clipboard_enabled) return;
-        
+
         const selection = self.state.selection orelse Selection{
             .start = self.state.cursor,
             .end = self.state.cursor,
             .mode = .cell,
         };
-        
+
         const data = try self.getSelectionData(selection);
         defer self.allocator.free(data);
-        
+
         // Use OSC 52 to copy to system clipboard
         try clipboard_mod.writeClipboard(self.allocator, .system, data);
-        
+
         // Cache the data locally
         if (self.last_copied_data) |old_data| {
             self.allocator.free(old_data);
         }
         self.last_copied_data = try self.allocator.dupe(u8, data);
-        
+
         // TODO: Show notification that data was copied
     }
 
     fn copyCell(self: *Self, pos: Point) !void {
         if (!self.clipboard_enabled or pos.y >= self.rows.len or pos.x >= self.rows[pos.y].len) return;
-        
+
         const cell = self.rows[pos.y][pos.x];
         if (!cell.copyable) return;
-        
+
         try clipboard_mod.writeClipboard(self.allocator, .system, cell.value);
-        
+
         if (self.last_copied_data) |old_data| {
             self.allocator.free(old_data);
         }
@@ -564,7 +560,7 @@ pub const DataTable = struct {
 
     fn requestPaste(self: *Self) !void {
         if (!self.clipboard_enabled) return;
-        
+
         // Request clipboard content via OSC 52
         const data = clipboard_mod.readClipboard(self.allocator, .system) catch |err| switch (err) {
             error.ClipboardUnavailable => {
@@ -577,7 +573,7 @@ pub const DataTable = struct {
             else => return err,
         };
         defer self.allocator.free(data);
-        
+
         try self.handlePaste(data);
     }
 
@@ -585,44 +581,44 @@ pub const DataTable = struct {
         const norm_sel = selection.normalize();
         var data = std.ArrayList(u8).init(self.allocator);
         defer data.deinit();
-        
+
         const writer = data.writer();
-        
+
         for (@as(u32, @intCast(norm_sel.start.y))..@as(u32, @intCast(norm_sel.end.y + 1))) |row_idx| {
             if (row_idx >= self.rows.len) break;
-            
+
             const row = self.rows[row_idx];
             var first_cell = true;
-            
+
             for (@as(u32, @intCast(norm_sel.start.x))..@as(u32, @intCast(norm_sel.end.x + 1))) |col_idx| {
                 if (col_idx >= row.len) break;
-                
+
                 if (!first_cell) {
                     try writer.writeAll("\t"); // Tab-separated values
                 }
-                
+
                 const cell = row[col_idx];
                 if (cell.copyable) {
                     try writer.writeAll(cell.value);
                 }
-                
+
                 first_cell = false;
             }
-            
+
             if (row_idx < norm_sel.end.y) {
                 try writer.writeAll("\n");
             }
         }
-        
+
         return data.toOwnedSlice();
     }
 
     // Cell editing
     fn startCellEdit(self: *Self) !void {
-        if (self.state.cursor.y < self.rows.len and 
+        if (self.state.cursor.y < self.rows.len and
             self.state.cursor.x < self.rows[self.state.cursor.y].len and
-            self.rows[self.state.cursor.y][self.state.cursor.x].editable) {
-            
+            self.rows[self.state.cursor.y][self.state.cursor.x].editable)
+        {
             self.state.editing_cell = self.state.cursor;
         }
     }
@@ -637,12 +633,12 @@ pub const DataTable = struct {
         // This is a simplified implementation
         var x: u32 = 0;
         var current_x = self.bounds.x;
-        
+
         // Account for row numbers column
         if (self.config.show_row_numbers) {
             current_x += 5;
         }
-        
+
         // Find column
         for (self.state.column_widths, 0..) |width, col_idx| {
             if (mouse_pos.x >= current_x and mouse_pos.x < current_x + width) {
@@ -651,14 +647,14 @@ pub const DataTable = struct {
             }
             current_x += width + 1; // +1 for separator
         }
-        
+
         // Find row (accounting for headers and scroll offset)
         var y = self.state.scroll_offset.y;
         const header_offset: u32 = if (self.config.show_headers) 2 else 0;
         if (mouse_pos.y >= self.bounds.y + header_offset) {
             y += mouse_pos.y - self.bounds.y - header_offset;
         }
-        
+
         return Point.init(x, y);
     }
 

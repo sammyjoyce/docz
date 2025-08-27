@@ -8,17 +8,17 @@ fn writeSgrList(writer: anytype, caps: TermCaps, list: []const u16) !void {
     var tmp: [96]u8 = undefined;
     var fbs = std.io.fixedBufferStream(&tmp);
     var w = fbs.writer();
-    _ = w.write("\x1b[") catch unreachable;
+    try w.write("\x1b[");
     if (list.len == 0) {
-        _ = w.write("0") catch unreachable;
+        try w.write("0");
     } else {
         var i: usize = 0;
         while (i < list.len) : (i += 1) {
-            if (i != 0) _ = w.write(";") catch unreachable;
-            _ = std.fmt.format(w, "{d}", .{list[i]}) catch unreachable;
+            if (i != 0) try w.write(";");
+            try std.fmt.format(w, "{d}", .{list[i]});
         }
     }
-    _ = w.write("m") catch unreachable;
+    try w.write("m");
     try passthrough.writeWithPassthrough(writer, caps, fbs.getWritten());
 }
 
@@ -89,9 +89,9 @@ pub fn setForeground256(writer: anytype, caps: TermCaps, idx: u8) !void {
     var tmp: [32]u8 = undefined;
     var fbs = std.io.fixedBufferStream(&tmp);
     var w = fbs.writer();
-    _ = w.write("\x1b[38;5;") catch unreachable;
-    _ = std.fmt.format(w, "{d}", .{idx}) catch unreachable;
-    _ = w.write("m") catch unreachable;
+    try w.write("\x1b[38;5;");
+    try std.fmt.format(w, "{d}", .{idx});
+    try w.write("m");
     try passthrough.writeWithPassthrough(writer, caps, fbs.getWritten());
 }
 
@@ -99,9 +99,9 @@ pub fn setBackground256(writer: anytype, caps: TermCaps, idx: u8) !void {
     var tmp: [32]u8 = undefined;
     var fbs = std.io.fixedBufferStream(&tmp);
     var w = fbs.writer();
-    _ = w.write("\x1b[48;5;") catch unreachable;
-    _ = std.fmt.format(w, "{d}", .{idx}) catch unreachable;
-    _ = w.write("m") catch unreachable;
+    try w.write("\x1b[48;5;");
+    try std.fmt.format(w, "{d}", .{idx});
+    try w.write("m");
     try passthrough.writeWithPassthrough(writer, caps, fbs.getWritten());
 }
 
@@ -111,8 +111,8 @@ pub fn setForegroundRgb(writer: anytype, caps: TermCaps, r: u8, g: u8, b: u8) !v
     var tmp: [40]u8 = undefined;
     var fbs = std.io.fixedBufferStream(&tmp);
     var w = fbs.writer();
-    _ = w.write("\x1b[38;2;") catch unreachable;
-    _ = std.fmt.format(w, "{d};{d};{d}m", .{ r, g, b }) catch unreachable;
+    try w.write("\x1b[38;2;");
+    try std.fmt.format(w, "{d};{d};{d}m", .{ r, g, b });
     try passthrough.writeWithPassthrough(writer, caps, fbs.getWritten());
 }
 
@@ -121,7 +121,7 @@ pub fn setBackgroundRgb(writer: anytype, caps: TermCaps, r: u8, g: u8, b: u8) !v
     var tmp: [40]u8 = undefined;
     var fbs = std.io.fixedBufferStream(&tmp);
     var w = fbs.writer();
-    _ = w.write("\x1b[48;2;") catch unreachable;
-    _ = std.fmt.format(w, "{d};{d};{d}m", .{ r, g, b }) catch unreachable;
+    try w.write("\x1b[48;2;");
+    try std.fmt.format(w, "{d};{d};{d}m", .{ r, g, b });
     try passthrough.writeWithPassthrough(writer, caps, fbs.getWritten());
 }

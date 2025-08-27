@@ -10,54 +10,54 @@ pub const CliApp = struct {
     allocator: std.mem.Allocator,
     context: context.CliContext,
     router: router.CommandRouter,
-    
+
     pub fn init(allocator: std.mem.Allocator) !CliApp {
         // Initialize context with terminal capabilities
-        const ctx = try context.CliContext.init(allocator);
-        
+        var ctx = try context.CliContext.init(allocator);
+
         // Initialize command router
         const cmd_router = try router.CommandRouter.init(allocator, &ctx);
-        
+
         return CliApp{
             .allocator = allocator,
             .context = ctx,
             .router = cmd_router,
         };
     }
-    
+
     pub fn deinit(self: *CliApp) void {
         self.router.deinit();
         self.context.deinit();
     }
-    
+
     /// Main entry point for CLI execution
     pub fn run(self: *CliApp, args: []const []const u8) !u8 {
         // Parse arguments (unified via enhanced parser)
         const parsed_args = try self.parseArguments(args);
-        
+
         // Handle built-in commands
         if (parsed_args.help) {
             try self.showHelp();
             return 0;
         }
-        
+
         if (parsed_args.version) {
             try self.showVersion();
             return 0;
         }
-        
+
         if (parsed_args.verbose) {
             self.context.enableVerbose();
         }
-        
+
         // Show capability info in verbose mode
         if (self.context.verbose) {
             self.context.verbose_log("Terminal capabilities: {s}", .{self.context.capabilitySummary()});
         }
-        
+
         // Execute command through router
         const result = try self.router.execute(parsed_args);
-        
+
         // Handle result
         if (result.success) {
             if (result.output) |output| {
@@ -72,7 +72,7 @@ pub const CliApp = struct {
             return result.exit_code;
         }
     }
-    
+
     fn parseArguments(self: *CliApp, args: []const []const u8) !types.ParsedArgsUnified {
         const enhanced_parser = @import("enhanced_parser.zig");
         // The enhanced parser expects argv-style input including program name at index 0.
@@ -109,9 +109,9 @@ pub const CliApp = struct {
 
         return unified;
     }
-    
+
     fn showHelp(self: *CliApp) !void {
-        const help_text = 
+        const help_text =
             \\docz - AI-powered document assistant
             \\
             \\Usage: docz [COMMAND] [OPTIONS] [MESSAGE]
@@ -135,9 +135,9 @@ pub const CliApp = struct {
             \\
             \\Terminal Features:
         ;
-        
+
         try std.io.getStdOut().writeAll(help_text);
-        
+
         // Show available terminal features
         if (self.context.hasFeature(.hyperlinks)) {
             try std.io.getStdOut().writeAll("  ✓ Hyperlinks supported\n");
@@ -151,10 +151,10 @@ pub const CliApp = struct {
         if (self.context.hasFeature(.graphics)) {
             try std.io.getStdOut().writeAll("  ✓ Enhanced graphics\n");
         }
-        
+
         try std.io.getStdOut().writeAll("\n");
     }
-    
+
     fn showVersion(self: *CliApp) !void {
         _ = self;
         const version_text = "docz 1.0.0\n";

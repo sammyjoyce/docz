@@ -162,7 +162,7 @@ pub const Key = enum(u32) {
     f62,
     f63,
 
-    // Kitty keyboard protocol special keys  
+    // Kitty keyboard protocol special keys
     caps_lock,
     scroll_lock,
     num_lock,
@@ -216,7 +216,7 @@ pub const Key = enum(u32) {
         return switch (self) {
             .null => "null",
             .ctrl_a => "ctrl+a",
-            .ctrl_b => "ctrl+b", 
+            .ctrl_b => "ctrl+b",
             .ctrl_c => "ctrl+c",
             .ctrl_d => "ctrl+d",
             .ctrl_e => "ctrl+e",
@@ -349,19 +349,19 @@ pub const Key = enum(u32) {
 pub const KeyEvent = struct {
     /// Text contains the actual characters received for printable keys
     text: []const u8,
-    
+
     /// Modifier keys pressed
     mod: KeyMod,
-    
+
     /// Key code pressed
     code: Key,
-    
+
     /// Shifted version of the key (Kitty keyboard protocol)
     shifted_code: ?Key = null,
-    
-    /// Base key according to PC-101 layout (Kitty keyboard protocol) 
+
+    /// Base key according to PC-101 layout (Kitty keyboard protocol)
     base_code: ?Key = null,
-    
+
     /// Whether this is a repeat event (Kitty keyboard protocol)
     is_repeat: bool = false,
 
@@ -373,11 +373,7 @@ pub const KeyEvent = struct {
     /// Check if this is a control character
     pub fn isControl(self: KeyEvent) bool {
         return switch (self.code) {
-            .null, .ctrl_a, .ctrl_b, .ctrl_c, .ctrl_d, .ctrl_e, .ctrl_f, .ctrl_g,
-            .backspace, .tab, .enter, .ctrl_k, .ctrl_l, .ctrl_m, .ctrl_n, .ctrl_o,
-            .ctrl_p, .ctrl_q, .ctrl_r, .ctrl_s, .ctrl_t, .ctrl_u, .ctrl_v, .ctrl_w,
-            .ctrl_x, .ctrl_y, .ctrl_z, .escape, .ctrl_backslash, .ctrl_close_bracket,
-            .ctrl_caret, .ctrl_underscore, .delete => true,
+            .null, .ctrl_a, .ctrl_b, .ctrl_c, .ctrl_d, .ctrl_e, .ctrl_f, .ctrl_g, .backspace, .tab, .enter, .ctrl_k, .ctrl_l, .ctrl_m, .ctrl_n, .ctrl_o, .ctrl_p, .ctrl_q, .ctrl_r, .ctrl_s, .ctrl_t, .ctrl_u, .ctrl_v, .ctrl_w, .ctrl_x, .ctrl_y, .ctrl_z, .escape, .ctrl_backslash, .ctrl_close_bracket, .ctrl_caret, .ctrl_underscore, .delete => true,
             else => false,
         };
     }
@@ -413,7 +409,7 @@ pub const KeyEvent = struct {
 
         // Use base code if available (for international keyboards)
         const key_code = self.base_code orelse self.code;
-        
+
         if (key_code == .space) {
             try result.appendSlice(allocator, "space");
         } else if (key_code == .key_extended) {
@@ -466,7 +462,7 @@ pub const KeyReleaseEvent = KeyEvent;
 /// Parse a single character into a key event
 pub fn parseChar(ch: u8, allocator: std.mem.Allocator) !KeyEvent {
     var text_buf: [1]u8 = undefined;
-    
+
     const key: Key = switch (ch) {
         0x00 => .null,
         0x01 => .ctrl_a,
@@ -522,7 +518,7 @@ pub fn parseEscapeSequence(seq: []const u8, allocator: std.mem.Allocator) !?KeyE
     if (seq.len < 2 or seq[0] != 0x1B) return null;
 
     const text = try allocator.dupe(u8, "");
-    
+
     return switch (seq[1]) {
         '[' => parseCSISequence(seq, allocator, text),
         'O' => parseSSSequence(seq, allocator, text),
@@ -531,7 +527,7 @@ pub fn parseEscapeSequence(seq: []const u8, allocator: std.mem.Allocator) !?KeyE
             if (seq.len >= 2) {
                 const base_key = try parseChar(seq[1], allocator);
                 defer allocator.free(base_key.text);
-                
+
                 break :blk KeyEvent{
                     .text = text,
                     .code = base_key.code,
@@ -556,7 +552,7 @@ fn parseCSISequence(seq: []const u8, allocator: std.mem.Allocator, text: []const
     }
 
     if (i >= seq.len) return null;
-    
+
     const final_char = seq[i];
     const key: Key = switch (final_char) {
         'A' => .up,
@@ -574,7 +570,7 @@ fn parseCSISequence(seq: []const u8, allocator: std.mem.Allocator, text: []const
     };
 
     _ = allocator; // Mark as used to avoid warning
-    
+
     return KeyEvent{
         .text = text,
         .code = key,
@@ -607,10 +603,10 @@ fn parseSSSequence(seq: []const u8, _: std.mem.Allocator, text: []const u8) ?Key
     };
 }
 
-/// Parse tilde-terminated sequences like ESC[15~ 
+/// Parse tilde-terminated sequences like ESC[15~
 fn parseTildeKey(params: []const u8) ?Key {
     const num = std.fmt.parseInt(u32, params, 10) catch return null;
-    
+
     return switch (num) {
         1 => .home,
         2 => .insert_key,
@@ -634,7 +630,7 @@ fn parseTildeKey(params: []const u8) ?Key {
 test "basic character parsing" {
     const key = try parseChar('a', std.testing.allocator);
     defer std.testing.allocator.free(key.text);
-    
+
     try std.testing.expectEqualSlices(u8, "a", key.text);
     try std.testing.expectEqual(Key.unknown, key.code);
     try std.testing.expect(key.isPrintable());
@@ -643,7 +639,7 @@ test "basic character parsing" {
 test "control character parsing" {
     const key = try parseChar(0x03, std.testing.allocator); // Ctrl+C
     defer std.testing.allocator.free(key.text);
-    
+
     try std.testing.expectEqual(Key.ctrl_c, key.code);
     try std.testing.expect(key.isControl());
     try std.testing.expect(!key.isPrintable());
@@ -652,7 +648,7 @@ test "control character parsing" {
 test "escape sequence parsing" {
     const seq = "\x1b[A"; // Up arrow
     const key = try parseEscapeSequence(seq, std.testing.allocator);
-    
+
     try std.testing.expect(key != null);
     if (key) |k| {
         defer std.testing.allocator.free(k.text);
@@ -663,7 +659,7 @@ test "escape sequence parsing" {
 test "alt key combination" {
     const seq = "\x1ba"; // Alt+a
     const key = try parseEscapeSequence(seq, std.testing.allocator);
-    
+
     try std.testing.expect(key != null);
     if (key) |k| {
         defer std.testing.allocator.free(k.text);

@@ -4,7 +4,7 @@
 const std = @import("std");
 const print = std.debug.print;
 // const tui = @import("tui_shared"); // Disabled to avoid module conflicts
-const caps_mod = @import("../../term/caps.zig");
+const caps_mod = @import("../../term/mod.zig").caps;
 
 // Minimal TUI replacements
 const SimpleTui = struct {
@@ -19,21 +19,21 @@ const SimpleTui = struct {
         const BOLD = "";
         const RESET = "";
     };
-    
+
     fn getTerminalSize() struct { width: u16, height: u16 } {
         return .{ .width = 80, .height = 24 };
     }
-    
+
     const TerminalSize = struct { width: u16, height: u16 };
 };
 
 const tui = SimpleTui;
-const color_mod = @import("../../term/ansi/color.zig");
-const sgr_mod = @import("../../term/ansi/sgr.zig");
-const hyperlink_mod = @import("../../term/ansi/hyperlink.zig");
-const clipboard_mod = @import("../../term/ansi/clipboard.zig");
-const notification_mod = @import("../../term/ansi/notification.zig");
-const title_mod = @import("../../term/ansi/title.zig");
+const color_mod = @import("../../term/mod.zig").ansi.color;
+const sgr_mod = @import("../../term/mod.zig").ansi.sgr;
+const hyperlink_mod = @import("../../term/mod.zig").ansi.hyperlink;
+const clipboard_mod = @import("../../term/mod.zig").ansi.clipboard;
+const notification_mod = @import("../../term/mod.zig").ansi.notification;
+const title_mod = @import("../../term/mod.zig").ansi.title;
 
 /// Enhanced CLI formatter with terminal capability awareness
 pub const CliFormatter = struct {
@@ -60,9 +60,55 @@ pub const CliFormatter = struct {
     pub fn init(allocator: std.mem.Allocator) CliFormatter {
         const caps = caps_mod.detectCaps(allocator) catch |err| {
             std.log.warn("Failed to detect terminal capabilities: {any}", .{err});
-            return caps_mod.TermCaps.basic();
+            // Fallback to basic capabilities
+            return CliFormatter{
+                .allocator = allocator,
+                .caps = caps_mod.TermCaps{
+                    .supportsTruecolor = false,
+                    .supportsHyperlinkOsc8 = false,
+                    .supportsClipboardOsc52 = false,
+                    .supportsWorkingDirOsc7 = false,
+                    .supportsTitleOsc012 = false,
+                    .supportsNotifyOsc9 = false,
+                    .supportsFinalTermOsc133 = false,
+                    .supportsITerm2Osc1337 = false,
+                    .supportsColorOsc10_12 = false,
+                    .supportsKittyKeyboard = false,
+                    .supportsKittyGraphics = false,
+                    .supportsSixel = false,
+                    .supportsModifyOtherKeys = false,
+                    .supportsXtwinops = false,
+                    .supportsBracketedPaste = false,
+                    .supportsFocusEvents = false,
+                    .supportsSgrMouse = false,
+                    .supportsSgrPixelMouse = false,
+                    .supportsLightDarkReport = false,
+                    .supportsLinuxPaletteOscP = false,
+                    .supportsDeviceAttributes = false,
+                    .supportsCursorStyle = false,
+                    .supportsCursorPositionReport = false,
+                    .supportsPointerShape = false,
+                    .needsTmuxPassthrough = false,
+                    .needsScreenPassthrough = false,
+                    .screenChunkLimit = 4096,
+                    .widthMethod = .grapheme,
+                },
+                .terminal_size = .{ .width = 80, .height = 24 },
+                .colors = ColorScheme{
+                    .primary = "\x1b[34m", // Blue
+                    .secondary = "\x1b[90m", // Dark gray
+                    .accent = "\x1b[36m", // Cyan
+                    .success = "\x1b[32m", // Green
+                    .warning = "\x1b[33m", // Yellow
+                    .err_color = "\x1b[31m", // Red
+                    .muted = "\x1b[37m", // Light gray
+                    .reset = "\x1b[0m",
+                    .bold = "\x1b[1m",
+                    .dim = "\x1b[2m",
+                },
+            };
         };
-        const terminal_size = tui.getTerminalSize();
+        const terminal_size = SimpleTui.TerminalSize{ .width = 80, .height = 24 };
 
         // Adaptive color scheme based on terminal capabilities
         const colors = if (caps.supportsTruecolor)
@@ -126,12 +172,16 @@ pub const CliFormatter = struct {
             "",
         };
 
-        const usage_section = tui.Section.init("🚀 USAGE", &usage_content, width);
-        usage_section.draw();
-        print("\n");
+        // Print usage section manually
+        print("{s}🚀 USAGE{s}\n", .{ self.colors.bold, self.colors.reset });
+        print("{s}\n", .{self.colors.dim});
+        for (usage_content) |line| {
+            print("  {s}\n", .{line});
+        }
+        print("{s}\n", .{self.colors.reset});
 
         // Options section with enhanced formatting
-        try self.printOptionsSection(cli_config, width);
+        try self.printOptionsSection(cli_config, @intCast(width));
 
         // Examples section with copy-to-clipboard integration
         try self.printExamplesSection(cli_config, width);
@@ -145,46 +195,78 @@ pub const CliFormatter = struct {
 
     /// Enhanced error display with structured formatting
     pub fn printEnhancedError(self: *CliFormatter, err: anytype, context: ?[]const u8) !void {
-        const width = @min(self.terminal_size.width, 80);
 
         // Error header with icon and color
         print("\n{s}{s}❌ Error{s}\n", .{ self.colors.bold, self.colors.err_color, self.colors.reset });
 
-        // Error message
-        const error_msg = switch (err) {
-            error.InvalidArgument => "Invalid argument provided",
-            error.MissingValue => "Missing value for option",
-            error.UnknownOption => "Unknown option",
-            error.InvalidValue => "Invalid value for option",
-            error.MutuallyExclusiveOptions => "Mutually exclusive options provided",
-            error.OutOfMemory => "Out of memory",
-            error.UnknownCommand => "Unknown command",
-            error.UnknownSubcommand => "Unknown subcommand",
-            else => "An unexpected error occurred",
-        };
+        // Error message with context-aware handling
+        var error_msg: []const u8 = undefined;
+        var show_auth_help = false;
 
-        var error_content = std.ArrayList([]const u8).init(self.allocator);
+        switch (err) {
+            error.InvalidArgument => error_msg = "Invalid argument provided",
+            error.MissingValue => error_msg = "Missing value for option",
+            error.UnknownOption => error_msg = "Unknown option",
+            error.InvalidValue => error_msg = "Invalid value for option",
+            error.MutuallyExclusiveOptions => error_msg = "Mutually exclusive options provided",
+            error.OutOfMemory => error_msg = "Out of memory",
+            error.UnknownCommand => error_msg = "Unknown command",
+            error.UnknownSubcommand => {
+                // Check if this is an auth-related error
+                if (context) |ctx| {
+                    if (std.mem.eql(u8, ctx, "auth") or std.mem.startsWith(u8, ctx, "auth ")) {
+                        error_msg = "Missing or invalid subcommand for 'auth'";
+                        show_auth_help = true;
+                    } else {
+                        error_msg = "Unknown subcommand";
+                    }
+                } else {
+                    error_msg = "Unknown subcommand";
+                }
+            },
+            else => error_msg = "An unexpected error occurred",
+        }
+
+        var error_content = std.array_list.Managed([]const u8).init(self.allocator);
         defer error_content.deinit();
 
         try error_content.append("");
         try error_content.append(error_msg);
-        if (context) |ctx| {
-            const ctx_line = try std.fmt.allocPrint(self.allocator, "Context: {s}", .{ctx});
-            try error_content.append(ctx_line);
+
+        // Add auth-specific help if needed
+        if (show_auth_help) {
+            try error_content.append("");
+            try error_content.append("Available auth subcommands:");
+            try error_content.append("  • login   - Start authentication process");
+            try error_content.append("  • status  - Check authentication status");
+            try error_content.append("  • refresh - Refresh authentication token");
+            try error_content.append("");
+            try error_content.append("Example: docz auth login");
         }
+
         try error_content.append("");
         try error_content.append("💡 Use --help for usage information");
         try error_content.append("");
 
-        const error_section = tui.Section.init("Error Details", error_content.items, width);
-        error_section.draw();
-        print("\n");
+        // Print error section manually
+        print("{s}{s}Error Details{s}\n", .{ self.colors.bold, self.colors.err_color, self.colors.reset });
+        print("{s}\n", .{self.colors.dim});
+
+        // Print context if available
+        if (context) |ctx| {
+            const ctx_line = try std.fmt.allocPrint(self.allocator, "Context: {s}", .{ctx});
+            defer self.allocator.free(ctx_line);
+            print("  {s}\n", .{ctx_line});
+        }
+
+        for (error_content.items) |line| {
+            print("  {s}\n", .{line});
+        }
+        print("{s}\n", .{self.colors.reset});
     }
 
     /// Enhanced version display with system info
     pub fn printEnhancedVersion(self: *CliFormatter, cli_config: anytype) !void {
-        const width = @min(self.terminal_size.width, 80);
-
         print("{s}{s}DocZ{s}", .{ self.colors.bold, self.colors.primary, self.colors.reset });
         if (@hasField(@TypeOf(cli_config), "version")) {
             print(" version {s}{s}{s}\n", .{ self.colors.accent, cli_config.version, self.colors.reset });
@@ -193,7 +275,7 @@ pub const CliFormatter = struct {
         }
 
         // Terminal capabilities info
-        var caps_content = std.ArrayList([]const u8).init(self.allocator);
+        var caps_content = std.array_list.Managed([]const u8).init(self.allocator);
         defer caps_content.deinit();
 
         try caps_content.append("");
@@ -217,16 +299,28 @@ pub const CliFormatter = struct {
 
         try caps_content.append("");
 
-        const caps_section = tui.Section.init("System Information", caps_content.items, width);
-        caps_section.draw();
-        print("\n");
+        // Print system information section manually
+        print("{s}System Information{s}\n", .{ self.colors.bold, self.colors.reset });
+        print("{s}\n", .{self.colors.dim});
+        for (caps_content.items) |line| {
+            print("  {s}\n", .{line});
+        }
+        print("{s}\n", .{self.colors.reset});
+
+        // Free allocated strings
+        self.allocator.free(size_info);
+        self.allocator.free(truecolor_line);
+        self.allocator.free(hyperlinks_line);
+        self.allocator.free(clipboard_line);
     }
 
     /// Copy text to system clipboard if supported
     pub fn copyToClipboard(self: *CliFormatter, text: []const u8) !bool {
         if (!self.caps.supportsClipboardOsc52) return false;
 
-        clipboard_mod.writeClipboard(self.writer, self.allocator, self.caps, text) catch return false;
+        // Use stdout writer for clipboard operations
+        const writer = std.io.getStdOut().writer();
+        clipboard_mod.writeClipboard(writer, self.allocator, self.caps, text) catch return false;
 
         print("{s}📋 Copied to clipboard{s}\n", .{ self.colors.muted, self.colors.reset });
         return true;
@@ -265,7 +359,7 @@ pub const CliFormatter = struct {
 
         if (OptsInfo.fields.len == 0) return;
 
-        print("⚙️  OPTIONS:\n\n");
+        print("⚙️  OPTIONS:\n\n", .{});
 
         inline for (OptsInfo.fields) |field| {
             const opt = @field(cli_config.options, field.name);
@@ -286,9 +380,44 @@ pub const CliFormatter = struct {
                     print(" [default: {}]", .{opt.default});
                 }
             }
-            print("\n");
+            print("\n", .{});
         }
 
-        print("\n");
+        print("\n", .{});
+    }
+
+    /// Print examples section from CLI configuration
+    pub fn printExamplesSection(self: *CliFormatter, cli_config: anytype, width: u16) !void {
+        _ = width; // unused parameter
+        print("{s}💡 EXAMPLES:{s}\n\n", .{ self.colors.bold, self.colors.reset });
+
+        // Check if examples exist in config
+        if (@hasField(@TypeOf(cli_config), "examples")) {
+            const examples = cli_config.examples;
+            // Try to iterate over examples array
+            inline for (examples) |example| {
+                if (@hasField(@TypeOf(example), "command")) {
+                    print("      {s}\n", .{example.command});
+                } else if (@hasField(@TypeOf(example), "description")) {
+                    print("      {s}\n", .{example.description});
+                } else {
+                    // Handle as string directly
+                    print("      {s}\n", .{example});
+                }
+            }
+        }
+
+        // Always include tui-demo as it's a core feature
+        print("      docz tui-demo\n", .{});
+        print("\n", .{});
+    }
+
+    /// Print links section (stub implementation)
+    pub fn printLinksSection(self: *CliFormatter, width: u16) !void {
+        _ = width; // unused parameter
+        print("{s}🔗 LINKS:{s}\n\n", .{ self.colors.bold, self.colors.reset });
+        print("      Repository: https://github.com/username/docz\n", .{});
+        print("      Documentation: https://docs.docz.dev\n", .{});
+        print("\n", .{});
     }
 };

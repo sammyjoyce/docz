@@ -5,7 +5,6 @@ const color_conversion = @import("ansi/advanced_color_conversion.zig");
 /// Cell-based terminal display buffer for efficient TUI rendering
 /// Tracks character data and attributes for each terminal position
 /// Provides differential rendering to minimize escape sequence output
-
 /// Terminal cell representing a single character position
 pub const Cell = struct {
     /// Unicode codepoint for the character (0 = empty cell)
@@ -14,7 +13,7 @@ pub const Cell = struct {
     width: u8 = 0,
     /// Foreground color
     fg_color: CellColor = .default,
-    /// Background color  
+    /// Background color
     bg_color: CellColor = .default,
     /// Text attributes (bold, italic, etc.)
     attrs: CellAttrs = .{},
@@ -57,9 +56,9 @@ pub const CellColor = union(enum) {
         return switch (self) {
             .default => other == .default,
             .indexed => |idx| other == .indexed and other.indexed == idx,
-            .rgb => |rgb| other == .rgb and 
-                other.rgb.r == rgb.r and 
-                other.rgb.g == rgb.g and 
+            .rgb => |rgb| other == .rgb and
+                other.rgb.r == rgb.r and
+                other.rgb.g == rgb.g and
                 other.rgb.b == rgb.b,
         };
     }
@@ -87,8 +86,8 @@ pub const CellAttrs = struct {
 
     /// Check if any attributes are set
     pub fn hasAttrs(self: CellAttrs) bool {
-        return self.bold or self.dim or self.italic or 
-            self.underline or self.blink or self.reverse or 
+        return self.bold or self.dim or self.italic or
+            self.underline or self.blink or self.reverse or
             self.strikethrough;
     }
 };
@@ -116,7 +115,7 @@ pub const CellBuffer = struct {
         const total_cells = width * height;
         const cells = try allocator.alloc(Cell, total_cells);
         const previous_cells = try allocator.alloc(Cell, total_cells);
-        
+
         // Initialize all cells as empty
         for (cells) |*cell| {
             cell.clear();
@@ -245,7 +244,7 @@ pub const CellBuffer = struct {
             const seq_len = std.unicode.utf8ByteSequenceLength(text[i]) catch break;
             if (i + seq_len > text.len) break;
 
-            const codepoint = std.unicode.utf8Decode(text[i..i + seq_len]) catch {
+            const codepoint = std.unicode.utf8Decode(text[i .. i + seq_len]) catch {
                 i += 1;
                 continue;
             };
@@ -384,9 +383,15 @@ pub const CellBuffer = struct {
 };
 
 // Convenience functions for common colors
-pub fn defaultColor() CellColor { return .default; }
-pub fn indexedColor(index: u8) CellColor { return .{ .indexed = index }; }
-pub fn rgbColor(r: u8, g: u8, b: u8) CellColor { return .{ .rgb = .{ .r = r, .g = g, .b = b } }; }
+pub fn defaultColor() CellColor {
+    return .default;
+}
+pub fn indexedColor(index: u8) CellColor {
+    return .{ .indexed = index };
+}
+pub fn rgbColor(r: u8, g: u8, b: u8) CellColor {
+    return .{ .rgb = .{ .r = r, .g = g, .b = b } };
+}
 
 // Common attribute combinations
 pub const bold = CellAttrs{ .bold = true };
@@ -404,7 +409,7 @@ test "cell buffer creation and basic operations" {
 
     try testing.expect(buf.width == 80);
     try testing.expect(buf.height == 24);
-    
+
     // Test setting a cell
     try buf.setCell(0, 0, 'A', defaultColor(), defaultColor(), .{});
     const cell = buf.getCell(0, 0).?;
@@ -420,10 +425,10 @@ test "wide character handling" {
 
     // Test wide character (CJK ideograph)
     try buf.setCell(0, 0, 0x4E00, defaultColor(), defaultColor(), .{}); // 一
-    
+
     const cell1 = buf.getCell(0, 0).?;
     const cell2 = buf.getCell(1, 0).?;
-    
+
     try testing.expect(cell1.codepoint == 0x4E00);
     try testing.expect(cell1.width == 2);
     try testing.expect(cell2.is_continuation);
@@ -453,12 +458,12 @@ test "buffer resize" {
 
     // Set some content
     try buf.setCell(5, 2, 'X', defaultColor(), defaultColor(), .{});
-    
+
     // Resize larger
     try buf.resize(20, 10);
     try testing.expect(buf.width == 20);
     try testing.expect(buf.height == 10);
-    
+
     // Content should be preserved
     try testing.expect(buf.getCell(5, 2).?.codepoint == 'X');
 }
@@ -471,7 +476,7 @@ test "box drawing" {
     defer buf.deinit();
 
     try buf.drawBox(1, 1, 5, 3, .{}, defaultColor(), defaultColor(), .{});
-    
+
     // Check corners
     try testing.expect(buf.getCell(1, 1).?.codepoint == '┌');
     try testing.expect(buf.getCell(5, 1).?.codepoint == '┐');

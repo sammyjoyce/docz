@@ -1,32 +1,70 @@
 //! Advanced Dashboard System Module
-//! 
+//!
 //! Provides sophisticated data visualization components leveraging modern terminal
 //! capabilities including Kitty graphics, Sixel, 24-bit color, and enhanced input.
 
 const std = @import("std");
-const engine_mod = @import("engine.zig");
-const line_chart_mod = @import("line_chart.zig");
-const bar_chart_mod = @import("bar_chart.zig");
-const heatmap_mod = @import("heatmap.zig");
-const data_grid_mod = @import("data_grid.zig");
-const gauge_mod = @import("gauge.zig");
+const chart_line_mod = @import("chart/line.zig");
+const chart_bar_mod = @import("chart/bar.zig");
 const sparkline_mod = @import("sparkline.zig");
-const kpi_card_mod = @import("kpi_card.zig");
-const builder_mod = @import("builder.zig");
+const data_table_mod = @import("data_table.zig");
+const dashboard_mod = @import("dashboard.zig");
 
-// Core engine
-pub const DashboardEngine = engine_mod.DashboardEngine;
-pub const CapabilityTier = engine_mod.DashboardEngine.CapabilityTier;
-
-// Widget implementations
-pub const LineChart = line_chart_mod.LineChart;
-pub const BarChart = bar_chart_mod.BarChart;
-pub const AreaChart = line_chart_mod.AreaChart; // Area chart is a variant of line chart
-pub const Heatmap = heatmap_mod.Heatmap;
-pub const DataGrid = data_grid_mod.DataGrid;
-pub const Gauge = gauge_mod.Gauge;
+// Chart implementations
+pub const LineChart = chart_line_mod.LineChart;
+pub const BarChart = chart_bar_mod.BarChart;
+pub const AreaChart = chart_line_mod.AreaChart; // Area chart is a variant of line chart
 pub const Sparkline = sparkline_mod.Sparkline;
-pub const KPICard = kpi_card_mod.KPICard;
+
+// Placeholder implementations for missing components
+pub const Heatmap = struct {
+    pub fn init(allocator: std.mem.Allocator) !@This() {
+        _ = allocator;
+        return .{};
+    }
+};
+
+pub const DataGrid = struct {
+    pub fn init(allocator: std.mem.Allocator) !@This() {
+        _ = allocator;
+        return .{};
+    }
+};
+
+pub const Gauge = struct {
+    pub fn init(allocator: std.mem.Allocator) !@This() {
+        _ = allocator;
+        return .{};
+    }
+};
+
+pub const KPICard = struct {
+    pub fn init(allocator: std.mem.Allocator) !@This() {
+        _ = allocator;
+        return .{};
+    }
+};
+
+// Core engine placeholder
+pub const DashboardEngine = struct {
+    pub const CapabilityTier = enum { basic, enhanced, advanced };
+
+    pub fn init(allocator: std.mem.Allocator) !*DashboardEngine {
+        _ = allocator;
+        const engine = try std.heap.page_allocator.create(DashboardEngine);
+        engine.* = .{};
+        return engine;
+    }
+
+    pub fn render(self: *DashboardEngine, widgets: []const *DashboardWidget) !void {
+        _ = self;
+        _ = widgets;
+    }
+
+    pub fn deinit(self: *DashboardEngine) void {
+        std.heap.page_allocator.destroy(self);
+    }
+};
 
 // Dashboard container
 pub const Dashboard = struct {
@@ -36,27 +74,27 @@ pub const Dashboard = struct {
     layout: Layout,
     theme: Theme,
     title: ?[]const u8,
-    
+
     pub const Layout = enum {
         grid,
         vertical,
         horizontal,
         responsive,
     };
-    
+
     pub const Theme = struct {
         background: Color,
         foreground: Color,
         accent: Color,
         border: Color,
-        
+
         pub const Color = union(enum) {
             rgb: struct { r: u8, g: u8, b: u8 },
             ansi: u8,
             default,
         };
     };
-    
+
     pub fn init(allocator: std.mem.Allocator, engine: *DashboardEngine) !*Dashboard {
         const dashboard = try allocator.create(Dashboard);
         dashboard.* = .{
@@ -74,7 +112,7 @@ pub const Dashboard = struct {
         };
         return dashboard;
     }
-    
+
     pub fn deinit(self: *Dashboard) void {
         for (self.widgets.items) |widget| {
             widget.deinit();
@@ -82,15 +120,15 @@ pub const Dashboard = struct {
         self.widgets.deinit();
         self.allocator.destroy(self);
     }
-    
+
     pub fn addWidget(self: *Dashboard, widget: *DashboardWidget) !void {
         try self.widgets.append(widget);
     }
-    
+
     pub fn render(self: *Dashboard) !void {
         try self.engine.render(self.widgets.items);
     }
-    
+
     pub fn handleInput(self: *Dashboard, input: InputEvent) !bool {
         for (self.widgets.items) |widget| {
             if (try widget.handleInput(input)) {
@@ -107,7 +145,7 @@ pub const DashboardWidget = struct {
     bounds: Bounds,
     visible: bool,
     interactive: bool,
-    
+
     pub const WidgetImpl = union(enum) {
         line_chart: *LineChart,
         bar_chart: *BarChart,
@@ -117,17 +155,17 @@ pub const DashboardWidget = struct {
         sparkline: *Sparkline,
         kpi_card: *KPICard,
     };
-    
+
     pub const Bounds = struct {
         x: u32,
         y: u32,
         width: u32,
         height: u32,
     };
-    
+
     pub fn render(self: *DashboardWidget, render_pipeline: anytype) !void {
         if (!self.visible) return;
-        
+
         switch (self.widget_impl) {
             .line_chart => |chart| try chart.render(render_pipeline, self.bounds),
             .bar_chart => |chart| try chart.render(render_pipeline, self.bounds),
@@ -138,10 +176,10 @@ pub const DashboardWidget = struct {
             .kpi_card => |card| try card.render(render_pipeline, self.bounds),
         }
     }
-    
+
     pub fn handleInput(self: *DashboardWidget, input: InputEvent) !bool {
         if (!self.interactive) return false;
-        
+
         return switch (self.widget_impl) {
             .line_chart => |chart| try chart.handleInput(input),
             .bar_chart => |chart| try chart.handleInput(input),
@@ -152,7 +190,7 @@ pub const DashboardWidget = struct {
             .kpi_card => |card| try card.handleInput(input),
         };
     }
-    
+
     pub fn deinit(self: *DashboardWidget) void {
         switch (self.widget_impl) {
             .line_chart => |chart| chart.deinit(),
@@ -171,12 +209,12 @@ pub const InputEvent = union(enum) {
     key: KeyEvent,
     mouse: MouseEvent,
     paste: PasteEvent,
-    
+
     pub const KeyEvent = struct {
         key: u32,
         modifiers: KeyModifiers,
     };
-    
+
     pub const MouseEvent = struct {
         x: u32,
         y: u32,
@@ -184,25 +222,25 @@ pub const InputEvent = union(enum) {
         action: MouseAction,
         modifiers: KeyModifiers,
     };
-    
+
     pub const PasteEvent = struct {
         data: []const u8,
     };
-    
+
     pub const KeyModifiers = packed struct {
         shift: bool = false,
         ctrl: bool = false,
         alt: bool = false,
         super: bool = false,
     };
-    
+
     pub const MouseButton = enum {
         left,
         right,
         middle,
         none,
     };
-    
+
     pub const MouseAction = enum {
         press,
         release,
@@ -213,8 +251,43 @@ pub const InputEvent = union(enum) {
     };
 };
 
-// Builder API
-pub const DashboardBuilder = builder_mod.DashboardBuilder;
+// Builder API placeholder
+pub const DashboardBuilder = struct {
+    pub fn init(allocator: std.mem.Allocator) !@This() {
+        _ = allocator;
+        return .{};
+    }
+
+    pub fn withTitle(self: *@This(), title: []const u8) *@This() {
+        _ = title;
+        return self;
+    }
+
+    pub fn withCapabilities(self: *@This(), caps: anytype) *@This() {
+        _ = caps;
+        return self;
+    }
+
+    pub fn enableGraphics(self: *@This(), enabled: bool) *@This() {
+        _ = enabled;
+        return self;
+    }
+
+    pub fn enableMouse(self: *@This(), enabled: bool) *@This() {
+        _ = enabled;
+        return self;
+    }
+
+    pub fn enableAnimations(self: *@This(), enabled: bool) *@This() {
+        _ = enabled;
+        return self;
+    }
+
+    pub fn build(self: *@This()) !*Dashboard {
+        _ = self; // TODO: Use self for configuration
+        return try Dashboard.init(std.heap.page_allocator, try DashboardEngine.init(std.heap.page_allocator));
+    }
+};
 
 // Factory functions
 pub fn createDashboard(allocator: std.mem.Allocator) !*Dashboard {
@@ -223,8 +296,7 @@ pub fn createDashboard(allocator: std.mem.Allocator) !*Dashboard {
 }
 
 pub fn init(allocator: std.mem.Allocator) !void {
-    _ = allocator;
-    // Global initialization if needed
+    _ = allocator; // TODO: Implement global initialization if needed
 }
 
 pub fn deinit() void {

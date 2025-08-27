@@ -3,7 +3,6 @@ const terminal_background = @import("terminal_background.zig");
 
 /// Terminal query system for retrieving colors and other terminal properties
 /// Handles OSC response parsing and async query management
-
 pub const QueryError = error{
     TimeoutExpired,
     InvalidResponse,
@@ -13,12 +12,12 @@ pub const QueryError = error{
 
 /// Types of terminal queries supported
 pub const QueryType = enum {
-    foreground_color,    // OSC 10;? -> OSC 10;color
-    background_color,    // OSC 11;? -> OSC 11;color
-    cursor_color,        // OSC 12;? -> OSC 12;color
-    cursor_position,     // ESC[6n -> ESC[row;colR
-    device_attributes,   // ESC[c -> ESC[?...c
-    
+    foreground_color, // OSC 10;? -> OSC 10;color
+    background_color, // OSC 11;? -> OSC 11;color
+    cursor_color, // OSC 12;? -> OSC 12;color
+    cursor_position, // ESC[6n -> ESC[row;colR
+    device_attributes, // ESC[c -> ESC[?...c
+
     pub fn requestSequence(self: QueryType) []const u8 {
         return switch (self) {
             .foreground_color => terminal_background.OSC.request_foreground_color,
@@ -37,7 +36,7 @@ pub const QueryResponse = union(QueryType) {
     cursor_color: terminal_background.Color,
     cursor_position: struct { row: u16, col: u16 },
     device_attributes: []const u8, // Raw attribute string
-    
+
     pub fn deinit(self: QueryResponse, allocator: std.mem.Allocator) void {
         switch (self) {
             .device_attributes => |attrs| allocator.free(attrs),
@@ -50,22 +49,22 @@ pub const QueryResponse = union(QueryType) {
 pub const ResponseParser = struct {
     buffer: std.ArrayListUnmanaged(u8),
     allocator: std.mem.Allocator,
-    
+
     pub fn init(allocator: std.mem.Allocator) ResponseParser {
         return ResponseParser{
             .buffer = std.ArrayListUnmanaged(u8){},
             .allocator = allocator,
         };
     }
-    
+
     pub fn deinit(self: *ResponseParser) void {
         self.buffer.deinit(self.allocator);
     }
-    
+
     /// Add bytes to the parser buffer and attempt to parse complete sequences
     pub fn addBytes(self: *ResponseParser, bytes: []const u8) !?QueryResponse {
         try self.buffer.appendSlice(self.allocator, bytes);
-        
+
         // Try to parse complete sequences from buffer
         var i: usize = 0;
         while (i < self.buffer.items.len) {
@@ -73,9 +72,9 @@ pub const ResponseParser = struct {
                 i += 1;
                 continue;
             }
-            
+
             if (i + 1 >= self.buffer.items.len) break;
-            
+
             // Check for OSC sequence (ESC ])
             if (self.buffer.items[i + 1] == ']') {
                 if (try self.parseOSCSequence(i)) |response| {
@@ -88,17 +87,17 @@ pub const ResponseParser = struct {
                     return response;
                 }
             }
-            
+
             i += 1;
         }
-        
+
         return null;
     }
-    
+
     fn parseOSCSequence(self: *ResponseParser, start_idx: usize) !?QueryResponse {
         const buffer = self.buffer.items;
         if (start_idx + 2 >= buffer.len) return null;
-        
+
         // Find sequence terminator (BEL or ST)
         var end_idx: ?usize = null;
         var i = start_idx + 2;
@@ -112,22 +111,22 @@ pub const ResponseParser = struct {
             }
             i += 1;
         }
-        
+
         if (end_idx == null) return null; // Incomplete sequence
-        
-        const seq = buffer[start_idx + 2..end_idx.?];
+
+        const seq = buffer[start_idx + 2 .. end_idx.?];
         const response = try self.parseOSCContent(seq);
-        
+
         // Remove parsed sequence from buffer
         self.removeFromBuffer(start_idx, end_idx.? + 1);
-        
+
         return response;
     }
-    
+
     fn parseCSISequence(self: *ResponseParser, start_idx: usize) !?QueryResponse {
         const buffer = self.buffer.items;
         if (start_idx + 2 >= buffer.len) return null;
-        
+
         // Find sequence terminator (typically A-Z, a-z)
         var end_idx: ?usize = null;
         var i = start_idx + 2;
@@ -139,27 +138,27 @@ pub const ResponseParser = struct {
             }
             i += 1;
         }
-        
+
         if (end_idx == null) return null; // Incomplete sequence
-        
-        const seq = buffer[start_idx + 2..end_idx.? + 1];
+
+        const seq = buffer[start_idx + 2 .. end_idx.? + 1];
         const response = try self.parseCSIContent(seq);
-        
+
         // Remove parsed sequence from buffer
         self.removeFromBuffer(start_idx, end_idx.? + 1);
-        
+
         return response;
     }
-    
+
     fn parseOSCContent(self: *ResponseParser, content: []const u8) !QueryResponse {
         _ = self;
         // Parse OSC sequences like "10;rgb:ff00/0000/0000" or "11;#FF0000"
         var parts = std.mem.splitSequence(u8, content, ";");
         const code_str = parts.next() orelse return error.InvalidResponse;
         const value_str = parts.next() orelse return error.InvalidResponse;
-        
+
         const code = try std.fmt.parseInt(u16, code_str, 10);
-        
+
         return switch (code) {
             10 => QueryResponse{ .foreground_color = try parseColorValue(value_str) },
             11 => QueryResponse{ .background_color = try parseColorValue(value_str) },
@@ -167,30 +166,30 @@ pub const ResponseParser = struct {
             else => error.UnexpectedSequence,
         };
     }
-    
+
     fn parseCSIContent(self: *ResponseParser, content: []const u8) !QueryResponse {
         // Parse cursor position report: "row;colR"
         if (content.len > 0 and content[content.len - 1] == 'R') {
-            const pos_data = content[0..content.len - 1];
+            const pos_data = content[0 .. content.len - 1];
             var parts = std.mem.splitSequence(u8, pos_data, ";");
             const row_str = parts.next() orelse return error.InvalidResponse;
             const col_str = parts.next() orelse return error.InvalidResponse;
-            
+
             const row = try std.fmt.parseInt(u16, row_str, 10);
             const col = try std.fmt.parseInt(u16, col_str, 10);
-            
+
             return QueryResponse{ .cursor_position = .{ .row = row, .col = col } };
         }
-        
+
         // Parse device attributes: "?...c"
         if (content.len > 0 and content[content.len - 1] == 'c') {
             const attrs = try self.allocator.dupe(u8, content);
             return QueryResponse{ .device_attributes = attrs };
         }
-        
+
         return error.UnexpectedSequence;
     }
-    
+
     fn parseColorValue(value_str: []const u8) !terminal_background.Color {
         // Parse various color formats returned by terminals
         if (std.mem.startsWith(u8, value_str, "#")) {
@@ -209,12 +208,12 @@ pub const ResponseParser = struct {
             return error.ParseError;
         }
     }
-    
+
     fn removeFromBuffer(self: *ResponseParser, start: usize, end: usize) void {
         std.mem.copyForwards(u8, self.buffer.items[start..], self.buffer.items[end..]);
         self.buffer.shrinkRetainingCapacity(self.buffer.items.len - (end - start));
     }
-    
+
     pub fn clear(self: *ResponseParser) void {
         self.buffer.clearRetainingCapacity();
     }
@@ -226,7 +225,7 @@ pub const QueryManager = struct {
     reader: *std.Io.Reader,
     writer: *std.Io.Writer,
     timeout_ms: u64 = 1000,
-    
+
     pub fn init(reader: *std.Io.Reader, writer: *std.Io.Writer, allocator: std.mem.Allocator) QueryManager {
         return QueryManager{
             .parser = ResponseParser.init(allocator),
@@ -234,29 +233,29 @@ pub const QueryManager = struct {
             .writer = writer,
         };
     }
-    
+
     pub fn deinit(self: *QueryManager) void {
         self.parser.deinit();
     }
-    
+
     /// Send a query and wait for response with timeout
     pub fn query(self: *QueryManager, query_type: QueryType) !QueryResponse {
         // Send query
         const request = query_type.requestSequence();
         try self.writer.write(request);
         try self.writer.flush();
-        
+
         // Read response with timeout
         const start_time = std.time.milliTimestamp();
         var buffer: [256]u8 = undefined;
-        
+
         while (true) {
             // Check timeout
             const elapsed = std.time.milliTimestamp() - start_time;
             if (elapsed > self.timeout_ms) {
                 return QueryError.TimeoutExpired;
             }
-            
+
             // Try non-blocking read
             const bytes_read = self.reader.read(buffer[0..]) catch |err| switch (err) {
                 error.WouldBlock => {
@@ -266,7 +265,7 @@ pub const QueryManager = struct {
                 },
                 else => return err,
             };
-            
+
             if (bytes_read > 0) {
                 if (try self.parser.addBytes(buffer[0..bytes_read])) |response| {
                     return response;
@@ -276,37 +275,37 @@ pub const QueryManager = struct {
             }
         }
     }
-    
+
     /// Query terminal foreground color
     pub fn queryForegroundColor(self: *QueryManager) !terminal_background.Color {
         const response = try self.query(.foreground_color);
         return response.foreground_color;
     }
-    
+
     /// Query terminal background color
     pub fn queryBackgroundColor(self: *QueryManager) !terminal_background.Color {
         const response = try self.query(.background_color);
         return response.background_color;
     }
-    
+
     /// Query terminal cursor color
     pub fn queryCursorColor(self: *QueryManager) !terminal_background.Color {
         const response = try self.query(.cursor_color);
         return response.cursor_color;
     }
-    
+
     /// Query cursor position
     pub fn queryCursorPosition(self: *QueryManager) !struct { row: u16, col: u16 } {
         const response = try self.query(.cursor_position);
         return response.cursor_position;
     }
-    
+
     /// Query device attributes
     pub fn queryDeviceAttributes(self: *QueryManager) ![]const u8 {
         const response = try self.query(.device_attributes);
         return response.device_attributes;
     }
-    
+
     pub fn setTimeout(self: *QueryManager, timeout_ms: u64) void {
         self.timeout_ms = timeout_ms;
     }
@@ -316,20 +315,20 @@ pub const QueryManager = struct {
 pub fn testColorQueries(allocator: std.mem.Allocator) !void {
     const stdout = std.fs.File.stdout();
     const stdin = std.fs.File.stdin();
-    
+
     var stdout_buffer: [4096]u8 = undefined;
     var stdout_writer = stdout.writer(&stdout_buffer);
     const writer: *std.Io.Writer = &stdout_writer.interface;
-    
-    var stdin_buffer: [4096]u8 = undefined;  
+
+    var stdin_buffer: [4096]u8 = undefined;
     var stdin_reader = stdin.reader(&stdin_buffer);
     const reader: *std.Io.Reader = &stdin_reader.interface;
-    
+
     var manager = QueryManager.init(reader, writer, allocator);
     defer manager.deinit();
-    
+
     manager.setTimeout(2000); // 2 second timeout
-    
+
     // Test querying terminal colors
     if (manager.queryForegroundColor()) |fg_color| {
         const hex = terminal_background.HexColor.init(fg_color);
@@ -339,7 +338,7 @@ pub fn testColorQueries(allocator: std.mem.Allocator) !void {
     } else |err| {
         std.debug.print("Failed to query foreground color: {}\n", .{err});
     }
-    
+
     if (manager.queryBackgroundColor()) |bg_color| {
         const hex = terminal_background.HexColor.init(bg_color);
         const hex_str = try hex.toHex(allocator);
@@ -356,15 +355,15 @@ test "OSC response parsing" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
-    
+
     var parser = ResponseParser.init(allocator);
     defer parser.deinit();
-    
+
     // Test foreground color response
     const fg_response = "\x1b]10;rgb:ffff/0000/0000\x07";
     const result = try parser.addBytes(fg_response);
     try testing.expect(result != null);
-    
+
     if (result) |response| {
         switch (response) {
             .foreground_color => |color| {
@@ -382,15 +381,15 @@ test "cursor position parsing" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
-    
+
     var parser = ResponseParser.init(allocator);
     defer parser.deinit();
-    
+
     // Test cursor position response
     const cpr_response = "\x1b[24;80R";
     const result = try parser.addBytes(cpr_response);
     try testing.expect(result != null);
-    
+
     if (result) |response| {
         switch (response) {
             .cursor_position => |pos| {

@@ -2,9 +2,9 @@
 //! Supports multiple styles, animations, and terminal capabilities
 
 const std = @import("std");
-const term_ansi = @import("../../../term/ansi/color.zig");
-const term_cursor = @import("../../../term/ansi/cursor.zig");
-const term_caps = @import("../../../term/caps.zig");
+const term_ansi = @import("../../../term/mod.zig").ansi.color;
+const term_cursor = @import("../../../term/mod.zig").ansi.cursor;
+const term_caps = @import("../../../term/mod.zig").caps;
 const Allocator = std.mem.Allocator;
 
 pub const ProgressBarStyle = enum {

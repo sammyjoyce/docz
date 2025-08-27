@@ -2,8 +2,9 @@
 //! Provides progress tracking, error handling, and user interaction
 
 const std = @import("std");
-const term_ansi = @import("../../term/ansi/color.zig");
-const term_caps = @import("../../term/caps.zig");
+const term_shared = @import("../../term/mod.zig");
+const term_ansi = term_shared.ansi.color;
+const term_caps = term_shared.caps;
 const notification_manager = @import("../interactive/notification_manager.zig");
 const ProgressBar = @import("../components/unified_progress_adapter.zig").ProgressBar;
 const WorkflowStep = @import("workflow_step.zig");
@@ -36,7 +37,7 @@ pub const WorkflowRunner = struct {
     progress_bar: ?ProgressBar,
     show_progress: bool,
     interactive: bool,
-    writer: ?*std.io.AnyWriter,
+    writer: ?*std.Io.Writer,
 
     pub fn init(
         allocator: Allocator,
@@ -64,7 +65,7 @@ pub const WorkflowRunner = struct {
         }
     }
 
-    pub fn setWriter(self: *WorkflowRunner, writer: *std.io.AnyWriter) void {
+    pub fn setWriter(self: *WorkflowRunner, writer: *std.Io.Writer) void {
         self.writer = writer;
         self.notification_manager.setWriter(writer);
     }
