@@ -106,7 +106,7 @@ Streams assistant text to terminal with colours; if the assistant proposes code,
 
 * Use `async` functions & the default event-loop rather than manual threads when latency hiding is needed (API + tool exec concurrently).
 * Prefer **slice-based** APIs; avoid hidden heap unless via the session arena.
-* All JSON handling via `std.json` DOM + `std.json.stringifyAlloc`; wrap in helper `JsonValue` struct.
+* All JSON handling via `std.json` DOM + `std.json.Stringify.valueAlloc`; wrap in helper `JsonValue` struct.
 * HTTP via `std.http.Client` (added in 0.15.0).
 
 ---

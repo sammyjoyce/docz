@@ -73,7 +73,7 @@ pub fn findAll(allocator: std.mem.Allocator, text: []const u8, pattern: []const 
                 .match = line[abs_pos .. abs_pos + pattern.len],
             };
 
-            try results.append(allocator, result);
+            try results.append(result);
             found_count += 1;
 
             if (found_count >= max_results) break;

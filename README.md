@@ -1,159 +1,361 @@
 # docz
 
-Terminal AI agents in Zig. The repo now supports multiple independent agents with shared core runtime. The existing Markdown agent is the first implementation.
+A multi-agent terminal AI system with shared infrastructure for building specialized command-line agents. Features a modular architecture where each agent is built independently while sharing core components, tools, and utilities.
 
-## ✨ Features
+## Overview
 
-- **5 Specialized Tools** for comprehensive markdown document management
-- **ZON Configuration** with native Zig configuration format  
-- **Template System** for consistent document creation
-- **Multi-Format Export** (HTML, PDF, DOCX, LaTeX)
-- **Quality Validation** with multiple rulesets
-- **Large Document Support** optimized for 10k+ line documents
+**docz** provides a flexible framework for creating terminal-based AI agents that leverage Claude's capabilities through a structured, extensible architecture. Each agent operates independently but benefits from a comprehensive shared infrastructure including CLI components, TUI widgets, network clients, authentication systems, and more.
 
-## 🚀 Quick Start
+### Key Features
 
-### Build and Run (multi-agent)
+- **Multi-Agent Architecture**: Build and deploy independent agents with shared core infrastructure
+- **Enhanced Build System**: Individual agent builds with validation and comprehensive build options
+- **Shared Infrastructure**: Organized modules for CLI, TUI, networking, tools, authentication, and rendering
+- **Standardized Patterns**: Consistent agent structure, configuration management, and tool registration
+- **Advanced Tool System**: Metadata-rich tools with JSON support and automatic registration
+- **Configuration Management**: Structured ZON-based configuration with validation and templates
+- **Base Agent Classes**: Common functionality inheritance to reduce code duplication
+- **Standardized Main Entry**: Unified CLI parsing and engine delegation across all agents
+- **Zig 0.15.1 Compatible**: Updated for latest Zig with new std.Io APIs
+
+### Recent Improvements
+
+- **CLI Demo Relocation**: Moved comprehensive CLI demo from root to `examples/cli_demo/` for better organization
+- **New Core Modules**: Added `agent_base.zig` and `agent_main.zig` to provide standardized base functionality
+- **Reduced Code Duplication**: Base classes and shared patterns eliminate repetitive boilerplate code
+- **Enhanced Agent Creation**: Simplified agent development with inheritance and helper functions
+
+## Available Agents
+
+### markdown
+A comprehensive CLI agent for writing and refining markdown documents with advanced processing capabilities.
+
+**Features:**
+- 5 specialized markdown tools (content editor, document I/O, transformer, validator, workflow processor)
+- Template system with variable substitution
+- Multi-format export (HTML, PDF, DOCX)
+- Quality validation and consistency checks
+- Large document support with streaming
+
+### test-agent
+Example agent demonstrating enhanced tool integration and basic functionality.
+
+**Features:**
+- JSON-based tool examples
+- Automatic tool registration
+- Configuration patterns
+- Testing templates
+
+### _template
+Template for creating new agents with standardized structure and patterns.
+
+## Quick Start
+
+### Building and Running Agents
 
 ```bash
-# Clone and build
-git clone https://github.com/sammyjoyce/docz.git
-cd docz/
-zig build                         # builds default agent (markdown)
-zig build run -- "Create a technical guide about Git workflows"
+# Build a specific agent
+zig build -Dagent=markdown
 
-# Choose an agent explicitly (default is markdown)
-zig build -Dagent=markdown run -- "Generate a README"
+# Run an agent with arguments
+zig build -Dagent=markdown run -- "Create a technical blog post about Zig"
 
-# Install only the selected agent binary
+# Install agent binary
 zig build -Dagent=markdown install-agent
 
-# Run agent entry directly (bypasses root shim)
-zig build -Dagent=markdown run-agent -- "Explain usage"
+# Run agent directly
+zig build -Dagent=markdown run-agent -- --help
+
+# Test an agent
+zig build -Dagent=markdown test
 ```
 
-### Download Release
+### Creating a New Agent
 
 ```bash
-# Download latest release
-wget https://github.com/sammyjoyce/docz/releases/latest/download/<archive>
-tar -xf <archive>    # Unix
-unzip <archive>      # Windows
-./<binary> -h
+# 1. Copy the template
+cp -r agents/_template agents/my-agent
+
+# 2. Customize the implementation
+vim agents/my-agent/agent.zig    # Define configuration and logic
+vim agents/my-agent/spec.zig     # Register tools and prompts
+vim agents/my-agent/config.zon   # Set default configuration
+
+# 3. Build and test
+zig build -Dagent=my-agent run -- "Hello from my new agent!"
 ```
 
-## 🛠️ Markdown Agent Tools
-
-The specialized markdown agent includes these tools:
-
-| Tool | Purpose | Key Features |
-|------|---------|--------------|
-| `document_io` | Document I/O operations | File reading, content search, workspace navigation |
-| `content_editor` | Content modification | Text editing, structure changes, table operations, metadata management, formatting |
-| `document_validator` | Quality assurance | Structure validation, link checking, spell checking, compliance |
-| `document_transformer` | Document creation & conversion | Template operations, format conversion, document generation |
-| `workflow_processor` | Complex workflows | Sequential workflows, batch operations, multi-step processing, automation |
-
-## 📁 Project Structure
+## Project Structure
 
 ```
-agents/
-  markdown/               # Markdown agent (entry + spec + impl)
-    ├── main.zig          # Agent entry point (CLI + engine)
-    ├── spec.zig          # Agent-specific prompts/tools hook
-    ├── markdown_agent.zig# Agent implementation API
-    ├── config.zon, tools.zon, system_prompt.txt, ...
-
-src/
-  core/
-    └── engine.zig        # Shared engine (auth, loop, streaming)
-  markdown_agent/         # Compatibility bridge for imports (kept)
-    └── markdown_agent.zig
-  cli.zig                 # Shared CLI parsing
-  tools.zig               # Shared tools registry (generic)
-  anthropic.zig           # Anthropic HTTP client
-  main.zig                # Delegates to active agent selected via -Dagent
+docz/
+├── agents/                     # Individual terminal agents
+│   ├── markdown/              # Markdown document processor
+│   ├── test-agent/           # Example/testing agent
+│   └── _template/            # Template for new agents
+│       ├── main.zig         # CLI entry point (required)
+│       ├── spec.zig         # Agent specification (required)
+│       ├── agent.zig        # Main implementation (required)
+│       ├── config.zon       # Configuration (optional)
+│       ├── system_prompt.txt # Prompt template (optional)
+│       ├── tools/           # Agent-specific tools (optional)
+│       └── README.md        # Documentation (recommended)
+│
+├── src/
+│   ├── core/                 # Core engine and configuration
+│   │   ├── engine.zig       # Main agent engine
+│   │   ├── config.zig       # Configuration utilities
+│   │   ├── agent_base.zig   # Base agent functionality
+│   │   └── agent_main.zig   # Standardized main entry point
+│   │
+│   └── shared/              # Shared infrastructure modules
+│       ├── cli/            # Command-line interface system
+│       │   ├── core/       # CLI parsing and routing
+│       │   ├── components/ # UI components (menus, progress)
+│       │   ├── themes/     # Color schemes and styling
+│       │   ├── formatters/ # Output formatting
+│       │   └── workflows/  # Multi-step operations
+│       │
+│       ├── tui/            # Terminal user interface
+│       │   ├── core/       # TUI engine and renderer
+│       │   ├── components/ # TUI components
+│       │   ├── themes/     # TUI styling
+│       │   └── widgets/    # Specialized widgets
+│       │
+│       ├── network/        # Network and API clients
+│       │   ├── anthropic.zig # Claude API client
+│       │   ├── curl.zig      # HTTP utilities
+│       │   └── sse.zig       # Server-sent events
+│       │
+│       ├── tools/          # Enhanced tools registry
+│       │   ├── mod.zig     # Tool exports
+│       │   └── tools.zig   # Registry implementation
+│       │
+│       ├── auth/           # Authentication system
+│       │   ├── core/       # Auth logic
+│       │   ├── oauth/      # OAuth implementation
+│       │   ├── cli/        # CLI auth commands
+│       │   └── tui/        # Auth UI components
+│       │
+│       ├── render/         # Rendering system
+│       │   └── components/ # Charts, tables, progress
+│       │
+│       └── term/           # Terminal capabilities
+│           └── ansi/       # ANSI escape sequences
+│
+├── examples/               # Demo applications
+│   ├── cli_demo/          # Comprehensive CLI demo with enhanced features
+│   └── *.zig              # Various demo applications
+├── tests/                 # Test suites
+└── build.zig             # Build configuration
 ```
 
-## 🎯 Use Cases
+## Shared Infrastructure
 
-- **Technical Documentation** - API docs, user manuals, specifications
-- **Academic Writing** - Research papers, articles, dissertations  
-- **Content Publishing** - Blogs, tutorials, guides
-- **Project Documentation** - READMEs, wikis, knowledge bases
-- **Long-Form Content** - Books, reports, comprehensive guides
+### CLI Module (`src/shared/cli/`)
+Comprehensive command-line interface system:
+- **Core**: Argument parsing, command routing, context management
+- **Components**: Reusable UI elements (menus, progress bars, inputs)
+- **Themes**: Color schemes and terminal styling
+- **Formatters**: Output formatting for different data types
+- **Workflows**: Multi-step operations and batch processing
 
-## 🔧 Integration as Module
+### TUI Module (`src/shared/tui/`)
+Terminal user interface components:
+- **Core**: Canvas engine, unified renderer
+- **Components**: Dashboard, graphics, adaptive layouts
+- **Widgets**: Charts, gauges, data grids
+- **Themes**: TUI-specific styling and colors
 
-1. Add `docz` dependency to `build.zig.zon`:
+### Network Module (`src/shared/network/`)
+API clients and network utilities:
+- **anthropic.zig**: Claude/Anthropic API client
+- **curl.zig**: HTTP client functionality
+- **sse.zig**: Server-sent events handling
 
-```bash
-zig fetch --save git+https://github.com/sammyjoyce/docz.git
-```
+### Tools Module (`src/shared/tools/`)
+Enhanced tools registry with metadata support:
+- **Registry**: Advanced tool registry with categorization
+- **JSON Tools**: Structured JSON-based tools with serialization
+- **Metadata**: Descriptions, categories, versions, agent ownership
+- **Auto Registration**: Comptime reflection for automatic registration
 
-2. Use `docz` dependency in `build.zig`:
+### Auth Module (`src/shared/auth/`)
+Authentication system:
+- **Core**: Authentication logic and credential management
+- **OAuth**: OAuth 2.0 implementation for Claude Pro/Max
+- **TUI/CLI**: Terminal UI and CLI commands for auth flows
+
+## Agent Development
+
+### Standardized Agent Structure
+
+**Required Files:**
+- `main.zig` - CLI entry point that calls the standardized `agent_main.runAgent()`
+- `spec.zig` - Agent specification with system prompt and tools
+- `agent.zig` - Main agent implementation extending base functionality (standardized name)
+
+**Optional Files:**
+- `config.zon` - Structured configuration in ZON format
+- `system_prompt.txt` - System prompt template with variables
+- `tools.zon` - Tool definitions and metadata
+- `tools/` - Agent-specific tool implementations
+- `README.md` - Agent-specific documentation
+
+### Simplified Agent Creation
+
+The new architecture dramatically simplifies agent development:
+
+- **Base Agent Inheritance**: Extend `BaseAgent` to inherit common functionality like template processing and configuration helpers
+- **Standardized Main Entry**: Use `agent_main.runAgent()` to eliminate CLI parsing boilerplate
+- **Configuration Helpers**: Use `ConfigHelpers` for simplified configuration loading and validation
+- **Template Variables**: Built-in support for variable substitution in system prompts
+
+This reduces agent creation from ~200 lines of boilerplate code to just the agent-specific logic.
+
+### Configuration Management
+
+Agents use a standardized configuration system with common settings and agent-specific customization. The new `ConfigHelpers` simplify configuration management:
 
 ```zig
-const docz_dep = b.dependency("docz", .{
-    .target = target,
-    .optimize = optimize,
-});
-const docz_mod = docz_dep.module("docz");
-exe.root_module.addImport("docz", docz_mod);
-```
+// In agent.zig
+pub const Config = struct {
+    // Include standard agent configuration
+    agent_config: @import("../../src/core/config.zig").AgentConfig,
 
-3. Use in your code:
-
-```zig
-const docz = @import("docz");
-// Use the shared engine and provide an AgentSpec
-const engine = @import("core_engine");
-const my_spec: engine.AgentSpec = .{
-    .buildSystemPrompt = (struct {
-        fn f(a: std.mem.Allocator, o: engine.CliOptions) ![]const u8 { _ = o; return a.dupe(u8, "My agent"); }
-    }).f,
-    .registerTools = (struct { fn f(reg: *@import("tools_shared").Registry) !void { _ = reg; } }).f,
+    // Add agent-specific fields
+    custom_feature_enabled: bool = false,
+    max_custom_operations: u32 = 50,
 };
-try engine.runWithOptions(allocator, options, my_spec);
+
+// Use ConfigHelpers for simplified loading
+const config = @import("../../src/core/agent_base.zig").ConfigHelpers.loadConfig(
+    Config,
+    allocator,
+    "my-agent",
+    Config{
+        .agent_config = @import("../../src/core/agent_base.zig").ConfigHelpers.createAgentConfig(
+            "My Agent",
+            "Description",
+            "Author"
+        ),
+        .custom_feature_enabled = false,
+        .max_custom_operations = 50,
+    }
+);
 ```
 
-## 📖 Documentation
+Configuration supports template variables in system prompts:
+- `{agent_name}`, `{agent_version}`, `{agent_description}`
+- `{debug_enabled}`, `{verbose_enabled}`
+- `{custom_tools_enabled}`, `{file_operations_enabled}`
+- `{max_input_size}`, `{max_output_size}`
 
-- **[PROJECT.md](PROJECT.md)** - Complete project documentation and architecture
-- **[agents/markdown/README.md](agents/markdown/README.md)** - Markdown agent guide
-- **[agents/markdown/examples.md](agents/markdown/examples.md)** - Usage examples and workflows
-- **[AGENTS.md](AGENTS.md)** - General agent development guide
+### Tool Registration
 
-## 🏗️ Development
+Three ways to register tools:
 
+**1. Automatic Module Registration (recommended)**
+```zig
+// In spec.zig
+fn registerToolsImpl(registry: *tools_mod.Registry) !void {
+    const tools = @import("tools/mod.zig");
+    try registry.registerFromModule(tools, "my-agent");
+}
+```
+
+**2. Individual Registration with Metadata**
+```zig
+try tools_mod.registerJsonTool(
+    registry,
+    "my_tool",
+    "Tool description",
+    myToolFunction,
+    "my-agent"
+);
+```
+
+**3. JSON-Based Tools**
+```zig
+pub fn myJsonTool(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.ToolError![]u8 {
+    // Implementation using structured JSON
+}
+```
+
+## Development Workflow
+
+### Testing
 ```bash
-# Format code
-zig fmt src/**/*.zig build.zig build.zig.zon
-
-# Run tests
+# Test all
 zig build test --summary all
 
-# Check formatting
-zig build fmt
+# Test specific file
+zig test src/core/engine.zig
 
-# Create release builds
-zig build release
+# Test with filter
+zig test src/core/engine.zig --test-filter "config"
 ```
 
-## 🤝 Contributing
+### Code Style
+- camelCase for functions/variables
+- PascalCase for types
+- ALL_CAPS for constants
+- 4-space indentation
+- Run `zig fmt` before commits
+
+### Best Practices
+- Use shared infrastructure modules to avoid duplication
+- Leverage standardized configuration for consistency
+- Include comprehensive tool descriptions for AI discovery
+- Use JSON-based tools for structured data exchange
+- Validate configurations before deployment
+
+## Zig 0.15.1 Migration Notes
+
+### Important Changes for Contributors
+
+**Language Changes:**
+- `usingnamespace` removed - use explicit imports
+- `async`/`await` removed - use new std.Io async APIs
+- Non-exhaustive enum switch rules changed
+
+**I/O Stream Overhaul ("Writergate"):**
+- Old generic readers/writers deprecated
+- New concrete `std.Io.Reader` and `std.Io.Writer`
+- Caller-owned ring buffers in interface
+- Defined error sets instead of `anyerror`
+
+**Migration Example:**
+```zig
+// Old (deprecated)
+const stdout = std.io.getStdOut().writer();
+
+// New
+var stdout_buffer: [4096]u8 = undefined;
+var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+const stdout = &stdout_writer.interface;
+try stdout.print("Hello\n", .{});
+try stdout.flush(); // Don't forget to flush!
+```
+
+## Documentation
+
+- [AGENTS.md](AGENTS.md) - Detailed agent development guide with new architecture
+- [PROJECT.md](PROJECT.md) - Project architecture documentation
+- [CLI_ENHANCEMENTS.md](CLI_ENHANCEMENTS.md) - CLI system details
+- [examples/cli_demo/README.md](examples/cli_demo/README.md) - CLI demo documentation
+- Individual agent READMEs in `agents/*/README.md`
+
+## License
+
+[LICENSE](LICENSE)
+
+## Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make changes with tests
-4. Ensure `zig build` passes
+2. Create your agent using the template
+3. Follow the standardized patterns
+4. Ensure tests pass
 5. Submit a pull request
 
-See [PROJECT.md](PROJECT.md) for detailed contribution guidelines.
-
-## 📄 License
-
-Educational and development purposes. See individual files for specific licensing.
-
----
-
-**Built with Zig 0.15.1** - Performance, safety, and maintainability focused.
+For detailed contribution guidelines, see the documentation files listed above.

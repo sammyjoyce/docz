@@ -173,10 +173,10 @@ fn searchContent(allocator: std.mem.Allocator, params: json.ObjectMap) !json.Val
     }
 
     // Get files to search
-    var file_list = std.ArrayList([]const u8).init(allocator);
+    var file_list = std.ArrayListUnmanaged([]const u8){};
     defer {
         for (file_list.items) |path| allocator.free(path);
-        file_list.deinit();
+        file_list.deinit(allocator);
     }
 
     if (file_patterns_json == .array) {
@@ -189,7 +189,7 @@ fn searchContent(allocator: std.mem.Allocator, params: json.ObjectMap) !json.Val
             }
 
             for (files) |path| {
-                try file_list.append(try allocator.dupe(u8, path));
+                try file_list.append(allocator, try allocator.dupe(u8, path));
             }
         }
     } else {
@@ -201,7 +201,7 @@ fn searchContent(allocator: std.mem.Allocator, params: json.ObjectMap) !json.Val
         }
 
         for (files) |path| {
-            try file_list.append(try allocator.dupe(u8, path));
+            try file_list.append(allocator, try allocator.dupe(u8, path));
         }
     }
 
@@ -345,10 +345,10 @@ fn findFiles(allocator: std.mem.Allocator, params: json.ObjectMap) !json.Value {
     const max_results_json = params.get("max_results") orelse json.Value{ .integer = 100 };
     const max_results: usize = @intCast(max_results_json.integer);
 
-    var all_files = std.ArrayList([]const u8).init(allocator);
+    var all_files = std.ArrayListUnmanaged([]const u8){};
     defer {
         for (all_files.items) |path| allocator.free(path);
-        all_files.deinit();
+        all_files.deinit(allocator);
     }
 
     if (file_patterns_json == .array) {
@@ -362,7 +362,7 @@ fn findFiles(allocator: std.mem.Allocator, params: json.ObjectMap) !json.Value {
 
             for (files) |path| {
                 if (all_files.items.len >= max_results) break;
-                try all_files.append(try allocator.dupe(u8, path));
+                try all_files.append(allocator, try allocator.dupe(u8, path));
             }
         }
     }
@@ -420,9 +420,9 @@ fn extractFrontMatter(content: []const u8) []const u8 {
 
 /// Extract section by heading text (simplified)
 fn extractHeadingSection(allocator: std.mem.Allocator, content: []const u8, heading_text: []const u8) ![]const u8 {
-    var lines = std.mem.split(u8, content, "\n");
-    var result = std.ArrayList(u8).init(allocator);
-    defer result.deinit();
+    var lines = std.mem.splitSequence(u8, content, "\n");
+    var result = std.ArrayListUnmanaged(u8){};
+    defer result.deinit(allocator);
 
     var in_section = false;
     while (lines.next()) |line| {
@@ -439,18 +439,18 @@ fn extractHeadingSection(allocator: std.mem.Allocator, content: []const u8, head
         }
 
         if (in_section) {
-            try result.appendSlice(line);
-            try result.append('\n');
+            try result.appendSlice(allocator, line);
+            try result.append(allocator, '\n');
         }
     }
 
-    return result.toOwnedSlice();
+    return result.toOwnedSlice(allocator);
 }
 
 /// Find files matching a pattern (simplified)
 fn findFilesByPattern(allocator: std.mem.Allocator, pattern: []const u8) ![][]const u8 {
-    var result = std.ArrayList([]const u8).init(allocator);
-    defer result.deinit();
+    var result = std.ArrayListUnmanaged([]const u8){};
+    defer result.deinit(allocator);
 
     if (std.mem.endsWith(u8, pattern, "*.md")) {
         const extension = ".md";
@@ -462,17 +462,17 @@ fn findFilesByPattern(allocator: std.mem.Allocator, pattern: []const u8) ![][]co
 
         for (entries) |entry| {
             if (std.mem.endsWith(u8, entry, extension)) {
-                try result.append(try allocator.dupe(u8, entry));
+                try result.append(allocator, try allocator.dupe(u8, entry));
             }
         }
     } else {
         // For other patterns, just check if file exists
         if (fs.fileExists(pattern)) {
-            try result.append(try allocator.dupe(u8, pattern));
+            try result.append(allocator, try allocator.dupe(u8, pattern));
         }
     }
 
-    return result.toOwnedSlice();
+    return result.toOwnedSlice(allocator);
 }
 
 /// Build directory tree recursively

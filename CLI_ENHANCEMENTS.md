@@ -1,6 +1,6 @@
 # CLI Enhancements - Progressive Terminal Capabilities
 
-This document describes the comprehensive CLI enhancements made to leverage the advanced terminal capabilities in `@src/term` with progressive enhancement and better component organization.
+This document describes the comprehensive CLI enhancements made to leverage the advanced terminal capabilities in `@src/shared/term` with progressive enhancement and better component organization.
 
 ## Overview
 
@@ -164,7 +164,7 @@ src/
 │   ├── core/
 │   │   └── progress.zig           # Unified progress bar
 │   └── mod.zig
-└── term/
+└── shared/term/
     └── unified.zig                # Advanced terminal capabilities (existing)
 ```
 

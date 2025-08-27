@@ -77,8 +77,8 @@ fn executePipeline(allocator: std.mem.Allocator, params: json.ObjectMap) !Workfl
     else
         json.Value{ .bool = true };
 
-    var step_results = std.ArrayList(StepResult).init(allocator);
-    defer step_results.deinit();
+    var step_results = try std.ArrayList(StepResult).initCapacity(allocator, 10);
+    defer step_results.deinit(allocator);
 
     var completed_steps: usize = 0;
     var failed_steps: usize = 0;
@@ -103,7 +103,7 @@ fn executePipeline(allocator: std.mem.Allocator, params: json.ObjectMap) !Workfl
             };
         };
 
-        try step_results.append(step_result);
+        try step_results.append(allocator, step_result);
 
         if (step_result.success) {
             completed_steps += 1;
@@ -133,7 +133,7 @@ fn executePipeline(allocator: std.mem.Allocator, params: json.ObjectMap) !Workfl
         .completed_steps = completed_steps,
         .failed_steps = failed_steps,
         .total_duration_ms = 0, // Will be set by caller
-        .step_results = step_results.toOwnedSlice(),
+        .step_results = try step_results.toOwnedSlice(allocator),
         .error_message = if (!overall_success) try allocator.dupe(u8, "One or more pipeline steps failed") else null,
     };
 }
@@ -154,8 +154,8 @@ fn executeBatch(allocator: std.mem.Allocator, params: json.ObjectMap) !WorkflowR
     else
         10;
 
-    var step_results = std.ArrayList(StepResult).init(allocator);
-    defer step_results.deinit();
+    var step_results = try std.ArrayList(StepResult).initCapacity(allocator, 10);
+    defer step_results.deinit(allocator);
 
     var completed_steps: usize = 0;
     var failed_steps: usize = 0;
@@ -182,7 +182,7 @@ fn executeBatch(allocator: std.mem.Allocator, params: json.ObjectMap) !WorkflowR
             };
         };
 
-        try step_results.append(step_result);
+        try step_results.append(allocator, step_result);
 
         if (step_result.success) {
             completed_steps += 1;
@@ -205,7 +205,7 @@ fn executeBatch(allocator: std.mem.Allocator, params: json.ObjectMap) !WorkflowR
         .completed_steps = completed_steps,
         .failed_steps = failed_steps,
         .total_duration_ms = 0, // Will be set by caller
-        .step_results = step_results.toOwnedSlice(),
+        .step_results = try step_results.toOwnedSlice(allocator),
         .error_message = if (!overall_success) try allocator.dupe(u8, "One or more batch operations failed") else null,
     };
 }
@@ -223,15 +223,15 @@ fn executeHybrid(allocator: std.mem.Allocator, params: json.ObjectMap) !Workflow
     const batch_result = try executeBatch(allocator, params);
 
     // Combine results
-    var combined_results = std.ArrayList(StepResult).init(allocator);
-    defer combined_results.deinit();
+    var combined_results = try std.ArrayList(StepResult).initCapacity(allocator, 10);
+    defer combined_results.deinit(allocator);
 
     for (pipeline_result.step_results) |result| {
-        try combined_results.append(result);
+        try combined_results.append(allocator, result);
     }
 
     for (batch_result.step_results) |result| {
-        try combined_results.append(result);
+        try combined_results.append(allocator, result);
     }
 
     const combined_success = pipeline_result.success and batch_result.success;
@@ -241,7 +241,7 @@ fn executeHybrid(allocator: std.mem.Allocator, params: json.ObjectMap) !Workflow
         .completed_steps = pipeline_result.completed_steps + batch_result.completed_steps,
         .failed_steps = pipeline_result.failed_steps + batch_result.failed_steps,
         .total_duration_ms = 0, // Will be set by caller
-        .step_results = combined_results.toOwnedSlice(),
+        .step_results = try combined_results.toOwnedSlice(allocator),
         .error_message = if (!combined_success) try allocator.dupe(u8, "Hybrid workflow had failures") else null,
     };
 }
@@ -256,7 +256,7 @@ fn executeToolStep(allocator: std.mem.Allocator, tool_name: []const u8, step_par
     _ = step_params;
 
     // Simulate some work
-    std.time.sleep(1 * std.time.ns_per_ms);
+    std.Thread.sleep(1 * std.time.ns_per_ms);
 
     return StepResult{
         .success = true,
@@ -272,7 +272,7 @@ fn executeBatchOperation(allocator: std.mem.Allocator, file_path: []const u8, op
     _ = parameters;
 
     // Simulate some work
-    std.time.sleep(1 * std.time.ns_per_ms);
+    std.Thread.sleep(1 * std.time.ns_per_ms);
 
     return StepResult{
         .success = true,

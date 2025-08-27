@@ -119,7 +119,7 @@ fn createDirectory(allocator: std.mem.Allocator, params: json.ObjectMap) !json.V
 
     // Check if directory already exists
     const file_info = fs.getFileInfo(directory_path) catch |err| switch (err) {
-        Error.FileNotFound => null,
+        fs.Error.FileNotFound => null,
         else => return err,
     };
 
@@ -289,7 +289,7 @@ fn deleteDirectory(allocator: std.mem.Allocator, params: json.ObjectMap) !json.V
     // Check if directory is empty (if not recursive)
     if (!recursive) {
         const entries = fs.listDir(allocator, directory_path, 1) catch |err| switch (err) {
-            Error.FileNotFound => return Error.SourceNotFound,
+            fs.Error.FileNotFound => return Error.SourceNotFound,
             else => return err,
         };
         defer {

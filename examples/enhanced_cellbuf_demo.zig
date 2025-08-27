@@ -1,9 +1,8 @@
 const std = @import("std");
-const term = @import("../src/term/enhanced_cellbuf.zig");
+const term = @import("../src/shared/term/enhanced_cellbuf.zig");
 
 /// Demonstration of the enhanced cellbuf functionality
-/// Based on charmbracelet/x/cellbuf features with Zig implementation
-
+/// Advanced terminal cell buffer features with Zig implementation
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
@@ -40,22 +39,22 @@ pub fn main() !void {
 
 fn demoBasicStyles(buffer: *term.EnhancedCellBuffer, allocator: std.mem.Allocator) !void {
     buffer.clear();
-    
+
     // Create some styled text
     const bold_style = term.Style{
         .attrs = .{ .bold = true },
         .fg = .{ .ansi = 1 }, // Red
     };
-    
+
     const italic_style = term.Style{
         .attrs = .{ .italic = true },
         .fg = .{ .ansi = 2 }, // Green
     };
-    
+
     // Write "Hello World" with different styles
     const hello = "Hello";
     const world = "World";
-    
+
     var x: u32 = 0;
     for (hello) |char| {
         const cell = term.Cell{
@@ -66,10 +65,10 @@ fn demoBasicStyles(buffer: *term.EnhancedCellBuffer, allocator: std.mem.Allocato
         _ = buffer.setCell(x, 0, cell);
         x += 1;
     }
-    
+
     _ = buffer.setCell(x, 0, term.newCell(' ', 1));
     x += 1;
-    
+
     for (world) |char| {
         const cell = term.Cell{
             .rune = char,
@@ -79,7 +78,7 @@ fn demoBasicStyles(buffer: *term.EnhancedCellBuffer, allocator: std.mem.Allocato
         _ = buffer.setCell(x, 0, cell);
         x += 1;
     }
-    
+
     const output = try buffer.toString(allocator);
     defer allocator.free(output);
     std.debug.print("Basic styled output: {s}\n", .{output});
@@ -87,7 +86,7 @@ fn demoBasicStyles(buffer: *term.EnhancedCellBuffer, allocator: std.mem.Allocato
 
 fn demoWideAndCombining(buffer: *term.EnhancedCellBuffer, allocator: std.mem.Allocator) !void {
     buffer.clear();
-    
+
     // Wide character example (emoji)
     const emoji_cell = term.Cell{
         .rune = 0x1F600, // 😀
@@ -95,7 +94,7 @@ fn demoWideAndCombining(buffer: *term.EnhancedCellBuffer, allocator: std.mem.All
         .style = term.Style{},
     };
     _ = buffer.setCell(0, 0, emoji_cell);
-    
+
     // Regular text after wide character
     const text = "Wide!";
     var x: u32 = 2; // Start after wide character
@@ -104,12 +103,12 @@ fn demoWideAndCombining(buffer: *term.EnhancedCellBuffer, allocator: std.mem.All
         _ = buffer.setCell(x, 0, cell);
         x += 1;
     }
-    
+
     // Create a cell with combining characters (e with accent)
     var combining_cell = term.newCell('e', 1);
     try combining_cell.addCombining(allocator, 0x0301); // Combining acute accent
     _ = buffer.setCell(0, 1, combining_cell);
-    
+
     const output = try buffer.toString(allocator);
     defer allocator.free(output);
     std.debug.print("Wide and combining chars output:\n{s}\n", .{output});
@@ -118,13 +117,13 @@ fn demoWideAndCombining(buffer: *term.EnhancedCellBuffer, allocator: std.mem.All
 fn demoHyperlinks(buffer: *term.EnhancedCellBuffer, allocator: std.mem.Allocator) !void {
     _ = allocator; // TODO: Implement hyperlink rendering
     buffer.clear();
-    
+
     // Create hyperlinked text
     const link_style = term.Style{
         .attrs = .{ .underline = true },
         .fg = .{ .ansi = 4 }, // Blue
     };
-    
+
     const link_text = "github.com";
     var x: u32 = 0;
     for (link_text) |char| {
@@ -137,44 +136,44 @@ fn demoHyperlinks(buffer: *term.EnhancedCellBuffer, allocator: std.mem.Allocator
         _ = buffer.setCell(x, 0, cell);
         x += 1;
     }
-    
+
     std.debug.print("Hyperlinked text created (URL: https://github.com)\n");
 }
 
 fn demoLineOperations(buffer: *term.EnhancedCellBuffer, allocator: std.mem.Allocator) !void {
     buffer.clear();
-    
+
     // Fill buffer with numbered lines
     for (0..5) |y| {
         const line_text = try std.fmt.allocPrint(allocator, "Line {d}", .{y + 1});
         defer allocator.free(line_text);
-        
+
         for (line_text, 0..) |char, x| {
             const cell = term.newCell(char, 1);
             _ = buffer.setCell(@intCast(x), @intCast(y), cell);
         }
     }
-    
+
     std.debug.print("Original buffer:\n");
     const original = try buffer.toString(allocator);
     defer allocator.free(original);
     std.debug.print("{s}\n", .{original});
-    
+
     // Insert 2 lines at position 2
     const fill_cell = term.newStyledCell('*', 1, term.Style{
         .fg = .{ .ansi = 3 }, // Yellow
     });
     buffer.insertLines(2, 2, fill_cell);
-    
+
     std.debug.print("\nAfter inserting 2 lines at position 2:\n");
     const after_insert = try buffer.toString(allocator);
     defer allocator.free(after_insert);
     std.debug.print("{s}\n", .{after_insert});
-    
+
     // Delete 1 line at position 1
     const blank_cell = term.newCell(' ', 1);
     buffer.deleteLines(1, 1, blank_cell);
-    
+
     std.debug.print("\nAfter deleting 1 line at position 1:\n");
     const after_delete = try buffer.toString(allocator);
     defer allocator.free(after_delete);
@@ -183,22 +182,18 @@ fn demoLineOperations(buffer: *term.EnhancedCellBuffer, allocator: std.mem.Alloc
 
 fn demoAdvancedStyling(buffer: *term.EnhancedCellBuffer, allocator: std.mem.Allocator) !void {
     buffer.clear();
-    
+
     // Demonstrate various underline styles
-    const underline_styles = [_]term.UnderlineStyle{
-        .single, .double, .curly, .dotted, .dashed
-    };
-    const style_names = [_][]const u8{
-        "Single", "Double", "Curly", "Dotted", "Dashed"
-    };
-    
+    const underline_styles = [_]term.UnderlineStyle{ .single, .double, .curly, .dotted, .dashed };
+    const style_names = [_][]const u8{ "Single", "Double", "Curly", "Dotted", "Dashed" };
+
     for (underline_styles, style_names, 0..) |ul_style, name, y| {
         const style = term.Style{
             .ul_style = ul_style,
             .ul_color = .{ .ansi = 5 }, // Magenta
             .fg = .{ .rgb = .{ .r = 0, .g = 255, .b = 255 } }, // Cyan
         };
-        
+
         var x: u32 = 0;
         for (name) |char| {
             const cell = term.Cell{
@@ -210,12 +205,12 @@ fn demoAdvancedStyling(buffer: *term.EnhancedCellBuffer, allocator: std.mem.Allo
             x += 1;
         }
     }
-    
+
     std.debug.print("Advanced styling demo:\n");
     const output = try buffer.toString(allocator);
     defer allocator.free(output);
     std.debug.print("{s}\n", .{output});
-    
+
     // Show ANSI sequence generation
     const test_style = term.Style{
         .attrs = .{ .bold = true, .italic = true },
@@ -224,7 +219,7 @@ fn demoAdvancedStyling(buffer: *term.EnhancedCellBuffer, allocator: std.mem.Allo
         .ul_style = .single,
         .ul_color = .{ .ansi = 4 },
     };
-    
+
     const ansi_seq = try test_style.toAnsiSeq(allocator);
     defer allocator.free(ansi_seq);
     std.debug.print("\nGenerated ANSI sequence: {s}\n", .{ansi_seq});

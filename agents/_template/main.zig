@@ -1,81 +1,24 @@
-//! Template agent entry point. Parses CLI and delegates to core engine with the agent spec.
+//! Template agent entry point using the simplified agent_main.runAgent() pattern.
+//!
+//! This demonstrates the recommended approach for new agents:
+//! - Uses agent_main.runAgent() for standardized CLI handling
+//! - Eliminates boilerplate CLI parsing code
+//! - Provides consistent behavior across all agents
+//! - Automatically handles built-in commands (help, version, auth, etc.)
 
 const std = @import("std");
-const engine = @import("core_engine");
-const cli = @import("cli_shared");
+const agent_main = @import("core_agent_main");
 const spec = @import("spec.zig");
 
-const CliOptions = engine.CliOptions;
-
 pub fn main() !void {
-    var gpa_state: std.heap.DebugAllocator(.{}) = .init;
-    const gpa = gpa_state.allocator();
-    defer if (gpa_state.deinit() == .leak) {
-        @panic("Memory leak detected");
-    };
+    // Create a general-purpose allocator for the agent
+    // In production, you might want to use a more sophisticated allocator
+    var gpa_state = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa_state.deinit();
+    const allocator = gpa_state.allocator();
 
-    const args = try std.process.argsAlloc(gpa);
-    defer std.process.argsFree(gpa, args);
-
-    const cli_args = if (args.len > 1) args[1..] else args[0..0];
-
-    var parsed_args = cli.parseArgs(gpa, cli_args) catch |err| {
-        cli.printError(gpa, err, null) catch {};
-        std.process.exit(1);
-    };
-    defer parsed_args.deinit();
-
-    if (cli.shouldShowHelp(&parsed_args)) {
-        cli.printHelp(gpa) catch {};
-        return;
-    }
-
-    if (cli.shouldShowVersion(&parsed_args)) {
-        cli.printVersion(gpa) catch {};
-        return;
-    }
-
-    switch (parsed_args.positionals.command) {
-        .auth => |auth_cmd| {
-            switch (auth_cmd) {
-                .login => {
-                    try engine.setupOAuth(gpa);
-                    return;
-                },
-                .status => {
-                    try engine.showAuthStatus(gpa);
-                    return;
-                },
-                .refresh => {
-                    try engine.refreshAuth(gpa);
-                    return;
-                },
-            }
-        },
-        .chat => {},
-    }
-
-    const options = CliOptions{
-        .options = .{
-            .model = parsed_args.options.model orelse "claude-3-sonnet-20240229",
-            .output = parsed_args.options.output,
-            .input = parsed_args.options.input,
-            .system = parsed_args.options.system,
-            .config = parsed_args.options.config,
-            .max_tokens = parsed_args.options.max_tokens orelse 4096,
-            .temperature = parsed_args.options.temperature orelse 0.7,
-        },
-        .flags = .{
-            .verbose = parsed_args.flags.verbose,
-            .help = parsed_args.flags.help,
-            .version = parsed_args.flags.version,
-            .stream = parsed_args.flags.stream,
-            .pretty = parsed_args.flags.pretty,
-            .debug = parsed_args.flags.debug,
-            .interactive = parsed_args.flags.interactive,
-        },
-        .positionals = parsed_args.positionals.prompt,
-    };
-
-    try engine.runWithOptions(gpa, options, spec.SPEC);
+    // Use the simplified agent_main.runAgent() function
+    // This handles all CLI parsing, built-in commands, and engine delegation
+    // The agent specification (spec.SPEC) defines how this agent works
+    return agent_main.runAgent(allocator, spec.SPEC);
 }

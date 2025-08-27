@@ -1,10 +1,9 @@
 const std = @import("std");
 const json = std.json;
 const Allocator = std.mem.Allocator;
-const Tools = @import("tools/mod.zig");
 
 // Markdown Agent Module
-// Provides specialized tools and functionality for markdown document creation and editing
+// Provides specialized functionality for markdown document creation and editing
 
 pub const MarkdownAgent = struct {
     allocator: Allocator,
@@ -12,7 +11,12 @@ pub const MarkdownAgent = struct {
 
     const Self = @This();
 
+    /// Agent configuration structure - extends the standard AgentConfig
     pub const Config = struct {
+        // Include standard agent configuration
+        agent_config: @import("config_shared").AgentConfig,
+
+        // Add agent-specific configuration fields here
         text_wrap_width: u32 = 80,
         heading_style: []const u8 = "atx",
         list_style: []const u8 = "dash",
@@ -22,23 +26,30 @@ pub const MarkdownAgent = struct {
         toc_style: []const u8 = "github",
         link_style: []const u8 = "reference",
 
+        /// Load configuration from file with defaults fallback
         pub fn loadFromFile(allocator: Allocator, path: []const u8) !Config {
-            // Load configuration from ZON file
-            const file = std.fs.cwd().openFile(path, .{}) catch |err| switch (err) {
-                error.FileNotFound => {
-                    std.debug.print("Config file not found: {s}, using defaults\n", .{path});
-                    return Config{};
-                },
-                else => return err,
+            const config_utils = @import("config_shared");
+            const defaults = Config{
+                .agent_config = config_utils.createValidatedAgentConfig("markdown", "Markdown document processing agent", "Developer"),
+                .text_wrap_width = 80,
+                .heading_style = "atx",
+                .list_style = "dash",
+                .code_fence_style = "backtick",
+                .table_alignment = "auto",
+                .front_matter_format = "yaml",
+                .toc_style = "github",
+                .link_style = "reference",
             };
-            defer file.close();
-
-            const content = try file.readToEndAlloc(allocator, std.math.maxInt(usize));
-            defer allocator.free(content);
-
-            // Parse ZON format (simplified for now - would need proper ZON parser)
-            return Config{}; // Return defaults for now
+            return config_utils.loadWithDefaults(Config, allocator, path, defaults);
         }
+
+        /// Get the standard agent config path for this agent
+        pub fn getConfigPath(allocator: Allocator) ![]const u8 {
+            const config_utils = @import("config_shared");
+            return config_utils.getAgentConfigPath(allocator, "markdown");
+        }
+
+
     };
 
     pub const DocumentTemplate = struct {
@@ -47,7 +58,7 @@ pub const MarkdownAgent = struct {
         sections: [][]const u8,
     };
 
-    /// Error set for markdown agent tool operations
+    /// Error set for markdown agent operations
     pub const AgentError = error{
         InvalidInput,
         MissingParameter,
@@ -58,12 +69,6 @@ pub const MarkdownAgent = struct {
         UnexpectedError,
     };
 
-    pub const Tool = struct {
-        name: []const u8,
-        description: []const u8,
-        execute: *const fn (allocator: Allocator, params: json.Value) AgentError!json.Value,
-    };
-
     pub fn init(allocator: Allocator, config: Config) Self {
         return Self{
             .allocator = allocator,
@@ -71,127 +76,141 @@ pub const MarkdownAgent = struct {
         };
     }
 
+    /// Initialize agent with configuration loaded from file
+    pub fn initFromConfig(allocator: Allocator) !Self {
+        const config_path = try Config.getConfigPath(allocator);
+        defer allocator.free(config_path);
+
+        const config = try Config.loadFromFile(allocator, config_path);
+        return Self.init(allocator, config);
+    }
+
     pub fn deinit(self: *Self) void {
         _ = self;
-        // Cleanup resources
+        // Cleanup resources if needed
     }
 
-    fn getCurrentDate(allocator: std.mem.Allocator) ![]const u8 {
-        const timestamp = std.time.timestamp();
-        const epoch_seconds: i64 = @intCast(timestamp);
-        const days_since_epoch: u47 = @intCast(@divFloor(epoch_seconds, std.time.s_per_day));
-        const epoch_day = std.time.epoch.EpochDay{ .day = days_since_epoch };
-        const year_day = epoch_day.calculateYearDay();
-        const month_day = year_day.calculateMonthDay();
-
-        return try std.fmt.allocPrint(allocator, "{d}-{d:0>2}-{d:0>2}", .{ year_day.year, @intFromEnum(month_day.month), month_day.day_index });
-    }
-
+    /// Load system prompt from file or generate dynamically
     pub fn loadSystemPrompt(self: *Self) ![]const u8 {
         const prompt_path = "agents/markdown/system_prompt.txt";
-        const file = try std.fs.cwd().openFile(prompt_path, .{});
+        const file = std.fs.cwd().openFile(prompt_path, .{}) catch |err| {
+            switch (err) {
+                error.FileNotFound => {
+                    // Return a default prompt if file doesn't exist
+                    return try self.allocator.dupe(u8, "You are a helpful AI assistant.");
+                },
+                else => return err,
+            }
+        };
         defer file.close();
 
-        const base_prompt = try file.readToEndAlloc(self.allocator, std.math.maxInt(usize));
-        defer self.allocator.free(base_prompt);
+        const template = try file.readToEndAlloc(self.allocator, std.math.maxInt(usize));
+        defer self.allocator.free(template);
 
-        // Replace {current_date} placeholder with actual date
-        const current_date = try getCurrentDate(self.allocator);
-        defer self.allocator.free(current_date);
-
-        const prompt_with_date = try std.mem.replaceOwned(u8, self.allocator, base_prompt, "{current_date}", current_date);
-        defer self.allocator.free(prompt_with_date);
-
-        // Read and prepend anthropic_spoof.txt
-        const spoof_content = blk: {
-            const spoof_file = std.fs.cwd().openFile("prompt/anthropic_spoof.txt", .{}) catch {
-                break :blk "";
-            };
-            defer spoof_file.close();
-            break :blk spoof_file.readToEndAlloc(self.allocator, 1024) catch "";
-        };
-        defer if (spoof_content.len > 0) self.allocator.free(spoof_content);
-
-        return if (spoof_content.len > 0)
-            try std.fmt.allocPrint(self.allocator, "{s}\n\n{s}", .{ spoof_content, prompt_with_date })
-        else
-            try self.allocator.dupe(u8, prompt_with_date);
+        // Process template variables
+        return self.processTemplateVariables(template);
     }
 
-    pub fn getAvailableTools(self: *Self) ![]Tool {
-        _ = self;
-        // Load official tools from tools.zon
-        return &.{
-            Tool{
-                .name = "document_io",
-                .description = "Read files, search content, and explore workspace structure.\n\nUsage notes:\n• Use before any editing to understand current document state\n• Searches across markdown files with regex and text patterns\n• Provides file information and directory structure\n• ALWAYS use this first when user asks about document contents",
-                .execute = &executeDocumentIO,
-            },
-            Tool{
-                .name = "content_editor",
-                .description = "Edit and modify markdown document content with precision.\n\nUsage notes:\n• Handles text editing, structural changes, and table operations\n• Manages metadata and front matter updates\n• Preserves existing formatting unless explicitly changed\n• IMPORTANT: Always validate document structure after major edits\n\nBefore using:\n• Read document with document_io to understand current state\n• Consider impact on cross-references and internal links",
-                .execute = &executeContentEditor,
-            },
-            Tool{
-                .name = "document_validator",
-                .description = "Validate document quality, structure, and compliance.\n\nUsage notes:\n• Checks document structure, heading hierarchy, and markdown syntax\n• Validates internal and external links for integrity\n• Performs spell checking and style guideline compliance\n• Verifies metadata schemas and front matter\n• CRITICAL: Always run after significant content or structural changes\n\nTimeout: 30 seconds per document maximum",
-                .execute = &executeDocumentValidator,
-            },
-            Tool{
-                .name = "document_transformer",
-                .description = "Create new documents, convert formats, and apply templates.\n\nUsage notes:\n• Creates new documents from templates or scratch\n• Handles format conversions between markdown variants\n• Processes template variables and placeholders\n• Generates document structure and boilerplate content\n• Maximum 100 variables per template processing operation\n\nBefore using:\n• Understand target document requirements and structure",
-                .execute = &executeDocumentTransformer,
-            },
-            Tool{
-                .name = "workflow_processor",
-                .description = "Execute complex multi-step workflows and batch operations.\n\nUsage notes:\n• Coordinates sequential workflows across multiple documents\n• Handles parallel batch processing with progress tracking\n• Provides comprehensive error handling and rollback support\n• Maximum 50 files per batch operation\n• Use for complex operations requiring multiple tools coordination\n\nWARNING: Can modify multiple files simultaneously - ensure backups exist",
-                .execute = &executeWorkflowProcessor,
-            },
-            Tool{
-                .name = "file_manager",
-                .description = "Manage files and directories in the workspace.\n\nUsage notes:\n• Creates, copies, moves, and deletes files and directories\n• Handles file system operations with safety validations\n• Prevents directory traversal attacks with path validation\n• Supports template content for file creation\n• IMPORTANT: File operations are permanent - use with caution\n\nBefore using:\n• Ensure target paths are correct and valid\n• Consider backup requirements for destructive operations",
-                .execute = &executeFileManager,
-            },
-        };
-    }
+    /// Process template variables in system prompt
+    fn processTemplateVariables(self: *Self, template: []const u8) ![]const u8 {
+        var result = std.ArrayList(u8).initCapacity(self.allocator, template.len) catch return error.OutOfMemory;
+        defer result.deinit(self.allocator);
 
-    pub fn executeCommand(self: *Self, tool_name: []const u8, params: json.Value) !json.Value {
-        const tools = try self.getAvailableTools();
+        var i: usize = 0;
+        while (i < template.len) {
+            if (std.mem.indexOf(u8, template[i..], "{")) |start| {
+                // Copy everything before the {
+                try result.appendSlice(self.allocator, template[i .. i + start]);
+                i += start;
 
-        for (tools) |tool| {
-            if (std.mem.eql(u8, tool.name, tool_name)) {
-                return try tool.execute(self.allocator, params);
+                if (std.mem.indexOf(u8, template[i..], "}")) |end| {
+                    const var_name = template[i + 1 .. i + end];
+                    const replacement = try self.getTemplateVariableValue(var_name);
+                    defer self.allocator.free(replacement);
+                    try result.appendSlice(self.allocator, replacement);
+                    i += end + 1;
+                } else {
+                    // No closing }, copy the { as-is
+                    try result.append(self.allocator, template[i]);
+                    i += 1;
+                }
+            } else {
+                // No more variables, copy the rest
+                try result.appendSlice(self.allocator, template[i..]);
+                break;
             }
         }
 
-        return error.ToolNotFound;
+        return result.toOwnedSlice(self.allocator);
+    }
+
+    /// Override base agent method to provide config-aware template variable processing
+    pub fn getTemplateVariableValue(self: *Self, var_name: []const u8) ![]const u8 {
+        const cfg = &self.config.agent_config;
+
+        if (std.mem.eql(u8, var_name, "agent_name")) {
+            return try self.allocator.dupe(u8, cfg.agent_info.name);
+        } else if (std.mem.eql(u8, var_name, "agent_version")) {
+            return try self.allocator.dupe(u8, cfg.agent_info.version);
+        } else if (std.mem.eql(u8, var_name, "agent_description")) {
+            return try self.allocator.dupe(u8, cfg.agent_info.description);
+        } else if (std.mem.eql(u8, var_name, "agent_author")) {
+            return try self.allocator.dupe(u8, cfg.agent_info.author);
+        } else if (std.mem.eql(u8, var_name, "debug_enabled")) {
+            return try self.allocator.dupe(u8, if (cfg.defaults.enable_debug_logging) "enabled" else "disabled");
+        } else if (std.mem.eql(u8, var_name, "verbose_enabled")) {
+            return try self.allocator.dupe(u8, if (cfg.defaults.enable_verbose_output) "enabled" else "disabled");
+        } else if (std.mem.eql(u8, var_name, "custom_tools_enabled")) {
+            return try self.allocator.dupe(u8, if (cfg.features.enable_custom_tools) "enabled" else "disabled");
+        } else if (std.mem.eql(u8, var_name, "file_operations_enabled")) {
+            return try self.allocator.dupe(u8, if (cfg.features.enable_file_operations) "enabled" else "disabled");
+        } else if (std.mem.eql(u8, var_name, "network_access_enabled")) {
+            return try self.allocator.dupe(u8, if (cfg.features.enable_network_access) "enabled" else "disabled");
+        } else if (std.mem.eql(u8, var_name, "system_commands_enabled")) {
+            return try self.allocator.dupe(u8, if (cfg.features.enable_system_commands) "enabled" else "disabled");
+        } else if (std.mem.eql(u8, var_name, "max_input_size")) {
+            return try std.fmt.allocPrint(self.allocator, "{d}", .{cfg.limits.max_input_size});
+        } else if (std.mem.eql(u8, var_name, "max_output_size")) {
+            return try std.fmt.allocPrint(self.allocator, "{d}", .{cfg.limits.max_output_size});
+        } else if (std.mem.eql(u8, var_name, "max_processing_time")) {
+            return try std.fmt.allocPrint(self.allocator, "{d}", .{cfg.limits.max_processing_time_ms});
+        } else if (std.mem.eql(u8, var_name, "current_date")) {
+            const now = std.time.timestamp();
+            const epoch_seconds = std.time.epoch.EpochSeconds{ .secs = @intCast(now) };
+            const epoch_day = epoch_seconds.getEpochDay();
+            const year_day = epoch_day.calculateYearDay();
+            const month_day = year_day.calculateMonthDay();
+
+            return try std.fmt.allocPrint(self.allocator, "{d:0>4}-{d:0>2}-{d:0>2}", .{
+                year_day.year,
+                @intFromEnum(month_day.month),
+                month_day.day_index + 1,
+            });
+        } else {
+            // Unknown variable, return as-is with braces
+            return try std.fmt.allocPrint(self.allocator, "{{{s}}}", .{var_name});
+        }
+    }
+
+    /// Get the list of available tools for this agent
+    /// Note: Tools are now registered through the spec.zig file using the shared registry
+    pub fn getAvailableTools(self: *Self) ![]const []const u8 {
+        _ = self;
+        // Tool names are now registered in spec.zig
+        return &.{
+            "document_io",
+            "content_editor",
+            "document_validator",
+            "document_transformer",
+            "workflow_processor",
+            "file_manager",
+        };
     }
 };
 
-// Tool implementation functions
-fn executeDocumentIO(allocator: Allocator, params: json.Value) !json.Value {
-    return try Tools.DocumentIO.execute(allocator, params);
-}
-
-fn executeContentEditor(allocator: Allocator, params: json.Value) !json.Value {
-    return try Tools.ContentEditor.execute(allocator, params);
-}
-
-fn executeDocumentValidator(allocator: Allocator, params: json.Value) !json.Value {
-    return try Tools.DocumentValidator.execute(allocator, params);
-}
-
-fn executeDocumentTransformer(allocator: Allocator, params: json.Value) !json.Value {
-    return try Tools.DocumentTransformer.execute(allocator, params);
-}
-
-fn executeWorkflowProcessor(allocator: Allocator, params: json.Value) !json.Value {
-    return try Tools.WorkflowProcessor.execute(allocator, params);
-}
-
-fn executeFileManager(allocator: Allocator, params: json.Value) !json.Value {
-    return try Tools.FileManager.execute(allocator, params);
-}
+// Note: Tool execution functions are now handled through the shared tools registry
+// and registered in spec.zig. The actual implementations remain in the tools/ directory
+// but are called through the standardized interface.
 
 // Export the public interface
 pub const markdown_agent = MarkdownAgent;

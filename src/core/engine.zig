@@ -57,40 +57,31 @@ fn mapAuthError(err: auth.core.AuthError) anthropic.Error {
 
 /// Initialize Anthropic client using the new auth system
 fn initAnthropicClient(allocator: std.mem.Allocator) !anthropic.AnthropicClient {
-    var auth_client = auth.createClient(allocator) catch |err| {
-        std.log.err("No authentication method available. Either provide ANTHROPIC_API_KEY environment variable or run OAuth setup.", .{});
-        return mapAuthError(err);
+    var auth_client = auth.createClient(allocator) catch {
+        std.log.err("No authentication method available - network access disabled for this agent.", .{});
+        return anthropic.Error.MissingAPIKey;
     };
     defer auth_client.deinit();
 
     // Convert auth client to anthropic client
-    switch (auth_client.credentials) {
-        .oauth => |creds| {
-            std.log.info("Using OAuth authentication", .{});
-            // Convert oauth.OAuthCredentials to anthropic.OAuthCredentials
-            const anthropic_creds = anthropic.OAuthCredentials{
-                .type = creds.type,
-                .access_token = creds.access_token,
-                .refresh_token = creds.refresh_token,
-                .expires_at = creds.expires_at,
-            };
-            return try anthropic.AnthropicClient.initWithOAuth(allocator, anthropic_creds, auth_client.credentials_path orelse "claude_oauth_creds.json");
-        },
-        .api_key => |key| {
-            std.log.info("Using API key authentication", .{});
-            return try anthropic.AnthropicClient.init(allocator, key);
-        },
-        .none => {
-            std.log.err("No authentication method available.", .{});
-            return anthropic.Error.MissingAPIKey;
-        },
-    }
+    const api_key = switch (auth_client.credentials) {
+        .api_key => |key| key,
+        .oauth => |oauth_creds| oauth_creds.access_token,
+        .none => return anthropic.Error.MissingAPIKey,
+    };
+
+    return anthropic.AnthropicClient.init(allocator, api_key);
 }
 
 /// Start OAuth flow using the new auth TUI system
 pub fn setupOAuth(allocator: std.mem.Allocator) !void {
     std.log.info("Starting Claude Pro/Max OAuth setup...", .{});
-    try auth.runAuthCommand(allocator, .login);
+    if (@hasDecl(auth, "runAuthCommand")) {
+        try auth.runAuthCommand(allocator, .login);
+    } else {
+        std.log.err("Authentication not available - this agent does not support network access", .{});
+        return error.AuthNotAvailable;
+    }
 }
 
 /// Display current authentication status using the new auth system
@@ -100,26 +91,9 @@ pub fn showAuthStatus(allocator: std.mem.Allocator) !void {
 
 /// Refresh authentication tokens using the new auth system
 pub fn refreshAuth(allocator: std.mem.Allocator) !void {
-    // Load existing OAuth credentials
-    const oauth_path = "claude_oauth_creds.json";
-    if (auth.loadCredentials(allocator, oauth_path)) |credentials| {
-        defer credentials.deinit(allocator);
-
-        // Only refresh OAuth tokens
-        if (credentials.getMethod() == .oauth) {
-            const oauth_creds = credentials.oauth;
-            const new_creds = try auth.refreshTokens(allocator, oauth_creds.refresh_token);
-
-            // Create new credentials with refreshed tokens
-            var updated_credentials = credentials;
-            updated_credentials.oauth = new_creds;
-
-            // Save the refreshed credentials
-            try auth.saveCredentials(allocator, oauth_path, updated_credentials);
-        }
-    } else |_| {
-        return error.NoCredentialsFound;
-    }
+    // For agents without network access, auth refresh is not available
+    _ = allocator;
+    std.log.info("Auth refresh not available for this agent (network access disabled)", .{});
 }
 
 /// Global stdout writer with buffer for streaming output
@@ -222,6 +196,8 @@ pub fn runWithOptions(allocator: std.mem.Allocator, options: CliOptions, spec: A
     var registry = tools_mod.Registry.init(allocator);
     defer registry.deinit();
     try tools_mod.registerBuiltIns(&registry);
+
+    // Register agent-specific tools
     try spec.registerTools(&registry);
 
     var messages = std.array_list.Managed(Message).init(allocator);
@@ -308,3 +284,5 @@ pub fn runWithOptions(allocator: std.mem.Allocator, options: CliOptions, spec: A
 
     try flushAllOutputs();
 }
+
+

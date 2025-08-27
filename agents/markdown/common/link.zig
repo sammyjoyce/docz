@@ -85,8 +85,9 @@ pub fn parseLink(text: []const u8, start_pos: usize) ?Link {
 
 /// Find all links in markdown text
 pub fn findLinks(allocator: std.mem.Allocator, text: []const u8) Error![]Link {
-    var links = std.ArrayList(Link).init(allocator);
-    var lines = std.mem.split(u8, text, "\n");
+    var links = std.ArrayListUnmanaged(Link){};
+    defer links.deinit(allocator);
+    var lines = std.mem.splitSequence(u8, text, "\n");
     var line_num: usize = 0;
 
     while (lines.next()) |line| : (line_num += 1) {
@@ -97,7 +98,7 @@ pub fn findLinks(allocator: std.mem.Allocator, text: []const u8) Error![]Link {
                 if (parseLink(line, pos)) |link| {
                     var found_link = link;
                     found_link.line = line_num;
-                    try links.append(found_link);
+                    try links.append(allocator, found_link);
                     pos = link.column + link.text.len + link.url.len + 4; // Skip past this link
                 } else {
                     pos += 1;
@@ -108,7 +109,7 @@ pub fn findLinks(allocator: std.mem.Allocator, text: []const u8) Error![]Link {
         }
     }
 
-    return links.toOwnedSlice();
+    return links.toOwnedSlice(allocator);
 }
 
 /// Classify a link by type
@@ -127,7 +128,8 @@ pub fn classifyLink(url: []const u8) LinkType {
     }
 
     // Check for image extensions
-    const lower_url = std.ascii.lowerString(url);
+    var lower_url_buf: [1024]u8 = undefined;
+    const lower_url = std.ascii.lowerString(&lower_url_buf, url);
     if (std.mem.endsWith(u8, lower_url, ".png") or
         std.mem.endsWith(u8, lower_url, ".jpg") or
         std.mem.endsWith(u8, lower_url, ".jpeg") or

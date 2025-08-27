@@ -243,7 +243,7 @@ pub fn loadTemplate(allocator: std.mem.Allocator, path: []const u8) Error!Templa
 
 /// Render template with variables
 pub fn renderTemplate(allocator: std.mem.Allocator, template: *const Template, variables: std.StringHashMap(TemplateVariable)) Error![]u8 {
-    var result = std.ArrayList(u8).init(allocator);
+    var result = try std.ArrayList(u8).initCapacity(allocator, 1024);
     var content = template.content;
     var pos: usize = 0;
 
@@ -253,20 +253,20 @@ pub fn renderTemplate(allocator: std.mem.Allocator, template: *const Template, v
 
         if (start_marker == null) {
             // No more variables, append rest of content
-            try result.appendSlice(content[pos..]);
+            try result.appendSlice(allocator, content[pos..]);
             break;
         }
 
         const marker_start = pos + start_marker.?;
 
         // Append content before marker
-        try result.appendSlice(content[pos..marker_start]);
+        try result.appendSlice(allocator, content[pos..marker_start]);
 
         // Find end marker
         const end_marker = std.mem.indexOf(u8, content[marker_start + 2 ..], "}}");
         if (end_marker == null) {
             // Malformed template, append rest as-is
-            try result.appendSlice(content[marker_start..]);
+            try result.appendSlice(allocator, content[marker_start..]);
             break;
         }
 
@@ -277,22 +277,22 @@ pub fn renderTemplate(allocator: std.mem.Allocator, template: *const Template, v
         if (variables.get(var_name)) |var_value| {
             const var_str = try variableToString(allocator, var_value);
             defer allocator.free(var_str);
-            try result.appendSlice(var_str);
+            try result.appendSlice(allocator, var_str);
         } else if (template.variables.get(var_name)) |var_value| {
             const var_str = try variableToString(allocator, var_value);
             defer allocator.free(var_str);
-            try result.appendSlice(var_str);
+            try result.appendSlice(allocator, var_str);
         } else {
             // Variable not found, keep placeholder or use default
             const placeholder = std.fmt.allocPrint(allocator, "[{s}]", .{var_name}) catch return Error.OutOfMemory;
             defer allocator.free(placeholder);
-            try result.appendSlice(placeholder);
+            try result.appendSlice(allocator, placeholder);
         }
 
         pos = marker_end;
     }
 
-    return result.toOwnedSlice();
+    return result.toOwnedSlice(allocator);
 }
 
 /// Convert template variable to string
@@ -323,24 +323,24 @@ pub fn createVariables(allocator: std.mem.Allocator, vars: []const struct { key:
 
 /// Get list of built-in template names
 pub fn listBuiltinTemplates(allocator: std.mem.Allocator) Error![][]const u8 {
-    var templates = std.ArrayList([]const u8).init(allocator);
+    var templates = try std.ArrayList([]const u8).initCapacity(allocator, 10);
 
     inline for (std.meta.fields(@TypeOf(BUILTIN_TEMPLATES))) |field| {
         const name = try allocator.dupe(u8, field.name);
-        try templates.append(name);
+        try templates.append(allocator, name);
     }
 
-    return templates.toOwnedSlice();
+    return templates.toOwnedSlice(allocator);
 }
 
 /// Save template to file
 pub fn saveTemplate(template: *const Template, path: []const u8) Error!void {
-    std.fs.cwd().writeFile(path, template.content) catch return Error.OutOfMemory;
+    std.fs.cwd().writeFile(.{ .sub_path = path, .data = template.content }) catch return Error.OutOfMemory;
 }
 
 /// Extract variables from template content
 pub fn extractVariables(allocator: std.mem.Allocator, content: []const u8) Error![][]const u8 {
-    var variables = std.ArrayList([]const u8).init(allocator);
+    var variables = std.ArrayList([]const u8).initCapacity(allocator, 10);
     var seen = std.StringHashMap(void).init(allocator);
     defer seen.deinit();
 
@@ -365,5 +365,5 @@ pub fn extractVariables(allocator: std.mem.Allocator, content: []const u8) Error
         pos = marker_end + 2;
     }
 
-    return variables.toOwnedSlice();
+    return variables.toOwnedSlice(allocator);
 }

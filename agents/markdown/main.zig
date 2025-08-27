@@ -1,34 +1,7 @@
-//! Markdown agent entry point. Parses CLI and delegates to core engine with the Markdown spec.
-
 const std = @import("std");
 const engine = @import("core_engine");
 const cli = @import("cli_shared");
 const spec = @import("spec.zig");
-
-/// Simple TUI demo that doesn't require API authentication
-fn runSimpleTuiDemo(_: std.mem.Allocator) !void {
-    var stdout_buffer: [4096]u8 = undefined;
-    var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
-    const stdout = &stdout_writer.interface;
-
-    // Clear screen and show welcome
-    try stdout.writeAll("\x1b[2J\x1b[H"); // Clear screen and move cursor to top-left
-    try stdout.writeAll("🎨 Enhanced TUI Demo\n");
-    try stdout.writeAll("====================\n\n");
-
-    try stdout.writeAll("✅ TUI system is working correctly!\n");
-    try stdout.writeAll("✅ CLI parsing recognizes tui-demo command\n");
-    try stdout.writeAll("✅ No API authentication required for demo\n\n");
-
-    try stdout.writeAll("This demo shows that the TUI/CLI integration is functioning properly.\n");
-    try stdout.writeAll("The command parsing correctly identifies 'tui-demo' as a built-in command\n");
-    try stdout.writeAll("and routes it to the appropriate handler without attempting API calls.\n\n");
-
-    try stdout.writeAll("Demo will exit in 3 seconds...");
-
-    try stdout.writeAll("\n\n🎉 Demo completed successfully!\n");
-    try stdout.writeAll("The TUI/CLI implementation is working and clean.\n");
-}
 
 const CliOptions = engine.CliOptions;
 
@@ -83,11 +56,6 @@ pub fn main() !void {
                         },
                     }
                 }
-            },
-            .tui_demo => {
-                // Run a simple TUI demo without requiring API authentication
-                try runSimpleTuiDemo(gpa);
-                return;
             },
             else => {},
         }

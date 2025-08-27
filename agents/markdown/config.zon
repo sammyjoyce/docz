@@ -1,96 +1,47 @@
 .{
-    ////////////////////////////////////////////////////////////////////////////
-    // Markdown Architect Pro – Agent Configuration (v2.0, 2025)              //
-    ////////////////////////////////////////////////////////////////////////////
-    .agent_profile = .{
-        .code_name = "Markdown Architect Pro",
-        .version = "2.0.0",
-        .tagline = "Enterprise-grade markdown systems architect & quality guardian",
-        .mission_statement = "Deliver structurally impeccable, publication-ready markdown through expert engineering, rigorous validation, and automated workflows.",
-
-        // Capability-forward identity
-        .identity = "You are Markdown Architect Pro – an elite AI engineered for large-scale markdown system design, content engineering, and compliance enforcement. Your guidance is authoritative, your edits surgical, and your outputs publication-ready.",
-
-        // Domain authority & expertise claims
-        .expertise = .{
-            "Technical API Documentation Design",
-            "Academic & Research Publication Formatting",
-            "RFC-style Specification Authoring (RFC 2119 / RFC 8174)",
-            "Process & SOP Playbook Engineering",
-            "Multi-format Publication Pipelines (HTML, PDF, DOCX, LaTeX, EPUB)",
+    .agent_config = .{
+        .agent_info = .{
+            .name = "Markdown Architect Pro",
+            .version = "2.0.0",
+            .description = "Enterprise-grade markdown systems architect & quality guardian",
+            .author = "AI Assistant",
         },
 
-        // Working principles & constraints
-        .principles = .{
-            .precision_first = "Never compromise structural integrity for speed.",
-            .validation_driven = "Every change must pass validation gates before commit.",
-            .reversibility = "All mutating operations are atomic and automatically backed-up.",
-            .security = "Path traversal, destructive operations, and unvetted external links are strictly prohibited.",
+        .defaults = .{
+            .max_concurrent_operations = 10,
+            .default_timeout_ms = 30000,
+            .enable_debug_logging = false,
+            .enable_verbose_output = false,
         },
 
-        // Operational methodology – systematic workflow language
-        .workflow = .{
-            "Analyze → Plan → Execute → Validate → Report",
-            "Read before write; validate before commit; document every significant action.",
+        .features = .{
+            .enable_custom_tools = true,
+            .enable_file_operations = true,
+            .enable_network_access = false,
+            .enable_system_commands = false,
         },
 
-        // Personality – concise but professional
-        .traits = .{
-            "Methodical, detail-oriented, collaborative, and pedagogical.",
+        .limits = .{
+            .max_input_size = 1048576, // 1MB
+            .max_output_size = 1048576, // 1MB
+            .max_processing_time_ms = 60000,
+        },
+
+        .model = .{
+            .default_model = "claude-3-sonnet-20240229",
+            .max_tokens = 4096,
+            .temperature = 0.7,
+            .stream_responses = true,
         },
     },
 
-    ////////////////////////////////////////////////////////////////////////////
-    // Default Behavioural Settings                                            //
-    ////////////////////////////////////////////////////////////////////////////
-    .defaults = .{
-        .wrap_width = 80,
-        .heading_style = "atx",
-        .list_marker = "-",
-        .code_fence = "```",
-        .front_matter = "yaml",
-        .link_style = "reference",
-        .toc_style = "github",
-        .rfc_keywords_caps = true,
-    },
-
-    ////////////////////////////////////////////////////////////////////////////
-    // Context-aware Adaptation                                                //
-    ////////////////////////////////////////////////////////////////////////////
-    .adaptive = .{
-        .user_levels = .{
-            .novice = .{ .guidance = "high", .validation = "helpful", .confirm_major = true },
-            .intermediate = .{ .guidance = "medium", .validation = "standard", .confirm_destructive = true },
-            .expert = .{ .guidance = "low", .validation = "minimal", .confirm = false },
-        },
-        .environments = .{
-            .development = .{ .debug = true, .verbose = true, .strict = false },
-            .production = .{ .debug = false, .verbose = false, .strict = true },
-        },
-    },
-
-    ////////////////////////////////////////////////////////////////////////////
-    // Validation Tiers                                                        //
-    ////////////////////////////////////////////////////////////////////////////
-    .validation_tiers = .{
-        .minimal = .{ .syntax = true, .critical_only = true },
-        .standard = .{ .structure = true, .links = true, .style = true },
-        .comprehensive = .{ .full_qa = true, .accessibility = true, .seo = true },
-    },
-
-    ////////////////////////////////////////////////////////////////////////////
-    // Document Type Presets                                                   //
-    ////////////////////////////////////////////////////////////////////////////
-    .doc_presets = .{
-        .technical_doc = .{ .required_sections = .{ "Overview", "Usage", "Parameters" }, .style = "technical", .validation = "standard" },
-        .academic_paper = .{ .required_sections = .{ "Abstract", "Introduction", "Methodology", "References" }, .style = "academic", .validation = "comprehensive" },
-        .blog_post = .{ .required_sections = .{ "Title", "Introduction", "Conclusion" }, .style = "default", .validation = "standard" },
-        .rfc_spec = .{ .required_sections = .{ "Abstract", "Requirements", "Security Considerations", "References" }, .style = "technical", .validation = "comprehensive", .enforce_rfc = true },
-    },
-
-    ////////////////////////////////////////////////////////////////////////////
-    // Supported Extensions & Formats                                          //
-    ////////////////////////////////////////////////////////////////////////////
-    .extensions = .{ ".md", ".markdown" },
-    .export_formats = .{ "html", "pdf", "docx", "latex", "epub" },
+    // Agent-specific configuration fields
+    .text_wrap_width = 80,
+    .heading_style = "atx",
+    .list_style = "dash",
+    .code_fence_style = "backtick",
+    .table_alignment = "auto",
+    .front_matter_format = "yaml",
+    .toc_style = "github",
+    .link_style = "reference",
 }

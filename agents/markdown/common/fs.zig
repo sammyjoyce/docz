@@ -26,8 +26,7 @@ pub fn readFileAlloc(allocator: std.mem.Allocator, path: []const u8, max_size: ?
 pub fn writeFile(path: []const u8, content: []const u8) Error!void {
     std.fs.cwd().writeFile(.{ .sub_path = path, .data = content }) catch |err| switch (err) {
         error.AccessDenied => return Error.AccessDenied,
-        error.OutOfMemory => return Error.OutOfMemory,
-        error.NoSpaceLeft, error.FileTooBig, error.Unexpected => return Error.IoError,
+        error.NoSpaceLeft, error.FileTooBig, error.Unexpected, error.SystemResources => return Error.IoError,
         else => return Error.IoError,
     };
 }
@@ -55,7 +54,7 @@ pub fn getFileInfo(path: []const u8) Error!FileInfo {
 
     return FileInfo{
         .size = stat.size,
-        .modified = stat.mtime,
+        .modified = @as(i64, @intCast(stat.mtime)),
         .is_file = stat.kind == .file,
         .is_dir = stat.kind == .directory,
     };
@@ -77,8 +76,14 @@ pub fn listDir(allocator: std.mem.Allocator, path: []const u8, max_entries: ?usi
     var count: usize = 0;
 
     while (count < actual_max) {
-        if (try iterator.next()) |entry| {
-            const name = try allocator.dupe(u8, entry.name);
+        const entry = iterator.next() catch |err| switch (err) {
+            error.AccessDenied => return Error.AccessDenied,
+            error.SystemResources, error.Unexpected => return Error.IoError,
+            else => return Error.IoError,
+        };
+
+        if (entry) |e| {
+            const name = try allocator.dupe(u8, e.name);
             try entries.append(name);
             count += 1;
         } else break;
@@ -92,7 +97,8 @@ pub fn createDir(path: []const u8, recursive: bool) Error!void {
     if (recursive) {
         std.fs.cwd().makePath(path) catch |err| switch (err) {
             error.AccessDenied => return Error.AccessDenied,
-            error.OutOfMemory => return Error.OutOfMemory,
+            // OutOfMemory is not in the createDir error set anymore
+            // Handle it differently or remove this case
             error.NoSpaceLeft => return Error.IoError,
             error.PathAlreadyExists => return, // Success if already exists
             else => return Error.IoError,
@@ -100,7 +106,8 @@ pub fn createDir(path: []const u8, recursive: bool) Error!void {
     } else {
         std.fs.cwd().makeDir(path) catch |err| switch (err) {
             error.AccessDenied => return Error.AccessDenied,
-            error.OutOfMemory => return Error.OutOfMemory,
+            // OutOfMemory is not in the createDir error set anymore
+            // Handle it differently or remove this case
             error.FileNotFound => return Error.InvalidPath, // Parent directory doesn't exist
             error.PathAlreadyExists => return, // Success if already exists
             error.NoSpaceLeft => return Error.IoError,
@@ -127,14 +134,7 @@ pub fn moveFile(src_path: []const u8, dest_path: []const u8) Error!void {
     std.fs.cwd().rename(src_path, dest_path) catch |err| switch (err) {
         error.FileNotFound => return Error.FileNotFound,
         error.AccessDenied => return Error.AccessDenied,
-        error.OutOfMemory => return Error.OutOfMemory,
-        error.InvalidName => return Error.InvalidPath,
         error.NoSpaceLeft => return Error.IoError,
-        error.NotSameFileSystem => {
-            // Try copy and delete as fallback for cross-filesystem moves
-            // This requires an allocator, so we return an error for now
-            return Error.IoError;
-        },
         else => return Error.IoError,
     };
 }
@@ -154,9 +154,9 @@ pub fn deleteFile(path: []const u8) Error!void {
 pub fn deleteDir(path: []const u8, recursive: bool) Error!void {
     if (recursive) {
         std.fs.cwd().deleteTree(path) catch |err| switch (err) {
-            error.FileNotFound => return Error.FileNotFound,
             error.AccessDenied => return Error.AccessDenied,
-            error.OutOfMemory => return Error.OutOfMemory,
+            // OutOfMemory is not in the createDir error set anymore
+            // Handle it differently or remove this case
             error.FileBusy => return Error.IoError,
             else => return Error.IoError,
         };

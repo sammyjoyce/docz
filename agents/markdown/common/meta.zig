@@ -57,7 +57,7 @@ pub fn parseFrontMatter(allocator: std.mem.Allocator, content: []const u8) Error
         const end_marker = std.mem.indexOf(u8, trimmed[4..], "\n---\n");
         if (end_marker) |end_pos| {
             const yaml_content = trimmed[4 .. 4 + end_pos];
-            return parseYamlMetadata(allocator, yaml_content);
+            return try parseYamlMetadata(allocator, yaml_content);
         }
     }
 
@@ -66,7 +66,7 @@ pub fn parseFrontMatter(allocator: std.mem.Allocator, content: []const u8) Error
         const end_marker = std.mem.indexOf(u8, trimmed[4..], "\n+ + +\n");
         if (end_marker) |end_pos| {
             const toml_content = trimmed[4 .. 4 + end_pos];
-            return parseTomlMetadata(allocator, toml_content);
+            return try parseTomlMetadata(allocator, toml_content);
         }
     }
 
@@ -127,7 +127,7 @@ fn parseYamlMetadata(allocator: std.mem.Allocator, yaml_content: []const u8) Err
 }
 
 /// Parse basic TOML-like metadata (simplified parser)
-fn parseTomlMetadata(allocator: std.mem.Allocator, toml_content: []const u8) Error!DocumentMetadata {
+fn parseTomlMetadata(allocator: std.mem.Allocator, toml_content: []const u8) Error!?DocumentMetadata {
     var metadata = DocumentMetadata{
         .content = std.StringHashMap(MetadataValue).init(allocator),
         .format = .toml,

@@ -203,20 +203,20 @@ fn convertToHtml(allocator: std.mem.Allocator, params: json.ObjectMap) !json.Val
     defer if (metadata_opt) |*metadata| metadata.deinit(allocator);
 
     // Basic HTML conversion (this would be more sophisticated in a real implementation)
-    var html_content = std.ArrayList(u8).init(allocator);
-    defer html_content.deinit();
+    var html_content = try std.ArrayList(u8).initCapacity(allocator, 1024);
+    defer html_content.deinit(allocator);
 
     // HTML header
-    try html_content.appendSlice("<!DOCTYPE html>\n<html>\n<head>\n");
-    try html_content.appendSlice("<meta charset=\"UTF-8\">\n");
+    try html_content.appendSlice(allocator, "<!DOCTYPE html>\n<html>\n<head>\n");
+    try html_content.appendSlice(allocator, "<meta charset=\"UTF-8\">\n");
 
     // Add title from metadata if available
     if (metadata_opt) |metadata| {
         if (metadata.get("title")) |title_value| {
             if (title_value.* == .string) {
-                try html_content.appendSlice("<title>");
-                try html_content.appendSlice(title_value.string);
-                try html_content.appendSlice("</title>\n");
+                try html_content.appendSlice(allocator, "<title>");
+                try html_content.appendSlice(allocator, title_value.string);
+                try html_content.appendSlice(allocator, "</title>\n");
             }
         }
     }
@@ -225,21 +225,21 @@ fn convertToHtml(allocator: std.mem.Allocator, params: json.ObjectMap) !json.Val
     if (params.get("style_options")) |style_opts| {
         if (style_opts == .object) {
             if (style_opts.object.get("css_file")) |css_file| {
-                try html_content.appendSlice("<link rel=\"stylesheet\" href=\"");
-                try html_content.appendSlice(css_file.string);
-                try html_content.appendSlice("\">\n");
+                try html_content.appendSlice(allocator, "<link rel=\"stylesheet\" href=\"");
+                try html_content.appendSlice(allocator, css_file.string);
+                try html_content.appendSlice(allocator, "\">\n");
             }
         }
     }
 
-    try html_content.appendSlice("</head>\n<body>\n");
+    try html_content.appendSlice(allocator, "</head>\n<body>\n");
 
     // Convert markdown to HTML (simplified)
     const html_body = try convertMarkdownToHtml(allocator, document_content);
     defer allocator.free(html_body);
 
-    try html_content.appendSlice(html_body);
-    try html_content.appendSlice("\n</body>\n</html>\n");
+    try html_content.appendSlice(allocator, html_body);
+    try html_content.appendSlice(allocator, "\n</body>\n</html>\n");
 
     // Write to output file
     try fs.writeFile(output_path, html_content.items);
@@ -310,14 +310,14 @@ fn jsonToTemplateVariable(allocator: std.mem.Allocator, json_value: json.Value) 
 }
 
 fn convertMarkdownToHtml(allocator: std.mem.Allocator, markdown: []const u8) ![]u8 {
-    var html = std.ArrayList(u8).init(allocator);
-    var lines = std.mem.split(u8, markdown, "\n");
+    var html = try std.ArrayList(u8).initCapacity(allocator, 1024);
+    var lines = std.mem.splitScalar(u8, markdown, '\n');
 
     while (lines.next()) |line| {
         const trimmed = std.mem.trim(u8, line, " \t");
 
         if (trimmed.len == 0) {
-            try html.appendSlice("<p></p>\n");
+            try html.appendSlice(allocator, "<p></p>\n");
             continue;
         }
 
@@ -334,16 +334,16 @@ fn convertMarkdownToHtml(allocator: std.mem.Allocator, markdown: []const u8) ![]
 
             if (level <= 6) {
                 const heading_text = std.mem.trim(u8, trimmed[level..], " \t");
-                try html.appendSlice(try std.fmt.allocPrint(allocator, "<h{}>{s}</h{}>\n", .{ level, heading_text, level }));
+                try html.appendSlice(allocator, try std.fmt.allocPrint(allocator, "<h{}>{s}</h{}>\n", .{ level, heading_text, level }));
                 continue;
             }
         }
 
         // Convert paragraphs (default)
-        try html.appendSlice("<p>");
-        try html.appendSlice(trimmed);
-        try html.appendSlice("</p>\n");
+        try html.appendSlice(allocator, "<p>");
+        try html.appendSlice(allocator, trimmed);
+        try html.appendSlice(allocator, "</p>\n");
     }
 
-    return html.toOwnedSlice();
+    return html.toOwnedSlice(allocator);
 }

@@ -2,7 +2,7 @@
 
 ## 🎯 Overview
 
-I've completed a major improvement to the CLI and TUI systems by leveraging the powerful but underutilized capabilities in `@src/term`. The enhancement includes a complete architectural restructuring with a graphics-enhanced dashboard that showcases progressive enhancement and advanced terminal features.
+I've completed a major improvement to the CLI and TUI systems by leveraging the powerful but underutilized capabilities in `@src/shared/term`. The enhancement includes a complete architectural restructuring with a graphics-enhanced dashboard that showcases progressive enhancement and advanced terminal features.
 
 ## ✅ Completed Tasks
 
@@ -86,7 +86,7 @@ cli/ (Single, coherent system)
 ├── core/unified_terminal.zig (Central capability interface)
 ├── components/enhanced_cli.zig (Unified CLI implementation)
 ├── dashboard/graphics_dashboard.zig (Graphics showcase)
-└── Full utilization of src/term capabilities
+└── Full utilization of src/shared/term capabilities
 
 tui/ (Consolidated TUI system) 
 ├── core/unified_renderer.zig (Single rendering system)
@@ -152,7 +152,7 @@ The system automatically adapts rendering based on terminal capabilities:
 
 ### For the Project
 - **Code Consolidation**: Eliminated duplicate implementations and inconsistencies
-- **Feature Showcase**: Demonstrates the full power of the `src/term` capabilities
+- **Feature Showcase**: Demonstrates the full power of the `src/shared/term` capabilities
 - **Maintainability**: Single codebase instead of fragmented systems
 - **Future Ready**: Architecture supports easy addition of new terminal features
 
