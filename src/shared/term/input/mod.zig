@@ -10,12 +10,15 @@ pub const enhanced_input_handler = @import("enhanced_input_handler.zig");
 pub const enhanced_input_parser = @import("enhanced_input_parser.zig");
 pub const advanced_input_driver = @import("advanced_input_driver.zig");
 
+// Import for event parsing
+const enhanced_input_parser_mod = @import("enhanced_input_parser.zig");
+
 // Keyboard handling
 pub const enhanced_keyboard = @import("enhanced_keyboard.zig");
 pub const enhanced_keys = @import("enhanced_keys.zig");
 pub const key_mapping = @import("key_mapping.zig");
-// TODO: Implement kitty keyboard support
-// pub const kitty_keyboard = @import("kitty_keyboard.zig");
+// Kitty keyboard support
+pub const kitty_keyboard = @import("kitty_keyboard.zig");
 
 // Mouse handling
 pub const enhanced_mouse = @import("enhanced_mouse.zig");
@@ -139,16 +142,103 @@ pub const InputHandler = struct {
 
     /// Poll for input events
     pub fn pollEvent(self: *InputHandler) ?Event {
-        _ = self;
-        // Implementation would poll for events
-        return null;
+        // Try to read available input without blocking
+        const stdin = std.fs.File.stdin();
+        var buffer: [1024]u8 = undefined;
+
+        const bytes_read = stdin.read(&buffer) catch return null;
+        if (bytes_read == 0) return null;
+
+        const input = buffer[0..bytes_read];
+        return self.parseInput(input);
     }
 
     /// Wait for next input event
     pub fn waitEvent(self: *InputHandler) !Event {
-        _ = self;
-        // Implementation would block until event
-        return error.NotImplemented;
+        // Block until input is available
+        const stdin = std.fs.File.stdin();
+        var buffer: [1]u8 = undefined;
+
+        // Read at least one byte to ensure we have input
+        const bytes_read = try stdin.read(&buffer);
+        if (bytes_read == 0) return error.EndOfStream;
+
+        // Read more data if available
+        var input_buffer = std.ArrayList(u8).init(self.allocator);
+        defer input_buffer.deinit();
+
+        try input_buffer.appendSlice(buffer[0..bytes_read]);
+
+        // Try to read more data without blocking
+        while (true) {
+            const additional_bytes = stdin.read(&buffer) catch break;
+            if (additional_bytes == 0) break;
+            try input_buffer.appendSlice(buffer[0..additional_bytes]);
+        }
+
+        const event = self.parseInput(input_buffer.items);
+        return event orelse error.InvalidInput;
+    }
+
+    /// Parse raw input bytes into an event
+    fn parseInput(self: *InputHandler, input: []const u8) ?Event {
+        // Use enhanced input parser for complex sequences
+        var parser = enhanced_input_parser_mod.EnhancedInputParser.init(self.allocator);
+        defer parser.deinit();
+
+        const events = parser.parseSequence(input) catch return null;
+        defer self.allocator.free(events);
+
+        if (events.len == 0) return null;
+
+        // Convert first event to our Event type
+        const first_event = events[0];
+        return switch (first_event) {
+            .key_press => |key| Event{
+                .type = .key_press,
+                .timestamp = std.time.microTimestamp(),
+                .data = .{
+                    .key_press = KeyEvent{
+                        .code = 0, // TODO: Map key to code
+                        .modifiers = Modifiers{
+                            .shift = key.modifiers.shift,
+                            .ctrl = key.modifiers.ctrl,
+                            .alt = key.modifiers.alt,
+                            .meta = key.modifiers.meta,
+                        },
+                        .text = if (key.key.len == 1) key.key else null,
+                    },
+                },
+            },
+            .mouse => |mouse| Event{
+                .type = .mouse_button,
+                .timestamp = std.time.microTimestamp(),
+                .data = .{ .mouse_button = MouseButtonEvent{
+                    .button = switch (mouse.button) {
+                        .left => .left,
+                        .middle => .middle,
+                        .right => .right,
+                        else => .left,
+                    },
+                    .pressed = mouse.action == .press,
+                    .x = mouse.x,
+                    .y = mouse.y,
+                    .modifiers = Modifiers{
+                        .shift = mouse.modifiers.shift,
+                        .ctrl = mouse.modifiers.ctrl,
+                        .alt = mouse.modifiers.alt,
+                    },
+                } },
+            },
+            .paste => |paste| Event{
+                .type = .clipboard_paste,
+                .timestamp = std.time.microTimestamp(),
+                .data = .{ .clipboard_paste = ClipboardEvent{
+                    .text = paste.content,
+                } },
+            },
+            else => null,
+        };
     }
 
     /// Cleanup input handler

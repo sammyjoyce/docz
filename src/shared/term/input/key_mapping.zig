@@ -125,8 +125,6 @@ pub const KeyMapper = struct {
         try self.buildReverseMappings();
     }
 
-
-
     /// Load hardcoded fallback key mappings for common terminals
     fn loadFallbackMappings(self: *KeyMapper) !void {
         const fallback_mappings = [_]struct { sequence: []const u8, key: enhanced_keys.Key }{

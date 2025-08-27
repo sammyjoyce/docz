@@ -68,7 +68,7 @@ pub fn main() !void {
             .input = null, // Not supported in new parser
             .system = null, // Not supported in new parser
             .config = null, // Not supported in new parser
-            .max_tokens = args_to_process.max_tokens orelse 4096,
+            .maxTokens = args_to_process.max_tokens orelse 4096,
             .temperature = args_to_process.temperature orelse 0.7,
         },
         .flags = .{

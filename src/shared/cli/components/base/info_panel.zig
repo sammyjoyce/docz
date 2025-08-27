@@ -8,7 +8,7 @@ const hyperlinks = @import("../../utils/hyperlinks.zig");
 
 const Allocator = std.mem.Allocator;
 
-pub const InfoLevel = enum {
+pub const Level = enum {
     info,
     success,
     warning,
@@ -16,65 +16,65 @@ pub const InfoLevel = enum {
     debug,
 };
 
-pub const InfoItem = struct {
-    level: InfoLevel,
+pub const Item = struct {
+    level: Level,
     title: []const u8,
     content: []const u8,
     url: ?[]const u8 = null,
 };
 
-pub const InfoPanel = struct {
+pub const Panel = struct {
     allocator: Allocator,
     caps: term_caps.TermCaps,
-    items: std.ArrayList(InfoItem),
+    items: std.ArrayList(Item),
     title: []const u8,
-    show_icons: bool,
-    max_width: usize,
+    showIcons: bool,
+    maxWidth: usize,
 
-    pub fn init(allocator: Allocator, title: []const u8) InfoPanel {
-        return InfoPanel{
+    pub fn init(allocator: Allocator, title: []const u8) Panel {
+        return Panel{
             .allocator = allocator,
             .caps = term_caps.getTermCaps(),
-            .items = std.ArrayList(InfoItem).init(allocator),
+            .items = std.ArrayList(Item).init(allocator),
             .title = title,
-            .show_icons = true,
-            .max_width = 80,
+            .showIcons = true,
+            .maxWidth = 80,
         };
     }
 
-    pub fn deinit(self: *InfoPanel) void {
+    pub fn deinit(self: *Panel) void {
         self.items.deinit();
     }
 
-    pub fn addItem(self: *InfoPanel, item: InfoItem) !void {
+    pub fn addItem(self: *Panel, item: Item) !void {
         try self.items.append(item);
     }
 
-    pub fn addInfo(self: *InfoPanel, title: []const u8, content: []const u8) !void {
-        try self.addItem(InfoItem{
+    pub fn addInfo(self: *Panel, title: []const u8, content: []const u8) !void {
+        try self.addItem(Item{
             .level = .info,
             .title = title,
             .content = content,
         });
     }
 
-    pub fn addSuccess(self: *InfoPanel, title: []const u8, content: []const u8) !void {
-        try self.addItem(InfoItem{
+    pub fn addSuccess(self: *Panel, title: []const u8, content: []const u8) !void {
+        try self.addItem(Item{
             .level = .success,
             .title = title,
             .content = content,
         });
     }
 
-    pub fn addError(self: *InfoPanel, title: []const u8, content: []const u8) !void {
-        try self.addItem(InfoItem{
+    pub fn addError(self: *Panel, title: []const u8, content: []const u8) !void {
+        try self.addItem(Item{
             .level = .@"error",
             .title = title,
             .content = content,
         });
     }
 
-    pub fn render(self: *InfoPanel, writer: anytype) !void {
+    pub fn render(self: *Panel, writer: anytype) !void {
         // Render title
         if (self.caps.supportsTrueColor()) {
             try term_ansi.setForegroundRgb(writer, self.caps, 100, 149, 237);
@@ -93,11 +93,11 @@ pub const InfoPanel = struct {
         try term_ansi.resetStyle(writer, self.caps);
     }
 
-    fn renderItem(self: *InfoPanel, writer: anytype, item: InfoItem) !void {
+    fn renderItem(self: *Panel, writer: anytype, item: Item) !void {
         try writer.writeAll("│ ");
 
         // Icon based on level
-        if (self.show_icons) {
+        if (self.showIcons) {
             const icon = switch (item.level) {
                 .info => "ℹ️",
                 .success => "✅",
@@ -123,7 +123,7 @@ pub const InfoPanel = struct {
         try writer.print("{s} │\n", .{item.content});
     }
 
-    fn setLevelColor(self: *InfoPanel, writer: anytype, level: InfoLevel) !void {
+    fn setLevelColor(self: *Panel, writer: anytype, level: Level) !void {
         if (self.caps.supportsTrueColor()) {
             switch (level) {
                 .info => try term_ansi.setForegroundRgb(writer, self.caps, 100, 149, 237),

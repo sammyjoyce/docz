@@ -72,7 +72,7 @@ pub fn main() !void {
     try enhanced.writeText("📈 Sample Chart:\n", Color.ansi(.bright_blue), true);
 
     const chart_data = [_]f64{ 10, 15, 12, 25, 20, 30, 28, 35, 32, 40 };
-    const series = Chart.DataSeries{
+    const series = Chart.Series{
         .name = "Performance",
         .data = &chart_data,
         .color = Color.ansi(.green),
@@ -80,7 +80,7 @@ pub fn main() !void {
 
     const chart = Chart{
         .title = "System Performance Over Time",
-        .data_series = &[_]Chart.DataSeries{series},
+        .data_series = &[_]Chart.Series{series},
         .chart_type = .line,
         .width = 60,
         .height = 15,

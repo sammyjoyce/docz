@@ -5,7 +5,7 @@ const std = @import("std");
 const context = @import("../../core/context.zig");
 
 pub const NotificationDisplay = struct {
-    context: *context.CliContext,
+    context: *context.Cli,
 
     pub const NotificationType = enum {
         info,
@@ -21,7 +21,7 @@ pub const NotificationDisplay = struct {
         system, // Use system notifications when available
     };
 
-    pub fn init(ctx: *context.CliContext) NotificationDisplay {
+    pub fn init(ctx: *context.Cli) NotificationDisplay {
         return NotificationDisplay{
             .context = ctx,
         };
@@ -40,10 +40,10 @@ pub const NotificationDisplay = struct {
         if (self.context.hasFeature(.notifications)) {
             // Use system notifications
             const level = switch (notification_type) {
-                .info, .progress => context.NotificationManager.NotificationLevel.info,
-                .success => context.NotificationManager.NotificationLevel.success,
-                .warning => context.NotificationManager.NotificationLevel.warning,
-                .err => context.NotificationManager.NotificationLevel.err,
+                .info, .progress => context.NotificationHandler.NotificationLevel.info,
+                .success => context.NotificationHandler.NotificationLevel.success,
+                .warning => context.NotificationHandler.NotificationLevel.warning,
+                .err => context.NotificationHandler.NotificationLevel.err,
             };
 
             try self.context.notification.send(.{
@@ -59,7 +59,9 @@ pub const NotificationDisplay = struct {
     }
 
     fn showDetailed(self: *NotificationDisplay, notification_type: NotificationType, title: []const u8, message: ?[]const u8) !void {
-        const writer = std.io.getStdErr().writer();
+        var stderr_buffer: [4096]u8 = undefined;
+        const stderr_file = std.fs.File.stderr();
+        var writer = stderr_file.writer(&stderr_buffer);
 
         // Get colors based on terminal capabilities
         const elements = if (self.context.hasFeature(.truecolor))
@@ -104,7 +106,9 @@ pub const NotificationDisplay = struct {
     }
 
     fn showMinimal(self: *NotificationDisplay, notification_type: NotificationType, title: []const u8, message: ?[]const u8) !void {
-        const writer = std.io.getStdErr().writer();
+        var stderr_buffer: [4096]u8 = undefined;
+        const stderr_file = std.fs.File.stderr();
+        var writer = stderr_file.writer(&stderr_buffer);
 
         const elements = if (self.context.hasFeature(.truecolor))
             self.getStyledElements(notification_type, true)

@@ -5,8 +5,8 @@ const std = @import("std");
 
 // Official Tools (from tools.zon)
 pub const DocumentIO = @import("document_io.zig");
-pub const ContentEditor = @import("content_editor.zig");
-pub const DocumentValidator = @import("document_validator.zig");
+pub const ContentEditor = @import("ContentEditor.zig");
+pub const DocumentValidator = @import("DocumentValidator.zig");
 pub const DocumentTransformer = @import("document_transformer.zig");
 pub const WorkflowProcessor = @import("workflow_processor.zig");
 
@@ -15,7 +15,7 @@ pub const FileManager = @import("file_manager.zig");
 
 // Official Tool Registry
 pub const ToolRegistry = struct {
-    pub const tools = .{
+    pub const TOOLS = .{
         .document_io = DocumentIO,
         .content_editor = ContentEditor,
         .document_validator = DocumentValidator,
@@ -27,7 +27,7 @@ pub const ToolRegistry = struct {
 
 // Extended Tool Registry (includes official + additional tools)
 pub const ExtendedToolRegistry = struct {
-    pub const tools = .{
+    pub const TOOLS = .{
         .document_io = DocumentIO,
         .content_editor = ContentEditor,
         .document_validator = DocumentValidator,

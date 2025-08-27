@@ -72,12 +72,12 @@ fn readFile(allocator: std.mem.Allocator, params: json.ObjectMap) !json.Value {
     try result.put("content", json.Value{ .string = try allocator.dupe(u8, content) });
 
     if (include_metadata) {
-        const file_info = try fs.getFileInfo(file_path);
+        const file_metadata = try fs.getFileInfo(file_path);
         var metadata = json.ObjectMap.init(allocator);
-        try metadata.put("size", json.Value{ .integer = @intCast(file_info.size) });
-        try metadata.put("modified", json.Value{ .integer = file_info.modified });
-        try metadata.put("is_file", json.Value{ .bool = file_info.is_file });
-        try metadata.put("is_dir", json.Value{ .bool = file_info.is_dir });
+        try metadata.put("size", json.Value{ .integer = @intCast(file_metadata.size) });
+        try metadata.put("modified", json.Value{ .integer = file_metadata.modified });
+        try metadata.put("is_file", json.Value{ .bool = file_metadata.is_file });
+        try metadata.put("is_dir", json.Value{ .bool = file_metadata.is_dir });
         try result.put("metadata", json.Value{ .object = metadata });
     }
 
@@ -104,10 +104,10 @@ fn readMultiple(allocator: std.mem.Allocator, params: json.ObjectMap) !json.Valu
         try file_data.put("content", json.Value{ .string = try allocator.dupe(u8, content) });
 
         if (include_metadata.bool) {
-            const file_info = fs.getFileInfo(file_path) catch continue;
+            const file_metadata = fs.getFileInfo(file_path) catch continue;
             var metadata = json.ObjectMap.init(allocator);
-            try metadata.put("size", json.Value{ .integer = @intCast(file_info.size) });
-            try metadata.put("modified", json.Value{ .integer = file_info.modified });
+            try metadata.put("size", json.Value{ .integer = @intCast(file_metadata.size) });
+            try metadata.put("modified", json.Value{ .integer = file_metadata.modified });
             try file_data.put("metadata", json.Value{ .object = metadata });
         }
 
@@ -317,11 +317,11 @@ fn listDirectory(allocator: std.mem.Allocator, params: json.ObjectMap) !json.Val
             const full_path = try std.fs.path.join(allocator, &[_][]const u8{ directory_path.string, entry });
             defer allocator.free(full_path);
 
-            const file_info = fs.getFileInfo(full_path) catch continue;
-            try entry_obj.put("size", json.Value{ .integer = @intCast(file_info.size) });
-            try entry_obj.put("modified", json.Value{ .integer = file_info.modified });
-            try entry_obj.put("is_file", json.Value{ .bool = file_info.is_file });
-            try entry_obj.put("is_dir", json.Value{ .bool = file_info.is_dir });
+            const file_metadata = fs.getFileInfo(full_path) catch continue;
+            try entry_obj.put("size", json.Value{ .integer = @intCast(file_metadata.size) });
+            try entry_obj.put("modified", json.Value{ .integer = file_metadata.modified });
+            try entry_obj.put("is_file", json.Value{ .bool = file_metadata.is_file });
+            try entry_obj.put("is_dir", json.Value{ .bool = file_metadata.is_dir });
 
             try result_entries.append(json.Value{ .object = entry_obj });
         } else {
@@ -498,15 +498,15 @@ fn buildDirectoryTree(allocator: std.mem.Allocator, path: []const u8, current_de
         const full_path = try std.fs.path.join(allocator, &[_][]const u8{ path, entry });
         defer allocator.free(full_path);
 
-        const file_info = fs.getFileInfo(full_path) catch continue;
+        const file_metadata = fs.getFileInfo(full_path) catch continue;
 
-        if (file_info.is_dir) {
+        if (file_metadata.is_dir) {
             const subtree = try buildDirectoryTree(allocator, full_path, current_depth + 1, max_depth);
             try tree.put(entry, subtree);
         } else {
             var file_obj = json.ObjectMap.init(allocator);
             try file_obj.put("type", json.Value{ .string = "file" });
-            try file_obj.put("size", json.Value{ .integer = @intCast(file_info.size) });
+            try file_obj.put("size", json.Value{ .integer = @intCast(file_metadata.size) });
             try tree.put(entry, json.Value{ .object = file_obj });
         }
     }

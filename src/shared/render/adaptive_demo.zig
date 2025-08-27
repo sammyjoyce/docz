@@ -1,13 +1,13 @@
 const std = @import("std");
 const AdaptiveRenderer = @import("adaptive_renderer.zig").AdaptiveRenderer;
 const RenderMode = AdaptiveRenderer.RenderMode;
-const Progress = @import("components/progress_bar.zig").Progress;
-const renderProgress = @import("components/progress_bar.zig").renderProgress;
-const AnimatedProgress = @import("components/progress_bar.zig").AnimatedProgress;
-const Table = @import("components/table.zig").Table;
-const renderTable = @import("components/table.zig").renderTable;
-const Chart = @import("components/chart.zig").Chart;
-const renderChart = @import("components/chart.zig").renderChart;
+const Progress = @import("components/ProgressBar.zig").Progress;
+const renderProgress = @import("components/ProgressBar.zig").renderProgress;
+const AnimatedProgress = @import("components/ProgressBar.zig").AnimatedProgress;
+const Table = @import("components/Table.zig").Table;
+const renderTable = @import("components/Table.zig").renderTable;
+const Chart = @import("components/Chart.zig").Chart;
+const renderChart = @import("components/Chart.zig").renderChart;
 const Color = @import("../term/ansi/color.zig").Color;
 
 /// Comprehensive demo showcasing all adaptive rendering features
@@ -202,14 +202,14 @@ fn demoCharts(renderer: *AdaptiveRenderer) !void {
     const data1 = [_]f64{ 10, 25, 15, 35, 30, 45, 40, 55, 50, 65 };
     const data2 = [_]f64{ 5, 15, 25, 20, 30, 35, 45, 40, 50, 55 };
 
-    const series1 = Chart.DataSeries{
+    const series1 = Chart.Series{
         .name = "Revenue",
         .data = &data1,
         .color = Color.ansi(.green),
         .style = .solid,
     };
 
-    const series2 = Chart.DataSeries{
+    const series2 = Chart.Series{
         .name = "Expenses",
         .data = &data2,
         .color = Color.ansi(.red),
@@ -219,7 +219,7 @@ fn demoCharts(renderer: *AdaptiveRenderer) !void {
     // Line Chart
     const line_chart = Chart{
         .title = "Financial Performance (Line Chart)",
-        .data_series = &[_]Chart.DataSeries{ series1, series2 },
+        .data_series = &[_]Chart.Series{ series1, series2 },
         .chart_type = .line,
         .width = 60,
         .height = 15,
@@ -235,7 +235,7 @@ fn demoCharts(renderer: *AdaptiveRenderer) !void {
     // Bar Chart
     const bar_chart = Chart{
         .title = "Revenue by Quarter (Bar Chart)",
-        .data_series = &[_]Chart.DataSeries{series1},
+        .data_series = &[_]Chart.Series{series1},
         .chart_type = .bar,
         .width = 50,
         .height = 12,
@@ -248,7 +248,7 @@ fn demoCharts(renderer: *AdaptiveRenderer) !void {
 
     // Sparkline
     const sparkline_data = [_]f64{ 1, 3, 2, 5, 4, 6, 8, 7, 9, 11, 10, 12 };
-    const sparkline_series = Chart.DataSeries{
+    const sparkline_series = Chart.Series{
         .name = "Trend",
         .data = &sparkline_data,
         .color = Color.ansi(.cyan),
@@ -256,7 +256,7 @@ fn demoCharts(renderer: *AdaptiveRenderer) !void {
 
     const sparkline_chart = Chart{
         .title = "Quick Trend (Sparkline)",
-        .data_series = &[_]Chart.DataSeries{sparkline_series},
+        .data_series = &[_]Chart.Series{sparkline_series},
         .chart_type = .sparkline,
         .show_legend = false,
         .show_axes = false,
@@ -394,7 +394,7 @@ test "adaptive demo" {
     try renderTable(renderer, table);
 
     const data = [_]f64{ 1.0, 2.0, 3.0 };
-    const series = Chart.DataSeries{ .name = "Test", .data = &data };
-    const chart = Chart{ .data_series = &[_]Chart.DataSeries{series} };
+    const series = Chart.Series{ .name = "Test", .data = &data };
+    const chart = Chart{ .data_series = &[_]Chart.Series{series} };
     try renderChart(renderer, chart);
 }

@@ -46,8 +46,9 @@ pub fn main() !void {
 
 fn showUsage() !void {
     var stdout_buffer: [4096]u8 = undefined;
-    var stdout_writer = std.io.getStdOut().writer(&stdout_buffer);
-    const stdout = &stdout_writer.interface;
+    const stdout_file = std.fs.File.stdout();
+    var stdout_writer = stdout_file.writer(&stdout_buffer);
+    const stdout = &stdout_writer;
 
     try stdout.writeAll(
         \\Enhanced CLI/TUI Demonstration
@@ -182,8 +183,9 @@ fn runTUIDemo(allocator: Allocator) !void {
 /// Run integrated demonstration showing both systems
 fn runIntegratedDemo(allocator: Allocator) !void {
     var stdout_buffer: [4096]u8 = undefined;
-    var stdout_writer = std.io.getStdOut().writer(&stdout_buffer);
-    const stdout = &stdout_writer.interface;
+    const stdout_file = std.fs.File.stdout();
+    var stdout_writer = stdout_file.writer(&stdout_buffer);
+    const stdout = &stdout_writer;
 
     try stdout.writeAll("🚀 Integrated CLI/TUI Demonstration\n");
     try stdout.writeAll("===================================\n\n");

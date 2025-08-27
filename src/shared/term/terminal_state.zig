@@ -259,7 +259,7 @@ fn getSizeWindows(_: std.posix.fd_t) !struct { width: u16, height: u16 } {
 }
 
 /// Utility functions
-pub const utils = struct {
+pub const Utils = struct {
     /// Check if terminal supports color
     pub fn supportsColor() bool {
         const term = std.posix.getenv("TERM") orelse return false;
@@ -317,7 +317,7 @@ test "terminal size" {
 
 test "color support detection" {
     // These tests just verify the functions don't crash
-    _ = utils.supportsColor();
-    _ = utils.supportsTrueColor();
-    _ = utils.getTerminalType();
+    _ = Utils.supportsColor();
+    _ = Utils.supportsTrueColor();
+    _ = Utils.getTerminalType();
 }

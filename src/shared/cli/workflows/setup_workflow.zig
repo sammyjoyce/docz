@@ -119,7 +119,7 @@ pub const SetupWorkflow = struct {
     }
 
     /// Step 1: Check system requirements
-    fn checkSystemRequirements(allocator: std.mem.Allocator, context: ?WorkflowStep.StepContext) !WorkflowStep.StepResult {
+    fn checkSystemRequirements(allocator: std.mem.Allocator, context: ?WorkflowStep.Step) !WorkflowStep.StepResult {
         _ = context;
 
         // Check OS version and basic system info
@@ -162,7 +162,7 @@ pub const SetupWorkflow = struct {
     }
 
     /// Step 2: Create configuration directory
-    fn createConfigDirectory(allocator: std.mem.Allocator, context: ?WorkflowStep.StepContext) !WorkflowStep.StepResult {
+    fn createConfigDirectory(allocator: std.mem.Allocator, context: ?WorkflowStep.Step) !WorkflowStep.StepResult {
         const config_dir = if (context) |ctx| ctx.getParam("config_dir") orelse "~/.config/docz" else "~/.config/docz";
 
         // Expand ~ to home directory
@@ -206,7 +206,7 @@ pub const SetupWorkflow = struct {
     }
 
     /// Step 3: Check for required dependencies
-    fn checkDependencies(allocator: std.mem.Allocator, context: ?WorkflowStep.StepContext) !WorkflowStep.StepResult {
+    fn checkDependencies(allocator: std.mem.Allocator, context: ?WorkflowStep.Step) !WorkflowStep.StepResult {
         _ = context;
 
         const required_tools = [_][]const u8{ "curl", "git" };
@@ -248,7 +248,7 @@ pub const SetupWorkflow = struct {
     }
 
     /// Step 4: Initialize configuration files
-    fn initializeConfig(allocator: std.mem.Allocator, context: ?WorkflowStep.StepContext) !WorkflowStep.StepResult {
+    fn initializeConfig(allocator: std.mem.Allocator, context: ?WorkflowStep.Step) !WorkflowStep.StepResult {
         _ = context;
 
         const config_files = [_]struct {
@@ -304,7 +304,7 @@ pub const SetupWorkflow = struct {
     }
 
     /// Step 5: Setup themes and appearance
-    fn setupThemes(allocator: std.mem.Allocator, context: ?WorkflowStep.StepContext) !WorkflowStep.StepResult {
+    fn setupThemes(allocator: std.mem.Allocator, context: ?WorkflowStep.Step) !WorkflowStep.StepResult {
         _ = context;
 
         // Check terminal color capabilities
@@ -334,7 +334,7 @@ pub const SetupWorkflow = struct {
     }
 
     /// Step 6: Setup authentication (optional)
-    fn setupAuthentication(allocator: std.mem.Allocator, context: ?WorkflowStep.StepContext) !WorkflowStep.StepResult {
+    fn setupAuthentication(allocator: std.mem.Allocator, context: ?WorkflowStep.Step) !WorkflowStep.StepResult {
         _ = context;
 
         // Check if API key is already set
@@ -364,7 +364,7 @@ pub const SetupWorkflow = struct {
     }
 
     /// Step 7: Verify complete installation
-    fn verifyInstallation(allocator: std.mem.Allocator, context: ?WorkflowStep.StepContext) !WorkflowStep.StepResult {
+    fn verifyInstallation(allocator: std.mem.Allocator, context: ?WorkflowStep.Step) !WorkflowStep.StepResult {
         _ = context;
 
         var checks_passed: usize = 0;

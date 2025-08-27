@@ -208,12 +208,12 @@ pub const EnhancedTheme = struct {
 };
 
 /// Theme manager for switching between themes and adapting to terminal capabilities
-pub const ThemeManager = struct {
+pub const Theme = struct {
     current_theme: EnhancedTheme,
     caps: term_caps.TermCaps,
     allocator: Allocator,
 
-    pub fn init(allocator: Allocator) ThemeManager {
+    pub fn init(allocator: Allocator) Theme {
         const caps = term_caps.getTermCaps();
 
         // Choose default theme based on terminal capabilities and environment
@@ -222,18 +222,18 @@ pub const ThemeManager = struct {
         else
             EnhancedTheme.modernDark();
 
-        return ThemeManager{
+        return Theme{
             .current_theme = theme,
             .caps = caps,
             .allocator = allocator,
         };
     }
 
-    pub fn setTheme(self: *ThemeManager, theme: EnhancedTheme) void {
+    pub fn setTheme(self: *Theme, theme: EnhancedTheme) void {
         self.current_theme = theme;
     }
 
-    pub fn getTheme(self: ThemeManager) EnhancedTheme {
+    pub fn getTheme(self: Theme) EnhancedTheme {
         return self.current_theme;
     }
 
@@ -263,7 +263,7 @@ pub const ThemeManager = struct {
     }
 
     /// Print available colors for debugging/demo purposes
-    pub fn printColorDemo(self: ThemeManager, writer: anytype) !void {
+    pub fn printColorDemo(self: Theme, writer: anytype) !void {
         const theme = self.current_theme;
 
         try writer.writeAll("🎨 Color Theme Demo:\n\n");

@@ -6,7 +6,7 @@ const theme_manager = @import("theme_manager");
 /// Example agent that uses the enhanced theme management system
 pub const ThemeAwareAgent = struct {
     allocator: std.mem.Allocator,
-    manager: *theme_manager.ThemeManager,
+    manager: *theme_manager.Theme,
     current_theme: *theme_manager.ColorScheme,
 
     pub fn init(allocator: std.mem.Allocator) !ThemeAwareAgent {
@@ -33,7 +33,9 @@ pub const ThemeAwareAgent = struct {
 
     /// Handle user commands for theme management
     pub fn handleThemeCommand(self: *ThemeAwareAgent, command: []const u8) !void {
-        const stdout = std.io.getStdOut().writer();
+        var stdout_buffer: [4096]u8 = undefined;
+        const stdout_file = std.fs.File.stdout();
+        var stdout = stdout_file.writer(&stdout_buffer);
 
         if (std.mem.eql(u8, command, "list")) {
             // List available themes
@@ -86,7 +88,9 @@ pub const ThemeAwareAgent = struct {
     }
 
     fn openThemeEditor(self: *ThemeAwareAgent) !void {
-        const stdout = std.io.getStdOut().writer();
+        var stdout_buffer: [4096]u8 = undefined;
+        const stdout_file = std.fs.File.stdout();
+        var stdout = stdout_file.writer(&stdout_buffer);
         const editor = try theme_manager.ThemeEditor.init(self.allocator, self.current_theme);
         defer editor.deinit();
 
@@ -105,7 +109,9 @@ pub const ThemeAwareAgent = struct {
     }
 
     fn exportCurrentTheme(self: *ThemeAwareAgent, format_str: []const u8) !void {
-        const stdout = std.io.getStdOut().writer();
+        var stdout_buffer: [4096]u8 = undefined;
+        const stdout_file = std.fs.File.stdout();
+        var stdout = stdout_file.writer(&stdout_buffer);
         const exporter = try theme_manager.ThemeExporter.init(self.allocator);
         defer exporter.deinit();
 
@@ -140,7 +146,9 @@ pub const ThemeAwareAgent = struct {
     }
 
     fn validateCurrentTheme(self: *ThemeAwareAgent) !void {
-        const stdout = std.io.getStdOut().writer();
+        var stdout_buffer: [4096]u8 = undefined;
+        const stdout_file = std.fs.File.stdout();
+        var stdout = stdout_file.writer(&stdout_buffer);
         const validator = try theme_manager.ThemeValidator.init(self.allocator);
         defer validator.deinit();
 
@@ -186,7 +194,9 @@ pub const ThemeAwareAgent = struct {
     }
 
     fn previewCurrentTheme(self: *ThemeAwareAgent) !void {
-        const stdout = std.io.getStdOut().writer();
+        var stdout_buffer: [4096]u8 = undefined;
+        const stdout_file = std.fs.File.stdout();
+        var stdout = stdout_file.writer(&stdout_buffer);
         const dev_tools = try theme_manager.ThemeDevelopmentTools.init(self.allocator);
         defer dev_tools.deinit();
 

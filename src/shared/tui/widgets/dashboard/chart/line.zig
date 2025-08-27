@@ -8,7 +8,7 @@ const graphics = @import("graphics.zig");
 const renderer_mod = @import("../../../core/renderer.zig");
 
 const Color = base.Color;
-const ChartData = base.ChartData;
+const ChartData = base.Chart;
 const ChartStyle = base.ChartStyle;
 const Bounds = base.Bounds;
 const DrawingContext = graphics.DrawingContext;

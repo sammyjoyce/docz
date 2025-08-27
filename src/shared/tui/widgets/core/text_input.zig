@@ -9,7 +9,7 @@ const TermCaps = @import("../../../term/caps.zig").TermCaps;
 /// Enhanced text input field with clipboard support
 pub const TextInput = struct {
     content: std.ArrayList(u8),
-    cursor_pos: usize,
+    cursorPos: usize,
     selection_start: ?usize,
     selection_end: ?usize,
     bounds: Bounds,
@@ -24,7 +24,7 @@ pub const TextInput = struct {
     pub fn init(allocator: std.mem.Allocator, bounds: Bounds, caps: TermCaps) TextInput {
         return TextInput{
             .content = std.ArrayList(u8).init(allocator),
-            .cursor_pos = 0,
+            .cursorPos = 0,
             .selection_start = null,
             .selection_end = null,
             .bounds = bounds,
@@ -74,7 +74,7 @@ pub const TextInput = struct {
     pub fn setText(self: *TextInput, text: []const u8) !void {
         self.content.clearAndFree();
         try self.content.appendSlice(text);
-        self.cursor_pos = @min(self.cursor_pos, self.content.items.len);
+        self.cursorPos = @min(self.cursorPos, self.content.items.len);
         self.clearSelection();
     }
 
@@ -88,8 +88,8 @@ pub const TextInput = struct {
             self.deleteSelection();
         }
 
-        try self.content.insert(self.cursor_pos, ch);
-        self.cursor_pos += 1;
+        try self.content.insert(self.cursorPos, ch);
+        self.cursorPos += 1;
         self.clearSelection();
     }
 
@@ -108,44 +108,44 @@ pub const TextInput = struct {
         }
 
         // Insert the text at cursor position
-        try self.content.insertSlice(self.cursor_pos, text);
-        self.cursor_pos += text.len;
+        try self.content.insertSlice(self.cursorPos, text);
+        self.cursorPos += text.len;
         self.clearSelection();
     }
 
     pub fn deleteChar(self: *TextInput) void {
-        if (self.cursor_pos > 0 and self.content.items.len > 0) {
-            _ = self.content.orderedRemove(self.cursor_pos - 1);
-            self.cursor_pos -= 1;
+        if (self.cursorPos > 0 and self.content.items.len > 0) {
+            _ = self.content.orderedRemove(self.cursorPos - 1);
+            self.cursorPos -= 1;
         }
         self.clearSelection();
     }
 
     pub fn deleteForward(self: *TextInput) void {
-        if (self.cursor_pos < self.content.items.len) {
-            _ = self.content.orderedRemove(self.cursor_pos);
+        if (self.cursorPos < self.content.items.len) {
+            _ = self.content.orderedRemove(self.cursorPos);
         }
         self.clearSelection();
     }
 
     pub fn moveCursorLeft(self: *TextInput) void {
-        if (self.cursor_pos > 0) {
-            self.cursor_pos -= 1;
+        if (self.cursorPos > 0) {
+            self.cursorPos -= 1;
         }
     }
 
     pub fn moveCursorRight(self: *TextInput) void {
-        if (self.cursor_pos < self.content.items.len) {
-            self.cursor_pos += 1;
+        if (self.cursorPos < self.content.items.len) {
+            self.cursorPos += 1;
         }
     }
 
     pub fn moveCursorHome(self: *TextInput) void {
-        self.cursor_pos = 0;
+        self.cursorPos = 0;
     }
 
     pub fn moveCursorEnd(self: *TextInput) void {
-        self.cursor_pos = self.content.items.len;
+        self.cursorPos = self.content.items.len;
     }
 
     pub fn selectAll(self: *TextInput) void {
@@ -189,7 +189,7 @@ pub const TextInput = struct {
                     _ = self.content.orderedRemove(i - 1);
                 }
 
-                self.cursor_pos = actual_start;
+                self.cursorPos = actual_start;
                 self.clearSelection();
             }
         }
@@ -331,7 +331,7 @@ pub const TextInput = struct {
         }
 
         // Implement horizontal scrolling based on cursor position
-        const start_pos = if (self.cursor_pos > content_width) self.cursor_pos - content_width else 0;
+        const start_pos = if (self.cursorPos > content_width) self.cursorPos - content_width else 0;
         const end_pos = @min(start_pos + content_width, text.len);
 
         return text[start_pos..end_pos];
@@ -339,8 +339,8 @@ pub const TextInput = struct {
 
     fn getCursorDisplayPos(self: TextInput) usize {
         const content_width = if (self.bounds.width > 4) self.bounds.width - 4 else 0;
-        if (self.cursor_pos <= content_width) {
-            return self.cursor_pos;
+        if (self.cursorPos <= content_width) {
+            return self.cursorPos;
         }
         return content_width;
     }

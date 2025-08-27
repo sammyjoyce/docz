@@ -66,61 +66,61 @@ pub const Notification = struct {
 };
 
 /// Enhanced notification manager with multiple delivery methods
-pub const NotificationManager = struct {
+pub const NotificationHandler = struct {
     allocator: Allocator,
     caps: term_caps.TermCaps,
-    active_notifications: std.ArrayList(Notification),
-    notification_counter: u64,
-    enable_desktop_notifications: bool,
-    enable_inline_notifications: bool,
+    activeNotifications: std.ArrayList(Notification),
+    notificationCounter: u64,
+    enableDesktopNotifications: bool,
+    enableInlineNotifications: bool,
     enable_sound: bool,
     writer: ?*std.Io.Writer,
 
-    pub fn init(allocator: Allocator) NotificationManager {
+    pub fn init(allocator: Allocator) NotificationHandler {
         return .{
             .allocator = allocator,
             .caps = term_caps.getTermCaps(),
-            .active_notifications = std.ArrayList(Notification).init(allocator),
-            .notification_counter = 0,
-            .enable_desktop_notifications = true,
-            .enable_inline_notifications = true,
+            .activeNotifications = std.ArrayList(Notification).init(allocator),
+            .notificationCounter = 0,
+            .enableDesktopNotifications = true,
+            .enableInlineNotifications = true,
             .enable_sound = false,
             .writer = null,
         };
     }
 
-    pub fn deinit(self: *NotificationManager) void {
-        self.active_notifications.deinit();
+    pub fn deinit(self: *NotificationHandler) void {
+        self.activeNotifications.deinit();
     }
 
-    pub fn setWriter(self: *NotificationManager, writer: *std.Io.Writer) void {
+    pub fn setWriter(self: *NotificationHandler, writer: *std.Io.Writer) void {
         self.writer = writer;
     }
 
     /// Send a notification with automatic delivery method selection
     pub fn notify(
-        self: *NotificationManager,
+        self: *NotificationHandler,
         notification_type: NotificationType,
         title: []const u8,
         message: []const u8,
     ) !u64 {
-        self.notification_counter += 1;
+        self.notificationCounter += 1;
         const notification = Notification.init(
-            self.notification_counter,
+            self.notificationCounter,
             notification_type,
             title,
             message,
         );
 
-        try self.active_notifications.append(notification);
+        try self.activeNotifications.append(notification);
 
         // Try desktop notification first if supported and enabled
-        if (self.enable_desktop_notifications and self.caps.supportsNotifications()) {
+        if (self.enableDesktopNotifications and self.caps.supportsNotifications()) {
             try self.sendDesktopNotification(notification);
         }
 
         // Always show inline notification as fallback
-        if (self.enable_inline_notifications) {
+        if (self.enableInlineNotifications) {
             try self.showInlineNotification(notification);
         }
 
@@ -129,14 +129,14 @@ pub const NotificationManager = struct {
 
     /// Send a progress notification
     pub fn notifyProgress(
-        self: *NotificationManager,
+        self: *NotificationHandler,
         title: []const u8,
         message: []const u8,
         progress: f32,
     ) !u64 {
-        self.notification_counter += 1;
+        self.notificationCounter += 1;
         const notification = Notification.init(
-            self.notification_counter,
+            self.notificationCounter,
             .progress,
             title,
             message,
@@ -144,16 +144,16 @@ pub const NotificationManager = struct {
 
         // Update or add progress notification
         var found = false;
-        for (self.active_notifications.items, 0..) |*existing, i| {
+        for (self.activeNotifications.items, 0..) |*existing, i| {
             if (existing.type == .progress and std.mem.eql(u8, existing.title, title)) {
-                self.active_notifications.items[i] = notification;
+                self.activeNotifications.items[i] = notification;
                 found = true;
                 break;
             }
         }
 
         if (!found) {
-            try self.active_notifications.append(notification);
+            try self.activeNotifications.append(notification);
         }
 
         // Show progress notification
@@ -163,7 +163,7 @@ pub const NotificationManager = struct {
     }
 
     /// Send desktop notification using OSC 9
-    fn sendDesktopNotification(self: *NotificationManager, notification: Notification) !void {
+    fn sendDesktopNotification(self: *NotificationHandler, notification: Notification) !void {
         if (self.writer == null) return error.NoWriter;
 
         const formatted_message = try std.fmt.allocPrint(
@@ -182,7 +182,7 @@ pub const NotificationManager = struct {
     }
 
     /// Show inline terminal notification with rich formatting
-    fn showInlineNotification(self: *NotificationManager, notification: Notification) !void {
+    fn showInlineNotification(self: *NotificationHandler, notification: Notification) !void {
         if (self.writer == null) return;
         const writer = self.writer.?;
 
@@ -254,7 +254,7 @@ pub const NotificationManager = struct {
     }
 
     /// Show progress notification with progress bar
-    fn showProgressNotification(self: *NotificationManager, notification: Notification) !void {
+    fn showProgressNotification(self: *NotificationHandler, notification: Notification) !void {
         if (self.writer == null or notification.progress == null) return;
         const writer = self.writer.?;
         const progress = notification.progress.?;
@@ -319,33 +319,33 @@ pub const NotificationManager = struct {
     }
 
     /// Update progress for an existing notification
-    pub fn updateProgress(self: *NotificationManager, notification_id: u64, progress: f32) !void {
-        for (self.active_notifications.items, 0..) |*notification, i| {
-            if (notification.id == notification_id and notification.type == .progress) {
-                self.active_notifications.items[i].progress = std.math.clamp(progress, 0.0, 1.0);
-                try self.showProgressNotification(self.active_notifications.items[i]);
+    pub fn updateProgress(self: *NotificationHandler, notificationId: u64, progress: f32) !void {
+        for (self.activeNotifications.items, 0..) |*notification, i| {
+            if (notification.id == notificationId and notification.type == .progress) {
+                self.activeNotifications.items[i].progress = std.math.clamp(progress, 0.0, 1.0);
+                try self.showProgressNotification(self.activeNotifications.items[i]);
                 break;
             }
         }
     }
 
     /// Complete a progress notification
-    pub fn completeProgress(self: *NotificationManager, notification_id: u64, final_message: []const u8) !void {
-        for (self.active_notifications.items, 0..) |*notification, i| {
-            if (notification.id == notification_id and notification.type == .progress) {
+    pub fn completeProgress(self: *NotificationHandler, notificationId: u64, final_message: []const u8) !void {
+        for (self.activeNotifications.items, 0..) |*notification, i| {
+            if (notification.id == notificationId and notification.type == .progress) {
                 // Convert to success notification
                 const success_notification = Notification.init(
-                    notification_id,
+                    notificationId,
                     .success,
                     notification.title,
                     final_message,
                 );
 
-                self.active_notifications.items[i] = success_notification;
+                self.activeNotifications.items[i] = success_notification;
                 try self.showInlineNotification(success_notification);
 
                 // Send desktop notification for completion if enabled
-                if (self.enable_desktop_notifications and self.caps.supportsNotifications()) {
+                if (self.enableDesktopNotifications and self.caps.supportsNotifications()) {
                     try self.sendDesktopNotification(success_notification);
                 }
                 break;
@@ -354,85 +354,85 @@ pub const NotificationManager = struct {
     }
 
     /// Remove a notification
-    pub fn dismiss(self: *NotificationManager, notification_id: u64) void {
-        for (self.active_notifications.items, 0..) |notification, i| {
-            if (notification.id == notification_id) {
-                _ = self.active_notifications.swapRemove(i);
+    pub fn dismiss(self: *NotificationHandler, notificationId: u64) void {
+        for (self.activeNotifications.items, 0..) |notification, i| {
+            if (notification.id == notificationId) {
+                _ = self.activeNotifications.swapRemove(i);
                 break;
             }
         }
     }
 
     /// Clear all notifications
-    pub fn clearAll(self: *NotificationManager) void {
-        self.active_notifications.clearRetainingCapacity();
+    pub fn clearAll(self: *NotificationHandler) void {
+        self.activeNotifications.clearRetainingCapacity();
     }
 
     /// Get all active notifications
-    pub fn getActiveNotifications(self: *NotificationManager) []const Notification {
-        return self.active_notifications.items;
+    pub fn getActiveNotifications(self: *NotificationHandler) []const Notification {
+        return self.activeNotifications.items;
     }
 
     /// Configure notification preferences
     pub fn configure(
-        self: *NotificationManager,
+        self: *NotificationHandler,
         desktop: bool,
         inline_notifications: bool,
         sound: bool,
     ) void {
-        self.enable_desktop_notifications = desktop;
-        self.enable_inline_notifications = inline_notifications;
+        self.enableDesktopNotifications = desktop;
+        self.enableInlineNotifications = inline_notifications;
         self.enable_sound = sound;
     }
 };
 
 /// Helper for common long-running operations
 pub const OperationNotifier = struct {
-    manager: *NotificationManager,
-    notification_id: ?u64,
-    operation_name: []const u8,
+    manager: *NotificationHandler,
+    notificationId: ?u64,
+    operationName: []const u8,
 
-    pub fn init(manager: *NotificationManager, operation_name: []const u8) OperationNotifier {
+    pub fn init(manager: *NotificationHandler, operationName: []const u8) OperationNotifier {
         return .{
             .manager = manager,
-            .notification_id = null,
-            .operation_name = operation_name,
+            .notificationId = null,
+            .operationName = operationName,
         };
     }
 
     pub fn start(self: *OperationNotifier, message: []const u8) !void {
-        self.notification_id = try self.manager.notifyProgress(
-            self.operation_name,
+        self.notificationId = try self.manager.notifyProgress(
+            self.operationName,
             message,
             0.0,
         );
     }
 
     pub fn updateProgress(self: *OperationNotifier, progress: f32, message: []const u8) !void {
-        if (self.notification_id) |_| {
+        if (self.notificationId) |_| {
             // Update the message by creating a new notification
-            _ = try self.manager.notifyProgress(self.operation_name, message, progress);
+            _ = try self.manager.notifyProgress(self.operationName, message, progress);
         }
     }
 
     pub fn complete(self: *OperationNotifier, final_message: []const u8) !void {
-        if (self.notification_id) |id| {
+        if (self.notificationId) |id| {
             try self.manager.completeProgress(id, final_message);
-            self.notification_id = null;
+            self.notificationId = null;
         }
     }
 
     pub fn fail(self: *OperationNotifier, error_message: []const u8) !void {
-        if (self.notification_id) |_| {
-            _ = try self.manager.notify(.err, self.operation_name, error_message);
-            self.notification_id = null;
+        if (self.notificationId) |_| {
+            _ = try self.manager.notify(.err, self.operationName, error_message);
+            self.notificationId = null;
         }
     }
 };
 
 // Demo functions for testing notification features
 pub const NotificationDemo = struct {
-    pub fn runProgressDemo(manager: *NotificationManager) !void {
+    pub fn runProgressDemo(manager: *NotificationHandler) !void {
         var notifier = OperationNotifier.init(manager, "File Transfer");
 
         try notifier.start("Initializing transfer...");
@@ -453,7 +453,7 @@ pub const NotificationDemo = struct {
         try notifier.complete("Transfer completed successfully!");
     }
 
-    pub fn runNotificationTypesDemo(manager: *NotificationManager) !void {
+    pub fn runNotificationTypesDemo(manager: *NotificationHandler) !void {
         _ = try manager.notify(.info, "Information", "This is an informational message");
         std.time.sleep(200 * std.time.ns_per_ms);
 

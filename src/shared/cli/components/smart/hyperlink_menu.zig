@@ -5,7 +5,7 @@ const std = @import("std");
 const context = @import("../../core/context.zig");
 
 pub const HyperlinkMenu = struct {
-    context: *context.CliContext,
+    context: *context.Cli,
     items: []const MenuItem,
     title: ?[]const u8 = null,
 
@@ -17,7 +17,7 @@ pub const HyperlinkMenu = struct {
         description: ?[]const u8 = null,
     };
 
-    pub fn init(ctx: *context.CliContext, items: []const MenuItem) HyperlinkMenu {
+    pub fn init(ctx: *context.Cli, items: []const MenuItem) HyperlinkMenu {
         return HyperlinkMenu{
             .context = ctx,
             .items = items,
@@ -103,7 +103,7 @@ pub const HyperlinkMenu = struct {
 };
 
 /// Convenience function to create a documentation menu
-pub fn createDocsMenu(ctx: *context.CliContext) HyperlinkMenu {
+pub fn createDocsMenu(ctx: *context.Cli) HyperlinkMenu {
     const docs_items = [_]HyperlinkMenu.MenuItem{
         .{
             .label = "Getting Started Guide",

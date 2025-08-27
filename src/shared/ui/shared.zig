@@ -10,7 +10,7 @@ const graphics = @import("../term/graphics_manager.zig");
 
 // Re-export core components
 pub const Component = component_mod.Component;
-pub const ComponentManager = component_mod.ComponentManager;
+pub const ComponentRegistry = component_mod.ComponentRegistry;
 pub const ComponentState = component_mod.ComponentState;
 pub const RenderContext = component_mod.RenderContext;
 pub const Event = component_mod.Event;
@@ -25,7 +25,7 @@ pub const Rect = unified.Rect;
 pub const NotificationLevel = unified.NotificationLevel;
 
 // Component imports
-pub const ProgressBar = @import("components/progress_bar.zig").ProgressBar;
+pub const ProgressBar = @import("components/ProgressBar.zig").Progress;
 
 /// Context mode determines how components are rendered
 pub const UIMode = enum {
@@ -38,34 +38,34 @@ pub const UIMode = enum {
 };
 
 /// Shared UI context that adapts to different modes
-pub const UIContext = struct {
+pub const UI = struct {
     const Self = @This();
 
     allocator: std.mem.Allocator,
     terminal: Terminal,
     graphics: ?graphics.GraphicsManager,
-    component_manager: ComponentManager,
+    componentManager: ComponentRegistry,
     mode: UIMode,
     theme: Theme,
 
     pub fn init(allocator: std.mem.Allocator, mode: UIMode) !Self {
         var terminal = try Terminal.init(allocator);
         const graphics_manager = graphics.GraphicsManager.init(allocator, &terminal);
-        const component_manager = ComponentManager.init(allocator, &terminal);
+        const component_manager = ComponentRegistry.init(allocator, &terminal);
         const theme = Theme.forTerminal(&terminal);
 
         return Self{
             .allocator = allocator,
             .terminal = terminal,
             .graphics = graphics_manager,
-            .component_manager = component_manager,
+            .componentManager = component_manager,
             .mode = mode,
             .theme = theme,
         };
     }
 
     pub fn deinit(self: *Self) void {
-        self.component_manager.deinit();
+        self.componentManager.deinit();
         if (self.graphics) |*gfx| gfx.deinit();
         self.terminal.deinit();
     }
@@ -96,10 +96,10 @@ pub const UIContext = struct {
                     .title = try self.allocator.dupe(u8, title),
                     .message = try self.allocator.dupe(u8, message),
                     .duration = 3000, // 3 seconds
-                    .auto_dismiss = true,
+                    .autoDismiss = true,
                 });
 
-                try self.component_manager.addComponent(notification);
+                try self.componentManager.addComponent(notification);
             },
         }
     }
@@ -132,7 +132,7 @@ pub const UIContext = struct {
                     .animated = true,
                 });
 
-                try self.component_manager.addComponent(progress_bar);
+                try self.componentManager.addComponent(progress_bar);
                 return progress_bar;
             },
         }
@@ -154,7 +154,7 @@ pub const UIContext = struct {
 
     /// Handle input events (mainly for TUI mode)
     pub fn handleEvent(self: *Self, event: Event) !bool {
-        return self.component_manager.handleEvent(event);
+        return self.componentManager.handleEvent(event);
     }
 
     /// Render all components (mainly for TUI mode)
@@ -191,8 +191,8 @@ pub const NotificationComponent = struct {
     allocator: std.mem.Allocator,
     state: ComponentState,
     config: NotificationConfig,
-    creation_time: i64,
-    animation_progress: f32 = 0.0,
+    creationTime: i64,
+    animationProgress: f32 = 0.0,
 
     const vtable = Component.VTable{
         .init = init,
@@ -214,7 +214,7 @@ pub const NotificationComponent = struct {
             .allocator = allocator,
             .state = ComponentState{},
             .config = config,
-            .creation_time = std.time.timestamp(),
+            .creationTime = std.time.timestamp(),
         };
 
         const component = try allocator.create(Component);
@@ -272,7 +272,7 @@ pub const NotificationComponent = struct {
         };
 
         // Animation for slide-in effect
-        const elapsed = @as(f32, @floatFromInt(std.time.timestamp() - self.creation_time)) / 1000.0;
+        const elapsed = @as(f32, @floatFromInt(std.time.timestamp() - self.creationTime)) / 1000.0;
         const animation_t = @min(1.0, elapsed / 0.3); // 300ms slide-in
         const eased_t = component_mod.Animation.easeOut(animation_t);
 
@@ -349,7 +349,7 @@ pub const NotificationComponent = struct {
         switch (event) {
             .key => |key_event| {
                 if (key_event.key == .escape or key_event.key == .enter) {
-                    self.config.auto_dismiss = true;
+                    self.config.autoDismiss = true;
                     return true;
                 }
             },
@@ -364,8 +364,8 @@ pub const NotificationComponent = struct {
         _ = dt;
 
         // Check if notification should be auto-dismissed
-        if (self.config.auto_dismiss) {
-            const elapsed = @as(u32, @intCast(std.time.timestamp() - self.creation_time)) * 1000;
+        if (self.config.autoDismiss) {
+            const elapsed = @as(u32, @intCast(std.time.timestamp() - self.creationTime)) * 1000;
             if (elapsed > self.config.duration) {
                 self.state.visible = false;
             }
@@ -381,7 +381,7 @@ pub const NotificationConfig = struct {
     title: []const u8,
     message: []const u8,
     duration: u32 = 3000, // milliseconds
-    auto_dismiss: bool = true,
+    autoDismiss: bool = true,
 };
 
 /// Utility functions for common UI operations
@@ -401,26 +401,26 @@ pub const BorderStyle = struct {
     pub fn getChars(self: BorderStyle) BorderChars {
         return switch (self.style) {
             .single => BorderChars{
-                .top_left = "┌",
-                .top_right = "┐",
-                .bottom_left = "└",
-                .bottom_right = "┘",
+                .topLeft = "┌",
+                .topRight = "┐",
+                .bottomLeft = "└",
+                .bottomRight = "┘",
                 .horizontal = "─",
                 .vertical = "│",
             },
             .double => BorderChars{
-                .top_left = "╔",
-                .top_right = "╗",
-                .bottom_left = "╚",
-                .bottom_right = "╝",
+                .topLeft = "╔",
+                .topRight = "╗",
+                .bottomLeft = "╚",
+                .bottomRight = "╝",
                 .horizontal = "═",
                 .vertical = "║",
             },
             .rounded => BorderChars{
-                .top_left = "╭",
-                .top_right = "╮",
-                .bottom_left = "╰",
-                .bottom_right = "╯",
+                .topLeft = "╭",
+                .topRight = "╮",
+                .bottomLeft = "╰",
+                .bottomRight = "╯",
                 .horizontal = "─",
                 .vertical = "│",
             },
@@ -429,10 +429,10 @@ pub const BorderStyle = struct {
 };
 
 pub const BorderChars = struct {
-    top_left: []const u8,
-    top_right: []const u8,
-    bottom_left: []const u8,
-    bottom_right: []const u8,
+    topLeft: []const u8,
+    topRight: []const u8,
+    bottomLeft: []const u8,
+    bottomRight: []const u8,
     horizontal: []const u8,
     vertical: []const u8,
 };
@@ -444,12 +444,12 @@ pub fn drawBorder(terminal: *Terminal, bounds: Rect, border: BorderStyle) !void 
 
     // Top border
     try terminal.moveTo(bounds.x, bounds.y);
-    try terminal.print(chars.top_left, style);
+    try terminal.print(chars.topLeft, style);
     var x: u32 = 1;
     while (x < bounds.width - 1) : (x += 1) {
         try terminal.print(chars.horizontal, style);
     }
-    try terminal.print(chars.top_right, style);
+    try terminal.print(chars.topRight, style);
 
     // Side borders
     var y: u32 = 1;
@@ -462,12 +462,12 @@ pub fn drawBorder(terminal: *Terminal, bounds: Rect, border: BorderStyle) !void 
 
     // Bottom border
     try terminal.moveTo(bounds.x, bounds.y + @as(i32, @intCast(bounds.height)) - 1);
-    try terminal.print(chars.bottom_left, style);
+        try terminal.print(chars.bottomLeft, style);
     x = 1;
     while (x < bounds.width - 1) : (x += 1) {
         try terminal.print(chars.horizontal, style);
     }
-    try terminal.print(chars.bottom_right, style);
+    try terminal.print(chars.bottomRight, style);
 }
 
 /// Center text within a rectangle
@@ -481,7 +481,7 @@ pub fn centerText(terminal: *Terminal, bounds: Rect, text: []const u8, style: ?S
 }
 
 test "ui context creation" {
-    var ui_ctx = try UIContext.init(std.testing.allocator, .cli);
+    var ui_ctx = try UI.init(std.testing.allocator, .cli);
     defer ui_ctx.deinit();
 
     try std.testing.expect(ui_ctx.mode == .cli);

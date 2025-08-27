@@ -8,7 +8,7 @@ const shared = @import("shared.zig");
 const progress_bar = @import("components/progress_bar.zig");
 const smart_input = @import("components/smart_input.zig");
 
-const UIContext = shared.UIContext;
+const UI = shared.UI;
 const UIMode = shared.UIMode;
 const Component = shared.Component;
 const NotificationLevel = shared.NotificationLevel;
@@ -20,19 +20,19 @@ pub const EnhancedUIDemo = struct {
     const Self = @This();
 
     allocator: std.mem.Allocator,
-    ui_context: UIContext,
+    uiContext: UI,
 
     pub fn init(allocator: std.mem.Allocator) !Self {
-        var ui_context = try UIContext.init(allocator, .tui);
+        var uiContext = try UI.init(allocator, .tui);
 
         return Self{
             .allocator = allocator,
-            .ui_context = ui_context,
+            .uiContext = uiContext,
         };
     }
 
     pub fn deinit(self: *Self) void {
-        self.ui_context.deinit();
+        self.uiContext.deinit();
     }
 
     /// Run the comprehensive demo
@@ -52,34 +52,34 @@ pub const EnhancedUIDemo = struct {
         const caps = self.ui_context.getCapabilities();
 
         // Display terminal info with progressive styling
-        const title_style = shared.createTextStyle(shared.Colors.BRIGHT_BLUE, true);
+        const TITLE_STYLE = shared.createTextStyle(shared.Colors.BRIGHT_BLUE, true);
 
-        try self.ui_context.terminal.printf("╔═══════════════════════════════════════════╗\n", .{}, title_style);
-        try self.ui_context.terminal.printf("║          Enhanced UI Demo v2.0           ║\n", .{}, title_style);
-        try self.ui_context.terminal.printf("╚═══════════════════════════════════════════╝\n\n", .{}, title_style);
+        try self.ui_context.terminal.printf("╔═══════════════════════════════════════════╗\n", .{}, TITLE_STYLE);
+        try self.ui_context.terminal.printf("║          Enhanced UI Demo v2.0           ║\n", .{}, TITLE_STYLE);
+        try self.ui_context.terminal.printf("╚═══════════════════════════════════════════╝\n\n", .{}, TITLE_STYLE);
 
         try self.ui_context.terminal.printf("Terminal Capabilities Detected:\n", .{}, shared.createTextStyle(shared.Colors.BRIGHT_WHITE, true));
 
         // Capability checklist with icons
-        const checkmark = if (caps.supportsTruecolor) "✓" else "✗";
-        const color = if (caps.supportsTruecolor) shared.Colors.BRIGHT_GREEN else shared.Colors.BRIGHT_RED;
-        try self.ui_context.terminal.printf("  {s} Truecolor Support (24-bit RGB)\n", .{checkmark}, shared.createTextStyle(color, false));
+        const CHECKMARK = if (caps.supportsTruecolor) "✓" else "✗";
+        const COLOR = if (caps.supportsTruecolor) shared.Colors.BRIGHT_GREEN else shared.Colors.BRIGHT_RED;
+        try self.ui_context.terminal.printf("  {s} Truecolor Support (24-bit RGB)\n", .{CHECKMARK}, shared.createTextStyle(COLOR, false));
 
-        const graphics_check = if (caps.supportsKittyGraphics or caps.supportsSixel) "✓" else "✗";
-        const graphics_color = if (caps.supportsKittyGraphics or caps.supportsSixel) shared.Colors.BRIGHT_GREEN else shared.Colors.BRIGHT_RED;
-        try self.ui_context.terminal.printf("  {s} Graphics Support (Kitty/Sixel)\n", .{graphics_check}, shared.createTextStyle(graphics_color, false));
+        const GRAPHICS_CHECK = if (caps.supportsKittyGraphics or caps.supportsSixel) "✓" else "✗";
+        const GRAPHICS_COLOR = if (caps.supportsKittyGraphics or caps.supportsSixel) shared.Colors.BRIGHT_GREEN else shared.Colors.BRIGHT_RED;
+        try self.ui_context.terminal.printf("  {s} Graphics Support (Kitty/Sixel)\n", .{GRAPHICS_CHECK}, shared.createTextStyle(GRAPHICS_COLOR, false));
 
-        const hyperlink_check = if (caps.supportsHyperlinkOsc8) "✓" else "✗";
-        const hyperlink_color = if (caps.supportsHyperlinkOsc8) shared.Colors.BRIGHT_GREEN else shared.Colors.BRIGHT_RED;
-        try self.ui_context.terminal.printf("  {s} Hyperlink Support (OSC 8)\n", .{hyperlink_check}, shared.createTextStyle(hyperlink_color, false));
+        const HYPERLINK_CHECK = if (caps.supportsHyperlinkOsc8) "✓" else "✗";
+        const HYPERLINK_COLOR = if (caps.supportsHyperlinkOsc8) shared.Colors.BRIGHT_GREEN else shared.Colors.BRIGHT_RED;
+        try self.ui_context.terminal.printf("  {s} Hyperlink Support (OSC 8)\n", .{HYPERLINK_CHECK}, shared.createTextStyle(HYPERLINK_COLOR, false));
 
-        const clipboard_check = if (caps.supportsClipboardOsc52) "✓" else "✗";
-        const clipboard_color = if (caps.supportsClipboardOsc52) shared.Colors.BRIGHT_GREEN else shared.Colors.BRIGHT_RED;
-        try self.ui_context.terminal.printf("  {s} Clipboard Support (OSC 52)\n", .{clipboard_check}, shared.createTextStyle(clipboard_color, false));
+        const CLIPBOARD_CHECK = if (caps.supportsClipboardOsc52) "✓" else "✗";
+        const CLIPBOARD_COLOR = if (caps.supportsClipboardOsc52) shared.Colors.BRIGHT_GREEN else shared.Colors.BRIGHT_RED;
+        try self.ui_context.terminal.printf("  {s} Clipboard Support (OSC 52)\n", .{CLIPBOARD_CHECK}, shared.createTextStyle(CLIPBOARD_COLOR, false));
 
-        const notification_check = if (caps.supportsNotifyOsc9) "✓" else "✗";
-        const notification_color = if (caps.supportsNotifyOsc9) shared.Colors.BRIGHT_GREEN else shared.Colors.BRIGHT_RED;
-        try self.ui_context.terminal.printf("  {s} Native Notifications (OSC 9)\n\n", .{notification_check}, shared.createTextStyle(notification_color, false));
+        const NOTIFICATION_CHECK = if (caps.supportsNotifyOsc9) "✓" else "✗";
+        const NOTIFICATION_COLOR = if (caps.supportsNotifyOsc9) shared.Colors.BRIGHT_GREEN else shared.Colors.BRIGHT_RED;
+        try self.ui_context.terminal.printf("  {s} Native Notifications (OSC 9)\n\n", .{NOTIFICATION_CHECK}, shared.createTextStyle(NOTIFICATION_COLOR, false));
 
         // Show what will be demonstrated
         try self.ui_context.terminal.printf("This demo will showcase:\n", .{}, shared.createTextStyle(shared.Colors.BRIGHT_CYAN, true));
@@ -380,8 +380,11 @@ pub const EnhancedUIDemo = struct {
     fn waitForEnter(self: *Self) !void {
         _ = self;
         // Simplified input waiting - in real implementation would use proper input handling
-        var buffer: [10]u8 = undefined;
-        _ = try std.io.getStdIn().readUntilDelimiterOrEof(buffer[0..], '\n');
+        var stdin_buffer: [4096]u8 = undefined;
+        const stdin_file = std.fs.File.stdin();
+        var stdin_reader = stdin_file.reader(&stdin_buffer);
+        var line_buffer: [10]u8 = undefined;
+        _ = try stdin_reader.readUntilDelimiterOrEof(&line_buffer, '\n');
     }
 };
 

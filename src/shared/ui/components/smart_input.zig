@@ -23,11 +23,10 @@ const Rect = unified.Rect;
 /// Input enhancement features
 pub const InputFeatures = packed struct {
     autocomplete: bool = true,
-    syntax_highlighting: bool = true,
-    multi_line: bool = false,
-    password_mode: bool = false,
-    history: bool = true,
-    live_validation: bool = true,
+    syntaxHighlighting: bool = true,
+    multiLine: bool = false,
+    passwordMode: bool = false,
+    liveValidation: bool = true,
     placeholder: bool = true,
 };
 
@@ -43,7 +42,7 @@ pub const Suggestion = struct {
 pub const ValidationResult = union(enum) {
     valid,
     warning: []const u8,
-    validation_error: []const u8,
+    validationError: []const u8,
 };
 
 /// Callback type for suggestion providers
@@ -56,11 +55,11 @@ pub const Validator = *const fn (input: []const u8) ValidationResult;
 pub const SmartInputConfig = struct {
     placeholder: ?[]const u8 = null,
     features: InputFeatures = .{},
-    suggestion_provider: ?SuggestionProvider = null,
+    suggestionProvider: ?SuggestionProvider = null,
     validator: ?Validator = null,
-    max_length: ?u32 = null,
-    min_width: u32 = 20,
-    max_width: ?u32 = null,
+    maxLength: ?u32 = null,
+    minWidth: u32 = 20,
+    maxWidth: ?u32 = null,
 };
 
 /// Smart input component
@@ -73,22 +72,22 @@ pub const SmartInput = struct {
 
     // Input state
     buffer: std.ArrayList(u8),
-    cursor_pos: usize = 0,
-    selection_start: ?usize = null,
-    selection_end: ?usize = null,
-    scroll_offset: usize = 0,
+    cursorPos: usize = 0,
+    selectionStart: ?usize = null,
+    selectionEnd: ?usize = null,
+    scrollOffset: usize = 0,
 
     // Enhancement state
     suggestions: ?[]Suggestion = null,
-    selected_suggestion: usize = 0,
-    show_suggestions: bool = false,
-    validation_result: ValidationResult = .valid,
+    selectedSuggestion: usize = 0,
+    showSuggestions: bool = false,
+    validationResult: ValidationResult = .valid,
     history: std.ArrayList([]const u8),
-    history_index: ?usize = null,
+    historyIndex: ?usize = null,
 
     // Animation and interaction
-    cursor_blink_time: f32 = 0.0,
-    focused_time: f32 = 0.0,
+    cursorBlinkTime: f32 = 0.0,
+    focusedTime: f32 = 0.0,
 
     const vtable = Component.VTable{
         .init = init,
@@ -133,7 +132,7 @@ pub const SmartInput = struct {
     pub fn setText(self: *Self, text: []const u8) !void {
         self.buffer.clearRetainingCapacity();
         try self.buffer.appendSlice(text);
-        self.cursor_pos = text.len;
+        self.cursorPos = text.len;
         self.state.markDirty();
         try self.updateSuggestions();
     }
@@ -141,7 +140,7 @@ pub const SmartInput = struct {
     /// Clear input
     pub fn clear(self: *Self) void {
         self.buffer.clearRetainingCapacity();
-        self.cursor_pos = 0;
+        self.cursorPos = 0;
         self.clearSuggestions();
         self.state.markDirty();
     }
@@ -204,12 +203,12 @@ pub const SmartInput = struct {
         }
 
         // Render suggestions if available
-        if (self.show_suggestions and self.suggestions != null) {
+        if (self.showSuggestions and self.suggestions != null) {
             try self.renderSuggestions(ctx);
         }
 
         // Render validation feedback
-        switch (self.validation_result) {
+        switch (self.validationResult) {
             .warning => |msg| try self.renderValidation(ctx, msg, ctx.theme.colors.warning),
             .validation_error => |msg| try self.renderValidation(ctx, msg, ctx.theme.colors.error_color),
             .valid => {},
@@ -219,7 +218,7 @@ pub const SmartInput = struct {
     fn measure(impl: *anyopaque, available: Rect) Rect {
         const self: *Self = @ptrCast(@alignCast(impl));
 
-        var width = self.config.min_width;
+        var width = self.config.minWidth;
 
         // Adjust width based on content
         if (self.buffer.items.len > 0) {
@@ -227,7 +226,7 @@ pub const SmartInput = struct {
         }
 
         // Apply max width constraint
-        if (self.config.max_width) |max_w| {
+        if (self.config.maxWidth) |max_w| {
             width = @min(width, max_w);
         }
 
@@ -237,7 +236,7 @@ pub const SmartInput = struct {
         // Calculate height based on features
         var height: u32 = 1; // Base input line
         if (self.config.features.multi_line) height += 2; // Extra lines for multiline
-        if (self.show_suggestions) height += @min(5, if (self.suggestions) |s| @as(u32, @intCast(s.len)) else 0); // Suggestions
+        if (self.showSuggestions) height += @min(5, if (self.suggestions) |s| @as(u32, @intCast(s.len)) else 0); // Suggestions
 
         return Rect{
             .x = available.x,
@@ -259,9 +258,9 @@ pub const SmartInput = struct {
             },
             .focus => |focus_event| {
                 if (focus_event.gained) {
-                    self.focused_time = 0.0;
+                    self.focusedTime = 0.0;
                 } else {
-                    self.show_suggestions = false;
+                    self.showSuggestions = false;
                     self.clearSuggestions();
                 }
                 return true;
@@ -274,16 +273,16 @@ pub const SmartInput = struct {
         const self: *Self = @ptrCast(@alignCast(impl));
 
         // Update cursor blink animation
-        self.cursor_blink_time += dt;
-        if (self.cursor_blink_time >= 1.0) {
-            self.cursor_blink_time = 0.0;
+        self.cursorBlinkTime += dt;
+        if (self.cursorBlinkTime >= 1.0) {
+            self.cursorBlinkTime = 0.0;
             self.state.markDirty(); // Trigger redraw for cursor blink
         }
 
         // Update focused animation
         if (self.state.focused) {
-            self.focused_time += dt;
-            if (self.focused_time < 0.5) {
+            self.focusedTime += dt;
+            if (self.focusedTime < 0.5) {
                 self.state.markDirty(); // Animate focus transition
             }
         }
@@ -354,7 +353,7 @@ pub const SmartInput = struct {
             display_text = self.buffer.items;
 
             // Calculate visible portion based on scroll and cursor
-            const start_pos = self.scroll_offset;
+            const start_pos = self.scrollOffset;
             const end_pos = @min(display_text.len, start_pos + content_width);
             const visible_text = display_text[start_pos..end_pos];
 
@@ -382,8 +381,8 @@ pub const SmartInput = struct {
     fn renderCursor(self: *Self, ctx: RenderContext) !void {
         // Calculate cursor position on screen
         const content_start_x = self.state.bounds.x + 1;
-        const visible_cursor_pos = if (self.cursor_pos >= self.scroll_offset)
-            self.cursor_pos - self.scroll_offset
+        const visible_cursor_pos = if (self.cursorPos >= self.scrollOffset)
+            self.cursorPos - self.scrollOffset
         else
             0;
 
@@ -395,7 +394,7 @@ pub const SmartInput = struct {
             try ctx.terminal.moveTo(cursor_x, cursor_y);
 
             // Animate cursor blink
-            const should_show = self.cursor_blink_time < 0.5;
+            const should_show = self.cursorBlinkTime < 0.5;
             if (should_show) {
                 const cursor_style = Style{
                     .fg_color = ctx.theme.colors.foreground,
@@ -403,8 +402,8 @@ pub const SmartInput = struct {
                 };
 
                 // Show character under cursor or space
-                const cursor_char = if (self.cursor_pos < self.buffer.items.len)
-                    self.buffer.items[self.cursor_pos .. self.cursor_pos + 1]
+                const cursor_char = if (self.cursorPos < self.buffer.items.len)
+                    self.buffer.items[self.cursorPos .. self.cursorPos + 1]
                 else
                     " ";
 
@@ -421,7 +420,7 @@ pub const SmartInput = struct {
             for (suggestions[0..max_suggestions], 0..) |suggestion, i| {
                 try ctx.terminal.moveTo(self.state.bounds.x, suggestions_y + @as(i32, @intCast(i)));
 
-                const is_selected = i == self.selected_suggestion;
+                const is_selected = i == self.selectedSuggestion;
                 const style = if (is_selected)
                     Style{
                         .fg_color = ctx.theme.colors.background,
@@ -488,42 +487,42 @@ pub const SmartInput = struct {
                 return self.insertChar('a'); // Placeholder
             },
             .backspace => {
-                if (self.cursor_pos > 0) {
-                    _ = self.buffer.orderedRemove(self.cursor_pos - 1);
-                    self.cursor_pos -= 1;
+                if (self.cursorPos > 0) {
+                    _ = self.buffer.orderedRemove(self.cursorPos - 1);
+                    self.cursorPos -= 1;
                     self.state.markDirty();
                     try self.updateSuggestions();
                 }
                 return true;
             },
             .delete => {
-                if (self.cursor_pos < self.buffer.items.len) {
-                    _ = self.buffer.orderedRemove(self.cursor_pos);
+                if (self.cursorPos < self.buffer.items.len) {
+                    _ = self.buffer.orderedRemove(self.cursorPos);
                     self.state.markDirty();
                     try self.updateSuggestions();
                 }
                 return true;
             },
             .left => {
-                if (self.cursor_pos > 0) {
-                    self.cursor_pos -= 1;
+                if (self.cursorPos > 0) {
+                    self.cursorPos -= 1;
                     self.updateScrollOffset();
                     self.state.markDirty();
                 }
                 return true;
             },
             .right => {
-                if (self.cursor_pos < self.buffer.items.len) {
-                    self.cursor_pos += 1;
+                if (self.cursorPos < self.buffer.items.len) {
+                    self.cursorPos += 1;
                     self.updateScrollOffset();
                     self.state.markDirty();
                 }
                 return true;
             },
             .up => {
-                if (self.show_suggestions and self.suggestions != null) {
-                    if (self.selected_suggestion > 0) {
-                        self.selected_suggestion -= 1;
+                if (self.showSuggestions and self.suggestions != null) {
+                    if (self.selectedSuggestion > 0) {
+                        self.selectedSuggestion -= 1;
                         self.state.markDirty();
                     }
                 } else if (self.config.features.history) {
@@ -532,9 +531,9 @@ pub const SmartInput = struct {
                 return true;
             },
             .down => {
-                if (self.show_suggestions and self.suggestions != null) {
-                    if (self.selected_suggestion < self.suggestions.?.len - 1) {
-                        self.selected_suggestion += 1;
+                if (self.showSuggestions and self.suggestions != null) {
+                    if (self.selectedSuggestion < self.suggestions.?.len - 1) {
+                        self.selectedSuggestion += 1;
                         self.state.markDirty();
                     }
                 } else if (self.config.features.history) {
@@ -543,23 +542,23 @@ pub const SmartInput = struct {
                 return true;
             },
             .enter => {
-                if (self.show_suggestions and self.suggestions != null) {
-                    try self.applySuggestion(self.selected_suggestion);
+                if (self.showSuggestions and self.suggestions != null) {
+                    try self.applySuggestion(self.selectedSuggestion);
                 }
                 return true;
             },
             .escape => {
-                self.show_suggestions = false;
+                self.showSuggestions = false;
                 self.clearSuggestions();
                 self.state.markDirty();
                 return true;
             },
             .tab => {
-                if (self.show_suggestions and self.suggestions != null and self.suggestions.?.len > 0) {
-                    try self.applySuggestion(self.selected_suggestion);
+                if (self.showSuggestions and self.suggestions != null and self.suggestions.?.len > 0) {
+                    try self.applySuggestion(self.selectedSuggestion);
                 } else if (self.config.features.autocomplete) {
                     try self.updateSuggestions();
-                    self.show_suggestions = true;
+                    self.showSuggestions = true;
                     self.state.markDirty();
                 }
                 return true;
@@ -569,28 +568,106 @@ pub const SmartInput = struct {
     }
 
     fn handleMouseEvent(self: *Self, mouse_event: Event.MouseEvent) !bool {
-        _ = self;
-        _ = mouse_event;
-        // TODO: Implement mouse support (cursor positioning, selection)
+        // Convert screen coordinates to component-relative coordinates
+        const bounds = self.state.bounds;
+        const relative_x = mouse_event.pos.x - bounds.x;
+        const relative_y = mouse_event.pos.y - bounds.y;
+
+        // Check if mouse is within component bounds
+        if (relative_x < 0 or relative_y < 0 or
+            relative_x >= bounds.width or relative_y >= bounds.height)
+        {
+            return false;
+        }
+
+        switch (mouse_event.action) {
+            .press => {
+                switch (mouse_event.button) {
+                    .left => {
+                        // Handle cursor positioning
+                        const clicked_pos = self.screenToTextPosition(relative_x +| self.scrollOffset);
+
+                        if (clicked_pos <= self.buffer.items.len) {
+                            self.cursorPos = clicked_pos;
+                            self.selectionStart = clicked_pos;
+                            self.selectionEnd = clicked_pos;
+                            self.state.markDirty();
+                            try self.updateSuggestions();
+                            return true;
+                        }
+                    },
+                    .right => {
+                        // Could implement context menu or paste
+                        return false;
+                    },
+                    else => return false,
+                }
+            },
+            .move => {
+                // Handle text selection with mouse drag
+                if (self.selectionStart != null) {
+                    const text_pos = self.screenToTextPosition(relative_x +| self.scrollOffset);
+                    if (text_pos <= self.buffer.items.len) {
+                        self.cursorPos = text_pos;
+                        self.selectionEnd = text_pos;
+                        self.state.markDirty();
+                        return true;
+                    }
+                }
+            },
+            .release => {
+                // Selection is complete
+                if (self.selectionStart != null and self.selectionEnd != null) {
+                    // Ensure selection is properly ordered
+                    if (self.selectionEnd.? < self.selectionStart.?) {
+                        const temp = self.selectionStart.?;
+                        self.selectionStart = self.selectionEnd.?;
+                        self.selectionEnd = temp;
+                    }
+                    self.state.markDirty();
+                    return true;
+                }
+            },
+        }
+
         return false;
+    }
+
+    /// Convert screen position to text buffer position
+    fn screenToTextPosition(self: *Self, screen_x: u32) usize {
+        if (screen_x == 0) return 0;
+
+        var pos: usize = 0;
+        var screen_pos: u32 = 0;
+
+        for (self.buffer.items, 0..) |char, i| {
+            const char_width = if (char < 0x80) 1 else 2; // Simple UTF-8 width approximation
+            if (screen_pos + char_width > screen_x) {
+                return i;
+            }
+            screen_pos += char_width;
+            pos = i + 1;
+        }
+
+        return pos;
     }
 
     // Helper methods
 
     fn insertChar(self: *Self, char: u8) !bool {
-        if (self.config.max_length) |max_len| {
+        if (self.config.maxLength) |max_len| {
             if (self.buffer.items.len >= max_len) return true;
         }
 
-        try self.buffer.insert(self.cursor_pos, char);
-        self.cursor_pos += 1;
+        try self.buffer.insert(self.cursorPos, char);
+        self.cursorPos += 1;
         self.updateScrollOffset();
         self.state.markDirty();
         try self.updateSuggestions();
 
         // Live validation
         if (self.config.features.live_validation and self.config.validator != null) {
-            self.validation_result = self.config.validator.?(self.buffer.items);
+            self.validationResult = self.config.validator.?(self.buffer.items);
             self.state.markDirty();
         }
 
@@ -601,22 +678,22 @@ pub const SmartInput = struct {
         const content_width = @max(1, self.state.bounds.width -| 2);
 
         // Ensure cursor is visible
-        if (self.cursor_pos < self.scroll_offset) {
-            self.scroll_offset = self.cursor_pos;
-        } else if (self.cursor_pos >= self.scroll_offset + content_width) {
-            self.scroll_offset = self.cursor_pos - content_width + 1;
+        if (self.cursorPos < self.scrollOffset) {
+            self.scrollOffset = self.cursorPos;
+        } else if (self.cursorPos >= self.scrollOffset + content_width) {
+            self.scrollOffset = self.cursorPos - content_width + 1;
         }
     }
 
     fn updateSuggestions(self: *Self) !void {
-        if (self.config.features.autocomplete and self.config.suggestion_provider != null) {
+        if (self.config.features.autocomplete and self.config.suggestionProvider != null) {
             if (self.suggestions) |old_suggestions| {
                 self.allocator.free(old_suggestions);
             }
 
-            self.suggestions = try self.config.suggestion_provider.?(self.buffer.items, self.allocator);
-            self.selected_suggestion = 0;
-            self.show_suggestions = self.suggestions != null and self.suggestions.?.len > 0;
+            self.suggestions = try self.config.suggestionProvider.?(self.buffer.items, self.allocator);
+            self.selectedSuggestion = 0;
+            self.showSuggestions = self.suggestions != null and self.suggestions.?.len > 0;
         }
     }
 
@@ -625,24 +702,24 @@ pub const SmartInput = struct {
             self.allocator.free(suggestions);
             self.suggestions = null;
         }
-        self.show_suggestions = false;
+        self.showSuggestions = false;
     }
 
     fn navigateHistory(self: *Self, direction: i32) !void {
         if (self.history.items.len == 0) return;
 
-        if (self.history_index == null) {
-            self.history_index = if (direction > 0) 0 else self.history.items.len - 1;
+        if (self.historyIndex == null) {
+            self.historyIndex = if (direction > 0) 0 else self.history.items.len - 1;
         } else {
-            const current = self.history_index.?;
+            const current = self.historyIndex.?;
             if (direction > 0 and current < self.history.items.len - 1) {
-                self.history_index = current + 1;
+                self.historyIndex = current + 1;
             } else if (direction < 0 and current > 0) {
-                self.history_index = current - 1;
+                self.historyIndex = current - 1;
             }
         }
 
-        if (self.history_index) |idx| {
+        if (self.historyIndex) |idx| {
             try self.setText(self.history.items[idx]);
         }
     }
@@ -651,7 +728,7 @@ pub const SmartInput = struct {
         if (self.suggestions) |suggestions| {
             if (index < suggestions.len) {
                 try self.setText(suggestions[index].text);
-                self.show_suggestions = false;
+                self.showSuggestions = false;
                 self.clearSuggestions();
             }
         }

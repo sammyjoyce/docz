@@ -8,7 +8,7 @@ const oauth = @import("../oauth/mod.zig");
 const core = @import("../core/mod.zig");
 
 // Minimal TUI interface with basic ANSI escape codes
-const tui = struct {
+const Tui = struct {
     fn getTerminalSize() struct { width: u16, height: u16 } {
         // Use a reasonable default since we don't have access to full TUI
         return .{ .width = 80, .height = 24 };
@@ -36,12 +36,15 @@ const tui = struct {
 
 // Re-export individual TUI components
 pub const oauth_wizard = @import("oauth_wizard.zig");
+// pub const enhanced_oauth_wizard = @import("enhanced_oauth_wizard.zig"); // Temporarily disabled due to import issues
 pub const auth_status = @import("auth_status.zig");
 pub const code_input = @import("code_input.zig");
 
 // Re-export main functions
 pub const runAuthTUI = runTUI;
 pub const setupOAuthWithTUI = oauth_wizard.setupOAuth;
+// pub const setupOAuthWithEnhancedTUI = enhanced_oauth_wizard.setupOAuthWithEnhancedTUI; // Temporarily disabled
+// pub const runEnhancedOAuthWizard = enhanced_oauth_wizard.runEnhancedOAuthWizard; // Temporarily disabled
 pub const showAuthStatus = auth_status.display;
 pub const inputAuthCode = code_input.input;
 
@@ -63,27 +66,27 @@ pub const AuthTUIType = enum {
 
 /// Refresh tokens with TUI feedback
 fn refreshTUI(allocator: std.mem.Allocator) !void {
-    tui.clearScreen();
+    Tui.clearScreen();
 
     // Display header
 
     // Show status while refreshing
-    print("{s}🔄 Refreshing Authentication Tokens{s}\n\n", .{ tui.Color.BRIGHT_CYAN, tui.Color.RESET });
+    print("{s}🔄 Refreshing Authentication Tokens{s}\n\n", .{ Tui.Color.BRIGHT_CYAN, Tui.Color.RESET });
 
     // Try to refresh
     var client = core.createClient(allocator) catch |err| {
-        print("{s}❌ Failed to initialize auth client: {}{s}\n", .{ tui.Color.BRIGHT_RED, err, tui.Color.RESET });
+        print("{s}❌ Failed to initialize auth client: {}{s}\n", .{ Tui.Color.BRIGHT_RED, err, Tui.Color.RESET });
         return;
     };
     defer client.deinit();
 
     client.refresh() catch |err| {
-        print("{s}❌ Failed to refresh tokens: {}{s}\n", .{ tui.Color.BRIGHT_RED, err, tui.Color.RESET });
+        print("{s}❌ Failed to refresh tokens: {}{s}\n", .{ Tui.Color.BRIGHT_RED, err, Tui.Color.RESET });
         print("\nTry running: docz auth login\n");
         return;
     };
 
-    print("{s}✅ Tokens refreshed successfully!{s}\n", .{ tui.Color.BRIGHT_GREEN, tui.Color.RESET });
+    print("{s}✅ Tokens refreshed successfully!{s}\n", .{ Tui.Color.BRIGHT_GREEN, Tui.Color.RESET });
 }
 
 // Helper to get terminal size safely

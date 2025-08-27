@@ -13,7 +13,7 @@ pub const ToolError = error{
 
     /// Input validation errors
     InvalidInput,
-    MalformedJson,
+    MalformedJSON,
     MissingParameter,
 
     /// Resource errors
@@ -22,7 +22,7 @@ pub const ToolError = error{
 
     /// API/Network errors
     NetworkError,
-    ApiError,
+    APIError,
     AuthError,
 
     /// Processing errors
@@ -35,7 +35,7 @@ pub const ToolError = error{
 pub const ToolFn = *const fn (allocator: std.mem.Allocator, input: []const u8) ToolError![]u8;
 
 /// Tool metadata for comptime reflection
-pub const ToolMeta = struct {
+pub const ToolMetadata = struct {
     name: []const u8,
     description: []const u8,
     func: ToolFn,
@@ -45,7 +45,7 @@ pub const ToolMeta = struct {
 };
 
 /// JSON-based tool function signature for more structured tools
-pub const JsonToolFn = *const fn (allocator: std.mem.Allocator, params: std.json.Value) ToolError!std.json.Value;
+pub const JSONToolFunction = *const fn (allocator: std.mem.Allocator, params: std.json.Value) ToolError!std.json.Value;
 
 /// Comptime reflection utilities for tool registration
 pub const ToolReflection = struct {
@@ -93,13 +93,13 @@ pub const ToolReflection = struct {
             }
 
             /// Get tool metadata using comptime reflection
-            pub fn getToolMeta(comptime tool_name: []const u8) ?ToolMeta {
+            pub fn getToolMeta(comptime tool_name: []const u8) ?ToolMetadata {
                 const info = @typeInfo(ModuleType).@"struct";
 
                 inline for (info.decls) |decl| {
                     if (decl.is_pub and std.mem.eql(u8, decl.name, tool_name)) {
                         const func = @field(ModuleType, decl.name);
-                        return ToolMeta{
+                        return ToolMetadata{
                             .name = tool_name,
                             .description = "Tool function: " ++ tool_name,
                             .func = func,
@@ -134,13 +134,13 @@ pub const ToolReflection = struct {
 pub const Registry = struct {
     allocator: std.mem.Allocator,
     map: std.StringHashMap(ToolFn),
-    metadata: std.StringHashMap(ToolMeta),
+    metadata: std.StringHashMap(ToolMetadata),
 
     pub fn init(allocator: std.mem.Allocator) Registry {
         return .{
             .allocator = allocator,
             .map = std.StringHashMap(ToolFn).init(allocator),
-            .metadata = std.StringHashMap(ToolMeta).init(allocator),
+            .metadata = std.StringHashMap(ToolMetadata).init(allocator),
         };
     }
 
@@ -156,7 +156,7 @@ pub const Registry = struct {
         try self.map.put(owned_name, func);
 
         // Create default metadata
-        const meta = ToolMeta{
+        const meta = ToolMetadata{
             .name = owned_name,
             .description = "Tool function",
             .func = func,
@@ -168,7 +168,7 @@ pub const Registry = struct {
     }
 
     /// Register a tool with full metadata
-    pub fn registerWithMeta(self: *Registry, meta: ToolMeta) !void {
+    pub fn registerWithMeta(self: *Registry, meta: ToolMetadata) !void {
         const owned_name = try self.allocator.dupe(u8, meta.name);
         errdefer self.allocator.free(owned_name);
 
@@ -186,7 +186,7 @@ pub const Registry = struct {
 
         try self.map.put(owned_name, meta.func);
 
-        const owned_meta = ToolMeta{
+        const owned_meta = ToolMetadata{
             .name = owned_name,
             .description = owned_desc,
             .func = meta.func,
@@ -198,7 +198,7 @@ pub const Registry = struct {
     }
 
     /// Register multiple tools from a module using comptime reflection
-    pub fn registerFromModule(self: *Registry, comptime ModuleType: type, agent_name: []const u8) !void {
+    pub fn registerFromModule(self: *Registry, comptime ModuleType: type, agentName: []const u8) !void {
         const info = @typeInfo(ModuleType).@"struct";
 
         inline for (info.decls) |decl| {
@@ -230,13 +230,13 @@ pub const Registry = struct {
                         break :blk name_buf[0..name_len];
                     };
 
-                    const meta = ToolMeta{
+                    const meta = ToolMetadata{
                         .name = tool_name,
                         .description = "Tool function: " ++ tool_name,
                         .func = func,
                         .category = "agent",
                         .version = "1.0",
-                        .agent = agent_name,
+                        .agent = agentName,
                     };
 
                     try self.registerWithMeta(meta);
@@ -250,13 +250,13 @@ pub const Registry = struct {
     }
 
     /// Get tool metadata
-    pub fn getMeta(self: *Registry, name: []const u8) ?ToolMeta {
+    pub fn getMeta(self: *Registry, name: []const u8) ?ToolMetadata {
         return self.metadata.get(name);
     }
 
     /// List all registered tools
-    pub fn listTools(self: *Registry, allocator: std.mem.Allocator) ![]ToolMeta {
-        var tools = std.ArrayList(ToolMeta).init(allocator);
+    pub fn listTools(self: *Registry, allocator: std.mem.Allocator) ![]ToolMetadata {
+        var tools = std.ArrayList(ToolMetadata).init(allocator);
         defer tools.deinit();
 
         var it = self.metadata.iterator();
@@ -268,13 +268,13 @@ pub const Registry = struct {
     }
 
     /// List tools by agent
-    pub fn listToolsByAgent(self: *Registry, allocator: std.mem.Allocator, agent_name: []const u8) ![]ToolMeta {
-        var tools = std.ArrayList(ToolMeta).init(allocator);
+    pub fn listToolsByAgent(self: *Registry, allocator: std.mem.Allocator, agentName: []const u8) ![]ToolMetadata {
+        var tools = std.ArrayList(ToolMetadata).init(allocator);
         defer tools.deinit();
 
         var it = self.metadata.iterator();
         while (it.next()) |entry| {
-            if (std.mem.eql(u8, entry.value_ptr.agent, agent_name)) {
+            if (std.mem.eql(u8, entry.value_ptr.agent, agentName)) {
                 try tools.append(entry.value_ptr.*);
             }
         }
@@ -284,16 +284,16 @@ pub const Registry = struct {
 };
 
 // ---------------- Built-in tools ----------------
-fn fsRead(allocator: std.mem.Allocator, input: []const u8) ToolError![]u8 {
-    const req = std.json.parseFromSlice(
+fn readFile(allocator: std.mem.Allocator, input: []const u8) ToolError![]u8 {
+    const request = std.json.parseFromSlice(
         struct { path: []const u8 },
         allocator,
         input,
         .{},
-    ) catch return ToolError.MalformedJson;
-    defer req.deinit();
+    ) catch return ToolError.MalformedJSON;
+    defer request.deinit();
 
-    const path = req.value.path;
+    const path = request.value.path;
     const file = std.fs.cwd().openFile(path, .{}) catch |err| switch (err) {
         error.FileNotFound => return ToolError.FileNotFound,
         error.AccessDenied => return ToolError.PermissionDenied,
@@ -302,15 +302,15 @@ fn fsRead(allocator: std.mem.Allocator, input: []const u8) ToolError![]u8 {
     };
     defer file.close();
 
-    const file_data = file.readToEndAlloc(allocator, 1 << 20) catch |err| switch (err) {
+    const fileData = file.readToEndAlloc(allocator, 1 << 20) catch |err| switch (err) {
         error.FileTooBig => return ToolError.FileTooLarge,
         error.AccessDenied => return ToolError.PermissionDenied,
         else => return ToolError.UnexpectedError,
     };
-    defer allocator.free(file_data);
+    defer allocator.free(fileData);
 
     // For now, return file data directly without JSON escaping
-    return allocator.dupe(u8, file_data) catch ToolError.OutOfMemory;
+    return allocator.dupe(u8, fileData) catch ToolError.OutOfMemory;
 }
 
 fn echo(allocator: std.mem.Allocator, input: []const u8) ToolError![]u8 {
@@ -318,11 +318,11 @@ fn echo(allocator: std.mem.Allocator, input: []const u8) ToolError![]u8 {
     return allocator.dupe(u8, input) catch ToolError.OutOfMemory;
 }
 
-var G_LIST: ?*std.ArrayList(u8) = null;
-var G_ALLOCATOR: ?std.mem.Allocator = null;
-fn tokenCbImpl(chunk: []const u8) void {
-    if (G_LIST) |lst| {
-        if (G_ALLOCATOR) |alloc| {
+var global_list: ?*std.ArrayList(u8) = null;
+var global_allocator: ?std.mem.Allocator = null;
+fn tokenCallbackImpl(chunk: []const u8) void {
+    if (global_list) |lst| {
+        if (global_allocator) |alloc| {
             lst.appendSlice(alloc, chunk) catch |err| {
                 std.log.err("Failed to append token chunk: {}", .{err});
             };
@@ -332,20 +332,20 @@ fn tokenCbImpl(chunk: []const u8) void {
 
 fn oracleTool(allocator: std.mem.Allocator, input: []const u8) ToolError![]u8 {
     // Expect {"prompt":"..."}
-    const Req = struct { prompt: []const u8 };
-    const parsed = std.json.parseFromSlice(Req, allocator, input, .{}) catch return ToolError.MalformedJson;
+    const Request = struct { prompt: []const u8 };
+    const parsed = std.json.parseFromSlice(Request, allocator, input, .{}) catch return ToolError.MalformedJSON;
     defer parsed.deinit();
 
-    const prompt_text = parsed.value.prompt;
-    const api_key = std.posix.getenv("ANTHROPIC_API_KEY") orelse "";
+    const promptText = parsed.value.prompt;
+    const apiKey = std.posix.getenv("ANTHROPIC_API_KEY") orelse "";
 
     // Check if we have an API key - if not, return stub response
-    if (api_key.len == 0) {
+    if (apiKey.len == 0) {
         const response = "Oracle tool not available - no ANTHROPIC_API_KEY environment variable set";
         return allocator.dupe(u8, response) catch ToolError.OutOfMemory;
     }
 
-    var client = anthropic.AnthropicClient.init(allocator, api_key) catch |err| switch (err) {
+    var client = anthropic.AnthropicClient.init(allocator, apiKey) catch |err| switch (err) {
         anthropic.Error.MissingAPIKey => return ToolError.AuthError,
         anthropic.Error.OutOfMemory => return ToolError.OutOfMemory,
         else => {
@@ -356,118 +356,118 @@ fn oracleTool(allocator: std.mem.Allocator, input: []const u8) ToolError![]u8 {
         },
     };
 
-    var acc = std.ArrayList(u8){};
-    defer acc.deinit(allocator);
+    var accumulator = std.ArrayList(u8){};
+    defer accumulator.deinit(allocator);
 
-    G_LIST = &acc;
-    G_ALLOCATOR = allocator;
+    global_list = &accumulator;
+    global_allocator = allocator;
     defer {
-        G_LIST = null;
-        G_ALLOCATOR = null;
+        global_list = null;
+        global_allocator = null;
     }
-    const tokenCb = &tokenCbImpl;
+    const tokenCallback = &tokenCallbackImpl;
 
     // Read and prepend anthropic_spoof.txt to system prompt
-    const spoof_content = blk: {
-        const spoof_file = std.fs.cwd().openFile("prompt/anthropic_spoof.txt", .{}) catch {
+    const spoofContent = blk: {
+        const spoofFile = std.fs.cwd().openFile("prompt/anthropic_spoof.txt", .{}) catch {
             break :blk "";
         };
-        defer spoof_file.close();
-        break :blk spoof_file.readToEndAlloc(allocator, 1024) catch "";
+        defer spoofFile.close();
+        break :blk spoofFile.readToEndAlloc(allocator, 1024) catch "";
     };
-    defer if (spoof_content.len > 0) allocator.free(spoof_content);
+    defer if (spoofContent.len > 0) allocator.free(spoofContent);
 
     // Get current date for system prompt
-    const current_date = blk: {
+    const currentDate = blk: {
         const timestamp = std.time.timestamp();
-        const epoch_seconds: i64 = @intCast(timestamp);
-        const days_since_epoch: u47 = @intCast(@divFloor(epoch_seconds, std.time.s_per_day));
-        const epoch_day = std.time.epoch.EpochDay{ .day = days_since_epoch };
-        const year_day = epoch_day.calculateYearDay();
-        const month_day = year_day.calculateMonthDay();
+        const epochSeconds: i64 = @intCast(timestamp);
+        const daysSinceEpoch: u47 = @intCast(@divFloor(epochSeconds, std.time.s_per_day));
+        const epochDay = std.time.epoch.EpochDay{ .day = daysSinceEpoch };
+        const yearDay = epochDay.calculateYearDay();
+        const monthDay = yearDay.calculateMonthDay();
 
         break :blk std.fmt.allocPrint(allocator, "{d}-{d:0>2}-{d:0>2}", .{
-            year_day.year, @intFromEnum(month_day.month), month_day.day_index,
+            yearDay.year, @intFromEnum(monthDay.month), monthDay.day_index,
         }) catch return ToolError.OutOfMemory;
     };
-    defer allocator.free(current_date);
+    defer allocator.free(currentDate);
 
-    const system_prompt = if (spoof_content.len > 0)
-        std.fmt.allocPrint(allocator, "{s}\n\n# Role\nYou are an expert AI assistant.\n\n# Today's Date\nThe current date is {s}.\n\n# IMPORTANT\n- ALWAYS provide accurate and helpful responses\n- NEVER make assumptions about user intent\n- BE concise and direct in communication", .{ spoof_content, current_date }) catch return ToolError.OutOfMemory
+    const systemPrompt = if (spoofContent.len > 0)
+        std.fmt.allocPrint(allocator, "{s}\n\n# Role\nYou are an expert AI assistant.\n\n# Today's Date\nThe current date is {s}.\n\n# IMPORTANT\n- ALWAYS provide accurate and helpful responses\n- NEVER make assumptions about user intent\n- BE concise and direct in communication", .{ spoofContent, currentDate }) catch return ToolError.OutOfMemory
     else
         std.fmt.allocPrint(allocator,
             \\# Role
             \\You are an expert AI assistant.
             \\
-            \\# Today's Date  
+            \\# Today's Date
             \\The current date is {s}.
             \\
             \\# IMPORTANT
             \\- ALWAYS provide accurate and helpful responses
-            \\- NEVER make assumptions about user intent  
+            \\- NEVER make assumptions about user intent
             \\- BE concise and direct in communication
-        , .{current_date}) catch return ToolError.OutOfMemory;
-    defer allocator.free(system_prompt);
+        , .{currentDate}) catch return ToolError.OutOfMemory;
+    defer allocator.free(systemPrompt);
 
     client.stream(.{
         .model = "claude-3-sonnet-20240229",
         .messages = &[_]@import("anthropic_shared").Message{
-            .{ .role = .system, .content = system_prompt },
-            .{ .role = .user, .content = prompt_text },
+            .{ .role = .system, .content = systemPrompt },
+            .{ .role = .user, .content = promptText },
         },
-        .on_token = tokenCb,
+        .on_token = tokenCallback,
     }) catch |err| switch (err) {
         anthropic.Error.NetworkError => return ToolError.NetworkError,
-        anthropic.Error.ApiError => return ToolError.ApiError,
+        anthropic.Error.APIError => return ToolError.APIError,
         anthropic.Error.AuthError => return ToolError.AuthError,
         anthropic.Error.OutOfMemory => return ToolError.OutOfMemory,
         else => return ToolError.UnexpectedError,
     };
 
-    return allocator.dupe(u8, acc.items) catch ToolError.OutOfMemory;
+    return allocator.dupe(u8, accumulator.items) catch ToolError.OutOfMemory;
 }
 
 /// Helper to create a ToolFn wrapper for JSON-based tools
-pub fn createJsonToolWrapper(json_func: JsonToolFn) ToolFn {
+pub fn createJsonToolWrapper(json_func: JSONToolFunction) ToolFn {
     // Store the function in a global variable to avoid lifetime issues
-    const stored_func = struct {
-        var func: JsonToolFn = undefined;
+    const StoredFunction = struct {
+        var func: JSONToolFunction = undefined;
     };
-    stored_func.func = json_func;
+    StoredFunction.func = json_func;
 
     return struct {
         fn wrapper(allocator: std.mem.Allocator, input: []const u8) ToolError![]u8 {
-            const params = std.json.parseFromSlice(std.json.Value, allocator, input, .{}) catch return ToolError.MalformedJson;
+            const params = std.json.parseFromSlice(std.json.Value, allocator, input, .{}) catch return ToolError.MalformedJSON;
             defer params.deinit();
 
-            const result = stored_func.func(allocator, params.value) catch |err| return err;
+            const result = StoredFunction.func(allocator, params.value) catch |err| return err;
             // JSON values don't need explicit deinitialization in newer Zig
 
             // For now, just return a simple success message with the result type
             // TODO: Properly serialize JSON result when API is stabilized
             _ = result;
-            const json_str = try std.fmt.allocPrint(allocator, "{{\"status\": \"executed\"}}", .{});
-            return json_str;
+            const jsonString = try std.fmt.allocPrint(allocator, "{{\"status\": \"executed\"}}", .{});
+            return jsonString;
         }
     }.wrapper;
 }
 
 /// Helper to register a JSON-based tool
-pub fn registerJsonTool(reg: *Registry, name: []const u8, description: []const u8, json_func: JsonToolFn, agent_name: []const u8) !void {
-    const wrapped_func = createJsonToolWrapper(json_func);
-    const meta = ToolMeta{
+pub fn registerJSONTool(registry: *Registry, name: []const u8, description: []const u8, jsonFunc: JSONToolFunction, agentName: []const u8) !void {
+    const wrappedFunction = createJsonToolWrapper(jsonFunc);
+    const metadata = ToolMetadata{
         .name = name,
         .description = description,
-        .func = wrapped_func,
+        .func = wrappedFunction,
         .category = "agent",
         .version = "1.0",
-        .agent = agent_name,
+        .agent = agentName,
     };
-    try reg.registerWithMeta(meta);
+    try registry.registerWithMeta(metadata);
 }
 
-pub fn registerBuiltIns(reg: *Registry) !void {
-    try reg.register("echo", echo);
-    try reg.register("fs_read", fsRead);
-    try reg.register("oracle", oracleTool);
+pub fn registerBuiltins(registry: *Registry) !void {
+    try registry.register("echo", echo);
+    try registry.register("fs_read", readFile);
+    try registry.register("oracle", oracleTool);
 }

@@ -38,8 +38,8 @@ pub const DataTable = struct {
 
     pub const Config = struct {
         title: ?[]const u8 = null,
-        show_headers: bool = true,
-        show_row_numbers: bool = false,
+        showHeaders: bool = true,
+        showRowNumbers: bool = false,
         show_grid_lines: bool = true,
         allow_selection: bool = true,
         clipboard_enabled: bool = true,
@@ -58,8 +58,8 @@ pub const DataTable = struct {
         editable: bool = false,
 
         pub const CellStyle = struct {
-            foreground_color: ?terminal_mod.Color = null,
-            background_color: ?terminal_mod.Color = null,
+            foregroundColor: ?terminal_mod.Color = null,
+            backgroundColor: ?terminal_mod.Color = null,
             bold: bool = false,
             italic: bool = false,
             alignment: Alignment = .left,
@@ -75,7 +75,7 @@ pub const DataTable = struct {
     pub const TableState = struct {
         cursor: Point = Point.init(0, 0),
         selection: ?Selection = null,
-        scroll_offset: Point = Point.init(0, 0),
+        scrollOffset: Point = Point.init(0, 0),
         column_widths: []u32,
         focused: bool = false,
         editing_cell: ?Point = null,
@@ -196,7 +196,7 @@ pub const DataTable = struct {
         }
 
         // Render headers
-        if (self.config.show_headers) {
+        if (self.config.showHeaders) {
             try self.renderHeaders(renderer, ctx.bounds.x, current_y);
             current_y += if (self.config.show_grid_lines) 2 else 1;
         }
@@ -236,7 +236,7 @@ pub const DataTable = struct {
         if (self.config.show_grid_lines) {
             try renderer.moveCursor(x, y + 1);
 
-            if (self.config.show_row_numbers) {
+            if (self.config.showRowNumbers) {
                 try renderer.writeText("-----");
             }
 
@@ -250,10 +250,10 @@ pub const DataTable = struct {
     }
 
     fn renderRows(self: *Self, renderer: *Renderer, x: u32, start_y: u32, available_height: u32) !void {
-        const visible_rows = @min(available_height, @as(u32, @intCast(self.rows.len - self.state.scroll_offset.y)));
+        const visible_rows = @min(available_height, @as(u32, @intCast(self.rows.len - self.state.scrollOffset.y)));
 
         for (0..visible_rows) |row_idx| {
-            const actual_row_idx = row_idx + @as(usize, @intCast(self.state.scroll_offset.y));
+            const actual_row_idx = row_idx + @as(usize, @intCast(self.state.scrollOffset.y));
             if (actual_row_idx >= self.rows.len) break;
 
             const row = self.rows[actual_row_idx];
@@ -267,9 +267,9 @@ pub const DataTable = struct {
         try renderer.moveCursor(x, y);
 
         // Row number
-        if (self.config.show_row_numbers) {
+        if (self.config.showRowNumbers) {
             const style = if (self.isRowSelected(row_idx))
-                renderer_mod.Style{ .background_color = .yellow }
+                renderer_mod.Style{ .backgroundColor = .yellow }
             else
                 renderer_mod.Style{};
 
@@ -288,21 +288,21 @@ pub const DataTable = struct {
             var style = renderer_mod.Style{};
 
             if (cell.style) |cell_style| {
-                if (cell_style.foreground_color) |fg| style.foreground_color = fg;
-                if (cell_style.background_color) |bg| style.background_color = bg;
+                if (cell_style.foregroundColor) |fg| style.foregroundColor = fg;
+                if (cell_style.backgroundColor) |bg| style.backgroundColor = bg;
                 style.bold = cell_style.bold;
                 style.italic = cell_style.italic;
             }
 
             // Selection and cursor highlighting
             if (is_selected) {
-                style.background_color = terminal_mod.Color.blue;
-                style.foreground_color = terminal_mod.Color.white;
+                style.backgroundColor = terminal_mod.Color.blue;
+                style.foregroundColor = terminal_mod.Color.white;
             }
 
             if (is_cursor and self.state.focused) {
-                style.background_color = terminal_mod.Color.cyan;
-                style.foreground_color = terminal_mod.Color.black;
+                style.backgroundColor = terminal_mod.Color.cyan;
+                style.foregroundColor = terminal_mod.Color.black;
             }
 
             try renderer.setStyleEx(style);
@@ -451,10 +451,10 @@ pub const DataTable = struct {
         // Implement scrolling logic to keep cursor visible
         const visible_height = self.bounds.height - 3; // Account for headers and status
 
-        if (self.state.cursor.y < self.state.scroll_offset.y) {
-            self.state.scroll_offset.y = self.state.cursor.y;
-        } else if (self.state.cursor.y >= self.state.scroll_offset.y + visible_height) {
-            self.state.scroll_offset.y = self.state.cursor.y - visible_height + 1;
+        if (self.state.cursor.y < self.state.scrollOffset.y) {
+            self.state.scrollOffset.y = self.state.cursor.y;
+        } else if (self.state.cursor.y >= self.state.scrollOffset.y + visible_height) {
+            self.state.scrollOffset.y = self.state.cursor.y - visible_height + 1;
         }
     }
 
@@ -635,7 +635,7 @@ pub const DataTable = struct {
         var current_x = self.bounds.x;
 
         // Account for row numbers column
-        if (self.config.show_row_numbers) {
+        if (self.config.showRowNumbers) {
             current_x += 5;
         }
 
@@ -649,8 +649,8 @@ pub const DataTable = struct {
         }
 
         // Find row (accounting for headers and scroll offset)
-        var y = self.state.scroll_offset.y;
-        const header_offset: u32 = if (self.config.show_headers) 2 else 0;
+        var y = self.state.scrollOffset.y;
+        const header_offset: u32 = if (self.config.showHeaders) 2 else 0;
         if (mouse_pos.y >= self.bounds.y + header_offset) {
             y += mouse_pos.y - self.bounds.y - header_offset;
         }

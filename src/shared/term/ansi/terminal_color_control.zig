@@ -24,11 +24,11 @@ pub const HexColor = struct {
 
     pub fn fromRGB(r: u8, g: u8, b: u8) HexColor {
         // Use a separate static buffer for hex color strings
-        const static = struct {
+        const Static = struct {
             var buf: [8]u8 = undefined;
         };
 
-        const hex_str = std.fmt.bufPrint(&static.buf, "#{c}{c}{c}{c}{c}{c}", .{
+        const hex_str = std.fmt.bufPrint(&Static.buf, "#{c}{c}{c}{c}{c}{c}", .{
             std.fmt.digitToChar(@intCast(r / 16), .lower),
             std.fmt.digitToChar(@intCast(r % 16), .lower),
             std.fmt.digitToChar(@intCast(g / 16), .lower),
@@ -63,10 +63,10 @@ pub const XRGBColor = struct {
     }
 
     pub fn toString(self: XRGBColor) []const u8 {
-        const static = struct {
+        const Static = struct {
             var buf: [32]u8 = undefined;
         };
-        return std.fmt.bufPrint(&static.buf, "rgb:{}/{}/{}", .{ self.r, self.g, self.b }) catch "rgb:0000/0000/0000";
+        return std.fmt.bufPrint(&Static.buf, "rgb:{}/{}/{}", .{ self.r, self.g, self.b }) catch "rgb:0000/0000/0000";
     }
 };
 
@@ -91,10 +91,10 @@ pub const XRGBAColor = struct {
     }
 
     pub fn toString(self: XRGBAColor) []const u8 {
-        const static = struct {
+        const Static = struct {
             var buf: [40]u8 = undefined;
         };
-        return std.fmt.bufPrint(&static.buf, "rgba:{}/{}/{}/{}", .{ self.r, self.g, self.b, self.a }) catch "rgba:0000/0000/0000/ffff";
+        return std.fmt.bufPrint(&Static.buf, "rgba:{}/{}/{}/{}", .{ self.r, self.g, self.b, self.a }) catch "rgba:0000/0000/0000/ffff";
     }
 };
 
@@ -102,64 +102,64 @@ pub const XRGBAColor = struct {
 /// OSC 10 ; color ST
 /// OSC 10 ; color BEL
 pub fn setForegroundColor(color: []const u8) []const u8 {
-    const static = struct {
+    const Static = struct {
         var buf: [64]u8 = undefined;
     };
-    return std.fmt.bufPrint(&static.buf, "\x1b]10;{s}\x07", .{color}) catch "\x1b]10;#ffffff\x07";
+    return std.fmt.bufPrint(&Static.buf, "\x1b]10;{s}\x07", .{color}) catch "\x1b]10;#ffffff\x07";
 }
 
 /// Request current default terminal foreground color (OSC 10)
-pub const request_foreground_color = "\x1b]10;?\x07";
+pub const REQUEST_FOREGROUND_COLOR = "\x1b]10;?\x07";
 
 /// Reset default terminal foreground color (OSC 110)
-pub const reset_foreground_color = "\x1b]110\x07";
+pub const RESET_FOREGROUND_COLOR = "\x1b]110\x07";
 
 /// Set default terminal background color (OSC 11)
 /// OSC 11 ; color ST
 /// OSC 11 ; color BEL
 pub fn setBackgroundColor(color: []const u8) []const u8 {
-    const static = struct {
+    const Static = struct {
         var buf: [64]u8 = undefined;
     };
-    return std.fmt.bufPrint(&static.buf, "\x1b]11;{s}\x07", .{color}) catch "\x1b]11;#000000\x07";
+    return std.fmt.bufPrint(&Static.buf, "\x1b]11;{s}\x07", .{color}) catch "\x1b]11;#000000\x07";
 }
 
 /// Request current default terminal background color (OSC 11)
-pub const request_background_color = "\x1b]11;?\x07";
+pub const REQUEST_BACKGROUND_COLOR = "\x1b]11;?\x07";
 
 /// Reset default terminal background color (OSC 111)
-pub const reset_background_color = "\x1b]111\x07";
+pub const RESET_BACKGROUND_COLOR = "\x1b]111\x07";
 
 /// Set terminal cursor color (OSC 12)
 /// OSC 12 ; color ST
 /// OSC 12 ; color BEL
 pub fn setCursorColor(color: []const u8) []const u8 {
-    const static = struct {
+    const Static = struct {
         var buf: [64]u8 = undefined;
     };
-    return std.fmt.bufPrint(&static.buf, "\x1b]12;{s}\x07", .{color}) catch "\x1b]12;#ffffff\x07";
+    return std.fmt.bufPrint(&Static.buf, "\x1b]12;{s}\x07", .{color}) catch "\x1b]12;#ffffff\x07";
 }
 
 /// Request current terminal cursor color (OSC 12)
-pub const request_cursor_color = "\x1b]12;?\x07";
+pub const REQUEST_CURSOR_COLOR = "\x1b]12;?\x07";
 
 /// Reset terminal cursor color (OSC 112)
-pub const reset_cursor_color = "\x1b]112\x07";
+pub const RESET_CURSOR_COLOR = "\x1b]112\x07";
 
 /// Set terminal highlight/selection background color (OSC 17)
 pub fn setHighlightBackgroundColor(color: []const u8) []const u8 {
-    const static = struct {
+    const Static = struct {
         var buf: [64]u8 = undefined;
     };
-    return std.fmt.bufPrint(&static.buf, "\x1b]17;{s}\x07", .{color}) catch "\x1b]17;#444444\x07";
+    return std.fmt.bufPrint(&Static.buf, "\x1b]17;{s}\x07", .{color}) catch "\x1b]17;#444444\x07";
 }
 
 /// Set terminal highlight/selection foreground color (OSC 19)
 pub fn setHighlightForegroundColor(color: []const u8) []const u8 {
-    const static = struct {
+    const Static = struct {
         var buf: [64]u8 = undefined;
     };
-    return std.fmt.bufPrint(&static.buf, "\x1b]19;{s}\x07", .{color}) catch "\x1b]19;#ffffff\x07";
+    return std.fmt.bufPrint(&Static.buf, "\x1b]19;{s}\x07", .{color}) catch "\x1b]19;#ffffff\x07";
 }
 
 /// High-level terminal color controller
@@ -216,36 +216,36 @@ pub const TerminalColorController = struct {
 
     /// Request all current colors (terminal will respond with multiple sequences)
     pub fn requestAll() []const u8 {
-        return request_foreground_color ++ request_background_color ++ request_cursor_color;
+        return REQUEST_FOREGROUND_COLOR ++ REQUEST_BACKGROUND_COLOR ++ REQUEST_CURSOR_COLOR;
     }
 };
 
 /// Color scheme presets for common terminal themes
 pub const ColorScheme = struct {
     pub const Default = struct {
-        pub const foreground = "#ffffff";
-        pub const background = "#000000";
-        pub const cursor = "#ffffff";
+        pub const FOREGROUND = "#ffffff";
+        pub const BACKGROUND = "#000000";
+        pub const CURSOR = "#ffffff";
     };
 
     pub const Solarized = struct {
-        pub const light_foreground = "#657b83";
-        pub const light_background = "#fdf6e3";
-        pub const dark_foreground = "#839496";
-        pub const dark_background = "#002b36";
-        pub const cursor = "#268bd2";
+        pub const LIGHT_FOREGROUND = "#657b83";
+        pub const LIGHT_BACKGROUND = "#fdf6e3";
+        pub const DARK_FOREGROUND = "#839496";
+        pub const DARK_BACKGROUND = "#002b36";
+        pub const CURSOR = "#268bd2";
     };
 
     pub const Dracula = struct {
-        pub const foreground = "#f8f8f2";
-        pub const background = "#282a36";
-        pub const cursor = "#f8f8f2";
+        pub const FOREGROUND = "#f8f8f2";
+        pub const BACKGROUND = "#282a36";
+        pub const CURSOR = "#f8f8f2";
     };
 
     pub const MonokaiPro = struct {
-        pub const foreground = "#fcfcfa";
-        pub const background = "#2d2a2e";
-        pub const cursor = "#fcfcfa";
+        pub const FOREGROUND = "#fcfcfa";
+        pub const BACKGROUND = "#2d2a2e";
+        pub const CURSOR = "#fcfcfa";
     };
 };
 
@@ -258,7 +258,7 @@ pub const TerminalColorScheme = struct {
 
 /// Apply a complete color scheme to terminal
 pub fn applyColorScheme(scheme: TerminalColorScheme) []const u8 {
-    const static = struct {
+    const Static = struct {
         var result_buffer: [256]u8 = undefined;
     };
 
@@ -266,7 +266,7 @@ pub fn applyColorScheme(scheme: TerminalColorScheme) []const u8 {
     const bg_seq = setBackgroundColor(scheme.background);
     const cursor_seq = setCursorColor(scheme.cursor);
 
-    return std.fmt.bufPrint(&static.result_buffer, "{s}{s}{s}", .{ fg_seq, bg_seq, cursor_seq }) catch "";
+    return std.fmt.bufPrint(&Static.result_buffer, "{s}{s}{s}", .{ fg_seq, bg_seq, cursor_seq }) catch "";
 }
 
 /// Color validation utilities
@@ -305,11 +305,11 @@ pub const ColorValidator = struct {
 
     /// Convert RGB values to hex string
     pub fn rgbToHex(r: u8, g: u8, b: u8) []const u8 {
-        const static = struct {
+        const Static = struct {
             var buf: [8]u8 = undefined;
         };
 
-        return std.fmt.bufPrint(&static.buf, "#{c}{c}{c}{c}{c}{c}", .{
+        return std.fmt.bufPrint(&Static.buf, "#{c}{c}{c}{c}{c}{c}", .{
             std.fmt.digitToChar(@intCast(r / 16), .lower),
             std.fmt.digitToChar(@intCast(r % 16), .lower),
             std.fmt.digitToChar(@intCast(g / 16), .lower),
@@ -333,16 +333,16 @@ pub const ColorValidator = struct {
 };
 
 /// Dynamic color management with state tracking
-pub const DynamicColorManager = struct {
+pub const DynamicColor = struct {
     current_foreground: ?[]const u8 = null,
     current_background: ?[]const u8 = null,
     current_cursor: ?[]const u8 = null,
 
-    pub fn init() DynamicColorManager {
-        return DynamicColorManager{};
+    pub fn init() DynamicColor {
+        return DynamicColor{};
     }
 
-    pub fn setForeground(self: *DynamicColorManager, color: []const u8) []const u8 {
+    pub fn setForeground(self: *DynamicColor, color: []const u8) []const u8 {
         if (ColorValidator.isValidHex(color)) {
             self.current_foreground = color;
             return setForegroundColor(color);
@@ -350,7 +350,7 @@ pub const DynamicColorManager = struct {
         return "";
     }
 
-    pub fn setBackground(self: *DynamicColorManager, color: []const u8) []const u8 {
+    pub fn setBackground(self: *DynamicColor, color: []const u8) []const u8 {
         if (ColorValidator.isValidHex(color)) {
             self.current_background = color;
             return setBackgroundColor(color);
@@ -358,7 +358,7 @@ pub const DynamicColorManager = struct {
         return "";
     }
 
-    pub fn setCursor(self: *DynamicColorManager, color: []const u8) []const u8 {
+    pub fn setCursor(self: *DynamicColor, color: []const u8) []const u8 {
         if (ColorValidator.isValidHex(color)) {
             self.current_cursor = color;
             return setCursorColor(color);
@@ -366,7 +366,7 @@ pub const DynamicColorManager = struct {
         return "";
     }
 
-    pub fn getCurrentColors(self: DynamicColorManager) struct { foreground: ?[]const u8, background: ?[]const u8, cursor: ?[]const u8 } {
+    pub fn getCurrentColors(self: DynamicColor) struct { foreground: ?[]const u8, background: ?[]const u8, cursor: ?[]const u8 } {
         return .{
             .foreground = self.current_foreground,
             .background = self.current_background,
@@ -374,11 +374,11 @@ pub const DynamicColorManager = struct {
         };
     }
 
-    pub fn resetToDefaults(self: *DynamicColorManager) []const u8 {
+    pub fn resetToDefaults(self: *DynamicColor) []const u8 {
         self.current_foreground = null;
         self.current_background = null;
         self.current_cursor = null;
-        return reset_foreground_color ++ reset_background_color ++ reset_cursor_color;
+        return RESET_FOREGROUND_COLOR ++ RESET_BACKGROUND_COLOR ++ RESET_CURSOR_COLOR;
     }
 };
 
@@ -469,7 +469,7 @@ test "color scheme application" {
 test "dynamic color manager" {
     const testing = std.testing;
 
-    var manager = DynamicColorManager.init();
+    var manager = DynamicColor.init();
 
     // Test setting valid color
     const fg_seq = manager.setForeground("#ffffff");

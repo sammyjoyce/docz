@@ -6,110 +6,110 @@ const Allocator = std.mem.Allocator;
 
 pub const StepResult = struct {
     success: bool,
-    error_message: ?[]const u8 = null,
-    output_data: ?[]const u8 = null, // Optional step output for next steps
+    errorMessage: ?[]const u8 = null,
+    outputData: ?[]const u8 = null, // Optional step output for next steps
 };
 
-pub const StepContext = struct {
+pub const Step = struct {
     params: std.StringHashMap([]const u8),
-    previous_output: ?[]const u8 = null,
-    step_index: u32 = 0,
+    previousOutput: ?[]const u8 = null,
+    stepIndex: u32 = 0,
 
-    pub fn init(allocator: Allocator) StepContext {
+    pub fn init(allocator: Allocator) Step {
         return .{
             .params = std.StringHashMap([]const u8).init(allocator),
         };
     }
 
-    pub fn deinit(self: *StepContext) void {
+    pub fn deinit(self: *Step) void {
         self.params.deinit();
     }
 
-    pub fn setParam(self: *StepContext, key: []const u8, value: []const u8) !void {
+    pub fn setParam(self: *Step, key: []const u8, value: []const u8) !void {
         try self.params.put(key, value);
     }
 
-    pub fn getParam(self: StepContext, key: []const u8) ?[]const u8 {
+    pub fn getParam(self: Step, key: []const u8) ?[]const u8 {
         return self.params.get(key);
     }
 };
 
-pub const Step = struct {
+pub const WorkflowStep = struct {
     name: []const u8,
     description: ?[]const u8 = null,
-    execute_fn: *const fn (allocator: Allocator, context: ?StepContext) anyerror!StepResult,
-    context: ?StepContext = null,
+    executeFn: *const fn (allocator: Allocator, context: ?Step) anyerror!StepResult,
+    context: ?Step = null,
     required: bool = true,
-    timeout_ms: ?u32 = null,
-    retry_count: u32 = 0,
+    timeoutMs: ?u32 = null,
+    retryCount: u32 = 0,
 
     pub fn init(
         name: []const u8,
-        execute_fn: *const fn (allocator: Allocator, context: ?StepContext) anyerror!StepResult,
-    ) Step {
+        executeFn: *const fn (allocator: Allocator, context: ?Step) anyerror!StepResult,
+    ) WorkflowStep {
         return .{
             .name = name,
-            .execute_fn = execute_fn,
+            .executeFn = executeFn,
         };
     }
 
-    pub fn withDescription(self: Step, desc: []const u8) Step {
+    pub fn withDescription(self: WorkflowStep, desc: []const u8) WorkflowStep {
         return .{
             .name = self.name,
             .description = desc,
-            .execute_fn = self.execute_fn,
+            .executeFn = self.executeFn,
             .context = self.context,
             .required = self.required,
-            .timeout_ms = self.timeout_ms,
-            .retry_count = self.retry_count,
+            .timeoutMs = self.timeoutMs,
+            .retryCount = self.retryCount,
         };
     }
 
-    pub fn withContext(self: Step, ctx: StepContext) Step {
+    pub fn withContext(self: WorkflowStep, ctx: Step) WorkflowStep {
         return .{
             .name = self.name,
             .description = self.description,
-            .execute_fn = self.execute_fn,
+            .executeFn = self.executeFn,
             .context = ctx,
             .required = self.required,
-            .timeout_ms = self.timeout_ms,
-            .retry_count = self.retry_count,
+            .timeoutMs = self.timeoutMs,
+            .retryCount = self.retryCount,
         };
     }
 
-    pub fn asOptional(self: Step) Step {
+    pub fn asOptional(self: WorkflowStep) WorkflowStep {
         return .{
             .name = self.name,
             .description = self.description,
-            .execute_fn = self.execute_fn,
+            .executeFn = self.executeFn,
             .context = self.context,
             .required = false,
-            .timeout_ms = self.timeout_ms,
-            .retry_count = self.retry_count,
+            .timeoutMs = self.timeoutMs,
+            .retryCount = self.retryCount,
         };
     }
 
-    pub fn withTimeout(self: Step, timeout_ms: u32) Step {
+    pub fn withTimeout(self: WorkflowStep, timeoutMs: u32) WorkflowStep {
         return .{
             .name = self.name,
             .description = self.description,
-            .execute_fn = self.execute_fn,
+            .executeFn = self.executeFn,
             .context = self.context,
             .required = self.required,
-            .timeout_ms = timeout_ms,
-            .retry_count = self.retry_count,
+            .timeoutMs = timeoutMs,
+            .retryCount = self.retryCount,
         };
     }
 
-    pub fn withRetry(self: Step, retry_count: u32) Step {
+    pub fn withRetry(self: WorkflowStep, retryCount: u32) WorkflowStep {
         return .{
             .name = self.name,
             .description = self.description,
-            .execute_fn = self.execute_fn,
+            .executeFn = self.executeFn,
             .context = self.context,
             .required = self.required,
-            .timeout_ms = self.timeout_ms,
-            .retry_count = retry_count,
+            .timeoutMs = self.timeoutMs,
+            .retryCount = retryCount,
         };
     }
 };
@@ -119,7 +119,7 @@ pub const CommonSteps = struct {
     /// Simple delay step for testing or spacing
     pub fn delay(duration_ms: u32) Step {
         const DelayImpl = struct {
-            fn execute(allocator: Allocator, context: ?StepContext) anyerror!StepResult {
+            fn execute(allocator: Allocator, context: ?Step) anyerror!StepResult {
                 _ = allocator;
                 _ = context;
                 std.time.sleep(duration_ms * std.time.ns_per_ms);
@@ -134,14 +134,14 @@ pub const CommonSteps = struct {
     /// File system check step
     pub fn checkFileExists(file_path: []const u8) Step {
         const CheckFileImpl = struct {
-            fn execute(allocator: Allocator, context: ?StepContext) anyerror!StepResult {
+            fn execute(allocator: Allocator, context: ?Step) anyerror!StepResult {
                 _ = allocator;
                 const path = if (context) |ctx| ctx.getParam("file_path") orelse file_path else file_path;
 
                 std.fs.cwd().access(path, .{}) catch |err| switch (err) {
                     error.FileNotFound => return StepResult{
                         .success = false,
-                        .error_message = "File not found",
+                        .errorMessage = "File not found",
                     },
                     else => return err,
                 };
@@ -157,7 +157,7 @@ pub const CommonSteps = struct {
     /// Directory creation step
     pub fn createDirectory(dir_path: []const u8) Step {
         const CreateDirImpl = struct {
-            fn execute(allocator: Allocator, context: ?StepContext) anyerror!StepResult {
+            fn execute(allocator: Allocator, context: ?Step) anyerror!StepResult {
                 _ = allocator;
                 const path = if (context) |ctx| ctx.getParam("dir_path") orelse dir_path else dir_path;
 
@@ -167,7 +167,7 @@ pub const CommonSteps = struct {
                     },
                     else => return StepResult{
                         .success = false,
-                        .error_message = "Failed to create directory",
+                        .errorMessage = "Failed to create directory",
                     },
                 };
 
@@ -182,13 +182,13 @@ pub const CommonSteps = struct {
     /// Environment variable check step
     pub fn checkEnvironmentVariable(var_name: []const u8) Step {
         const CheckEnvImpl = struct {
-            fn execute(allocator: Allocator, context: ?StepContext) anyerror!StepResult {
+            fn execute(allocator: Allocator, context: ?Step) anyerror!StepResult {
                 const name = if (context) |ctx| ctx.getParam("var_name") orelse var_name else var_name;
 
                 const env_value = std.process.getEnvVarOwned(allocator, name) catch |err| switch (err) {
                     error.EnvironmentVariableNotFound => return StepResult{
                         .success = false,
-                        .error_message = "Environment variable not found",
+                        .errorMessage = "Environment variable not found",
                     },
                     else => return err,
                 };
@@ -205,7 +205,7 @@ pub const CommonSteps = struct {
     /// Network connectivity check
     pub fn checkNetworkConnectivity(host: []const u8) Step {
         const NetworkCheckImpl = struct {
-            fn execute(allocator: Allocator, context: ?StepContext) anyerror!StepResult {
+            fn execute(allocator: Allocator, context: ?Step) anyerror!StepResult {
                 _ = allocator;
                 _ = context;
                 _ = host;
@@ -217,7 +217,7 @@ pub const CommonSteps = struct {
                 // Simulate success - in real implementation would do actual network check
                 return StepResult{
                     .success = true,
-                    .output_data = "Network connection verified",
+                    .outputData = "Network connection verified",
                 };
             }
         };
@@ -229,14 +229,14 @@ pub const CommonSteps = struct {
     /// Configuration validation step
     pub fn validateConfiguration(config_path: []const u8) Step {
         const ValidateConfigImpl = struct {
-            fn execute(allocator: Allocator, context: ?StepContext) anyerror!StepResult {
+            fn execute(allocator: Allocator, context: ?Step) anyerror!StepResult {
                 _ = context;
 
                 // Read and validate configuration file
                 const file = std.fs.cwd().openFile(config_path, .{}) catch |err| switch (err) {
                     error.FileNotFound => return StepResult{
                         .success = false,
-                        .error_message = "Configuration file not found",
+                        .errorMessage = "Configuration file not found",
                     },
                     else => return err,
                 };
@@ -246,7 +246,7 @@ pub const CommonSteps = struct {
                 if (file_size == 0) {
                     return StepResult{
                         .success = false,
-                        .error_message = "Configuration file is empty",
+                        .errorMessage = "Configuration file is empty",
                     };
                 }
 
@@ -258,7 +258,7 @@ pub const CommonSteps = struct {
                 if (contents.len < 2) {
                     return StepResult{
                         .success = false,
-                        .error_message = "Configuration file too small",
+                        .errorMessage = "Configuration file too small",
                     };
                 }
 
@@ -280,7 +280,7 @@ pub const StepBuilder = struct {
         return .{
             .step = Step{
                 .name = name,
-                .execute_fn = undefined, // Will be set later
+                .executeFn = undefined, // Will be set later
             },
             .allocator = allocator,
         };
@@ -300,29 +300,29 @@ pub const StepBuilder = struct {
         };
     }
 
-    pub fn timeout(self: StepBuilder, timeout_ms: u32) StepBuilder {
+    pub fn timeout(self: StepBuilder, timeoutMs: u32) StepBuilder {
         return .{
-            .step = self.step.withTimeout(timeout_ms),
+            .step = self.step.withTimeout(timeoutMs),
             .allocator = self.allocator,
         };
     }
 
-    pub fn retry(self: StepBuilder, retry_count: u32) StepBuilder {
+    pub fn retry(self: StepBuilder, retryCount: u32) StepBuilder {
         return .{
-            .step = self.step.withRetry(retry_count),
+            .step = self.step.withRetry(retryCount),
             .allocator = self.allocator,
         };
     }
 
-    pub fn execute(self: StepBuilder, execute_fn: *const fn (allocator: Allocator, context: ?StepContext) anyerror!StepResult) Step {
+    pub fn execute(self: StepBuilder, executeFn: *const fn (allocator: Allocator, context: ?Step) anyerror!StepResult) Step {
         return .{
             .name = self.step.name,
             .description = self.step.description,
-            .execute_fn = execute_fn,
+            .executeFn = executeFn,
             .context = self.step.context,
             .required = self.step.required,
-            .timeout_ms = self.step.timeout_ms,
-            .retry_count = self.step.retry_count,
+            .timeoutMs = self.step.timeoutMs,
+            .retryCount = self.step.retryCount,
         };
     }
 };

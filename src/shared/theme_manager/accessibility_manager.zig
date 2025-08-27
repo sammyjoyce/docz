@@ -7,7 +7,7 @@ const Color = @import("color_scheme.zig").Color;
 const RGB = @import("color_scheme.zig").RGB;
 const HSL = @import("color_scheme.zig").HSL;
 
-pub const AccessibilityManager = struct {
+pub const Accessibility = struct {
     allocator: std.mem.Allocator,
     wcag_level: WCAGLevel,
 

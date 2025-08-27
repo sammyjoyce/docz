@@ -45,20 +45,19 @@ pub const MouseEvent = events.MouseEvent;
 pub const KeyEvent = events.KeyEvent;
 pub const EventSystem = input.EventSystem;
 pub const InputEvent = input.InputEvent;
-pub const FocusManager = input.FocusManager;
+pub const Focus = input.Focus;
 
 // Core widget exports
-pub const Menu = widgets.core.Menu;
-pub const Section = widgets.core.Section;
-pub const TextInput = widgets.core.TextInput;
-pub const TabContainer = widgets.core.TabContainer;
-pub const Table = widgets.core.Table;
+pub const Menu = widgets.Core.Menu;
+pub const Section = widgets.Core.Section;
+pub const TextInput = widgets.Core.TextInput;
+pub const TabContainer = widgets.Core.TabContainer;
+pub const Table = widgets.Core.Table;
 
 // Enhanced widget exports
-pub const ProgressBar = widgets.enhanced.ProgressBar;
-pub const SmartInput = widgets.enhanced.SmartInput;
-pub const Notification = widgets.enhanced.Notification;
-pub const Graphics = widgets.enhanced.Graphics;
+pub const ProgressBar = widgets.Enhanced.ProgressBar;
+pub const Notification = widgets.Enhanced.Notification;
+pub const Graphics = widgets.Enhanced.Graphics;
 
 // Dashboard widget exports - NEW
 pub const Dashboard = dashboard.Dashboard;

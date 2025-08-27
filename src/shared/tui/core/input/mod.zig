@@ -10,16 +10,16 @@ pub const EventSystem = enhanced_events.EventSystem;
 pub const InputEvent = enhanced_events.InputEvent;
 pub const InputParser = enhanced_events.InputParser;
 
-pub const FocusManager = focus.FocusManager;
+pub const Focus = focus.Focus;
 pub const FocusHandler = focus.FocusHandler;
 pub const FocusAware = focus.FocusAware;
 
-pub const PasteManager = paste.PasteManager;
+pub const Paste = paste.Paste;
 pub const PasteHandler = paste.PasteHandler;
 pub const PasteAware = paste.PasteAware;
-pub const PasteUtils = paste.PasteUtils;
+pub const PasteHelper = paste.PasteHelper;
 
-pub const MouseManager = mouse.MouseManager;
+pub const Mouse = mouse.Mouse;
 pub const MouseHandler = mouse.MouseHandler;
 pub const ClickHandler = mouse.ClickHandler;
 pub const DragHandler = mouse.DragHandler;

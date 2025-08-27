@@ -8,20 +8,19 @@ const router = @import("router.zig");
 
 pub const CliApp = struct {
     allocator: std.mem.Allocator,
-    context: context.CliContext,
-    router: router.CommandRouter,
+    context: context.Cli,
 
     pub fn init(allocator: std.mem.Allocator) !CliApp {
         // Initialize context with terminal capabilities
-        var ctx = try context.CliContext.init(allocator);
+        var ctx = try context.Cli.init(allocator);
 
         // Initialize command router
-        const cmd_router = try router.CommandRouter.init(allocator, &ctx);
+        const commandRouter = try router.CommandRouter.init(allocator, &ctx);
 
         return CliApp{
             .allocator = allocator,
             .context = ctx,
-            .router = cmd_router,
+            .router = commandRouter,
         };
     }
 
@@ -61,18 +60,18 @@ pub const CliApp = struct {
         // Handle result
         if (result.success) {
             if (result.output) |output| {
-                var stdout_buffer: [4096]u8 = undefined;
-                var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
-                const writer = &stdout_writer.interface;
+                var stdoutBuffer: [4096]u8 = undefined;
+                var stdoutWriter = std.fs.File.stdout().writer(&stdoutBuffer);
+                const writer = &stdoutWriter.interface;
                 try writer.writeAll(output);
                 try writer.flush();
             }
             return result.exit_code;
         } else {
-            if (result.error_msg) |msg| {
-                var stderr_buffer: [4096]u8 = undefined;
-                var stderr_writer = std.fs.File.stderr().writer(&stderr_buffer);
-                const writer = &stderr_writer.interface;
+            if (result.errorMessage) |msg| {
+                var stderrBuffer: [4096]u8 = undefined;
+                var stderrWriter = std.fs.File.stderr().writer(&stderrBuffer);
+                const writer = &stderrWriter.interface;
                 try writer.writeAll(msg);
                 try writer.writeAll("\n");
                 try writer.flush();
@@ -108,20 +107,20 @@ pub const CliApp = struct {
         } else {
             unified.command = .chat;
         }
-        unified.auth_subcommand = parsed.auth_subcommand;
+        unified.authSubcommand = parsed.authSubcommand;
 
         // Positional prompt as raw message (dupe for lifetime)
         if (parsed.prompt) |p| {
-            unified.raw_message = try self.allocator.dupe(u8, p);
+            unified.rawMessage = try self.allocator.dupe(u8, p);
         }
 
         return unified;
     }
 
     fn showHelp(self: *CliApp) !void {
-        var stdout_buffer: [4096]u8 = undefined;
-        var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
-        const writer = &stdout_writer.interface;
+        var stdoutBuffer: [4096]u8 = undefined;
+        var stdoutWriter = std.fs.File.stdout().writer(&stdoutBuffer);
+        const writer = &stdoutWriter.interface;
 
         const help_text =
             \\docz - AI-powered document assistant
@@ -170,11 +169,11 @@ pub const CliApp = struct {
 
     fn showVersion(self: *CliApp) !void {
         _ = self;
-        var stdout_buffer: [4096]u8 = undefined;
-        var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
-        const writer = &stdout_writer.interface;
-        const version_text = "docz 1.0.0\n";
-        try writer.writeAll(version_text);
+        var stdoutBuffer: [4096]u8 = undefined;
+        var stdoutWriter = std.fs.File.stdout().writer(&stdoutBuffer);
+        const writer = &stdoutWriter.interface;
+        const versionText = "docz 1.0.0\n";
+        try writer.writeAll(versionText);
         try writer.flush();
     }
 };

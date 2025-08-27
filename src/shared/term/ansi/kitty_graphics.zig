@@ -560,7 +560,7 @@ pub const KittyGraphics = struct {
     fn buildQueryCommand(
         self: *Self,
         buffer: *std.ArrayList(u8),
-) KittyGraphicsError!void {
+    ) KittyGraphicsError!void {
         _ = self;
         try buffer.appendSlice("\x1b_G");
         try buffer.appendSlice("a=q");

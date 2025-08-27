@@ -10,14 +10,14 @@ const Color = @import("../term/ansi/color.zig").Color;
 /// Adaptive dashboard component that showcases all rendering features
 pub const AdaptiveDashboard = struct {
     renderer: EnhancedRenderer,
-    data: DashboardData,
+    data: Dashboard,
     update_interval: u64 = 500_000_000, // 500ms in nanoseconds
 
-    pub const DashboardData = struct {
+    pub const Dashboard = struct {
         title: []const u8 = "System Dashboard",
         system_stats: SystemStats = .{},
         task_progress: []const TaskProgress = &[_]TaskProgress{},
-        performance_data: PerformanceData = .{},
+        performance_data: Performance = .{},
         show_charts: bool = true,
         show_table: bool = true,
 
@@ -83,28 +83,28 @@ pub const AdaptiveDashboard = struct {
             }
         };
 
-        pub const PerformanceData = struct {
+        pub const Performance = struct {
             cpu_history: []const f64 = &[_]f64{},
             memory_history: []const f64 = &[_]f64{},
             network_history: []const f64 = &[_]f64{},
             timestamps: []const []const u8 = &[_][]const u8{},
 
-            pub fn toChart(self: PerformanceData) Chart {
-                const cpu_series = Chart.DataSeries{
+            pub fn toChart(self: Performance) Chart {
+                const cpu_series = Chart.Series{
                     .name = "CPU %",
                     .data = self.cpu_history,
                     .color = Color.ansi(.red),
                     .style = .solid,
                 };
 
-                const memory_series = Chart.DataSeries{
+                const memory_series = Chart.Series{
                     .name = "Memory %",
                     .data = self.memory_history,
                     .color = Color.ansi(.blue),
                     .style = .solid,
                 };
 
-                const network_series = Chart.DataSeries{
+                const network_series = Chart.Series{
                     .name = "Network MB/s",
                     .data = self.network_history,
                     .color = Color.ansi(.green),
@@ -113,7 +113,7 @@ pub const AdaptiveDashboard = struct {
 
                 return Chart{
                     .title = "Performance History",
-                    .data_series = &[_]Chart.DataSeries{ cpu_series, memory_series, network_series },
+                    .data_series = &[_]Chart.Series{ cpu_series, memory_series, network_series },
                     .chart_type = .line,
                     .width = 80,
                     .height = 20,
@@ -124,7 +124,7 @@ pub const AdaptiveDashboard = struct {
                 };
             }
 
-            pub fn toTable(self: PerformanceData, allocator: std.mem.Allocator) !Table {
+            pub fn toTable(self: Performance, allocator: std.mem.Allocator) !Table {
                 if (self.timestamps.len == 0) {
                     // Return empty table
                     const headers = [_][]const u8{ "Time", "CPU %", "Memory %", "Network MB/s" };
@@ -169,7 +169,7 @@ pub const AdaptiveDashboard = struct {
         };
     };
 
-    pub fn init(allocator: std.mem.Allocator, data: DashboardData) !AdaptiveDashboard {
+    pub fn init(allocator: std.mem.Allocator, data: Dashboard) !AdaptiveDashboard {
         const renderer = try EnhancedRenderer.init(allocator);
 
         return AdaptiveDashboard{
@@ -314,7 +314,7 @@ pub const AdaptiveDashboard = struct {
     }
 
     /// Update dashboard data (e.g., from system monitoring)
-    pub fn updateData(self: *AdaptiveDashboard, new_data: DashboardData) void {
+    pub fn updateData(self: *AdaptiveDashboard, new_data: Dashboard) void {
         self.data = new_data;
     }
 
@@ -336,9 +336,11 @@ pub const AdaptiveDashboard = struct {
             }
 
             // Check for input (simplified - in real implementation use proper input handling)
-            const stdin = std.io.getStdIn();
+            var stdin_buffer: [4096]u8 = undefined;
+            const stdin_file = std.fs.File.stdin();
+            var stdin_reader = stdin_file.reader(&stdin_buffer);
             var buf: [1]u8 = undefined;
-            const bytes_read = stdin.read(&buf) catch 0;
+            const bytes_read = stdin_reader.read(&buf) catch 0;
 
             if (bytes_read > 0) {
                 switch (buf[0]) {
@@ -366,19 +368,19 @@ pub const AdaptiveDashboard = struct {
 };
 
 /// Generate sample dashboard data for demonstration
-pub fn generateSampleData() AdaptiveDashboard.DashboardData {
+pub fn generateSampleData() AdaptiveDashboard.Dashboard {
     const cpu_data = [_]f64{ 15.2, 23.1, 34.5, 28.9, 19.3, 42.1, 38.7, 25.4, 31.2, 29.8 };
     const mem_data = [_]f64{ 45.3, 47.2, 48.9, 50.1, 52.3, 54.7, 53.2, 51.8, 49.6, 48.2 };
     const net_data = [_]f64{ 1.2, 2.8, 1.9, 3.4, 2.1, 4.2, 3.8, 2.5, 1.7, 2.9 };
     const timestamps = [_][]const u8{ "14:50", "14:51", "14:52", "14:53", "14:54", "14:55", "14:56", "14:57", "14:58", "14:59" };
 
-    const tasks = [_]AdaptiveDashboard.DashboardData.TaskProgress{
+    const tasks = [_]AdaptiveDashboard.Dashboard.TaskProgress{
         .{ .name = "Building project", .progress = 0.75, .status = "Compiling", .eta_seconds = 30 },
         .{ .name = "Running tests", .progress = 0.45, .status = "Testing", .eta_seconds = 60 },
         .{ .name = "Deploying", .progress = 1.0, .status = "Complete" },
     };
 
-    return AdaptiveDashboard.DashboardData{
+    return AdaptiveDashboard.Dashboard{
         .title = "Development Environment Dashboard",
         .system_stats = .{
             .cpu_usage = 0.42,

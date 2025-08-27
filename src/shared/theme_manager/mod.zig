@@ -18,8 +18,7 @@ pub const SystemThemeDetector = @import("system_theme_detector.zig").SystemTheme
 pub const AccessibilityManager = @import("accessibility_manager.zig").AccessibilityManager;
 pub const ColorBlindnessAdapter = @import("color_blindness_adapter.zig").ColorBlindnessAdapter;
 pub const ThemeValidator = @import("theme_validator.zig").ThemeValidator;
-pub const ThemeDevelopmentTools = @import("theme_dev_tools.zig").ThemeDevelopmentTools;
-pub const PlatformAdapter = @import("platform_adapter.zig").PlatformAdapter;
+pub const ThemeDevelopmentTools = @import("theme_development_tools.zig").ThemeDevelopmentTools;
 
 /// Initialize the global theme manager
 pub fn init(allocator: std.mem.Allocator) !*ThemeManager {
@@ -29,8 +28,8 @@ pub fn init(allocator: std.mem.Allocator) !*ThemeManager {
 /// Quick access to common theme operations
 pub const Quick = struct {
     /// Switch to a theme by name
-    pub fn switchTheme(manager: *ThemeManager, theme_name: []const u8) !void {
-        try manager.switchTheme(theme_name);
+    pub fn switchTheme(manager: *ThemeManager, themeName: []const u8) !void {
+        try manager.switchTheme(themeName);
     }
 
     /// Get current active theme

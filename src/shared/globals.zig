@@ -10,33 +10,33 @@ pub const GlobalState = struct {
         allocator: std.mem.Allocator,
         initialized: bool = false,
     },
-    
+
     // Smart notification module globals
     smartNotification: struct {
         allocator: ?std.mem.Allocator = null,
     },
-    
+
     // Tools module globals
     tools: struct {
         list: ?*std.ArrayList(u8) = null,
         allocator: ?std.mem.Allocator = null,
     },
-    
+
     const RefreshState = struct {
         needsRefresh: bool = false,
-        
+
         pub fn init() RefreshState {
             return .{};
         }
     };
-    
+
     var instance: ?GlobalState = null;
     var mutex = std.Thread.Mutex{};
-    
+
     pub fn getInstance() *GlobalState {
         mutex.lock();
         defer mutex.unlock();
-        
+
         if (instance == null) {
             instance = GlobalState{
                 .anthropic = .{
@@ -51,7 +51,7 @@ pub const GlobalState = struct {
         }
         return &instance.?;
     }
-    
+
     pub fn initAnthropicGlobals(allocator: std.mem.Allocator) void {
         const self = getInstance();
         if (!self.anthropic.initialized) {
@@ -60,7 +60,7 @@ pub const GlobalState = struct {
             self.anthropic.initialized = true;
         }
     }
-    
+
     pub fn deinitAnthropicGlobals() void {
         const self = getInstance();
         if (self.anthropic.initialized) {

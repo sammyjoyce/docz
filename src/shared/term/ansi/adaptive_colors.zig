@@ -34,69 +34,69 @@ pub const AdaptiveColor = struct {
 /// Beautiful color palette with modern terminal aesthetics
 pub const Palette = struct {
     // Base colors
-    pub const white_bright = AdaptiveColor.fromHex(0xFFFDF5, 0xFFFDF5);
+    pub const WHITE_BRIGHT = AdaptiveColor.fromHex(0xFFFDF5, 0xFFFDF5);
 
-    pub const normal = AdaptiveColor.fromHex(0x1A1A1A, 0xDDDDDD);
-    pub const normal_dim = AdaptiveColor.fromHex(0xA49FA5, 0x777777);
+    pub const NORMAL = AdaptiveColor.fromHex(0x1A1A1A, 0xDDDDDD);
+    pub const NORMAL_DIM = AdaptiveColor.fromHex(0xA49FA5, 0x777777);
 
     // Grays
-    pub const gray = AdaptiveColor.fromHex(0x909090, 0x626262);
-    pub const gray_mid = AdaptiveColor.fromHex(0xB2B2B2, 0x4A4A4A);
-    pub const gray_dark = AdaptiveColor.fromHex(0xDDDADA, 0x222222);
-    pub const gray_bright = AdaptiveColor.fromHex(0x847A85, 0x979797);
-    pub const gray_bright_dim = AdaptiveColor.fromHex(0xC2B8C2, 0x4D4D4D);
+    pub const GRAY = AdaptiveColor.fromHex(0x909090, 0x626262);
+    pub const GRAY_MID = AdaptiveColor.fromHex(0xB2B2B2, 0x4A4A4A);
+    pub const GRAY_DARK = AdaptiveColor.fromHex(0xDDDADA, 0x222222);
+    pub const GRAY_BRIGHT = AdaptiveColor.fromHex(0x847A85, 0x979797);
+    pub const GRAY_BRIGHT_DIM = AdaptiveColor.fromHex(0xC2B8C2, 0x4D4D4D);
 
     // Indigo/Purple spectrum
-    pub const indigo = AdaptiveColor.fromHex(0x5A56E0, 0x7571F9);
-    pub const indigo_dim = AdaptiveColor.fromHex(0x9498FF, 0x494690);
-    pub const indigo_subtle = AdaptiveColor.fromHex(0x7D79F6, 0x514DC1);
-    pub const indigo_subtle_dim = AdaptiveColor.fromHex(0xBBBDFF, 0x383584);
+    pub const INDIGO = AdaptiveColor.fromHex(0x5A56E0, 0x7571F9);
+    pub const INDIGO_DIM = AdaptiveColor.fromHex(0x9498FF, 0x494690);
+    pub const INDIGO_SUBTLE = AdaptiveColor.fromHex(0x7D79F6, 0x514DC1);
+    pub const INDIGO_SUBTLE_DIM = AdaptiveColor.fromHex(0xBBBDFF, 0x383584);
 
     // Green spectrum
-    pub const yellow_green = AdaptiveColor.fromHex(0x04B575, 0xECFD65);
-    pub const yellow_green_dull = AdaptiveColor.fromHex(0x6BCB94, 0x9BA92F);
-    pub const green = AdaptiveColor{
+    pub const YELLOW_GREEN = AdaptiveColor.fromHex(0x04B575, 0xECFD65);
+    pub const YELLOW_GREEN_DULL = AdaptiveColor.fromHex(0x6BCB94, 0x9BA92F);
+    pub const GREEN = AdaptiveColor{
         .light = enhanced_color.hex(0x04B575),
         .dark = enhanced_color.hex(0x04B575),
     };
-    pub const green_dim = AdaptiveColor.fromHex(0x72D2B0, 0x0B5137);
+    pub const GREEN_DIM = AdaptiveColor.fromHex(0x72D2B0, 0x0B5137);
 
     // Fuschia/Pink spectrum
-    pub const fuschia = AdaptiveColor.fromHex(0xEE6FF8, 0xEE6FF8);
-    pub const fuschia_dim = AdaptiveColor.fromHex(0xF1A8FF, 0x99519E);
-    pub const fuschia_dull = AdaptiveColor.fromHex(0xF793FF, 0xAD58B4);
-    pub const fuschia_dull_dim = AdaptiveColor.fromHex(0xF6C9FF, 0x6B3A6F);
+    pub const FUSCHIA = AdaptiveColor.fromHex(0xEE6FF8, 0xEE6FF8);
+    pub const FUSCHIA_DIM = AdaptiveColor.fromHex(0xF1A8FF, 0x99519E);
+    pub const FUSCHIA_DULL = AdaptiveColor.fromHex(0xF793FF, 0xAD58B4);
+    pub const FUSCHIA_DULL_DIM = AdaptiveColor.fromHex(0xF6C9FF, 0x6B3A6F);
 
     // Red spectrum
-    pub const red = AdaptiveColor.fromHex(0xFF4672, 0xED567A);
-    pub const red_dull = AdaptiveColor.fromHex(0xFF6F91, 0xC74665);
+    pub const RED = AdaptiveColor.fromHex(0xFF4672, 0xED567A);
+    pub const RED_DULL = AdaptiveColor.fromHex(0xFF6F91, 0xC74665);
 
     /// Get a color by name for dynamic color selection
     pub fn getByName(name: []const u8) ?AdaptiveColor {
         const ColorMap = std.StaticStringMap(AdaptiveColor);
         const color_map = ColorMap.initComptime(.{
-            .{ "white_bright", white_bright },
-            .{ "normal", normal },
-            .{ "normal_dim", normal_dim },
-            .{ "gray", gray },
-            .{ "gray_mid", gray_mid },
-            .{ "gray_dark", gray_dark },
-            .{ "gray_bright", gray_bright },
-            .{ "gray_bright_dim", gray_bright_dim },
-            .{ "indigo", indigo },
-            .{ "indigo_dim", indigo_dim },
-            .{ "indigo_subtle", indigo_subtle },
-            .{ "indigo_subtle_dim", indigo_subtle_dim },
-            .{ "yellow_green", yellow_green },
-            .{ "yellow_green_dull", yellow_green_dull },
-            .{ "green", green },
-            .{ "green_dim", green_dim },
-            .{ "fuschia", fuschia },
-            .{ "fuschia_dim", fuschia_dim },
-            .{ "fuschia_dull", fuschia_dull },
-            .{ "fuschia_dull_dim", fuschia_dull_dim },
-            .{ "red", red },
-            .{ "red_dull", red_dull },
+            .{ "white_bright", WHITE_BRIGHT },
+            .{ "normal", NORMAL },
+            .{ "normal_dim", NORMAL_DIM },
+            .{ "gray", GRAY },
+            .{ "gray_mid", GRAY_MID },
+            .{ "gray_dark", GRAY_DARK },
+            .{ "gray_bright", GRAY_BRIGHT },
+            .{ "gray_bright_dim", GRAY_BRIGHT_DIM },
+            .{ "indigo", INDIGO },
+            .{ "indigo_dim", INDIGO_DIM },
+            .{ "indigo_subtle", INDIGO_SUBTLE },
+            .{ "indigo_subtle_dim", INDIGO_SUBTLE_DIM },
+            .{ "yellow_green", YELLOW_GREEN },
+            .{ "yellow_green_dull", YELLOW_GREEN_DULL },
+            .{ "green", GREEN },
+            .{ "green_dim", GREEN_DIM },
+            .{ "fuschia", FUSCHIA },
+            .{ "fuschia_dim", FUSCHIA_DIM },
+            .{ "fuschia_dull", FUSCHIA_DULL },
+            .{ "fuschia_dull_dim", FUSCHIA_DULL_DIM },
+            .{ "red", RED },
+            .{ "red_dull", RED_DULL },
         });
 
         return color_map.get(name);
@@ -120,7 +120,7 @@ pub const Palette = struct {
 /// Predefined themes for common UI patterns
 pub const Themes = struct {
     /// Dark theme optimized for readability
-    pub const dark = Theme{
+    pub const DARK = Theme{
         .background = Palette.gray_dark.dark,
         .foreground = Palette.normal.dark,
         .primary = Palette.indigo.dark,
@@ -134,7 +134,7 @@ pub const Themes = struct {
     };
 
     /// Light theme optimized for readability
-    pub const light = Theme{
+    pub const LIGHT = Theme{
         .background = Palette.white_bright.light,
         .foreground = Palette.normal.light,
         .primary = Palette.indigo.light,
@@ -148,7 +148,7 @@ pub const Themes = struct {
     };
 
     /// High contrast theme for accessibility
-    pub const high_contrast = Theme{
+    pub const HIGH_CONTRAST = Theme{
         .background = enhanced_color.basic(.black),
         .foreground = enhanced_color.basic(.bright_white),
         .primary = enhanced_color.basic(.bright_blue),
@@ -162,7 +162,7 @@ pub const Themes = struct {
     };
 
     /// Grayscale theme for minimal UIs
-    pub const grayscale = Theme{
+    pub const GRAYSCALE = Theme{
         .background = Palette.gray_dark.resolve(true),
         .foreground = Palette.normal.resolve(true),
         .primary = Palette.gray_bright.resolve(true),

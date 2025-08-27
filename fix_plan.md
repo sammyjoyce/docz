@@ -305,7 +305,7 @@ Successfully replaced generic `anyerror` with specific error sets throughout the
 
 **Enhanced Error Categories:**
 - **ToolError (14 types)**: FileNotFound, PermissionDenied, InvalidInput, MalformedJson, OutOfMemory, NetworkError, ApiError, etc.
-- **ClientError (45+ types)**: Authentication errors (MissingAPIKey, AuthError), network errors (ConnectionTimedOut, UnknownHostName), HTTP errors (HttpHeadersInvalid, TooManyHttpRedirects), system errors (WriteFailed, EndOfStream), etc.
+- **ClientError (45+ types)**: Authentication errors (MissingAPIKey, AuthError), network errors (ConnectionTimedOut, UnknownHostName), HTTP errors (HTTPHeadersInvalid, TooManyHttpRedirects), system errors (WriteFailed, EndOfStream), etc.
 - **AgentError (7 types)**: InvalidInput, MissingParameter, FileNotFound, ProcessingFailed, etc.
 
 **User Experience Benefits:**
@@ -1193,7 +1193,7 @@ Successfully completed comprehensive error handling improvements and code qualit
 
 **Error Handling Enhancements:**
 - **OAuth and Network errors**: WriteFailed, ReadFailed, EndOfStream, ConnectionResetByPeer, ConnectionTimedOut, NetworkUnreachable, ConnectionRefused, TemporaryNameServerFailure, NameServerFailure, UnknownHostName, HostLacksNetworkAddresses, UnexpectedConnectFailure, TlsInitializationFailed, UnsupportedUriScheme, UriMissingHost, UriHostTooLong, CertificateBundleLoadFailure
-- **HTTP Protocol errors**: HttpChunkInvalid, HttpChunkTruncated, HttpHeadersOversize, HttpRequestTruncated, HttpConnectionClosing, HttpHeadersInvalid, TooManyHttpRedirects, RedirectRequiresResend, HttpRedirectLocationMissing, HttpRedirectLocationOversize, HttpRedirectLocationInvalid, HttpContentEncodingUnsupported  
+- **HTTP Protocol errors**: HTTPChunkInvalid, HTTPChunkTruncated, HTTPHeadersOversize, HTTPRequestTruncated, HTTPConnectionClosing, HTTPHeadersInvalid, TooManyHttpRedirects, RedirectRequiresResend, HTTPRedirectLocationMissing, HTTPRedirectLocationOversize, HTTPRedirectLocationInvalid, HTTPContentEncodingUnsupported  
 - **Buffer Management errors**: NoSpaceLeft, StreamTooLong for comprehensive buffer overflow and capacity management
 
 **User Experience Benefits:**

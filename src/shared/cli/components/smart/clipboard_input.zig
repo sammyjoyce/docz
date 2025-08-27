@@ -5,12 +5,12 @@ const std = @import("std");
 const context = @import("../../core/context.zig");
 
 pub const ClipboardInput = struct {
-    context: *context.CliContext,
+    context: *context.Cli,
     prompt: []const u8,
     placeholder: ?[]const u8 = null,
     auto_copy_result: bool = false,
 
-    pub fn init(ctx: *context.CliContext, prompt: []const u8) ClipboardInput {
+    pub fn init(ctx: *context.Cli, prompt: []const u8) ClipboardInput {
         return ClipboardInput{
             .context = ctx,
             .prompt = prompt,
@@ -50,10 +50,12 @@ pub const ClipboardInput = struct {
 
         // For now, use simple stdin reading
         // This would be enhanced with actual clipboard integration
-        const stdin = std.io.getStdIn();
-        var buffer: [1024]u8 = undefined;
+        var stdin_buffer: [4096]u8 = undefined;
+        const stdin_file = std.fs.File.stdin();
+        var stdin_reader = stdin_file.reader(&stdin_buffer);
+        var line_buffer: [1024]u8 = undefined;
 
-        if (try stdin.readUntilDelimiterOrEof(buffer[0..], '\n')) |input| {
+        if (try stdin_reader.readUntilDelimiterOrEof(&line_buffer, '\n')) |input| {
             // Trim whitespace
             const trimmed = std.mem.trim(u8, input, " \t\n\r");
 

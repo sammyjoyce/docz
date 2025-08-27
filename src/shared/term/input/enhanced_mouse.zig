@@ -416,7 +416,7 @@ pub const MouseParser = struct {
 };
 
 /// Mouse manager with mode switching and capability detection
-pub const MouseManager = struct {
+pub const Mouse = struct {
     allocator: std.mem.Allocator,
     parser: MouseParser,
     current_mode: MouseMode = .none,

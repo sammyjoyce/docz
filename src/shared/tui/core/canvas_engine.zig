@@ -216,7 +216,7 @@ pub const CanvasEngine = struct {
                 .scatter => .line, // Use line for scatter plots
             },
             .title = chart.style.title,
-            .data_points = try self.convertChartData(chart.data),
+            .data_points = try self.convertChart(chart.data),
             .colors = &[_]unified.Color{chart.style.color},
         };
 
@@ -328,10 +328,12 @@ pub const CanvasEngine = struct {
         }
     }
 
-    fn convertChartData(self: *Self, data: []const f64) ![]const graphics_manager.Chart.DataPoint {
-        const points = try self.allocator.alloc(graphics_manager.Chart.DataPoint, data.len);
+    fn convertChart(self: *Self, data: anytype) ![]const graphics_manager.Chart.DataPoint {
+        // Extract values from the first series
+        const values = if (@TypeOf(data) == []const f64) data else if (data.series.len > 0) data.series[0].values else &[_]f64{};
+        const points = try self.allocator.alloc(graphics_manager.Chart.DataPoint, values.len);
 
-        for (data, 0..) |value, i| {
+        for (values, 0..) |value, i| {
             points[i] = .{
                 .value = @as(f32, @floatCast(value)),
                 .label = null,

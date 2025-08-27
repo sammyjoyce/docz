@@ -6,7 +6,7 @@ const oauth = @import("../oauth/mod.zig");
 /// Authentication error types
 pub const AuthError = error{
     MissingAPIKey,
-    InvalidApiKey,
+    InvalidAPIKey,
     InvalidCredentials,
     TokenExpired,
     AuthenticationFailed,
@@ -161,7 +161,7 @@ pub fn createClient(allocator: std.mem.Allocator) AuthError!AuthClient {
                     std.log.err("ANTHROPIC_API_KEY contains only invalid characters", .{});
                     allocator.free(api_key);
                     allocator.free(sanitized_key);
-                    return AuthError.InvalidApiKey;
+                    return AuthError.InvalidAPIKey;
                 }
 
                 // Use the sanitized key
@@ -174,7 +174,7 @@ pub fn createClient(allocator: std.mem.Allocator) AuthError!AuthClient {
             } else {
                 std.log.err("ANTHROPIC_API_KEY contains invalid UTF-8 characters", .{});
                 allocator.free(api_key);
-                return AuthError.InvalidApiKey;
+                return AuthError.InvalidAPIKey;
             }
         } else {
             allocator.free(api_key);

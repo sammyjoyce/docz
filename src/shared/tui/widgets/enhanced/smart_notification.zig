@@ -185,7 +185,7 @@ pub const SmartNotification = struct {
         const ctx = RenderContext{
             .bounds = notification_bounds,
             .style = self.getNotificationStyle(renderer.getCapabilities()),
-            .z_index = self.getPriorityZIndex(),
+            .zIndex = self.getPriorityZIndex(),
         };
 
         // Apply animation if supported
@@ -394,8 +394,8 @@ pub const SmartNotification = struct {
     }
 };
 
-/// Notification Manager for handling multiple smart notifications
-pub const SmartNotificationManager = struct {
+/// Notification Controller for handling multiple smart notifications
+pub const SmartNotificationController = struct {
     const Self = @This();
 
     notifications: std.ArrayList(SmartNotification),
@@ -492,31 +492,31 @@ pub const SmartNotificationManager = struct {
     }
 };
 
-/// Convenience functions for quick notifications with global manager
-var global_manager: ?SmartNotificationManager = null;
-var GLOBAL_ALLOCATOR: ?std.mem.Allocator = null;
+/// Convenience functions for quick notifications with global controller
+var global_controller: ?SmartNotificationController = null;
+var globalAllocator: ?std.mem.Allocator = null;
 
 pub fn initGlobalManager(allocator: std.mem.Allocator, renderer: *Renderer) void {
-    if (global_manager) |*manager| {
-        manager.deinit();
+    if (global_controller) |*controller| {
+        controller.deinit();
     }
-    global_manager = SmartNotificationManager.init(allocator, renderer);
-    GLOBAL_ALLOCATOR = allocator;
+    global_controller = SmartNotificationController.init(allocator, renderer);
+    globalAllocator = allocator;
 }
 
 pub fn deinitGlobalManager() void {
-    if (global_manager) |*manager| {
-        manager.deinit();
-        global_manager = null;
-        GLOBAL_ALLOCATOR = null;
+    if (global_controller) |*controller| {
+        controller.deinit();
+        global_controller = null;
+        globalAllocator = null;
     }
 }
 
 pub fn notify(title: []const u8, message: []const u8, level: NotificationLevel, options: SmartNotification.Options) !void {
-    if (global_manager) |*manager| {
-        try manager.notify(title, message, level, options);
+    if (global_controller) |*controller| {
+        try controller.notify(title, message, level, options);
     } else {
-        return error.ManagerNotInitialized;
+        return error.ControllerNotInitialized;
     }
 }
 

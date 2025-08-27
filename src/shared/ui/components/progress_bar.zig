@@ -56,25 +56,25 @@ pub const ProgressBarConfig = struct {
     /// Display label
     label: ?[]const u8 = null,
     /// Show percentage text
-    show_percentage: bool = true,
+    showPercentage: bool = true,
     /// Show ETA (estimated time of arrival)
-    show_eta: bool = false,
+    showEta: bool = false,
     /// Show processing rate (bytes/sec, items/sec, etc.)
-    show_rate: bool = false,
+    showRate: bool = false,
     /// Visual style
     style: ProgressBarStyle = .auto,
     /// Color override (uses theme colors if null)
     color: ?Color = null,
     /// Background color override
-    background_color: ?Color = null,
+    backgroundColor: ?Color = null,
     /// Animation enabled
     animated: bool = true,
     /// Animation speed multiplier (higher = faster)
-    animation_speed: f32 = 1.0,
+    animationSpeed: f32 = 1.0,
     /// Use perceptual color calculations for better gradients
     use_perceptual_colors: bool = true,
     /// Bytes processed (for rate calculation)
-    bytes_processed: u64 = 0,
+    bytesProcessed: u64 = 0,
 };
 
 /// Unified progress bar component
@@ -86,23 +86,23 @@ pub const ProgressBar = struct {
     config: ProgressBarConfig,
 
     // Animation state
-    animation_time: f32 = 0.0,
-    start_time: ?i64 = null,
-    last_progress: f32 = 0.0,
-    animation_progress: f32 = 0.0,
+    animationTime: f32 = 0.0,
+    startTime: ?i64 = null,
+    lastProgress: f32 = 0.0,
+    animationProgress: f32 = 0.0,
 
     // Rate calculation state
-    last_update_time: ?i64 = null,
-    last_bytes_processed: u64 = 0,
-    calculated_rate: f32 = 0.0,
+    lastUpdateTime: ?i64 = null,
+    lastBytesProcessed: u64 = 0,
+    calculatedRate: f32 = 0.0,
 
     // Advanced rendering state
-    rainbow_offset: f32 = 0.0,
-    wave_position: f32 = 0.0,
+    rainbowOffset: f32 = 0.0,
+    wavePosition: f32 = 0.0,
 
     // Cached measurements and optimizations
-    cached_text_width: u32 = 0,
-    cached_terminal_caps: ?term_caps.TermCaps = null,
+    cachedTextWidth: u32 = 0,
+    cachedTerminalCaps: ?term_caps.TermCaps = null,
 
     const vtable = Component.VTable{
         .init = init,
@@ -130,7 +130,7 @@ pub const ProgressBar = struct {
         component.* = Component{
             .vtable = &vtable,
             .impl = self,
-            .id = 0, // Will be set by ComponentManager
+            .id = 0, // Will be set by ComponentRegistry
         };
 
         return component;
@@ -141,14 +141,14 @@ pub const ProgressBar = struct {
         const clamped = @max(0.0, @min(1.0, progress));
 
         if (self.config.progress != clamped) {
-            self.last_progress = self.config.progress;
+            self.lastProgress = self.config.progress;
             self.config.progress = clamped;
-            self.animation_time = 0.0;
+            self.animationTime = 0.0;
             self.state.markDirty();
 
             // Start timing for ETA calculation
-            if (self.start_time == null and clamped > 0.0) {
-                self.start_time = std.time.timestamp();
+            if (self.startTime == null and clamped > 0.0) {
+                self.startTime = std.time.timestamp();
             }
         }
     }
@@ -172,25 +172,25 @@ pub const ProgressBar = struct {
     pub fn updateBytes(self: *Self, bytes: u64) void {
         const now = std.time.timestamp();
 
-        if (self.last_update_time) |last_time| {
+        if (self.lastUpdateTime) |last_time| {
             const dt = @as(f32, @floatFromInt(now - last_time));
             if (dt > 0.0) {
-                const bytes_delta = @as(f32, @floatFromInt(bytes - self.last_bytes_processed));
-                self.calculated_rate = bytes_delta / dt;
+                const bytes_delta = @as(f32, @floatFromInt(bytes - self.lastBytesProcessed));
+                self.calculatedRate = bytes_delta / dt;
             }
         }
 
-        self.config.bytes_processed = bytes;
-        self.last_bytes_processed = bytes;
-        self.last_update_time = now;
+        self.config.bytesProcessed = bytes;
+        self.lastBytesProcessed = bytes;
+        self.lastUpdateTime = now;
         self.state.markDirty();
     }
 
     /// Get estimated time of arrival in seconds
     pub fn getEta(self: *Self) ?i64 {
-        if (self.start_time == null or self.config.progress <= 0.01) return null;
+        if (self.startTime == null or self.config.progress <= 0.01) return null;
 
-        const elapsed = std.time.timestamp() - self.start_time.?;
+        const elapsed = std.time.timestamp() - self.startTime.?;
         const rate = self.config.progress / @as(f32, @floatFromInt(elapsed));
         if (rate <= 0.0) return null;
 
@@ -233,19 +233,19 @@ pub const ProgressBar = struct {
 
         // Get colors from theme or config
         const progress_color = self.config.color orelse ctx.theme.colors.primary;
-        const bg_color = self.config.background_color orelse ctx.theme.colors.background;
+        const bg_color = self.config.backgroundColor orelse ctx.theme.colors.background;
 
         // Calculate display progress (with animation)
         var display_progress = self.config.progress;
         if (self.config.animated and ctx.theme.animation.enabled) {
-            const t = @min(1.0, self.animation_time / (@as(f32, @floatFromInt(ctx.theme.animation.duration)) / 1000.0));
+            const t = @min(1.0, self.animationTime / (@as(f32, @floatFromInt(ctx.theme.animation.duration)) / 1000.0));
             const eased_t = switch (ctx.theme.animation.easing) {
                 .linear => t,
                 .ease_in => Animation.easeIn(t),
                 .ease_out => Animation.easeOut(t),
                 .ease_in_out => Animation.easeInOut(t),
             };
-            display_progress = Animation.interpolate(self.last_progress, self.config.progress, eased_t);
+            display_progress = Animation.interpolate(self.lastProgress, self.config.progress, eased_t);
         }
 
         // Position at component bounds
@@ -265,7 +265,7 @@ pub const ProgressBar = struct {
         }
 
         // Render additional info (percentage, ETA, rate, etc.)
-        if (self.config.show_percentage or self.config.show_eta or self.config.show_rate or self.config.label != null) {
+        if (self.config.showPercentage or self.config.showEta or self.config.showRate or self.config.label != null) {
             try self.renderInfo(ctx, display_progress);
         }
     }
@@ -277,7 +277,7 @@ pub const ProgressBar = struct {
         var width: u32 = @max(20, @min(60, available.width)); // Default progress bar width
 
         // Add space for percentage
-        if (self.config.show_percentage) width += 6; // " 100%"
+        if (self.config.showPercentage) width += 6; // " 100%"
 
         // Add space for label
         if (self.config.label) |label| {
@@ -285,10 +285,10 @@ pub const ProgressBar = struct {
         }
 
         // Add space for ETA
-        if (self.config.show_eta) width += 12; // " (ETA: 60s)"
+        if (self.config.showEta) width += 12; // " (ETA: 60s)"
 
         // Add space for rate display
-        if (self.config.show_rate) width += 10; // " 999.9MB/s"
+        if (self.config.showRate) width += 10; // " 999.9MB/s"
 
         return Rect{
             .x = 0,
@@ -309,21 +309,21 @@ pub const ProgressBar = struct {
         const self: *Self = @ptrCast(@alignCast(impl));
 
         if (self.config.animated) {
-            self.animation_time += dt * self.config.animation_speed;
+            self.animationTime += dt * self.config.animationSpeed;
 
             // Update rainbow offset for rainbow style
-            self.rainbow_offset += dt * self.config.animation_speed * 60.0; // degrees per second
-            if (self.rainbow_offset >= 360.0) self.rainbow_offset -= 360.0;
+            self.rainbowOffset += dt * self.config.animationSpeed * 60.0; // degrees per second
+            if (self.rainbowOffset >= 360.0) self.rainbowOffset -= 360.0;
 
             // Update wave position for animated style
-            self.wave_position += dt * self.config.animation_speed * 2.0; // relative units per second
-            if (self.wave_position >= 1.0) self.wave_position -= 1.0;
+            self.wavePosition += dt * self.config.animationSpeed * 2.0; // relative units per second
+            if (self.wavePosition >= 1.0) self.wavePosition -= 1.0;
 
             // Mark dirty during animation transitions
             const needs_animation_update = switch (self.config.style) {
                 .animated, .rainbow => true,
-                .gradient => self.animation_time < 1.0, // Only during progress transitions
-                else => self.animation_time < 1.0,
+                .gradient => self.animationTime < 1.0, // Only during progress transitions
+                else => self.animationTime < 1.0,
             };
 
             if (needs_animation_update) {
@@ -438,7 +438,7 @@ pub const ProgressBar = struct {
         const filled_chars = @as(i32, @intFromFloat(@as(f32, @floatFromInt(bar_width)) * progress));
 
         // Create wave effect
-        const wave_pos = @mod(@as(i32, @intFromFloat(self.animation_time * 10.0)), bar_width);
+        const wave_pos = @mod(@as(i32, @intFromFloat(self.animationTime * 10.0)), bar_width);
 
         var i: i32 = 0;
         while (i < bar_width) : (i += 1) {
@@ -482,7 +482,7 @@ pub const ProgressBar = struct {
             if (is_filled) {
                 // Calculate HSV rainbow color with animation offset
                 const pos = @as(f32, @floatFromInt(i)) / @as(f32, @floatFromInt(bar_width));
-                const hue = @mod(pos * 360.0 + self.rainbow_offset, 360.0);
+                const hue = @mod(pos * 360.0 + self.rainbowOffset, 360.0);
                 const rgb = hsvToRgb(hue, 1.0, 1.0);
 
                 const color = Color{ .rgb = .{ .r = rgb.r, .g = rgb.g, .b = rgb.b } };
@@ -576,31 +576,31 @@ pub const ProgressBar = struct {
         }
 
         // Add percentage
-        if (self.config.show_percentage) {
+        if (self.config.showPercentage) {
             try writer.print("{d:.1}%", .{progress * 100.0});
         }
 
         // Add ETA
-        if (self.config.show_eta and self.start_time != null and progress > 0.01) {
-            const elapsed = std.time.timestamp() - self.start_time.?;
+        if (self.config.showEta and self.startTime != null and progress > 0.01) {
+            const elapsed = std.time.timestamp() - self.startTime.?;
             const total_estimated = @as(f32, @floatFromInt(elapsed)) / progress;
             const remaining = @as(i64, @intFromFloat(total_estimated)) - elapsed;
 
             if (remaining > 0) {
-                const separator = if (self.config.show_percentage) " " else "";
+                const separator = if (self.config.showPercentage) " " else "";
                 try writer.print("{s}(ETA: {d}s)", .{ separator, remaining });
             }
         }
 
         // Add processing rate
-        if (self.config.show_rate and self.calculated_rate > 0.0) {
-            const separator = if (self.config.show_percentage or self.config.show_eta) " " else "";
-            if (self.calculated_rate >= 1024 * 1024) {
-                try writer.print("{s}{d:.1}MB/s", .{ separator, self.calculated_rate / (1024 * 1024) });
-            } else if (self.calculated_rate >= 1024) {
-                try writer.print("{s}{d:.1}KB/s", .{ separator, self.calculated_rate / 1024 });
+        if (self.config.showRate and self.calculatedRate > 0.0) {
+            const separator = if (self.config.showPercentage or self.config.showEta) " " else "";
+            if (self.calculatedRate >= 1024 * 1024) {
+                try writer.print("{s}{d:.1}MB/s", .{ separator, self.calculatedRate / (1024 * 1024) });
+            } else if (self.calculatedRate >= 1024) {
+                try writer.print("{s}{d:.1}KB/s", .{ separator, self.calculatedRate / 1024 });
             } else {
-                try writer.print("{s}{d:.1}B/s", .{ separator, self.calculated_rate });
+                try writer.print("{s}{d:.1}B/s", .{ separator, self.calculatedRate });
             }
         }
 

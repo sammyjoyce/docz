@@ -454,7 +454,7 @@ pub const SmartInput = struct {
             .none => try writer.writeAll(text),
             .shell_command => try self.renderShellSyntax(writer, text),
             .file_path => try self.renderPathSyntax(writer, text),
-            .url => try self.renderUrlSyntax(writer, text),
+            .url => try self.renderURLSyntax(writer, text),
             .email => try self.renderEmailSyntax(writer, text),
             .json => try self.renderJsonSyntax(writer, text),
             .regex => try self.renderRegexSyntax(writer, text),
@@ -643,7 +643,7 @@ pub const SmartInput = struct {
         try writer.writeAll(text);
     }
 
-    fn renderUrlSyntax(self: *SmartInput, writer: anytype, text: []const u8) !void {
+    fn renderURLSyntax(self: *SmartInput, writer: anytype, text: []const u8) !void {
         _ = self;
         try writer.writeAll(text);
     }

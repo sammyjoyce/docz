@@ -7,7 +7,7 @@ const color_palette = @import("color_palette.zig");
 
 /// Enhanced Color Manager with HSLuv-based algorithms
 /// Provides sophisticated color conversion and palette management
-pub const EnhancedColorManager = struct {
+pub const EnhancedColor = struct {
     allocator: std.mem.Allocator,
     palette: color_palette.ANSI256Palette,
     color_cache: std.AutoHashMap(color_palette.RGBColor, color_palette.TerminalColor),
@@ -242,7 +242,7 @@ test "enhanced color conversion caching" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    var manager = EnhancedColorManager.init(allocator);
+    var manager = EnhancedColor.init(allocator);
     defer manager.deinit();
 
     const red = color_palette.RGBColor{ .r = 255, .g = 0, .b = 0 };
@@ -260,7 +260,7 @@ test "color distribution analysis" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    var manager = EnhancedColorManager.init(allocator);
+    var manager = EnhancedColor.init(allocator);
     defer manager.deinit();
 
     const colors = [_]color_palette.RGBColor{
@@ -282,7 +282,7 @@ test "palette optimization" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    var manager = EnhancedColorManager.init(allocator);
+    var manager = EnhancedColor.init(allocator);
     defer manager.deinit();
 
     const colors = [_]color_palette.RGBColor{

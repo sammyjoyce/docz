@@ -86,9 +86,9 @@ rm -rf .zig-cache zig-out
 
 ```zig
 // Integration example
-const markdown_agent = @import("agents/markdown/agent.zig");
+const MarkdownAgent = @import("agents/markdown/Agent.zig");
 
-const agent = markdown_agent.MarkdownAgent.init(allocator, config);
+const agent = MarkdownAgent.MARKDOWN_AGENT.init(allocator, config);
 const tools = try agent.getAvailableTools();
 const result = try agent.executeCommand("document_transformer", params);
 ```

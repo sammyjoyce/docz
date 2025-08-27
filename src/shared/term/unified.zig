@@ -537,21 +537,21 @@ pub const Terminal = struct {
     }
 
     /// Create a scoped context that automatically restores cursor position
-    pub fn scopedContext(self: *Self) !ScopedContext {
-        return ScopedContext.init(self);
+    pub fn scopedContext(self: *Self) !Scoped {
+        return Scoped.init(self);
     }
 };
 
 /// RAII-style context that saves and restores terminal state
-pub const ScopedContext = struct {
+pub const Scoped = struct {
     terminal: *Terminal,
 
-    fn init(terminal: *Terminal) !ScopedContext {
+    fn init(terminal: *Terminal) !Scoped {
         try ansi_cursor.saveCursor(terminal.writer, terminal.caps);
-        return ScopedContext{ .terminal = terminal };
+        return Scoped{ .terminal = terminal };
     }
 
-    pub fn deinit(self: *ScopedContext) void {
+    pub fn deinit(self: *Scoped) void {
         ansi_cursor.restoreCursor(self.terminal.writer, self.terminal.caps) catch {};
     }
 };
@@ -681,7 +681,7 @@ pub const DashboardTerminal = struct {
     }
 
     /// Optimized chart data rendering with caching
-    pub fn renderChartData(self: *Self, data: []const f64, bounds: Rect, style: ChartStyle) !void {
+    pub fn renderChart(self: *Self, data: []const f64, bounds: Rect, style: ChartStyle) !void {
         // Create a hash of the input data to check if we need to re-render
         const data_hash = self.hashData(data, bounds, style);
         if (data_hash == self.last_render_hash) {

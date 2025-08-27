@@ -8,20 +8,20 @@ const c = @cImport({
     @cInclude("curl/curl.h");
 });
 
-pub const HttpError = error{
+pub const HTTPError = error{
     CurlInit,
     CurlPerform,
     InvalidResponse,
     OutOfMemory,
     NetworkError,
-    HttpError,
+    HTTPError,
     TlsError,
     Timeout,
-    InvalidUrl,
+    InvalidURL,
     Aborted,
 };
 
-pub const HttpMethod = enum {
+pub const HTTPMethod = enum {
     GET,
     POST,
     PUT,
@@ -34,8 +34,8 @@ pub const Header = struct {
     value: []const u8,
 };
 
-pub const HttpRequest = struct {
-    method: HttpMethod = .GET,
+pub const HTTPRequest = struct {
+    method: HTTPMethod = .GET,
     url: []const u8,
     headers: []const Header = &[_]Header{},
     body: ?[]const u8 = null,
@@ -46,13 +46,13 @@ pub const HttpRequest = struct {
     verbose: bool = false,
 };
 
-pub const HttpResponse = struct {
+pub const HTTPResponse = struct {
     status_code: u16,
     headers: std.StringHashMap([]const u8),
     body: []const u8,
     allocator: std.mem.Allocator,
 
-    pub fn deinit(self: *HttpResponse) void {
+    pub fn deinit(self: *HTTPResponse) void {
         var iter = self.headers.iterator();
         while (iter.next()) |entry| {
             self.allocator.free(entry.key_ptr.*);
@@ -65,20 +65,20 @@ pub const HttpResponse = struct {
 
 pub const StreamCallback = *const fn (chunk: []const u8, context: *anyopaque) void;
 
-pub const HttpClient = struct {
+pub const HTTPClient = struct {
     allocator: std.mem.Allocator,
     curl_handle: ?*c.CURL = null,
 
     const Self = @This();
 
-    pub fn init(allocator: std.mem.Allocator) !HttpClient {
+    pub fn init(allocator: std.mem.Allocator) !HTTPClient {
         // Initialize libcurl globally once
         const curl_init_result = c.curl_global_init(c.CURL_GLOBAL_ALL);
         if (curl_init_result != c.CURLE_OK) {
-            return HttpError.CurlInit;
+            return HTTPError.CurlInit;
         }
 
-        return HttpClient{
+        return HTTPClient{
             .allocator = allocator,
         };
     }
@@ -90,14 +90,14 @@ pub const HttpClient = struct {
         c.curl_global_cleanup();
     }
 
-    pub fn request(self: *Self, req: HttpRequest) !HttpResponse {
+    pub fn request(self: *Self, req: HTTPRequest) !HTTPResponse {
         // Create curl handle
-        const handle = c.curl_easy_init() orelse return HttpError.CurlInit;
+        const handle = c.curl_easy_init() orelse return HTTPError.CurlInit;
         defer c.curl_easy_cleanup(handle);
 
         // Response data collectors
         var response_body = std.ArrayListUnmanaged(u8){};
-        defer response_body.deinit(self.allocator); // Will be moved to HttpResponse
+        defer response_body.deinit(self.allocator); // Will be moved to HTTPResponse
 
         var response_headers = std.StringHashMap([]const u8).init(self.allocator);
         errdefer {
@@ -186,12 +186,12 @@ pub const HttpClient = struct {
         _ = c.curl_easy_setopt(handle, c.CURLOPT_USERAGENT, "docz/1.0 (libcurl)");
 
         // Configure response body callback
-        const BodyCallbackContext = struct {
+        const BodyCallback = struct {
             response_body: *std.ArrayListUnmanaged(u8),
             allocator: std.mem.Allocator,
         };
 
-        const body_context = BodyCallbackContext{
+        const body_context = BodyCallback{
             .response_body = &response_body,
             .allocator = self.allocator,
         };
@@ -200,12 +200,12 @@ pub const HttpClient = struct {
         _ = c.curl_easy_setopt(handle, c.CURLOPT_WRITEDATA, @as(*const anyopaque, @ptrCast(&body_context)));
 
         // Configure response header callback
-        const HeaderCallbackContext = struct {
+        const HeaderCallback = struct {
             headers: *std.StringHashMap([]const u8),
             allocator: std.mem.Allocator,
         };
 
-        const header_context = HeaderCallbackContext{
+        const header_context = HeaderCallback{
             .headers = &response_headers,
             .allocator = self.allocator,
         };
@@ -217,12 +217,12 @@ pub const HttpClient = struct {
         const result = c.curl_easy_perform(handle);
         if (result != c.CURLE_OK) {
             switch (result) {
-                c.CURLE_COULDNT_CONNECT => return HttpError.NetworkError,
-                c.CURLE_OPERATION_TIMEDOUT => return HttpError.Timeout,
-                c.CURLE_SSL_CONNECT_ERROR => return HttpError.TlsError,
-                c.CURLE_URL_MALFORMAT => return HttpError.InvalidUrl,
-                c.CURLE_ABORTED_BY_CALLBACK => return HttpError.Aborted,
-                else => return HttpError.CurlPerform,
+                c.CURLE_COULDNT_CONNECT => return HTTPError.NetworkError,
+                c.CURLE_OPERATION_TIMEDOUT => return HTTPError.Timeout,
+                c.CURLE_SSL_CONNECT_ERROR => return HTTPError.TlsError,
+                c.CURLE_URL_MALFORMAT => return HTTPError.InvalidURL,
+                c.CURLE_ABORTED_BY_CALLBACK => return HTTPError.Aborted,
+                else => return HTTPError.CurlPerform,
             }
         }
 
@@ -230,7 +230,7 @@ pub const HttpClient = struct {
         var status_code: c_long = 0;
         _ = c.curl_easy_getinfo(handle, c.CURLINFO_RESPONSE_CODE, &status_code);
 
-        return HttpResponse{
+        return HTTPResponse{
             .status_code = @intCast(status_code),
             .headers = response_headers,
             .body = try response_body.toOwnedSlice(self.allocator),
@@ -240,12 +240,12 @@ pub const HttpClient = struct {
 
     pub fn streamRequest(
         self: *Self,
-        req: HttpRequest,
+        req: HTTPRequest,
         callback: StreamCallback,
         context: *anyopaque,
     ) !u16 {
         // Create curl handle
-        const handle = c.curl_easy_init() orelse return HttpError.CurlInit;
+        const handle = c.curl_easy_init() orelse return HTTPError.CurlInit;
         defer c.curl_easy_cleanup(handle);
 
         // Configure URL and method (same as regular request)
@@ -264,7 +264,7 @@ pub const HttpClient = struct {
             },
             else => {
                 // Other methods not yet supported for streaming
-                return HttpError.InvalidUrl;
+                return HTTPError.InvalidURL;
             },
         }
 
@@ -275,7 +275,7 @@ pub const HttpClient = struct {
         for (req.headers) |header| {
             // Debug: Check header data
             if (header.value.len == 0) {
-                return HttpError.InvalidUrl;
+                return HTTPError.InvalidURL;
             }
 
             const header_str = try std.fmt.allocPrint(self.allocator, "{s}: {s}\x00", .{ header.name, header.value });
@@ -311,12 +311,12 @@ pub const HttpClient = struct {
         }
 
         // Set streaming callback context
-        const StreamCallbackContext = struct {
+        const StreamingCallback = struct {
             callback: StreamCallback,
             context: *anyopaque,
         };
 
-        const stream_context = StreamCallbackContext{
+        const stream_context = StreamingCallback{
             .callback = callback,
             .context = context,
         };
@@ -328,12 +328,12 @@ pub const HttpClient = struct {
         const result = c.curl_easy_perform(handle);
         if (result != c.CURLE_OK) {
             switch (result) {
-                c.CURLE_COULDNT_CONNECT => return HttpError.NetworkError,
-                c.CURLE_OPERATION_TIMEDOUT => return HttpError.Timeout,
-                c.CURLE_SSL_CONNECT_ERROR => return HttpError.TlsError,
-                c.CURLE_URL_MALFORMAT => return HttpError.InvalidUrl,
-                c.CURLE_ABORTED_BY_CALLBACK => return HttpError.Aborted,
-                else => return HttpError.CurlPerform,
+                c.CURLE_COULDNT_CONNECT => return HTTPError.NetworkError,
+                c.CURLE_OPERATION_TIMEDOUT => return HTTPError.Timeout,
+                c.CURLE_SSL_CONNECT_ERROR => return HTTPError.TlsError,
+                c.CURLE_URL_MALFORMAT => return HTTPError.InvalidURL,
+                c.CURLE_ABORTED_BY_CALLBACK => return HTTPError.Aborted,
+                else => return HTTPError.CurlPerform,
             }
         }
 
@@ -345,16 +345,16 @@ pub const HttpClient = struct {
     }
 
     // Convenience methods
-    pub fn get(self: *Self, url: []const u8, headers: []const Header) !HttpResponse {
-        return self.request(HttpRequest{
+    pub fn get(self: *Self, url: []const u8, headers: []const Header) !HTTPResponse {
+        return self.request(HTTPRequest{
             .method = .GET,
             .url = url,
             .headers = headers,
         });
     }
 
-    pub fn post(self: *Self, url: []const u8, headers: []const Header, body: ?[]const u8) !HttpResponse {
-        return self.request(HttpRequest{
+    pub fn post(self: *Self, url: []const u8, headers: []const Header, body: ?[]const u8) !HTTPResponse {
+        return self.request(HTTPRequest{
             .method = .POST,
             .url = url,
             .headers = headers,
@@ -371,11 +371,11 @@ fn writeCallback(
     user_data: ?*anyopaque,
 ) callconv(.c) usize {
     const real_size = size * nmemb;
-    const BodyCallbackContext = struct {
+    const BodyCallback = struct {
         response_body: *std.ArrayList(u8),
         allocator: std.mem.Allocator,
     };
-    const context: *const BodyCallbackContext = @ptrCast(@alignCast(user_data.?));
+    const context: *const BodyCallback = @ptrCast(@alignCast(user_data.?));
 
     const data_slice = contents[0..real_size];
     context.response_body.appendSlice(context.allocator, data_slice) catch return 0; // Signal error by returning 0
@@ -391,11 +391,11 @@ fn headerCallback(
     user_data: ?*anyopaque,
 ) callconv(.c) usize {
     const real_size = size * nitems;
-    const HeaderCallbackContext = struct {
+    const HeaderCallback = struct {
         headers: *std.StringHashMap([]const u8),
         allocator: std.mem.Allocator,
     };
-    const context: *const HeaderCallbackContext = @ptrCast(@alignCast(user_data.?));
+    const context: *const HeaderCallback = @ptrCast(@alignCast(user_data.?));
 
     const header_slice = buffer[0..real_size];
     const header_str = std.mem.trim(u8, header_slice, " \t\r\n");
@@ -432,11 +432,11 @@ fn streamWriteCallback(
     user_data: ?*anyopaque,
 ) callconv(.c) usize {
     const real_size = size * nmemb;
-    const StreamCallbackContext = struct {
+    const StreamingCallback = struct {
         callback: StreamCallback,
         context: *anyopaque,
     };
-    const context: *const StreamCallbackContext = @ptrCast(@alignCast(user_data.?));
+    const context: *const StreamingCallback = @ptrCast(@alignCast(user_data.?));
 
     const data_slice = contents[0..real_size];
     context.callback(data_slice, context.context);

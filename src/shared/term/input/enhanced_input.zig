@@ -671,11 +671,13 @@ pub const InputParser = struct {
         if (self.key_mapping) |mapping| {
             if (mapping.mapSequence(data)) |extended_code| {
                 return ParseResult{
-                    .event = InputEvent{ .key_press = Key{
-                        .code = extended_code,
-                        .mod = .{}, // Dynamic mapping doesn't specify modifiers
-                        .text = if (std.ascii.isPrint(@intCast(extended_code))) &[_]u8{@intCast(extended_code)} else "",
-                    }},
+                    .event = InputEvent{
+                        .key_press = Key{
+                            .code = extended_code,
+                            .mod = .{}, // Dynamic mapping doesn't specify modifiers
+                            .text = if (std.ascii.isPrint(@intCast(extended_code))) &[_]u8{@intCast(extended_code)} else "",
+                        },
+                    },
                     .consumed = data.len,
                 };
             }
@@ -706,11 +708,13 @@ pub const InputParser = struct {
         if (self.key_mapping) |mapping| {
             if (mapping.mapSequence(data)) |extended_code| {
                 return ParseResult{
-                    .event = InputEvent{ .key_press = Key{
-                        .code = extended_code,
-                        .mod = .{}, // Dynamic mapping doesn't specify modifiers
-                        .text = if (std.ascii.isPrint(@intCast(extended_code))) &[_]u8{@intCast(extended_code)} else "",
-                    }},
+                    .event = InputEvent{
+                        .key_press = Key{
+                            .code = extended_code,
+                            .mod = .{}, // Dynamic mapping doesn't specify modifiers
+                            .text = if (std.ascii.isPrint(@intCast(extended_code))) &[_]u8{@intCast(extended_code)} else "",
+                        },
+                    },
                     .consumed = data.len,
                 };
             }
@@ -744,11 +748,13 @@ pub const InputParser = struct {
         if (self.key_mapping) |mapping| {
             if (mapping.mapSequence(data)) |extended_code| {
                 return ParseResult{
-                    .event = InputEvent{ .key_press = Key{
-                        .code = extended_code,
-                        .mod = .{}, // Dynamic mapping doesn't specify modifiers
-                        .text = if (std.ascii.isPrint(@intCast(extended_code))) &[_]u8{@intCast(extended_code)} else "",
-                    }},
+                    .event = InputEvent{
+                        .key_press = Key{
+                            .code = extended_code,
+                            .mod = .{}, // Dynamic mapping doesn't specify modifiers
+                            .text = if (std.ascii.isPrint(@intCast(extended_code))) &[_]u8{@intCast(extended_code)} else "",
+                        },
+                    },
                     .consumed = data.len,
                 };
             }
@@ -803,11 +809,13 @@ pub const InputParser = struct {
         if (self.key_mapping) |mapping| {
             if (mapping.mapSequence(sequence)) |extended_code| {
                 return ParseResult{
-                    .event = InputEvent{ .key_press = Key{
-                        .code = extended_code,
-                        .mod = .{}, // Dynamic mapping doesn't specify modifiers
-                        .text = if (std.ascii.isPrint(@intCast(extended_code))) &[_]u8{@intCast(extended_code)} else "",
-                    }},
+                    .event = InputEvent{
+                        .key_press = Key{
+                            .code = extended_code,
+                            .mod = .{}, // Dynamic mapping doesn't specify modifiers
+                            .text = if (std.ascii.isPrint(@intCast(extended_code))) &[_]u8{@intCast(extended_code)} else "",
+                        },
+                    },
                     .consumed = sequence.len,
                 };
             }

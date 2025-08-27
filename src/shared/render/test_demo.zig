@@ -76,10 +76,10 @@ fn testBasicRendering(renderer: *AdaptiveRenderer) !void {
 
     // Test chart
     const data = [_]f64{ 1.0, 3.0, 2.0, 4.0, 3.0 };
-    const series = Chart.DataSeries{ .name = "Test Data", .data = &data, .color = Color.ansi(.blue) };
+    const series = Chart.Series{ .name = "Test Data", .data = &data, .color = Color.ansi(.blue) };
     const chart = Chart{
         .title = "Test Chart",
-        .data_series = &[_]Chart.DataSeries{series},
+        .data_series = &[_]Chart.Series{series},
         .chart_type = .line,
     };
     try adaptive_render.renderChart(renderer, chart);
@@ -128,7 +128,7 @@ fn testComponentFunctionality(allocator: std.mem.Allocator) !void {
     // Test charts with different types
     std.debug.print("  Testing charts... ");
     const chart_data = [_]f64{ 10, 25, 15, 35, 30, 45, 40 };
-    const chart_series = Chart.DataSeries{
+    const chart_series = Chart.Series{
         .name = "Sales",
         .data = &chart_data,
         .color = Color.ansi(.green),
@@ -138,7 +138,7 @@ fn testComponentFunctionality(allocator: std.mem.Allocator) !void {
     for (chart_types) |chart_type| {
         const test_chart = Chart{
             .title = "Test Chart",
-            .data_series = &[_]Chart.DataSeries{chart_series},
+            .data_series = &[_]Chart.Series{chart_series},
             .chart_type = chart_type,
             .width = 40,
             .height = 10,
@@ -271,8 +271,8 @@ fn stressTest(allocator: std.mem.Allocator) !void {
         // Chart (every 1000 iterations)
         if (i % 1000 == 0 and i > 0) {
             const data = [_]f64{ @as(f64, @floatFromInt(i)), @as(f64, @floatFromInt(i)) / 2.0 };
-            const series = Chart.DataSeries{ .name = "Progress", .data = &data };
-            const chart = Chart{ .data_series = &[_]Chart.DataSeries{series} };
+            const series = Chart.Series{ .name = "Progress", .data = &data };
+            const chart = Chart{ .data_series = &[_]Chart.Series{series} };
             try adaptive_render.renderChart(renderer, chart);
         }
     }
@@ -304,8 +304,8 @@ test "comprehensive adaptive rendering tests" {
 
     // Test chart
     const data = [_]f64{ 1.0, 2.0 };
-    const series = Chart.DataSeries{ .name = "Test", .data = &data };
-    const chart = Chart{ .data_series = &[_]Chart.DataSeries{series} };
+    const series = Chart.Series{ .name = "Test", .data = &data };
+    const chart = Chart{ .data_series = &[_]Chart.Series{series} };
     try adaptive_render.renderChart(renderer, chart);
 
     // Test enhanced renderer

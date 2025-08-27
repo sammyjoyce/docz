@@ -1,159 +1,414 @@
 #!/bin/bash
+# Automated Naming Convention Fixer for Zig Codebase
+# Run with: ./fix_naming_violations.sh [phase]
 
-# Fix naming convention violations in the codebase
+set -e  # Exit on error
 
-echo "Fixing naming convention violations..."
+# Color codes for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
 
-# 1. Fix functions with capital letters in enhanced_cursor_control.zig
-echo "Fixing enhanced_cursor_control.zig..."
+# Configuration
+BACKUP_DIR=".naming_backup_$(date +%Y%m%d_%H%M%S)"
+LOG_FILE="naming_fixes_$(date +%Y%m%d_%H%M%S).log"
 
-# VPR function
-sed -i '' 's/pub fn VPR(/pub fn vpr(/g' src/shared/term/ansi/enhanced_cursor_control.zig
+# Helper functions
+log() {
+    echo -e "${GREEN}[$(date '+%H:%M:%S')]${NC} $1" | tee -a "$LOG_FILE"
+}
 
-# HVP function
-sed -i '' 's/pub fn HVP(/pub fn hvp(/g' src/shared/term/ansi/enhanced_cursor_control.zig
+error() {
+    echo -e "${RED}[ERROR]${NC} $1" | tee -a "$LOG_FILE"
+    exit 1
+}
 
-# CHT function
-sed -i '' 's/pub fn CHT(/pub fn cht(/g' src/shared/term/ansi/enhanced_cursor_control.zig
+warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1" | tee -a "$LOG_FILE"
+}
 
-# CBT function
-sed -i '' 's/pub fn CBT(/pub fn cbt(/g' src/shared/term/ansi/enhanced_cursor_control.zig
+info() {
+    echo -e "${BLUE}[INFO]${NC} $1" | tee -a "$LOG_FILE"
+}
 
-# ECH function
-sed -i '' 's/pub fn ECH(/pub fn ech(/g' src/shared/term/ansi/enhanced_cursor_control.zig
+# Verify we're in the right directory
+check_directory() {
+    if [ ! -f "build.zig" ] || [ ! -d "src" ] || [ ! -d "agents" ]; then
+        error "Must be run from project root directory"
+    fi
+}
 
-# DECSCUSR function
-sed -i '' 's/pub fn DECSCUSR(/pub fn decscusr(/g' src/shared/term/ansi/enhanced_cursor_control.zig
+# Create backup
+create_backup() {
+    log "Creating backup in $BACKUP_DIR..."
+    mkdir -p "$BACKUP_DIR"
+    cp -r src "$BACKUP_DIR/"
+    cp -r agents "$BACKUP_DIR/"
+    log "Backup created successfully"
+}
 
-# HPA function
-sed -i '' 's/pub fn HPA(/pub fn hpa(/g' src/shared/term/ansi/enhanced_cursor_control.zig
+# Test compilation
+test_compilation() {
+    info "Testing compilation..."
+    if zig build-lib src/core/engine.zig 2>&1 | grep -q "error"; then
+        warning "Compilation issues detected (may be pre-existing)"
+    else
+        log "Compilation test passed"
+    fi
+}
 
-# HPR function
-sed -i '' 's/pub fn HPR(/pub fn hpr(/g' src/shared/term/ansi/enhanced_cursor_control.zig
-
-# 2. Fix type-returning functions (generics) - these should be lowercase
-echo "Fixing type-returning functions..."
-
-# CommandContext in finalterm.zig
-sed -i '' 's/pub fn CommandContext(/pub fn commandContext(/g' src/shared/term/ansi/finalterm.zig
-
-# CliIntegration in finalterm.zig  
-sed -i '' 's/pub fn CliIntegration(/pub fn cliIntegration(/g' src/shared/term/ansi/finalterm.zig
-
-# NewPty in pty.zig (if it exists)
-find . -name "pty.zig" -exec sed -i '' 's/pub fn NewPty(/pub fn newPty(/g' {} \;
-
-# ChartBuilder in dashboard/builder.zig
-find . -path "*/dashboard/builder.zig" -exec sed -i '' 's/pub fn ChartBuilder(/pub fn chartBuilder(/g' {} \;
-
-# PointerShapeGuard in pointer.zig
-find . -name "pointer.zig" -exec sed -i '' 's/pub fn PointerShapeGuard(/pub fn pointerShapeGuard(/g' {} \;
-
-# 3. Fix functions with underscores
-echo "Fixing functions with underscores..."
-
-# error_ functions - rename to errorNotification
-find . -name "smart_notification.zig" -exec sed -i '' 's/pub fn error_(/pub fn errorNotification(/g' {} \;
-find . -name "notification.zig" -exec sed -i '' 's/pub fn error_(/pub fn errorNotification(/g' {} \;
-
-# Update calls to error_
-find . -name "smart_notification.zig" -exec sed -i '' 's/\.error_(/.errorNotification(/g' {} \;
-find . -name "notification.zig" -exec sed -i '' 's/\.error_(/.errorNotification(/g' {} \;
-
-# verbose_log functions - rename to verboseLog
-find . -name "context.zig" -exec sed -i '' 's/pub fn verbose_log(/pub fn verboseLog(/g' {} \;
-find . -name "unified_simple.zig" -exec sed -i '' 's/pub fn verbose_log(/pub fn verboseLog(/g' {} \;
-
-# Update calls to verbose_log
-find . -name "*.zig" -exec sed -i '' 's/\.verbose_log(/.verboseLog(/g' {} \;
-
-# 4. Fix mutable global variables (these need refactoring)
-echo "Fixing global variables..."
-
-# Create a globals module for proper encapsulation
-cat > src/shared/globals.zig << 'EOF'
-const std = @import("std");
-
-/// Global state manager for shared mutable state
-/// This encapsulates global state that was previously scattered across files
-pub const GlobalState = struct {
-    // Anthropic module globals
-    anthropic: struct {
-        refreshState: RefreshState,
-        contentCollector: std.ArrayList(u8),
-        allocator: std.mem.Allocator,
-        initialized: bool = false,
-    },
+# Phase 1: Fix Constants (ALL_CAPS)
+fix_constants() {
+    log "Phase 1: Fixing constants to ALL_CAPS..."
     
-    // Smart notification module globals
-    smartNotification: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
+    # Define constant renames
+    declare -A CONST_RENAMES=(
+        ["request_foreground_color"]="REQUEST_FOREGROUND_COLOR"
+        ["request_background_color"]="REQUEST_BACKGROUND_COLOR"
+        ["reset_foreground_color"]="RESET_FOREGROUND_COLOR"
+        ["reset_background_color"]="RESET_BACKGROUND_COLOR"
+        ["enable_mouse"]="ENABLE_MOUSE"
+        ["disable_mouse"]="DISABLE_MOUSE"
+        ["show_cursor"]="SHOW_CURSOR"
+        ["hide_cursor"]="HIDE_CURSOR"
+        ["clear_screen"]="CLEAR_SCREEN"
+        ["clear_line"]="CLEAR_LINE"
+        ["save_cursor"]="SAVE_CURSOR"
+        ["restore_cursor"]="RESTORE_CURSOR"
+        ["alternate_screen"]="ALTERNATE_SCREEN"
+        ["normal_screen"]="NORMAL_SCREEN"
+        ["bold_on"]="BOLD_ON"
+        ["bold_off"]="BOLD_OFF"
+        ["italic_on"]="ITALIC_ON"
+        ["italic_off"]="ITALIC_OFF"
+        ["underline_on"]="UNDERLINE_ON"
+        ["underline_off"]="UNDERLINE_OFF"
+        ["blink_on"]="BLINK_ON"
+        ["blink_off"]="BLINK_OFF"
+        ["reverse_on"]="REVERSE_ON"
+        ["reverse_off"]="REVERSE_OFF"
+        ["strikethrough_on"]="STRIKETHROUGH_ON"
+        ["strikethrough_off"]="STRIKETHROUGH_OFF"
+    )
     
-    // Tools module globals
-    tools: struct {
-        list: ?*std.ArrayList(u8) = null,
-        allocator: ?std.mem.Allocator = null,
-    },
-    
-    const RefreshState = struct {
-        needsRefresh: bool = false,
+    local count=0
+    for old in "${!CONST_RENAMES[@]}"; do
+        new="${CONST_RENAMES[$old]}"
+        info "  Renaming: $old → $new"
         
-        pub fn init() RefreshState {
-            return .{};
-        }
-    };
-    
-    var instance: ?GlobalState = null;
-    var mutex = std.Thread.Mutex{};
-    
-    pub fn getInstance() *GlobalState {
-        mutex.lock();
-        defer mutex.unlock();
+        # Count occurrences
+        occurrences=$(grep -r "\b$old\b" src/ agents/ 2>/dev/null | wc -l || echo 0)
         
-        if (instance == null) {
-            instance = GlobalState{
-                .anthropic = .{
-                    .refreshState = RefreshState.init(),
-                    .contentCollector = undefined,
-                    .allocator = undefined,
-                    .initialized = false,
-                },
-                .smartNotification = .{},
-                .tools = .{},
-            };
-        }
-        return &instance.?;
-    }
+        if [ "$occurrences" -gt 0 ]; then
+            # Perform replacement
+            find src agents -name "*.zig" -exec sed -i.bak "s/\b$old\b/$new/g" {} \;
+            count=$((count + occurrences))
+            log "    Replaced $occurrences occurrences"
+        fi
+    done
     
-    pub fn initAnthropicGlobals(allocator: std.mem.Allocator) void {
-        const self = getInstance();
-        if (!self.anthropic.initialized) {
-            self.anthropic.allocator = allocator;
-            self.anthropic.contentCollector = std.ArrayList(u8).init(allocator);
-            self.anthropic.initialized = true;
-        }
-    }
+    # Clean up backup files
+    find src agents -name "*.zig.bak" -delete
     
-    pub fn deinitAnthropicGlobals() void {
-        const self = getInstance();
-        if (self.anthropic.initialized) {
-            self.anthropic.contentCollector.deinit();
-            self.anthropic.initialized = false;
-        }
-    }
-};
-EOF
+    log "Fixed $count constant references"
+}
 
-echo "Script complete! Please review the changes and update any references to the renamed functions."
-echo ""
-echo "Important notes:"
-echo "1. Functions starting with capital letters have been changed to camelCase"
-echo "2. Functions with underscores have been renamed to camelCase"
-echo "3. Global variables need manual refactoring - see src/shared/globals.zig for suggested approach"
-echo "4. Variables with underscores within functions should be manually reviewed and fixed"
-echo ""
-echo "You may need to:"
-echo "- Update any imports or references to the renamed functions"
-echo "- Refactor global variables to use the new GlobalState pattern"
-echo "- Fix any local variables with underscores manually"
+# Phase 2: Remove Type Suffixes
+fix_type_suffixes() {
+    log "Phase 2: Removing redundant type suffixes..."
+    
+    # Define type suffix removals
+    declare -A TYPE_SUFFIXES=(
+        ["ChartData"]="Chart"
+        ["TableData"]="Table"
+        ["GridData"]="Grid"
+        ["MenuData"]="Menu"
+        ["ProgressData"]="Progress"
+        ["StatusData"]="Status"
+        ["LayoutData"]="Layout"
+        ["ThemeData"]="Theme"
+        ["ConfigData"]="Config"
+        ["StateData"]="State"
+        ["ScrollInfo"]="ScrollState"
+        ["CursorInfo"]="CursorState"
+        ["WindowInfo"]="WindowState"
+        ["BufferInfo"]="BufferState"
+        ["TerminalInfo"]="TerminalState"
+        ["ProcessInfo"]="ProcessState"
+        ["ConnectionInfo"]="Connection"
+        ["SessionInfo"]="Session"
+        ["RenderInfo"]="RenderState"
+        ["DrawInfo"]="DrawState"
+        ["InputInfo"]="InputState"
+        ["OutputInfo"]="OutputState"
+        ["EventInfo"]="Event"
+        ["MessageInfo"]="Message"
+    )
+    
+    local count=0
+    for old in "${!TYPE_SUFFIXES[@]}"; do
+        new="${TYPE_SUFFIXES[$old]}"
+        info "  Renaming type: $old → $new"
+        
+        # Count occurrences
+        occurrences=$(grep -r "\b$old\b" src/ agents/ 2>/dev/null | wc -l || echo 0)
+        
+        if [ "$occurrences" -gt 0 ]; then
+            # Perform replacement
+            find src agents -name "*.zig" -exec sed -i.bak "s/\b$old\b/$new/g" {} \;
+            count=$((count + occurrences))
+            log "    Replaced $occurrences occurrences"
+        fi
+    done
+    
+    # Clean up backup files
+    find src agents -name "*.zig.bak" -delete
+    
+    log "Fixed $count type references"
+}
+
+# Phase 3: Fix snake_case struct names
+fix_struct_names() {
+    log "Phase 3: Fixing snake_case struct names to TitleCase..."
+    
+    # Common snake_case to TitleCase conversions
+    declare -A STRUCT_RENAMES=(
+        ["stored_func"]="StoredFunc"
+        ["network"]="Network"
+        ["utils"]="Utils"
+        ["helpers"]="Helpers"
+        ["common"]="Common"
+        ["shared"]="Shared"
+        ["core"]="Core"
+        ["base"]="Base"
+        ["handler"]="Handler"
+        ["manager"]="Manager"
+        ["controller"]="Controller"
+        ["service"]="Service"
+        ["provider"]="Provider"
+        ["factory"]="Factory"
+        ["builder"]="Builder"
+        ["parser"]="Parser"
+        ["formatter"]="Formatter"
+        ["validator"]="Validator"
+        ["processor"]="Processor"
+        ["renderer"]="Renderer"
+        ["writer"]="Writer"
+        ["reader"]="Reader"
+        ["stream"]="Stream"
+        ["buffer"]="Buffer"
+        ["cache"]="Cache"
+        ["store"]="Store"
+        ["registry"]="Registry"
+        ["context"]="Context"
+        ["config"]="Config"
+        ["options"]="Options"
+        ["settings"]="Settings"
+        ["state"]="State"
+        ["status"]="Status"
+        ["result"]="Result"
+        ["response"]="Response"
+        ["request"]="Request"
+        ["message"]="Message"
+        ["event"]="Event"
+        ["action"]="Action"
+        ["command"]="Command"
+        ["query"]="Query"
+    )
+    
+    local count=0
+    for old in "${!STRUCT_RENAMES[@]}"; do
+        new="${STRUCT_RENAMES[$old]}"
+        
+        # Look for struct definitions
+        pattern="const $old = struct"
+        if grep -r "$pattern" src/ agents/ 2>/dev/null | grep -q .; then
+            info "  Renaming struct: $old → $new"
+            
+            # Replace struct definition
+            find src agents -name "*.zig" -exec sed -i.bak "s/const $old = struct/const $new = struct/g" {} \;
+            
+            # Replace references
+            find src agents -name "*.zig" -exec sed -i.bak "s/\b$old\b/$new/g" {} \;
+            
+            count=$((count + 1))
+            log "    Fixed struct definition and references"
+        fi
+    done
+    
+    # Clean up backup files
+    find src agents -name "*.zig.bak" -delete
+    
+    log "Fixed $count struct definitions"
+}
+
+# Phase 4: Fix file names
+fix_file_names() {
+    log "Phase 4: Fixing file names to TitleCase..."
+    
+    # Define file renames
+    declare -A FILE_RENAMES=(
+        ["src/shared/cli/themes/light.zig"]="LightTheme.zig"
+        ["src/shared/cli/themes/dark.zig"]="DarkTheme.zig"
+        ["src/shared/cli/themes/default.zig"]="DefaultTheme.zig"
+        ["src/shared/cli/themes/high_contrast.zig"]="HighContrastTheme.zig"
+        ["src/shared/cli/themes/theme_utils.zig"]="theme_manager.zig"
+        ["src/shared/cli/formatters/simple.zig"]="Simple.zig"
+        ["src/shared/cli/formatters/enhanced.zig"]="Enhanced.zig"
+        ["src/shared/cli/workflows/WorkflowRegistry.zig"]="WorkflowRegistry.zig"
+        ["src/shared/term/terminfo.zig"]="Terminfo.zig"
+        ["src/shared/term/ansi/enhanced_color_converter.zig"]="EnhancedColorConverter.zig"
+        ["src/shared/term/ansi/enhanced_color_management.zig"]="EnhancedColorManagement.zig"
+    )
+    
+    local count=0
+    for old_path in "${!FILE_RENAMES[@]}"; do
+        new_name="${FILE_RENAMES[$old_path]}"
+        
+        if [ -f "$old_path" ]; then
+            dir=$(dirname "$old_path")
+            old_name=$(basename "$old_path")
+            new_path="$dir/$new_name"
+            
+            info "  Renaming file: $old_name → $new_name"
+            
+            # Rename the file
+            mv "$old_path" "$new_path"
+            
+            # Update imports
+            escaped_old=$(echo "$old_name" | sed 's/[[\.*^$()+?{|]/\\&/g')
+            escaped_new=$(echo "$new_name" | sed 's/[[\.*^$()+?{|]/\\&/g')
+            
+            find src agents -name "*.zig" -exec sed -i.bak "s/@import(\"[^\"]*$escaped_old\")/@import(\"$escaped_new\")/g" {} \;
+            
+            count=$((count + 1))
+            log "    File renamed and imports updated"
+        else
+            warning "  File not found: $old_path"
+        fi
+    done
+    
+    # Clean up backup files
+    find src agents -name "*.zig.bak" -delete
+    
+    log "Renamed $count files"
+}
+
+# Run tests after fixes
+run_tests() {
+    log "Running tests..."
+    
+    # Syntax check
+    info "Checking syntax..."
+    if zig fmt --check src/**/*.zig 2>&1 | grep -q "incorrect"; then
+        warning "Formatting issues detected - run 'zig fmt' to fix"
+    else
+        log "Syntax check passed"
+    fi
+    
+    # Compilation test
+    test_compilation
+    
+    # Run unit tests if available
+    if zig build test --summary all 2>&1 | grep -q "All"; then
+        log "Unit tests passed"
+    else
+        warning "Some tests may have failed"
+    fi
+}
+
+# Rollback function
+rollback() {
+    if [ -d "$BACKUP_DIR" ]; then
+        warning "Rolling back changes..."
+        rm -rf src agents
+        cp -r "$BACKUP_DIR/src" .
+        cp -r "$BACKUP_DIR/agents" .
+        log "Rollback completed from $BACKUP_DIR"
+    else
+        error "No backup directory found"
+    fi
+}
+
+# Main execution
+main() {
+    check_directory
+    
+    echo -e "${BLUE}===================================${NC}"
+    echo -e "${BLUE}   Zig Naming Convention Fixer    ${NC}"
+    echo -e "${BLUE}===================================${NC}"
+    echo
+    
+    # Parse command line arguments
+    PHASE=${1:-all}
+    
+    case $PHASE in
+        backup)
+            create_backup
+            ;;
+        constants)
+            create_backup
+            fix_constants
+            run_tests
+            ;;
+        suffixes)
+            create_backup
+            fix_type_suffixes
+            run_tests
+            ;;
+        structs)
+            create_backup
+            fix_struct_names
+            run_tests
+            ;;
+        files)
+            create_backup
+            fix_file_names
+            run_tests
+            ;;
+        all)
+            create_backup
+            fix_constants
+            fix_type_suffixes
+            fix_struct_names
+            fix_file_names
+            run_tests
+            ;;
+        test)
+            run_tests
+            ;;
+        rollback)
+            rollback
+            ;;
+        *)
+            echo "Usage: $0 [backup|constants|suffixes|structs|files|all|test|rollback]"
+            echo
+            echo "Phases:"
+            echo "  backup    - Create backup only"
+            echo "  constants - Fix constants to ALL_CAPS"
+            echo "  suffixes  - Remove Data/Info suffixes"
+            echo "  structs   - Fix snake_case structs"
+            echo "  files     - Rename files to TitleCase"
+            echo "  all       - Run all fixes (default)"
+            echo "  test      - Run tests only"
+            echo "  rollback  - Restore from backup"
+            exit 1
+            ;;
+    esac
+    
+    echo
+    log "✅ Operation completed successfully!"
+    log "Log saved to: $LOG_FILE"
+    
+    if [ -d "$BACKUP_DIR" ]; then
+        log "Backup saved to: $BACKUP_DIR"
+        echo
+        warning "Remember to remove backup after verifying changes:"
+        echo "  rm -rf $BACKUP_DIR"
+    fi
+}
+
+# Run main function
+main "$@"

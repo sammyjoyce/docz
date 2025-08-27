@@ -85,17 +85,17 @@ pub const CapabilitySet = struct {
 // Smart Components (simplified versions)
 // =============================================================================
 
-pub const NotificationManager = struct {
+pub const NotificationHandler = struct {
     capabilities: CapabilitySet,
     enabled: bool = true,
 
-    pub fn init(capabilities: CapabilitySet) NotificationManager {
-        return NotificationManager{
+    pub fn init(capabilities: CapabilitySet) NotificationHandler {
+        return NotificationHandler{
             .capabilities = capabilities,
         };
     }
 
-    pub fn send(self: *NotificationManager, title: []const u8, message: ?[]const u8) !void {
+    pub fn send(self: *NotificationHandler, title: []const u8, message: ?[]const u8) !void {
         if (!self.enabled) return;
 
         if (self.capabilities.notifications) {
@@ -116,14 +116,14 @@ pub const NotificationManager = struct {
     }
 };
 
-pub const ClipboardManager = struct {
+pub const Clipboard = struct {
     capabilities: CapabilitySet,
 
-    pub fn init(capabilities: CapabilitySet) ClipboardManager {
-        return ClipboardManager{ .capabilities = capabilities };
+    pub fn init(capabilities: CapabilitySet) Clipboard {
+        return Clipboard{ .capabilities = capabilities };
     }
 
-    pub fn copy(self: *ClipboardManager, data: []const u8) !void {
+    pub fn copy(self: *Clipboard, data: []const u8) !void {
         if (self.capabilities.clipboard) {
             // Would use OSC 52 to copy to clipboard
             std.debug.print("📋 Copied to clipboard: {s}\n", .{data[0..@min(50, data.len)]});
@@ -133,14 +133,14 @@ pub const ClipboardManager = struct {
     }
 };
 
-pub const HyperlinkManager = struct {
+pub const Hyperlink = struct {
     capabilities: CapabilitySet,
 
-    pub fn init(capabilities: CapabilitySet) HyperlinkManager {
-        return HyperlinkManager{ .capabilities = capabilities };
+    pub fn init(capabilities: CapabilitySet) Hyperlink {
+        return Hyperlink{ .capabilities = capabilities };
     }
 
-    pub fn writeLink(self: *HyperlinkManager, writer: anytype, url: []const u8, text: []const u8) !void {
+    pub fn writeLink(self: *Hyperlink, writer: anytype, url: []const u8, text: []const u8) !void {
         if (self.capabilities.hyperlinks) {
             // Would use OSC 8 for actual hyperlinks
             try writer.print("\x1b]8;;{s}\x1b\\{s}\x1b]8;;\x1b\\", .{ url, text });
@@ -154,27 +154,27 @@ pub const HyperlinkManager = struct {
 // CLI Context - Central coordination
 // =============================================================================
 
-pub const CliContext = struct {
+pub const Cli = struct {
     allocator: std.mem.Allocator,
     capabilities: CapabilitySet,
-    notification: NotificationManager,
-    clipboard: ClipboardManager,
-    hyperlink: HyperlinkManager,
+    notification: NotificationHandler,
+    clipboard: Clipboard,
+    hyperlink: Hyperlink,
     verbose: bool = false,
 
-    pub fn init(allocator: std.mem.Allocator) CliContext {
+    pub fn init(allocator: std.mem.Allocator) Cli {
         const capabilities = CapabilitySet.detect();
 
-        return CliContext{
+        return Cli{
             .allocator = allocator,
             .capabilities = capabilities,
-            .notification = NotificationManager.init(capabilities),
-            .clipboard = ClipboardManager.init(capabilities),
-            .hyperlink = HyperlinkManager.init(capabilities),
+            .notification = NotificationHandler.init(capabilities),
+            .clipboard = Clipboard.init(capabilities),
+            .hyperlink = Hyperlink.init(capabilities),
         };
     }
 
-    pub fn hasFeature(self: *CliContext, feature: enum { hyperlinks, clipboard, notifications, graphics, truecolor, mouse }) bool {
+    pub fn hasFeature(self: *Cli, feature: enum { hyperlinks, clipboard, notifications, graphics, truecolor, mouse }) bool {
         return switch (feature) {
             .hyperlinks => self.capabilities.hyperlinks,
             .clipboard => self.capabilities.clipboard,
@@ -185,7 +185,7 @@ pub const CliContext = struct {
         };
     }
 
-    pub fn capabilitySummary(self: *CliContext) []const u8 {
+    pub fn capabilitySummary(self: *Cli) []const u8 {
         if (self.capabilities.hyperlinks and self.capabilities.clipboard and self.capabilities.graphics) {
             return "Full Enhanced Terminal";
         } else if (self.capabilities.hyperlinks or self.capabilities.clipboard) {
@@ -195,11 +195,11 @@ pub const CliContext = struct {
         }
     }
 
-    pub fn enableVerbose(self: *CliContext) void {
+    pub fn enableVerbose(self: *Cli) void {
         self.verbose = true;
     }
 
-    pub fn verboseLog(self: *CliContext, comptime fmt: []const u8, args: anytype) void {
+    pub fn verboseLog(self: *Cli, comptime fmt: []const u8, args: anytype) void {
         if (self.verbose) {
             std.debug.print("[VERBOSE] " ++ fmt ++ "\n", args);
         }
@@ -212,9 +212,9 @@ pub const CliContext = struct {
 
 pub const CommandRouter = struct {
     allocator: std.mem.Allocator,
-    context: *CliContext,
+    context: *Cli,
 
-    pub fn init(allocator: std.mem.Allocator, ctx: *CliContext) CommandRouter {
+    pub fn init(allocator: std.mem.Allocator, ctx: *Cli) CommandRouter {
         return CommandRouter{
             .allocator = allocator,
             .context = ctx,
@@ -446,11 +446,11 @@ pub const CommandRouter = struct {
 
 pub const CliApp = struct {
     allocator: std.mem.Allocator,
-    context: CliContext,
+    context: Cli,
     router: CommandRouter,
 
     pub fn init(allocator: std.mem.Allocator) CliApp {
-        var context = CliContext.init(allocator);
+        var context = Cli.init(allocator);
         const router = CommandRouter.init(allocator, &context);
 
         return CliApp{
@@ -541,7 +541,7 @@ pub fn main() !void {
     std.debug.print("✅ Successfully demonstrated unified CLI architecture\n", .{});
 }
 
-fn demoSmartComponents(ctx: *CliContext) void {
+fn demoSmartComponents(ctx: *Cli) void {
     std.debug.print("Smart Component Examples:\n\n", .{});
 
     // Hyperlink example

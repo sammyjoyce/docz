@@ -28,10 +28,10 @@ pub const Event = union(enum) {
 pub const Dimensions = struct {
     width: u16,
     height: u16,
-    min_width: u16 = 0,
-    min_height: u16 = 0,
-    max_width: u16 = std.math.maxInt(u16),
-    max_height: u16 = std.math.maxInt(u16),
+    minWidth: u16 = 0,
+    minHeight: u16 = 0,
+    maxWidth: u16 = std.math.maxInt(u16),
+    maxHeight: u16 = std.math.maxInt(u16),
 };
 
 // Layout managers
@@ -42,12 +42,12 @@ pub const Layout = enum {
     absolute,
 };
 
-pub const LayoutManager = struct {
-    layout_type: Layout,
+pub const LayoutConfig = struct {
+    layoutType: Layout,
     spacing: u8 = 0,
     padding: u8 = 0,
 
-    pub fn arrange(self: LayoutManager, comps: []Component, area: Dimensions) ![]Dimensions {
+    pub fn arrange(self: LayoutConfig, comps: []Component, area: Dimensions) ![]Dimensions {
         // Implementation would calculate positions for each component
         _ = self;
         _ = comps;
@@ -57,7 +57,7 @@ pub const LayoutManager = struct {
 };
 
 // Common UI utilities
-pub const utils = struct {
+pub const Utils = struct {
     /// Wrap text to fit within a given width
     pub fn wrapText(allocator: std.mem.Allocator, text: []const u8, width: usize) ![][]const u8 {
         var lines = std.ArrayList([]const u8).init(allocator);
@@ -87,19 +87,19 @@ pub const utils = struct {
     }
 
     /// Truncate text with ellipsis if it exceeds max length
-    pub fn truncateText(allocator: std.mem.Allocator, text: []const u8, max_len: usize) ![]const u8 {
-        if (text.len <= max_len) {
+    pub fn truncateText(allocator: std.mem.Allocator, text: []const u8, maxLen: usize) ![]const u8 {
+        if (text.len <= maxLen) {
             return try allocator.dupe(u8, text);
         }
 
         const ellipsis = "...";
-        if (max_len <= ellipsis.len) {
-            return try allocator.dupe(u8, ellipsis[0..max_len]);
+        if (maxLen <= ellipsis.len) {
+            return try allocator.dupe(u8, ellipsis[0..maxLen]);
         }
 
-        var result = try allocator.alloc(u8, max_len);
-        @memcpy(result[0 .. max_len - ellipsis.len], text[0 .. max_len - ellipsis.len]);
-        @memcpy(result[max_len - ellipsis.len ..], ellipsis);
+        var result = try allocator.alloc(u8, maxLen);
+        @memcpy(result[0 .. maxLen - ellipsis.len], text[0 .. maxLen - ellipsis.len]);
+        @memcpy(result[maxLen - ellipsis.len ..], ellipsis);
         return result;
     }
 
@@ -145,14 +145,14 @@ pub const NamedColor = enum {
     magenta,
     cyan,
     white,
-    bright_black,
-    bright_red,
-    bright_green,
+    brightBlack,
+    BRIGHT_RED,
+    BRIGHT_GREEN,
     bright_yellow,
-    bright_blue,
-    bright_magenta,
-    bright_cyan,
-    bright_white,
+    BRIGHT_BLUE,
+    BRIGHT_MAGENTA,
+    BRIGHT_CYAN,
+    BRIGHT_WHITE,
 };
 
 /// Apply style to text (returns ANSI-styled text)

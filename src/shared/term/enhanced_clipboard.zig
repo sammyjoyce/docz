@@ -148,25 +148,25 @@ pub fn parseClipboardResponse(alloc: std.mem.Allocator, response: []const u8) !?
 }
 
 /// High-level clipboard manager
-pub const ClipboardManager = struct {
+pub const Clipboard = struct {
     alloc: std.mem.Allocator,
 
-    pub fn init(alloc: std.mem.Allocator) ClipboardManager {
-        return ClipboardManager{ .alloc = alloc };
+    pub fn init(alloc: std.mem.Allocator) Clipboard {
+        return Clipboard{ .alloc = alloc };
     }
 
     /// Copy text to system clipboard
-    pub fn copy(self: *ClipboardManager, text: []const u8) ![]u8 {
+    pub fn copy(self: *Clipboard, text: []const u8) ![]u8 {
         return setSystemClipboard(self.alloc, text);
     }
 
     /// Copy text to primary clipboard (X11 selection)
-    pub fn copyToPrimary(self: *ClipboardManager, text: []const u8) ![]u8 {
+    pub fn copyToPrimary(self: *Clipboard, text: []const u8) ![]u8 {
         return setPrimaryClipboard(self.alloc, text);
     }
 
     /// Copy to both system and primary clipboards
-    pub fn copyToBoth(self: *ClipboardManager, text: []const u8) ![]u8 {
+    pub fn copyToBoth(self: *Clipboard, text: []const u8) ![]u8 {
         const sys_seq = try setSystemClipboard(self.alloc, text);
         defer self.alloc.free(sys_seq);
 
@@ -184,17 +184,17 @@ pub const ClipboardManager = struct {
     }
 
     /// Clear system clipboard
-    pub fn clear(self: *ClipboardManager) ![]u8 {
+    pub fn clear(self: *Clipboard) ![]u8 {
         return clearSystemClipboard(self.alloc);
     }
 
     /// Request clipboard content
-    pub fn request(self: *ClipboardManager) ![]u8 {
+    pub fn request(self: *Clipboard) ![]u8 {
         return requestSystemClipboard(self.alloc);
     }
 
     /// Request primary clipboard content
-    pub fn requestPrimary(self: *ClipboardManager) ![]u8 {
+    pub fn requestPrimary(self: *Clipboard) ![]u8 {
         return requestPrimaryClipboard(self.alloc);
     }
 };
@@ -276,7 +276,7 @@ test "clipboard manager" {
     const testing = std.testing;
     const alloc = testing.allocator;
 
-    var manager = ClipboardManager.init(alloc);
+    var manager = Clipboard.init(alloc);
 
     const copy_seq = try manager.copy("Test data");
     defer alloc.free(copy_seq);

@@ -41,22 +41,22 @@ pub const Event = union(enum) {
             down,
             left,
             right,
-            page_up,
-            page_down,
-            home,
-            end,
-            f1,
-            f2,
-            f3,
-            f4,
-            f5,
-            f6,
-            f7,
-            f8,
-            f9,
-            f10,
-            f11,
-            f12,
+            PAGE_UP,
+            PAGE_DOWN,
+            HOME,
+            END,
+            F1,
+            F2,
+            F3,
+            F4,
+            F5,
+            F6,
+            F7,
+            F8,
+            F9,
+            F10,
+            F11,
+            F12,
         };
 
         pub const KeyModifiers = packed struct {
@@ -75,19 +75,19 @@ pub const Event = union(enum) {
             left,
             right,
             middle,
-            wheel_up,
-            wheel_down,
+            WHEEL_UP,
+            WHEEL_DOWN,
         };
 
         pub const MouseAction = enum {
-            press,
-            release,
-            move,
+            PRESS,
+            RELEASE,
+            MOVE,
         };
     };
 
     pub const ResizeEvent = struct {
-        new_size: Rect,
+        newSize: Rect,
     };
 
     pub const FocusEvent = struct {
@@ -107,7 +107,7 @@ pub const ComponentState = struct {
     focused: bool = false,
     dirty: bool = true, // Needs redraw
     bounds: Rect = .{ .x = 0, .y = 0, .width = 0, .height = 0 },
-    z_index: i32 = 0,
+    zIndex: i32 = 0,
 
     pub fn markDirty(self: *ComponentState) void {
         self.dirty = true;
@@ -119,27 +119,27 @@ pub const ComponentState = struct {
 };
 
 /// Context passed to component methods
-pub const RenderContext = struct {
+pub const Render = struct {
     terminal: *Terminal,
     graphics: ?*GraphicsManager,
-    parent_bounds: Rect,
-    clip_region: ?Rect,
+    parentBounds: Rect,
+    clipRegion: ?Rect,
     theme: *Theme,
-    frame_time: i64, // For animations
+    frameTime: i64, // For animations
 
-    pub fn clipped(self: RenderContext, clip_bounds: Rect) RenderContext {
-        const intersection = if (self.clip_region) |existing|
+    pub fn clipped(self: Render, clip_bounds: Rect) Render {
+        const intersection = if (self.clipRegion) |existing|
             intersectRects(existing, clip_bounds)
         else
             clip_bounds;
 
-        return RenderContext{
+        return Render{
             .terminal = self.terminal,
             .graphics = self.graphics,
-            .parent_bounds = self.parent_bounds,
-            .clip_region = intersection,
+            .parentBounds = self.parentBounds,
+            .clipRegion = intersection,
             .theme = self.theme,
-            .frame_time = self.frame_time,
+            .frameTime = self.frameTime,
         };
     }
 };
@@ -156,7 +156,7 @@ pub const Theme = struct {
         secondary: Color = unified.Colors.CYAN,
         success: Color = unified.Colors.GREEN,
         warning: Color = unified.Colors.YELLOW,
-        error_color: Color = unified.Colors.RED,
+        errorColor: Color = unified.Colors.RED,
         background: Color = unified.Colors.BLACK,
         foreground: Color = unified.Colors.WHITE,
         border: Color = unified.Colors.BRIGHT_BLACK,
@@ -164,16 +164,16 @@ pub const Theme = struct {
     };
 
     pub const Typography = struct {
-        default_style: Style = .{},
-        header_style: Style = .{ .bold = true },
-        emphasis_style: Style = .{ .italic = true },
-        code_style: Style = .{ .fg_color = unified.Colors.CYAN },
+        defaultStyle: Style = .{},
+        headerStyle: Style = .{ .bold = true },
+        emphasisStyle: Style = .{ .italic = true },
+        codeStyle: Style = .{ .fg_color = unified.Colors.CYAN },
     };
 
     pub const Spacing = struct {
         padding: u32 = 1,
         margin: u32 = 1,
-        border_width: u32 = 1,
+        borderWidth: u32 = 1,
     };
 
     pub const AnimationSettings = struct {
@@ -211,7 +211,7 @@ pub const Theme = struct {
             theme.colors.secondary = unified.Colors.BRIGHT_CYAN;
             theme.colors.success = unified.Colors.BRIGHT_GREEN;
             theme.colors.warning = unified.Colors.BRIGHT_YELLOW;
-            theme.colors.error_color = unified.Colors.BRIGHT_RED;
+            theme.colors.errorColor = unified.Colors.BRIGHT_RED;
         }
 
         // Disable animations for very basic terminals
@@ -238,7 +238,7 @@ pub const Component = struct {
         setState: *const fn (impl: *anyopaque, state: ComponentState) void,
 
         // Rendering
-        render: *const fn (impl: *anyopaque, ctx: RenderContext) anyerror!void,
+        render: *const fn (impl: *anyopaque, ctx: Render) anyerror!void,
         measure: *const fn (impl: *anyopaque, available: Rect) Rect,
 
         // Event handling
@@ -274,7 +274,7 @@ pub const Component = struct {
         return self.vtable.setState(self.impl, state);
     }
 
-    pub inline fn render(self: *Self, ctx: RenderContext) !void {
+    pub inline fn render(self: *Self, ctx: Render) !void {
         const state = self.getState();
         if (!state.visible) return;
 
@@ -347,22 +347,22 @@ pub const Component = struct {
     }
 };
 
-/// Component manager for handling component lifecycle and events
-pub const ComponentManager = struct {
+/// Component registry for handling component lifecycle and events
+pub const ComponentRegistry = struct {
     const Self = @This();
 
     allocator: std.mem.Allocator,
     components: std.ArrayList(*Component),
-    focused_component: ?*Component,
-    next_id: ComponentId,
+    focusedComponent: ?*Component,
+    nextId: ComponentId,
     theme: Theme,
 
     pub fn init(allocator: std.mem.Allocator, terminal: *Terminal) Self {
         return Self{
             .allocator = allocator,
             .components = std.ArrayList(*Component).init(allocator),
-            .focused_component = null,
-            .next_id = 1,
+            .focusedComponent = null,
+            .nextId = 1,
             .theme = Theme.forTerminal(terminal),
         };
     }
@@ -376,8 +376,8 @@ pub const ComponentManager = struct {
     }
 
     pub fn addComponent(self: *Self, component: *Component) !void {
-        component.id = self.next_id;
-        self.next_id += 1;
+        component.id = self.nextId;
+        self.nextId += 1;
 
         try component.init(self.allocator);
         try self.components.append(component);
@@ -395,13 +395,13 @@ pub const ComponentManager = struct {
     }
 
     pub fn setFocus(self: *Self, component: ?*Component) void {
-        if (self.focused_component) |focused| {
+        if (self.focusedComponent) |focused| {
             var state = focused.getState();
             state.focused = false;
             state.markDirty();
         }
 
-        self.focused_component = component;
+        self.focusedComponent = component;
 
         if (component) |comp| {
             var state = comp.getState();
@@ -412,7 +412,7 @@ pub const ComponentManager = struct {
 
     pub fn handleEvent(self: *Self, event: Event) !bool {
         // Try focused component first
-        if (self.focused_component) |focused| {
+        if (self.focusedComponent) |focused| {
             if (try focused.handleEvent(event)) return true;
         }
 
@@ -423,7 +423,7 @@ pub const ComponentManager = struct {
         std.sort.sort(*Component, sorted_components, {}, compareZIndex);
 
         for (sorted_components) |component| {
-            if (component != self.focused_component) {
+            if (component != self.focusedComponent) {
                 if (try component.handleEvent(event)) return true;
             }
         }
@@ -431,7 +431,7 @@ pub const ComponentManager = struct {
         return false;
     }
 
-    pub fn render(self: *Self, ctx: RenderContext) !void {
+    pub fn render(self: *Self, ctx: Render) !void {
         // Sort components by z-index for proper layering
         const sorted_components = try self.allocator.dupe(*Component, self.components.items);
         defer self.allocator.free(sorted_components);
@@ -458,12 +458,12 @@ pub const ComponentManager = struct {
 
     fn compareZIndex(context: void, a: *Component, b: *Component) bool {
         _ = context;
-        return a.getState().z_index < b.getState().z_index;
+        return a.getState().zIndex < b.getState().zIndex;
     }
 
     fn compareZIndexReverse(context: void, a: *Component, b: *Component) bool {
         _ = context;
-        return a.getState().z_index > b.getState().z_index;
+        return a.getState().zIndex > b.getState().zIndex;
     }
 };
 

@@ -520,7 +520,7 @@ pub const UnifiedRenderer = struct {
     pub fn drawBox(self: *Self, bounds: Rect, border: bool, title: ?[]const u8) !void {
         if (border) {
             // Draw border using Unicode box-drawing characters
-            const box_chars = struct {
+            const BoxChars = struct {
                 const top_left = "┌";
                 const top_right = "┐";
                 const bottom_left = "└";
@@ -530,24 +530,24 @@ pub const UnifiedRenderer = struct {
             };
 
             // Top border
-            try self.drawText(bounds.x, bounds.y, box_chars.top_left, null, null);
+            try self.drawText(bounds.x, bounds.y, BoxChars.top_left, null, null);
             for (1..bounds.width - 1) |i| {
-                try self.drawText(bounds.x + @as(i16, @intCast(i)), bounds.y, box_chars.horizontal, null, null);
+                try self.drawText(bounds.x + @as(i16, @intCast(i)), bounds.y, BoxChars.horizontal, null, null);
             }
-            try self.drawText(bounds.x + @as(i16, @intCast(bounds.width)) - 1, bounds.y, box_chars.top_right, null, null);
+            try self.drawText(bounds.x + @as(i16, @intCast(bounds.width)) - 1, bounds.y, BoxChars.top_right, null, null);
 
             // Sides
             for (1..bounds.height - 1) |i| {
-                try self.drawText(bounds.x, bounds.y + @as(i16, @intCast(i)), box_chars.vertical, null, null);
-                try self.drawText(bounds.x + @as(i16, @intCast(bounds.width)) - 1, bounds.y + @as(i16, @intCast(i)), box_chars.vertical, null, null);
+                try self.drawText(bounds.x, bounds.y + @as(i16, @intCast(i)), BoxChars.vertical, null, null);
+                try self.drawText(bounds.x + @as(i16, @intCast(bounds.width)) - 1, bounds.y + @as(i16, @intCast(i)), BoxChars.vertical, null, null);
             }
 
             // Bottom border
-            try self.drawText(bounds.x, bounds.y + @as(i16, @intCast(bounds.height)) - 1, box_chars.bottom_left, null, null);
+            try self.drawText(bounds.x, bounds.y + @as(i16, @intCast(bounds.height)) - 1, BoxChars.bottom_left, null, null);
             for (1..bounds.width - 1) |i| {
-                try self.drawText(bounds.x + @as(i16, @intCast(i)), bounds.y + @as(i16, @intCast(bounds.height)) - 1, box_chars.horizontal, null, null);
+                try self.drawText(bounds.x + @as(i16, @intCast(i)), bounds.y + @as(i16, @intCast(bounds.height)) - 1, BoxChars.horizontal, null, null);
             }
-            try self.drawText(bounds.x + @as(i16, @intCast(bounds.width)) - 1, bounds.y + @as(i16, @intCast(bounds.height)) - 1, box_chars.bottom_right, null, null);
+            try self.drawText(bounds.x + @as(i16, @intCast(bounds.width)) - 1, bounds.y + @as(i16, @intCast(bounds.height)) - 1, BoxChars.bottom_right, null, null);
 
             // Title
             if (title) |t| {

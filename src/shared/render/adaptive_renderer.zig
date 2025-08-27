@@ -1,8 +1,8 @@
 const std = @import("std");
-const unified = @import("../term/unified.zig");
-const caps = @import("../term/caps.zig");
-const graphics_manager = @import("../term/graphics_manager.zig");
-const Color = @import("../term/ansi/color.zig").Color;
+const unified = @import("term_shared").unified;
+const caps = @import("term_shared").caps;
+const graphics_manager = @import("term_shared").graphics_manager;
+const Color = @import("term_shared").ansi.color.Color;
 
 /// Adaptive renderer that optimizes visual output based on terminal capabilities
 pub const AdaptiveRenderer = struct {
@@ -144,62 +144,62 @@ pub const AdaptiveRenderer = struct {
 
     /// Get current terminal dimensions
     pub fn getSize(self: *const AdaptiveRenderer) !struct { width: u16, height: u16 } {
-        return try self.unified_terminal.getTerminalSize();
+        return try self.terminal.getTerminalSize();
     }
 
     /// Clear screen with proper handling for all render modes
     pub fn clearScreen(self: *AdaptiveRenderer) !void {
-        try self.unified_terminal.clearScreen();
+        try self.terminal.clearScreen();
     }
 
     /// Move cursor to position (0-based coordinates)
     pub fn moveCursor(self: *AdaptiveRenderer, x: u16, y: u16) !void {
-        try self.unified_terminal.moveCursor(x, y);
+        try self.terminal.moveCursor(x, y);
     }
 
     /// Write text with optional color and style
     pub fn writeText(self: *AdaptiveRenderer, text: []const u8, color: ?Color, bold: bool) !void {
         if (color) |c| {
-            try self.unified_terminal.setForegroundColor(c);
+            try self.terminal.setForegroundColor(c);
         }
 
         if (bold and self.render_mode != .minimal) {
-            try self.unified_terminal.setBold(true);
+            try self.terminal.setBold(true);
         }
 
-        try self.unified_terminal.writeText(text);
+        try self.terminal.writeText(text);
 
         if (bold and self.render_mode != .minimal) {
-            try self.unified_terminal.setBold(false);
+            try self.terminal.setBold(false);
         }
 
         if (color != null) {
-            try self.unified_terminal.resetColor();
+            try self.terminal.resetColor();
         }
     }
 
     /// Start synchronized output for flicker-free updates (if supported)
     pub fn beginSynchronized(self: *AdaptiveRenderer) !void {
         if (self.render_mode == .enhanced and self.capabilities.supportsSynchronizedOutput()) {
-            try self.unified_terminal.beginSynchronizedOutput();
+            try self.terminal.beginSynchronizedOutput();
         }
     }
 
     /// End synchronized output
     pub fn endSynchronized(self: *AdaptiveRenderer) !void {
         if (self.render_mode == .enhanced and self.capabilities.supportsSynchronizedOutput()) {
-            try self.unified_terminal.endSynchronizedOutput();
+            try self.terminal.endSynchronizedOutput();
         }
     }
 
     /// Flush output buffer
     pub fn flush(self: *AdaptiveRenderer) !void {
-        try self.unified_terminal.flush();
+        try self.terminal.flush();
     }
 
     /// Get information about current rendering capabilities
-    pub fn getRenderingInfo(self: *const AdaptiveRenderer) RenderingInfo {
-        return RenderingInfo{
+    pub fn getRenderingInfo(self: *const AdaptiveRenderer) Rendering {
+        return Rendering{
             .mode = self.render_mode,
             .supports_truecolor = self.capabilities.supportsTruecolor,
             .supports_256_color = self.capabilities.supportsTruecolor, // Use truecolor as proxy for 256 color
@@ -211,7 +211,7 @@ pub const AdaptiveRenderer = struct {
         };
     }
 
-    pub const RenderingInfo = struct {
+    pub const Rendering = struct {
         mode: RenderMode,
         supports_truecolor: bool,
         supports_256_color: bool,
@@ -221,7 +221,7 @@ pub const AdaptiveRenderer = struct {
         supports_synchronized: bool,
         terminal_name: []const u8,
 
-        pub fn print(self: RenderingInfo, writer: anytype) !void {
+        pub fn print(self: Rendering, writer: anytype) !void {
             try writer.print("Rendering Mode: {s}\n", .{self.mode.description()});
             try writer.print("Terminal: {s}\n", .{self.terminal_name});
             try writer.print("Features:\n");

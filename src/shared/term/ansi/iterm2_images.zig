@@ -83,14 +83,14 @@ pub const AnimationFrame = struct {
 };
 
 // Animation metadata
-pub const AnimationInfo = struct {
+pub const Animation = struct {
     frame_count: u32,
     loop_count: u32, // 0 = infinite
     width: u32,
     height: u32,
     frames: []AnimationFrame,
 
-    pub fn deinit(self: *AnimationInfo, allocator: std.mem.Allocator) void {
+    pub fn deinit(self: *Animation, allocator: std.mem.Allocator) void {
         for (self.frames) |frame| {
             allocator.free(frame.data);
         }
@@ -109,7 +109,7 @@ pub const ImageOptions = struct {
     base: iterm2.ITerm2FileOptions = .{},
     format: ?ImageFormat = null, // Auto-detect if null
     chunk_config: ChunkConfig = .{},
-    animation_info: ?AnimationInfo = null,
+    animation_info: ?Animation = null,
     validate_data: bool = true,
 };
 
@@ -167,7 +167,7 @@ pub fn displayAnimation(
     writer: anytype,
     allocator: std.mem.Allocator,
     caps: TermCaps,
-    anim: AnimationInfo,
+    anim: Animation,
     base_opts: iterm2.ITerm2FileOptions,
 ) !void {
     if (!caps.supportsITerm2Osc1337) return ImageError.Unsupported;

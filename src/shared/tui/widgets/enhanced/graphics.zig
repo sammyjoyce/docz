@@ -35,7 +35,7 @@ pub const DisplayOptions = struct {
     height: ?u32 = null, // Display height in cells (null = original)
     x: u32 = 0, // X position in cells
     y: u32 = 0, // Y position in cells
-    z_index: i32 = 0, // Z-index for layering
+    zIndex: i32 = 0, // Z-index for layering
     scale: ?f32 = null, // Scale factor (null = no scaling)
     preserve_aspect: bool = true, // Maintain aspect ratio
     placeholder_char: u8 = ' ', // Character to use as placeholder

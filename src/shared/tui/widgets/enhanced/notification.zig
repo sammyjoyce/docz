@@ -13,7 +13,7 @@ pub const NotificationLevel = enum {
     info,
     success,
     warning,
-    err,
+    error_,
     debug,
 
     pub fn getIcon(self: NotificationLevel) []const u8 {
@@ -21,7 +21,7 @@ pub const NotificationLevel = enum {
             .info => "ℹ",
             .success => "✓",
             .warning => "⚠",
-            .err => "✗",
+            .error_ => "✗",
             .debug => "🐛",
         };
     }
@@ -32,7 +32,7 @@ pub const NotificationLevel = enum {
                 .info => "\x1b[38;2;100;149;237m", // Cornflower blue
                 .success => "\x1b[38;2;50;205;50m", // Lime green
                 .warning => "\x1b[38;2;255;215;0m", // Gold
-                .err => "\x1b[38;2;220;20;60m", // Crimson
+                .error_ => "\x1b[38;2;220;20;60m", // Crimson
                 .debug => "\x1b[38;2;138;43;226m", // Blue violet
             };
         } else if (caps.supports256Color()) {
@@ -40,7 +40,7 @@ pub const NotificationLevel = enum {
                 .info => "\x1b[38;5;12m", // Bright blue
                 .success => "\x1b[38;5;10m", // Bright green
                 .warning => "\x1b[38;5;11m", // Bright yellow
-                .err => "\x1b[38;5;9m", // Bright red
+                .error_ => "\x1b[38;5;9m", // Bright red
                 .debug => "\x1b[38;5;13m", // Bright magenta
             };
         } else {
@@ -308,28 +308,28 @@ pub const Notification = struct {
     }
 };
 
-/// Notification Manager for handling multiple notifications
-pub const NotificationManager = struct {
+/// Notification Controller for handling multiple notifications
+pub const NotificationController = struct {
     notifications: std.ArrayList(Notification),
     allocator: std.mem.Allocator,
     max_concurrent: u32,
 
-    pub fn init(allocator: std.mem.Allocator) NotificationManager {
-        return NotificationManager{
+    pub fn init(allocator: std.mem.Allocator) NotificationController {
+        return NotificationController{
             .notifications = std.ArrayList(Notification).init(allocator),
             .allocator = allocator,
             .max_concurrent = 3, // Limit concurrent notifications
         };
     }
 
-    pub fn deinit(self: *NotificationManager) void {
+    pub fn deinit(self: *NotificationController) void {
         for (self.notifications.items) |*notification| {
             notification.hide() catch {}; // Best effort cleanup
         }
         self.notifications.deinit();
     }
 
-    pub fn notify(self: *NotificationManager, message: []const u8, options: NotificationOptions) !void {
+    pub fn notify(self: *NotificationController, message: []const u8, options: NotificationOptions) !void {
         // Clean up old notifications if we're at the limit
         try self.cleanup();
 
@@ -338,34 +338,34 @@ pub const NotificationManager = struct {
         try self.notifications.append(notification);
     }
 
-    pub fn info(self: *NotificationManager, message: []const u8) !void {
+    pub fn info(self: *NotificationController, message: []const u8) !void {
         try self.notify(message, NotificationOptions{ .level = .info });
     }
 
-    pub fn success(self: *NotificationManager, message: []const u8) !void {
+    pub fn success(self: *NotificationController, message: []const u8) !void {
         try self.notify(message, NotificationOptions{ .level = .success });
     }
 
-    pub fn warning(self: *NotificationManager, message: []const u8) !void {
+    pub fn warning(self: *NotificationController, message: []const u8) !void {
         try self.notify(message, NotificationOptions{ .level = .warning });
     }
 
-    pub fn errorNotification(self: *NotificationManager, message: []const u8) !void {
-        try self.notify(message, NotificationOptions{ .level = .err });
+    pub fn errorNotification(self: *NotificationController, message: []const u8) !void {
+        try self.notify(message, NotificationOptions{ .level = .error_ });
     }
 
-    pub fn debug(self: *NotificationManager, message: []const u8) !void {
+    pub fn debug(self: *NotificationController, message: []const u8) !void {
         try self.notify(message, NotificationOptions{ .level = .debug });
     }
 
-    pub fn clearAll(self: *NotificationManager) !void {
+    pub fn clearAll(self: *NotificationController) !void {
         for (self.notifications.items) |*notification| {
             try notification.hide();
         }
         self.notifications.clearAndFree();
     }
 
-    fn cleanup(self: *NotificationManager) !void {
+    fn cleanup(self: *NotificationController) !void {
         const now = std.time.timestamp();
         var i: usize = 0;
 
@@ -408,7 +408,7 @@ pub fn warning(allocator: std.mem.Allocator, message: []const u8) !void {
 }
 
 pub fn errorNotification(allocator: std.mem.Allocator, message: []const u8) !void {
-    try notify(allocator, message, NotificationOptions{ .level = .err });
+    try notify(allocator, message, NotificationOptions{ .level = .error_ });
 }
 
 pub fn debug(allocator: std.mem.Allocator, message: []const u8) !void {

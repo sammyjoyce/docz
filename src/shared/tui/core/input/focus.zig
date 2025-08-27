@@ -2,31 +2,31 @@
 //! Provides focus tracking and management capabilities
 const std = @import("std");
 
-/// Focus state manager
-pub const FocusManager = struct {
+/// Focus state controller
+pub const Focus = struct {
     has_focus: bool,
     handlers: std.ArrayListUnmanaged(FocusHandler),
     allocator: std.mem.Allocator,
 
-    pub fn init(allocator: std.mem.Allocator) FocusManager {
-        return FocusManager{
+    pub fn init(allocator: std.mem.Allocator) Focus {
+        return Focus{
             .has_focus = true, // Assume focus initially
             .handlers = std.ArrayListUnmanaged(FocusHandler){},
             .allocator = allocator,
         };
     }
 
-    pub fn deinit(self: *FocusManager) void {
+    pub fn deinit(self: *Focus) void {
         self.handlers.deinit(self.allocator);
     }
 
     /// Register a focus change handler
-    pub fn addHandler(self: *FocusManager, handler: FocusHandler) !void {
+    pub fn addHandler(self: *Focus, handler: FocusHandler) !void {
         try self.handlers.append(self.allocator, handler);
     }
 
     /// Remove a focus change handler
-    pub fn removeHandler(self: *FocusManager, handler: FocusHandler) void {
+    pub fn removeHandler(self: *Focus, handler: FocusHandler) void {
         for (self.handlers.items, 0..) |h, i| {
             if (h.func == handler.func) {
                 _ = self.handlers.swapRemove(i);
@@ -36,7 +36,7 @@ pub const FocusManager = struct {
     }
 
     /// Set focus state and notify handlers
-    pub fn setFocus(self: *FocusManager, has_focus: bool) void {
+    pub fn setFocus(self: *Focus, has_focus: bool) void {
         if (self.has_focus != has_focus) {
             self.has_focus = has_focus;
             self.notifyHandlers(has_focus);
@@ -44,12 +44,12 @@ pub const FocusManager = struct {
     }
 
     /// Get current focus state
-    pub fn hasFocus(self: *const FocusManager) bool {
+    pub fn hasFocus(self: *const Focus) bool {
         return self.has_focus;
     }
 
     /// Notify all handlers of focus change
-    fn notifyHandlers(self: *FocusManager, has_focus: bool) void {
+    fn notifyHandlers(self: *Focus, has_focus: bool) void {
         for (self.handlers.items) |handler| {
             handler.func(has_focus);
         }
@@ -73,13 +73,13 @@ pub const FocusHandler = struct {
 
 /// Focus-aware widget trait
 pub const FocusAware = struct {
-    focus_manager: *FocusManager,
+    focus_controller: *Focus,
     is_focused: bool,
 
-    pub fn init(focus_manager: *FocusManager) FocusAware {
+    pub fn init(focus_controller: *Focus) FocusAware {
         return FocusAware{
-            .focus_manager = focus_manager,
-            .is_focused = focus_manager.hasFocus(),
+            .focus_controller = focus_controller,
+            .is_focused = focus_controller.hasFocus(),
         };
     }
 
@@ -104,21 +104,21 @@ pub const FocusAware = struct {
                 }
             }.handle(self),
         };
-        try self.focus_manager.addHandler(handler);
+        try self.focus_controller.addHandler(handler);
     }
 };
 
 // Tests
-test "focus manager initialization" {
-    var focus_manager = FocusManager.init(std.testing.allocator);
-    defer focus_manager.deinit();
+test "focus controller initialization" {
+    var focus_controller = Focus.init(std.testing.allocator);
+    defer focus_controller.deinit();
 
-    try std.testing.expect(focus_manager.hasFocus());
+    try std.testing.expect(focus_controller.hasFocus());
 }
 
 test "focus state changes" {
-    var focus_manager = FocusManager.init(std.testing.allocator);
-    defer focus_manager.deinit();
+    var focus_controller = Focus.init(std.testing.allocator);
+    defer focus_controller.deinit();
 
     const handler = FocusHandler{
         .func = struct {
@@ -128,19 +128,19 @@ test "focus state changes" {
         }.handle,
     };
 
-    try focus_manager.addHandler(handler);
+    try focus_controller.addHandler(handler);
 
     // Initial state should be focused
-    try std.testing.expect(focus_manager.hasFocus());
+    try std.testing.expect(focus_controller.hasFocus());
 
     // Change focus
-    focus_manager.setFocus(false);
-    try std.testing.expect(!focus_manager.hasFocus());
+    focus_controller.setFocus(false);
+    try std.testing.expect(!focus_controller.hasFocus());
 
     // Change back
-    focus_manager.setFocus(true);
-    try std.testing.expect(focus_manager.hasFocus());
+    focus_controller.setFocus(true);
+    try std.testing.expect(focus_controller.hasFocus());
 
     // Test handler registration
-    try std.testing.expect(focus_manager.handlers.items.len == 1);
+    try std.testing.expect(focus_controller.handlers.items.len == 1);
 }

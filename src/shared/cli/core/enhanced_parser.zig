@@ -24,6 +24,7 @@ pub const ParsedArgs = struct {
     // Flags
     help: bool,
     version: bool,
+    preview: bool,
 
     // Commands and subcommands
     command: ?types.UnifiedCommand,
@@ -61,6 +62,7 @@ pub const ParsedArgs = struct {
             .no_color = false, // Not defined in zon file, using default
             .help = false,
             .version = false,
+            .preview = false,
             .command = null,
             .auth_subcommand = null,
             .prompt = null,
@@ -110,6 +112,8 @@ pub const EnhancedParser = struct {
                     parsed.help = true;
                 } else if (std.mem.eql(u8, arg, "--version")) {
                     parsed.version = true;
+                } else if (std.mem.eql(u8, arg, "--preview")) {
+                    parsed.preview = true;
                 } else if (std.mem.eql(u8, arg, "--quiet")) {
                     parsed.quiet = true;
                 } else if (std.mem.eql(u8, arg, "--verbose")) {
@@ -149,6 +153,7 @@ pub const EnhancedParser = struct {
                     switch (flag) {
                         'h' => parsed.help = true,
                         'V' => parsed.version = true,
+                        'p' => parsed.preview = true,
                         'q' => parsed.quiet = true,
                         'v' => parsed.verbose = true,
                         's' => parsed.stream = true,

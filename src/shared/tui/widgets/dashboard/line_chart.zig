@@ -16,23 +16,23 @@ const enhanced_mouse = @import("../../term/enhanced_mouse.zig");
 /// Advanced line chart with progressive enhancement
 pub const LineChart = struct {
     allocator: std.mem.Allocator,
-    data_buffer: *RingBuffer(DataPoint),
-    series: std.ArrayList(DataSeries),
+    data_buffer: *ringBuffer(Point),
+    series: std.ArrayList(Series),
     render_mode: RenderMode,
     viewport: Viewport,
     axes: AxesConfig,
     interaction: InteractionState,
     animation: AnimationState,
 
-    pub const DataPoint = struct {
+    pub const Point = struct {
         x: f64,
         y: f64,
         timestamp: ?u64 = null,
     };
 
-    pub const DataSeries = struct {
+    pub const Series = struct {
         name: []const u8,
-        data: std.ArrayList(DataPoint),
+        data: std.ArrayList(Point),
         color: Color,
         line_style: LineStyle = .solid,
         fill: bool = false,
@@ -88,12 +88,12 @@ pub const LineChart = struct {
         pan_x: f64 = 0.0,
         pan_y: f64 = 0.0,
 
-        pub fn contains(self: Viewport, point: DataPoint) bool {
+        pub fn contains(self: Viewport, point: Point) bool {
             return point.x >= self.min_x and point.x <= self.max_x and
                 point.y >= self.min_y and point.y <= self.max_y;
         }
 
-        pub fn worldToScreen(self: Viewport, point: DataPoint, bounds: Bounds) ScreenPoint {
+        pub fn worldToScreen(self: Viewport, point: Point, bounds: Bounds) ScreenPoint {
             const x_ratio = (point.x - self.min_x) / (self.max_x - self.min_x);
             const y_ratio = (point.y - self.min_y) / (self.max_y - self.min_y);
 
@@ -124,13 +124,13 @@ pub const LineChart = struct {
     };
 
     pub const InteractionState = struct {
-        hover_point: ?HoverInfo = null,
+        hover_point: ?Hover = null,
         selected_series: ?usize = null,
         dragging: bool = false,
         drag_start: ?ScreenPoint = null,
         tooltip_visible: bool = false,
 
-        pub const HoverInfo = struct {
+        pub const Hover = struct {
             series_index: usize,
             point_index: usize,
             screen_pos: ScreenPoint,
@@ -170,8 +170,8 @@ pub const LineChart = struct {
 
         chart.* = .{
             .allocator = allocator,
-            .data_buffer = try RingBuffer(DataPoint).init(allocator, 10000), // 10k point buffer
-            .series = std.ArrayList(DataSeries).init(allocator),
+            .data_buffer = try ringBuffer(Point).init(allocator, 10000), // 10k point buffer
+            .series = std.ArrayList(Series).init(allocator),
             .render_mode = selectRenderMode(capability_tier, allocator),
             .viewport = .{
                 .min_x = 0.0,
@@ -230,16 +230,16 @@ pub const LineChart = struct {
         };
     }
 
-    pub fn addSeries(self: *LineChart, name: []const u8, color: DataSeries.Color) !*DataSeries {
+    pub fn addSeries(self: *LineChart, name: []const u8, color: Series.Color) !*Series {
         try self.series.append(.{
             .name = name,
-            .data = std.ArrayList(DataPoint).init(self.allocator),
+            .data = std.ArrayList(Point).init(self.allocator),
             .color = color,
         });
         return &self.series.items[self.series.items.len - 1];
     }
 
-    pub fn addDataPoint(self: *LineChart, series_index: usize, point: DataPoint) !void {
+    pub fn addDataPoint(self: *LineChart, series_index: usize, point: Point) !void {
         if (series_index >= self.series.items.len) return error.InvalidSeriesIndex;
 
         try self.series.items[series_index].data.append(point);
@@ -509,7 +509,7 @@ pub const LineChart = struct {
         // Implementation would draw grid lines into RGB buffer
     }
 
-    fn renderSeriesSixel(self: *LineChart, buffer: []u8, bounds: Bounds, series: DataSeries, dither_matrix: [8][8]u8) !void {
+    fn renderSeriesSixel(self: *LineChart, buffer: []u8, bounds: Bounds, series: Series, dither_matrix: [8][8]u8) !void {
         _ = self;
         _ = buffer;
         _ = bounds;
@@ -526,7 +526,7 @@ pub const LineChart = struct {
         // Implementation would convert RGB buffer to Sixel format
     }
 
-    fn renderSeriesBraille(self: *LineChart, dots: []bool, bounds: Bounds, series: DataSeries, res_x: u32, res_y: u32, threshold: f32) !void {
+    fn renderSeriesBraille(self: *LineChart, dots: []bool, bounds: Bounds, series: Series, res_x: u32, res_y: u32, threshold: f32) !void {
         _ = self;
         _ = dots;
         _ = bounds;
@@ -545,7 +545,7 @@ pub const LineChart = struct {
         // Implementation would convert dot pattern to Braille characters
     }
 
-    fn renderSeriesASCII(self: *LineChart, buffer: []u8, bounds: Bounds, series: DataSeries, density_chars: []const u8) !void {
+    fn renderSeriesASCII(self: *LineChart, buffer: []u8, bounds: Bounds, series: Series, density_chars: []const u8) !void {
         _ = self;
         _ = buffer;
         _ = bounds;
@@ -601,7 +601,7 @@ pub const AreaChart = struct {
 };
 
 // Supporting data structures
-fn RingBuffer(comptime T: type) type {
+fn ringBuffer(comptime T: type) type {
     return struct {
         const Self = @This();
         allocator: std.mem.Allocator,

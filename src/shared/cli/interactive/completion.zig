@@ -54,7 +54,7 @@ pub const CompletionItem = struct {
         };
     }
 
-    pub fn withHelpUrl(self: CompletionItem, url: []const u8) CompletionItem {
+    pub fn withHelpURL(self: CompletionItem, url: []const u8) CompletionItem {
         return .{
             .text = self.text,
             .description = self.description,

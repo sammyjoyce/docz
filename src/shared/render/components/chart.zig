@@ -9,7 +9,7 @@ const cacheKey = @import("../adaptive_renderer.zig").cacheKey;
 /// Chart data structure
 pub const Chart = struct {
     title: ?[]const u8 = null,
-    data_series: []const DataSeries,
+    data_series: []const Series,
     chart_type: ChartType = .line,
     width: ?u16 = null,
     height: ?u16 = null,
@@ -28,7 +28,7 @@ pub const Chart = struct {
         histogram,
     };
 
-    pub const DataSeries = struct {
+    pub const Series = struct {
         name: []const u8,
         data: []const f64,
         color: ?Color = null,
@@ -43,12 +43,12 @@ pub const Chart = struct {
 
     pub fn validate(self: Chart) !void {
         if (self.data_series.len == 0) {
-            return error.NoDataSeries;
+            return error.NoSeries;
         }
 
         for (self.data_series) |series| {
             if (series.data.len == 0) {
-                return error.EmptyDataSeries;
+                return error.EmptySeries;
             }
         }
     }
@@ -75,7 +75,7 @@ pub fn renderChart(renderer: *AdaptiveRenderer, chart: Chart) !void {
     const key = cacheKey("chart_{d}_{s}_{?s}", .{ chart.data_series.len, @tagName(chart.chart_type), chart.title });
 
     if (renderer.cache.get(key, renderer.render_mode)) |cached| {
-        try renderer.unified_terminal.writeText(cached);
+        try renderer.terminal.writeText(cached);
         return;
     }
 
@@ -93,7 +93,7 @@ pub fn renderChart(renderer: *AdaptiveRenderer, chart: Chart) !void {
     defer renderer.allocator.free(content);
 
     try renderer.cache.put(key, content, renderer.render_mode);
-    try renderer.unified_terminal.writeText(content);
+    try renderer.terminal.writeText(content);
 }
 
 /// Enhanced rendering with graphics support
@@ -522,7 +522,7 @@ test "chart rendering" {
     defer renderer.deinit();
 
     const data1 = [_]f64{ 1.0, 3.0, 2.0, 5.0, 4.0 };
-    const series1 = Chart.DataSeries{
+    const series1 = Chart.Series{
         .name = "Series 1",
         .data = &data1,
         .color = Color.ansi(.red),
@@ -530,7 +530,7 @@ test "chart rendering" {
 
     const chart = Chart{
         .title = "Test Chart",
-        .data_series = &[_]Chart.DataSeries{series1},
+        .data_series = &[_]Chart.Series{series1},
         .chart_type = .line,
     };
 
@@ -538,7 +538,7 @@ test "chart rendering" {
 
     // Test validation
     const invalid_chart = Chart{
-        .data_series = &[_]Chart.DataSeries{},
+        .data_series = &[_]Chart.Series{},
     };
-    try testing.expectError(error.NoDataSeries, invalid_chart.validate());
+    try testing.expectError(error.NoSeries, invalid_chart.validate());
 }

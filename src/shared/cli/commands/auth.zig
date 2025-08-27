@@ -24,29 +24,29 @@ pub const AuthError = error{
 };
 
 pub const AuthStatus = struct {
-    is_authenticated: bool,
-    user_id: ?[]const u8 = null,
-    expires_at: ?i64 = null,
-    token_type: ?[]const u8 = null,
+    isAuthenticated: bool,
+    userId: ?[]const u8 = null,
+    expiresAt: ?i64 = null,
+    tokenType: ?[]const u8 = null,
     scopes: ?[][]const u8 = null,
-    last_refresh: ?i64 = null,
+    lastRefresh: ?i64 = null,
 };
 
 pub const AuthCommands = struct {
     allocator: Allocator,
     caps: term_caps.TermCaps,
-    notification_manager: *notification_manager.NotificationManager,
+    notificationManager: *notification_manager.NotificationHandler,
     writer: *std.Io.Writer,
 
     pub fn init(
         allocator: Allocator,
-        notification_mgr: *notification_manager.NotificationManager,
+        notificationMgr: *notification_manager.NotificationHandler,
         writer: *std.Io.Writer,
     ) AuthCommands {
         return .{
             .allocator = allocator,
             .caps = term_caps.getTermCaps(),
-            .notification_manager = notification_mgr,
+            .notificationManager = notificationMgr,
             .writer = writer,
         };
     }
@@ -58,7 +58,7 @@ pub const AuthCommands = struct {
         // Create OAuth workflow
         var workflow = workflow_runner.WorkflowRunner.init(
             self.allocator,
-            self.notification_manager,
+            self.notificationManager,
         );
         defer workflow.deinit();
 
@@ -66,29 +66,29 @@ pub const AuthCommands = struct {
         workflow.configure(.{ .show_progress = true, .interactive = false });
 
         // Add OAuth workflow steps
-        try workflow.addSteps(&[_]workflow_step.Step{
+        try workflow.addSteps(&[_]workflow_step.WorkflowStep{
             workflow_step.CommonSteps.checkNetworkConnectivity("api.anthropic.com")
                 .withDescription("Verify network connectivity"),
 
             workflow_step.CommonSteps.checkEnvironmentVariable("DOCZ_CLIENT_ID")
                 .withDescription("Check OAuth client configuration"),
 
-            workflow_step.Step.init("Generate Authorization URL", generateAuthUrl)
+            workflow_step.WorkflowStep.init("Generate Authorization URL", generateAuthURL)
                 .withDescription("Create OAuth authorization URL"),
 
-            workflow_step.Step.init("Open Browser", openBrowser)
+            workflow_step.WorkflowStep.init("Open Browser", openBrowser)
                 .withDescription("Launch browser for user authentication"),
-            workflow_step.Step.init("Wait for Callback", waitForCallback)
+            workflow_step.WorkflowStep.init("Wait for Callback", waitForCallback)
                 .withDescription("Wait for OAuth callback")
                 .withTimeout(120000), // 2 minutes
 
-            workflow_step.Step.init("Exchange Code for Token", exchangeCodeForToken)
+            workflow_step.WorkflowStep.init("Exchange Code for Token", exchangeCodeForToken)
                 .withDescription("Exchange authorization code for access token"),
 
-            workflow_step.Step.init("Validate Token", validateToken)
+            workflow_step.WorkflowStep.init("Validate Token", validateToken)
                 .withDescription("Verify token validity"),
 
-            workflow_step.Step.init("Save Credentials", saveCredentials)
+            workflow_step.WorkflowStep.init("Save Credentials", saveCredentials)
                 .withDescription("Save authentication credentials"),
         });
 
@@ -109,7 +109,7 @@ pub const AuthCommands = struct {
         const status = try self.getAuthStatus();
 
         // Status display with colors
-        if (status.is_authenticated) {
+        if (status.isAuthenticated) {
             try colors.default_colors.success.setForeground(self.writer, self.caps);
             try self.writer.writeAll("✅ Authenticated\n\n");
         } else {
@@ -123,7 +123,7 @@ pub const AuthCommands = struct {
         try self.renderStatusTable(status);
 
         // Actions section
-        if (!status.is_authenticated) {
+        if (!status.isAuthenticated) {
             try self.renderActionSection(&[_][]const u8{
                 "Run 'docz auth oauth' to authenticate",
                 "Or set ANTHROPIC_API_KEY environment variable",
@@ -141,7 +141,7 @@ pub const AuthCommands = struct {
         try self.renderCommandHeader("Token Refresh", "🔄");
 
         const current_status = try self.getAuthStatus();
-        if (!current_status.is_authenticated) {
+        if (!current_status.isAuthenticated) {
             try self.renderErrorMessage("Not authenticated", "Please run 'docz auth oauth' first");
             return;
         }
@@ -182,7 +182,7 @@ pub const AuthCommands = struct {
         try self.renderCommandHeader("Logout", "👋");
 
         const current_status = try self.getAuthStatus();
-        if (!current_status.is_authenticated) {
+        if (!current_status.isAuthenticated) {
             try self.renderWarningMessage("Already logged out", "No active authentication found");
             return;
         }
@@ -336,11 +336,11 @@ pub const AuthCommands = struct {
 
     fn renderStatusTable(self: *AuthCommands, status: AuthStatus) !void {
         const status_rows = [_]struct { []const u8, []const u8 }{
-            .{ "Status", if (status.is_authenticated) "Authenticated" else "Not Authenticated" },
-            .{ "User ID", status.user_id orelse "N/A" },
-            .{ "Token Type", status.token_type orelse "N/A" },
-            .{ "Expires", if (status.expires_at) |exp| try std.fmt.allocPrint(self.allocator, "{d}", .{exp}) else "N/A" },
-            .{ "Last Refresh", if (status.last_refresh) |refresh| try std.fmt.allocPrint(self.allocator, "{d}", .{refresh}) else "N/A" },
+            .{ "Status", if (status.isAuthenticated) "Authenticated" else "Not Authenticated" },
+            .{ "User ID", status.userId orelse "N/A" },
+            .{ "Token Type", status.tokenType orelse "N/A" },
+            .{ "Expires", if (status.expiresAt) |exp| try std.fmt.allocPrint(self.allocator, "{d}", .{exp}) else "N/A" },
+            .{ "Last Refresh", if (status.lastRefresh) |refresh| try std.fmt.allocPrint(self.allocator, "{d}", .{refresh}) else "N/A" },
         };
 
         try colors.default_colors.border.setForeground(self.writer, self.caps);
@@ -385,11 +385,11 @@ pub const AuthCommands = struct {
         _ = self;
         // Mock authenticated status for demonstration
         return AuthStatus{
-            .is_authenticated = true,
-            .user_id = "user_12345",
-            .token_type = "Bearer",
-            .expires_at = std.time.timestamp() + 3600,
-            .last_refresh = std.time.timestamp() - 1800,
+            .isAuthenticated = true,
+            .userId = "user_12345",
+            .tokenType = "Bearer",
+            .expiresAt = std.time.timestamp() + 3600,
+            .lastRefresh = std.time.timestamp() - 1800,
         };
     }
 
@@ -407,65 +407,65 @@ pub const AuthCommands = struct {
 
 // Workflow step implementations
 
-fn generateAuthUrl(allocator: Allocator, context: ?workflow_step.StepContext) anyerror!workflow_step.StepResult {
+fn generateAuthURL(allocator: Allocator, context: ?workflow_step.WorkflowStep) anyerror!workflow_step.WorkflowStepResult {
     _ = allocator;
     _ = context;
 
     // Mock URL generation
     std.time.sleep(200 * std.time.ns_per_ms);
-    return workflow_step.StepResult{
+    return workflow_step.WorkflowStepResult{
         .success = true,
         .output_data = "https://api.anthropic.com/oauth/authorize?client_id=demo&response_type=code",
     };
 }
 
-fn openBrowser(allocator: Allocator, context: ?workflow_step.StepContext) anyerror!workflow_step.StepResult {
+fn openBrowser(allocator: Allocator, context: ?workflow_step.WorkflowStep) anyerror!workflow_step.WorkflowStepResult {
     _ = allocator;
     _ = context;
 
     // Mock browser opening
     std.time.sleep(500 * std.time.ns_per_ms);
-    return workflow_step.StepResult{ .success = true };
+    return workflow_step.WorkflowStepResult{ .success = true };
 }
 
-fn waitForCallback(allocator: Allocator, context: ?workflow_step.StepContext) anyerror!workflow_step.StepResult {
+fn waitForCallback(allocator: Allocator, context: ?workflow_step.WorkflowStep) anyerror!workflow_step.WorkflowStepResult {
     _ = allocator;
     _ = context;
 
     // Mock waiting for OAuth callback
     std.time.sleep(2000 * std.time.ns_per_ms);
-    return workflow_step.StepResult{
+    return workflow_step.WorkflowStepResult{
         .success = true,
         .output_data = "authorization_code_12345",
     };
 }
 
-fn exchangeCodeForToken(allocator: Allocator, context: ?workflow_step.StepContext) anyerror!workflow_step.StepResult {
+fn exchangeCodeForToken(allocator: Allocator, context: ?workflow_step.WorkflowStep) anyerror!workflow_step.WorkflowStepResult {
     _ = allocator;
     _ = context;
 
     // Mock token exchange
     std.time.sleep(1000 * std.time.ns_per_ms);
-    return workflow_step.StepResult{
+    return workflow_step.WorkflowStepResult{
         .success = true,
         .output_data = "access_token_abc123",
     };
 }
 
-fn validateToken(allocator: Allocator, context: ?workflow_step.StepContext) anyerror!workflow_step.StepResult {
+fn validateToken(allocator: Allocator, context: ?workflow_step.WorkflowStep) anyerror!workflow_step.WorkflowStepResult {
     _ = allocator;
     _ = context;
 
     // Mock token validation
     std.time.sleep(300 * std.time.ns_per_ms);
-    return workflow_step.StepResult{ .success = true };
+    return workflow_step.WorkflowStepResult{ .success = true };
 }
 
-fn saveCredentials(allocator: Allocator, context: ?workflow_step.StepContext) anyerror!workflow_step.StepResult {
+fn saveCredentials(allocator: Allocator, context: ?workflow_step.WorkflowStep) anyerror!workflow_step.WorkflowStepResult {
     _ = allocator;
     _ = context;
 
     // Mock credential saving
     std.time.sleep(100 * std.time.ns_per_ms);
-    return workflow_step.StepResult{ .success = true };
+    return workflow_step.WorkflowStepResult{ .success = true };
 }

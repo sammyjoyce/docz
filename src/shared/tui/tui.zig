@@ -51,7 +51,7 @@ const mode = @import("term/ansi/mode.zig");
 pub const Section = struct {
     title: []const u8,
     content: std.ArrayList([]const u8),
-    is_expanded: bool,
+    isExpanded: bool,
     has_border: bool,
     indent_level: u32,
     icon: ?[]const u8,
@@ -60,7 +60,7 @@ pub const Section = struct {
         return Section{
             .title = title,
             .content = std.ArrayList([]const u8).init(allocator),
-            .is_expanded = true,
+            .isExpanded = true,
             .has_border = true,
             .indent_level = 0,
             .icon = null,
@@ -88,25 +88,25 @@ pub const Section = struct {
     }
 
     pub fn toggle(self: *Section) void {
-        self.is_expanded = !self.is_expanded;
+        self.isExpanded = !self.isExpanded;
     }
 
     pub fn expand(self: *Section) void {
-        self.is_expanded = true;
+        self.isExpanded = true;
     }
 
     pub fn collapse(self: *Section) void {
-        self.is_expanded = false;
+        self.isExpanded = false;
     }
 
     pub fn draw(self: Section) void {
         const indent = "  " ** self.indent_level;
-        const expand_icon = if (self.is_expanded) "▼" else "▶";
+        const expand_icon = if (self.isExpanded) "▼" else "▶";
         const section_icon = self.icon orelse "";
 
         print("{s}{s}{s} {s}{s}{s}\n", .{ Color.BRIGHT_BLUE, expand_icon, section_icon, self.title, Color.RESET, indent });
 
-        if (self.is_expanded) {
+        if (self.isExpanded) {
             for (self.content.items) |line| {
                 print("{s}  {s}\n", .{ indent, line });
             }
@@ -222,22 +222,22 @@ pub const Menu = struct {
     };
 
     items: std.ArrayList(MenuItem),
-    selected_index: usize,
+    selectedIndex: usize,
     title: []const u8,
     show_shortcuts: bool,
     show_descriptions: bool,
     max_visible_items: usize,
-    scroll_offset: usize,
+    scrollOffset: usize,
 
     pub fn init(allocator: std.mem.Allocator, title: []const u8) Menu {
         return Menu{
             .items = std.ArrayList(MenuItem).init(allocator),
-            .selected_index = 0,
+            .selectedIndex = 0,
             .title = title,
             .show_shortcuts = true,
             .show_descriptions = true,
             .max_visible_items = 10,
-            .scroll_offset = 0,
+            .scrollOffset = 0,
         };
     }
 
@@ -252,54 +252,54 @@ pub const Menu = struct {
     pub fn selectNext(self: *Menu) void {
         if (self.items.items.len == 0) return;
 
-        var next = (self.selected_index + 1) % self.items.items.len;
+        var next = (self.selectedIndex + 1) % self.items.items.len;
         // Skip disabled/hidden items
         while (!self.items.items[next].enabled or !self.items.items[next].visible) {
             next = (next + 1) % self.items.items.len;
-            if (next == self.selected_index) break; // Prevent infinite loop
+            if (next == self.selectedIndex) break; // Prevent infinite loop
         }
-        self.selected_index = next;
+        self.selectedIndex = next;
         self.adjustScrollOffset();
     }
 
     pub fn selectPrev(self: *Menu) void {
         if (self.items.items.len == 0) return;
 
-        var prev = if (self.selected_index == 0) self.items.items.len - 1 else self.selected_index - 1;
+        var prev = if (self.selectedIndex == 0) self.items.items.len - 1 else self.selectedIndex - 1;
         // Skip disabled/hidden items
         while (!self.items.items[prev].enabled or !self.items.items[prev].visible) {
             prev = if (prev == 0) self.items.items.len - 1 else prev - 1;
-            if (prev == self.selected_index) break; // Prevent infinite loop
+            if (prev == self.selectedIndex) break; // Prevent infinite loop
         }
-        self.selected_index = prev;
+        self.selectedIndex = prev;
         self.adjustScrollOffset();
     }
 
     pub fn getSelectedItem(self: Menu) ?MenuItem {
-        if (self.selected_index < self.items.items.len) {
-            return self.items.items[self.selected_index];
+        if (self.selectedIndex < self.items.items.len) {
+            return self.items.items[self.selectedIndex];
         }
         return null;
     }
 
     fn adjustScrollOffset(self: *Menu) void {
-        if (self.selected_index < self.scroll_offset) {
-            self.scroll_offset = self.selected_index;
-        } else if (self.selected_index >= self.scroll_offset + self.max_visible_items) {
-            self.scroll_offset = self.selected_index - self.max_visible_items + 1;
+        if (self.selectedIndex < self.scrollOffset) {
+            self.scrollOffset = self.selectedIndex;
+        } else if (self.selectedIndex >= self.scrollOffset + self.max_visible_items) {
+            self.scrollOffset = self.selectedIndex - self.max_visible_items + 1;
         }
     }
 
     pub fn draw(self: Menu) void {
         print("{s}{s}{s}\n", .{ Color.BOLD, self.title, Color.RESET });
 
-        const end_index = @min(self.scroll_offset + self.max_visible_items, self.items.items.len);
+        const end_index = @min(self.scrollOffset + self.max_visible_items, self.items.items.len);
 
-        for (self.items.items[self.scroll_offset..end_index], 0..) |item, i| {
+        for (self.items.items[self.scrollOffset..end_index], 0..) |item, i| {
             if (!item.visible) continue;
 
-            const actual_index = self.scroll_offset + i;
-            const is_selected = actual_index == self.selected_index;
+            const actual_index = self.scrollOffset + i;
+            const is_selected = actual_index == self.selectedIndex;
             const color = if (is_selected) Color.BRIGHT_CYAN else if (item.enabled) Color.WHITE else Color.DIM;
             const marker = if (is_selected) ">" else " ";
 
@@ -325,7 +325,7 @@ pub const Menu = struct {
         }
 
         // Show scroll indicators
-        if (self.scroll_offset > 0) {
+        if (self.scrollOffset > 0) {
             print("{s}  ↑ More items above{s}\n", .{ Color.DIM, Color.RESET });
         }
         if (end_index < self.items.items.len) {

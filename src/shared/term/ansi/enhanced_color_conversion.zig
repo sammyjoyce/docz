@@ -255,10 +255,10 @@ pub fn convert256(color: Color) IndexedColor {
 pub fn convert16(color: Color) BasicColor {
     return switch (color) {
         .basic => |c| c,
-        .indexed => |c| ansi256To16[c.value],
+        .indexed => |c| ANSI256_TO_16[c.value],
         .rgb => |c| {
             const c256 = convert256(Color{ .rgb = c });
-            return ansi256To16[c256.value];
+            return ANSI256_TO_16[c256.value];
         },
     };
 }
@@ -588,7 +588,7 @@ const ansi_hex = [256]RGBA{
 };
 
 /// Mapping from 256-color ANSI palette to 16-color ANSI palette
-const ansi256To16 = [256]BasicColor{
+const ANSI256_TO_16 = [256]BasicColor{
     // Direct mappings (0-15)
     .black,        .red,        .green,        .yellow,        .blue,        .magenta,        .cyan,        .white,
     .bright_black, .bright_red, .bright_green, .bright_yellow, .bright_blue, .bright_magenta, .bright_cyan,

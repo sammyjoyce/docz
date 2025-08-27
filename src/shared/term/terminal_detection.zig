@@ -67,6 +67,7 @@ pub const TerminalCapabilities = struct {
         alacritty,
         wezterm,
         iterm2,
+        ghostty,
         apple_terminal,
         windows_terminal,
         cmd,
@@ -273,6 +274,15 @@ fn detectTerminalType() TerminalCapabilities.TerminalType {
         return .iterm2;
     }
 
+    // Ghostty
+    if (std.posix.getenv("GHOSTTY_RESOURCES_DIR") != null) {
+        return .ghostty;
+    }
+
+    if (term_program != null and std.mem.eql(u8, term_program.?, "Ghostty")) {
+        return .ghostty;
+    }
+
     // Apple Terminal
     if (term_program != null and std.mem.eql(u8, term_program.?, "Apple_Terminal")) {
         return .apple_terminal;
@@ -285,6 +295,9 @@ fn detectTerminalType() TerminalCapabilities.TerminalType {
 
     // Check TERM variable
     if (std.mem.startsWith(u8, term, "xterm")) {
+        if (std.mem.eql(u8, term, "xterm-ghostty")) {
+            return .ghostty;
+        }
         return if (std.mem.indexOf(u8, term, "256") != null) .xterm_256color else .xterm;
     } else if (std.mem.startsWith(u8, term, "screen")) {
         return .screen;
@@ -296,6 +309,8 @@ fn detectTerminalType() TerminalCapabilities.TerminalType {
         return .alacritty;
     } else if (std.mem.eql(u8, term, "wezterm")) {
         return .wezterm;
+    } else if (std.mem.eql(u8, term, "xterm-ghostty")) {
+        return .ghostty;
     }
 
     return .unknown;
@@ -314,6 +329,11 @@ fn setBasicCapabilities(caps: *TerminalCapabilities) void {
             caps.supports_iterm2_images = true;
             caps.supports_window_title = true;
             caps.supports_cursor_shape = true;
+        },
+        .ghostty => {
+            caps.supports_keyboard_enhancement = true;
+            caps.supports_cursor_shape = true;
+            caps.supports_window_title = true;
         },
         .alacritty, .wezterm => {
             caps.supports_keyboard_enhancement = true;
@@ -363,7 +383,7 @@ fn detectTrueColorSupport() bool {
 fn inferAdvancedCapabilities(caps: *TerminalCapabilities) void {
     // Modern terminals generally support synchronized output
     switch (caps.terminal_type) {
-        .kitty, .alacritty, .wezterm, .windows_terminal, .iterm2 => {
+        .kitty, .alacritty, .wezterm, .windows_terminal, .iterm2, .ghostty => {
             caps.supports_synchronized_output = true;
         },
         else => {},

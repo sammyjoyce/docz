@@ -93,12 +93,12 @@ pub const SelectMenu = struct {
     filtered_items: std.ArrayList(usize), // Indices into items array
     title: []const u8,
     selection_mode: SelectionMode,
-    current_index: usize,
-    search_query: std.ArrayList(u8),
-    show_search: bool,
-    show_descriptions: bool,
-    show_icons: bool,
-    max_visible_items: usize,
+    currentIndex: usize,
+    searchQuery: std.ArrayList(u8),
+    showSearch: bool,
+    showDescriptions: bool,
+    showIcons: bool,
+    maxVisibleItems: usize,
     scroll_offset: usize,
 
     pub fn init(
@@ -113,12 +113,12 @@ pub const SelectMenu = struct {
             .filtered_items = std.ArrayList(usize).init(allocator),
             .title = title,
             .selection_mode = selection_mode,
-            .current_index = 0,
-            .search_query = std.ArrayList(u8).init(allocator),
-            .show_search = false,
-            .show_descriptions = true,
-            .show_icons = true,
-            .max_visible_items = 10,
+            .currentIndex = 0,
+            .searchQuery = std.ArrayList(u8).init(allocator),
+            .showSearch = false,
+            .showDescriptions = true,
+            .showIcons = true,
+            .maxVisibleItems = 10,
             .scroll_offset = 0,
         };
     }
@@ -126,7 +126,7 @@ pub const SelectMenu = struct {
     pub fn deinit(self: *SelectMenu) void {
         self.items.deinit();
         self.filtered_items.deinit();
-        self.search_query.deinit();
+        self.searchQuery.deinit();
     }
 
     pub fn addItem(self: *SelectMenu, item: SelectMenuItem) !void {
@@ -149,10 +149,10 @@ pub const SelectMenu = struct {
             max_visible_items: usize = 10,
         },
     ) void {
-        self.show_search = options.show_search;
-        self.show_descriptions = options.show_descriptions;
-        self.show_icons = options.show_icons;
-        self.max_visible_items = options.max_visible_items;
+        self.showSearch = options.show_search;
+        self.showDescriptions = options.show_descriptions;
+        self.showIcons = options.show_icons;
+        self.maxVisibleItems = options.max_visible_items;
     }
 
     /// Update the filtered items based on search query
@@ -160,11 +160,11 @@ pub const SelectMenu = struct {
         self.filtered_items.clearRetainingCapacity();
 
         for (self.items.items, 0..) |item, i| {
-            if (self.search_query.items.len == 0) {
+            if (self.searchQuery.items.len == 0) {
                 try self.filtered_items.append(i);
             } else {
                 // Simple case-insensitive search
-                const query_lower = try std.ascii.allocLowerString(self.allocator, self.search_query.items);
+                const query_lower = try std.ascii.allocLowerString(self.allocator, self.searchQuery.items);
                 defer self.allocator.free(query_lower);
 
                 const text_lower = try std.ascii.allocLowerString(self.allocator, item.display_text);
@@ -177,8 +177,8 @@ pub const SelectMenu = struct {
         }
 
         // Reset selection if current index is out of bounds
-        if (self.current_index >= self.filtered_items.items.len) {
-            self.current_index = 0;
+        if (self.currentIndex >= self.filtered_items.items.len) {
+            self.currentIndex = 0;
         }
     }
 
@@ -214,22 +214,22 @@ pub const SelectMenu = struct {
         try writer.writeAll("┐\n");
 
         // Search bar if enabled
-        if (self.show_search) {
+        if (self.showSearch) {
             try self.renderSearchBar(writer);
         }
 
         // Menu items
         const visible_start = self.scroll_offset;
-        const visible_end = @min(visible_start + self.max_visible_items, self.filtered_items.items.len);
+        const visible_end = @min(visible_start + self.maxVisibleItems, self.filtered_items.items.len);
 
         for (self.filtered_items.items[visible_start..visible_end], 0..) |item_index, visible_idx| {
             const actual_index = visible_start + visible_idx;
-            const is_current = actual_index == self.current_index;
+            const is_current = actual_index == self.currentIndex;
             try self.renderMenuItem(writer, self.items.items[item_index], is_current);
         }
 
         // Scrolling indicators
-        if (self.filtered_items.items.len > self.max_visible_items) {
+        if (self.filtered_items.items.len > self.maxVisibleItems) {
             try self.renderScrollIndicators(writer);
         }
 
@@ -260,13 +260,13 @@ pub const SelectMenu = struct {
             try term_ansi.setForeground256(writer, self.caps, 15);
         }
 
-        try writer.writeAll(self.search_query.items);
+        try writer.writeAll(self.searchQuery.items);
 
         // Cursor
         try writer.writeAll("│");
 
         // Pad to width
-        const used_width = 10 + self.search_query.items.len;
+        const used_width = 10 + self.searchQuery.items.len;
         const padding = if (58 > used_width) 58 - used_width else 0;
         for (0..padding) |_| {
             try writer.writeAll(" ");
@@ -311,7 +311,7 @@ pub const SelectMenu = struct {
         try writer.writeAll(selection_indicator);
 
         // Icon
-        if (self.show_icons and item.icon != null) {
+        if (self.showIcons and item.icon != null) {
             try writer.print("{s} ", .{item.icon.?});
         } else {
             try writer.writeAll("  ");
@@ -329,7 +329,7 @@ pub const SelectMenu = struct {
         try writer.writeAll(item.display_text);
 
         // Description
-        if (self.show_descriptions and item.description != null) {
+        if (self.showDescriptions and item.description != null) {
             if (self.caps.supportsTrueColor()) {
                 try term_ansi.setForegroundRgb(writer, self.caps, 150, 150, 150);
             } else {
@@ -392,7 +392,7 @@ pub const SelectMenu = struct {
             .radio => "↑/↓ navigate, Space select, Enter confirm, Esc cancel",
         };
 
-        if (self.show_search) {
+        if (self.showSearch) {
             try writer.print("{s}, / search\n", .{instructions});
         } else {
             try writer.print("{s}\n", .{instructions});
@@ -405,8 +405,8 @@ pub const SelectMenu = struct {
             // Up arrow (simplified - in real implementation would handle escape sequences)
             // Using Ctrl+P for now
             16 => {
-                if (self.current_index > 0) {
-                    self.current_index -= 1;
+                if (self.currentIndex > 0) {
+                    self.currentIndex -= 1;
                     self.updateScrollPosition();
                 }
                 return .search; // Continue
@@ -414,8 +414,8 @@ pub const SelectMenu = struct {
 
             // Down arrow - Ctrl+N for now
             14 => {
-                if (self.current_index + 1 < self.filtered_items.items.len) {
-                    self.current_index += 1;
+                if (self.currentIndex + 1 < self.filtered_items.items.len) {
+                    self.currentIndex += 1;
                     self.updateScrollPosition();
                 }
                 return .search; // Continue
@@ -424,7 +424,7 @@ pub const SelectMenu = struct {
             // Space - toggle selection (for multiple/radio mode)
             32 => {
                 if (self.filtered_items.items.len > 0) {
-                    const item_index = self.filtered_items.items[self.current_index];
+                    const item_index = self.filtered_items.items[self.currentIndex];
                     const item = &self.items.items[item_index];
 
                     if (!item.disabled) {
@@ -460,7 +460,7 @@ pub const SelectMenu = struct {
 
             // Search mode - '/'
             47 => {
-                if (self.show_search) {
+                if (self.showSearch) {
                     // Enter search mode (would need more complex state management)
                 }
                 return .search; // Continue
@@ -468,8 +468,8 @@ pub const SelectMenu = struct {
 
             // Backspace in search
             127, 8 => {
-                if (self.show_search and self.search_query.items.len > 0) {
-                    _ = self.search_query.pop();
+                if (self.showSearch and self.searchQuery.items.len > 0) {
+                    _ = self.searchQuery.pop();
                     try self.updateFilter();
                 }
                 return .search; // Continue
@@ -477,8 +477,8 @@ pub const SelectMenu = struct {
 
             // Printable characters for search
             33...126 => {
-                if (self.show_search) {
-                    try self.search_query.append(key);
+                if (self.showSearch) {
+                    try self.searchQuery.append(key);
                     try self.updateFilter();
                 }
                 return .search; // Continue
@@ -489,10 +489,10 @@ pub const SelectMenu = struct {
     }
 
     fn updateScrollPosition(self: *SelectMenu) void {
-        if (self.current_index < self.scroll_offset) {
-            self.scroll_offset = self.current_index;
-        } else if (self.current_index >= self.scroll_offset + self.max_visible_items) {
-            self.scroll_offset = self.current_index - self.max_visible_items + 1;
+        if (self.currentIndex < self.scroll_offset) {
+            self.scroll_offset = self.currentIndex;
+        } else if (self.currentIndex >= self.scroll_offset + self.maxVisibleItems) {
+            self.scroll_offset = self.currentIndex - self.maxVisibleItems + 1;
         }
     }
 
@@ -512,8 +512,8 @@ pub const SelectMenu = struct {
 
     /// Get currently highlighted item
     pub fn getCurrentItem(self: SelectMenu) ?SelectMenuItem {
-        if (self.current_index < self.filtered_items.items.len) {
-            const item_index = self.filtered_items.items[self.current_index];
+        if (self.currentIndex < self.filtered_items.items.len) {
+            const item_index = self.filtered_items.items[self.currentIndex];
             return self.items.items[item_index];
         }
         return null;

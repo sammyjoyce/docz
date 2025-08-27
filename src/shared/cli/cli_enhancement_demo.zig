@@ -88,11 +88,11 @@ pub fn main() !void {
     demo_menu.draw();
 
     std.debug.print("\n=== Notification System ===\n", .{});
-    var notification_manager = tui.NotificationManager.init(allocator);
-    defer notification_manager.deinit();
+    var notificationHandler = tui.NotificationHandler.init(allocator);
+    defer notificationHandler.deinit();
 
-    try notification_manager.info("This is an info notification");
-    try notification_manager.success("Enhancement demo completed!");
+    try notificationHandler.info("This is an info notification");
+    try notificationHandler.success("Enhancement demo completed!");
 
     if (caps.supportsNotifyOsc9) {
         try tui.notification.systemNotify(allocator, "CLI Enhancement Demo finished! 🎉");

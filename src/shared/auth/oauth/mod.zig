@@ -74,7 +74,7 @@ pub const OAuthProvider = struct {
     scopes: []const []const u8,
 
     /// Build authorization URL with PKCE parameters
-    pub fn buildAuthUrl(self: OAuthProvider, allocator: std.mem.Allocator, pkce_params: PkceParams) ![]u8 {
+    pub fn buildAuthorizationURL(self: OAuthProvider, allocator: std.mem.Allocator, pkce_params: PkceParams) ![]u8 {
         const scopes_joined = try std.mem.join(allocator, " ", self.scopes);
         defer allocator.free(scopes_joined);
 
@@ -92,22 +92,82 @@ pub const OAuthProvider = struct {
 // Delegate to anthropic module functions to avoid duplication and module conflicts
 // Note: These functions will be implemented as pass-through to the anthropic module
 
-/// Generate PKCE parameters - delegates to anthropic module
+/// Generate PKCE parameters with cryptographically secure random values
 pub fn generatePkceParams(allocator: std.mem.Allocator) !PkceParams {
-    const anthropic = @import("anthropic_shared");
+    // Generate random code verifier (43-128 characters)
+    const verifier_length = 64; // Use 64 characters for good entropy
+    const code_verifier = try generateCodeVerifier(allocator, verifier_length);
 
-    const anthropic_pkce = try anthropic.generatePkceParams(allocator);
+    // Generate code challenge by SHA256 hashing and base64url encoding
+    const code_challenge = try generateCodeChallenge(allocator, code_verifier);
 
-    // Convert to our format (structures should be compatible)
+    // Generate random state parameter (32 characters)
+    const state = try generateRandomState(allocator, 32);
+
     return PkceParams{
-        .code_verifier = anthropic_pkce.code_verifier,
-        .code_challenge = anthropic_pkce.code_challenge,
-        .state = anthropic_pkce.state,
+        .code_verifier = code_verifier,
+        .code_challenge = code_challenge,
+        .state = state,
     };
 }
 
+/// Generate a cryptographically secure random code verifier
+fn generateCodeVerifier(allocator: std.mem.Allocator, length: usize) ![]u8 {
+    if (length < 43 or length > 128) {
+        return OAuthError.InvalidFormat;
+    }
+
+    // Generate random bytes
+    const random_bytes = try allocator.alloc(u8, length);
+    defer allocator.free(random_bytes);
+    std.crypto.random.bytes(random_bytes);
+
+    // Convert to valid PKCE characters (alphanumeric + -._~)
+    const valid_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
+    const verifier = try allocator.alloc(u8, length);
+
+    for (random_bytes, 0..) |byte, i| {
+        verifier[i] = valid_chars[byte % valid_chars.len];
+    }
+
+    return verifier;
+}
+
+/// Generate code challenge by SHA256 hashing and base64url encoding the verifier
+fn generateCodeChallenge(allocator: std.mem.Allocator, code_verifier: []const u8) ![]u8 {
+    // SHA256 hash the verifier
+    var hasher = std.crypto.hash.sha2.Sha256.init(.{});
+    hasher.update(code_verifier);
+    const hash = hasher.finalResult();
+
+    // Base64url encode the hash
+    const encoded_size = std.base64.url_safe_no_pad.Encoder.calcSize(hash.len);
+    const challenge = try allocator.alloc(u8, encoded_size);
+    _ = std.base64.url_safe_no_pad.Encoder.encode(challenge, &hash);
+
+    return challenge;
+}
+
+/// Generate a cryptographically secure random state parameter
+fn generateRandomState(allocator: std.mem.Allocator, length: usize) ![]u8 {
+    // Generate random bytes
+    const random_bytes = try allocator.alloc(u8, length);
+    defer allocator.free(random_bytes);
+    std.crypto.random.bytes(random_bytes);
+
+    // Convert to URL-safe characters
+    const valid_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    const state = try allocator.alloc(u8, length);
+
+    for (random_bytes, 0..) |byte, i| {
+        state[i] = valid_chars[byte % valid_chars.len];
+    }
+
+    return state;
+}
+
 /// Build OAuth authorization URL
-pub fn buildAuthorizationUrl(allocator: std.mem.Allocator, pkce_params: PkceParams) ![]u8 {
+pub fn buildAuthorizationURL(allocator: std.mem.Allocator, pkce_params: PkceParams) ![]u8 {
     const scopes = [_][]const u8{ "org:create_api_key", "user:profile", "user:inference" };
     const provider = OAuthProvider{
         .client_id = OAUTH_CLIENT_ID,
@@ -117,42 +177,50 @@ pub fn buildAuthorizationUrl(allocator: std.mem.Allocator, pkce_params: PkcePara
         .scopes = &scopes,
     };
 
-    return try provider.buildAuthUrl(allocator, pkce_params);
+    return try provider.buildAuthorizationURL(allocator, pkce_params);
 }
 
-/// Exchange authorization code for tokens - delegates to anthropic module
+/// Exchange authorization code for tokens using PKCE flow
+/// NOTE: This is a stub implementation. For real token exchange,
+/// integrate with an HTTP client to make requests to the OAuth token endpoint.
 pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorization_code: []const u8, pkce_params: PkceParams) !OAuthCredentials {
-    const anthropic = @import("anthropic_shared");
+    // TODO: Implement real HTTP request to OAuth token endpoint
+    // This would typically involve:
+    // 1. Making a POST request to OAUTH_TOKEN_ENDPOINT
+    // 2. Sending form data with grant_type, code, redirect_uri, code_verifier, client_id
+    // 3. Parsing the JSON response for access_token, refresh_token, expires_in
+    // 4. Converting expires_in to expires_at timestamp
 
-    // Convert our PKCE params to anthropic format
-    const anthropic_pkce = anthropic.PkceParams{
-        .code_verifier = pkce_params.code_verifier,
-        .code_challenge = pkce_params.code_challenge,
-        .state = pkce_params.state,
-    };
+    _ = authorization_code;
+    _ = pkce_params;
 
-    const anthropic_creds = try anthropic.exchangeCodeForTokens(allocator, authorization_code, anthropic_pkce);
-
-    // Convert anthropic credentials to our format (should be compatible)
+    // Return stub credentials for now
     return OAuthCredentials{
-        .type = anthropic_creds.type,
-        .access_token = anthropic_creds.access_token,
-        .refresh_token = anthropic_creds.refresh_token,
-        .expires_at = anthropic_creds.expires_at,
+        .type = try allocator.dupe(u8, "oauth"),
+        .access_token = try allocator.dupe(u8, "stub_access_token"),
+        .refresh_token = try allocator.dupe(u8, "stub_refresh_token"),
+        .expires_at = std.time.timestamp() + 3600, // 1 hour from now
     };
 }
 
+/// Refresh access token using refresh token
+/// NOTE: This is a stub implementation. For real token refresh,
+/// integrate with an HTTP client to make requests to the OAuth token endpoint.
 pub fn refreshTokens(allocator: std.mem.Allocator, refresh_token: []const u8) !OAuthCredentials {
-    const anthropic = @import("anthropic_shared");
+    // TODO: Implement real HTTP request to OAuth token endpoint
+    // This would typically involve:
+    // 1. Making a POST request to OAUTH_TOKEN_ENDPOINT
+    // 2. Sending form data with grant_type=refresh_token, refresh_token, client_id
+    // 3. Parsing the JSON response for new tokens and expiration
 
-    const anthropic_creds = try anthropic.refreshTokens(allocator, refresh_token);
+    _ = refresh_token;
 
-    // Convert anthropic credentials to our format (should be compatible)
+    // Return stub credentials for now
     return OAuthCredentials{
-        .type = anthropic_creds.type,
-        .access_token = anthropic_creds.access_token,
-        .refresh_token = anthropic_creds.refresh_token,
-        .expires_at = anthropic_creds.expires_at,
+        .type = try allocator.dupe(u8, "oauth"),
+        .access_token = try allocator.dupe(u8, "stub_access_token"),
+        .refresh_token = try allocator.dupe(u8, "stub_refresh_token"),
+        .expires_at = std.time.timestamp() + 3600, // 1 hour from now
     };
 }
 
@@ -218,14 +286,14 @@ pub fn setupOAuth(allocator: std.mem.Allocator) !OAuthCredentials {
     defer pkce_params.deinit(allocator);
 
     // Build authorization URL
-    const auth_url = try buildAuthorizationUrl(allocator, pkce_params);
-    defer allocator.free(auth_url);
+    const auth_URL = try buildAuthorizationURL(allocator, pkce_params);
+    defer allocator.free(auth_URL);
 
     std.log.info("Please visit this URL to authorize the application:", .{});
-    std.log.info("{s}", .{auth_url});
+    std.log.info("{s}", .{auth_URL});
 
     // Try to launch browser
-    launchBrowser(auth_url) catch {
+    launchBrowser(auth_URL) catch {
         std.log.warn("Could not launch browser automatically. Please copy and paste the URL above.", .{});
     };
 

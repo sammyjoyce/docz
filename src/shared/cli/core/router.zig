@@ -4,14 +4,14 @@
 const std = @import("std");
 const context = @import("context.zig");
 const types = @import("types.zig");
-const workflows = @import("../workflows/registry.zig");
+const workflows = @import("../workflows/workflow_registry.zig");
 
 pub const CommandRouter = struct {
     allocator: std.mem.Allocator,
-    context: *const context.CliContext,
+    context: *const context.Cli,
     workflow_registry: workflows.WorkflowRegistry,
 
-    pub fn init(allocator: std.mem.Allocator, ctx: *const context.CliContext) !CommandRouter {
+    pub fn init(allocator: std.mem.Allocator, ctx: *const context.Cli) !CommandRouter {
         var workflow_registry = workflows.WorkflowRegistry.init(allocator, ctx);
 
         // Register common workflows

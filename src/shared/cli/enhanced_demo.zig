@@ -4,10 +4,10 @@
 const std = @import("std");
 const components = @import("components/mod.zig");
 
-const InputManager = components.InputManager;
+// const Input = components.Input; // Temporarily disabled due to module conflict
 const EnhancedSelectMenu = components.EnhancedSelectMenu;
 const RichProgressBar = components.RichProgressBar;
-const InfoPanel = components.InfoPanel;
+const Panel = components.Panel;
 const StatusIndicator = components.StatusIndicator;
 const BreadcrumbTrail = components.BreadcrumbTrail;
 
@@ -37,7 +37,7 @@ pub fn main() !void {
 
     // Note about interactive components
     try stdout.writeAll("\n📋 Interactive Components Available:\n");
-    try stdout.writeAll("• InputManager - Unified input handling with mouse/keyboard support\n");
+    try stdout.writeAll("• Input - Unified input handling with mouse/keyboard support\n");
     try stdout.writeAll("• EnhancedSelectMenu - Mouse-enabled selection menus\n");
     try stdout.writeAll("• Full terminal capabilities integration\n\n");
 
@@ -47,7 +47,7 @@ pub fn main() !void {
 fn demonstrateInfoPanel(allocator: std.mem.Allocator, writer: anytype) !void {
     try writer.writeAll("📋 InfoPanel Demo:\n");
 
-    var panel = InfoPanel.init(allocator, "System Status");
+    var panel = Panel.init(allocator, "System Status");
     defer panel.deinit();
 
     try panel.addInfo("Version", "1.0.0");

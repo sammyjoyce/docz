@@ -447,9 +447,59 @@ pub const InputParser = struct {
         };
     }
 
-    fn parseMouseSequence(_: *InputParser, _: []const u8) !ParseResult {
+    fn parseMouseSequence(self: *InputParser, sequence: []const u8) !ParseResult {
+        // Import mouse parser
+        const mouse_mod = @import("enhanced_mouse.zig");
 
-        // TODO: Implement mouse parsing
+        // Create a temporary mouse parser to parse the sequence
+        var mouse_parser = mouse_mod.MouseParser.init(self.allocator);
+
+        if (mouse_parser.parseEvent(sequence)) |enhanced_mouse_event| {
+            // Convert enhanced mouse event to types.MouseEvent
+            const mouse_event = types.MouseEvent{
+                .button = switch (enhanced_mouse_event.button) {
+                    .left => .left,
+                    .middle => .middle,
+                    .right => .right,
+                    .wheel_up => .wheel_up,
+                    .wheel_down => .wheel_down,
+                    .wheel_left => .wheel_left,
+                    .wheel_right => .wheel_right,
+                    .button4 => .button4,
+                    .button5 => .button5,
+                    else => .none,
+                },
+                .action = switch (enhanced_mouse_event.action) {
+                    .press => .press,
+                    .release => .release,
+                    .drag => .drag,
+                    .motion => .move,
+                    .wheel => switch (enhanced_mouse_event.button) {
+                        .wheel_up => .wheel_up,
+                        .wheel_down => .wheel_down,
+                        .wheel_left => .wheel_left,
+                        .wheel_right => .wheel_right,
+                        else => .move,
+                    },
+                    else => .move,
+                },
+                .x = enhanced_mouse_event.col,
+                .y = enhanced_mouse_event.row,
+                .pixel_x = enhanced_mouse_event.pixel_x,
+                .pixel_y = enhanced_mouse_event.pixel_y,
+                .mods = .{
+                    .shift = enhanced_mouse_event.modifiers.shift,
+                    .alt = enhanced_mouse_event.modifiers.alt,
+                    .ctrl = enhanced_mouse_event.modifiers.ctrl,
+                },
+            };
+
+            return ParseResult{
+                .event = .{ .mouse = mouse_event },
+                .consumed = sequence.len,
+            };
+        }
+
         return ParseResult{
             .event = .{ .unknown = "mouse" },
             .consumed = 1,

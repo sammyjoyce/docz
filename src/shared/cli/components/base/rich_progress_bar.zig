@@ -24,7 +24,7 @@ pub const ProgressStyle = enum {
     chart_line, // Inline line chart
 };
 
-pub const ChartDataPoint = struct {
+pub const ChartPoint = struct {
     value: f32,
     label: ?[]const u8 = null,
     timestamp: i64,
@@ -54,7 +54,7 @@ pub const RichProgressBar = struct {
     last_update: i64,
 
     // Chart and history data
-    history: std.ArrayList(ChartDataPoint),
+    history: std.ArrayList(ChartPoint),
     max_history: usize,
 
     // Rich graphics support
@@ -84,7 +84,7 @@ pub const RichProgressBar = struct {
             .animation_frame = 0,
             .start_time = null,
             .last_update = 0,
-            .history = std.ArrayList(ChartDataPoint).init(allocator),
+            .history = std.ArrayList(ChartPoint).init(allocator),
             .max_history = 100,
             .use_graphics = caps.supportsKittyGraphics or caps.supportsSixel,
             .chart_image_id = null,
@@ -131,7 +131,7 @@ pub const RichProgressBar = struct {
         }
 
         // Add to history for sparkline/chart visualization
-        try self.history.append(ChartDataPoint{
+        try self.history.append(ChartPoint{
             .value = self.current_progress,
             .timestamp = now,
         });

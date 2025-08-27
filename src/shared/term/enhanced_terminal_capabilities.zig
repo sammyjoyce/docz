@@ -425,8 +425,8 @@ pub const EnhancedTerminal = struct {
     }
 
     /// Get terminal information
-    pub fn getTerminalInfo(self: *const EnhancedTerminal) TerminalInfo {
-        return TerminalInfo{
+    pub fn getTerminalInfo(self: *const EnhancedTerminal) Terminal {
+        return Terminal{
             .terminal_type = self.capability_detector.terminal_type,
             .terminal_name = self.capability_detector.terminal_name,
             .color_strategy = self.color_strategy,
@@ -440,7 +440,7 @@ pub const EnhancedTerminal = struct {
 };
 
 /// Terminal information summary
-pub const TerminalInfo = struct {
+pub const Terminal = struct {
     terminal_type: TerminalType,
     terminal_name: []const u8,
     color_strategy: ColorStrategy,
@@ -450,7 +450,7 @@ pub const TerminalInfo = struct {
     supports_cursor_styles: bool,
     supports_pointer_shapes: bool,
 
-    pub fn print(self: TerminalInfo, writer: anytype) !void {
+    pub fn print(self: Terminal, writer: anytype) !void {
         try writer.print("Terminal: {s} ({s})\n", .{ self.terminal_type.toString(), self.terminal_name });
         try writer.print("Color Strategy: {s}\n", .{@tagName(self.color_strategy)});
         try writer.print("256 Colors: {}\n", .{self.supports_256_color});

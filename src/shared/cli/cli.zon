@@ -98,6 +98,56 @@
             .description = "Run in interactive mode for multi-turn conversations",
             .short = 'I',
         },
+        .{
+            .long = "interactive-help",
+            .description = "Show detailed help for interactive mode features",
+        },
+        .{
+            .long = "continue-session",
+            .description = "Continue from a previous interactive session",
+        },
+        .{
+            .long = "tui",
+            .type = "string",
+            .description = "TUI mode: rich, basic, auto, or none",
+            .default = "auto",
+        },
+        .{
+            .long = "dashboard",
+            .description = "Enable interactive dashboard with statistics",
+            .short = 'd',
+        },
+        .{
+            .long = "no-progress",
+            .description = "Disable progress indicators for long operations",
+        },
+        .{
+            .long = "auth",
+            .description = "Setup or configure authentication",
+        },
+        .{
+            .long = "preview",
+            .description = "Launch interactive markdown preview and editor",
+            .short = 'p',
+        },
+        .{
+            .long = "setup-auth",
+            .description = "Interactive authentication setup wizard",
+        },
+        .{
+            .long = "force-oauth",
+            .description = "Force OAuth setup even if already configured",
+        },
+        .{
+            .long = "session-title",
+            .type = "string",
+            .description = "Set custom title for interactive session",
+        },
+        .{
+            .long = "save-session",
+            .type = "string",
+            .description = "Save interactive session to specified file",
+        },
     },
     .positionals = .{
         .{
@@ -124,5 +174,10 @@
         .{ .command = "--help", .description = "Show this help" },
         .{ .command = "-m claude-3-5-sonnet-20241022 \"Explain quantum physics\"", .description = "Use specific model" },
         .{ .command = "-i input.md -o output.md", .description = "Process file input/output" },
+        .{ .command = "--interactive", .description = "Start interactive mode" },
+        .{ .command = "--interactive --tui=rich --dashboard", .description = "Rich TUI with dashboard" },
+        .{ .command = "--interactive-help", .description = "Show interactive mode help" },
+        .{ .command = "--auth", .description = "Setup authentication" },
+        .{ .command = "--preview document.md", .description = "Launch interactive markdown editor" },
     },
 }

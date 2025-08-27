@@ -88,14 +88,14 @@ pub const CharsetConfig = struct {
     g2: CharacterSet,
     g3: CharacterSet,
 
-    pub const default = CharsetConfig{
+    pub const DEFAULT = CharsetConfig{
         .g0 = .us_ascii,
         .g1 = .dec_special_drawing,
         .g2 = .us_ascii,
         .g3 = .us_ascii,
     };
 
-    pub const drawing_enabled = CharsetConfig{
+    pub const DRAWING_ENABLED = CharsetConfig{
         .g0 = .us_ascii,
         .g1 = .dec_special_drawing,
         .g2 = .dec_special_drawing,

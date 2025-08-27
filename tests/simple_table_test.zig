@@ -12,11 +12,11 @@ test "table validation - basic functionality" {
     const rows = [_][]const []const u8{&row1};
     const alignments = [_]table.Alignment{ .left, .right };
 
-    var test_table = try table.createTable(allocator, &headers, &rows, &alignments);
-    defer test_table.deinit(allocator);
+    var testTable = try table.createTable(allocator, &headers, &rows, &alignments);
+    defer testTable.deinit(allocator);
 
     const config = table.ValidationConfig{};
-    var result = try table.validateTable(allocator, &test_table, config);
+    var result = try table.validateTable(allocator, &testTable, config);
     defer result.deinit(allocator);
 
     try expect(result.is_valid);
@@ -30,20 +30,20 @@ test "table repair - basic functionality" {
     const rows = [_][]const []const u8{&row1};
     const alignments = [_]table.Alignment{ .left, .right, .left }; // Proper alignments first
 
-    var test_table = try table.createTable(allocator, &headers, &rows, &alignments);
-    defer test_table.deinit(allocator);
+    var testTable = try table.createTable(allocator, &headers, &rows, &alignments);
+    defer testTable.deinit(allocator);
 
     // Now artificially create a mismatched alignment array to test repair
-    allocator.free(test_table.alignments);
-    test_table.alignments = try allocator.alloc(table.Alignment, 2); // Wrong size
-    test_table.alignments[0] = .left;
-    test_table.alignments[1] = .right;
+    allocator.free(testTable.alignments);
+    testTable.alignments = try allocator.alloc(table.Alignment, 2); // Wrong size
+    testTable.alignments[0] = .left;
+    testTable.alignments[1] = .right;
 
     const config = table.RepairConfig{ .normalize_alignments = true };
 
-    const repairs_made = try table.repairTable(allocator, &test_table, config);
+    const repairs_made = try table.repairTable(allocator, &testTable, config);
     try expect(repairs_made > 0);
 
     // Verify alignments were normalized
-    try expectEqual(@as(usize, 3), test_table.alignments.len);
+    try expectEqual(@as(usize, 3), testTable.alignments.len);
 }

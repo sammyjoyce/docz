@@ -21,7 +21,7 @@ pub const TerminalAdapter = struct {
 
     // State management
     current_mode: TerminalMode = .text_only,
-    scoped_context: ?ScopedContext = null,
+    scoped_context: ?Scoped = null,
 
     /// Terminal operation modes based on capabilities
     pub const TerminalMode = enum {
@@ -44,11 +44,10 @@ pub const TerminalAdapter = struct {
     };
 
     /// Scoped terminal context for automatic cleanup
-    pub const ScopedContext = struct {
+    pub const Scoped = struct {
         adapter: *Self,
-        original_mode: unified.Terminal.AltScreenMode,
 
-        pub fn deinit(self: *ScopedContext) void {
+        pub fn deinit(self: *Scoped) void {
             // Restore original terminal state
             self.adapter.terminal.exitAltScreen() catch {};
             self.adapter.scoped_context = null;
@@ -96,7 +95,7 @@ pub const TerminalAdapter = struct {
     }
 
     /// Enter scoped context for TUI applications
-    pub fn enterScope(self: *Self) !ScopedContext {
+    pub fn enterScope(self: *Self) !Scoped {
         const original_mode = self.terminal.current_mode;
         try self.terminal.enterAltScreen();
         try self.terminal.enableRawMode();
@@ -116,7 +115,7 @@ pub const TerminalAdapter = struct {
             try self.terminal.enableFocusEvents();
         }
 
-        const context = ScopedContext{
+        const context = Scoped{
             .adapter = self,
             .original_mode = original_mode,
         };
@@ -295,7 +294,7 @@ pub const TerminalAdapter = struct {
 /// Chart styling configuration
 pub const ChartStyle = struct {
     line_color: unified.Color = .{ .rgb = .{ .r = 100, .g = 149, .b = 237 } },
-    background_color: ?unified.Color = null,
+    backgroundColor: ?unified.Color = null,
     grid_color: unified.Color = .{ .palette = 8 },
     show_grid: bool = true,
     show_labels: bool = true,
@@ -303,7 +302,7 @@ pub const ChartStyle = struct {
     pub fn toKittyStyle(self: ChartStyle) KittyChartStyle {
         return KittyChartStyle{
             .line_color = self.line_color,
-            .background_color = self.background_color,
+            .backgroundColor = self.backgroundColor,
             .grid_enabled = self.show_grid,
         };
     }
@@ -414,7 +413,7 @@ pub const ChartBitmap = struct {
 // Placeholder types for chart renderers (to be implemented)
 const KittyChartStyle = struct {
     line_color: unified.Color,
-    background_color: ?unified.Color,
+    backgroundColor: ?unified.Color,
     grid_enabled: bool,
 };
 

@@ -50,8 +50,8 @@ pub const Pixel = struct {
     /// Convert RGB to grayscale intensity
     pub fn toGrayscale(self: Pixel) u8 {
         return @as(u8, @intFromFloat(@as(f32, @floatFromInt(self.r)) * 0.299 +
-                                     @as(f32, @floatFromInt(self.g)) * 0.587 +
-                                     @as(f32, @floatFromInt(self.b)) * 0.114));
+            @as(f32, @floatFromInt(self.g)) * 0.587 +
+            @as(f32, @floatFromInt(self.b)) * 0.114));
     }
 
     /// Calculate color distance (Euclidean in RGB space)
@@ -298,7 +298,7 @@ pub const ColorQuantizer = struct {
 
         fn canSplit(self: ColorBox) bool {
             return self.count > 1 and
-                   (self.max_r > self.min_r or
+                (self.max_r > self.min_r or
                     self.max_g > self.min_g or
                     self.max_b > self.min_b);
         }
@@ -390,7 +390,8 @@ pub const ColorQuantizer = struct {
             for (image.pixels) |pixel| {
                 if (pixel.r >= self.min_r and pixel.r <= self.max_r and
                     pixel.g >= self.min_g and pixel.g <= self.max_g and
-                    pixel.b >= self.min_b and pixel.b <= self.max_b) {
+                    pixel.b >= self.min_b and pixel.b <= self.max_b)
+                {
                     total_r += pixel.r;
                     total_g += pixel.g;
                     total_b += pixel.b;
@@ -498,7 +499,8 @@ pub const SixelEncoder = struct {
         // Parameters: aspect ratio, background color, grid size
         const aspect_ratio_param = if (options.aspect_ratio != 1.0)
             @as(i32, @intFromFloat(options.aspect_ratio * 10))
-        else -1;
+        else
+            -1;
 
         const background_param = 1; // Transparent background
         const grid_param = 1; // 1x1 pixel grid
@@ -535,14 +537,14 @@ pub const SixelEncoder = struct {
                 var x: u32 = 0;
                 while (x < indexed.width) {
                     var run_length: u32 = 1;
-                    const start_x = x;
 
                     // Count consecutive pixels of this color
                     while (x + run_length < indexed.width) {
                         const pixel_index = (y + 0) * indexed.width + (x + run_length);
                         if (pixel_index >= indexed.indices.len or
                             indexed.indices[pixel_index] != color_index or
-                            indexed.transparency[pixel_index]) {
+                            indexed.transparency[pixel_index])
+                        {
                             break;
                         }
                         run_length += 1;
@@ -560,7 +562,8 @@ pub const SixelEncoder = struct {
                         const pixel_index = pixel_y * indexed.width + x;
                         if (pixel_index < indexed.indices.len and
                             indexed.indices[pixel_index] == color_index and
-                            !indexed.transparency[pixel_index]) {
+                            !indexed.transparency[pixel_index])
+                        {
                             sixel_value |= @as(u8, 1) << @as(u3, @intCast(strip_y));
                         }
                     }
@@ -766,33 +769,25 @@ pub const ImageScaler = struct {
                         const fx = src_x_f - @as(f32, @floatFromInt(x1));
                         const fy = src_y_f - @as(f32, @floatFromInt(y1));
 
-                        const r = @as(u8, @intFromFloat(
-                            @as(f32, @floatFromInt(p11.r)) * (1 - fx) * (1 - fy) +
+                        const r = @as(u8, @intFromFloat(@as(f32, @floatFromInt(p11.r)) * (1 - fx) * (1 - fy) +
                             @as(f32, @floatFromInt(p12.r)) * (1 - fx) * fy +
                             @as(f32, @floatFromInt(p21.r)) * fx * (1 - fy) +
-                            @as(f32, @floatFromInt(p22.r)) * fx * fy
-                        ));
+                            @as(f32, @floatFromInt(p22.r)) * fx * fy));
 
-                        const g = @as(u8, @intFromFloat(
-                            @as(f32, @floatFromInt(p11.g)) * (1 - fx) * (1 - fy) +
+                        const g = @as(u8, @intFromFloat(@as(f32, @floatFromInt(p11.g)) * (1 - fx) * (1 - fy) +
                             @as(f32, @floatFromInt(p12.g)) * (1 - fx) * fy +
                             @as(f32, @floatFromInt(p21.g)) * fx * (1 - fy) +
-                            @as(f32, @floatFromInt(p22.g)) * fx * fy
-                        ));
+                            @as(f32, @floatFromInt(p22.g)) * fx * fy));
 
-                        const b = @as(u8, @intFromFloat(
-                            @as(f32, @floatFromInt(p11.b)) * (1 - fx) * (1 - fy) +
+                        const b = @as(u8, @intFromFloat(@as(f32, @floatFromInt(p11.b)) * (1 - fx) * (1 - fy) +
                             @as(f32, @floatFromInt(p12.b)) * (1 - fx) * fy +
                             @as(f32, @floatFromInt(p21.b)) * fx * (1 - fy) +
-                            @as(f32, @floatFromInt(p22.b)) * fx * fy
-                        ));
+                            @as(f32, @floatFromInt(p22.b)) * fx * fy));
 
-                        const a = @as(u8, @intFromFloat(
-                            @as(f32, @floatFromInt(p11.a)) * (1 - fx) * (1 - fy) +
+                        const a = @as(u8, @intFromFloat(@as(f32, @floatFromInt(p11.a)) * (1 - fx) * (1 - fy) +
                             @as(f32, @floatFromInt(p12.a)) * (1 - fx) * fy +
                             @as(f32, @floatFromInt(p21.a)) * fx * (1 - fy) +
-                            @as(f32, @floatFromInt(p22.a)) * fx * fy
-                        ));
+                            @as(f32, @floatFromInt(p22.a)) * fx * fy));
 
                         scaled_image.setPixelUnsafe(x, y, Pixel{ .r = r, .g = g, .b = b, .a = a });
                     }
@@ -1024,7 +1019,7 @@ pub const SixelGraphics = struct {
                     .horizontal => @as(f32, @floatFromInt(x)) / @as(f32, @floatFromInt(width - 1)),
                     .vertical => @as(f32, @floatFromInt(y)) / @as(f32, @floatFromInt(height - 1)),
                     .diagonal => (@as(f32, @floatFromInt(x)) + @as(f32, @floatFromInt(y))) /
-                                (@as(f32, @floatFromInt(width - 1)) + @as(f32, @floatFromInt(height - 1))),
+                        (@as(f32, @floatFromInt(width - 1)) + @as(f32, @floatFromInt(height - 1))),
                 };
 
                 const r = @as(u8, @intFromFloat(@as(f32, @floatFromInt(start_color.r)) * (1 - t) + @as(f32, @floatFromInt(end_color.r)) * t));
@@ -1073,6 +1068,3 @@ pub const SixelGraphics = struct {
 };
 
 // Example usage and high-level API functions can be added here
-// The SixelGraphics struct provides the main functionality</content>
-</xai:function_call name="read">
-<parameter name="filePath">src/shared/term/ansi/mod.zig

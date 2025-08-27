@@ -2,15 +2,15 @@
 //! Handles safe pasting of multi-line content and large text blocks
 const std = @import("std");
 
-/// Paste event manager
-pub const PasteManager = struct {
+/// Paste event controller
+pub const Paste = struct {
     is_pasting: bool,
     paste_buffer: std.ArrayListUnmanaged(u8),
     handlers: std.ArrayListUnmanaged(PasteHandler),
     allocator: std.mem.Allocator,
 
-    pub fn init(allocator: std.mem.Allocator) PasteManager {
-        return PasteManager{
+    pub fn init(allocator: std.mem.Allocator) Paste {
+        return Paste{
             .is_pasting = false,
             .paste_buffer = std.ArrayListUnmanaged(u8){},
             .handlers = std.ArrayListUnmanaged(PasteHandler){},
@@ -18,18 +18,18 @@ pub const PasteManager = struct {
         };
     }
 
-    pub fn deinit(self: *PasteManager) void {
+    pub fn deinit(self: *Paste) void {
         self.paste_buffer.deinit(self.allocator);
         self.handlers.deinit(self.allocator);
     }
 
     /// Register a paste handler
-    pub fn addHandler(self: *PasteManager, handler: PasteHandler) !void {
+    pub fn addHandler(self: *Paste, handler: PasteHandler) !void {
         try self.handlers.append(self.allocator, handler);
     }
 
     /// Remove a paste handler
-    pub fn removeHandler(self: *PasteManager, handler: PasteHandler) void {
+    pub fn removeHandler(self: *Paste, handler: PasteHandler) void {
         for (self.handlers.items, 0..) |h, i| {
             if (h.func == handler.func) {
                 _ = self.handlers.swapRemove(i);
@@ -39,20 +39,20 @@ pub const PasteManager = struct {
     }
 
     /// Start paste operation (called when paste start sequence is detected)
-    pub fn startPaste(self: *PasteManager) void {
+    pub fn startPaste(self: *Paste) void {
         self.is_pasting = true;
         self.paste_buffer.clearRetainingCapacity();
     }
 
     /// Add content to paste buffer during paste operation
-    pub fn addPasteContent(self: *PasteManager, content: []const u8) !void {
+    pub fn addPasteContent(self: *Paste, content: []const u8) !void {
         if (self.is_pasting) {
             try self.paste_buffer.appendSlice(self.allocator, content);
         }
     }
 
     /// End paste operation and notify handlers
-    pub fn endPaste(self: *PasteManager) !void {
+    pub fn endPaste(self: *Paste) !void {
         if (self.is_pasting) {
             self.is_pasting = false;
 
@@ -66,12 +66,12 @@ pub const PasteManager = struct {
     }
 
     /// Check if currently in paste mode
-    pub fn isPasting(self: *const PasteManager) bool {
+    pub fn isPasting(self: *const Paste) bool {
         return self.is_pasting;
     }
 
     /// Get current paste buffer content (for debugging/inspection)
-    pub fn getCurrentPasteContent(self: *const PasteManager) []const u8 {
+    pub fn getCurrentPasteContent(self: *const Paste) []const u8 {
         return self.paste_buffer.items;
     }
 
@@ -93,11 +93,11 @@ pub const PasteHandler = struct {
 
 /// Paste-aware widget trait
 pub const PasteAware = struct {
-    paste_manager: *PasteManager,
+    paste_controller: *Paste,
 
-    pub fn init(paste_manager: *PasteManager) PasteAware {
+    pub fn init(paste_controller: *Paste) PasteAware {
         return PasteAware{
-            .paste_manager = paste_manager,
+            .paste_controller = paste_controller,
         };
     }
 
@@ -121,12 +121,12 @@ pub const PasteAware = struct {
                 }
             }.handle(self),
         };
-        try self.paste_manager.addHandler(handler);
+        try self.paste_controller.addHandler(handler);
     }
 };
 
 /// Utility functions for paste content processing
-pub const PasteUtils = struct {
+pub const PasteHelper = struct {
     /// Sanitize pasted content by removing or replacing dangerous characters
     pub fn sanitizeContent(allocator: std.mem.Allocator, content: []const u8) ![]u8 {
         var sanitized = std.ArrayListUnmanaged(u8){};
@@ -174,45 +174,45 @@ pub const PasteUtils = struct {
 };
 
 // Tests
-test "paste manager initialization" {
-    var paste_manager = PasteManager.init(std.testing.allocator);
-    defer paste_manager.deinit();
+test "paste controller initialization" {
+    var paste_controller = Paste.init(std.testing.allocator);
+    defer paste_controller.deinit();
 
-    try std.testing.expect(!paste_manager.isPasting());
+    try std.testing.expect(!paste_controller.isPasting());
 }
 
 test "paste operation lifecycle" {
-    var paste_manager = PasteManager.init(std.testing.allocator);
-    defer paste_manager.deinit();
+    var paste_controller = Paste.init(std.testing.allocator);
+    defer paste_controller.deinit();
 
     // Start paste
-    paste_manager.startPaste();
-    try std.testing.expect(paste_manager.isPasting());
+    paste_controller.startPaste();
+    try std.testing.expect(paste_controller.isPasting());
 
     // Add content
-    try paste_manager.addPasteContent("Hello");
-    try paste_manager.addPasteContent(" ");
-    try paste_manager.addPasteContent("World");
+    try paste_controller.addPasteContent("Hello");
+    try paste_controller.addPasteContent(" ");
+    try paste_controller.addPasteContent("World");
 
     // Check buffer content
-    try std.testing.expectEqualStrings("Hello World", paste_manager.getCurrentPasteContent());
+    try std.testing.expectEqualStrings("Hello World", paste_controller.getCurrentPasteContent());
 
     // End paste
-    try paste_manager.endPaste();
-    try std.testing.expect(!paste_manager.isPasting());
+    try paste_controller.endPaste();
+    try std.testing.expect(!paste_controller.isPasting());
 }
 
 test "paste content utilities" {
     const content = "Hello\x00\x01World\n\tTab\nNewline";
 
     // Test sanitization
-    const sanitized = try PasteUtils.sanitizeContent(std.testing.allocator, content);
+    const sanitized = try PasteHelper.sanitizeContent(std.testing.allocator, content);
     defer std.testing.allocator.free(sanitized);
     try std.testing.expectEqualStrings("HelloWorld\n\tTab\nNewline", sanitized);
 
     // Test line counting
-    try std.testing.expectEqual(@as(usize, 3), PasteUtils.countLines(sanitized));
+    try std.testing.expectEqual(@as(usize, 3), PasteHelper.countLines(sanitized));
 
     // Test multi-line detection
-    try std.testing.expect(PasteUtils.isMultiLine(sanitized));
+    try std.testing.expect(PasteHelper.isMultiLine(sanitized));
 }

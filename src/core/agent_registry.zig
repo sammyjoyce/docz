@@ -18,12 +18,12 @@ pub const AgentState = enum {
 };
 
 /// Represents metadata for a single agent with enhanced lifecycle tracking.
-pub const AgentInfo = struct {
+pub const Agent = struct {
     /// Unique name of the agent.
     name: []const u8,
     /// Version string of the agent.
     version: []const u8,
-    /// Human-readable description of the agent.
+    /// Human-readable description of the agent's purpose.
     description: []const u8,
     /// Author or maintainer of the agent.
     author: []const u8,
@@ -32,18 +32,18 @@ pub const AgentInfo = struct {
     /// List of capabilities the agent provides.
     capabilities: [][]const u8,
     /// Path to the agent's config.zon file.
-    config_path: []const u8,
+    configPath: []const u8,
     /// Path to the agent's main entry point (main.zig).
-    entry_path: []const u8,
+    entryPath: []const u8,
     /// Current lifecycle state of the agent.
     state: AgentState = .discovered,
     /// Timestamp when the agent was last loaded/started.
-    last_loaded: ?i64 = null,
+    lastLoaded: ?i64 = null,
     /// Additional metadata as key-value pairs.
     metadata: std.StringHashMap([]const u8),
 
-    /// Initializes a new AgentInfo with default values.
-    pub fn init(allocator: std.mem.Allocator) !AgentInfo {
+    /// Initializes a new Agent with default values.
+    pub fn init(allocator: std.mem.Allocator) !Agent {
         return .{
             .name = "",
             .version = "",
@@ -51,16 +51,16 @@ pub const AgentInfo = struct {
             .author = "",
             .tags = &[_][]const u8{},
             .capabilities = &[_][]const u8{},
-            .config_path = "",
-            .entry_path = "",
+            .configPath = "",
+            .entryPath = "",
             .state = .discovered,
-            .last_loaded = null,
+            .lastLoaded = null,
             .metadata = std.StringHashMap([]const u8).init(allocator),
         };
     }
 
-    /// Cleans up resources used by the AgentInfo.
-    pub fn deinit(self: *AgentInfo) void {
+    /// Cleans up resources used by the Agent.
+    pub fn deinit(self: *Agent) void {
         var it = self.metadata.iterator();
         while (it.next()) |entry| {
             self.metadata.allocator.free(entry.key_ptr.*);
@@ -96,7 +96,7 @@ pub const AgentRegistryError = error{
 /// Provides methods to scan agent directories, validate agents, and load configurations.
 pub const AgentRegistry = struct {
     /// Map of agent names to their metadata.
-    agents: std.StringHashMap(AgentInfo),
+    agents: std.StringHashMap(Agent),
     /// Allocator used for memory management.
     allocator: std.mem.Allocator,
 
@@ -104,7 +104,7 @@ pub const AgentRegistry = struct {
     /// Caller is responsible for calling deinit() to free resources.
     pub fn init(allocator: std.mem.Allocator) AgentRegistry {
         return .{
-            .agents = std.StringHashMap(AgentInfo).init(allocator),
+            .agents = std.StringHashMap(Agent).init(allocator),
             .allocator = allocator,
         };
     }
@@ -126,8 +126,8 @@ pub const AgentRegistry = struct {
                 self.allocator.free(cap);
             }
             self.allocator.free(entry.value_ptr.capabilities);
-            self.allocator.free(entry.value_ptr.config_path);
-            self.allocator.free(entry.value_ptr.entry_path);
+            self.allocator.free(entry.value_ptr.configPath);
+            self.allocator.free(entry.value_ptr.entryPath);
             entry.value_ptr.deinit();
         }
         self.agents.deinit();
@@ -135,8 +135,8 @@ pub const AgentRegistry = struct {
 
     /// Scans the specified agents directory and loads metadata for all valid agents.
     /// Only agents with valid config.zon files and required structure are added.
-    pub fn discoverAgents(self: *AgentRegistry, agents_dir: []const u8) !void {
-        var dir = try fs.openDirAbsolute(agents_dir, .{ .iterate = true });
+    pub fn discoverAgents(self: *AgentRegistry, agentsDir: []const u8) !void {
+        var dir = try fs.openDirAbsolute(agentsDir, .{ .iterate = true });
         defer dir.close();
 
         var it = dir.iterate();
@@ -144,51 +144,51 @@ pub const AgentRegistry = struct {
             if (entry.kind != .directory) continue;
             if (std.mem.eql(u8, entry.name, "_template")) continue; // Skip template
 
-            const agent_path = try std.fs.path.join(self.allocator, &[_][]const u8{ agents_dir, entry.name });
-            defer self.allocator.free(agent_path);
+            const agentPath = try std.fs.path.join(self.allocator, &[_][]const u8{ agentsDir, entry.name });
+            defer self.allocator.free(agentPath);
 
-            const config_path = try std.fs.path.join(self.allocator, &[_][]const u8{ agent_path, "config.zon" });
-            defer self.allocator.free(config_path);
+            const configPath = try std.fs.path.join(self.allocator, &[_][]const u8{ agentPath, "config.zon" });
+            defer self.allocator.free(configPath);
 
-            if (fs.accessAbsolute(config_path, .{}) catch false) {
-                try self.loadAgentFromConfig(entry.name, config_path, agent_path);
+            if (fs.accessAbsolute(configPath, .{}) catch false) {
+                try self.loadAgentFromConfig(entry.name, configPath, agentPath);
             }
         }
     }
 
     /// Retrieves information for a specific agent by name.
     /// Returns AgentRegistryError.AgentNotFound if the agent is not registered.
-    pub fn getAgent(self: *const AgentRegistry, name: []const u8) AgentRegistryError!?AgentInfo {
+    pub fn getAgent(self: *const AgentRegistry, name: []const u8) AgentRegistryError!?Agent {
         return self.agents.get(name);
     }
 
     /// Returns a list of all discovered agents.
     /// The returned slice is owned by the caller and must be freed.
-    pub fn listAgents(self: *const AgentRegistry) ![][]const u8 {
-        var list = std.ArrayList([]const u8).init(self.allocator);
-        defer list.deinit();
+    pub fn getAllAgents(self: *const AgentRegistry) ![]Agent {
+        var agentsList = try std.ArrayList(Agent).initCapacity(self.allocator, self.agents.count());
+        defer agentsList.deinit();
 
         var it = self.agents.iterator();
         while (it.next()) |entry| {
-            try list.append(try self.allocator.dupe(u8, entry.key_ptr.*));
+            try agentsList.append(entry.value_ptr.*);
         }
 
-        return list.toOwnedSlice();
+        return agentsList.toOwnedSlice();
     }
 
-    /// Validates that an agent has all required files (main.zig, spec.zig, agent.zig).
+    /// Validates that an agent has all required files (main.zig, spec.zig, Agent.zig).
     /// Returns true if valid, false otherwise.
     pub fn validateAgent(self: *const AgentRegistry, name: []const u8) !bool {
         const info = (try self.getAgent(name)) orelse return false;
 
-        const required_files = [_][]const u8{ "main.zig", "spec.zig", "agent.zig" };
-        const agent_dir = std.fs.path.dirname(info.entry_path) orelse return false;
+        const requiredFiles = [_][]const u8{ "main.zig", "spec.zig", "Agent.zig" };
+        const agentDir = std.fs.path.dirname(info.entryPath) orelse return false;
 
-        for (required_files) |file| {
-            const file_path = try std.fs.path.join(self.allocator, &[_][]const u8{ agent_dir, file });
-            defer self.allocator.free(file_path);
+        for (requiredFiles) |file| {
+            const filePath = try std.fs.path.join(self.allocator, &[_][]const u8{ agentDir, file });
+            defer self.allocator.free(filePath);
 
-            if (!fs.accessAbsolute(file_path, .{})) {
+            if (!fs.accessAbsolute(filePath, .{})) {
                 return false;
             }
         }
@@ -202,7 +202,7 @@ pub const AgentRegistry = struct {
     pub fn loadAgentConfig(self: *const AgentRegistry, name: []const u8) !std.json.Value {
         const info = (try self.getAgent(name)) orelse return AgentRegistryError.AgentNotFound;
 
-        const file = try fs.openFileAbsolute(info.config_path, .{});
+        const file = try fs.openFileAbsolute(info.configPath, .{});
         defer file.close();
 
         const content = try file.readToEndAlloc(self.allocator, std.math.maxInt(usize));
@@ -213,8 +213,8 @@ pub const AgentRegistry = struct {
     }
 
     /// Internal method to load agent info from a config.zon file.
-    fn loadAgentFromConfig(self: *AgentRegistry, agent_name: []const u8, config_path: []const u8, agent_path: []const u8) !void {
-        const file = try fs.openFileAbsolute(config_path, .{});
+    fn loadAgentFromConfig(self: *AgentRegistry, agentName: []const u8, configPath: []const u8, agentPath: []const u8) !void {
+        const file = try fs.openFileAbsolute(configPath, .{});
         defer file.close();
 
         const content = try file.readToEndAlloc(self.allocator, std.math.maxInt(usize));
@@ -226,31 +226,31 @@ pub const AgentRegistry = struct {
         const root = parsed.value.object;
 
         // Extract agent_config if present
-        const agent_config = root.get("agent_config") orelse return AgentRegistryError.InvalidConfig;
-        if (agent_config != .object) return AgentRegistryError.InvalidConfig;
+        const agentConfig = root.get("agent_config") orelse return AgentRegistryError.InvalidConfig;
+        if (agentConfig != .object) return AgentRegistryError.InvalidConfig;
 
-        const agent_info = agent_config.object.get("agent_info") orelse return AgentRegistryError.InvalidConfig;
-        if (agent_info != .object) return AgentRegistryError.InvalidConfig;
+        const agentInfo = agentConfig.object.get("agent_info") orelse return AgentRegistryError.InvalidConfig;
+        if (agentInfo != .object) return AgentRegistryError.InvalidConfig;
 
-        const name = try extractString(agent_info.object, "name") orelse agent_name;
-        const version = try extractString(agent_info.object, "version") orelse "1.0.0";
-        const description = try extractString(agent_info.object, "description") orelse "";
-        const author = try extractString(agent_info.object, "author") orelse "";
+        const name = try extractString(agentInfo.object, "name") orelse agentName;
+        const version = try extractString(agentInfo.object, "version") orelse "1.0.0";
+        const description = try extractString(agentInfo.object, "description") orelse "";
+        const author = try extractString(agentInfo.object, "author") orelse "";
 
         const tags = try self.extractStringArray(root, "tags") orelse &[_][]const u8{};
         const capabilities = try self.extractStringArray(root, "capabilities") orelse &[_][]const u8{};
 
-        const entry_path = try std.fs.path.join(self.allocator, &[_][]const u8{ agent_path, "main.zig" });
+        const entryPath = try std.fs.path.join(self.allocator, &[_][]const u8{ agentPath, "main.zig" });
 
-        var info = try AgentInfo.init(self.allocator);
+        var info = try Agent.init(self.allocator);
         errdefer {
-            // Clean up allocated fields manually since AgentInfo.deinit() doesn't do this
+            // Clean up allocated fields manually since Agent.deinit() doesn't do this
             if (info.name.len > 0) self.allocator.free(info.name);
             if (info.version.len > 0) self.allocator.free(info.version);
             if (info.description.len > 0) self.allocator.free(info.description);
             if (info.author.len > 0) self.allocator.free(info.author);
-            if (info.config_path.len > 0) self.allocator.free(info.config_path);
-            if (info.entry_path.len > 0) self.allocator.free(info.entry_path);
+            if (info.configPath.len > 0) self.allocator.free(info.configPath);
+            if (info.entryPath.len > 0) self.allocator.free(info.entryPath);
             for (info.tags) |tag| {
                 self.allocator.free(tag);
             }
@@ -268,8 +268,8 @@ pub const AgentRegistry = struct {
         info.author = try self.allocator.dupe(u8, author);
         info.tags = try self.dupeStringArray(tags);
         info.capabilities = try self.dupeStringArray(capabilities);
-        info.config_path = try self.allocator.dupe(u8, config_path);
-        info.entry_path = entry_path;
+        info.configPath = try self.allocator.dupe(u8, configPath);
+        info.entryPath = entryPath;
 
         const key = try self.allocator.dupe(u8, name);
         errdefer self.allocator.free(key);
@@ -278,27 +278,27 @@ pub const AgentRegistry = struct {
     }
 
     /// Helper to extract a string value from a JSON object.
-    fn extractString(obj: std.json.ObjectMap, key: []const u8) !?[]const u8 {
-        const value = obj.get(key) orelse return null;
+    fn extractString(object: std.json.ObjectMap, key: []const u8) !?[]const u8 {
+        const value = object.get(key) orelse return null;
         if (value != .string) return null;
         return value.string;
     }
 
     /// Helper to extract a string array from a JSON object.
-    fn extractStringArray(self: *AgentRegistry, obj: std.json.ObjectMap, key: []const u8) !?[][]const u8 {
-        const value = obj.get(key) orelse return null;
+    fn extractStringArray(self: *AgentRegistry, object: std.json.ObjectMap, key: []const u8) !?[][]const u8 {
+        const value = object.get(key) orelse return null;
         if (value != .array) return null;
 
-        var arr = std.ArrayList([]const u8).init(self.allocator);
-        defer arr.deinit();
+        var array = std.ArrayList([]const u8).init(self.allocator);
+        defer array.deinit();
 
         for (value.array.items) |item| {
             if (item == .string) {
-                try arr.append(item.string);
+                try array.append(item.string);
             }
         }
 
-        return arr.toOwnedSlice();
+        return array.toOwnedSlice();
     }
 
     /// Helper to duplicate a string array.
@@ -313,9 +313,9 @@ pub const AgentRegistry = struct {
         defer duped.deinit();
 
         for (arr) |str| {
-            const duped_str = try self.allocator.dupe(u8, str);
-            errdefer self.allocator.free(duped_str);
-            try duped.append(duped_str);
+            const dupedStr = try self.allocator.dupe(u8, str);
+            errdefer self.allocator.free(dupedStr);
+            try duped.append(dupedStr);
         }
 
         return duped.toOwnedSlice();
@@ -325,42 +325,42 @@ pub const AgentRegistry = struct {
 
     /// Registers an agent at runtime with the provided information.
     /// This allows for dynamic agent registration beyond directory scanning.
-    pub fn registerAgent(self: *AgentRegistry, info: AgentInfo) !void {
-        const name_key = try self.allocator.dupe(u8, info.name);
-        errdefer self.allocator.free(name_key);
-        try self.agents.put(name_key, info);
+    pub fn registerAgent(self: *AgentRegistry, info: Agent) !void {
+        const nameKey = try self.allocator.dupe(u8, info.name);
+        errdefer self.allocator.free(nameKey);
+        try self.agents.put(nameKey, info);
     }
 
     /// Updates the lifecycle state of an agent.
     /// Validates state transitions and updates timestamps as needed.
-    pub fn updateAgentState(self: *AgentRegistry, name: []const u8, new_state: AgentState) !void {
+    pub fn updateAgentState(self: *AgentRegistry, name: []const u8, newState: AgentState) !void {
         const entry = self.agents.getPtr(name) orelse return AgentRegistryError.AgentNotFound;
 
         // Validate state transitions
         switch (entry.state) {
-            .discovered => if (new_state != .loading and new_state != .unloaded) {
+            .discovered => if (newState != .loading and newState != .unloaded) {
                 return AgentRegistryError.InvalidStateTransition;
             },
-            .loading => if (new_state != .loaded and new_state != .failed) {
+            .loading => if (newState != .loaded and newState != .failed) {
                 return AgentRegistryError.InvalidStateTransition;
             },
-            .loaded => if (new_state != .running and new_state != .unloaded and new_state != .failed) {
+            .loaded => if (newState != .running and newState != .unloaded and newState != .failed) {
                 return AgentRegistryError.InvalidStateTransition;
             },
-            .running => if (new_state != .unloaded and new_state != .failed) {
+            .running => if (newState != .unloaded and newState != .failed) {
                 return AgentRegistryError.InvalidStateTransition;
             },
-            .failed => if (new_state != .unloaded and new_state != .loading) {
+            .failed => if (newState != .unloaded and newState != .loading) {
                 return AgentRegistryError.InvalidStateTransition;
             },
-            .unloaded => if (new_state != .loading) {
+            .unloaded => if (newState != .loading) {
                 return AgentRegistryError.InvalidStateTransition;
             },
         }
 
-        entry.state = new_state;
-        if (new_state == .loaded or new_state == .running) {
-            entry.last_loaded = std.time.timestamp();
+        entry.state = newState;
+        if (newState == .loaded or newState == .running) {
+            entry.lastLoaded = std.time.timestamp();
         }
     }
 
@@ -382,94 +382,94 @@ pub const AgentRegistry = struct {
     /// Queries agents that support a specific capability.
     /// Returns a list of agent names that have the specified capability.
     pub fn queryCapability(self: *AgentRegistry, capability: []const u8) ![][]const u8 {
-        var matching_agents = std.ArrayList([]const u8).init(self.allocator);
-        defer matching_agents.deinit();
+        var matchingAgents = std.ArrayList([]const u8).init(self.allocator);
+        defer matchingAgents.deinit();
 
         var it = self.agents.iterator();
         while (it.next()) |entry| {
-            for (entry.value_ptr.capabilities) |cap| {
-                if (std.mem.eql(u8, cap, capability)) {
-                    try matching_agents.append(try self.allocator.dupe(u8, entry.key_ptr.*));
+            for (entry.value_ptr.capabilities) |agentCapability| {
+                if (std.mem.eql(u8, agentCapability, capability)) {
+                    try matchingAgents.append(try self.allocator.dupe(u8, entry.key_ptr.*));
                     break;
                 }
             }
         }
 
-        return matching_agents.toOwnedSlice();
+        return matchingAgents.toOwnedSlice();
     }
 
     /// Queries agents that have all of the specified capabilities.
     pub fn queryCapabilities(self: *AgentRegistry, capabilities: [][]const u8) ![][]const u8 {
-        var matching_agents = std.ArrayList([]const u8).init(self.allocator);
-        defer matching_agents.deinit();
+        var matchingAgents = std.ArrayList([]const u8).init(self.allocator);
+        defer matchingAgents.deinit();
 
         var it = self.agents.iterator();
         while (it.next()) |entry| {
-            var has_all_caps = true;
-            for (capabilities) |required_cap| {
+            var hasAllCaps = true;
+            for (capabilities) |requiredCap| {
                 var found = false;
-                for (entry.value_ptr.capabilities) |agent_cap| {
-                    if (std.mem.eql(u8, agent_cap, required_cap)) {
+                for (entry.value_ptr.capabilities) |agentCap| {
+                    if (std.mem.eql(u8, agentCap, requiredCap)) {
                         found = true;
                         break;
                     }
                 }
                 if (!found) {
-                    has_all_caps = false;
+                    hasAllCaps = false;
                     break;
                 }
             }
-            if (has_all_caps) {
-                try matching_agents.append(try self.allocator.dupe(u8, entry.key_ptr.*));
+            if (hasAllCaps) {
+                try matchingAgents.append(try self.allocator.dupe(u8, entry.key_ptr.*));
             }
         }
 
-        return matching_agents.toOwnedSlice();
+        return matchingAgents.toOwnedSlice();
     }
 
     /// Queries agents by tags.
     pub fn queryTags(self: *AgentRegistry, tags: [][]const u8) ![][]const u8 {
-        var matching_agents = std.ArrayList([]const u8).init(self.allocator);
-        defer matching_agents.deinit();
+        var matchingAgents = std.ArrayList([]const u8).init(self.allocator);
+        defer matchingAgents.deinit();
 
         var it = self.agents.iterator();
         while (it.next()) |entry| {
-            var has_all_tags = true;
-            for (tags) |required_tag| {
+            var hasAllTags = true;
+            for (tags) |requiredTag| {
                 var found = false;
-                for (entry.value_ptr.tags) |agent_tag| {
-                    if (std.mem.eql(u8, agent_tag, required_tag)) {
+                for (entry.value_ptr.tags) |agentTag| {
+                    if (std.mem.eql(u8, agentTag, requiredTag)) {
                         found = true;
                         break;
                     }
                 }
                 if (!found) {
-                    has_all_tags = false;
+                    hasAllTags = false;
                     break;
                 }
             }
-            if (has_all_tags) {
-                try matching_agents.append(try self.allocator.dupe(u8, entry.key_ptr.*));
+            if (hasAllTags) {
+                try matchingAgents.append(try self.allocator.dupe(u8, entry.key_ptr.*));
             }
         }
 
-        return matching_agents.toOwnedSlice();
+        return matchingAgents.toOwnedSlice();
     }
 
     /// Stores additional metadata for an agent.
     pub fn setAgentMetadata(self: *AgentRegistry, name: []const u8, key: []const u8, value: []const u8) !void {
         const entry = self.agents.getPtr(name) orelse return AgentRegistryError.AgentNotFound;
 
-        const key_dup = try self.allocator.dupe(u8, key);
-        const value_dup = try self.allocator.dupe(u8, value);
+        const keyDup = try self.allocator.dupe(u8, key);
+        const valueDup = try self.allocator.dupe(u8, value);
 
         // Remove existing value if present
-        if (entry.metadata.fetchRemove(key)) |kv| {
-            self.allocator.free(kv.key);
-            self.allocator.free(kv.value);
+        if (entry.metadata.fetchRemove(key)) |keyValue| {
+            self.allocator.free(keyValue.key);
+            self.allocator.free(keyValue.value);
         }
 
-        try entry.metadata.put(key_dup, value_dup);
+        try entry.metadata.put(keyDup, valueDup);
     }
 
     /// Retrieves metadata value for an agent.
@@ -537,7 +537,7 @@ pub const AgentRegistry = struct {
         }
 
         // Check if the agent has a valid entry point
-        if (!fs.accessAbsolute(info.entry_path, .{})) {
+        if (!fs.accessAbsolute(info.entryPath, .{})) {
             return AgentRegistryError.FileSystemError;
         }
 
@@ -554,14 +554,14 @@ pub const AgentRegistry = struct {
 
     /// Gets comprehensive information about an agent including its state and metadata.
     pub fn getAgentDetails(self: *AgentRegistry, name: []const u8) !struct {
-        info: AgentInfo,
-        metadata_keys: [][]const u8,
-        state_description: []const u8,
+        info: Agent,
+        metadataKeys: [][]const u8,
+        stateDescription: []const u8,
     } {
         const info = (try self.getAgent(name)) orelse return AgentRegistryError.AgentNotFound;
-        const metadata_keys = try self.listAgentMetadataKeys(name);
+        const metadataKeys = try self.listAgentMetadataKeys(name);
 
-        const state_desc = switch (info.state) {
+        const stateDesc = switch (info.state) {
             .discovered => "Agent discovered but not loaded",
             .loading => "Agent is currently loading",
             .loaded => "Agent is loaded and ready to use",
@@ -572,17 +572,17 @@ pub const AgentRegistry = struct {
 
         return .{
             .info = info,
-            .metadata_keys = metadata_keys,
-            .state_description = try self.allocator.dupe(u8, state_desc),
+            .metadataKeys = metadataKeys,
+            .stateDescription = try self.allocator.dupe(u8, stateDesc),
         };
     }
 
     /// Performs a comprehensive health check on an agent.
     pub fn healthCheck(self: *AgentRegistry, name: []const u8) !struct {
-        is_valid: bool,
-        state_healthy: bool,
-        files_exist: bool,
-        config_valid: bool,
+        isValid: bool,
+        stateHealthy: bool,
+        filesExist: bool,
+        configValid: bool,
         issues: [][]const u8,
     } {
         var issues = std.ArrayList([]const u8).init(self.allocator);
@@ -591,13 +591,13 @@ pub const AgentRegistry = struct {
         const info = (try self.getAgent(name)) orelse return AgentRegistryError.AgentNotFound;
 
         // Check if agent structure is valid
-        const files_exist = try self.validateAgent(name);
-        if (!files_exist) {
+        const filesExist = try self.validateAgent(name);
+        if (!filesExist) {
             try issues.append(try self.allocator.dupe(u8, "Required files missing"));
         }
 
         // Check if config is valid
-        const config_valid = blk: {
+        const configValid = blk: {
             const config = self.loadAgentConfig(name) catch {
                 try issues.append(try self.allocator.dupe(u8, "Invalid configuration"));
                 break :blk false;
@@ -607,18 +607,18 @@ pub const AgentRegistry = struct {
         };
 
         // Check if state is healthy
-        const state_healthy = info.state != .failed;
-        if (!state_healthy) {
+        const stateHealthy = info.state != .failed;
+        if (!stateHealthy) {
             try issues.append(try self.allocator.dupe(u8, "Agent is in failed state"));
         }
 
-        const is_valid = files_exist and config_valid and state_healthy;
+        const isValid = filesExist and configValid and stateHealthy;
 
         return .{
-            .is_valid = is_valid,
-            .state_healthy = state_healthy,
-            .files_exist = files_exist,
-            .config_valid = config_valid,
+            .isValid = isValid,
+            .stateHealthy = stateHealthy,
+            .filesExist = filesExist,
+            .configValid = configValid,
             .issues = try issues.toOwnedSlice(),
         };
     }

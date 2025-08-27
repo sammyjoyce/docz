@@ -19,7 +19,7 @@ pub const ScaffoldAgentError = error{
 
 /// ScaffoldAgentOptions contains configuration for agent scaffolding
 pub const ScaffoldAgentOptions = struct {
-    agent_name: []const u8,
+    agentName: []const u8,
     description: []const u8,
     author: []const u8,
     allocator: std.mem.Allocator,
@@ -40,36 +40,36 @@ pub const ScaffoldAgentOptions = struct {
 /// Returns: void on success, error on failure
 pub fn scaffoldAgent(options: ScaffoldAgentOptions) anyerror!void {
     const allocator = options.allocator;
-    const agent_name = options.agent_name;
+    const agentName = options.agentName;
     const description = options.description;
     const author = options.author;
 
     // Validate agent name
-    if (!isValidAgentName(agent_name)) {
+    if (!isValidAgentName(agentName)) {
         return ScaffoldAgentError.InvalidAgentName;
     }
 
     // Check if agent already exists
-    const agent_path = try std.fs.path.join(allocator, &.{ "agents", agent_name });
-    defer allocator.free(agent_path);
+    const agentPath = try std.fs.path.join(allocator, &.{ "agents", agentName });
+    defer allocator.free(agentPath);
 
     // Check if agent already exists
-    if (std.fs.cwd().openDir(agent_path, .{})) |_| {
+    if (std.fs.cwd().openDir(agentPath, .{})) |_| {
         return ScaffoldAgentError.AgentAlreadyExists;
     } else |_| {
         // Directory doesn't exist, which is what we want
     }
 
     // Check if template exists
-    const template_path = "agents/_template";
-    if (std.fs.cwd().openDir(template_path, .{})) |_| {
+    const templatePath = "agents/_template";
+    if (std.fs.cwd().openDir(templatePath, .{})) |_| {
         // Template exists
     } else |_| {
         return ScaffoldAgentError.TemplateNotFound;
     }
 
     // Create agent directory
-    std.fs.cwd().makeDir(agent_path) catch |err| switch (err) {
+    std.fs.cwd().makeDir(agentPath) catch |err| switch (err) {
         error.PathAlreadyExists => {
             // Directory already exists, which we already checked for
             return ScaffoldAgentError.AgentAlreadyExists;
@@ -78,11 +78,11 @@ pub fn scaffoldAgent(options: ScaffoldAgentOptions) anyerror!void {
     };
 
     // Create subdirectories
-    const subdirs = [_][]const u8{ "tools", "common", "examples" };
-    for (subdirs) |subdir| {
-        const subdir_path = try std.fs.path.join(allocator, &.{ agent_path, subdir });
-        defer allocator.free(subdir_path);
-        std.fs.cwd().makeDir(subdir_path) catch |err| switch (err) {
+    const sub_directories = [_][]const u8{ "tools", "common", "examples" };
+    for (sub_directories) |subDirectory| {
+        const subDirectoryPath = try std.fs.path.join(allocator, &.{ agentPath, subDirectory });
+        defer allocator.free(subDirectoryPath);
+        std.fs.cwd().makeDir(subDirectoryPath) catch |err| switch (err) {
             error.PathAlreadyExists => {
                 // Subdirectory already exists, continue
             },
@@ -91,13 +91,13 @@ pub fn scaffoldAgent(options: ScaffoldAgentOptions) anyerror!void {
     }
 
     // Copy and process template files
-    try copyTemplateFiles(allocator, template_path, agent_path, agent_name, description, author);
+    try copyTemplateFiles(allocator, templatePath, agentPath, agentName, description, author);
 
     // Generate agent-specific files
-    try generateConfigZon(allocator, agent_path, agent_name, description, author);
-    try generateAgentManifestZon(allocator, agent_path, agent_name, description, author);
+    try generateConfigZon(allocator, agentPath, agentName, description, author);
+    try generateAgentManifestZon(allocator, agentPath, agentName, description, author);
 
-    std.debug.print("Successfully created agent '{s}' at {s}/\n", .{ agent_name, agent_path });
+    std.debug.print("Successfully created agent '{s}' at {s}/\n", .{ agentName, agentPath });
 }
 
 /// isValidAgentName validates that the agent name follows naming conventions
@@ -113,8 +113,8 @@ fn isValidAgentName(name: []const u8) bool {
     }
 
     // Cannot be reserved names
-    const reserved = [_][]const u8{ "_template", "core", "shared", "tools" };
-    for (reserved) |reserved_name| {
+    const reserved_names = [_][]const u8{ "_template", "core", "shared", "tools" };
+    for (reserved_names) |reserved_name| {
         if (std.mem.eql(u8, name, reserved_name)) return false;
     }
 
@@ -124,15 +124,15 @@ fn isValidAgentName(name: []const u8) bool {
 /// copyTemplateFiles copies template files with placeholder replacement
 fn copyTemplateFiles(
     allocator: std.mem.Allocator,
-    template_path: []const u8,
-    agent_path: []const u8,
-    agent_name: []const u8,
+    templatePath: []const u8,
+    agentPath: []const u8,
+    agentName: []const u8,
     description: []const u8,
     author: []const u8,
 ) anyerror!void {
     const template_files = [_][]const u8{
         "main.zig",
-        "agent.zig",
+        "Agent.zig",
         "spec.zig",
         "system_prompt.txt",
         "README.md",
@@ -140,33 +140,33 @@ fn copyTemplateFiles(
         "tools/example_tool.zig",
     };
 
-    for (template_files) |template_file| {
-        const src_path = try std.fs.path.join(allocator, &.{ template_path, template_file });
-        defer allocator.free(src_path);
+    for (template_files) |templateFile| {
+        const srcPath = try std.fs.path.join(allocator, &.{ templatePath, templateFile });
+        defer allocator.free(srcPath);
 
-        const dst_path = try std.fs.path.join(allocator, &.{ agent_path, template_file });
-        defer allocator.free(dst_path);
+        const dstPath = try std.fs.path.join(allocator, &.{ agentPath, templateFile });
+        defer allocator.free(dstPath);
 
         // Read template file
-        const src_file = try std.fs.cwd().openFile(src_path, .{});
-        defer src_file.close();
-        const template_content = try src_file.readToEndAlloc(allocator, std.math.maxInt(usize));
-        defer allocator.free(template_content);
+        const srcFile = try std.fs.cwd().openFile(srcPath, .{});
+        defer srcFile.close();
+        const templateContent = try srcFile.readToEndAlloc(allocator, std.math.maxInt(usize));
+        defer allocator.free(templateContent);
 
         // Process template variables
-        const processed_content = try processTemplateVariables(
+        const processedContent = try processTemplateVariables(
             allocator,
-            template_content,
-            agent_name,
+            templateContent,
+            agentName,
             description,
             author,
         );
-        defer allocator.free(processed_content);
+        defer allocator.free(processedContent);
 
         // Write processed content to destination
-        const file = try std.fs.cwd().createFile(dst_path, .{});
+        const file = try std.fs.cwd().createFile(dstPath, .{});
         defer file.close();
-        try file.writeAll(processed_content);
+        try file.writeAll(processedContent);
     }
 }
 
@@ -174,7 +174,7 @@ fn copyTemplateFiles(
 fn processTemplateVariables(
     allocator: std.mem.Allocator,
     content: []const u8,
-    agent_name: []const u8,
+    agentName: []const u8,
     description: []const u8,
     author: []const u8,
 ) anyerror![]const u8 {
@@ -182,11 +182,11 @@ fn processTemplateVariables(
     defer result.deinit(allocator);
 
     // Convert agent name to different cases
-    const agent_name_upper = try toUpperCase(allocator, agent_name);
-    defer allocator.free(agent_name_upper);
+    const agentNameUpper = try toUpperCase(allocator, agentName);
+    defer allocator.free(agentNameUpper);
 
-    const agent_name_lower = try toLowerCase(allocator, agent_name);
-    defer allocator.free(agent_name_lower);
+    const agentNameLower = try toLowerCase(allocator, agentName);
+    defer allocator.free(agentNameLower);
 
     var i: usize = 0;
     while (i < content.len) {
@@ -196,15 +196,15 @@ fn processTemplateVariables(
             i += start;
 
             if (std.mem.indexOf(u8, content[i..], "}}")) |end| {
-                const var_name = content[i + 2 .. i + end];
+                const varName = content[i + 2 .. i + end];
                 const replacement = try getTemplateReplacement(
                     allocator,
-                    var_name,
-                    agent_name,
+                    varName,
+                    agentName,
                     description,
                     author,
-                    agent_name_upper,
-                    agent_name_lower,
+                    agentNameUpper,
+                    agentNameLower,
                 );
                 defer allocator.free(replacement);
                 try result.appendSlice(allocator, replacement);
@@ -217,12 +217,12 @@ fn processTemplateVariables(
         } else if (std.mem.indexOf(u8, content[i..], "_template")) |start| {
             // Replace hardcoded "_template" strings
             try result.appendSlice(allocator, content[i .. i + start]);
-            try result.appendSlice(allocator, agent_name);
+            try result.appendSlice(allocator, agentName);
             i += start + "_template".len;
         } else if (std.mem.indexOf(u8, content[i..], "Template Agent")) |start| {
             // Replace "Template Agent" with actual agent name
             try result.appendSlice(allocator, content[i .. i + start]);
-            try result.appendSlice(allocator, agent_name);
+            try result.appendSlice(allocator, agentName);
             i += start + "Template Agent".len;
         } else if (std.mem.indexOf(u8, content[i..], "A template for creating new agents")) |start| {
             // Replace template description
@@ -247,26 +247,26 @@ fn processTemplateVariables(
 /// getTemplateReplacement returns the replacement for a template variable
 fn getTemplateReplacement(
     allocator: std.mem.Allocator,
-    var_name: []const u8,
-    agent_name: []const u8,
+    varName: []const u8,
+    agentName: []const u8,
     description: []const u8,
     author: []const u8,
-    agent_name_upper: []const u8,
-    agent_name_lower: []const u8,
+    agentNameUpper: []const u8,
+    agentNameLower: []const u8,
 ) anyerror![]const u8 {
-    if (std.mem.eql(u8, var_name, "AGENT_NAME")) {
-        return allocator.dupe(u8, agent_name);
-    } else if (std.mem.eql(u8, var_name, "AGENT_DESCRIPTION")) {
+    if (std.mem.eql(u8, varName, "AGENT_NAME")) {
+        return allocator.dupe(u8, agentName);
+    } else if (std.mem.eql(u8, varName, "AGENT_DESCRIPTION")) {
         return allocator.dupe(u8, description);
-    } else if (std.mem.eql(u8, var_name, "AGENT_AUTHOR")) {
+    } else if (std.mem.eql(u8, varName, "AGENT_AUTHOR")) {
         return allocator.dupe(u8, author);
-    } else if (std.mem.eql(u8, var_name, "AGENT_NAME_UPPER")) {
-        return allocator.dupe(u8, agent_name_upper);
-    } else if (std.mem.eql(u8, var_name, "AGENT_NAME_LOWER")) {
-        return allocator.dupe(u8, agent_name_lower);
+    } else if (std.mem.eql(u8, varName, "AGENT_NAME_UPPER")) {
+        return allocator.dupe(u8, agentNameUpper);
+    } else if (std.mem.eql(u8, varName, "AGENT_NAME_LOWER")) {
+        return allocator.dupe(u8, agentNameLower);
     } else {
         // Unknown variable, return as-is with braces
-        return std.fmt.allocPrint(allocator, "{{{{{s}}}}}", .{var_name});
+        return std.fmt.allocPrint(allocator, "{{{{{s}}}}}", .{varName});
     }
 }
 
@@ -291,15 +291,15 @@ fn toLowerCase(allocator: std.mem.Allocator, input: []const u8) anyerror![]const
 /// generateConfigZon creates a config.zon file with agent-specific values
 fn generateConfigZon(
     allocator: std.mem.Allocator,
-    agent_path: []const u8,
-    agent_name: []const u8,
+    agentPath: []const u8,
+    agentName: []const u8,
     description: []const u8,
     author: []const u8,
 ) anyerror!void {
-    const config_path = try std.fs.path.join(allocator, &.{ agent_path, "config.zon" });
-    defer allocator.free(config_path);
+    const configPath = try std.fs.path.join(allocator, &.{ agentPath, "config.zon" });
+    defer allocator.free(configPath);
 
-    const config_content = try std.fmt.allocPrint(
+    const configContent = try std.fmt.allocPrint(
         allocator,
         \\.{{
         \\    // Standard agent configuration - customize for your specific agent
@@ -345,346 +345,346 @@ fn generateConfigZon(
         \\}}
         \\
     ,
-        .{ agent_name, description, author },
+        .{ agentName, description, author },
     );
-    defer allocator.free(config_content);
+    defer allocator.free(configContent);
 
-    const config_file = try std.fs.cwd().createFile(config_path, .{});
-    defer config_file.close();
-    try config_file.writeAll(config_content);
+    const configFile = try std.fs.cwd().createFile(configPath, .{});
+    defer configFile.close();
+    try configFile.writeAll(configContent);
 }
 
 /// generateAgentManifestZon creates an agent.manifest.zon file with agent-specific metadata
 fn generateAgentManifestZon(
     allocator: std.mem.Allocator,
-    agent_path: []const u8,
-    agent_name: []const u8,
+    agentPath: []const u8,
+    agentName: []const u8,
     description: []const u8,
     author: []const u8,
 ) anyerror!void {
-    const manifest_path = try std.fs.path.join(allocator, &.{ agent_path, "agent.manifest.zon" });
-    defer allocator.free(manifest_path);
+    const manifestPath = try std.fs.path.join(allocator, &.{ agentPath, "agent.manifest.zon" });
+    defer allocator.free(manifestPath);
 
     // Convert agent name to kebab-case for ID
-    const agent_id = try toKebabCase(allocator, agent_name);
-    defer allocator.free(agent_id);
+    const agentId = try toKebabCase(allocator, agentName);
+    defer allocator.free(agentId);
 
     // Build the manifest content manually to avoid formatting issues
-    var manifest_buf = std.ArrayList(u8).initCapacity(allocator, 4096) catch return error.OutOfMemory;
-    defer manifest_buf.deinit(allocator);
+    var manifestBuf = std.ArrayList(u8).initCapacity(allocator, 4096) catch return error.OutOfMemory;
+    defer manifestBuf.deinit(allocator);
 
-    try manifest_buf.appendSlice(allocator, ".{\n");
-    try manifest_buf.appendSlice(allocator, "    // ============================================================================\n");
-    try manifest_buf.appendSlice(allocator, "    // AGENT MANIFEST - Standardized Metadata Format\n");
-    try manifest_buf.appendSlice(allocator, "    // ============================================================================\n");
-    try manifest_buf.appendSlice(allocator, "    // This manifest provides comprehensive metadata for terminal AI agents.\n");
-    try manifest_buf.appendSlice(allocator, "    // All fields are optional but recommended for proper agent discovery and management.\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "    // ============================================================================\n");
-    try manifest_buf.appendSlice(allocator, "    // AGENT IDENTIFICATION\n");
-    try manifest_buf.appendSlice(allocator, "    // ============================================================================\n");
-    try manifest_buf.appendSlice(allocator, "    .agent = .{\n");
-    try manifest_buf.appendSlice(allocator, "        // Unique identifier for the agent (lowercase, no spaces)\n");
-    try manifest_buf.appendSlice(allocator, "        .id = \"");
-    try manifest_buf.appendSlice(allocator, agent_id);
-    try manifest_buf.appendSlice(allocator, "\",\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "        // Human-readable name\n");
-    try manifest_buf.appendSlice(allocator, "        .name = \"");
-    try manifest_buf.appendSlice(allocator, agent_name);
-    try manifest_buf.appendSlice(allocator, "\",\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "        // Semantic version (e.g., \"1.0.0\", \"2.1.3-alpha\")\n");
-    try manifest_buf.appendSlice(allocator, "        .version = \"1.0.0\",\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "        // Brief description of what the agent does\n");
-    try manifest_buf.appendSlice(allocator, "        .description = \"");
-    try manifest_buf.appendSlice(allocator, description);
-    try manifest_buf.appendSlice(allocator, "\",\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "        // Author information\n");
-    try manifest_buf.appendSlice(allocator, "        .author = .{\n");
-    try manifest_buf.appendSlice(allocator, "            .name = \"");
-    try manifest_buf.appendSlice(allocator, author);
-    try manifest_buf.appendSlice(allocator, "\",\n");
-    try manifest_buf.appendSlice(allocator, "            .email = \"your.email@example.com\",\n");
-    try manifest_buf.appendSlice(allocator, "            .organization = \"Optional Organization\",\n");
-    try manifest_buf.appendSlice(allocator, "        },\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "        // Optional: License information\n");
-    try manifest_buf.appendSlice(allocator, "        .license = \"MIT\",\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "        // Optional: Homepage or repository URL\n");
-    try manifest_buf.appendSlice(allocator, "        .homepage = \"https://github.com/your-org/your-repo\",\n");
-    try manifest_buf.appendSlice(allocator, "    },\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "    // ============================================================================\n");
-    try manifest_buf.appendSlice(allocator, "    // CAPABILITIES & FEATURES\n");
-    try manifest_buf.appendSlice(allocator, "    // ============================================================================\n");
-    try manifest_buf.appendSlice(allocator, "    .capabilities = .{\n");
-    try manifest_buf.appendSlice(allocator, "        // Core capabilities this agent provides\n");
-    try manifest_buf.appendSlice(allocator, "        .core_features = .{\n");
-    try manifest_buf.appendSlice(allocator, "            // Whether agent can process files\n");
-    try manifest_buf.appendSlice(allocator, "            .file_processing = true,\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "            // Whether agent can execute system commands\n");
-    try manifest_buf.appendSlice(allocator, "            .system_commands = false,\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "            // Whether agent can make network requests\n");
-    try manifest_buf.appendSlice(allocator, "            .network_access = true,\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "            // Whether agent supports interactive terminal UI\n");
-    try manifest_buf.appendSlice(allocator, "            .terminal_ui = true,\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "            // Whether agent can process images/media\n");
-    try manifest_buf.appendSlice(allocator, "            .media_processing = false,\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "            // Whether agent supports real-time streaming\n");
-    try manifest_buf.appendSlice(allocator, "            .streaming_responses = true,\n");
-    try manifest_buf.appendSlice(allocator, "        },\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "        // Specialized features (agent-specific)\n");
-    try manifest_buf.appendSlice(allocator, "        .specialized_features = .{\n");
-    try manifest_buf.appendSlice(allocator, "            // Example: custom functionality\n");
-    try manifest_buf.appendSlice(allocator, "            .custom_processing = true,\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "            // Example: code generation\n");
-    try manifest_buf.appendSlice(allocator, "            .code_generation = false,\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "            // Example: data analysis\n");
-    try manifest_buf.appendSlice(allocator, "            .data_analysis = false,\n");
-    try manifest_buf.appendSlice(allocator, "        },\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "        // Performance characteristics\n");
-    try manifest_buf.appendSlice(allocator, "        .performance = .{\n");
-    try manifest_buf.appendSlice(allocator, "            // Expected memory usage (low, medium, high)\n");
-    try manifest_buf.appendSlice(allocator, "            .memory_usage = \"low\",\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "            // CPU intensity (low, medium, high)\n");
-    try manifest_buf.appendSlice(allocator, "            .cpu_intensity = \"low\",\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "            // Network bandwidth requirements (low, medium, high)\n");
-    try manifest_buf.appendSlice(allocator, "            .network_bandwidth = \"low\",\n");
-    try manifest_buf.appendSlice(allocator, "        },\n");
-    try manifest_buf.appendSlice(allocator, "    },\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "    // ============================================================================\n");
-    try manifest_buf.appendSlice(allocator, "    // CATEGORIZATION & DISCOVERY\n");
-    try manifest_buf.appendSlice(allocator, "    // ============================================================================\n");
-    try manifest_buf.appendSlice(allocator, "    .categorization = .{\n");
-    try manifest_buf.appendSlice(allocator, "        // Primary category\n");
-    try manifest_buf.appendSlice(allocator, "        .primary_category = \"development\",\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "        // Secondary categories (array of strings)\n");
-    try manifest_buf.appendSlice(allocator, "        .secondary_categories = .{\n");
-    try manifest_buf.appendSlice(allocator, "            \"documentation\",\n");
-    try manifest_buf.appendSlice(allocator, "            \"automation\",\n");
-    try manifest_buf.appendSlice(allocator, "        },\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "        // Tags for search and filtering\n");
-    try manifest_buf.appendSlice(allocator, "        .tags = .{\n");
-    try manifest_buf.appendSlice(allocator, "            \"");
-    try manifest_buf.appendSlice(allocator, agent_name);
-    try manifest_buf.appendSlice(allocator, "\",\n");
-    try manifest_buf.appendSlice(allocator, "            \"cli\",\n");
-    try manifest_buf.appendSlice(allocator, "            \"terminal\",\n");
-    try manifest_buf.appendSlice(allocator, "            \"ai-agent\",\n");
-    try manifest_buf.appendSlice(allocator, "        },\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "        // Intended use cases\n");
-    try manifest_buf.appendSlice(allocator, "        .use_cases = .{\n");
-    try manifest_buf.appendSlice(allocator, "            \"Custom AI agent functionality\",\n");
-    try manifest_buf.appendSlice(allocator, "            \"Terminal-based automation\",\n");
-    try manifest_buf.appendSlice(allocator, "            \"Specialized task processing\",\n");
-    try manifest_buf.appendSlice(allocator, "        },\n");
-    try manifest_buf.appendSlice(allocator, "    },\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "    // ============================================================================\n");
-    try manifest_buf.appendSlice(allocator, "    // DEPENDENCIES\n");
-    try manifest_buf.appendSlice(allocator, "    // ============================================================================\n");
-    try manifest_buf.appendSlice(allocator, "    .dependencies = .{\n");
-    try manifest_buf.appendSlice(allocator, "        // Required Zig version (minimum)\n");
-    try manifest_buf.appendSlice(allocator, "        .zig_version = \"0.15.1\",\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "        // External dependencies\n");
-    try manifest_buf.appendSlice(allocator, "        .external = .{\n");
-    try manifest_buf.appendSlice(allocator, "            // Array of required system packages/libraries\n");
-    try manifest_buf.appendSlice(allocator, "            .system_packages = .{\n");
-    try manifest_buf.appendSlice(allocator, "                // \"curl\",\n");
-    try manifest_buf.appendSlice(allocator, "                // \"openssl\",\n");
-    try manifest_buf.appendSlice(allocator, "            },\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "            // Zig packages (from build.zig.zon)\n");
-    try manifest_buf.appendSlice(allocator, "            .zig_packages = .{\n");
-    try manifest_buf.appendSlice(allocator, "                // .{ .name = \"http-client\", .version = \"1.0.0\" },\n");
-    try manifest_buf.appendSlice(allocator, "            },\n");
-    try manifest_buf.appendSlice(allocator, "        },\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "        // Optional dependencies\n");
-    try manifest_buf.appendSlice(allocator, "        .optional = .{\n");
-    try manifest_buf.appendSlice(allocator, "            // Features that can work without these\n");
-    try manifest_buf.appendSlice(allocator, "            .features = .{\n");
-    try manifest_buf.appendSlice(allocator, "                // .{ .name = \"network\", .requires = \"curl\" },\n");
-    try manifest_buf.appendSlice(allocator, "            },\n");
-    try manifest_buf.appendSlice(allocator, "        },\n");
-    try manifest_buf.appendSlice(allocator, "    },\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "    // ============================================================================\n");
-    try manifest_buf.appendSlice(allocator, "    // BUILD CONFIGURATION\n");
-    try manifest_buf.appendSlice(allocator, "    // ============================================================================\n");
-    try manifest_buf.appendSlice(allocator, "    .build = .{\n");
-    try manifest_buf.appendSlice(allocator, "        // Build targets supported\n");
-    try manifest_buf.appendSlice(allocator, "        .targets = .{\n");
-    try manifest_buf.appendSlice(allocator, "            \"x86_64-linux\",\n");
-    try manifest_buf.appendSlice(allocator, "            \"aarch64-linux\",\n");
-    try manifest_buf.appendSlice(allocator, "            \"x86_64-macos\",\n");
-    try manifest_buf.appendSlice(allocator, "            \"aarch64-macos\",\n");
-    try manifest_buf.appendSlice(allocator, "            \"x86_64-windows\",\n");
-    try manifest_buf.appendSlice(allocator, "        },\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "        // Build options\n");
-    try manifest_buf.appendSlice(allocator, "        .options = .{\n");
-    try manifest_buf.appendSlice(allocator, "            // Whether agent supports debug builds\n");
-    try manifest_buf.appendSlice(allocator, "            .debug_build = true,\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "            // Whether agent supports release builds\n");
-    try manifest_buf.appendSlice(allocator, "            .release_build = true,\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "            // Whether agent can be built as library\n");
-    try manifest_buf.appendSlice(allocator, "            .library_build = false,\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "            // Custom build flags (array of strings)\n");
-    try manifest_buf.appendSlice(allocator, "            .custom_flags = .{\n");
-    try manifest_buf.appendSlice(allocator, "                // \"-Doptimize=ReleaseFast\",\n");
-    try manifest_buf.appendSlice(allocator, "            },\n");
-    try manifest_buf.appendSlice(allocator, "        },\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "        // Build artifacts\n");
-    try manifest_buf.appendSlice(allocator, "        .artifacts = .{\n");
-    try manifest_buf.appendSlice(allocator, "            // Binary name\n");
-    try manifest_buf.appendSlice(allocator, "            .binary_name = \"");
-    try manifest_buf.appendSlice(allocator, agent_name);
-    try manifest_buf.appendSlice(allocator, "\",\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "            // Additional files to include in distribution\n");
-    try manifest_buf.appendSlice(allocator, "            .include_files = .{\n");
-    try manifest_buf.appendSlice(allocator, "                // \"README.md\",\n");
-    try manifest_buf.appendSlice(allocator, "                // \"config.zon\",\n");
-    try manifest_buf.appendSlice(allocator, "            },\n");
-    try manifest_buf.appendSlice(allocator, "        },\n");
-    try manifest_buf.appendSlice(allocator, "    },\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "    // ============================================================================\n");
-    try manifest_buf.appendSlice(allocator, "    // TOOL CATEGORIES\n");
-    try manifest_buf.appendSlice(allocator, "    // ============================================================================\n");
-    try manifest_buf.appendSlice(allocator, "    .tools = .{\n");
-    try manifest_buf.appendSlice(allocator, "        // Categories of tools this agent provides\n");
-    try manifest_buf.appendSlice(allocator, "        .categories = .{\n");
-    try manifest_buf.appendSlice(allocator, "            \"file_operations\",\n");
-    try manifest_buf.appendSlice(allocator, "            \"text_processing\",\n");
-    try manifest_buf.appendSlice(allocator, "            \"system_integration\",\n");
-    try manifest_buf.appendSlice(allocator, "        },\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "        // Specific tools provided (for documentation)\n");
-    try manifest_buf.appendSlice(allocator, "        .provided_tools = .{\n");
-    try manifest_buf.appendSlice(allocator, "            .{\n");
-    try manifest_buf.appendSlice(allocator, "                .name = \"example_tool\",\n");
-    try manifest_buf.appendSlice(allocator, "                .description = \"Example tool for ");
-    try manifest_buf.appendSlice(allocator, agent_name);
-    try manifest_buf.appendSlice(allocator, " agent\",\n");
-    try manifest_buf.appendSlice(allocator, "                .category = \"file_operations\",\n");
-    try manifest_buf.appendSlice(allocator, "                .parameters = \"file_path:string\",\n");
-    try manifest_buf.appendSlice(allocator, "            },\n");
-    try manifest_buf.appendSlice(allocator, "        },\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "        // Tool integration\n");
-    try manifest_buf.appendSlice(allocator, "        .integration = .{\n");
-    try manifest_buf.appendSlice(allocator, "            // Whether tools support JSON input/output\n");
-    try manifest_buf.appendSlice(allocator, "            .json_tools = true,\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "            // Whether tools support streaming\n");
-    try manifest_buf.appendSlice(allocator, "            .streaming_tools = false,\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "            // Whether tools can be chained together\n");
-    try manifest_buf.appendSlice(allocator, "            .chainable_tools = true,\n");
-    try manifest_buf.appendSlice(allocator, "        },\n");
-    try manifest_buf.appendSlice(allocator, "    },\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "    // ============================================================================\n");
-    try manifest_buf.appendSlice(allocator, "    // RUNTIME REQUIREMENTS\n");
-    try manifest_buf.appendSlice(allocator, "    // ============================================================================\n");
-    try manifest_buf.appendSlice(allocator, "    .runtime = .{\n");
-    try manifest_buf.appendSlice(allocator, "        // Minimum system requirements\n");
-    try manifest_buf.appendSlice(allocator, "        .system_requirements = .{\n");
-    try manifest_buf.appendSlice(allocator, "            // Minimum RAM in MB\n");
-    try manifest_buf.appendSlice(allocator, "            .min_ram_mb = 256,\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "            // Minimum disk space in MB\n");
-    try manifest_buf.appendSlice(allocator, "            .min_disk_mb = 50,\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "            // Supported operating systems\n");
-    try manifest_buf.appendSlice(allocator, "            .supported_os = .{\n");
-    try manifest_buf.appendSlice(allocator, "                \"linux\",\n");
-    try manifest_buf.appendSlice(allocator, "                \"macos\",\n");
-    try manifest_buf.appendSlice(allocator, "                \"windows\",\n");
-    try manifest_buf.appendSlice(allocator, "            },\n");
-    try manifest_buf.appendSlice(allocator, "        },\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "        // Environment variables required\n");
-    try manifest_buf.appendSlice(allocator, "        .environment_variables = .{\n");
-    try manifest_buf.appendSlice(allocator, "            // .{ .name = \"API_KEY\", .description = \"Required API key for service\", .required = true },\n");
-    try manifest_buf.appendSlice(allocator, "        },\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "        // Configuration files required\n");
-    try manifest_buf.appendSlice(allocator, "        .config_files = .{\n");
-    try manifest_buf.appendSlice(allocator, "            // .{ .name = \"config.zon\", .description = \"Agent configuration file\", .required = true },\n");
-    try manifest_buf.appendSlice(allocator, "        },\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "        // Network requirements\n");
-    try manifest_buf.appendSlice(allocator, "        .network = .{\n");
-    try manifest_buf.appendSlice(allocator, "            // Required ports\n");
-    try manifest_buf.appendSlice(allocator, "            .ports = .{\n");
-    try manifest_buf.appendSlice(allocator, "                // .{ .port = 8080, .protocol = \"tcp\", .description = \"Web server port\" },\n");
-    try manifest_buf.appendSlice(allocator, "            },\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "            // Required endpoints\n");
-    try manifest_buf.appendSlice(allocator, "            .endpoints = .{\n");
-    try manifest_buf.appendSlice(allocator, "                // .{ .url = \"https://api.example.com\", .description = \"External API endpoint\" },\n");
-    try manifest_buf.appendSlice(allocator, "            },\n");
-    try manifest_buf.appendSlice(allocator, "        },\n");
-    try manifest_buf.appendSlice(allocator, "    },\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "    // ============================================================================\n");
-    try manifest_buf.appendSlice(allocator, "    // METADATA\n");
-    try manifest_buf.appendSlice(allocator, "    // ============================================================================\n");
-    try manifest_buf.appendSlice(allocator, "    .metadata = .{\n");
-    try manifest_buf.appendSlice(allocator, "        // When this manifest was created/updated\n");
-    try manifest_buf.appendSlice(allocator, "        .created_at = \"2025-01-27\",\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "        // Template version this manifest conforms to\n");
-    try manifest_buf.appendSlice(allocator, "        .template_version = \"1.0\",\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "        // Additional notes or comments\n");
-    try manifest_buf.appendSlice(allocator, "        .notes = \"Generated agent manifest for ");
-    try manifest_buf.appendSlice(allocator, agent_name);
-    try manifest_buf.appendSlice(allocator, "\",\n");
-    try manifest_buf.appendSlice(allocator, "\n");
-    try manifest_buf.appendSlice(allocator, "        // Changelog for this version\n");
-    try manifest_buf.appendSlice(allocator, "        .changelog = .{\n");
-    try manifest_buf.appendSlice(allocator, "            .{\n");
-    try manifest_buf.appendSlice(allocator, "                .version = \"1.0.0\",\n");
-    try manifest_buf.appendSlice(allocator, "                .changes = \"Initial agent creation with standardized structure\",\n");
-    try manifest_buf.appendSlice(allocator, "            },\n");
-    try manifest_buf.appendSlice(allocator, "        },\n");
-    try manifest_buf.appendSlice(allocator, "    },\n");
-    try manifest_buf.appendSlice(allocator, "}\n");
+    try manifestBuf.appendSlice(allocator, ".{\n");
+    try manifestBuf.appendSlice(allocator, "    // ============================================================================\n");
+    try manifestBuf.appendSlice(allocator, "    // AGENT MANIFEST - Standardized Metadata Format\n");
+    try manifestBuf.appendSlice(allocator, "    // ============================================================================\n");
+    try manifestBuf.appendSlice(allocator, "    // This manifest provides comprehensive metadata for terminal AI agents.\n");
+    try manifestBuf.appendSlice(allocator, "    // All fields are optional but recommended for proper agent discovery and management.\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "    // ============================================================================\n");
+    try manifestBuf.appendSlice(allocator, "    // AGENT IDENTIFICATION\n");
+    try manifestBuf.appendSlice(allocator, "    // ============================================================================\n");
+    try manifestBuf.appendSlice(allocator, "    .agent = .{\n");
+    try manifestBuf.appendSlice(allocator, "        // Unique identifier for the agent (lowercase, no spaces)\n");
+    try manifestBuf.appendSlice(allocator, "        .id = \"");
+    try manifestBuf.appendSlice(allocator, agentId);
+    try manifestBuf.appendSlice(allocator, "\",\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "        // Human-readable name\n");
+    try manifestBuf.appendSlice(allocator, "        .name = \"");
+    try manifestBuf.appendSlice(allocator, agentName);
+    try manifestBuf.appendSlice(allocator, "\",\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "        // Semantic version (e.g., \"1.0.0\", \"2.1.3-alpha\")\n");
+    try manifestBuf.appendSlice(allocator, "        .version = \"1.0.0\",\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "        // Brief description of what the agent does\n");
+    try manifestBuf.appendSlice(allocator, "        .description = \"");
+    try manifestBuf.appendSlice(allocator, description);
+    try manifestBuf.appendSlice(allocator, "\",\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "        // Author information\n");
+    try manifestBuf.appendSlice(allocator, "        .author = .{\n");
+    try manifestBuf.appendSlice(allocator, "            .name = \"");
+    try manifestBuf.appendSlice(allocator, author);
+    try manifestBuf.appendSlice(allocator, "\",\n");
+    try manifestBuf.appendSlice(allocator, "            .email = \"your.email@example.com\",\n");
+    try manifestBuf.appendSlice(allocator, "            .organization = \"Optional Organization\",\n");
+    try manifestBuf.appendSlice(allocator, "        },\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "        // Optional: License information\n");
+    try manifestBuf.appendSlice(allocator, "        .license = \"MIT\",\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "        // Optional: Homepage or repository URL\n");
+    try manifestBuf.appendSlice(allocator, "        .homepage = \"https://github.com/your-org/your-repo\",\n");
+    try manifestBuf.appendSlice(allocator, "    },\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "    // ============================================================================\n");
+    try manifestBuf.appendSlice(allocator, "    // CAPABILITIES & FEATURES\n");
+    try manifestBuf.appendSlice(allocator, "    // ============================================================================\n");
+    try manifestBuf.appendSlice(allocator, "    .capabilities = .{\n");
+    try manifestBuf.appendSlice(allocator, "        // Core capabilities this agent provides\n");
+    try manifestBuf.appendSlice(allocator, "        .core_features = .{\n");
+    try manifestBuf.appendSlice(allocator, "            // Whether agent can process files\n");
+    try manifestBuf.appendSlice(allocator, "            .file_processing = true,\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "            // Whether agent can execute system commands\n");
+    try manifestBuf.appendSlice(allocator, "            .system_commands = false,\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "            // Whether agent can make network requests\n");
+    try manifestBuf.appendSlice(allocator, "            .network_access = true,\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "            // Whether agent supports interactive terminal UI\n");
+    try manifestBuf.appendSlice(allocator, "            .terminal_ui = true,\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "            // Whether agent can process images/media\n");
+    try manifestBuf.appendSlice(allocator, "            .media_processing = false,\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "            // Whether agent supports real-time streaming\n");
+    try manifestBuf.appendSlice(allocator, "            .streaming_responses = true,\n");
+    try manifestBuf.appendSlice(allocator, "        },\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "        // Specialized features (agent-specific)\n");
+    try manifestBuf.appendSlice(allocator, "        .specialized_features = .{\n");
+    try manifestBuf.appendSlice(allocator, "            // Example: custom functionality\n");
+    try manifestBuf.appendSlice(allocator, "            .custom_processing = true,\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "            // Example: code generation\n");
+    try manifestBuf.appendSlice(allocator, "            .code_generation = false,\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "            // Example: data analysis\n");
+    try manifestBuf.appendSlice(allocator, "            .data_analysis = false,\n");
+    try manifestBuf.appendSlice(allocator, "        },\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "        // Performance characteristics\n");
+    try manifestBuf.appendSlice(allocator, "        .performance = .{\n");
+    try manifestBuf.appendSlice(allocator, "            // Expected memory usage (low, medium, high)\n");
+    try manifestBuf.appendSlice(allocator, "            .memory_usage = \"low\",\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "            // CPU intensity (low, medium, high)\n");
+    try manifestBuf.appendSlice(allocator, "            .cpu_intensity = \"low\",\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "            // Network bandwidth requirements (low, medium, high)\n");
+    try manifestBuf.appendSlice(allocator, "            .network_bandwidth = \"low\",\n");
+    try manifestBuf.appendSlice(allocator, "        },\n");
+    try manifestBuf.appendSlice(allocator, "    },\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "    // ============================================================================\n");
+    try manifestBuf.appendSlice(allocator, "    // CATEGORIZATION & DISCOVERY\n");
+    try manifestBuf.appendSlice(allocator, "    // ============================================================================\n");
+    try manifestBuf.appendSlice(allocator, "    .categorization = .{\n");
+    try manifestBuf.appendSlice(allocator, "        // Primary category\n");
+    try manifestBuf.appendSlice(allocator, "        .primary_category = \"development\",\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "        // Secondary categories (array of strings)\n");
+    try manifestBuf.appendSlice(allocator, "        .secondary_categories = .{\n");
+    try manifestBuf.appendSlice(allocator, "            \"documentation\",\n");
+    try manifestBuf.appendSlice(allocator, "            \"automation\",\n");
+    try manifestBuf.appendSlice(allocator, "        },\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "        // Tags for search and filtering\n");
+    try manifestBuf.appendSlice(allocator, "        .tags = .{\n");
+    try manifestBuf.appendSlice(allocator, "            \"");
+    try manifestBuf.appendSlice(allocator, agentName);
+    try manifestBuf.appendSlice(allocator, "\",\n");
+    try manifestBuf.appendSlice(allocator, "            \"cli\",\n");
+    try manifestBuf.appendSlice(allocator, "            \"terminal\",\n");
+    try manifestBuf.appendSlice(allocator, "            \"ai-agent\",\n");
+    try manifestBuf.appendSlice(allocator, "        },\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "        // Intended use cases\n");
+    try manifestBuf.appendSlice(allocator, "        .use_cases = .{\n");
+    try manifestBuf.appendSlice(allocator, "            \"Custom AI agent functionality\",\n");
+    try manifestBuf.appendSlice(allocator, "            \"Terminal-based automation\",\n");
+    try manifestBuf.appendSlice(allocator, "            \"Specialized task processing\",\n");
+    try manifestBuf.appendSlice(allocator, "        },\n");
+    try manifestBuf.appendSlice(allocator, "    },\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "    // ============================================================================\n");
+    try manifestBuf.appendSlice(allocator, "    // DEPENDENCIES\n");
+    try manifestBuf.appendSlice(allocator, "    // ============================================================================\n");
+    try manifestBuf.appendSlice(allocator, "    .dependencies = .{\n");
+    try manifestBuf.appendSlice(allocator, "        // Required Zig version (minimum)\n");
+    try manifestBuf.appendSlice(allocator, "        .zig_version = \"0.15.1\",\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "        // External dependencies\n");
+    try manifestBuf.appendSlice(allocator, "        .external = .{\n");
+    try manifestBuf.appendSlice(allocator, "            // Array of required system packages/libraries\n");
+    try manifestBuf.appendSlice(allocator, "            .system_packages = .{\n");
+    try manifestBuf.appendSlice(allocator, "                // \"curl\",\n");
+    try manifestBuf.appendSlice(allocator, "                // \"openssl\",\n");
+    try manifestBuf.appendSlice(allocator, "            },\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "            // Zig packages (from build.zig.zon)\n");
+    try manifestBuf.appendSlice(allocator, "            .zig_packages = .{\n");
+    try manifestBuf.appendSlice(allocator, "                // .{ .name = \"http-client\", .version = \"1.0.0\" },\n");
+    try manifestBuf.appendSlice(allocator, "            },\n");
+    try manifestBuf.appendSlice(allocator, "        },\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "        // Optional dependencies\n");
+    try manifestBuf.appendSlice(allocator, "        .optional = .{\n");
+    try manifestBuf.appendSlice(allocator, "            // Features that can work without these\n");
+    try manifestBuf.appendSlice(allocator, "            .features = .{\n");
+    try manifestBuf.appendSlice(allocator, "                // .{ .name = \"network\", .requires = \"curl\" },\n");
+    try manifestBuf.appendSlice(allocator, "            },\n");
+    try manifestBuf.appendSlice(allocator, "        },\n");
+    try manifestBuf.appendSlice(allocator, "    },\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "    // ============================================================================\n");
+    try manifestBuf.appendSlice(allocator, "    // BUILD CONFIGURATION\n");
+    try manifestBuf.appendSlice(allocator, "    // ============================================================================\n");
+    try manifestBuf.appendSlice(allocator, "    .build = .{\n");
+    try manifestBuf.appendSlice(allocator, "        // Build targets supported\n");
+    try manifestBuf.appendSlice(allocator, "        .targets = .{\n");
+    try manifestBuf.appendSlice(allocator, "            \"x86_64-linux\",\n");
+    try manifestBuf.appendSlice(allocator, "            \"aarch64-linux\",\n");
+    try manifestBuf.appendSlice(allocator, "            \"x86_64-macos\",\n");
+    try manifestBuf.appendSlice(allocator, "            \"aarch64-macos\",\n");
+    try manifestBuf.appendSlice(allocator, "            \"x86_64-windows\",\n");
+    try manifestBuf.appendSlice(allocator, "        },\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "        // Build options\n");
+    try manifestBuf.appendSlice(allocator, "        .options = .{\n");
+    try manifestBuf.appendSlice(allocator, "            // Whether agent supports debug builds\n");
+    try manifestBuf.appendSlice(allocator, "            .debug_build = true,\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "            // Whether agent supports release builds\n");
+    try manifestBuf.appendSlice(allocator, "            .release_build = true,\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "            // Whether agent can be built as library\n");
+    try manifestBuf.appendSlice(allocator, "            .library_build = false,\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "            // Custom build flags (array of strings)\n");
+    try manifestBuf.appendSlice(allocator, "            .custom_flags = .{\n");
+    try manifestBuf.appendSlice(allocator, "                // \"-Doptimize=ReleaseFast\",\n");
+    try manifestBuf.appendSlice(allocator, "            },\n");
+    try manifestBuf.appendSlice(allocator, "        },\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "        // Build artifacts\n");
+    try manifestBuf.appendSlice(allocator, "        .artifacts = .{\n");
+    try manifestBuf.appendSlice(allocator, "            // Binary name\n");
+    try manifestBuf.appendSlice(allocator, "            .binary_name = \"");
+    try manifestBuf.appendSlice(allocator, agentName);
+    try manifestBuf.appendSlice(allocator, "\",\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "            // Additional files to include in distribution\n");
+    try manifestBuf.appendSlice(allocator, "            .include_files = .{\n");
+    try manifestBuf.appendSlice(allocator, "                // \"README.md\",\n");
+    try manifestBuf.appendSlice(allocator, "                // \"config.zon\",\n");
+    try manifestBuf.appendSlice(allocator, "            },\n");
+    try manifestBuf.appendSlice(allocator, "        },\n");
+    try manifestBuf.appendSlice(allocator, "    },\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "    // ============================================================================\n");
+    try manifestBuf.appendSlice(allocator, "    // TOOL CATEGORIES\n");
+    try manifestBuf.appendSlice(allocator, "    // ============================================================================\n");
+    try manifestBuf.appendSlice(allocator, "    .tools = .{\n");
+    try manifestBuf.appendSlice(allocator, "        // Categories of tools this agent provides\n");
+    try manifestBuf.appendSlice(allocator, "        .categories = .{\n");
+    try manifestBuf.appendSlice(allocator, "            \"file_operations\",\n");
+    try manifestBuf.appendSlice(allocator, "            \"text_processing\",\n");
+    try manifestBuf.appendSlice(allocator, "            \"system_integration\",\n");
+    try manifestBuf.appendSlice(allocator, "        },\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "        // Specific tools provided (for documentation)\n");
+    try manifestBuf.appendSlice(allocator, "        .provided_tools = .{\n");
+    try manifestBuf.appendSlice(allocator, "            .{\n");
+    try manifestBuf.appendSlice(allocator, "                .name = \"example_tool\",\n");
+    try manifestBuf.appendSlice(allocator, "                .description = \"Example tool for ");
+    try manifestBuf.appendSlice(allocator, agentName);
+    try manifestBuf.appendSlice(allocator, " agent\",\n");
+    try manifestBuf.appendSlice(allocator, "                .category = \"file_operations\",\n");
+    try manifestBuf.appendSlice(allocator, "                .parameters = \"file_path:string\",\n");
+    try manifestBuf.appendSlice(allocator, "            },\n");
+    try manifestBuf.appendSlice(allocator, "        },\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "        // Tool integration\n");
+    try manifestBuf.appendSlice(allocator, "        .integration = .{\n");
+    try manifestBuf.appendSlice(allocator, "            // Whether tools support JSON input/output\n");
+    try manifestBuf.appendSlice(allocator, "            .json_tools = true,\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "            // Whether tools support streaming\n");
+    try manifestBuf.appendSlice(allocator, "            .streaming_tools = false,\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "            // Whether tools can be chained together\n");
+    try manifestBuf.appendSlice(allocator, "            .chainable_tools = true,\n");
+    try manifestBuf.appendSlice(allocator, "        },\n");
+    try manifestBuf.appendSlice(allocator, "    },\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "    // ============================================================================\n");
+    try manifestBuf.appendSlice(allocator, "    // RUNTIME REQUIREMENTS\n");
+    try manifestBuf.appendSlice(allocator, "    // ============================================================================\n");
+    try manifestBuf.appendSlice(allocator, "    .runtime = .{\n");
+    try manifestBuf.appendSlice(allocator, "        // Minimum system requirements\n");
+    try manifestBuf.appendSlice(allocator, "        .system_requirements = .{\n");
+    try manifestBuf.appendSlice(allocator, "            // Minimum RAM in MB\n");
+    try manifestBuf.appendSlice(allocator, "            .min_ram_mb = 256,\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "            // Minimum disk space in MB\n");
+    try manifestBuf.appendSlice(allocator, "            .min_disk_mb = 50,\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "            // Supported operating systems\n");
+    try manifestBuf.appendSlice(allocator, "            .supported_os = .{\n");
+    try manifestBuf.appendSlice(allocator, "                \"linux\",\n");
+    try manifestBuf.appendSlice(allocator, "                \"macos\",\n");
+    try manifestBuf.appendSlice(allocator, "                \"windows\",\n");
+    try manifestBuf.appendSlice(allocator, "            },\n");
+    try manifestBuf.appendSlice(allocator, "        },\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "        // Environment variables required\n");
+    try manifestBuf.appendSlice(allocator, "        .environment_variables = .{\n");
+    try manifestBuf.appendSlice(allocator, "            // .{ .name = \"API_KEY\", .description = \"Required API key for service\", .required = true },\n");
+    try manifestBuf.appendSlice(allocator, "        },\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "        // Configuration files required\n");
+    try manifestBuf.appendSlice(allocator, "        .config_files = .{\n");
+    try manifestBuf.appendSlice(allocator, "            // .{ .name = \"config.zon\", .description = \"Agent configuration file\", .required = true },\n");
+    try manifestBuf.appendSlice(allocator, "        },\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "        // Network requirements\n");
+    try manifestBuf.appendSlice(allocator, "        .network = .{\n");
+    try manifestBuf.appendSlice(allocator, "            // Required ports\n");
+    try manifestBuf.appendSlice(allocator, "            .ports = .{\n");
+    try manifestBuf.appendSlice(allocator, "                // .{ .port = 8080, .protocol = \"tcp\", .description = \"Web server port\" },\n");
+    try manifestBuf.appendSlice(allocator, "            },\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "            // Required endpoints\n");
+    try manifestBuf.appendSlice(allocator, "            .endpoints = .{\n");
+    try manifestBuf.appendSlice(allocator, "                // .{ .url = \"https://api.example.com\", .description = \"External API endpoint\" },\n");
+    try manifestBuf.appendSlice(allocator, "            },\n");
+    try manifestBuf.appendSlice(allocator, "        },\n");
+    try manifestBuf.appendSlice(allocator, "    },\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "    // ============================================================================\n");
+    try manifestBuf.appendSlice(allocator, "    // METADATA\n");
+    try manifestBuf.appendSlice(allocator, "    // ============================================================================\n");
+    try manifestBuf.appendSlice(allocator, "    .metadata = .{\n");
+    try manifestBuf.appendSlice(allocator, "        // When this manifest was created/updated\n");
+    try manifestBuf.appendSlice(allocator, "        .created_at = \"2025-01-27\",\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "        // Template version this manifest conforms to\n");
+    try manifestBuf.appendSlice(allocator, "        .template_version = \"1.0\",\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "        // Additional notes or comments\n");
+    try manifestBuf.appendSlice(allocator, "        .notes = \"Generated agent manifest for ");
+    try manifestBuf.appendSlice(allocator, agentName);
+    try manifestBuf.appendSlice(allocator, "\",\n");
+    try manifestBuf.appendSlice(allocator, "\n");
+    try manifestBuf.appendSlice(allocator, "        // Changelog for this version\n");
+    try manifestBuf.appendSlice(allocator, "        .changelog = .{\n");
+    try manifestBuf.appendSlice(allocator, "            .{\n");
+    try manifestBuf.appendSlice(allocator, "                .version = \"1.0.0\",\n");
+    try manifestBuf.appendSlice(allocator, "                .changes = \"Initial agent creation with standardized structure\",\n");
+    try manifestBuf.appendSlice(allocator, "            },\n");
+    try manifestBuf.appendSlice(allocator, "        },\n");
+    try manifestBuf.appendSlice(allocator, "    },\n");
+    try manifestBuf.appendSlice(allocator, "}\n");
 
-    const manifest_content = try manifest_buf.toOwnedSlice(allocator);
-    defer allocator.free(manifest_content);
+    const manifestContent = try manifestBuf.toOwnedSlice(allocator);
+    defer allocator.free(manifestContent);
 
-    const manifest_file = try std.fs.cwd().createFile(manifest_path, .{});
-    defer manifest_file.close();
-    try manifest_file.writeAll(manifest_content);
+    const manifestFile = try std.fs.cwd().createFile(manifestPath, .{});
+    defer manifestFile.close();
+    try manifestFile.writeAll(manifestContent);
 }
 
 /// toKebabCase converts a string to kebab-case
@@ -704,41 +704,41 @@ fn toKebabCase(allocator: std.mem.Allocator, input: []const u8) anyerror![]const
 
 /// Command-line interface for the agent scaffold tool
 pub fn main() !void {
-    var gpa_state: std.heap.DebugAllocator(.{}) = .init;
-    const gpa = gpa_state.allocator();
-    defer if (gpa_state.deinit() == .leak) {
+    var gpaState: std.heap.DebugAllocator(.{}) = .init;
+    const generalPurposeAllocator = gpaState.allocator();
+    defer if (gpaState.deinit() == .leak) {
         @panic("Memory leak detected");
     };
 
-    const args = try std.process.argsAlloc(gpa);
-    defer std.process.argsFree(gpa, args);
+    const arguments = try std.process.argsAlloc(generalPurposeAllocator);
+    defer std.process.argsFree(generalPurposeAllocator, arguments);
 
     // Check for help flag
-    if (args.len >= 2 and std.mem.eql(u8, args[1], "--help")) {
+    if (arguments.len >= 2 and std.mem.eql(u8, arguments[1], "--help")) {
         printUsage();
         return;
     }
 
-    if (args.len < 4) {
+    if (arguments.len < 4) {
         printUsage();
         return;
     }
 
-    const agent_name = args[1];
-    const description = args[2];
-    const author = args[3];
+    const agentName = arguments[1];
+    const description = arguments[2];
+    const author = arguments[3];
 
     const options = ScaffoldAgentOptions{
-        .agent_name = agent_name,
+        .agentName = agentName,
         .description = description,
         .author = author,
-        .allocator = gpa,
+        .allocator = generalPurposeAllocator,
     };
 
     scaffoldAgent(options) catch |err| {
         switch (err) {
             ScaffoldAgentError.AgentAlreadyExists => {
-                std.debug.print("Error: Agent '{s}' already exists!\n", .{agent_name});
+                std.debug.print("Error: Agent '{s}' already exists!\n", .{agentName});
                 std.process.exit(1);
             },
             ScaffoldAgentError.TemplateNotFound => {
@@ -746,7 +746,7 @@ pub fn main() !void {
                 std.process.exit(1);
             },
             ScaffoldAgentError.InvalidAgentName => {
-                std.debug.print("Error: Invalid agent name '{s}'. Agent names must:\n", .{agent_name});
+                std.debug.print("Error: Invalid agent name '{s}'. Agent names must:\n", .{agentName});
                 std.debug.print("  - Be 1-50 characters long\n", .{});
                 std.debug.print("  - Start with a letter or underscore\n", .{});
                 std.debug.print("  - Contain only letters, numbers, underscores, and hyphens\n", .{});
@@ -754,7 +754,7 @@ pub fn main() !void {
                 std.process.exit(1);
             },
             else => {
-                std.debug.print("Error: Failed to create agent '{s}': {}\n", .{ agent_name, err });
+                std.debug.print("Error: Failed to create agent '{s}': {}\n", .{ agentName, err });
                 std.process.exit(1);
             },
         }

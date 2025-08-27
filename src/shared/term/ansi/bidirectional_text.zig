@@ -134,7 +134,7 @@ pub fn popDirectionalIsolate(writer: *Writer, caps: TermCaps) !void {
 
 /// Helper functions for managing bidirectional text regions
 /// These functions manage the start/end of bidi regions without storing writer state
-pub const BidiRegionManager = struct {
+pub const BidiRegion = struct {
     /// Start an LTR isolate region
     pub fn startLtrRegion(writer: *Writer, caps: TermCaps) !void {
         try insertLtrIsolate(writer, caps);
@@ -166,19 +166,19 @@ pub fn writeBidiText(writer: *Writer, caps: TermCaps, text: []const u8, directio
 
     switch (direction) {
         .ltr => {
-            try BidiRegionManager.startLtrRegion(writer, caps);
+            try BidiRegion.startLtrRegion(writer, caps);
             try passthrough.writeWithPassthrough(writer, caps, text);
-            try BidiRegionManager.endRegion(writer, caps);
+            try BidiRegion.endRegion(writer, caps);
         },
         .rtl => {
-            try BidiRegionManager.startRtlRegion(writer, caps);
+            try BidiRegion.startRtlRegion(writer, caps);
             try passthrough.writeWithPassthrough(writer, caps, text);
-            try BidiRegionManager.endRegion(writer, caps);
+            try BidiRegion.endRegion(writer, caps);
         },
         .auto => {
-            try BidiRegionManager.startAutoRegion(writer, caps);
+            try BidiRegion.startAutoRegion(writer, caps);
             try passthrough.writeWithPassthrough(writer, caps, text);
-            try BidiRegionManager.endRegion(writer, caps);
+            try BidiRegion.endRegion(writer, caps);
         },
     }
 }

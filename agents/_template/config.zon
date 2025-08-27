@@ -12,10 +12,10 @@
         // Basic information about your agent - customize these fields
 
         .agent_info = .{
-            .name = "Template Agent",                          // Display name
-            .version = "1.0.0",                               // Semantic version
+            .name = "Template Agent", // Display name
+            .version = "1.0.0", // Semantic version
             .description = "A template for creating new agents with best practices",
-            .author = "Your Name",                            // Your name or organization
+            .author = "Your Name", // Your name or organization
         },
 
         // ========================================================================
@@ -24,10 +24,10 @@
         // These control the default behavior of the agent
 
         .defaults = .{
-            .max_concurrent_operations = 10,                  // Max parallel operations
-            .default_timeout_ms = 30000,                      // Default operation timeout (30s)
-            .enable_debug_logging = false,                    // Enable detailed debug logs
-            .enable_verbose_output = false,                   // Enable verbose console output
+            .max_concurrent_operations = 10, // Max parallel operations
+            .default_timeout_ms = 30000, // Default operation timeout (30s)
+            .enable_debug_logging = false, // Enable detailed debug logs
+            .enable_verbose_output = false, // Enable verbose console output
         },
 
         // ========================================================================
@@ -37,10 +37,10 @@
         // These affect which shared modules are included at compile time
 
         .features = .{
-            .enable_custom_tools = true,                      // Allow custom tool registration
-            .enable_file_operations = true,                   // Allow file system operations
-            .enable_network_access = false,                   // Allow network requests
-            .enable_system_commands = false,                  // Allow system command execution
+            .enable_custom_tools = true, // Allow custom tool registration
+            .enable_file_operations = true, // Allow file system operations
+            .enable_network_access = false, // Allow network requests
+            .enable_system_commands = false, // Allow system command execution
         },
 
         // ========================================================================
@@ -49,9 +49,9 @@
         // Safety limits to prevent resource exhaustion
 
         .limits = .{
-            .max_input_size = 1048576,                        // Max input size (1MB)
-            .max_output_size = 1048576,                       // Max output size (1MB)
-            .max_processing_time_ms = 60000,                  // Max processing time (60s)
+            .max_input_size = 1048576, // Max input size (1MB)
+            .max_output_size = 1048576, // Max output size (1MB)
+            .max_processing_time_ms = 60000, // Max processing time (60s)
         },
 
         // ========================================================================
@@ -60,10 +60,10 @@
         // Configuration for the underlying AI model
 
         .model = .{
-            .default_model = "claude-3-sonnet-20240229",      // Default model to use
-            .max_tokens = 4096,                               // Max tokens in response
-            .temperature = 0.7,                               // Response creativity (0.0-1.0)
-            .stream_responses = true,                         // Stream responses in real-time
+            .default_model = "claude-3-sonnet-20240229", // Default model to use
+            .max_tokens = 4096, // Max tokens in response
+            .temperature = 0.7, // Response creativity (0.0-1.0)
+            .stream_responses = true, // Stream responses in real-time
         },
     },
 

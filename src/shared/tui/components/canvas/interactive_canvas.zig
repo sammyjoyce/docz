@@ -19,7 +19,7 @@ pub const InteractiveCanvas = struct {
     graphics: *graphics_manager.GraphicsManager,
     layers: std.ArrayList(Layer),
     viewport: Viewport,
-    interaction: InteractionManager,
+    interaction: Interaction,
     animation: AnimationEngine,
     render_cache: RenderCache,
     dirty_regions: std.ArrayList(Rect),
@@ -34,7 +34,7 @@ pub const InteractiveCanvas = struct {
         blend_mode: BlendMode = .normal,
         visible: bool = true,
         interactive: bool = false,
-        z_index: i32 = 0,
+        zIndex: i32 = 0,
 
         pub const LayerContent = union(enum) {
             image: ImageLayer,
@@ -109,15 +109,15 @@ pub const InteractiveCanvas = struct {
 
         pub const ChartLayer = struct {
             chart_type: ChartType,
-            data: ChartData,
+            data: Chart,
             style: ChartStyle,
 
             pub const ChartType = enum { line, bar, scatter, heatmap };
 
-            pub const ChartData = struct {
-                series: []DataSeries,
+            pub const Chart = struct {
+                series: []Series,
 
-                pub const DataSeries = struct {
+                pub const Series = struct {
                     name: []const u8,
                     points: []Point2D,
                     color: unified.Color,
@@ -202,7 +202,7 @@ pub const InteractiveCanvas = struct {
         }
     };
 
-    pub const InteractionManager = struct {
+    pub const Interaction = struct {
         current_tool: Tool = .pointer,
         is_drawing: bool = false,
         active_layer: ?u32 = null,
@@ -303,7 +303,7 @@ pub const InteractiveCanvas = struct {
             .graphics = graphics_manager.GraphicsManager.init(allocator, terminal),
             .layers = std.ArrayList(Layer).init(allocator),
             .viewport = .{ .bounds = .{ .x = 0, .y = 0, .width = 80, .height = 24 } },
-            .interaction = .{ .gesture_recognizer = .{ .touch_points = std.ArrayList(InteractionManager.GestureRecognizer.TouchPoint).init(allocator) } },
+            .interaction = .{ .gesture_recognizer = .{ .touch_points = std.ArrayList(Interaction.GestureRecognizer.TouchPoint).init(allocator) } },
             .animation = .{ .animations = std.ArrayList(AnimationEngine.Animation).init(allocator) },
             .render_cache = .{ .layer_cache = std.HashMap(u32, RenderCache.CachedLayer).init(allocator) },
             .dirty_regions = std.ArrayList(Rect).init(allocator),
@@ -588,7 +588,7 @@ pub const InteractiveCanvas = struct {
     }
 
     fn layerCompare(_: void, a: Layer, b: Layer) bool {
-        return a.z_index < b.z_index;
+        return a.zIndex < b.zIndex;
     }
 
     fn renderCompositeKitty(self: *Self) !void {

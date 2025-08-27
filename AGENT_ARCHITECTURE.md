@@ -1484,7 +1484,7 @@ const tools = @import("shared/tools");
 
 // Access specific functionality
 const CommandParser = cli.CommandParser;
-const HttpClient = network.HttpClient;
+const HTTPClient = network.HTTPClient;
 const ToolRegistry = tools.Registry;
 ```
 
@@ -1578,9 +1578,9 @@ Avoid circular dependencies and manage module relationships:
 // Good: Dependency injection pattern
 pub const NetworkService = struct {
     allocator: std.mem.Allocator,
-    http_client: *HttpClient,
+    http_client: *HTTPClient,
 
-    pub fn init(allocator: std.mem.Allocator, http_client: *HttpClient) !NetworkService {
+    pub fn init(allocator: std.mem.Allocator, http_client: *HTTPClient) !NetworkService {
         return NetworkService{
             .allocator = allocator,
             .http_client = http_client,
@@ -1591,12 +1591,12 @@ pub const NetworkService = struct {
 // Bad: Direct instantiation creates tight coupling
 pub const TightlyCoupledService = struct {
     allocator: std.mem.Allocator,
-    http_client: HttpClient, // Direct instantiation
+    http_client: HTTPClient, // Direct instantiation
 
     pub fn init(allocator: std.mem.Allocator) !TightlyCoupledService {
         return TightlyCoupledService{
             .allocator = allocator,
-            .http_client = try HttpClient.init(allocator), // Tight coupling
+            .http_client = try HTTPClient.init(allocator), // Tight coupling
         };
     }
 };
@@ -2020,7 +2020,7 @@ const formatted = try utils.string.format(allocator, "Hello {s}", .{"World"});
 // Bad: Large modules included even when minimally used
 const network = @import("shared/network/mod.zig"); // 50KB of unused code
 
-pub fn simpleHttpGet(url: []const u8) ![]const u8 {
+pub fn simpleHTTPGet(url: []const u8) ![]const u8 {
     // Only uses 5% of network module functionality
     return try network.Client.get(url);
 }
@@ -2036,7 +2036,7 @@ const network = if (enable_full_network)
 else
     @import("shared/network/minimal.zig");
 
-pub fn simpleHttpGet(url: []const u8) ![]const u8 {
+pub fn simpleHTTPGet(url: []const u8) ![]const u8 {
     return try network.Client.get(url);
 }
 ```
@@ -2630,7 +2630,7 @@ const config = try BaseAgent.loadConfig(MyConfig, allocator, config_context);
 **Solution:** Use shared services container
 ```zig
 // Old
-const http_client = try HttpClient.init(allocator);
+const http_client = try HTTPClient.init(allocator);
 
 // New
 const http_client = self.shared_services.network_service.?;

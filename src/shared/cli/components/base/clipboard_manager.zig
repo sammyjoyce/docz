@@ -32,17 +32,17 @@ pub const ClipboardEntry = struct {
     }
 };
 
-pub const ClipboardManager = struct {
+pub const Clipboard = struct {
     allocator: Allocator,
     caps: term_caps.TermCaps,
-    notification_manager: ?*notification_manager.NotificationManager,
+    notificationManager: ?*notification_manager.NotificationHandler,
     history: std.ArrayList(ClipboardEntry),
-    max_history_size: usize,
-    auto_trim_large_content: bool,
-    max_content_size: usize,
+    maxHistorySize: usize,
+    autoTrimLargeContent: bool,
+    maxContentSize: usize,
     writer: ?*std.Io.Writer,
 
-    pub fn init(allocator: Allocator) ClipboardManager {
+    pub fn init(allocator: Allocator) Clipboard {
         return .{
             .allocator = allocator,
             .caps = term_caps.detectCaps(allocator) catch term_caps.TermCaps{
@@ -75,16 +75,16 @@ pub const ClipboardManager = struct {
                 .screenChunkLimit = 4096,
                 .widthMethod = .grapheme,
             },
-            .notification_manager = null,
+            .notificationManager = null,
             .history = std.ArrayList(ClipboardEntry).init(allocator),
-            .max_history_size = 50,
-            .auto_trim_large_content = true,
-            .max_content_size = 10000, // 10KB limit for clipboard
+            .maxHistorySize = 50,
+            .autoTrimLargeContent = true,
+            .maxContentSize = 10000, // 10KB limit for clipboard
             .writer = null,
         };
     }
 
-    pub fn deinit(self: *ClipboardManager) void {
+    pub fn deinit(self: *Clipboard) void {
         // Free all history content
         for (self.history.items) |entry| {
             self.allocator.free(entry.content);
@@ -92,29 +92,29 @@ pub const ClipboardManager = struct {
         self.history.deinit();
     }
 
-    pub fn setWriter(self: *ClipboardManager, writer: *std.Io.Writer) void {
+    pub fn setWriter(self: *Clipboard, writer: *std.Io.Writer) void {
         self.writer = writer;
     }
 
-    pub fn setNotificationManager(self: *ClipboardManager, manager: *notification_manager.NotificationManager) void {
+    pub fn setNotificationManager(self: *Clipboard, manager: *notification_manager.NotificationHandler) void {
         self.notification_manager = manager;
     }
 
     pub fn configure(
-        self: *ClipboardManager,
+        self: *Clipboard,
         options: struct {
-            max_history_size: usize = 50,
-            auto_trim_large_content: bool = true,
-            max_content_size: usize = 10000,
+            maxHistorySize: usize = 50,
+            autoTrimLargeContent: bool = true,
+            maxContentSize: usize = 10000,
         },
     ) void {
-        self.max_history_size = options.max_history_size;
-        self.auto_trim_large_content = options.auto_trim_large_content;
-        self.max_content_size = options.max_content_size;
+        self.maxHistorySize = options.maxHistorySize;
+        self.autoTrimLargeContent = options.autoTrimLargeContent;
+        self.maxContentSize = options.maxContentSize;
     }
 
     /// Copy text to system clipboard using OSC 52
-    pub fn copy(self: *ClipboardManager, content: []const u8, content_type: []const u8, source: []const u8) !void {
+    pub fn copy(self: *Clipboard, content: []const u8, content_type: []const u8, source: []const u8) !void {
         if (!self.caps.supportsClipboard()) {
             return ClipboardError.NotSupported;
         }
@@ -128,14 +128,14 @@ pub const ClipboardManager = struct {
         var owned_content: ?[]u8 = null;
         defer if (owned_content) |owned| self.allocator.free(owned);
 
-        if (content.len > self.max_content_size) {
-            if (self.auto_trim_large_content) {
-                owned_content = try self.allocator.alloc(u8, self.max_content_size);
-                @memcpy(owned_content.?[0 .. self.max_content_size - 3], content[0 .. self.max_content_size - 3]);
-                @memcpy(owned_content.?[self.max_content_size - 3 ..], "...");
+        if (content.len > self.maxContentSize) {
+            if (self.autoTrimLargeContent) {
+                owned_content = try self.allocator.alloc(u8, self.maxContentSize);
+                @memcpy(owned_content.?[0 .. self.maxContentSize - 3], content[0 .. self.maxContentSize - 3]);
+                @memcpy(owned_content.?[self.maxContentSize - 3 ..], "...");
                 final_content = owned_content.?;
 
-                if (self.notification_manager) |mgr| {
+                if (self.notificationManager) |mgr| {
                     _ = try mgr.notify(.warning, "Clipboard", "Content was truncated due to size limit");
                 }
             } else {
@@ -165,7 +165,7 @@ pub const ClipboardManager = struct {
     }
 
     /// Copy structured data (JSON, command output, etc.)
-    pub fn copyStructured(self: *ClipboardManager, data: anytype, source: []const u8) !void {
+    pub fn copyStructured(self: *Clipboard, data: anytype, source: []const u8) !void {
         const json_content = try std.json.stringifyAlloc(self.allocator, data, .{ .whitespace = .indent_2 });
         defer self.allocator.free(json_content);
 
@@ -173,7 +173,7 @@ pub const ClipboardManager = struct {
     }
 
     /// Copy a command for easy re-execution
-    pub fn copyCommand(self: *ClipboardManager, command: []const u8, args: []const []const u8) !void {
+    pub fn copyCommand(self: *Clipboard, command: []const u8, args: []const []const u8) !void {
         var command_str = std.ArrayList(u8).init(self.allocator);
         defer command_str.deinit();
 
@@ -196,7 +196,7 @@ pub const ClipboardManager = struct {
     }
 
     /// Copy URL with validation
-    pub fn copyUrl(self: *ClipboardManager, url: []const u8, source: []const u8) !void {
+    pub fn copyURL(self: *Clipboard, url: []const u8, source: []const u8) !void {
         // Basic URL validation
         if (!std.mem.startsWith(u8, url, "http://") and !std.mem.startsWith(u8, url, "https://")) {
             return ClipboardError.InvalidData;
@@ -206,7 +206,7 @@ pub const ClipboardManager = struct {
     }
 
     /// Read from system clipboard (if supported)
-    pub fn paste(self: *ClipboardManager) !?[]const u8 {
+    pub fn paste(self: *Clipboard) !?[]const u8 {
         // OSC 52 supports writing but reading is limited
         // For now, return the most recent history entry
         if (self.history.items.len > 0) {
@@ -218,7 +218,7 @@ pub const ClipboardManager = struct {
     }
 
     /// Show clipboard history
-    pub fn showHistory(self: *ClipboardManager) !void {
+    pub fn showHistory(self: *Clipboard) !void {
         if (self.writer == null) return error.NoWriter;
 
         try self.renderHistoryHeader();
@@ -245,7 +245,7 @@ pub const ClipboardManager = struct {
     }
 
     /// Clear clipboard history
-    pub fn clearHistory(self: *ClipboardManager) !void {
+    pub fn clearHistory(self: *Clipboard) !void {
         for (self.history.items) |entry| {
             self.allocator.free(entry.content);
         }
@@ -257,7 +257,7 @@ pub const ClipboardManager = struct {
     }
 
     /// Export clipboard history to file
-    pub fn exportHistory(self: *ClipboardManager, file_path: []const u8) !void {
+    pub fn exportHistory(self: *Clipboard, file_path: []const u8) !void {
         const file = try std.fs.cwd().createFile(file_path, .{});
         defer file.close();
 
@@ -288,7 +288,7 @@ pub const ClipboardManager = struct {
 
     // Private helper methods
 
-    fn addToHistory(self: *ClipboardManager, content: []const u8, content_type: []const u8, source: []const u8) !void {
+    fn addToHistory(self: *Clipboard, content: []const u8, content_type: []const u8, source: []const u8) !void {
         // Create a copy of the content for history
         const content_copy = try self.allocator.dupe(u8, content);
         const type_copy = try self.allocator.dupe(u8, content_type);
@@ -304,7 +304,7 @@ pub const ClipboardManager = struct {
         try self.history.append(entry);
 
         // Trim history if too large
-        if (self.history.items.len > self.max_history_size) {
+        if (self.history.items.len > self.maxHistorySize) {
             const removed = self.history.orderedRemove(0);
             self.allocator.free(removed.content);
             self.allocator.free(removed.content_type);
@@ -312,7 +312,7 @@ pub const ClipboardManager = struct {
         }
     }
 
-    fn renderCopyConfirmation(self: *ClipboardManager, content: []const u8, content_type: []const u8) !void {
+    fn renderCopyConfirmation(self: *Clipboard, content: []const u8, content_type: []const u8) !void {
         if (self.writer == null) return;
         const writer = self.writer.?;
 
@@ -338,7 +338,7 @@ pub const ClipboardManager = struct {
         try term_ansi.resetStyle(writer.*, self.caps);
     }
 
-    fn renderHistoryHeader(self: *ClipboardManager) !void {
+    fn renderHistoryHeader(self: *Clipboard) !void {
         const writer = self.writer.?;
 
         if (self.caps.supportsTrueColor()) {
@@ -354,7 +354,7 @@ pub const ClipboardManager = struct {
         try term_ansi.resetStyle(writer.*, self.caps);
     }
 
-    fn renderEmptyHistory(self: *ClipboardManager) !void {
+    fn renderEmptyHistory(self: *Clipboard) !void {
         const writer = self.writer.?;
 
         if (self.caps.supportsTrueColor()) {
@@ -369,7 +369,7 @@ pub const ClipboardManager = struct {
         try term_ansi.resetStyle(writer.*, self.caps);
     }
 
-    fn renderHistoryEntry(self: *ClipboardManager, index: usize, entry: ClipboardEntry) !void {
+    fn renderHistoryEntry(self: *Clipboard, index: usize, entry: ClipboardEntry) !void {
         const writer = self.writer.?;
 
         // Entry header
@@ -427,7 +427,7 @@ pub const ClipboardManager = struct {
         try term_ansi.resetStyle(writer.*, self.caps);
     }
 
-    fn renderHistoryFooter(self: *ClipboardManager) !void {
+    fn renderHistoryFooter(self: *Clipboard) !void {
         const writer = self.writer.?;
 
         if (self.caps.supportsTrueColor()) {
@@ -444,27 +444,27 @@ pub const ClipboardManager = struct {
 };
 
 /// Global clipboard manager instance for easy access across CLI components
-pub var global_clipboard: ?*ClipboardManager = null;
+pub var globalClipboard: ?*Clipboard = null;
 
 pub fn initGlobalClipboard(allocator: Allocator) !void {
-    if (global_clipboard != null) return;
+    if (globalClipboard != null) return;
 
-    const manager = try allocator.create(ClipboardManager);
-    manager.* = ClipboardManager.init(allocator);
-    global_clipboard = manager;
+    const manager = try allocator.create(Clipboard);
+    manager.* = Clipboard.init(allocator);
+    globalClipboard = manager;
 }
 
 pub fn deinitGlobalClipboard(allocator: Allocator) void {
-    if (global_clipboard) |manager| {
+    if (globalClipboard) |manager| {
         manager.deinit();
         allocator.destroy(manager);
-        global_clipboard = null;
+        globalClipboard = null;
     }
 }
 
 /// Quick copy helper for use across CLI components
 pub fn quickCopy(content: []const u8, content_type: []const u8, source: []const u8) !void {
-    if (global_clipboard) |manager| {
+    if (globalClipboard) |manager| {
         try manager.copy(content, content_type, source);
     } else {
         return error.ClipboardNotInitialized;
@@ -473,7 +473,7 @@ pub fn quickCopy(content: []const u8, content_type: []const u8, source: []const 
 
 /// Quick copy for commands with automatic formatting
 pub fn copyCommand(command: []const u8, args: []const []const u8) !void {
-    if (global_clipboard) |manager| {
+    if (globalClipboard) |manager| {
         try manager.copyCommand(command, args);
     } else {
         return error.ClipboardNotInitialized;

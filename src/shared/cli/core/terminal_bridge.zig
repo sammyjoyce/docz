@@ -240,8 +240,8 @@ pub const TerminalBridge = struct {
     }
 
     /// Create a scoped context for complex rendering operations
-    pub fn createRenderContext(self: *Self) !RenderContext {
-        return RenderContext.init(self);
+    pub fn createRenderContext(self: *Self) !Render {
+        return Render.init(self);
     }
 
     /// Flush all pending output
@@ -294,12 +294,12 @@ pub const TerminalBridge = struct {
 };
 
 /// Render context for complex multi-step rendering operations
-pub const RenderContext = struct {
+pub const Render = struct {
     const Self = @This();
 
     bridge: *TerminalBridge,
     start_time: std.time.Timer,
-    scoped_context: unified.ScopedContext,
+    scoped_context: unified.Scoped,
 
     fn init(bridge: *TerminalBridge) !Self {
         return Self{

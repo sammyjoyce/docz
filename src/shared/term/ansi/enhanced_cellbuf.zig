@@ -211,10 +211,10 @@ pub const Cell = struct {
     link: Link = .{},
 
     /// Blank cell (space character)
-    pub const blank = Cell{ .rune = ' ', .width = 1 };
+    pub const BLANK = Cell{ .rune = ' ', .width = 1 };
 
     /// Empty cell (zero width, used for wide character placeholders)
-    pub const empty = Cell{};
+    pub const EMPTY = Cell{};
 
     pub fn isEmpty(self: Cell) bool {
         return self.rune == 0 and self.width == 0 and (self.comb == null or self.comb.?.len == 0);
@@ -367,7 +367,7 @@ pub const Line = struct {
     pub fn init(allocator: std.mem.Allocator, line_width: usize) !Line {
         const cells = try allocator.alloc(Cell, line_width);
         for (cells) |*cell| {
-            cell.* = Cell.empty;
+            cell.* = Cell.EMPTY;
         }
         return Line{ .cells = cells, .allocator = allocator };
     }
@@ -412,7 +412,7 @@ pub const Line = struct {
                 if (self.cells[x + j].comb) |old_comb| {
                     self.allocator.free(old_comb);
                 }
-                self.cells[x + j] = Cell.empty;
+                self.cells[x + j] = Cell.EMPTY;
             }
         }
 
@@ -567,7 +567,7 @@ pub const Buffer = struct {
 
     /// Clear rectangle to blank cells
     pub fn clearRect(self: *Buffer, rect: Rectangle) !void {
-        try self.fillRect(rect, Cell.blank);
+        try self.fillRect(rect, Cell.BLANK);
     }
 
     /// Insert lines at given position within rectangle rect_bounds
@@ -794,7 +794,7 @@ test "line insert and delete operations" {
 
     // Insert 2 lines at position 3
     const rect_bounds = Rectangle{ .x = 0, .y = 0, .width = 10, .height = 10 };
-    try buffer.insertLines(3, 2, Cell.blank, rect_bounds);
+    try buffer.insertLines(3, 2, Cell.BLANK, rect_bounds);
 
     // Check that line that was at position 3 is now at position 5
     const cell_at_5 = buffer.cell(0, 5).?;

@@ -5,11 +5,11 @@ const std = @import("std");
 
 pub const ThemeConfig = struct {
     allocator: std.mem.Allocator,
-    current_theme: []const u8,
-    auto_switch_system_theme: bool,
-    high_contrast_enabled: bool,
-    color_blindness_mode: ColorBlindnessMode,
-    custom_themes_path: []const u8,
+    currentTheme: []const u8,
+    autoSwitchSystemTheme: bool,
+    highContrastEnabled: bool,
+    colorBlindnessMode: ColorBlindnessMode,
+    customThemesPath: []const u8,
     recent_themes: std.ArrayList([]const u8),
     theme_preferences: std.StringHashMap(ThemePreference),
 
@@ -22,8 +22,8 @@ pub const ThemeConfig = struct {
     };
 
     pub const ThemePreference = struct {
-        terminal_type: []const u8,
-        theme_name: []const u8,
+        terminalType: []const u8,
+        themeName: []const u8,
     };
 
     const Self = @This();
@@ -31,11 +31,11 @@ pub const ThemeConfig = struct {
     pub fn init(allocator: std.mem.Allocator) Self {
         return .{
             .allocator = allocator,
-            .current_theme = "default",
-            .auto_switch_system_theme = true,
-            .high_contrast_enabled = false,
-            .color_blindness_mode = .none,
-            .custom_themes_path = "",
+            .currentTheme = "default",
+            .autoSwitchSystemTheme = true,
+            .highContrastEnabled = false,
+            .colorBlindnessMode = .none,
+            .customThemesPath = "",
             .recent_themes = std.ArrayList([]const u8).init(allocator),
             .theme_preferences = std.StringHashMap(ThemePreference).init(allocator),
         };
@@ -55,7 +55,7 @@ pub const ThemeConfig = struct {
     }
 
     pub fn setCurrentTheme(self: *Self, theme_name: []const u8) !void {
-        self.current_theme = try self.allocator.dupe(u8, theme_name);
+        self.currentTheme = try self.allocator.dupe(u8, theme_name);
 
         // Add to recent themes
         try self.addToRecentThemes(theme_name);
@@ -87,13 +87,13 @@ pub const ThemeConfig = struct {
         const writer = buffer.writer();
 
         try writer.writeAll(".{\n");
-        try writer.print("    .current_theme = \"{s}\",\n", .{self.current_theme});
-        try writer.print("    .auto_switch_system_theme = {},\n", .{self.auto_switch_system_theme});
-        try writer.print("    .high_contrast_enabled = {},\n", .{self.high_contrast_enabled});
-        try writer.print("    .color_blindness_mode = .{s},\n", .{@tagName(self.color_blindness_mode)});
+        try writer.print("    .currentTheme = \"{s}\",\n", .{self.currentTheme});
+        try writer.print("    .autoSwitchSystemTheme = {},\n", .{self.autoSwitchSystemTheme});
+        try writer.print("    .highContrastEnabled = {},\n", .{self.highContrastEnabled});
+        try writer.print("    .colorBlindnessMode = .{s},\n", .{@tagName(self.colorBlindnessMode)});
 
-        if (self.custom_themes_path.len > 0) {
-            try writer.print("    .custom_themes_path = \"{s}\",\n", .{self.custom_themes_path});
+        if (self.customThemesPath.len > 0) {
+            try writer.print("    .customThemesPath = \"{s}\",\n", .{self.customThemesPath});
         }
 
         if (self.recent_themes.items.len > 0) {

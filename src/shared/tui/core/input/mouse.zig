@@ -9,8 +9,8 @@ pub const MouseButton = term_mouse.MouseButton;
 pub const MouseAction = term_mouse.MouseAction;
 pub const MouseProtocol = term_mouse.MouseProtocol;
 
-/// Enhanced mouse manager with pixel precision support
-pub const MouseManager = struct {
+/// Enhanced mouse controller with pixel precision support
+pub const Mouse = struct {
     handlers: std.ArrayListUnmanaged(MouseHandler),
     click_handlers: std.ArrayListUnmanaged(ClickHandler),
     drag_handlers: std.ArrayListUnmanaged(DragHandler),
@@ -27,8 +27,8 @@ pub const MouseManager = struct {
     double_click_threshold_ms: i64 = 300,
     drag_threshold_pixels: u32 = 3,
 
-    pub fn init(allocator: std.mem.Allocator) MouseManager {
-        return MouseManager{
+    pub fn init(allocator: std.mem.Allocator) Mouse {
+        return Mouse{
             .handlers = std.ArrayListUnmanaged(MouseHandler){},
             .click_handlers = std.ArrayListUnmanaged(ClickHandler){},
             .drag_handlers = std.ArrayListUnmanaged(DragHandler){},
@@ -37,7 +37,7 @@ pub const MouseManager = struct {
         };
     }
 
-    pub fn deinit(self: *MouseManager) void {
+    pub fn deinit(self: *Mouse) void {
         self.handlers.deinit(self.allocator);
         self.click_handlers.deinit(self.allocator);
         self.drag_handlers.deinit(self.allocator);
@@ -45,27 +45,27 @@ pub const MouseManager = struct {
     }
 
     /// Register general mouse event handler
-    pub fn addHandler(self: *MouseManager, handler: MouseHandler) !void {
+    pub fn addHandler(self: *Mouse, handler: MouseHandler) !void {
         try self.handlers.append(self.allocator, handler);
     }
 
     /// Register click-specific handler
-    pub fn addClickHandler(self: *MouseManager, handler: ClickHandler) !void {
+    pub fn addClickHandler(self: *Mouse, handler: ClickHandler) !void {
         try self.click_handlers.append(self.allocator, handler);
     }
 
     /// Register drag-specific handler
-    pub fn addDragHandler(self: *MouseManager, handler: DragHandler) !void {
+    pub fn addDragHandler(self: *Mouse, handler: DragHandler) !void {
         try self.drag_handlers.append(self.allocator, handler);
     }
 
     /// Register scroll-specific handler
-    pub fn addScrollHandler(self: *MouseManager, handler: ScrollHandler) !void {
+    pub fn addScrollHandler(self: *Mouse, handler: ScrollHandler) !void {
         try self.scroll_handlers.append(self.allocator, handler);
     }
 
     /// Process mouse event and dispatch to appropriate handlers
-    pub fn processMouseEvent(self: *MouseManager, event: MouseEvent) !void {
+    pub fn processMouseEvent(self: *Mouse, event: MouseEvent) !void {
         const now = std.time.milliTimestamp();
 
         // Dispatch to general handlers first
@@ -81,7 +81,7 @@ pub const MouseManager = struct {
         }
     }
 
-    fn processMouseClick(self: *MouseManager, mouse: term_mouse.Mouse, now: i64) !void {
+    fn processMouseClick(self: *Mouse, mouse: term_mouse.Mouse, now: i64) !void {
         const pos = Position{ .x = mouse.x, .y = mouse.y };
 
         switch (mouse.action) {
@@ -167,7 +167,7 @@ pub const MouseManager = struct {
         }
     }
 
-    fn processMouseScroll(self: *MouseManager, scroll: term_mouse.Scroll) !void {
+    fn processMouseScroll(self: *Mouse, scroll: term_mouse.Scroll) !void {
         const scroll_event = ScrollEvent{
             .position = Position{ .x = scroll.x, .y = scroll.y },
             .direction = scroll.direction,
@@ -179,7 +179,7 @@ pub const MouseManager = struct {
         }
     }
 
-    fn checkDoubleClick(self: *MouseManager, pos: Position, now: i64) bool {
+    fn checkDoubleClick(self: *Mouse, pos: Position, now: i64) bool {
         if (self.last_click_pos) |last_pos| {
             const time_diff = now - self.last_click_time;
             const dx = if (pos.x > last_pos.x) pos.x - last_pos.x else last_pos.x - pos.x;
@@ -274,11 +274,11 @@ pub const ScrollHandler = struct {
 
 /// Mouse-aware widget trait
 pub const MouseAware = struct {
-    mouse_manager: *MouseManager,
+    mouse_controller: *Mouse,
 
-    pub fn init(mouse_manager: *MouseManager) MouseAware {
+    pub fn init(mouse_controller: *Mouse) MouseAware {
         return MouseAware{
-            .mouse_manager = mouse_manager,
+            .mouse_controller = mouse_controller,
         };
     }
 
@@ -302,17 +302,17 @@ pub const MouseAware = struct {
 };
 
 // Tests
-test "mouse manager initialization" {
-    var mouse_manager = MouseManager.init(std.testing.allocator);
-    defer mouse_manager.deinit();
+test "mouse controller initialization" {
+    var mouse_controller = Mouse.init(std.testing.allocator);
+    defer mouse_controller.deinit();
 
-    try std.testing.expect(!mouse_manager.is_dragging);
-    try std.testing.expect(mouse_manager.drag_start_pos == null);
+    try std.testing.expect(!mouse_controller.is_dragging);
+    try std.testing.expect(mouse_controller.drag_start_pos == null);
 }
 
 test "double-click detection" {
-    var mouse_manager = MouseManager.init(std.testing.allocator);
-    defer mouse_manager.deinit();
+    var mouse_controller = Mouse.init(std.testing.allocator);
+    defer mouse_controller.deinit();
 
     const pos1 = Position{ .x = 10, .y = 20 };
     const pos2 = Position{ .x = 11, .y = 21 }; // Close position
@@ -320,14 +320,14 @@ test "double-click detection" {
     const now = std.time.milliTimestamp();
 
     // First click
-    mouse_manager.last_click_pos = pos1;
-    mouse_manager.last_click_time = now - 100; // 100ms ago
+    mouse_controller.last_click_pos = pos1;
+    mouse_controller.last_click_time = now - 100; // 100ms ago
 
     // Second click - should be detected as double-click
-    const is_double = mouse_manager.checkDoubleClick(pos2, now);
+    const is_double = mouse_controller.checkDoubleClick(pos2, now);
     try std.testing.expect(is_double);
 
     // Third click after long delay - should not be double-click
-    const is_double_late = mouse_manager.checkDoubleClick(pos2, now + 500);
+    const is_double_late = mouse_controller.checkDoubleClick(pos2, now + 500);
     try std.testing.expect(!is_double_late);
 }

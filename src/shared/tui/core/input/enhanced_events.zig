@@ -197,7 +197,7 @@ pub const MouseHandler = struct {
 };
 
 /// Utility functions for backward compatibility with existing TUI widgets
-pub const compat = struct {
+pub const Compat = struct {
     /// Convert enhanced key event to legacy key event (for backward compatibility)
     pub fn toLegacyKeyEvent(enhanced: KeyPressEvent) ?@import("../events.zig").KeyEvent {
         const legacy_events = @import("../events.zig");

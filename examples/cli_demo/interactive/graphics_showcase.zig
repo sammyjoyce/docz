@@ -401,8 +401,11 @@ pub const GraphicsShowcase = struct {
         // Simplified input handling - in a real implementation this would use
         // the enhanced input system for better cross-platform support
 
+        var stdin_buffer: [4096]u8 = undefined;
+        const stdin_file = std.fs.File.stdin();
+        var stdin_reader = stdin_file.reader(&stdin_buffer);
         var buf: [1]u8 = undefined;
-        if (std.io.getStdIn().read(&buf)) |bytes_read| {
+        if (stdin_reader.read(&buf)) |bytes_read| {
             if (bytes_read == 0) return;
 
             const key = buf[0];

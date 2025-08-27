@@ -20,9 +20,9 @@ pub const QueryType = enum {
 
     pub fn requestSequence(self: QueryType) []const u8 {
         return switch (self) {
-            .foreground_color => terminal_background.OSC.request_foreground_color,
-            .background_color => terminal_background.OSC.request_background_color,
-            .cursor_color => terminal_background.OSC.request_cursor_color,
+            .foreground_color => terminal_background.OSC.REQUEST_FOREGROUND_COLOR,
+            .background_color => terminal_background.OSC.REQUEST_BACKGROUND_COLOR,
+            .cursor_color => terminal_background.OSC.REQUEST_CURSOR_COLOR,
             .cursor_position => "\x1b[6n",
             .device_attributes => "\x1b[c",
         };
@@ -220,26 +220,26 @@ pub const ResponseParser = struct {
 };
 
 /// Asynchronous terminal query manager
-pub const QueryManager = struct {
+pub const Query = struct {
     parser: ResponseParser,
     reader: *std.Io.Reader,
     writer: *std.Io.Writer,
     timeout_ms: u64 = 1000,
 
-    pub fn init(reader: *std.Io.Reader, writer: *std.Io.Writer, allocator: std.mem.Allocator) QueryManager {
-        return QueryManager{
+    pub fn init(reader: *std.Io.Reader, writer: *std.Io.Writer, allocator: std.mem.Allocator) Query {
+        return Query{
             .parser = ResponseParser.init(allocator),
             .reader = reader,
             .writer = writer,
         };
     }
 
-    pub fn deinit(self: *QueryManager) void {
+    pub fn deinit(self: *Query) void {
         self.parser.deinit();
     }
 
     /// Send a query and wait for response with timeout
-    pub fn query(self: *QueryManager, query_type: QueryType) !QueryResponse {
+    pub fn query(self: *Query, query_type: QueryType) !QueryResponse {
         // Send query
         const request = query_type.requestSequence();
         try self.writer.write(request);
@@ -277,36 +277,36 @@ pub const QueryManager = struct {
     }
 
     /// Query terminal foreground color
-    pub fn queryForegroundColor(self: *QueryManager) !terminal_background.Color {
+    pub fn queryForegroundColor(self: *Query) !terminal_background.Color {
         const response = try self.query(.foreground_color);
         return response.foreground_color;
     }
 
     /// Query terminal background color
-    pub fn queryBackgroundColor(self: *QueryManager) !terminal_background.Color {
+    pub fn queryBackgroundColor(self: *Query) !terminal_background.Color {
         const response = try self.query(.background_color);
         return response.background_color;
     }
 
     /// Query terminal cursor color
-    pub fn queryCursorColor(self: *QueryManager) !terminal_background.Color {
+    pub fn queryCursorColor(self: *Query) !terminal_background.Color {
         const response = try self.query(.cursor_color);
         return response.cursor_color;
     }
 
     /// Query cursor position
-    pub fn queryCursorPosition(self: *QueryManager) !struct { row: u16, col: u16 } {
+    pub fn queryCursorPosition(self: *Query) !struct { row: u16, col: u16 } {
         const response = try self.query(.cursor_position);
         return response.cursor_position;
     }
 
     /// Query device attributes
-    pub fn queryDeviceAttributes(self: *QueryManager) ![]const u8 {
+    pub fn queryDeviceAttributes(self: *Query) ![]const u8 {
         const response = try self.query(.device_attributes);
         return response.device_attributes;
     }
 
-    pub fn setTimeout(self: *QueryManager, timeout_ms: u64) void {
+    pub fn setTimeout(self: *Query, timeout_ms: u64) void {
         self.timeout_ms = timeout_ms;
     }
 };
@@ -324,7 +324,7 @@ pub fn testColorQueries(allocator: std.mem.Allocator) !void {
     var stdin_reader = stdin.reader(&stdin_buffer);
     const reader: *std.Io.Reader = &stdin_reader.interface;
 
-    var manager = QueryManager.init(reader, writer, allocator);
+    var manager = Query.init(reader, writer, allocator);
     defer manager.deinit();
 
     manager.setTimeout(2000); // 2 second timeout

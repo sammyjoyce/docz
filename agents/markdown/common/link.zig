@@ -1,7 +1,7 @@
 const std = @import("std");
 
 pub const Error = error{
-    InvalidUrl,
+    InvalidURL,
     OutOfMemory,
     NetworkError,
     Timeout,
@@ -30,54 +30,54 @@ pub fn parseLink(text: []const u8, start_pos: usize) ?Link {
 
     // Find closing bracket
     var pos = start_pos + 1;
-    var bracket_count: usize = 1;
-    var link_text_end: ?usize = null;
+    var bracketCount: usize = 1;
+    var linkTextEnd: ?usize = null;
 
-    while (pos < text.len and bracket_count > 0) {
+    while (pos < text.len and bracketCount > 0) {
         switch (text[pos]) {
-            '[' => bracket_count += 1,
+            '[' => bracketCount += 1,
             ']' => {
-                bracket_count -= 1;
-                if (bracket_count == 0) link_text_end = pos;
+                bracketCount -= 1;
+                if (bracketCount == 0) linkTextEnd = pos;
             },
             else => {},
         }
         pos += 1;
     }
 
-    if (link_text_end == null) return null;
-    const text_end = link_text_end.?;
+    if (linkTextEnd == null) return null;
+    const textEnd = linkTextEnd.?;
 
     // Check for link URL
     if (pos >= text.len or text[pos] != '(') return null;
     pos += 1; // Skip '('
 
-    const url_start = pos;
-    var url_end: ?usize = null;
-    var paren_count: usize = 1;
+    const urlStart = pos;
+    var urlEnd: ?usize = null;
+    var parenCount: usize = 1;
 
-    while (pos < text.len and paren_count > 0) {
+    while (pos < text.len and parenCount > 0) {
         switch (text[pos]) {
-            '(' => paren_count += 1,
+            '(' => parenCount += 1,
             ')' => {
-                paren_count -= 1;
-                if (paren_count == 0) url_end = pos;
+                parenCount -= 1;
+                if (parenCount == 0) urlEnd = pos;
             },
             else => {},
         }
         pos += 1;
     }
 
-    if (url_end == null) return null;
+    if (urlEnd == null) return null;
 
-    const link_text = text[start_pos + 1 .. text_end];
-    const link_url = text[url_start..url_end.?];
+    const linkText = text[start_pos + 1 .. textEnd];
+    const linkURL = text[urlStart..urlEnd.?];
 
     return Link{
-        .text = link_text,
-        .url = link_url,
+        .text = linkText,
+        .url = linkURL,
         .title = null,
-        .type = classifyLink(link_url),
+        .type = classifyLink(linkURL),
         .line = 0, // Will be set by caller
         .column = start_pos,
     };
@@ -88,17 +88,17 @@ pub fn findLinks(allocator: std.mem.Allocator, text: []const u8) Error![]Link {
     var links = std.ArrayListUnmanaged(Link){};
     defer links.deinit(allocator);
     var lines = std.mem.splitSequence(u8, text, "\n");
-    var line_num: usize = 0;
+    var lineNum: usize = 0;
 
-    while (lines.next()) |line| : (line_num += 1) {
+    while (lines.next()) |line| : (lineNum += 1) {
         var pos: usize = 0;
 
         while (pos < line.len) {
             if (line[pos] == '[') {
                 if (parseLink(line, pos)) |link| {
-                    var found_link = link;
-                    found_link.line = line_num;
-                    try links.append(allocator, found_link);
+                    var foundLink = link;
+                    foundLink.line = lineNum;
+                    try links.append(allocator, foundLink);
                     pos = link.column + link.text.len + link.url.len + 4; // Skip past this link
                 } else {
                     pos += 1;
@@ -143,43 +143,43 @@ pub fn classifyLink(url: []const u8) LinkType {
 }
 
 /// Resolve a relative path against a base path
-pub fn resolveRelativePath(allocator: std.mem.Allocator, base_path: []const u8, relative_path: []const u8) Error![]u8 {
-    if (std.fs.path.isAbsolute(relative_path)) {
-        return allocator.dupe(u8, relative_path);
+pub fn resolveRelativePath(allocator: std.mem.Allocator, basePath: []const u8, relativePath: []const u8) Error![]u8 {
+    if (std.fs.path.isAbsolute(relativePath)) {
+        return allocator.dupe(u8, relativePath);
     }
 
-    const base_dir = std.fs.path.dirname(base_path) orelse "";
-    return std.fs.path.resolve(allocator, &[_][]const u8{ base_dir, relative_path });
+    const baseDir = std.fs.path.dirname(basePath) orelse "";
+    return std.fs.path.resolve(allocator, &[_][]const u8{ baseDir, relativePath });
 }
 
 /// Normalize a URL (remove fragments, resolve .., etc.)
-pub fn normalizeUrl(allocator: std.mem.Allocator, url: []const u8) Error![]u8 {
+pub fn normalizeURL(allocator: std.mem.Allocator, url: []const u8) Error![]u8 {
     var result = std.ArrayList(u8).init(allocator);
 
     // Remove fragment
-    const fragment_pos = std.mem.indexOf(u8, url, "#");
-    const clean_url = if (fragment_pos) |pos| url[0..pos] else url;
+    const fragmentPos = std.mem.indexOf(u8, url, "#");
+    const cleanUrl = if (fragmentPos) |pos| url[0..pos] else url;
 
     // Basic path resolution for relative paths
-    var parts = std.mem.split(u8, clean_url, "/");
-    var resolved_parts = std.ArrayList([]const u8).init(allocator);
-    defer resolved_parts.deinit();
+    var parts = std.mem.split(u8, cleanUrl, "/");
+    var resolvedParts = std.ArrayList([]const u8).init(allocator);
+    defer resolvedParts.deinit();
 
     while (parts.next()) |part| {
         if (std.mem.eql(u8, part, ".")) {
             continue; // Current directory, skip
         } else if (std.mem.eql(u8, part, "..")) {
             // Parent directory, pop if possible
-            if (resolved_parts.items.len > 0) {
-                _ = resolved_parts.pop();
+            if (resolvedParts.items.len > 0) {
+                _ = resolvedParts.pop();
             }
         } else if (part.len > 0) {
-            try resolved_parts.append(part);
+            try resolvedParts.append(part);
         }
     }
 
     // Rebuild URL
-    for (resolved_parts.items, 0..) |part, i| {
+    for (resolvedParts.items, 0..) |part, i| {
         if (i > 0) try result.append('/');
         try result.appendSlice(part);
     }
@@ -188,7 +188,7 @@ pub fn normalizeUrl(allocator: std.mem.Allocator, url: []const u8) Error![]u8 {
 }
 
 /// Check if URL is accessible (basic validation)
-pub fn validateUrl(url: []const u8) bool {
+pub fn validateURL(url: []const u8) bool {
     if (url.len == 0) return false;
 
     // Check for valid URL characters

@@ -49,7 +49,7 @@ pub fn main() !void {
     std.debug.print("\n=== Demo Complete ===\n");
 }
 
-fn demoSmartComponents(ctx: *cli.CliContext) void {
+fn demoSmartComponents(ctx: *cli.Cli) void {
     // Demo hyperlink menu
     std.debug.print("Smart Component: Hyperlink Menu\n");
 

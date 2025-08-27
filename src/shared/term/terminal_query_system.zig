@@ -56,12 +56,12 @@ pub const QueryType = enum {
 pub const QueryResponse = struct {
     query_type: QueryType,
     raw_response: []const u8,
-    parsed_data: ResponseData,
+    parsed_data: Response,
     timestamp: i64, // When the response was received
 };
 
 /// Parsed data from query responses
-pub const ResponseData = union(enum) {
+pub const Response = union(enum) {
     device_attributes: struct {
         primary_da: ?[]const u8 = null,
         secondary_da: ?[]const u8 = null,
@@ -282,7 +282,7 @@ pub const TerminalQuerySystem = struct {
             .response = final_response_ptr,
         };
 
-        const callback = struct {
+        const Callback = struct {
             fn cb(response: QueryResponse, userdata: ?*anyopaque) void {
                 const data = @as(*CallbackData, @ptrCast(@alignCast(userdata.?)));
                 data.received.* = true;
@@ -290,7 +290,7 @@ pub const TerminalQuerySystem = struct {
             }
         }.cb;
 
-        const query_id = try self.sendQuery(query_type, callback, &callback_data);
+        const query_id = try self.sendQuery(query_type, Callback, &callback_data);
 
         const deadline = std.time.milliTimestamp() + @as(i64, @intCast(self.timeout_ms));
 
@@ -494,7 +494,7 @@ pub const TerminalQuerySystem = struct {
     }
 
     /// Try to parse a single response from the buffer
-    fn tryParseResponse(self: *TerminalQuerySystem, buffer: []const u8) !?ResponseInfo {
+    fn tryParseResponse(self: *TerminalQuerySystem, buffer: []const u8) !?ParseResult {
         if (buffer.len == 0) return null;
 
         // Device Attributes response: ESC[?...c or ESC[>...c or ESC[=...c
@@ -528,13 +528,13 @@ pub const TerminalQuerySystem = struct {
         return null;
     }
 
-    const ResponseInfo = struct {
+    const ParseResult = struct {
         response: QueryResponse,
         bytes_consumed: usize,
     };
 
     /// Parse CSI (Control Sequence Introducer) responses
-    fn parseCSIResponse(self: *TerminalQuerySystem, buffer: []const u8) ?ResponseInfo {
+    fn parseCSIResponse(self: *TerminalQuerySystem, buffer: []const u8) ?ParseResult {
         if (!std.mem.startsWith(u8, buffer, "\x1b[")) return null;
 
         // Find the terminating character (0x40-0x7E)
@@ -553,7 +553,7 @@ pub const TerminalQuerySystem = struct {
                     else => return null,
                 };
 
-                return ResponseInfo{
+                return ParseResult{
                     .response = response,
                     .bytes_consumed = end_pos + 1,
                 };
@@ -564,14 +564,14 @@ pub const TerminalQuerySystem = struct {
     }
 
     /// Parse OSC (Operating System Command) responses
-    fn parseOSCResponse(self: *TerminalQuerySystem, buffer: []const u8) !?ResponseInfo {
+    fn parseOSCResponse(self: *TerminalQuerySystem, buffer: []const u8) !?ParseResult {
         if (!std.mem.startsWith(u8, buffer, "\x1b]")) return null;
 
         // Find terminator (BEL or ST)
         if (std.mem.indexOfScalar(u8, buffer, 0x07)) |bel_pos| {
             const response_data = buffer[0 .. bel_pos + 1];
             const response = try self.parseOSCData(response_data);
-            return ResponseInfo{
+            return ParseResult{
                 .response = response,
                 .bytes_consumed = bel_pos + 1,
             };
@@ -580,7 +580,7 @@ pub const TerminalQuerySystem = struct {
         if (std.mem.indexOf(u8, buffer, "\x1b\\")) |st_pos| {
             const response_data = buffer[0 .. st_pos + 2];
             const response = try self.parseOSCData(response_data);
-            return ResponseInfo{
+            return ParseResult{
                 .response = response,
                 .bytes_consumed = st_pos + 2,
             };
@@ -590,13 +590,13 @@ pub const TerminalQuerySystem = struct {
     }
 
     /// Parse DCS (Device Control String) responses
-    fn parseDCSResponse(self: *TerminalQuerySystem, buffer: []const u8) !?ResponseInfo {
+    fn parseDCSResponse(self: *TerminalQuerySystem, buffer: []const u8) !?ParseResult {
         if (!std.mem.startsWith(u8, buffer, "\x1bP")) return null;
 
         if (std.mem.indexOf(u8, buffer, "\x1b\\")) |st_pos| {
             const response_data = buffer[0 .. st_pos + 2];
             const response = try self.parseDCSData(response_data);
-            return ResponseInfo{
+            return ParseResult{
                 .response = response,
                 .bytes_consumed = st_pos + 2,
             };
@@ -606,13 +606,13 @@ pub const TerminalQuerySystem = struct {
     }
 
     /// Parse APC (Application Program Command) responses
-    fn parseAPCResponse(self: *TerminalQuerySystem, buffer: []const u8) !?ResponseInfo {
+    fn parseAPCResponse(self: *TerminalQuerySystem, buffer: []const u8) !?ParseResult {
         if (!std.mem.startsWith(u8, buffer, "\x1b_")) return null;
 
         if (std.mem.indexOf(u8, buffer, "\x1b\\")) |st_pos| {
             const response_data = buffer[0 .. st_pos + 2];
             const response = try self.parseAPCData(response_data);
-            return ResponseInfo{
+            return ParseResult{
                 .response = response,
                 .bytes_consumed = st_pos + 2,
             };
@@ -637,7 +637,7 @@ pub const TerminalQuerySystem = struct {
         return QueryResponse{
             .query_type = query_type,
             .raw_response = response_data,
-            .parsed_data = ResponseData{ .device_attributes = .{
+            .parsed_data = Response{ .device_attributes = .{
                 .primary_da = if (query_type == .primary_device_attributes) response_data else null,
                 .secondary_da = if (query_type == .secondary_device_attributes) response_data else null,
                 .tertiary_da = if (query_type == .tertiary_device_attributes) response_data else null,
@@ -665,7 +665,7 @@ pub const TerminalQuerySystem = struct {
         return QueryResponse{
             .query_type = .cursor_position,
             .raw_response = try self.allocator.dupe(u8, data),
-            .parsed_data = ResponseData{ .position = .{ .row = row, .col = col } },
+            .parsed_data = Response{ .position = .{ .row = row, .col = col } },
             .timestamp = std.time.milliTimestamp(),
         };
     }
@@ -698,7 +698,7 @@ pub const TerminalQuerySystem = struct {
         return QueryResponse{
             .query_type = query_type,
             .raw_response = try self.allocator.dupe(u8, data),
-            .parsed_data = ResponseData{ .size = .{ .width = width, .height = height } },
+            .parsed_data = Response{ .size = .{ .width = width, .height = height } },
             .timestamp = std.time.milliTimestamp(),
         };
     }
@@ -716,7 +716,7 @@ pub const TerminalQuerySystem = struct {
                     return QueryResponse{
                         .query_type = .bracketed_paste_test,
                         .raw_response = response_data,
-                        .parsed_data = ResponseData{ .raw_data = response_data },
+                        .parsed_data = Response{ .raw_data = response_data },
                         .timestamp = std.time.milliTimestamp(),
                     };
                 };
@@ -751,7 +751,7 @@ pub const TerminalQuerySystem = struct {
                 return QueryResponse{
                     .query_type = query_type,
                     .raw_response = response_data,
-                    .parsed_data = ResponseData{ .boolean_result = is_enabled },
+                    .parsed_data = Response{ .boolean_result = is_enabled },
                     .timestamp = std.time.milliTimestamp(),
                 };
             }
@@ -761,7 +761,7 @@ pub const TerminalQuerySystem = struct {
         return QueryResponse{
             .query_type = .bracketed_paste_test,
             .raw_response = response_data,
-            .parsed_data = ResponseData{ .raw_data = response_data },
+            .parsed_data = Response{ .raw_data = response_data },
             .timestamp = std.time.milliTimestamp(),
         };
     }
@@ -793,7 +793,7 @@ pub const TerminalQuerySystem = struct {
                     return QueryResponse{
                         .query_type = query_type,
                         .raw_response = response_data,
-                        .parsed_data = ResponseData{ .color = color },
+                        .parsed_data = Response{ .color = color },
                         .timestamp = std.time.milliTimestamp(),
                     };
                 }
@@ -803,7 +803,7 @@ pub const TerminalQuerySystem = struct {
         return QueryResponse{
             .query_type = query_type,
             .raw_response = response_data,
-            .parsed_data = ResponseData{ .raw_data = response_data },
+            .parsed_data = Response{ .raw_data = response_data },
             .timestamp = std.time.milliTimestamp(),
         };
     }
@@ -821,7 +821,7 @@ pub const TerminalQuerySystem = struct {
         return QueryResponse{
             .query_type = query_type,
             .raw_response = response_data,
-            .parsed_data = ResponseData{ .raw_data = response_data },
+            .parsed_data = Response{ .raw_data = response_data },
             .timestamp = std.time.milliTimestamp(),
         };
     }
@@ -833,7 +833,7 @@ pub const TerminalQuerySystem = struct {
         return QueryResponse{
             .query_type = .kitty_graphics_test,
             .raw_response = response_data,
-            .parsed_data = ResponseData{ .raw_data = response_data },
+            .parsed_data = Response{ .raw_data = response_data },
             .timestamp = std.time.milliTimestamp(),
         };
     }

@@ -5,35 +5,35 @@
     ////////////////////////////////////////////////////////////////////////////
     .tool_metadata = .{
         .categories = .{
-            .access = .{"AccessDocument"},
-            .engineering = .{"EngineerContent"},
-            .assurance = .{"ValidateDocument"},
-            .transformation = .{"TransformDocument"},
-            .orchestration = .{"OrchestrateWorkflow"},
-            .filesystem = .{"ManageFileSystem"},
+            .access = .{"access_document"},
+            .engineering = .{"engineer_content"},
+            .assurance = .{"validate_document"},
+            .transformation = .{"transform_document"},
+            .orchestration = .{"orchestrate_workflow"},
+            .filesystem = .{"manage_file_system"},
         },
         .tool_attributes = .{
-            .AccessDocument = .{ .complexity = "low", .performance_cost = "low", .preferred_for = .{ "read", "search", "navigate", "discover" }, .requires_backup = false },
-            .EngineerContent = .{ .complexity = "medium", .performance_cost = "medium", .preferred_for = .{ "edit", "restructure", "format" }, .requires_backup = true },
-            .ValidateDocument = .{ .complexity = "high", .performance_cost = "high", .preferred_for = .{ "qa", "compliance", "lint" }, .requires_backup = false },
-            .TransformDocument = .{ .complexity = "medium", .performance_cost = "medium", .preferred_for = .{ "convert", "generate", "template" }, .requires_backup = false },
-            .OrchestrateWorkflow = .{ .complexity = "high", .performance_cost = "high", .preferred_for = .{ "automate", "batch", "pipeline" }, .requires_backup = true },
-            .ManageFileSystem = .{ .complexity = "low", .performance_cost = "low", .preferred_for = .{"fs_ops"}, .requires_backup = true },
+            .access_document = .{ .complexity = "low", .performance_cost = "low", .preferred_for = .{ "read", "search", "navigate", "discover" }, .requires_backup = false },
+            .engineer_content = .{ .complexity = "medium", .performance_cost = "medium", .preferred_for = .{ "edit", "restructure", "format" }, .requires_backup = true },
+            .validate_document = .{ .complexity = "high", .performance_cost = "high", .preferred_for = .{ "qa", "compliance", "lint" }, .requires_backup = false },
+            .transform_document = .{ .complexity = "medium", .performance_cost = "medium", .preferred_for = .{ "convert", "generate", "template" }, .requires_backup = false },
+            .orchestrate_workflow = .{ .complexity = "high", .performance_cost = "high", .preferred_for = .{ "automate", "batch", "pipeline" }, .requires_backup = true },
+            .manage_file_system = .{ .complexity = "low", .performance_cost = "low", .preferred_for = .{"fs_ops"}, .requires_backup = true },
         },
         .workflow_recommendations = .{
-            .discovery = .{"AccessDocument"},
-            .authoring = .{ "EngineerContent", "ValidateDocument" },
-            .conversion = .{"TransformDocument"},
-            .quality_gate = .{"ValidateDocument"},
-            .release_pipeline = .{"OrchestrateWorkflow"},
-            .file_ops = .{"ManageFileSystem"},
+            .discovery = .{"access_document"},
+            .authoring = .{ "engineer_content", "validate_document" },
+            .conversion = .{"transform_document"},
+            .quality_gate = .{"validate_document"},
+            .release_pipeline = .{"orchestrate_workflow"},
+            .file_ops = .{"manage_file_system"},
         },
     },
 
     ////////////////////////////////////////////////////////////////////////////
-    // 1. AccessDocument – Secure Read & Search                               //
+    // 1. access_document – Secure Read & Search                               //
     ////////////////////////////////////////////////////////////////////////////
-    .AccessDocument = .{
+    .access_document = .{
         .description = "Authoritative interface for safe document access, targeted search, and workspace reconnaissance. Hardened against path traversal and malicious pattern injection.",
         .usage_guidelines = "Only for non-mutating operations. NEVER use for edits or writes.",
         .params = .{
@@ -60,9 +60,9 @@
     },
 
     ////////////////////////////////////////////////////////////////////////////
-    // 2. EngineerContent – Atomic Editing Engine                              //
+    // 2. engineer_content – Atomic Editing Engine                              //
     ////////////////////////////////////////////////////////////////////////////
-    .EngineerContent = .{
+    .engineer_content = .{
         .description = "Enterprise-grade content engineering suite providing transactional edits, structural surgery, and high-fidelity formatting. Guaranteed atomicity with automatic rollback on failure.",
         .usage_guidelines = "Use solely for mutating markdown content. ALWAYS set backup=true for irreversible operations.",
         .params = .{
@@ -96,9 +96,9 @@
     },
 
     ////////////////////////////////////////////////////////////////////////////
-    // 3. ValidateDocument – Compliance & QA                                   //
+    // 3. validate_document – Compliance & QA                                   //
     ////////////////////////////////////////////////////////////////////////////
-    .ValidateDocument = .{
+    .validate_document = .{
         .description = "Comprehensive validation pipeline enforcing structure, links, metadata, accessibility, and corporate style guides. Generates machine-readable reports (JSON) and human summaries.",
         .usage_guidelines = "Read-only diagnostics. NEVER alters source files.",
         .params = .{
@@ -118,9 +118,9 @@
     },
 
     ////////////////////////////////////////////////////////////////////////////
-    // 4. TransformDocument – Generation & Conversion                          //
+    // 4. transform_document – Generation & Conversion                          //
     ////////////////////////////////////////////////////////////////////////////
-    .TransformDocument = .{
+    .transform_document = .{
         .description = "High-fidelity generation and multi-format conversion engine supporting corporate templates and style theming. Guarantees reversible operations via source preservation.",
         .usage_guidelines = "Converts or generates documents. For post-edit formatting use EngineerContent.",
         .params = .{
@@ -145,17 +145,17 @@
     },
 
     ////////////////////////////////////////////////////////////////////////////
-    // 5. OrchestrateWorkflow – Pipeline & Batch Engine                         //
+    // 5. orchestrate_workflow – Pipeline & Batch Engine                         //
     ////////////////////////////////////////////////////////////////////////////
-    .OrchestrateWorkflow = .{
+    .orchestrate_workflow = .{
         .description = "Enterprise workflow orchestrator enabling sequential pipelines, parallel batches, and hybrid processing with checkpointing, retries, and audit logging.",
         .usage_guidelines = "Designed for multi-step automation across tools. Use ManageFileSystem for raw FS operations.",
         .params = .{
             .type = "object",
             .properties = .{
                 .mode = .{ .type = "string", .@"enum" = .{ "pipeline", "batch", "hybrid" } },
-                .pipeline = .{ .type = "array", .items = .{ .type = "object", .properties = .{ .tool = .{ .type = "string", .@"enum" = .{ "EngineerContent", "ValidateDocument", "TransformDocument", "AccessDocument" } }, .params = .{ .type = "object" }, .on_error = .{ .type = "string", .@"enum" = .{ "halt", "continue", "retry", "rollback" }, .default = "halt" }, .retry = .{ .type = "integer", .minimum = 0, .maximum = 3, .default = 0 } }, .required = .{ "tool", "params" } } },
-                .batch = .{ .type = "array", .items = .{ .type = "object", .properties = .{ .tool = .{ .type = "string", .@"enum" = .{ "EngineerContent", "ValidateDocument", "TransformDocument" } }, .params = .{ .type = "object" }, .concurrency = .{ .type = "integer", .minimum = 1, .maximum = 10, .default = 3 } }, .required = .{ "tool", "params" } } },
+                .pipeline = .{ .type = "array", .items = .{ .type = "object", .properties = .{ .tool = .{ .type = "string", .@"enum" = .{ "engineer_content", "validate_document", "transform_document", "access_document" } }, .params = .{ .type = "object" }, .on_error = .{ .type = "string", .@"enum" = .{ "halt", "continue", "retry", "rollback" }, .default = "halt" }, .retry = .{ .type = "integer", .minimum = 0, .maximum = 3, .default = 0 } }, .required = .{ "tool", "params" } } },
+                .batch = .{ .type = "array", .items = .{ .type = "object", .properties = .{ .tool = .{ .type = "string", .@"enum" = .{ "engineer_content", "validate_document", "transform_document" } }, .params = .{ .type = "object" }, .concurrency = .{ .type = "integer", .minimum = 1, .maximum = 10, .default = 3 } }, .required = .{ "tool", "params" } } },
                 .audit = .{ .type = "boolean", .default = true },
                 .dry_run = .{ .type = "boolean", .default = false },
             },
@@ -169,9 +169,9 @@
     },
 
     ////////////////////////////////////////////////////////////////////////////
-    // 6. ManageFileSystem – Secure FS Ops                                     //
+    // 6. manage_file_system – Secure FS Ops                                     //
     ////////////////////////////////////////////////////////////////////////////
-    .ManageFileSystem = .{
+    .manage_file_system = .{
         .description = "Secure file-system manager with path sanitation, collision policies, and recursive safeguards.",
         .usage_guidelines = "Restricted to non-code assets. DO NOT manipulate source code without review.",
         .params = .{

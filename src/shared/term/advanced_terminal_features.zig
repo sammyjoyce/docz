@@ -236,7 +236,7 @@ fn writeColorAndAttrs(writer: anytype, fg: CellColor, bg: CellColor, cell_attrs:
 }
 
 // Convenience color functions
-pub const colors = struct {
+pub const Colors = struct {
     pub fn default() CellColor {
         return .default;
     }
@@ -248,38 +248,38 @@ pub const colors = struct {
     }
 
     // Common colors
-    pub const black = indexed(0);
-    pub const red = indexed(1);
-    pub const green = indexed(2);
-    pub const yellow = indexed(3);
-    pub const blue = indexed(4);
-    pub const magenta = indexed(5);
-    pub const cyan = indexed(6);
-    pub const white = indexed(7);
+    pub const BLACK = indexed(0);
+    pub const RED = indexed(1);
+    pub const GREEN = indexed(2);
+    pub const YELLOW = indexed(3);
+    pub const BLUE = indexed(4);
+    pub const MAGENTA = indexed(5);
+    pub const CYAN = indexed(6);
+    pub const WHITE = indexed(7);
 
-    pub const bright_black = indexed(8);
-    pub const bright_red = indexed(9);
-    pub const bright_green = indexed(10);
-    pub const bright_yellow = indexed(11);
-    pub const bright_blue = indexed(12);
-    pub const bright_magenta = indexed(13);
-    pub const bright_cyan = indexed(14);
-    pub const bright_white = indexed(15);
+    pub const BRIGHT_BLACK = indexed(8);
+    pub const BRIGHT_RED = indexed(9);
+    pub const BRIGHT_GREEN = indexed(10);
+    pub const BRIGHT_YELLOW = indexed(11);
+    pub const BRIGHT_BLUE = indexed(12);
+    pub const BRIGHT_MAGENTA = indexed(13);
+    pub const BRIGHT_CYAN = indexed(14);
+    pub const BRIGHT_WHITE = indexed(15);
 };
 
 // Convenience attribute combinations
-pub const attrs = struct {
-    pub const none = CellAttrs{};
-    pub const bold = CellAttrs{ .bold = true };
-    pub const dim = CellAttrs{ .dim = true };
-    pub const italic = CellAttrs{ .italic = true };
-    pub const underline = CellAttrs{ .underline = true };
-    pub const blink = CellAttrs{ .blink = true };
-    pub const reverse = CellAttrs{ .reverse = true };
-    pub const strikethrough = CellAttrs{ .strikethrough = true };
+pub const Attrs = struct {
+    pub const NONE = CellAttrs{};
+    pub const BOLD = CellAttrs{ .bold = true };
+    pub const DIM = CellAttrs{ .dim = true };
+    pub const ITALIC = CellAttrs{ .italic = true };
+    pub const UNDERLINE = CellAttrs{ .underline = true };
+    pub const BLINK = CellAttrs{ .blink = true };
+    pub const REVERSE = CellAttrs{ .reverse = true };
+    pub const STRIKETHROUGH = CellAttrs{ .strikethrough = true };
 
-    pub const bold_underline = CellAttrs{ .bold = true, .underline = true };
-    pub const italic_dim = CellAttrs{ .italic = true, .dim = true };
+    pub const BOLD_UNDERLINE = CellAttrs{ .bold = true, .underline = true };
+    pub const ITALIC_DIM = CellAttrs{ .italic = true, .dim = true };
 };
 
 // Tests
@@ -302,7 +302,7 @@ test "advanced terminal text writing and rendering" {
     defer terminal.deinit();
 
     // Write some text
-    _ = try terminal.writeText(0, 0, "Hello, World!", colors.green, colors.default(), attrs.bold);
+    _ = try terminal.writeText(0, 0, "Hello, World!", Colors.GREEN, Colors.default(), Attrs.bold);
 
     // Test rendering to a buffer
     var output = std.ArrayList(u8).init(allocator);

@@ -11,7 +11,7 @@ const bar = @import("bar.zig");
 const graphics_manager = @import("../../../../term/graphics_manager.zig");
 const renderer_mod = @import("../../../core/renderer.zig");
 
-const ChartData = base.ChartData;
+const ChartData = base.Chart;
 const ChartStyle = base.ChartStyle;
 const ChartType = base.ChartType;
 const Config = base.Config;
@@ -217,7 +217,7 @@ pub const ChartRenderer = struct {
         };
 
         // Clear background
-        ctx.fillBackground(self.style.background_color);
+        ctx.fillBackground(self.style.backgroundColor);
 
         // Calculate chart area (accounting for padding)
         const chart_area = base.ChartArea.calculate(Bounds.init(0, 0, @intCast(image_width), @intCast(image_height)), self.style);

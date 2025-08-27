@@ -452,7 +452,7 @@ pub const ANSI256Palette = struct {
 };
 
 /// Theme-aware color palette manager
-pub const ColorPaletteManager = struct {
+pub const ColorPalette = struct {
     allocator: std.mem.Allocator,
     ansi_palette: ANSI256Palette,
     capabilities: capability_detector.Capabilities,

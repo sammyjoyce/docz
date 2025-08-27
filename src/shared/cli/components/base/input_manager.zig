@@ -40,24 +40,24 @@ pub const InputEvent = union(enum) {
 };
 
 /// Input Manager that provides unified input handling for all CLI components
-pub const InputManager = struct {
+pub const Input = struct {
     const Self = @This();
 
     allocator: std.mem.Allocator,
     caps: caps.TermCaps,
     parser: unified_parser.InputParser,
-    stdin_reader: std.fs.File.Reader,
-    raw_mode_enabled: bool,
-    mouse_enabled: bool,
-    bracketed_paste_enabled: bool,
-    focus_events_enabled: bool,
+    stdinReader: std.fs.File.Reader,
+    rawModeEnabled: bool,
+    mouseEnabled: bool,
+    bracketedPasteEnabled: bool,
+    focusEventsEnabled: bool,
 
     // Input buffer for reading stdin
-    input_buffer: [1024]u8,
-    buffer_pos: usize,
-    buffer_len: usize,
+    inputBuffer: [1024]u8,
+    bufferPos: usize,
+    bufferLen: usize,
     // Buffers for new std.Io.Writer interface
-    stdout_buffer: [1024]u8,
+    stdoutBuffer: [1024]u8,
 
     pub fn init(allocator: std.mem.Allocator) !Self {
         const terminal_caps = try caps.detectCaps(allocator);
@@ -67,30 +67,30 @@ pub const InputManager = struct {
             .allocator = allocator,
             .caps = terminal_caps,
             .parser = input_parser,
-            .stdin_reader = std.fs.File.stdin().reader(&[_]u8{}),
-            .raw_mode_enabled = false,
-            .mouse_enabled = false,
-            .bracketed_paste_enabled = false,
-            .focus_events_enabled = false,
-            .input_buffer = undefined,
-            .buffer_pos = 0,
-            .buffer_len = 0,
-            .stdout_buffer = undefined,
+            .stdinReader = std.fs.File.stdin().reader(&[_]u8{}),
+            .rawModeEnabled = false,
+            .mouseEnabled = false,
+            .bracketedPasteEnabled = false,
+            .focusEventsEnabled = false,
+            .inputBuffer = undefined,
+            .bufferPos = 0,
+            .bufferLen = 0,
+            .stdoutBuffer = undefined,
         };
     }
 
     pub fn deinit(self: *Self) void {
         // Restore terminal state
-        if (self.raw_mode_enabled) {
+        if (self.rawModeEnabled) {
             self.disableRawMode() catch {};
         }
-        if (self.mouse_enabled) {
+        if (self.mouseEnabled) {
             self.disableMouseEvents() catch {};
         }
-        if (self.bracketed_paste_enabled) {
+        if (self.bracketedPasteEnabled) {
             self.disableBracketedPaste() catch {};
         }
-        if (self.focus_events_enabled) {
+        if (self.focusEventsEnabled) {
             self.disableFocusEvents() catch {};
         }
 
@@ -104,19 +104,19 @@ pub const InputManager = struct {
         bracketed_paste: bool = true,
         focus_events: bool = true,
     }) !void {
-        if (features.raw_mode and !self.raw_mode_enabled) {
+        if (features.raw_mode and !self.rawModeEnabled) {
             try self.enableRawMode();
         }
 
-        if (features.mouse_events and !self.mouse_enabled and self.caps.supportsSgrMouse) {
+        if (features.mouse_events and !self.mouseEnabled and self.caps.supportsSgrMouse) {
             try self.enableMouseEvents();
         }
 
-        if (features.bracketed_paste and !self.bracketed_paste_enabled and self.caps.supportsBracketedPaste) {
+        if (features.bracketed_paste and !self.bracketedPasteEnabled and self.caps.supportsBracketedPaste) {
             try self.enableBracketedPaste();
         }
 
-        if (features.focus_events and !self.focus_events_enabled and self.caps.supportsFocusEvents) {
+        if (features.focus_events and !self.focusEventsEnabled and self.caps.supportsFocusEvents) {
             try self.enableFocusEvents();
         }
     }
@@ -125,7 +125,7 @@ pub const InputManager = struct {
     pub fn nextEvent(self: *Self) !InputEvent {
         while (true) {
             // Try to parse existing buffer content first
-            if (self.buffer_pos < self.buffer_len) {
+            if (self.bufferPos < self.bufferLen) {
                 if (try self.parseBufferedInput()) |event| {
                     return event;
                 }
@@ -139,7 +139,7 @@ pub const InputManager = struct {
     /// Check if an event is available without blocking
     pub fn hasEvent(self: *Self) !bool {
         // Check if we have buffered content to parse
-        if (self.buffer_pos < self.buffer_len) {
+        if (self.bufferPos < self.bufferLen) {
             return true;
         }
 
@@ -150,7 +150,7 @@ pub const InputManager = struct {
 
     /// Enable raw mode for character-by-character input
     fn enableRawMode(self: *Self) !void {
-        var stdout_writer = std.fs.File.stdout().writer(&self.stdout_buffer);
+        var stdout_writer = std.fs.File.stdout().writer(&self.stdoutBuffer);
         const stdout = &stdout_writer.interface;
 
         // Enable alternative screen buffer
@@ -160,11 +160,11 @@ pub const InputManager = struct {
         try stdout.writeAll("\x1b[?25l"); // Hide cursor
         try stdout.flush();
 
-        self.raw_mode_enabled = true;
+        self.rawModeEnabled = true;
     }
 
     fn disableRawMode(self: *Self) !void {
-        var stdout_writer = std.fs.File.stdout().writer(&self.stdout_buffer);
+        var stdout_writer = std.fs.File.stdout().writer(&self.stdoutBuffer);
         const stdout = &stdout_writer.interface;
 
         // Restore normal screen buffer
@@ -174,102 +174,102 @@ pub const InputManager = struct {
         try stdout.writeAll("\x1b[?25h");
         try stdout.flush();
 
-        self.raw_mode_enabled = false;
+        self.rawModeEnabled = false;
     }
 
     /// Enable mouse event reporting
     fn enableMouseEvents(self: *Self) !void {
-        var stdout_writer = std.fs.File.stdout().writer(&self.stdout_buffer);
+        var stdout_writer = std.fs.File.stdout().writer(&self.stdoutBuffer);
         const stdout = &stdout_writer.interface;
 
         // Enable SGR mouse mode with all events
         try stdout.writeAll("\x1b[?1000;1002;1003;1006h");
         try stdout.flush();
 
-        self.mouse_enabled = true;
+        self.mouseEnabled = true;
     }
 
     fn disableMouseEvents(self: *Self) !void {
-        var stdout_writer = std.fs.File.stdout().writer(&self.stdout_buffer);
+        var stdout_writer = std.fs.File.stdout().writer(&self.stdoutBuffer);
         const stdout = &stdout_writer.interface;
 
         // Disable mouse reporting
         try stdout.writeAll("\x1b[?1000;1002;1003;1006l");
         try stdout.flush();
 
-        self.mouse_enabled = false;
+        self.mouseEnabled = false;
     }
 
     /// Enable bracketed paste mode
     fn enableBracketedPaste(self: *Self) !void {
-        var stdout_writer = std.fs.File.stdout().writer(&self.stdout_buffer);
+        var stdout_writer = std.fs.File.stdout().writer(&self.stdoutBuffer);
         const stdout = &stdout_writer.interface;
 
         // Enable bracketed paste
         try stdout.writeAll("\x1b[?2004h");
         try stdout.flush();
 
-        self.bracketed_paste_enabled = true;
+        self.bracketedPasteEnabled = true;
     }
 
     fn disableBracketedPaste(self: *Self) !void {
-        var stdout_writer = std.fs.File.stdout().writer(&self.stdout_buffer);
+        var stdout_writer = std.fs.File.stdout().writer(&self.stdoutBuffer);
         const stdout = &stdout_writer.interface;
 
         // Disable bracketed paste
         try stdout.writeAll("\x1b[?2004l");
         try stdout.flush();
 
-        self.bracketed_paste_enabled = false;
+        self.bracketedPasteEnabled = false;
     }
 
     /// Enable focus event reporting
     fn enableFocusEvents(self: *Self) !void {
-        var stdout_writer = std.fs.File.stdout().writer(&self.stdout_buffer);
+        var stdout_writer = std.fs.File.stdout().writer(&self.stdoutBuffer);
         const stdout = &stdout_writer.interface;
 
         // Enable focus events
         try stdout.writeAll("\x1b[?1004h");
         try stdout.flush();
 
-        self.focus_events_enabled = true;
+        self.focusEventsEnabled = true;
     }
 
     fn disableFocusEvents(self: *Self) !void {
-        var stdout_writer = std.fs.File.stdout().writer(&self.stdout_buffer);
+        var stdout_writer = std.fs.File.stdout().writer(&self.stdoutBuffer);
         const stdout = &stdout_writer.interface;
 
         // Disable focus events
         try stdout.writeAll("\x1b[?1004l");
         try stdout.flush();
 
-        self.focus_events_enabled = false;
+        self.focusEventsEnabled = false;
     }
 
     /// Fill the input buffer with data from stdin
     fn fillBuffer(self: *Self) !void {
         // Move remaining data to beginning of buffer
-        if (self.buffer_pos < self.buffer_len) {
-            const remaining = self.buffer_len - self.buffer_pos;
-            std.mem.copy(u8, self.input_buffer[0..remaining], self.input_buffer[self.buffer_pos..self.buffer_len]);
-            self.buffer_len = remaining;
+        if (self.bufferPos < self.bufferLen) {
+            const remaining = self.bufferLen - self.bufferPos;
+            std.mem.copy(u8, self.inputBuffer[0..remaining], self.inputBuffer[self.bufferPos..self.bufferLen]);
+            self.bufferLen = remaining;
         } else {
-            self.buffer_len = 0;
+            self.bufferLen = 0;
         }
-        self.buffer_pos = 0;
+        self.bufferPos = 0;
 
         // Read more data
-        const bytes_read = try self.stdin_reader.read(self.input_buffer[self.buffer_len..]);
+        const bytes_read = try self.stdin_reader.read(self.inputBuffer[self.bufferLen..]);
         if (bytes_read == 0) {
             return error.EndOfStream;
         }
 
-        self.buffer_len += bytes_read;
+        self.bufferLen += bytes_read;
     }
 
     /// Parse buffered input into events
     fn parseBufferedInput(self: *Self) !?InputEvent {
-        const remaining_buffer = self.input_buffer[self.buffer_pos..self.buffer_len];
+        const remaining_buffer = self.inputBuffer[self.bufferPos..self.bufferLen];
 
         if (remaining_buffer.len == 0) {
             return null;
@@ -282,7 +282,7 @@ pub const InputManager = struct {
         if (events.len > 0) {
             // For now, consume all the bytes that were parsed
             // In a more sophisticated implementation, we'd track exactly how many bytes were consumed
-            self.buffer_pos = self.buffer_len;
+            self.bufferPos = self.bufferLen;
 
             // Convert the unified parser's InputEvent to our InputEvent
             const unified_event = events[0];
@@ -305,7 +305,7 @@ pub const InputManager = struct {
 
     /// Parse regular character input
     fn parseCharacter(self: *Self, char: u8) !?InputEvent {
-        self.buffer_pos += 1;
+        self.bufferPos += 1;
 
         // Map ASCII control characters to Key enum
         const key = switch (char) {
@@ -344,7 +344,7 @@ pub const InputManager = struct {
             else => {
                 // For printable characters, include the text
                 if (char >= 32 and char <= 126) {
-                    const text = self.input_buffer[self.buffer_pos - 1 .. self.buffer_pos];
+                    const text = self.inputBuffer[self.bufferPos - 1 .. self.bufferPos];
                     return InputEvent{ .key = .{
                         .key = @as(Key, @enumFromInt(char)),
                         .text = text,
@@ -364,15 +364,15 @@ pub const InputManager = struct {
         defer paste_content.deinit();
 
         // Read until we find the end sequence or buffer runs out
-        while (self.buffer_pos < self.buffer_len) {
-            const char = self.input_buffer[self.buffer_pos];
-            self.buffer_pos += 1;
+        while (self.bufferPos < self.bufferLen) {
+            const char = self.inputBuffer[self.bufferPos];
+            self.bufferPos += 1;
 
             // Simple paste end detection (in real implementation would be more robust)
-            if (char == 0x1b and self.buffer_pos + 4 < self.buffer_len) {
-                const potential_end = self.input_buffer[self.buffer_pos .. self.buffer_pos + 4];
+            if (char == 0x1b and self.bufferPos + 4 < self.bufferLen) {
+                const potential_end = self.inputBuffer[self.bufferPos .. self.bufferPos + 4];
                 if (std.mem.eql(u8, potential_end, "[201")) {
-                    self.buffer_pos += 5; // Skip the full sequence including ~
+                    self.bufferPos += 5; // Skip the full sequence including ~
                     break;
                 }
             }

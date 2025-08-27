@@ -13,7 +13,6 @@ const tools_mod = @import("tools_shared");
 /// ============================================================================
 /// TOOL FUNCTION EXPORTS
 /// ============================================================================
-
 /// Example tool demonstrating JSON input/output patterns.
 /// This tool shows how to:
 /// - Parse JSON input parameters
@@ -50,7 +49,7 @@ pub fn exampleTool(allocator: std.mem.Allocator, params: std.json.Value) tools_m
     // Parse JSON input into our struct
     // This provides type safety and automatic validation
     const parsed = std.json.parseFromValue(Request, allocator, params, .{}) catch
-        return tools_mod.ToolError.MalformedJson;
+        return tools_mod.ToolError.MalformedJSON;
     defer parsed.deinit();
 
     const request = parsed.value;
@@ -124,7 +123,7 @@ pub fn exampleTool(allocator: std.mem.Allocator, params: std.json.Value) tools_m
     // Convert to JSON string
     // This ensures consistent output format
     const json_string = try std.json.stringifyAlloc(allocator, response, .{
-        .whitespace = .indent_4,  // Pretty print for readability
+        .whitespace = .indent_4, // Pretty print for readability
     });
 
     return json_string;
@@ -133,7 +132,6 @@ pub fn exampleTool(allocator: std.mem.Allocator, params: std.json.Value) tools_m
 /// ============================================================================
 /// ADDITIONAL TOOL EXAMPLES
 /// ============================================================================
-
 /// Demonstration tool showing file operations.
 /// This tool demonstrates:
 /// - File system operations
@@ -148,7 +146,7 @@ pub fn fileInfoTool(allocator: std.mem.Allocator, params: std.json.Value) tools_
     };
 
     const parsed = std.json.parseFromValue(Request, allocator, params, .{}) catch
-        return tools_mod.ToolError.MalformedJson;
+        return tools_mod.ToolError.MalformedJSON;
     defer parsed.deinit();
 
     const request = parsed.value;
@@ -197,7 +195,6 @@ pub fn configAwareTool(allocator: std.mem.Allocator, params: std.json.Value) too
 /// ============================================================================
 /// TOOL REGISTRATION FUNCTIONS
 /// ============================================================================
-
 /// Register all tools provided by this agent.
 /// This function demonstrates different registration patterns:
 /// - Individual tool registration with metadata
@@ -215,29 +212,15 @@ pub fn registerAll(registry: *tools_mod.Registry) !void {
     // Register each tool individually with comprehensive metadata
     // This is the recommended approach for most cases
 
-    try tools_mod.registerJsonTool(
-        registry,
-        "template_example",                                    // tool_name (unique identifier)
+    try tools_mod.registerJSONTool(registry, "template_example", // tool_name (unique identifier)
         "Example tool demonstrating JSON input/output patterns, parameter validation, and structured responses", // description
-        exampleTool,                                          // tool_function
-        "_template"                                           // agent_name (for attribution)
+        exampleTool, // tool_function
+        "_template" // agent_name (for attribution)
     );
 
-    try tools_mod.registerJsonTool(
-        registry,
-        "file_info",
-        "Get information about files and directories with configurable detail level",
-        fileInfoTool,
-        "_template"
-    );
+    try tools_mod.registerJSONTool(registry, "file_info", "Get information about files and directories with configurable detail level", fileInfoTool, "_template");
 
-    try tools_mod.registerJsonTool(
-        registry,
-        "config_demo",
-        "Demonstration tool showing configuration integration patterns",
-        configAwareTool,
-        "_template"
-    );
+    try tools_mod.registerJSONTool(registry, "config_demo", "Demonstration tool showing configuration integration patterns", configAwareTool, "_template");
 
     // ============================================================================
     // PATTERN 2: CONDITIONAL REGISTRATION
@@ -250,7 +233,7 @@ pub fn registerAll(registry: *tools_mod.Registry) !void {
     // Example: Only register advanced tools if enabled
     // const enable_advanced_tools = true; // This would come from config
     // if (enable_advanced_tools) {
-    //     try tools_mod.registerJsonTool(registry, "advanced_tool", "...", advancedTool, "_template");
+    //     try tools_mod.registerJSONTool(registry, "advanced_tool", "...", advancedTool, "_template");
     // }
 
     // ============================================================================
@@ -266,7 +249,6 @@ pub fn registerAll(registry: *tools_mod.Registry) !void {
 /// ============================================================================
 /// UTILITY FUNCTIONS
 /// ============================================================================
-
 /// Utility function to validate tool parameters.
 /// This demonstrates how to create reusable validation logic.
 ///
@@ -278,7 +260,7 @@ pub fn registerAll(registry: *tools_mod.Registry) !void {
 /// Errors: Validation errors
 pub fn validateToolParams(allocator: std.mem.Allocator, params: std.json.Value, comptime Schema: type) !Schema {
     const parsed = std.json.parseFromValue(Schema, allocator, params, .{}) catch
-        return tools_mod.ToolError.MalformedJson;
+        return tools_mod.ToolError.MalformedJSON;
     // Note: Caller is responsible for calling parsed.deinit()
 
     // Add custom validation logic here
@@ -286,4 +268,3 @@ pub fn validateToolParams(allocator: std.mem.Allocator, params: std.json.Value, 
 
     return parsed.value;
 }
-

@@ -2,7 +2,7 @@
 
 ## The Essence Of Style
 
-> “There are three things extremely hard: steel, a diamond, and to know one's self.” — Benjamin
+> "There are three things extremely hard: steel, a diamond, and to know one's self." — Benjamin
 > Franklin
 
 Our coding style is evolving. A collective give-and-take at the intersection of
@@ -15,7 +15,7 @@ come.
 
 Another word for style is design.
 
-> “The design is not just what it looks like and feels like. The design is how it works.” — Steve
+> "The design is not just what it looks like and feels like. The design is how it works." — Steve
 > Jobs
 
 Our design goals are safety, performance, and developer experience. In that order. All three are
@@ -25,8 +25,8 @@ or developer experience? That is why we need style.
 Put this way, style is more than readability, and readability is table stakes, a means to an end
 rather than an end in itself.
 
-> “...in programming, style is not something to pursue directly. Style is necessary only where
-> understanding is missing.” ─ [Let Over
+> "...in programming, style is not something to pursue directly. Style is necessary only where
+> understanding is missing." ─ [Let Over
 > Lambda](https://letoverlambda.com/index.cl/guest/chap1.html)
 
 This document explores how we apply these design goals to coding style. First, a word on simplicity,
@@ -37,16 +37,16 @@ elegance and technical debt.
 Simplicity is not a free pass. It's not in conflict with our design goals. It need not be a
 concession or a compromise.
 
-Rather, simplicity is how we bring our design goals together, how we identify the “super idea” that
+Rather, simplicity is how we bring our design goals together, how we identify the "super idea" that
 solves the axes simultaneously, to achieve something elegant.
 
-> “Simplicity and elegance are unpopular because they require hard work and discipline to achieve” —
+> "Simplicity and elegance are unpopular because they require hard work and discipline to achieve" —
 > Edsger Dijkstra
 
 Contrary to popular belief, simplicity is also not the first attempt but the hardest revision. It's
-easy to say “let's do something simple”, but to do that in practice takes thought, multiple passes,
-many sketches, and still we may have to [“throw one
-away”](https://en.wikipedia.org/wiki/The_Mythical_Man-Month).
+easy to say "let's do something simple", but to do that in practice takes thought, multiple passes,
+many sketches, and still we may have to ["throw one
+away"](https://en.wikipedia.org/wiki/The_Mythical_Man-Month).
 
 The hardest part, then, is how much thought goes into everything.
 
@@ -56,8 +56,8 @@ and then again by the costs of operation and maintenance.
 
 An hour or day of design is worth weeks or months in production:
 
-> “the simple and elegant systems tend to be easier and faster to design and get right, more
-> efficient in execution, and much more reliable” — Edsger Dijkstra
+> "the simple and elegant systems tend to be easier and faster to design and get right, more
+> efficient in execution, and much more reliable" — Edsger Dijkstra
 
 ## Technical Debt
 
@@ -68,7 +68,7 @@ more expensive than a problem solved in implementation, or a problem solved in d
 Since it's hard enough to discover showstoppers, when we do find them, we solve them. We don't allow
 potential memcpy latency spikes, or exponential complexity algorithms to slip through.
 
-> “You shall not pass!” — Gandalf
+> "You shall not pass!" — Gandalf
 
 In other words, we maintain a "zero technical debt" policy. We do it right the first time. This
 is important because the second time may not transpire, and because doing good work, that we can be
@@ -80,8 +80,8 @@ made is indeed progress.
 
 ## Safety
 
-> “The rules act like the seat-belt in your car: initially they are perhaps a little uncomfortable,
-> but after a while their use becomes second-nature and not using them becomes unimaginable.” —
+> "The rules act like the seat-belt in your car: initially they are perhaps a little uncomfortable,
+> but after a while their use becomes second-nature and not using them becomes unimaginable." —
 > Gerard J. Holzmann
 
 [NASA's Power of Ten — Rules for Developing Safety Critical
@@ -95,7 +95,7 @@ Code](https://spinroot.com/gerard/pdf/P10.pdf) will change the way you code fore
 
 - **Put a limit on everything** because, in reality, this is what we expect—everything has a limit.
   For example, all loops and all queues must have a fixed upper bound to prevent infinite loops or
-  tail latency spikes. This follows the [“fail-fast”](https://en.wikipedia.org/wiki/Fail-fast)
+  tail latency spikes. This follows the ["fail-fast"](https://en.wikipedia.org/wiki/Fail-fast)
   principle so that violations are detected sooner rather than later. Where a loop cannot terminate
   (e.g. an event loop), this must be asserted.
 
@@ -216,8 +216,8 @@ Beyond these rules:
   the majority of catastrophic failures could have been prevented by simple testing of error
   handling code.
 
-> “Specifically, we found that almost all (92%) of the catastrophic system failures are the result
-> of incorrect handling of non-fatal errors explicitly signaled in software.”
+> "Specifically, we found that almost all (92%) of the catastrophic system failures are the result
+> of incorrect handling of non-fatal errors explicitly signaled in software."
 
 - **Always motivate, always say why**. Never forget to say why. Because if you explain the rationale
   for a decision, it not only increases the hearer's understanding, and makes them more likely to
@@ -231,7 +231,7 @@ Beyond these rules:
 
 ## Performance
 
-> “The lack of back-of-the-envelope performance sketches is the root of all evil.” — Rivacindela
+> "The lack of back-of-the-envelope performance sketches is the root of all evil." — Rivacindela
 > Hudsoni
 
 - Think about performance from the outset, from the beginning. **The best time to solve performance,
@@ -241,7 +241,7 @@ Beyond these rules:
 
 - **Perform back-of-the-envelope sketches with respect to the four resources (network, disk, memory,
   CPU) and their two main characteristics (bandwidth, latency).** Sketches are cheap. Use sketches
-  to be “roughly right” and land within 90% of the global maximum.
+  to be "roughly right" and land within 90% of the global maximum.
 
 - Optimize for the slowest resources first (network, disk, memory, CPU) in that order, after
   compensating for the frequency of usage, because faster resources may be used many times more. For
@@ -266,10 +266,118 @@ Beyond these rules:
 
 ## Developer Experience
 
-> “There are only two hard things in Computer Science: cache invalidation, naming things, and
-> off-by-one errors.” — Phil Karlton
+> "There are only two hard things in Computer Science: cache invalidation, naming things, and
+> off-by-one errors." — Phil Karlton
 
 ### Naming Things
+
+#### Zig Naming Conventions
+
+Zig has specific naming conventions that we follow strictly:
+
+- **TitleCase** for types (structs, enums, unions, error sets):
+  ```zig
+  const FileManager = struct { ... };
+  const TokenType = enum { identifier, keyword, operator };
+  const ParseError = error{ UnexpectedToken, InvalidSyntax };
+  ```
+
+- **camelCase** for functions and variables:
+  ```zig
+  fn parseDocument(allocator: std.mem.Allocator) !Document { ... }
+  var currentIndex: usize = 0;
+  ```
+
+- **ALL_CAPS** for constants (though Zig style prefers regular naming):
+  ```zig
+  const MAX_BUFFER_SIZE = 4096;  // Traditional style
+  const max_buffer_size = 4096;  // Preferred Zig style
+  ```
+
+- **snake_case** for file names that represent namespaces:
+  ```
+  file_manager.zig    // A namespace module
+  string_utils.zig    // Utility namespace
+  ```
+
+- **TitleCase.zig** for file names that represent a single type:
+  ```
+  ArrayList.zig       // Exports the ArrayList type
+  HashMap.zig         // Exports the HashMap type
+  ```
+
+#### Avoiding Redundant Words
+
+**Never include redundant suffixes in type names.** These words add no information and create noise:
+
+- ❌ **Bad**: `Value`, `Data`, `Context`, `Manager`, `Info`, `Object`, `Struct`
+- ✅ **Good**: Use descriptive names that explain what the type represents
+
+```zig
+// Bad - redundant suffixes
+const ConfigData = struct { ... };
+const FileManager = struct { ... };
+const RequestContext = struct { ... };
+const UserInfo = struct { ... };
+
+// Good - clear, descriptive names
+const Config = struct { ... };
+const FileSystem = struct { ... };
+const Request = struct { ... };
+const User = struct { ... };
+```
+
+**Avoid utility dumping grounds:**
+- ❌ **Bad**: `utils`, `misc`, `helpers`, `common`
+- ✅ **Good**: Create focused modules with specific purposes
+
+```zig
+// Bad - vague utility module
+const utils = @import("utils.zig");
+utils.parseString(...);
+utils.formatDate(...);
+
+// Good - focused, purposeful modules
+const parsing = @import("parsing.zig");
+const formatting = @import("formatting.zig");
+parsing.parseString(...);
+formatting.formatDate(...);
+```
+
+**Don't use initials or acronyms unless widely recognized:**
+- ❌ **Bad**: `DMR`, `FSMC`, `UIMC`
+- ✅ **Good**: `HTTP`, `JSON`, `UUID` (widely recognized)
+- ✅ **Better**: `DocumentReader`, `FileSystemCache`, `UserInterfaceController`
+
+#### Fully Qualified Namespace Considerations
+
+**Avoid redundancy when names will be used in a qualified manner:**
+
+```zig
+// Bad - redundant when qualified
+const json = struct {
+    pub const JsonParser = struct { ... };  // json.JsonParser is redundant
+    pub fn parseJson() !Value { ... }       // json.parseJson is redundant
+};
+
+// Good - clean when qualified
+const json = struct {
+    pub const Parser = struct { ... };      // json.Parser
+    pub fn parse() !Value { ... }           // json.parse
+};
+```
+
+**Consider how the name reads at the call site:**
+
+```zig
+// Bad - stuttering repetition
+const result = try json.JsonParser.parseJsonString(input);
+
+// Good - clear and concise
+const result = try json.Parser.parseString(input);
+```
+
+#### Additional Naming Guidelines
 
 - **Get the nouns and verbs just right.** Great names are the essence of great code, they capture
   what a thing is or does, and provide a crisp, intuitive mental model. They show that you
@@ -280,9 +388,7 @@ Beyond these rules:
   argument to a sort function or matrix calculation. Use long form arguments in scripts: `--force`,
   not `-f`. Single letter flags are for interactive usage.
 
-- Use proper capitalization for acronyms (`VSRState`, not `VsrState`).
-
-- For the rest, follow the Zig style guide.
+- Use proper capitalization for acronyms (`HTTPServer`, not `HttpServer`; `JSONParser`, not `JsonParser`).
 
 - Add units or qualifiers to variable names, and put the units or qualifiers last, sorted by
   descending significance, so that the variable starts with the most significant word, and ends with
@@ -290,8 +396,8 @@ Beyond these rules:
   then line up nicely when `latency_ms_min` is added, as well as group all variables that relate to
   latency.
 
-- Infuse names with meaning. For example, `allocator: Allocator` is a good, if boring name,
-  but `gpa: Allocator` and `arena: Allocator` are excellent. They inform the reader whether
+- Infuse names with meaning. For example, `allocator: std.mem.Allocator` is a good, if boring name,
+  but `gpa: std.mem.Allocator` and `arena: std.mem.Allocator` are excellent. They inform the reader whether
   `deinit` should be called explicitly.
 
 - When choosing related names, try hard to find names with the same number of characters so that
@@ -320,7 +426,7 @@ Beyond these rules:
   const ProcessID = struct { cluster: u128, replica: u8 };
   const Tracer = @This(); // This alias concludes the types section.
 
-  pub fn init(gpa: std.mem.Alocator, time: Time) !Tracer {
+  pub fn init(gpa: std.mem.Allocator, time: Time) !Tracer {
       ...
   }
   ```
@@ -348,6 +454,53 @@ Beyond these rules:
 
   Because dependencies like an allocator or a tracer are singletons with unique types, they should
   be threaded through constructors positionally, from the most general to the most specific.
+
+### Documentation Comments
+
+**Use `///` for documentation comments that appear in generated documentation:**
+
+```zig
+/// Parses a JSON document from the provided input string.
+/// Returns a parsed Value or an error if the input is invalid.
+pub fn parse(allocator: std.mem.Allocator, input: []const u8) !Value {
+    ...
+}
+```
+
+**Use `//!` for top-level module documentation:**
+
+```zig
+//! This module provides JSON parsing and serialization functionality.
+//! It supports the full JSON specification with extensions for comments.
+
+const std = @import("std");
+```
+
+**Documentation comment guidelines:**
+
+- **Use "Asserts" for safety-checked invariants:**
+  ```zig
+  /// Asserts that index is within bounds.
+  /// Panics if index >= length.
+  ```
+
+- **Use "Assumes" for unchecked invariants that callers must ensure:**
+  ```zig
+  /// Assumes that the input buffer is properly aligned.
+  /// Behavior is undefined if this assumption is violated.
+  ```
+
+- **Document error conditions clearly:**
+  ```zig
+  /// Returns error.OutOfMemory if allocation fails.
+  /// Returns error.InvalidFormat if the input cannot be parsed.
+  ```
+
+- **Provide examples in doc comments when helpful:**
+  ```zig
+  /// Formats a duration as a human-readable string.
+  /// Example: formatDuration(3661) returns "1h 1m 1s"
+  ```
 
 - **Write descriptive commit messages** that inform and delight the reader, because your commit
   messages are being read.
@@ -478,8 +631,8 @@ best for everything, but it's good enough for most things. We invest into our Zi
 that we can tackle new problems quickly, with a minimum of accidental complexity in our local
 development environment.
 
-> “The right tool for the job is often the tool you are already using—adding new tools has a higher
-> cost than many people appreciate” — John Carmack
+> "The right tool for the job is often the tool you are already using—adding new tools has a higher
+> cost than many people appreciate" — John Carmack
 
 For example, the next time you write a script, instead of `scripts/*.sh`, write `scripts/*.zig`.
 
@@ -496,8 +649,8 @@ makes for more velocity for the team in the long term.
 At the end of the day, keep trying things out, have fun, and remember—our project is named not
 only because it's fast, but because it's small!
 
-> You don’t really suppose, do you, that all your adventures and escapes were managed by mere luck,
+> You don't really suppose, do you, that all your adventures and escapes were managed by mere luck,
 > just for your sole benefit? You are a very fine person, Mr. Baggins, and I am very fond of you;
-> but you are only quite a little fellow in a wide world after all!”
+> but you are only quite a little fellow in a wide world after all!"
 >
-> “Thank goodness!” said Bilbo laughing, and handed him the tobacco-jar.
+> "Thank goodness!" said Bilbo laughing, and handed him the tobacco-jar.

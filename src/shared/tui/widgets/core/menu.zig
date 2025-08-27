@@ -96,7 +96,7 @@ pub const MenuItem = struct {
         };
     }
 
-    pub fn withHelpUrl(self: MenuItem, url: []const u8) MenuItem {
+    pub fn withHelpURL(self: MenuItem, url: []const u8) MenuItem {
         return MenuItem{
             .key = self.key,
             .label = self.label,
@@ -145,24 +145,24 @@ pub const MenuItem = struct {
 /// Enhanced menu with terminal capabilities and navigation
 pub const Menu = struct {
     items: std.ArrayList(MenuItem),
-    selected_index: usize,
+    selectedIndex: usize,
     title: []const u8,
     show_shortcuts: bool,
     show_descriptions: bool,
     max_visible_items: usize,
-    scroll_offset: usize,
+    scrollOffset: usize,
     caps: term_caps.TermCaps,
     allocator: std.mem.Allocator,
 
     pub fn init(allocator: std.mem.Allocator, title: []const u8) Menu {
         return Menu{
             .items = std.ArrayList(MenuItem).init(allocator),
-            .selected_index = 0,
+            .selectedIndex = 0,
             .title = title,
             .show_shortcuts = true,
             .show_descriptions = true,
             .max_visible_items = 10,
-            .scroll_offset = 0,
+            .scrollOffset = 0,
             .caps = term_caps.getTermCaps(),
             .allocator = allocator,
         };
@@ -188,8 +188,8 @@ pub const Menu = struct {
     pub fn removeItem(self: *Menu, index: usize) void {
         if (index < self.items.items.len) {
             _ = self.items.orderedRemove(index);
-            if (self.selected_index >= self.items.items.len and self.items.items.len > 0) {
-                self.selected_index = self.items.items.len - 1;
+            if (self.selectedIndex >= self.items.items.len and self.items.items.len > 0) {
+                self.selectedIndex = self.items.items.len - 1;
             }
         }
     }
@@ -197,7 +197,7 @@ pub const Menu = struct {
     pub fn selectNext(self: *Menu) void {
         if (self.items.items.len == 0) return;
 
-        var next = (self.selected_index + 1) % self.items.items.len;
+        var next = (self.selectedIndex + 1) % self.items.items.len;
         // Skip disabled/hidden items
         var attempts: usize = 0;
         while ((!self.items.items[next].enabled or !self.items.items[next].visible) and attempts < self.items.items.len) {
@@ -205,7 +205,7 @@ pub const Menu = struct {
             attempts += 1;
         }
         if (attempts < self.items.items.len) {
-            self.selected_index = next;
+            self.selectedIndex = next;
             self.adjustScrollOffset();
         }
     }
@@ -213,7 +213,7 @@ pub const Menu = struct {
     pub fn selectPrev(self: *Menu) void {
         if (self.items.items.len == 0) return;
 
-        var prev = if (self.selected_index == 0) self.items.items.len - 1 else self.selected_index - 1;
+        var prev = if (self.selectedIndex == 0) self.items.items.len - 1 else self.selectedIndex - 1;
         // Skip disabled/hidden items
         var attempts: usize = 0;
         while ((!self.items.items[prev].enabled or !self.items.items[prev].visible) and attempts < self.items.items.len) {
@@ -221,7 +221,7 @@ pub const Menu = struct {
             attempts += 1;
         }
         if (attempts < self.items.items.len) {
-            self.selected_index = prev;
+            self.selectedIndex = prev;
             self.adjustScrollOffset();
         }
     }
@@ -229,7 +229,7 @@ pub const Menu = struct {
     pub fn selectByKey(self: *Menu, key: []const u8) bool {
         for (self.items.items, 0..) |item, i| {
             if (std.mem.eql(u8, item.key, key) and item.enabled and item.visible) {
-                self.selected_index = i;
+                self.selectedIndex = i;
                 self.adjustScrollOffset();
                 return true;
             }
@@ -238,8 +238,8 @@ pub const Menu = struct {
     }
 
     pub fn getSelectedItem(self: Menu) ?MenuItem {
-        if (self.selected_index < self.items.items.len) {
-            return self.items.items[self.selected_index];
+        if (self.selectedIndex < self.items.items.len) {
+            return self.items.items[self.selectedIndex];
         }
         return null;
     }
@@ -252,10 +252,10 @@ pub const Menu = struct {
     }
 
     fn adjustScrollOffset(self: *Menu) void {
-        if (self.selected_index < self.scroll_offset) {
-            self.scroll_offset = self.selected_index;
-        } else if (self.selected_index >= self.scroll_offset + self.max_visible_items) {
-            self.scroll_offset = self.selected_index - self.max_visible_items + 1;
+        if (self.selectedIndex < self.scrollOffset) {
+            self.scrollOffset = self.selectedIndex;
+        } else if (self.selectedIndex >= self.scrollOffset + self.max_visible_items) {
+            self.scrollOffset = self.selectedIndex - self.max_visible_items + 1;
         }
     }
 
@@ -302,13 +302,13 @@ pub const Menu = struct {
         try term_ansi.resetStyle(writer, self.caps);
         try writer.writeAll("\n\n");
 
-        const end_index = @min(self.scroll_offset + self.max_visible_items, self.items.items.len);
+        const end_index = @min(self.scrollOffset + self.max_visible_items, self.items.items.len);
 
-        for (self.items.items[self.scroll_offset..end_index], 0..) |item, i| {
+        for (self.items.items[self.scrollOffset..end_index], 0..) |item, i| {
             if (!item.visible) continue;
 
-            const actual_index = self.scroll_offset + i;
-            const is_selected = actual_index == self.selected_index;
+            const actual_index = self.scrollOffset + i;
+            const is_selected = actual_index == self.selectedIndex;
 
             // Selection marker and colors
             if (is_selected) {
@@ -389,7 +389,7 @@ pub const Menu = struct {
             try term_ansi.setForeground256(writer, self.caps, 8);
         }
 
-        if (self.scroll_offset > 0) {
+        if (self.scrollOffset > 0) {
             try writer.writeAll("    ↑ More items above\n");
         }
         if (end_index < self.items.items.len) {
@@ -413,11 +413,11 @@ pub const Menu = struct {
         // Calculate which item was clicked
         if (y < 2) return false; // Skip title and spacing
 
-        const clicked_index = self.scroll_offset + (y - 2);
+        const clicked_index = self.scrollOffset + (y - 2);
         if (clicked_index < self.items.items.len) {
             const item = self.items.items[clicked_index];
             if (item.enabled and item.visible) {
-                self.selected_index = clicked_index;
+                self.selectedIndex = clicked_index;
                 return true;
             }
         }

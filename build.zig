@@ -217,12 +217,12 @@ const AgentRegistry = struct {
             },
         };
 
-    // Parse key fields from the manifest content using improved string parsing
-    try parseAgentInfoFromContent(self.allocator, &manifest, content);
-    try parseCapabilitiesFromContent(&manifest, content);
-    try parseDependenciesFromContent(self.allocator, &manifest, content);
-    try parseBuildFromContent(self.allocator, &manifest, content);
-    try parseToolsFromContent(self.allocator, &manifest, content);
+        // Parse key fields from the manifest content using improved string parsing
+        try parseAgentInfoFromContent(self.allocator, &manifest, content);
+        try parseCapabilitiesFromContent(&manifest, content);
+        try parseDependenciesFromContent(self.allocator, &manifest, content);
+        try parseBuildFromContent(self.allocator, &manifest, content);
+        try parseToolsFromContent(self.allocator, &manifest, content);
 
         return manifest;
     }
@@ -257,7 +257,7 @@ const AgentRegistry = struct {
         defer agent_dir.close();
 
         // Check for required files
-        const required_files = [_][]const u8{ "main.zig", "spec.zig", "agent.zig" };
+        const required_files = [_][]const u8{ "main.zig", "spec.zig", "Agent.zig" };
         var missing_files = try std.ArrayList([]const u8).initCapacity(self.allocator, 4);
         defer {
             for (missing_files.items) |file| self.allocator.free(file);
@@ -629,12 +629,12 @@ const ValidationResult = struct {
 
     fn deinit(self: *ValidationResult) void {
         for (self.errors.items) |err| {
-            self.allocator.free(err.field);
+            // self.allocator.free(err.field);  // field is a literal string constant, don't free
             self.allocator.free(err.message);
         }
         self.errors.deinit(self.allocator);
         for (self.warnings.items) |warn| {
-            self.allocator.free(warn.field);
+            // self.allocator.free(warn.field);  // field is a literal string constant, don't free
             self.allocator.free(warn.message);
         }
         self.warnings.deinit(self.allocator);
@@ -721,7 +721,7 @@ const ModuleBuilder = struct {
         defer agent_dir.close();
 
         // Check required files
-        const required_files = [_][]const u8{ "main.zig", "spec.zig", "agent.zig" };
+        const required_files = [_][]const u8{ "main.zig", "spec.zig", "Agent.zig" };
         for (required_files) |file| {
             const file_path = try std.fmt.allocPrint(self.ctx.b.allocator, "{s}/{s}", .{ agent_path, file });
             defer self.ctx.b.allocator.free(file_path);
@@ -818,12 +818,10 @@ const ModuleBuilder = struct {
         }
     }
 
-
-
     /// Validate that the selected agent exists and has required files
     fn validateAgent(self: ModuleBuilder) !void {
         var result = try self.validateAgentStructure(self.ctx.selected_agent);
-    defer result.deinit();
+        defer result.deinit();
 
         // Report errors
         if (result.errors.items.len > 0) {
@@ -938,7 +936,7 @@ const ModuleBuilder = struct {
         if (invalid_count > 0) {
             std.log.info("", .{});
             std.log.info("💡 Fix invalid agents by ensuring they have:", .{});
-            std.log.info("   - main.zig, spec.zig, agent.zig files", .{});
+            std.log.info("   - main.zig, spec.zig, Agent.zig files", .{});
             std.log.info("   - Valid agent.manifest.zon file", .{});
         }
     }
@@ -961,7 +959,7 @@ const ModuleBuilder = struct {
         defer agent_dir.close();
 
         // Check for required files
-        const required_files = [_][]const u8{ "main.zig", "spec.zig", "agent.zig" };
+        const required_files = [_][]const u8{ "main.zig", "spec.zig", "Agent.zig" };
         var missing_files = try std.ArrayList([]const u8).initCapacity(self.ctx.b.allocator, 4);
         defer missing_files.deinit(self.ctx.b.allocator);
 
@@ -1427,7 +1425,7 @@ fn parseCapabilitiesFromContent(manifest: *AgentManifest, content: []const u8) !
 
     // Note: For now, we keep specialized_features as null since parsing complex JSON
     // structures from ZON text is complex. This could be enhanced later.
-    manifest.capabilities.specialized_features = .{.null = {}};
+    manifest.capabilities.specialized_features = .{ .null = {} };
 }
 
 fn parseDependenciesFromContent(allocator: std.mem.Allocator, manifest: *AgentManifest, content: []const u8) !void {
@@ -1447,15 +1445,15 @@ fn parseDependenciesFromContent(allocator: std.mem.Allocator, manifest: *AgentMa
         const system_packages_section = dependencies_section[start..];
         // Simple parsing for array elements - this is a basic implementation
         // A more robust parser would handle nested structures better
-        var packages_list = std.ArrayList([]const u8).initCapacity(allocator, 4);
-        defer packages_list.deinit();
+        var packages_list = try std.ArrayList([]const u8).initCapacity(allocator, 4);
+        defer packages_list.deinit(allocator);
 
         var search_pos: usize = 0;
         while (std.mem.indexOf(u8, system_packages_section[search_pos..], "\"")) |quote_start| {
             const quote_pos = search_pos + quote_start;
-            const end_quote = std.mem.indexOf(u8, system_packages_section[quote_pos + 1..], "\"") orelse break;
-            const package_name = system_packages_section[quote_pos + 1..quote_pos + 1 + end_quote];
-            try packages_list.append(try allocator.dupe(u8, package_name));
+            const end_quote = std.mem.indexOf(u8, system_packages_section[quote_pos + 1 ..], "\"") orelse break;
+            const package_name = system_packages_section[quote_pos + 1 .. quote_pos + 1 + end_quote];
+            try packages_list.append(allocator, try allocator.dupe(u8, package_name));
             search_pos = quote_pos + end_quote + 2;
             if (search_pos >= system_packages_section.len) break;
         }
@@ -1466,15 +1464,15 @@ fn parseDependenciesFromContent(allocator: std.mem.Allocator, manifest: *AgentMa
     // Parse external dependencies - zig packages (similar to system packages)
     if (std.mem.indexOf(u8, dependencies_section, ".zig_packages = .{")) |start| {
         const zig_packages_section = dependencies_section[start..];
-        var packages_list = std.ArrayList([]const u8).initCapacity(allocator, 4);
-        defer packages_list.deinit();
+        var packages_list = try std.ArrayList([]const u8).initCapacity(allocator, 4);
+        defer packages_list.deinit(allocator);
 
         var search_pos: usize = 0;
         while (std.mem.indexOf(u8, zig_packages_section[search_pos..], "\"")) |quote_start| {
             const quote_pos = search_pos + quote_start;
-            const end_quote = std.mem.indexOf(u8, zig_packages_section[quote_pos + 1..], "\"") orelse break;
-            const package_name = zig_packages_section[quote_pos + 1..quote_pos + 1 + end_quote];
-            try packages_list.append(try allocator.dupe(u8, package_name));
+            const end_quote = std.mem.indexOf(u8, zig_packages_section[quote_pos + 1 ..], "\"") orelse break;
+            const package_name = zig_packages_section[quote_pos + 1 .. quote_pos + 1 + end_quote];
+            try packages_list.append(allocator, try allocator.dupe(u8, package_name));
             search_pos = quote_pos + end_quote + 2;
             if (search_pos >= zig_packages_section.len) break;
         }
@@ -1485,15 +1483,15 @@ fn parseDependenciesFromContent(allocator: std.mem.Allocator, manifest: *AgentMa
     // Parse optional features
     if (std.mem.indexOf(u8, dependencies_section, ".features = .{")) |start| {
         const features_section = dependencies_section[start..];
-        var features_list = std.ArrayList([]const u8).initCapacity(allocator, 4);
-        defer features_list.deinit();
+        var features_list = try std.ArrayList([]const u8).initCapacity(allocator, 4);
+        defer features_list.deinit(allocator);
 
         var search_pos: usize = 0;
         while (std.mem.indexOf(u8, features_section[search_pos..], "\"")) |quote_start| {
             const quote_pos = search_pos + quote_start;
-            const end_quote = std.mem.indexOf(u8, features_section[quote_pos + 1..], "\"") orelse break;
-            const feature_name = features_section[quote_pos + 1..quote_pos + 1 + end_quote];
-            try features_list.append(try allocator.dupe(u8, feature_name));
+            const end_quote = std.mem.indexOf(u8, features_section[quote_pos + 1 ..], "\"") orelse break;
+            const feature_name = features_section[quote_pos + 1 .. quote_pos + 1 + end_quote];
+            try features_list.append(allocator, try allocator.dupe(u8, feature_name));
             search_pos = quote_pos + end_quote + 2;
             if (search_pos >= features_section.len) break;
         }
@@ -1510,15 +1508,15 @@ fn parseBuildFromContent(allocator: std.mem.Allocator, manifest: *AgentManifest,
     // Parse build targets
     if (std.mem.indexOf(u8, build_section, ".targets = .{")) |start| {
         const targets_section = build_section[start..];
-        var targets_list = std.ArrayList([]const u8).initCapacity(allocator, 4);
-        defer targets_list.deinit();
+        var targets_list = try std.ArrayList([]const u8).initCapacity(allocator, 4);
+        defer targets_list.deinit(allocator);
 
         var search_pos: usize = 0;
         while (std.mem.indexOf(u8, targets_section[search_pos..], "\"")) |quote_start| {
             const quote_pos = search_pos + quote_start;
-            const end_quote = std.mem.indexOf(u8, targets_section[quote_pos + 1..], "\"") orelse break;
-            const target_name = targets_section[quote_pos + 1..quote_pos + 1 + end_quote];
-            try targets_list.append(try allocator.dupe(u8, target_name));
+            const end_quote = std.mem.indexOf(u8, targets_section[quote_pos + 1 ..], "\"") orelse break;
+            const target_name = targets_section[quote_pos + 1 .. quote_pos + 1 + end_quote];
+            try targets_list.append(allocator, try allocator.dupe(u8, target_name));
             search_pos = quote_pos + end_quote + 2;
             if (search_pos >= targets_section.len) break;
         }
@@ -1537,15 +1535,15 @@ fn parseBuildFromContent(allocator: std.mem.Allocator, manifest: *AgentManifest,
     // Parse custom flags
     if (std.mem.indexOf(u8, options_section, ".custom_flags = .{")) |start| {
         const flags_section = options_section[start..];
-        var flags_list = std.ArrayList([]const u8).initCapacity(allocator, 4);
-        defer flags_list.deinit();
+        var flags_list = try std.ArrayList([]const u8).initCapacity(allocator, 4);
+        defer flags_list.deinit(allocator);
 
         var search_pos: usize = 0;
         while (std.mem.indexOf(u8, flags_section[search_pos..], "\"")) |quote_start| {
             const quote_pos = search_pos + quote_start;
-            const end_quote = std.mem.indexOf(u8, flags_section[quote_pos + 1..], "\"") orelse break;
-            const flag = flags_section[quote_pos + 1..quote_pos + 1 + end_quote];
-            try flags_list.append(try allocator.dupe(u8, flag));
+            const end_quote = std.mem.indexOf(u8, flags_section[quote_pos + 1 ..], "\"") orelse break;
+            const flag = flags_section[quote_pos + 1 .. quote_pos + 1 + end_quote];
+            try flags_list.append(allocator, try allocator.dupe(u8, flag));
             search_pos = quote_pos + end_quote + 2;
             if (search_pos >= flags_section.len) break;
         }
@@ -1567,15 +1565,15 @@ fn parseBuildFromContent(allocator: std.mem.Allocator, manifest: *AgentManifest,
     // Parse include files
     if (std.mem.indexOf(u8, artifacts_section, ".include_files = .{")) |start| {
         const include_files_section = artifacts_section[start..];
-        var files_list = std.ArrayList([]const u8).initCapacity(allocator, 4);
-        defer files_list.deinit();
+        var files_list = try std.ArrayList([]const u8).initCapacity(allocator, 4);
+        defer files_list.deinit(allocator);
 
         var search_pos: usize = 0;
         while (std.mem.indexOf(u8, include_files_section[search_pos..], "\"")) |quote_start| {
             const quote_pos = search_pos + quote_start;
-            const end_quote = std.mem.indexOf(u8, include_files_section[quote_pos + 1..], "\"") orelse break;
-            const file_name = include_files_section[quote_pos + 1..quote_pos + 1 + end_quote];
-            try files_list.append(try allocator.dupe(u8, file_name));
+            const end_quote = std.mem.indexOf(u8, include_files_section[quote_pos + 1 ..], "\"") orelse break;
+            const file_name = include_files_section[quote_pos + 1 .. quote_pos + 1 + end_quote];
+            try files_list.append(allocator, try allocator.dupe(u8, file_name));
             search_pos = quote_pos + end_quote + 2;
             if (search_pos >= include_files_section.len) break;
         }
@@ -1592,15 +1590,15 @@ fn parseToolsFromContent(allocator: std.mem.Allocator, manifest: *AgentManifest,
     // Parse tool categories
     if (std.mem.indexOf(u8, tools_section, ".categories = .{")) |start| {
         const categories_section = tools_section[start..];
-        var categories_list = std.ArrayList([]const u8).initCapacity(allocator, 4);
-        defer categories_list.deinit();
+        var categories_list = try std.ArrayList([]const u8).initCapacity(allocator, 4);
+        defer categories_list.deinit(allocator);
 
         var search_pos: usize = 0;
         while (std.mem.indexOf(u8, categories_section[search_pos..], "\"")) |quote_start| {
             const quote_pos = search_pos + quote_start;
-            const end_quote = std.mem.indexOf(u8, categories_section[quote_pos + 1..], "\"") orelse break;
-            const category_name = categories_section[quote_pos + 1..quote_pos + 1 + end_quote];
-            try categories_list.append(try allocator.dupe(u8, category_name));
+            const end_quote = std.mem.indexOf(u8, categories_section[quote_pos + 1 ..], "\"") orelse break;
+            const category_name = categories_section[quote_pos + 1 .. quote_pos + 1 + end_quote];
+            try categories_list.append(allocator, try allocator.dupe(u8, category_name));
             search_pos = quote_pos + end_quote + 2;
             if (search_pos >= categories_section.len) break;
         }
@@ -1761,8 +1759,8 @@ fn listAvailableAgents(registry: *AgentRegistry) !void {
     for (agents) |agent| {
         if (!agent.is_template) {
             std.log.info("  📦 {s} (v{s})", .{ agent.name, agent.version });
-            std.log.info("     {s}", .{ agent.description });
-            std.log.info("     👤 {s}", .{ agent.author });
+            std.log.info("     {s}", .{agent.description});
+            std.log.info("     👤 {s}", .{agent.author});
             std.log.info("", .{});
         }
     }
@@ -1812,7 +1810,7 @@ fn validateAllAgents(registry: *AgentRegistry) !void {
     if (invalid_count > 0) {
         std.log.info("", .{});
         std.log.info("💡 Fix invalid agents by ensuring they have:", .{});
-        std.log.info("   - main.zig, spec.zig, agent.zig files", .{});
+        std.log.info("   - main.zig, spec.zig, Agent.zig files", .{});
         std.log.info("   - Valid agent.manifest.zon file", .{});
     }
 }
@@ -1930,7 +1928,7 @@ fn runScaffoldAgent(b: *std.Build) !void {
     std.log.info("📁 Created files:", .{});
     std.log.info("   • agents/{s}/main.zig", .{agent_name});
     std.log.info("   • agents/{s}/spec.zig", .{agent_name});
-    std.log.info("   • agents/{s}/agent.zig", .{agent_name});
+    std.log.info("   • agents/{s}/Agent.zig", .{agent_name});
     std.log.info("   • agents/{s}/config.zon", .{agent_name});
     std.log.info("   • agents/{s}/agent.manifest.zon", .{agent_name});
     std.log.info("   • agents/{s}/system_prompt.txt", .{agent_name});
@@ -1939,7 +1937,7 @@ fn runScaffoldAgent(b: *std.Build) !void {
     std.log.info("   • agents/{s}/README.md", .{agent_name});
     std.log.info("", .{});
     std.log.info("🚀 Next steps:", .{});
-    std.log.info("   1. Customize the agent implementation in agents/{s}/agent.zig", .{agent_name});
+    std.log.info("   1. Customize the agent implementation in agents/{s}/Agent.zig", .{agent_name});
     std.log.info("   2. Add custom tools in agents/{s}/tools/", .{agent_name});
     std.log.info("   3. Update the system prompt in agents/{s}/system_prompt.txt", .{agent_name});
     std.log.info("   4. Test your agent: zig build -Dagent={s} run", .{agent_name});
@@ -1986,7 +1984,7 @@ fn copyTemplateFiles(allocator: std.mem.Allocator, agent_name: []const u8, descr
     }{
         .{ .source = "agents/_template/main.zig", .dest = "main.zig", .process_placeholders = false },
         .{ .source = "agents/_template/spec.zig", .dest = "spec.zig", .process_placeholders = true },
-        .{ .source = "agents/_template/agent.zig", .dest = "agent.zig", .process_placeholders = true },
+        .{ .source = "agents/_template/Agent.zig", .dest = "Agent.zig", .process_placeholders = true },
         .{ .source = "agents/_template/config.zon", .dest = "config.zon", .process_placeholders = true },
         .{ .source = "agents/_template/agent.manifest.zon", .dest = "agent.manifest.zon", .process_placeholders = true },
         .{ .source = "agents/_template/system_prompt.txt", .dest = "system_prompt.txt", .process_placeholders = true },
@@ -2034,7 +2032,7 @@ fn processTemplatePlaceholders(allocator: std.mem.Allocator, content: []const u8
             const placeholder_end = placeholder_start + "{agent_name}".len;
 
             // Copy content before placeholder
-            try result.appendSlice(allocator, content[i..i + placeholder_start]);
+            try result.appendSlice(allocator, content[i .. i + placeholder_start]);
 
             // Replace placeholder
             try result.appendSlice(allocator, agent_name);
@@ -2043,19 +2041,19 @@ fn processTemplatePlaceholders(allocator: std.mem.Allocator, content: []const u8
         } else if (std.mem.indexOf(u8, content[i..], "{agent_description}")) |placeholder_start| {
             const placeholder_end = placeholder_start + "{agent_description}".len;
 
-            try result.appendSlice(allocator, content[i..i + placeholder_start]);
+            try result.appendSlice(allocator, content[i .. i + placeholder_start]);
             try result.appendSlice(allocator, description);
             i += placeholder_end;
         } else if (std.mem.indexOf(u8, content[i..], "{agent_author}")) |placeholder_start| {
             const placeholder_end = placeholder_start + "{agent_author}".len;
 
-            try result.appendSlice(allocator, content[i..i + placeholder_start]);
+            try result.appendSlice(allocator, content[i .. i + placeholder_start]);
             try result.appendSlice(allocator, author);
             i += placeholder_end;
         } else if (std.mem.indexOf(u8, content[i..], "{current_date}")) |placeholder_start| {
             const placeholder_end = placeholder_start + "{current_date}".len;
 
-            try result.appendSlice(allocator, content[i..i + placeholder_start]);
+            try result.appendSlice(allocator, content[i .. i + placeholder_start]);
 
             // Get current date
             const now = std.time.timestamp();
@@ -2185,7 +2183,7 @@ fn buildMultipleAgents(b: *std.Build, all_agents: bool, agents_list: []const u8)
         // Show agent info
         if (registry.getAgent(agent_name)) |info| {
             std.log.info("      📋 {s} v{s}", .{ info.name, info.version });
-            std.log.info("      📝 {s}", .{ info.description });
+            std.log.info("      📝 {s}", .{info.description});
         }
         std.log.info("", .{});
     }

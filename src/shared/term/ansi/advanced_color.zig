@@ -57,12 +57,12 @@ pub const IndexedColor = struct {
     }
 
     pub fn toBasic(self: IndexedColor) BasicColor {
-        return @enumFromInt(ansi256To16[self.index]);
+        return @enumFromInt(ANSI256_TO_16[self.index]);
     }
 
     /// Convert to basic color using enhanced algorithm
     pub fn toBasicEnhanced(self: IndexedColor) BasicColor {
-        return @enumFromInt(ansi256To16Enhanced[self.index]);
+        return @enumFromInt(ANSI256_TO_16_ENHANCED[self.index]);
     }
 };
 
@@ -285,23 +285,23 @@ pub fn convert16Enhanced(rgb: RGBColor) BasicColor {
     const c256 = convert256(rgb);
 
     // Use enhanced 256-to-16 mapping table
-    return @enumFromInt(ansi256To16Enhanced[c256]);
+    return @enumFromInt(ANSI256_TO_16_ENHANCED[c256]);
 }
 
 /// Convert ANSI 256 color to RGB
 fn ansi256ToRgb(index: u8) RGBColor {
-    return ansi256_palette[index];
+    return ANSI256_PALETTE[index];
 }
 
 /// Convert ANSI 16 color to RGB
 fn ansi16ToRgb(index: u8) RGBColor {
     if (index > 15) return RGBColor.init(0, 0, 0);
-    return ansi256_palette[index];
+    return ANSI256_PALETTE[index];
 }
 
 // Complete ANSI 256-color palette with accurate RGB values from xterm specification
 // This matches the exact values used by xterm and other terminal emulators
-const ansi256_palette = [256]RGBColor{
+const ANSI256_PALETTE = [256]RGBColor{
     // Standard colors (0-15) - these are the basic ANSI colors
     RGBColor.init(0x00, 0x00, 0x00), // 0: Black
     RGBColor.init(0x80, 0x00, 0x00), // 1: Red
@@ -567,7 +567,7 @@ const ansi256_palette = [256]RGBColor{
 };
 
 // Mapping from ANSI 256 colors to 16 colors - original implementation
-const ansi256To16 = [256]u8{
+const ANSI256_TO_16 = [256]u8{
     0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
     0,  4,  4,  4,  12, 12, 2,  6,  4,  4,  12, 12, 2,  2,  6,  4,
     12, 12, 2,  2,  2,  6,  12, 12, 10, 10, 10, 10, 14, 12, 10, 10,
@@ -588,7 +588,7 @@ const ansi256To16 = [256]u8{
 
 // Enhanced mapping from ANSI 256 colors to 16 colors based on terminal standards
 // This provides more accurate color mapping with better visual results
-const ansi256To16Enhanced = [256]u8{
+const ANSI256_TO_16_ENHANCED = [256]u8{
     0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, // Standard colors 0-15
     0, 4, 4, 4, 12, 12, 2, 6, 4, 4, 12, 12, 2, 2, 6, 4, // 16-31
     12, 12, 2, 2, 2, 6, 12, 12, 10, 10, 10, 10, 14, 12, 10, 10, // 32-47
@@ -620,7 +620,7 @@ pub fn findClosest256Color(rgb: RGBColor) IndexedColor {
 
 /// Get the RGB representation of any ANSI 256-color index
 pub fn ansiColorToRgb(index: u8) RGBColor {
-    return ansi256_palette[index];
+    return ANSI256_PALETTE[index];
 }
 
 /// Check if a color is in the standard 16-color ANSI range
@@ -724,17 +724,17 @@ test "color palette accuracy" {
     const testing = std.testing;
 
     // Test that standard ANSI colors are correctly mapped
-    try testing.expect(ansi256_palette[0].r == 0x00 and ansi256_palette[0].g == 0x00 and ansi256_palette[0].b == 0x00); // Black
-    try testing.expect(ansi256_palette[1].r == 0x80 and ansi256_palette[1].g == 0x00 and ansi256_palette[1].b == 0x00); // Red
-    try testing.expect(ansi256_palette[15].r == 0xFF and ansi256_palette[15].g == 0xFF and ansi256_palette[15].b == 0xFF); // White
+    try testing.expect(ANSI256_PALETTE[0].r == 0x00 and ANSI256_PALETTE[0].g == 0x00 and ANSI256_PALETTE[0].b == 0x00); // Black
+    try testing.expect(ANSI256_PALETTE[1].r == 0x80 and ANSI256_PALETTE[1].g == 0x00 and ANSI256_PALETTE[1].b == 0x00); // Red
+    try testing.expect(ANSI256_PALETTE[15].r == 0xFF and ANSI256_PALETTE[15].g == 0xFF and ANSI256_PALETTE[15].b == 0xFF); // White
 
     // Test color cube boundaries
-    try testing.expect(ansi256_palette[16].r == 0x00); // Start of cube
-    try testing.expect(ansi256_palette[231].b == 0xFF); // End of cube
+    try testing.expect(ANSI256_PALETTE[16].r == 0x00); // Start of cube
+    try testing.expect(ANSI256_PALETTE[231].b == 0xFF); // End of cube
 
     // Test grayscale ramp
-    try testing.expect(ansi256_palette[232].r == 0x08); // Darkest gray
-    try testing.expect(ansi256_palette[255].r == 0xEE); // Lightest gray
+    try testing.expect(ANSI256_PALETTE[232].r == 0x08); // Darkest gray
+    try testing.expect(ANSI256_PALETTE[255].r == 0xEE); // Lightest gray
 }
 
 test "color utility functions" {

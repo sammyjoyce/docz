@@ -5,7 +5,7 @@ const std = @import("std");
 const tools_mod = @import("tools_shared");
 
 // Example Tool Implementation
-pub const ExampleTool = @import("example_tool.zig");
+pub const ExampleTool = @import("ExampleTool.zig");
 
 // Test tool function that demonstrates basic functionality
 pub fn testTool(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.ToolError!std.json.Value {
@@ -42,7 +42,7 @@ pub fn calculator(allocator: std.mem.Allocator, params: std.json.Value) tools_mo
     else if (std.mem.eql(u8, op, "multiply"))
         x * y
     else if (std.mem.eql(u8, op, "divide"))
-        if (y == 0) return tools_mod.ToolError.InvalidInput else x / y
+        if (y == 0) return tools_mod.ToolError.InvalidInput else @divTrunc(x, y)
     else
         return tools_mod.ToolError.InvalidInput;
 
@@ -62,7 +62,7 @@ pub fn exampleTool(allocator: std.mem.Allocator, params: std.json.Value) tools_m
 
 // Tool Registry for this agent
 pub const ToolRegistry = struct {
-    pub const tools = .{
+    pub const TOOLS = .{
         .test_tool = testTool,
         .calculator = calculator,
         .example_tool = exampleTool,

@@ -31,7 +31,7 @@ pub const GraphicsMode = enum {
 };
 
 /// Graphics manager that handles image rendering and caching
-pub const GraphicsManager = struct {
+pub const Graphics = struct {
     const Self = @This();
 
     allocator: std.mem.Allocator,

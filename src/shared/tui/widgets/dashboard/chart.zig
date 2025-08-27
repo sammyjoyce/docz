@@ -35,11 +35,11 @@ pub const ChartType = enum {
     candlestick,
 };
 
-pub const Chart = struct {
+pub const ChartRenderer = struct {
     const Self = @This();
 
     allocator: std.mem.Allocator,
-    data: ChartData,
+    data: Chart,
     style: ChartStyle,
     config: Config,
     bounds: Bounds = Bounds.init(0, 0, 0, 0),
@@ -61,7 +61,7 @@ pub const Chart = struct {
         responsive: bool = true,
     };
 
-    pub const ChartData = struct {
+    pub const Chart = struct {
         series: []Series,
         x_labels: ?[][]const u8 = null,
         y_range: ?Range = null, // Auto-calculate if null
@@ -87,7 +87,7 @@ pub const Chart = struct {
     };
 
     pub const ChartStyle = struct {
-        background_color: Color = Color.init(255, 255, 255), // White
+        backgroundColor: Color = Color.init(255, 255, 255), // White
         text_color: Color = Color.init(0, 0, 0), // Black
         grid_color: Color = Color.init(200, 200, 200), // Light gray
         axis_color: Color = Color.init(100, 100, 100), // Dark gray
@@ -149,7 +149,7 @@ pub const Chart = struct {
         }
     };
 
-    pub fn init(allocator: std.mem.Allocator, data: ChartData, config: Config) Self {
+    pub fn init(allocator: std.mem.Allocator, data: Chart, config: Config) Self {
         return Self{
             .allocator = allocator,
             .data = data,
@@ -165,7 +165,7 @@ pub const Chart = struct {
         // Note: We don't own the data, so we don't free it
     }
 
-    pub fn setData(self: *Self, data: ChartData) void {
+    pub fn setData(self: *Self, data: Chart) void {
         self.data = data;
         self.graphics_dirty = true;
     }
@@ -240,10 +240,10 @@ pub const Chart = struct {
         var i: usize = 0;
         while (i < pixel_count) : (i += 1) {
             const pixel_offset = i * 4;
-            image_data[pixel_offset] = self.style.background_color.r;
-            image_data[pixel_offset + 1] = self.style.background_color.g;
-            image_data[pixel_offset + 2] = self.style.background_color.b;
-            image_data[pixel_offset + 3] = self.style.background_color.a;
+            image_data[pixel_offset] = self.style.backgroundColor.r;
+            image_data[pixel_offset + 1] = self.style.backgroundColor.g;
+            image_data[pixel_offset + 2] = self.style.backgroundColor.b;
+            image_data[pixel_offset + 3] = self.style.backgroundColor.a;
         }
 
         // Draw chart based on type
@@ -501,7 +501,7 @@ pub const Chart = struct {
         );
     }
 
-    fn calculateYRange(self: *Self) ChartData.Range {
+    fn calculateYRange(self: *Self) Chart.Range {
         var min_val: f64 = std.math.inf(f64);
         var max_val: f64 = -std.math.inf(f64);
 
@@ -516,7 +516,7 @@ pub const Chart = struct {
         const range = max_val - min_val;
         const padding = range * 0.1;
 
-        return ChartData.Range{
+        return Chart.Range{
             .min = min_val - padding,
             .max = max_val + padding,
         };
@@ -526,7 +526,7 @@ pub const Chart = struct {
         return self.style.series_colors[series_index % self.style.series_colors.len];
     }
 
-    fn drawAxes(self: *Self, image_data: []u8, width: u32, height: u32, chart_area: Bounds, y_range: ChartData.Range) !void {
+    fn drawAxes(self: *Self, image_data: []u8, width: u32, height: u32, chart_area: Bounds, y_range: Chart.Range) !void {
         // Draw X axis
         self.drawLine(image_data, width, height, chart_area.x, chart_area.y + chart_area.height, chart_area.x + chart_area.width, chart_area.y + chart_area.height, self.style.axis_color);
 

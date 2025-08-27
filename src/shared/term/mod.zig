@@ -22,6 +22,8 @@ pub const graphics_manager = @import("graphics_manager.zig");
 pub const editor = @import("editor.zig");
 pub const pty = @import("pty.zig");
 pub const unified = @import("unified.zig");
+pub const writer = @import("writer.zig");
+pub const reader = @import("reader.zig");
 
 // Clipboard support
 pub const enhanced_clipboard = @import("enhanced_clipboard.zig");
@@ -29,13 +31,12 @@ pub const enhanced_clipboard = @import("enhanced_clipboard.zig");
 // Terminal features
 pub const bracketed_paste = @import("bracketed_paste.zig");
 pub const enhanced_terminal_capabilities = @import("enhanced_terminal_capabilities.zig");
+pub const grapheme = @import("grapheme.zig");
 pub const wcwidth = @import("wcwidth.zig");
 
 // Terminal color management
-// TODO: Implement terminal color management
-// pub const terminal_color_management = @import("terminal_color_management.zig");
-// TODO: Implement terminal query system
-// pub const terminal_query_system = @import("terminal_query_system.zig");
+pub const terminal_color_management = @import("ansi/terminal_color_management.zig");
+pub const terminal_query_system = @import("terminal_query_system.zig");
 pub const precise_ansi_palette = @import("precise_ansi_palette.zig");
 
 // ANSI submodule - All ANSI escape sequence handling

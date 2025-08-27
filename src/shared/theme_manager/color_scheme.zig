@@ -15,12 +15,12 @@ pub const RGB = struct {
 
     /// Convert to HSL for calculations
     pub fn toHSL(self: RGB) HSL {
-        const r_norm = @as(f32, @floatFromInt(self.r)) / 255.0;
-        const g_norm = @as(f32, @floatFromInt(self.g)) / 255.0;
-        const b_norm = @as(f32, @floatFromInt(self.b)) / 255.0;
+        const rNorm = @as(f32, @floatFromInt(self.r)) / 255.0;
+        const gNorm = @as(f32, @floatFromInt(self.g)) / 255.0;
+        const bNorm = @as(f32, @floatFromInt(self.b)) / 255.0;
 
-        const max = @max(r_norm, @max(g_norm, b_norm));
-        const min = @min(r_norm, @min(g_norm, b_norm));
+        const max = @max(rNorm, @max(gNorm, bNorm));
+        const min = @min(rNorm, @min(gNorm, bNorm));
         const delta = max - min;
 
         var h: f32 = 0;
@@ -30,12 +30,12 @@ pub const RGB = struct {
         if (delta > 0) {
             s = if (l < 0.5) delta / (max + min) else delta / (2 - max - min);
 
-            if (max == r_norm) {
-                h = ((g_norm - b_norm) / delta) + if (g_norm < b_norm) 6 else 0;
-            } else if (max == g_norm) {
-                h = ((b_norm - r_norm) / delta) + 2;
+            if (max == rNorm) {
+                h = ((gNorm - bNorm) / delta) + if (gNorm < bNorm) 6 else 0;
+            } else if (max == gNorm) {
+                h = ((bNorm - rNorm) / delta) + 2;
             } else {
-                h = ((r_norm - g_norm) / delta) + 4;
+                h = ((rNorm - gNorm) / delta) + 4;
             }
             h = h / 6.0;
         }
@@ -50,16 +50,16 @@ pub const RGB = struct {
 
     /// Parse from hex string
     pub fn fromHex(hex: []const u8) !RGB {
-        var clean_hex = hex;
+        var cleanHex = hex;
         if (hex[0] == '#') {
-            clean_hex = hex[1..];
+            cleanHex = hex[1..];
         }
 
-        if (clean_hex.len != 6) return error.InvalidHexColor;
+        if (cleanHex.len != 6) return error.InvalidHexColor;
 
-        const r = try std.fmt.parseInt(u8, clean_hex[0..2], 16);
-        const g = try std.fmt.parseInt(u8, clean_hex[2..4], 16);
-        const b = try std.fmt.parseInt(u8, clean_hex[4..6], 16);
+        const r = try std.fmt.parseInt(u8, cleanHex[0..2], 16);
+        const g = try std.fmt.parseInt(u8, cleanHex[2..4], 16);
+        const b = try std.fmt.parseInt(u8, cleanHex[4..6], 16);
 
         return RGB.init(r, g, b);
     }
@@ -146,14 +146,14 @@ pub const ColorScheme = struct {
     white: Color,
 
     // Bright ANSI colors
-    bright_black: Color,
-    bright_red: Color,
-    bright_green: Color,
-    bright_yellow: Color,
-    bright_blue: Color,
-    bright_magenta: Color,
-    bright_cyan: Color,
-    bright_white: Color,
+    brightBlack: Color,
+    brightRed: Color,
+    brightGreen: Color,
+    brightYellow: Color,
+    brightBlue: Color,
+    brightMagenta: Color,
+    brightCyan: Color,
+    brightWhite: Color,
 
     // Semantic colors
     primary: Color,
@@ -161,7 +161,7 @@ pub const ColorScheme = struct {
     tertiary: Color,
     success: Color,
     warning: Color,
-    error_color: Color,
+    errorColor: Color,
     info: Color,
 
     // UI colors
@@ -172,9 +172,9 @@ pub const ColorScheme = struct {
     accent: Color,
 
     // Additional metadata
-    is_dark: bool,
-    contrast_ratio: f32,
-    wcag_level: []const u8, // "AA", "AAA", or "Fail"
+    isDark: bool,
+    contrastRatio: f32,
+    wcagLevel: []const u8, // "AA", "AAA", or "Fail"
 
     const Self = @This();
 
@@ -198,29 +198,29 @@ pub const ColorScheme = struct {
             .magenta = Color.init("magenta", RGB.init(187, 0, 187), 5, 5),
             .cyan = Color.init("cyan", RGB.init(0, 187, 187), 6, 6),
             .white = Color.init("white", RGB.init(187, 187, 187), 7, 7),
-            .bright_black = Color.init("bright_black", RGB.init(85, 85, 85), 8, 8),
-            .bright_red = Color.init("bright_red", RGB.init(255, 85, 85), 9, 9),
-            .bright_green = Color.init("bright_green", RGB.init(85, 255, 85), 10, 10),
-            .bright_yellow = Color.init("bright_yellow", RGB.init(255, 255, 85), 11, 11),
-            .bright_blue = Color.init("bright_blue", RGB.init(85, 85, 255), 12, 12),
-            .bright_magenta = Color.init("bright_magenta", RGB.init(255, 85, 255), 13, 13),
-            .bright_cyan = Color.init("bright_cyan", RGB.init(85, 255, 255), 14, 14),
-            .bright_white = Color.init("bright_white", RGB.init(255, 255, 255), 15, 15),
+            .brightBlack = Color.init("bright_black", RGB.init(85, 85, 85), 8, 8),
+            .brightRed = Color.init("bright_red", RGB.init(255, 85, 85), 9, 9),
+            .brightGreen = Color.init("bright_green", RGB.init(85, 255, 85), 10, 10),
+            .brightYellow = Color.init("bright_yellow", RGB.init(255, 255, 85), 11, 11),
+            .brightBlue = Color.init("bright_blue", RGB.init(85, 85, 255), 12, 12),
+            .brightMagenta = Color.init("bright_magenta", RGB.init(255, 85, 255), 13, 13),
+            .brightCyan = Color.init("bright_cyan", RGB.init(85, 255, 255), 14, 14),
+            .brightWhite = Color.init("bright_white", RGB.init(255, 255, 255), 15, 15),
             .primary = Color.init("primary", RGB.init(0, 123, 255), 33, 12),
             .secondary = Color.init("secondary", RGB.init(108, 117, 125), 102, 8),
             .tertiary = Color.init("tertiary", RGB.init(173, 181, 189), 145, 7),
             .success = Color.init("success", RGB.init(40, 167, 69), 34, 2),
             .warning = Color.init("warning", RGB.init(255, 193, 7), 220, 11),
-            .error_color = Color.init("error", RGB.init(220, 53, 69), 196, 1),
+            .errorColor = Color.init("error", RGB.init(220, 53, 69), 196, 1),
             .info = Color.init("info", RGB.init(23, 162, 184), 38, 6),
             .border = Color.init("border", RGB.init(108, 117, 125), 102, 8),
             .shadow = Color.init("shadow", RGB.init(0, 0, 0), 0, 0),
             .highlight = Color.init("highlight", RGB.init(255, 255, 0), 226, 11),
             .dimmed = Color.init("dimmed", RGB.init(108, 117, 125), 102, 8),
             .accent = Color.init("accent", RGB.init(0, 123, 255), 33, 12),
-            .is_dark = true,
-            .contrast_ratio = 7.0,
-            .wcag_level = "AA",
+            .isDark = true,
+            .contrastRatio = 7.0,
+            .wcagLevel = "AA",
         };
         return self;
     }
@@ -246,7 +246,7 @@ pub const ColorScheme = struct {
         theme.author = "System";
         theme.background = Color.init("background", RGB.init(30, 30, 30), 234, 0);
         theme.foreground = Color.init("foreground", RGB.init(220, 220, 220), 253, 15);
-        theme.is_dark = true;
+        theme.isDark = true;
         return theme;
     }
 
@@ -258,7 +258,7 @@ pub const ColorScheme = struct {
         theme.author = "System";
         theme.background = Color.init("background", RGB.init(255, 255, 255), 231, 15);
         theme.foreground = Color.init("foreground", RGB.init(35, 35, 35), 235, 0);
-        theme.is_dark = false;
+        theme.isDark = false;
         return theme;
     }
 
@@ -270,8 +270,8 @@ pub const ColorScheme = struct {
         theme.author = "System";
         theme.background = Color.init("background", RGB.init(0, 0, 0), 0, 0);
         theme.foreground = Color.init("foreground", RGB.init(255, 255, 255), 231, 15);
-        theme.contrast_ratio = 21.0;
-        theme.wcag_level = "AAA";
+        theme.contrastRatio = 21.0;
+        theme.wcagLevel = "AAA";
         return theme;
     }
 
@@ -283,7 +283,7 @@ pub const ColorScheme = struct {
         theme.author = "Ethan Schoonover";
         theme.background = Color.init("background", RGB.init(0, 43, 54), 234, 0);
         theme.foreground = Color.init("foreground", RGB.init(131, 148, 150), 245, 7);
-        theme.is_dark = true;
+        theme.isDark = true;
         return theme;
     }
 
@@ -295,7 +295,7 @@ pub const ColorScheme = struct {
         theme.author = "Ethan Schoonover";
         theme.background = Color.init("background", RGB.init(253, 246, 227), 230, 15);
         theme.foreground = Color.init("foreground", RGB.init(101, 123, 131), 244, 8);
-        theme.is_dark = false;
+        theme.isDark = false;
         return theme;
     }
 
@@ -314,7 +314,7 @@ pub const ColorScheme = struct {
         try writer.print("    .description = \"{s}\",\n", .{self.description});
         try writer.print("    .author = \"{s}\",\n", .{self.author});
         try writer.print("    .version = \"{s}\",\n", .{self.version});
-        try writer.print("    .is_dark = {},\n", .{self.is_dark});
+        try writer.print("    .isDark = {},\n", .{self.isDark});
 
         // Write colors
         try writer.writeAll("    .colors = .{\n");

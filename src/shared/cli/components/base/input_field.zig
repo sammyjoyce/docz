@@ -17,55 +17,55 @@ pub const InputType = enum {
 };
 
 pub const ValidationResult = struct {
-    is_valid: bool,
-    error_message: ?[]const u8 = null,
+    isValid: bool,
+    errorMessage: ?[]const u8 = null,
 };
 
 pub const InputField = struct {
     allocator: Allocator,
     caps: term_caps.TermCaps,
-    input_type: InputType,
+    inputType: InputType,
     label: []const u8,
     placeholder: []const u8,
     value: std.ArrayList(u8),
-    cursor_pos: usize,
-    max_length: ?usize,
+    cursorPosition: usize,
+    maxLength: ?usize,
     required: bool,
     validator: ?*const fn ([]const u8) ValidationResult,
-    completion_items: ?[]const completion.CompletionItem,
-    completion_engine: ?completion.CompletionEngine,
-    show_validation: bool,
-    is_focused: bool,
+    completionItems: ?[]const completion.CompletionItem,
+    completionEngine: ?completion.CompletionEngine,
+    showValidation: bool,
+    isFocused: bool,
     width: u32,
 
     pub fn init(
         allocator: Allocator,
-        input_type: InputType,
+        inputType: InputType,
         label: []const u8,
         placeholder: []const u8,
     ) !InputField {
         return .{
             .allocator = allocator,
             .caps = term_caps.getTermCaps(),
-            .input_type = input_type,
+            .inputType = inputType,
             .label = label,
             .placeholder = placeholder,
             .value = std.ArrayList(u8).init(allocator),
-            .cursor_pos = 0,
-            .max_length = null,
+            .cursorPosition = 0,
+            .maxLength = null,
             .required = false,
             .validator = null,
-            .completion_items = null,
-            .completion_engine = null,
-            .show_validation = true,
-            .is_focused = false,
+            .completionItems = null,
+            .completionEngine = null,
+            .showValidation = true,
+            .isFocused = false,
             .width = 40,
         };
     }
 
     pub fn deinit(self: *InputField) void {
         self.value.deinit();
-        if (self.completion_engine) |*engine| {
+        if (self.completionEngine) |*engine| {
             engine.deinit();
         }
     }
@@ -73,30 +73,30 @@ pub const InputField = struct {
     pub fn configure(
         self: *InputField,
         options: struct {
-            max_length: ?usize = null,
+            maxLength: ?usize = null,
             required: bool = false,
             validator: ?*const fn ([]const u8) ValidationResult = null,
             width: u32 = 40,
         },
     ) void {
-        self.max_length = options.max_length;
+        self.maxLength = options.maxLength;
         self.required = options.required;
         self.validator = options.validator;
         self.width = options.width;
     }
 
     pub fn setCompletionItems(self: *InputField, items: []const completion.CompletionItem) !void {
-        self.completion_items = items;
-        if (self.completion_engine == null) {
-            self.completion_engine = try completion.CompletionEngine.init(self.allocator);
+        self.completionItems = items;
+        if (self.completionEngine == null) {
+            self.completionEngine = try completion.CompletionEngine.init(self.allocator);
         }
-        try self.completion_engine.?.addItems(items);
+        try self.completionEngine.?.addItems(items);
     }
 
     pub fn setValue(self: *InputField, value: []const u8) !void {
         self.value.clearRetainingCapacity();
         try self.value.appendSlice(value);
-        self.cursor_pos = value.len;
+        self.cursorPosition = value.len;
     }
 
     pub fn getValue(self: InputField) []const u8 {
@@ -104,11 +104,11 @@ pub const InputField = struct {
     }
 
     pub fn focus(self: *InputField) void {
-        self.is_focused = true;
+        self.isFocused = true;
     }
 
     pub fn blur(self: *InputField) void {
-        self.is_focused = false;
+        self.isFocused = false;
     }
 
     /// Render the input field
@@ -133,7 +133,7 @@ pub const InputField = struct {
         try writer.writeAll("\n");
 
         // Input box border
-        if (self.is_focused) {
+        if (self.isFocused) {
             if (self.caps.supportsTrueColor()) {
                 try term_ansi.setForegroundRgb(writer, self.caps, 100, 149, 237);
             } else {
@@ -166,16 +166,16 @@ pub const InputField = struct {
         try term_ansi.resetStyle(writer, self.caps);
 
         // Validation message
-        if (self.show_validation and self.validator != null) {
+        if (self.showValidation and self.validator != null) {
             const validation = self.validator.?(self.value.items);
-            if (!validation.is_valid) {
+            if (!validation.isValid) {
                 try writer.writeAll("\n");
                 if (self.caps.supportsTrueColor()) {
                     try term_ansi.setForegroundRgb(writer, self.caps, 255, 100, 100);
                 } else {
                     try term_ansi.setForeground256(writer, self.caps, 9);
                 }
-                try writer.print("✗ {s}", .{validation.error_message orelse "Invalid input"});
+                try writer.print("✗ {s}", .{validation.errorMessage orelse "Invalid input"});
                 try term_ansi.resetStyle(writer, self.caps);
             } else if (self.value.items.len > 0) {
                 try writer.writeAll("\n");
@@ -193,7 +193,7 @@ pub const InputField = struct {
     }
 
     fn renderInputContent(self: *InputField, writer: anytype) !void {
-        const display_value = switch (self.input_type) {
+        const displayValue = switch (self.inputType) {
             .password => blk: {
                 // Create password mask
                 const masked = try self.allocator.alloc(u8, self.value.items.len);
@@ -205,31 +205,31 @@ pub const InputField = struct {
         };
 
         // Background for input area
-        if (self.is_focused and self.caps.supportsTrueColor()) {
+        if (self.isFocused and self.caps.supportsTrueColor()) {
             try term_ansi.setBackgroundRgb(writer, self.caps, 25, 25, 25);
         }
 
-        const content_width = self.width - 2; // Account for padding
-        var display_start: usize = 0;
+        const contentWidth = self.width - 2; // Account for padding
+        var displayStart: usize = 0;
 
         // Calculate scroll position if content is longer than display area
-        if (display_value.len > content_width) {
-            if (self.cursor_pos >= content_width) {
-                display_start = self.cursor_pos - content_width + 1;
+        if (displayValue.len > contentWidth) {
+            if (self.cursorPosition >= contentWidth) {
+                displayStart = self.cursorPosition - contentWidth + 1;
             }
         }
 
-        const display_end = @min(display_start + content_width, display_value.len);
-        const visible_text = display_value[display_start..display_end];
+        const displayEnd = @min(displayStart + contentWidth, displayValue.len);
+        const visibleText = displayValue[displayStart..displayEnd];
 
         // Text color
-        if (visible_text.len > 0) {
+        if (visibleText.len > 0) {
             if (self.caps.supportsTrueColor()) {
                 try term_ansi.setForegroundRgb(writer, self.caps, 255, 255, 255);
             } else {
                 try term_ansi.setForeground256(writer, self.caps, 15);
             }
-            try writer.writeAll(visible_text);
+            try writer.writeAll(visibleText);
         } else {
             // Show placeholder
             if (self.caps.supportsTrueColor()) {
@@ -237,15 +237,16 @@ pub const InputField = struct {
             } else {
                 try term_ansi.setForeground256(writer, self.caps, 8);
             }
-            const placeholder_len = @min(self.placeholder.len, content_width);
-            try writer.writeAll(self.placeholder[0..placeholder_len]);
-            visible_text.len = placeholder_len; // For padding calculation
+            const placeholderLength = @min(self.placeholder.len, contentWidth);
+            try writer.writeAll(self.placeholder[0..placeholderLength]);
+            // For padding calculation
         }
 
         // Cursor
-        if (self.is_focused and self.cursor_pos >= display_start and self.cursor_pos <= display_end) {
-            const cursor_offset = self.cursor_pos - display_start;
-            if (cursor_offset == visible_text.len) {
+        if (self.isFocused and self.cursorPosition >= displayStart and self.cursorPosition <= displayEnd) {
+            const cursorOffset = self.cursorPosition - displayStart;
+            const textLen = if (visibleText.len > 0) visibleText.len else @min(self.placeholder.len, contentWidth);
+            if (cursorOffset == textLen) {
                 // Cursor at end
                 if (self.caps.supportsTrueColor()) {
                     try term_ansi.setBackgroundRgb(writer, self.caps, 255, 255, 255);
@@ -260,9 +261,10 @@ pub const InputField = struct {
         }
 
         // Pad remaining space
-        const used_space = visible_text.len + if (self.is_focused and self.cursor_pos == self.value.items.len) @as(usize, 1) else @as(usize, 0);
-        const padding_needed = if (content_width > used_space) content_width - used_space else 0;
-        for (0..padding_needed) |_| {
+        const textLen = if (visibleText.len > 0) visibleText.len else @min(self.placeholder.len, contentWidth);
+        const usedSpace = textLen + if (self.isFocused and self.cursorPosition == self.value.items.len) @as(usize, 1) else @as(usize, 0);
+        const paddingNeeded = if (contentWidth > usedSpace) contentWidth - usedSpace else 0;
+        for (0..paddingNeeded) |_| {
             try writer.writeAll(" ");
         }
     }
@@ -272,17 +274,17 @@ pub const InputField = struct {
         switch (key) {
             // Backspace
             127, 8 => {
-                if (self.cursor_pos > 0) {
-                    _ = self.value.orderedRemove(self.cursor_pos - 1);
-                    self.cursor_pos -= 1;
+                if (self.cursorPosition > 0) {
+                    _ = self.value.orderedRemove(self.cursorPosition - 1);
+                    self.cursorPosition -= 1;
                 }
                 return false; // Continue editing
             },
 
             // Delete (Ctrl+D)
             4 => {
-                if (self.cursor_pos < self.value.items.len) {
-                    _ = self.value.orderedRemove(self.cursor_pos);
+                if (self.cursorPosition < self.value.items.len) {
+                    _ = self.value.orderedRemove(self.cursorPosition);
                 }
                 return false;
             },
@@ -290,8 +292,8 @@ pub const InputField = struct {
             // Left arrow (simplified - would need escape sequence parsing)
             // Ctrl+B for now
             2 => {
-                if (self.cursor_pos > 0) {
-                    self.cursor_pos -= 1;
+                if (self.cursorPosition > 0) {
+                    self.cursorPosition -= 1;
                 }
                 return false;
             },
@@ -299,21 +301,21 @@ pub const InputField = struct {
             // Right arrow (simplified - would need escape sequence parsing)
             // Ctrl+F for now
             6 => {
-                if (self.cursor_pos < self.value.items.len) {
-                    self.cursor_pos += 1;
+                if (self.cursorPosition < self.value.items.len) {
+                    self.cursorPosition += 1;
                 }
                 return false;
             },
 
             // Home - Ctrl+A
             1 => {
-                self.cursor_pos = 0;
+                self.cursorPosition = 0;
                 return false;
             },
 
             // End - Ctrl+E
             5 => {
-                self.cursor_pos = self.value.items.len;
+                self.cursorPosition = self.value.items.len;
                 return false;
             },
 
@@ -326,7 +328,7 @@ pub const InputField = struct {
 
             // Tab for completion
             9 => {
-                if (self.completion_engine) |*engine| {
+                if (self.completionEngine) |*engine| {
                     try engine.filter(self.value.items);
                     if (engine.getSelected()) |selected| {
                         try self.setValue(selected.text);
@@ -348,14 +350,14 @@ pub const InputField = struct {
             // Printable characters
             32...126 => {
                 // Check max length
-                if (self.max_length) |max_len| {
-                    if (self.value.items.len >= max_len) {
+                if (self.maxLength) |maxLength| {
+                    if (self.value.items.len >= maxLength) {
                         return false;
                     }
                 }
 
-                try self.value.insert(self.cursor_pos, key);
-                self.cursor_pos += 1;
+                try self.value.insert(self.cursorPosition, key);
+                self.cursorPosition += 1;
                 return false;
             },
 
@@ -370,11 +372,11 @@ pub const InputField = struct {
         }
 
         // Basic validation based on input type
-        return switch (self.input_type) {
+        return switch (self.inputType) {
             .email => validateEmail(self.value.items),
-            .url => validateUrl(self.value.items),
+            .url => validateURL(self.value.items),
             .number => validateNumber(self.value.items),
-            else => .{ .is_valid = true },
+            else => .{ .isValid = true },
         };
     }
 
@@ -383,40 +385,40 @@ pub const InputField = struct {
         if (self.required and self.value.items.len == 0) {
             return false;
         }
-        return self.validate().is_valid;
+        return self.validate().isValid;
     }
 };
 
 // Built-in validators
 fn validateEmail(input: []const u8) ValidationResult {
-    if (input.len == 0) return .{ .is_valid = true };
+    if (input.len == 0) return .{ .isValid = true };
 
-    const has_at = std.mem.indexOf(u8, input, "@") != null;
-    const has_dot = std.mem.lastIndexOf(u8, input, ".") != null;
+    const hasAt = std.mem.indexOf(u8, input, "@") != null;
+    const hasDot = std.mem.lastIndexOf(u8, input, ".") != null;
 
-    if (!has_at or !has_dot) {
-        return .{ .is_valid = false, .error_message = "Invalid email format" };
+    if (!hasAt or !hasDot) {
+        return .{ .isValid = false, .errorMessage = "Invalid email format" };
     }
 
-    return .{ .is_valid = true };
+    return .{ .isValid = true };
 }
 
-fn validateUrl(input: []const u8) ValidationResult {
-    if (input.len == 0) return .{ .is_valid = true };
+fn validateURL(input: []const u8) ValidationResult {
+    if (input.len == 0) return .{ .isValid = true };
 
     if (!std.mem.startsWith(u8, input, "http://") and !std.mem.startsWith(u8, input, "https://")) {
-        return .{ .is_valid = false, .error_message = "URL must start with http:// or https://" };
+        return .{ .isValid = false, .errorMessage = "URL must start with http:// or https://" };
     }
 
-    return .{ .is_valid = true };
+    return .{ .isValid = true };
 }
 
 fn validateNumber(input: []const u8) ValidationResult {
-    if (input.len == 0) return .{ .is_valid = true };
+    if (input.len == 0) return .{ .isValid = true };
 
     _ = std.fmt.parseFloat(f64, input) catch {
-        return .{ .is_valid = false, .error_message = "Must be a valid number" };
+        return .{ .isValid = false, .errorMessage = "Must be a valid number" };
     };
 
-    return .{ .is_valid = true };
+    return .{ .isValid = true };
 }

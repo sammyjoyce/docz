@@ -60,7 +60,7 @@ pub const Config = struct {
 };
 
 /// Data series for chart visualization
-pub const ChartData = struct {
+pub const Chart = struct {
     series: []Series,
     x_labels: ?[][]const u8 = null,
     y_range: ?Range = null, // Auto-calculate if null
@@ -85,7 +85,7 @@ pub const ChartData = struct {
     };
 
     /// Calculate Y-axis range from all series data
-    pub fn calculateYRange(self: ChartData) Range {
+    pub fn calculateYRange(self: Chart) Range {
         if (self.series.len == 0) {
             return Range{ .min = 0.0, .max = 1.0 };
         }
@@ -111,7 +111,7 @@ pub const ChartData = struct {
 
 /// Chart styling configuration
 pub const ChartStyle = struct {
-    background_color: Color = Color.init(255, 255, 255), // White
+    backgroundColor: Color = Color.init(255, 255, 255), // White
     text_color: Color = Color.init(0, 0, 0), // Black
     grid_color: Color = Color.init(200, 200, 200), // Light gray
     axis_color: Color = Color.init(100, 100, 100), // Dark gray

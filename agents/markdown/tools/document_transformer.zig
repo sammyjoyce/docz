@@ -13,18 +13,18 @@ pub const Error = fs.Error || template.Error || meta.Error || error{
 
 pub const Command = enum {
     // Template operations
-    create_from_template,
-    list_templates,
-    save_as_template,
-    update_template,
+    createFromTemplate,
+    listTemplates,
+    saveAsTemplate,
+    updateTemplate,
 
     // Conversion operations
-    to_html,
-    to_pdf,
-    to_docx,
-    from_html,
-    from_docx,
-    to_latex,
+    toHtml,
+    toPdf,
+    toDocx,
+    fromHtml,
+    fromDocx,
+    toLatex,
 
     pub fn fromString(str: []const u8) ?Command {
         return std.meta.stringToEnum(Command, str);
@@ -50,18 +50,18 @@ fn executeInternal(allocator: std.mem.Allocator, params: json.Value) !json.Value
 
     return switch (command) {
         // Template operations
-        .create_from_template => createFromTemplate(allocator, params_obj),
-        .list_templates => listTemplates(allocator, params_obj),
-        .save_as_template => saveAsTemplate(allocator, params_obj),
-        .update_template => updateTemplate(allocator, params_obj),
+        .createFromTemplate => createFromTemplate(allocator, params_obj),
+        .listTemplates => listTemplates(allocator, params_obj),
+        .saveAsTemplate => saveAsTemplate(allocator, params_obj),
+        .updateTemplate => updateTemplate(allocator, params_obj),
 
         // Conversion operations
-        .to_html => convertToHtml(allocator, params_obj),
-        .to_pdf => convertToPdf(allocator, params_obj),
-        .to_docx => convertToDocx(allocator, params_obj),
-        .from_html => convertFromHtml(allocator, params_obj),
-        .from_docx => convertFromDocx(allocator, params_obj),
-        .to_latex => convertToLatex(allocator, params_obj),
+        .toHtml => convertToHtml(allocator, params_obj),
+        .toPdf => convertToPdf(allocator, params_obj),
+        .toDocx => convertToDocx(allocator, params_obj),
+        .fromHtml => convertFromHtml(allocator, params_obj),
+        .fromDocx => convertFromDocx(allocator, params_obj),
+        .toLatex => convertToLatex(allocator, params_obj),
     };
 }
 
@@ -118,7 +118,7 @@ fn createFromTemplate(allocator: std.mem.Allocator, params: json.ObjectMap) !jso
     var result = json.ObjectMap.init(allocator);
     try result.put("success", json.Value{ .bool = true });
     try result.put("tool", json.Value{ .string = "document_transformer" });
-    try result.put("command", json.Value{ .string = "create_from_template" });
+    try result.put("command", json.Value{ .string = "createFromTemplate" });
     try result.put("template", json.Value{ .string = template_name });
     try result.put("output_file", json.Value{ .string = output_path });
     try result.put("rendered_size", json.Value{ .integer = @intCast(rendered.len) });
@@ -143,7 +143,7 @@ fn listTemplates(allocator: std.mem.Allocator, params: json.ObjectMap) !json.Val
     var result = json.ObjectMap.init(allocator);
     try result.put("success", json.Value{ .bool = true });
     try result.put("tool", json.Value{ .string = "document_transformer" });
-    try result.put("command", json.Value{ .string = "list_templates" });
+    try result.put("command", json.Value{ .string = "listTemplates" });
     try result.put("templates", json.Value{ .array = templates_array });
 
     return json.Value{ .object = result };
@@ -172,7 +172,7 @@ fn saveAsTemplate(allocator: std.mem.Allocator, params: json.ObjectMap) !json.Va
     var result = json.ObjectMap.init(allocator);
     try result.put("success", json.Value{ .bool = true });
     try result.put("tool", json.Value{ .string = "document_transformer" });
-    try result.put("command", json.Value{ .string = "save_as_template" });
+    try result.put("command", json.Value{ .string = "saveAsTemplate" });
     try result.put("source_file", json.Value{ .string = source_file });
     try result.put("template_path", json.Value{ .string = template_path });
 
@@ -247,7 +247,7 @@ fn convertToHtml(allocator: std.mem.Allocator, params: json.ObjectMap) !json.Val
     var result = json.ObjectMap.init(allocator);
     try result.put("success", json.Value{ .bool = true });
     try result.put("tool", json.Value{ .string = "document_transformer" });
-    try result.put("command", json.Value{ .string = "to_html" });
+    try result.put("command", json.Value{ .string = "toHtml" });
     try result.put("input_file", json.Value{ .string = input_path });
     try result.put("output_file", json.Value{ .string = output_path });
     try result.put("output_size", json.Value{ .integer = @intCast(html_content.items.len) });
@@ -264,7 +264,7 @@ fn convertToPdf(allocator: std.mem.Allocator, params: json.ObjectMap) !json.Valu
     var result = json.ObjectMap.init(allocator);
     try result.put("success", json.Value{ .bool = false });
     try result.put("tool", json.Value{ .string = "document_transformer" });
-    try result.put("command", json.Value{ .string = "to_pdf" });
+    try result.put("command", json.Value{ .string = "toPdf" });
     try result.put("input_file", json.Value{ .string = input_path });
     try result.put("output_file", json.Value{ .string = output_path });
     try result.put("message", json.Value{ .string = "PDF conversion requires external tools (pandoc, wkhtmltopdf, etc.)" });

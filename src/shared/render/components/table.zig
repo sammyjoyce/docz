@@ -97,7 +97,7 @@ pub fn renderTable(renderer: *AdaptiveRenderer, table: Table) !void {
     const key = cacheKey("table_{d}_{d}_{?s}", .{ table.headers.len, table.rows.len, table.title });
 
     if (renderer.cache.get(key, renderer.render_mode)) |cached| {
-        try renderer.unified_terminal.writeText(cached);
+        try renderer.terminal.writeText(cached);
         return;
     }
 
@@ -115,7 +115,7 @@ pub fn renderTable(renderer: *AdaptiveRenderer, table: Table) !void {
     defer renderer.allocator.free(content);
 
     try renderer.cache.put(key, content, renderer.render_mode);
-    try renderer.unified_terminal.writeText(content);
+    try renderer.terminal.writeText(content);
 }
 
 /// Enhanced rendering with box drawing and colors

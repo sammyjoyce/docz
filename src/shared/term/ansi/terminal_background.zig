@@ -171,10 +171,10 @@ pub const OSC = struct {
     }
 
     /// Request terminal foreground color (OSC 10)
-    pub const request_foreground_color = "\x1b]10;?\x07";
+    pub const REQUEST_FOREGROUND_COLOR = "\x1b]10;?\x07";
 
     /// Reset terminal foreground color (OSC 110)
-    pub const reset_foreground_color = "\x1b]110\x07";
+    pub const RESET_FOREGROUND_COLOR = "\x1b]110\x07";
 
     /// Set terminal background color (OSC 11)
     pub fn setBackgroundColor(allocator: std.mem.Allocator, color_str: []const u8) ![]u8 {
@@ -182,10 +182,10 @@ pub const OSC = struct {
     }
 
     /// Request terminal background color (OSC 11)
-    pub const request_background_color = "\x1b]11;?\x07";
+    pub const REQUEST_BACKGROUND_COLOR = "\x1b]11;?\x07";
 
     /// Reset terminal background color (OSC 111)
-    pub const reset_background_color = "\x1b]111\x07";
+    pub const RESET_BACKGROUND_COLOR = "\x1b]111\x07";
 
     /// Set terminal cursor color (OSC 12)
     pub fn setCursorColor(allocator: std.mem.Allocator, color_str: []const u8) ![]u8 {
@@ -193,10 +193,10 @@ pub const OSC = struct {
     }
 
     /// Request terminal cursor color (OSC 12)
-    pub const request_cursor_color = "\x1b]12;?\x07";
+    pub const REQUEST_CURSOR_COLOR = "\x1b]12;?\x07";
 
     /// Reset terminal cursor color (OSC 112)
-    pub const reset_cursor_color = "\x1b]112\x07";
+    pub const RESET_CURSOR_COLOR = "\x1b]112\x07";
 };
 
 /// Background color detection and analysis utilities
@@ -308,13 +308,13 @@ pub const BackgroundDetection = struct {
 };
 
 /// Advanced terminal background manager with detection capabilities
-pub const BackgroundManager = struct {
+pub const Background = struct {
     allocator: std.mem.Allocator,
     detected_bg: ?Color,
     detected_fg: ?Color,
 
-    pub fn init(allocator: std.mem.Allocator) BackgroundManager {
-        return BackgroundManager{
+    pub fn init(allocator: std.mem.Allocator) Background {
+        return Background{
             .allocator = allocator,
             .detected_bg = null,
             .detected_fg = null,
@@ -323,19 +323,19 @@ pub const BackgroundManager = struct {
 
     /// Query terminal for current background color
     /// Note: This requires reading the response from terminal input
-    pub fn queryBackgroundColor(_: *BackgroundManager, writer: anytype) !void {
-        try writer.writeAll(OSC.request_background_color);
+    pub fn queryBackgroundColor(_: *Background, writer: anytype) !void {
+        try writer.writeAll(OSC.REQUEST_BACKGROUND_COLOR);
         try writer.flush();
     }
 
     /// Query terminal for current foreground color
-    pub fn queryForegroundColor(_: *BackgroundManager, writer: anytype) !void {
-        try writer.writeAll(OSC.request_foreground_color);
+    pub fn queryForegroundColor(_: *Background, writer: anytype) !void {
+        try writer.writeAll(OSC.REQUEST_FOREGROUND_COLOR);
         try writer.flush();
     }
 
     /// Process color response from terminal
-    pub fn processColorResponse(self: *BackgroundManager, response: []const u8) !void {
+    pub fn processColorResponse(self: *Background, response: []const u8) !void {
         const color = try BackgroundDetection.parseColorResponse(response);
 
         // Determine if this is background or foreground based on OSC code
@@ -349,17 +349,17 @@ pub const BackgroundManager = struct {
     }
 
     /// Get detected background color
-    pub fn getBackground(self: BackgroundManager) ?Color {
+    pub fn getBackground(self: Background) ?Color {
         return self.detected_bg;
     }
 
     /// Get detected foreground color
-    pub fn getForeground(self: BackgroundManager) ?Color {
+    pub fn getForeground(self: Background) ?Color {
         return self.detected_fg;
     }
 
     /// Check if terminal has dark theme
-    pub fn hasDarkTheme(self: BackgroundManager) ?bool {
+    pub fn hasDarkTheme(self: Background) ?bool {
         if (self.detected_bg) |bg| {
             return BackgroundDetection.isDark(bg);
         }
@@ -367,7 +367,7 @@ pub const BackgroundManager = struct {
     }
 
     /// Get optimal text color for current background
-    pub fn getOptimalTextColor(self: BackgroundManager) ?Color {
+    pub fn getOptimalTextColor(self: Background) ?Color {
         if (self.detected_bg) |bg| {
             return BackgroundDetection.suggestForegroundColor(bg);
         }
@@ -375,7 +375,7 @@ pub const BackgroundManager = struct {
     }
 
     /// Check contrast between detected colors
-    pub fn checkContrast(self: BackgroundManager, level: BackgroundDetection.WCAGLevel) ?bool {
+    pub fn checkContrast(self: Background, level: BackgroundDetection.WCAGLevel) ?bool {
         if (self.detected_fg) |fg| {
             if (self.detected_bg) |bg| {
                 return BackgroundDetection.meetsWCAGContrast(fg, bg, level);
@@ -385,7 +385,7 @@ pub const BackgroundManager = struct {
     }
 
     /// Adaptive color scheme based on detected background
-    pub fn getAdaptiveColors(self: BackgroundManager) AdaptiveColorScheme {
+    pub fn getAdaptiveColors(self: Background) AdaptiveColorScheme {
         if (self.detected_bg) |bg| {
             const is_dark = BackgroundDetection.isDark(bg);
             if (is_dark) {
@@ -500,27 +500,27 @@ pub const TerminalColorWriter = struct {
 
     /// Request foreground color from terminal
     pub fn requestForeground(self: TerminalColorWriter) !void {
-        try self.writer.write(OSC.request_foreground_color);
+        try self.writer.write(OSC.REQUEST_FOREGROUND_COLOR);
         try self.writer.flush();
     }
 
     /// Request background color from terminal
     pub fn requestBackground(self: TerminalColorWriter) !void {
-        try self.writer.write(OSC.request_background_color);
+        try self.writer.write(OSC.REQUEST_BACKGROUND_COLOR);
         try self.writer.flush();
     }
 
     /// Request cursor color from terminal
     pub fn requestCursor(self: TerminalColorWriter) !void {
-        try self.writer.write(OSC.request_cursor_color);
+        try self.writer.write(OSC.REQUEST_CURSOR_COLOR);
         try self.writer.flush();
     }
 
     /// Reset all colors to defaults
     pub fn resetAll(self: TerminalColorWriter) !void {
-        try self.writer.write(OSC.reset_foreground_color);
-        try self.writer.write(OSC.reset_background_color);
-        try self.writer.write(OSC.reset_cursor_color);
+        try self.writer.write(OSC.RESET_FOREGROUND_COLOR);
+        try self.writer.write(OSC.RESET_BACKGROUND_COLOR);
+        try self.writer.write(OSC.RESET_CURSOR_COLOR);
         try self.writer.flush();
     }
 };
@@ -686,7 +686,7 @@ test "background manager functionality" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    var manager = BackgroundManager.init(allocator);
+    var manager = Background.init(allocator);
 
     // Initially no colors detected
     try testing.expect(manager.getBackground() == null);
@@ -709,7 +709,7 @@ test "adaptive color scheme generation" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    var manager = BackgroundManager.init(allocator);
+    var manager = Background.init(allocator);
 
     // Test with dark background
     const dark_bg_response = "\x1b]11;#1a1a1a\x07";

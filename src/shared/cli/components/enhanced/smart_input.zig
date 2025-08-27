@@ -459,7 +459,7 @@ pub const SmartInput = struct {
         return switch (self.config.input_type) {
             .text => .valid,
             .email => self.validateEmail(input_text),
-            .url => self.validateUrl(input_text),
+            .url => self.validateURL(input_text),
             .number => self.validateNumber(input_text),
             .password => self.validatePassword(input_text),
             .path => self.validatePath(input_text),
@@ -483,7 +483,7 @@ pub const SmartInput = struct {
     }
 
     /// Validate URL format
-    fn validateUrl(self: *Self, url: []const u8) ValidationResult {
+    fn validateURL(self: *Self, url: []const u8) ValidationResult {
         _ = self;
 
         if (!std.mem.startsWith(u8, url, "http://") and !std.mem.startsWith(u8, url, "https://")) {

@@ -57,9 +57,9 @@ pub const RenderMode = AdaptiveRenderer.RenderMode;
 pub const QualityTiers = @import("quality_tiers.zig").QualityTiers;
 
 // Component modules
-const progress_bar_mod = @import("components/progress_bar.zig");
-const table_mod = @import("components/table.zig");
-const chart_mod = @import("components/chart.zig");
+const progress_bar_mod = @import("components/ProgressBar.zig");
+const table_mod = @import("components/Table.zig");
+const chart_mod = @import("components/Chart.zig");
 
 // Component exports
 pub const Progress = progress_bar_mod.Progress;
@@ -71,6 +71,18 @@ pub const renderTable = table_mod.renderTable;
 
 pub const Chart = chart_mod.Chart;
 pub const renderChart = chart_mod.renderChart;
+
+// Markdown and syntax highlighting modules
+pub const markdown_renderer = @import("markdown_renderer.zig");
+pub const syntax_highlighter = @import("syntax_highlighter.zig");
+
+// Markdown rendering exports
+pub const MarkdownRenderer = markdown_renderer.MarkdownRenderer;
+pub const MarkdownOptions = markdown_renderer.MarkdownOptions;
+pub const renderMarkdown = markdown_renderer.renderMarkdown;
+
+// Syntax highlighting exports
+pub const highlightCode = syntax_highlighter.highlightCode;
 
 // Demo and utilities
 pub const runDemo = @import("adaptive_demo.zig").runDemo;
@@ -128,7 +140,7 @@ pub const EnhancedRenderer = struct {
         return chart_mod.renderChart(self.renderer, chart_data);
     }
 
-    pub fn getRenderingInfo(self: *EnhancedRenderer) AdaptiveRenderer.RenderingInfo {
+    pub fn getRenderingInfo(self: *EnhancedRenderer) AdaptiveRenderer.Rendering {
         return self.renderer.getRenderingInfo();
     }
 
@@ -150,7 +162,7 @@ pub const EnhancedRenderer = struct {
     };
 
     /// Render a data dashboard with table and charts
-    pub fn renderDataDashboard(self: *EnhancedRenderer, dashboard: DataDashboard) !void {
+    pub fn renderDataDashboard(self: *EnhancedRenderer, dashboard: Dashboard) !void {
         try self.renderer.beginSynchronized();
         defer self.renderer.endSynchronized() catch {};
 
@@ -175,7 +187,7 @@ pub const EnhancedRenderer = struct {
         try self.flush();
     }
 
-    pub const DataDashboard = struct {
+    pub const Dashboard = struct {
         title: ?[]const u8 = null,
         table: ?Table = null,
         charts: []const Chart = &[_]Chart{},
@@ -218,7 +230,7 @@ test "adaptive rendering system" {
     try enhanced.renderTable(table);
 
     const data = [_]f64{ 1.0, 2.0 };
-    const series = Chart.DataSeries{ .name = "Test", .data = &data };
-    const chart = Chart{ .data_series = &[_]Chart.DataSeries{series} };
+    const series = Chart.Series{ .name = "Test", .data = &data };
+    const chart = Chart{ .data_series = &[_]Chart.Series{series} };
     try enhanced.renderChart(chart);
 }

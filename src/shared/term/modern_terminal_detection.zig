@@ -11,6 +11,7 @@ pub const TerminalType = enum {
     gnome_terminal,
     konsole,
     iterm2,
+    ghostty,
     kitty,
     alacritty,
     wezterm,
@@ -31,6 +32,7 @@ pub const TerminalType = enum {
             .gnome_terminal => "gnome-terminal",
             .konsole => "konsole",
             .iterm2 => "iterm2",
+            .ghostty => "ghostty",
             .kitty => "kitty",
             .alacritty => "alacritty",
             .wezterm => "wezterm",
@@ -101,6 +103,7 @@ pub const TerminalCapabilities = struct {
     kitty_version: ?[]const u8 = null,
     iterm2_version: ?[]const u8 = null,
     wezterm_version: ?[]const u8 = null,
+    ghostty_version: ?[]const u8 = null,
 };
 
 /// Environment variable patterns for terminal detection
@@ -112,6 +115,8 @@ const TerminalPattern = struct {
 
 const TERMINAL_PATTERNS = [_]TerminalPattern{
     .{ .env_var = "TERM_PROGRAM", .pattern = "iTerm.app", .terminal_type = .iterm2 },
+    .{ .env_var = "GHOSTTY_RESOURCES_DIR", .pattern = "", .terminal_type = .ghostty },
+    .{ .env_var = "TERM_PROGRAM", .pattern = "Ghostty", .terminal_type = .ghostty },
     .{ .env_var = "TERM_PROGRAM", .pattern = "vscode", .terminal_type = .vscode },
     .{ .env_var = "TERM_PROGRAM", .pattern = "Hyper", .terminal_type = .hyper },
     .{ .env_var = "TERM_PROGRAM", .pattern = "WezTerm", .terminal_type = .wezterm },
@@ -128,6 +133,7 @@ const TERMINAL_PATTERNS = [_]TerminalPattern{
 const TERM_PATTERNS = [_]TerminalPattern{
     .{ .env_var = "TERM", .pattern = "xterm-256color", .terminal_type = .xterm_256color },
     .{ .env_var = "TERM", .pattern = "xterm-kitty", .terminal_type = .kitty },
+    .{ .env_var = "TERM", .pattern = "xterm-ghostty", .terminal_type = .ghostty },
     .{ .env_var = "TERM", .pattern = "alacritty", .terminal_type = .alacritty },
     .{ .env_var = "TERM", .pattern = "tmux", .terminal_type = .tmux },
     .{ .env_var = "TERM", .pattern = "screen", .terminal_type = .screen },
@@ -270,6 +276,32 @@ fn setCoreCapabilities(caps: *TerminalCapabilities) void {
             caps.supports_mouse_sgr = true;
             caps.supports_alt_screen = true;
             caps.supports_images = true;
+            caps.supports_iterm2_images = true;
+            caps.supports_unicode = true;
+            caps.supports_bce = true;
+        },
+        .ghostty => {
+            caps.supports_24bit_color = true;
+            caps.supports_256_color = true;
+            caps.supports_italic = true;
+            caps.supports_strikethrough = true;
+            caps.supports_underline_styles = true;
+            caps.supports_hyperlinks = true;
+            caps.supports_cursor_shapes = true;
+            caps.supports_cursor_colors = true;
+            caps.supports_window_title = true;
+            caps.supports_resize_events = true;
+            caps.supports_focus_events = true;
+            caps.supports_bracketed_paste = true;
+            caps.supports_synchronized_output = true;
+            caps.supports_mouse = true;
+            caps.supports_mouse_sgr = true;
+            caps.supports_mouse_pixels = true;
+            caps.supports_kitty_keyboard = true;
+            caps.supports_alt_screen = true;
+            caps.supports_images = true;
+            caps.supports_sixel = true;
+            caps.supports_kitty_graphics = true;
             caps.supports_iterm2_images = true;
             caps.supports_unicode = true;
             caps.supports_bce = true;
@@ -420,6 +452,15 @@ fn detectSpecialFeatures(caps: *TerminalCapabilities, allocator: std.mem.Allocat
         defer std.heap.page_allocator.free(version);
         // Version info would be stored here
     } else |_| {}
+
+    // Check for Ghostty version information
+    if (caps.terminal_type == .ghostty) {
+        if (std.process.getEnvVarOwned(std.heap.page_allocator, "GHOSTTY_VERSION")) |version| {
+            defer std.heap.page_allocator.free(version);
+            // In a real implementation, we'd store this properly with the passed allocator
+            // caps.ghostty_version would be set here with proper allocation
+        } else |_| {}
+    }
 
     // Force enable certain features in SSH sessions
     if (std.process.getEnvVarOwned(std.heap.page_allocator, "SSH_CONNECTION")) |_| {

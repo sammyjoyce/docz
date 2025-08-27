@@ -63,7 +63,7 @@ pub const BasicColor = enum(u8) {
 };
 
 /// ANSI 256-color palette definition
-const ansi_palette = blk: {
+const ANSI_PALETTE = blk: {
     var palette: [256]PaletteRGB = undefined;
     for (0..256) |i| {
         palette[i] = getPaletteColor(@as(u8, @intCast(i)));
@@ -76,7 +76,7 @@ pub const IndexedColor = enum(u8) {
     _,
 
     pub fn rgba(self: IndexedColor) RGBA {
-        const color_rgb = ansi_palette[@intFromEnum(self)];
+        const color_rgb = ANSI_PALETTE[@intFromEnum(self)];
         return toRgba(color_rgb.r, color_rgb.g, color_rgb.b);
     }
 };
@@ -241,7 +241,7 @@ pub fn convert256(color: Color) IndexedColor {
 pub fn convert16(color: Color) BasicColor {
     return switch (color) {
         .basic => |c| c,
-        .indexed => |c| ansi256To16[@intFromEnum(c)],
+        .indexed => |c| ANSI256_TO_16[@intFromEnum(c)],
         .rgb => |rgb_val| convert16(Color{ .indexed = findNearest256(rgb_val) }),
     };
 }
@@ -304,24 +304,24 @@ fn to6Cube(v: f64) usize {
 }
 
 /// Named colors for convenience
-pub const named_colors = struct {
-    pub const black = Color{ .basic = .black };
-    pub const red = Color{ .basic = .red };
-    pub const green = Color{ .basic = .green };
-    pub const yellow = Color{ .basic = .yellow };
-    pub const blue = Color{ .basic = .blue };
-    pub const magenta = Color{ .basic = .magenta };
-    pub const cyan = Color{ .basic = .cyan };
-    pub const white = Color{ .basic = .white };
+pub const NamedColors = struct {
+    pub const BLACK = Color{ .basic = .black };
+    pub const RED = Color{ .basic = .red };
+    pub const GREEN = Color{ .basic = .green };
+    pub const YELLOW = Color{ .basic = .yellow };
+    pub const BLUE = Color{ .basic = .blue };
+    pub const MAGENTA = Color{ .basic = .magenta };
+    pub const CYAN = Color{ .basic = .cyan };
+    pub const WHITE = Color{ .basic = .white };
 
-    pub const bright_black = Color{ .basic = .bright_black };
-    pub const bright_red = Color{ .basic = .bright_red };
-    pub const bright_green = Color{ .basic = .bright_green };
-    pub const bright_yellow = Color{ .basic = .bright_yellow };
-    pub const bright_blue = Color{ .basic = .bright_blue };
-    pub const bright_magenta = Color{ .basic = .bright_magenta };
-    pub const bright_cyan = Color{ .basic = .bright_cyan };
-    pub const bright_white = Color{ .basic = .bright_white };
+    pub const BRIGHT_BLACK = Color{ .basic = .bright_black };
+    pub const BRIGHT_RED = Color{ .basic = .bright_red };
+    pub const BRIGHT_GREEN = Color{ .basic = .bright_green };
+    pub const BRIGHT_YELLOW = Color{ .basic = .bright_yellow };
+    pub const BRIGHT_BLUE = Color{ .basic = .bright_blue };
+    pub const BRIGHT_MAGENTA = Color{ .basic = .bright_magenta };
+    pub const BRIGHT_CYAN = Color{ .basic = .bright_cyan };
+    pub const BRIGHT_WHITE = Color{ .basic = .bright_white };
 };
 
 /// Create RGB color from components
@@ -506,7 +506,7 @@ fn getPaletteColor(index: u8) PaletteRGB {
 
 /// Mapping from 256-color palette to 16-color palette
 /// Based on standard ANSI color mapping algorithms
-const ansi256To16 = [_]BasicColor{
+const ANSI256_TO_16 = [_]BasicColor{
     .black, .black, .black, .black, .black, .black, .black, .black, // 0-7
     .black, .red, .red, .red, .red, .red, .red, .red, .red, // 8-15
     .black, .black, .black, .black, .blue, .blue, .blue, .blue, // 16-23

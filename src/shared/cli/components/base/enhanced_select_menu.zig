@@ -12,7 +12,7 @@ const term_caps = term_shared.caps;
 const graphics_manager = term_shared.graphics_manager;
 const hyperlinks = @import("../../utils/hyperlinks.zig");
 
-const InputManager = input_manager.InputManager;
+const Input = input_manager.Input;
 const InputEvent = input_manager.InputEvent;
 const Key = input_manager.Key;
 const MouseEvent = input_manager.MouseEvent;
@@ -104,7 +104,7 @@ pub const SelectMenuItem = struct {
 /// Enhanced Select Menu with mouse support and rich terminal features
 pub const EnhancedSelectMenu = struct {
     allocator: Allocator,
-    input_manager: *InputManager,
+    inputManager: *Input,
     caps: term_caps.TermCaps,
     graphics: ?*GraphicsManager,
 
@@ -135,7 +135,7 @@ pub const EnhancedSelectMenu = struct {
 
     pub fn init(
         allocator: Allocator,
-        input_mgr: *InputManager,
+        input_mgr: *Input,
         title: []const u8,
         selection_mode: SelectionMode,
     ) !EnhancedSelectMenu {

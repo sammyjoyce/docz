@@ -97,7 +97,7 @@ pub const StatusBar = struct {
 
         pub const Style = struct {
             color: ?terminal_mod.Color = null,
-            background_color: ?terminal_mod.Color = null,
+            backgroundColor: ?terminal_mod.Color = null,
             bold: bool = false,
             italic: bool = false,
             blink: bool = false,
@@ -375,11 +375,11 @@ pub const StatusBar = struct {
         var style = renderer_mod.Style{};
 
         if (item.style.color) |color| {
-            style.foreground_color = color;
+            style.foregroundColor = color;
         }
 
-        if (item.style.background_color) |bg| {
-            style.background_color = bg;
+        if (item.style.backgroundColor) |bg| {
+            style.backgroundColor = bg;
         }
 
         style.bold = item.style.bold;
@@ -416,10 +416,10 @@ pub const StatusBar = struct {
 
         // Apply notification styling based on level
         const style = switch (notification.level) {
-            .info => renderer_mod.Style{ .foreground_color = terminal_mod.Color.blue },
-            .warning => renderer_mod.Style{ .foreground_color = terminal_mod.Color.yellow },
-            .err => renderer_mod.Style{ .foreground_color = terminal_mod.Color.red, .bold = true },
-            .success => renderer_mod.Style{ .foreground_color = terminal_mod.Color.green },
+            .info => renderer_mod.Style{ .foregroundColor = terminal_mod.Color.blue },
+            .warning => renderer_mod.Style{ .foregroundColor = terminal_mod.Color.yellow },
+            .err => renderer_mod.Style{ .foregroundColor = terminal_mod.Color.red, .bold = true },
+            .success => renderer_mod.Style{ .foregroundColor = terminal_mod.Color.green },
         };
 
         try renderer.setStyleEx(style);

@@ -37,7 +37,7 @@ src/cli/
 │   │   └── notification_display.zig
 │   └── base/               # Basic components (moved)
 ├── workflows/              # Enhanced workflow system
-│   └── registry.zig        # Workflow management
+│   └── WorkflowRegistry.zig        # Workflow management
 └── main.zig               # Single entry point
 ```
 

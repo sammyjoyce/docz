@@ -27,25 +27,25 @@ pub const StandardAgentInterface = struct {
 };
 
 pub const Capabilities = struct {
-    supports_streaming: bool = false,
-    supports_tools: bool = true,
-    supports_file_operations: bool = false,
-    supports_network_access: bool = false,
-    max_context_length: u32 = 4096,
-    preferred_model: []const u8 = "claude-3-sonnet-20240229",
+    supportsStreaming: bool = false,
+    supportsTools: bool = true,
+    supportsFileOperations: bool = false,
+    supportsNetworkAccess: bool = false,
+    maxContextLength: u32 = 4096,
+    preferredModel: []const u8 = "claude-3-sonnet-20240229",
 };
 
 pub const Status = struct {
-    is_ready: bool,
-    messages_processed: u64,
-    errors_encountered: u64,
-    uptime_seconds: u64,
-    custom_metrics: ?std.json.Value = null,
+    isReady: bool,
+    messagesProcessed: u64,
+    errorsEncountered: u64,
+    uptimeSeconds: u64,
+    customMetrics: ?std.json.Value = null,
 };
 
 /// Helper to create a StandardAgentInterface from a concrete type
 pub fn createStandardInterface(comptime T: type) StandardAgentInterface {
-    const gen = struct {
+    const Gen = struct {
         fn init(ptr: *anyopaque, allocator: std.mem.Allocator, config: config_mod.AgentConfig) anyerror!void {
             const self: *T = @ptrCast(@alignCast(ptr));
             return self.init(allocator, config);
@@ -101,10 +101,10 @@ pub fn createStandardInterface(comptime T: type) StandardAgentInterface {
 
         fn getStatus(ptr: *anyopaque, allocator: std.mem.Allocator) anyerror!Status {
             if (!@hasDecl(T, "getStatus")) return Status{
-                .is_ready = true,
-                .messages_processed = 0,
-                .errors_encountered = 0,
-                .uptime_seconds = 0,
+                .isReady = true,
+                .messagesProcessed = 0,
+                .errorsEncountered = 0,
+                .uptimeSeconds = 0,
             };
             const self: *T = @ptrCast(@alignCast(ptr));
             return self.getStatus(allocator);
@@ -112,16 +112,16 @@ pub fn createStandardInterface(comptime T: type) StandardAgentInterface {
     };
 
     return StandardAgentInterface{
-        .init = gen.init,
-        .processMessage = gen.processMessage,
-        .deinit = gen.deinit,
-        .getSystemPrompt = gen.getSystemPrompt,
-        .validateConfig = gen.validateConfig,
-        .registerTools = gen.registerTools,
-        .getCapabilities = gen.getCapabilities,
-        .beforeProcess = if (@hasDecl(T, "beforeProcess")) gen.beforeProcess else null,
-        .afterProcess = if (@hasDecl(T, "afterProcess")) gen.afterProcess else null,
-        .onError = if (@hasDecl(T, "onError")) gen.onError else null,
-        .getStatus = if (@hasDecl(T, "getStatus")) gen.getStatus else null,
+        .init = Gen.init,
+        .processMessage = Gen.processMessage,
+        .deinit = Gen.deinit,
+        .getSystemPrompt = Gen.getSystemPrompt,
+        .validateConfig = Gen.validateConfig,
+        .registerTools = Gen.registerTools,
+        .getCapabilities = Gen.getCapabilities,
+        .beforeProcess = if (@hasDecl(T, "beforeProcess")) Gen.beforeProcess else null,
+        .afterProcess = if (@hasDecl(T, "afterProcess")) Gen.afterProcess else null,
+        .onError = if (@hasDecl(T, "onError")) Gen.onError else null,
+        .getStatus = if (@hasDecl(T, "getStatus")) Gen.getStatus else null,
     };
 }

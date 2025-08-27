@@ -13,19 +13,19 @@ const Cell = base.Cell;
 const ClipboardFormat = selection.ClipboardFormat;
 
 /// Clipboard manager for table operations
-pub const ClipboardManager = struct {
+pub const Clipboard = struct {
     allocator: std.mem.Allocator,
     terminal_caps: terminal_mod.TermCaps,
     last_copied_data: ?[]u8 = null,
 
-    pub fn init(allocator: std.mem.Allocator, caps: terminal_mod.TermCaps) ClipboardManager {
-        return ClipboardManager{
+    pub fn init(allocator: std.mem.Allocator, caps: terminal_mod.TermCaps) Clipboard {
+        return Clipboard{
             .allocator = allocator,
             .terminal_caps = caps,
         };
     }
 
-    pub fn deinit(self: *ClipboardManager) void {
+    pub fn deinit(self: *Clipboard) void {
         if (self.last_copied_data) |data| {
             self.allocator.free(data);
         }
@@ -33,7 +33,7 @@ pub const ClipboardManager = struct {
 
     /// Copy selected table data to clipboard with format detection
     pub fn copySelection(
-        self: *ClipboardManager,
+        self: *Clipboard,
         selected: Selection,
         headers: [][]const u8,
         rows: [][]Cell,
@@ -60,7 +60,7 @@ pub const ClipboardManager = struct {
     }
 
     /// Copy raw text to clipboard
-    pub fn copyText(self: *ClipboardManager, text: []const u8) !void {
+    pub fn copyText(self: *Clipboard, text: []const u8) !void {
         if (self.terminal_caps.supportsClipboardOsc52) {
             try self.copyToSystemClipboard(text);
         } else {
@@ -70,7 +70,7 @@ pub const ClipboardManager = struct {
 
     /// Copy multiple formats at once (advanced clipboard managers support this)
     pub fn copyMultiFormat(
-        self: *ClipboardManager,
+        self: *Clipboard,
         selected: Selection,
         headers: [][]const u8,
         rows: [][]Cell,
@@ -99,9 +99,9 @@ pub const ClipboardManager = struct {
     }
 
     /// Get information about the last copied data
-    pub fn getLastCopiedInfo(self: ClipboardManager) ?CopiedDataInfo {
+    pub fn getLastCopiedInfo(self: Clipboard) ?Copied {
         if (self.last_copied_data) |data| {
-            return CopiedDataInfo{
+            return Copied{
                 .size = data.len,
                 .preview = if (data.len > 50) data[0..50] else data,
                 .has_newlines = std.mem.containsAtLeast(u8, data, 1, "\n"),
@@ -111,7 +111,7 @@ pub const ClipboardManager = struct {
     }
 
     /// Copy data to system clipboard using OSC 52
-    fn copyToSystemClipboard(self: *ClipboardManager, data: []const u8) !void {
+    fn copyToSystemClipboard(self: *Clipboard, data: []const u8) !void {
         _ = self;
 
         // Use the clipboard ANSI module for OSC 52 support
@@ -121,7 +121,7 @@ pub const ClipboardManager = struct {
     }
 
     /// Show fallback copy instructions when clipboard is not available
-    fn showCopyFallback(self: *ClipboardManager, data: []const u8, format: ClipboardFormat) !void {
+    fn showCopyFallback(self: *Clipboard, data: []const u8, format: ClipboardFormat) !void {
         _ = self;
 
         var stdout_buffer: [4096]u8 = undefined;
@@ -150,12 +150,12 @@ pub const ClipboardManager = struct {
 };
 
 /// Information about copied data
-pub const CopiedDataInfo = struct {
+pub const Copied = struct {
     size: usize,
     preview: []const u8,
     has_newlines: bool,
 
-    pub fn getSizeDescription(self: CopiedDataInfo) []const u8 {
+    pub fn getSizeDescription(self: Copied) []const u8 {
         if (self.size < 100) {
             return "small";
         } else if (self.size < 1000) {
@@ -165,7 +165,7 @@ pub const CopiedDataInfo = struct {
         }
     }
 
-    pub fn getTypeDescription(self: CopiedDataInfo) []const u8 {
+    pub fn getTypeDescription(self: Copied) []const u8 {
         if (self.has_newlines) {
             return "multi-line";
         } else {

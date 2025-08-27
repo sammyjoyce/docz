@@ -5,8 +5,7 @@
 //! progressive enhancement.
 
 const std = @import("std");
-const term_mod = @import("../../term/mod.zig");
-const term_caps = term_mod.caps;
+const term_caps = @import("term_shared").caps;
 const bounds_mod = @import("bounds.zig");
 
 pub const Point = bounds_mod.Point;
@@ -77,33 +76,33 @@ pub const BoxStyle = struct {
 };
 
 /// Context for rendering operations
-pub const RenderContext = struct {
+pub const Render = struct {
     bounds: Bounds,
     style: Style = .{},
-    z_index: i32 = 0,
+    zIndex: i32 = 0,
     clip_region: ?Bounds = null,
 
     /// Create a context clipped to a smaller region
-    pub fn clipped(self: RenderContext, clip_bounds: Bounds) RenderContext {
+    pub fn clipped(self: Render, clip_bounds: Bounds) Render {
         const intersection = if (self.clip_region) |existing|
             existing.intersection(clip_bounds)
         else
             clip_bounds;
 
-        return RenderContext{
+        return Render{
             .bounds = self.bounds.intersection(intersection),
             .style = self.style,
-            .z_index = self.z_index,
+            .zIndex = self.zIndex,
             .clip_region = intersection,
         };
     }
 
     /// Offset the context by a certain amount
-    pub fn offset(self: RenderContext, dx: i32, dy: i32) RenderContext {
-        return RenderContext{
+    pub fn offset(self: Render, dx: i32, dy: i32) Render {
+        return Render{
             .bounds = self.bounds.offset(dx, dy),
             .style = self.style,
-            .z_index = self.z_index,
+            .zIndex = self.zIndex,
             .clip_region = if (self.clip_region) |clip| clip.offset(dx, dy) else null,
         };
     }
@@ -124,16 +123,16 @@ pub const Renderer = struct {
         clear: *const fn (impl: *anyopaque, bounds: Bounds) anyerror!void,
 
         // Text rendering
-        draw_text: *const fn (impl: *anyopaque, ctx: RenderContext, text: []const u8) anyerror!void,
+        draw_text: *const fn (impl: *anyopaque, ctx: Render, text: []const u8) anyerror!void,
         measure_text: *const fn (impl: *anyopaque, text: []const u8, style: Style) anyerror!Point,
 
         // Shape rendering
-        draw_box: *const fn (impl: *anyopaque, ctx: RenderContext, box_style: BoxStyle) anyerror!void,
-        draw_line: *const fn (impl: *anyopaque, ctx: RenderContext, from: Point, to: Point) anyerror!void,
-        fill_rect: *const fn (impl: *anyopaque, ctx: RenderContext, color: Style.Color) anyerror!void,
+        draw_box: *const fn (impl: *anyopaque, ctx: Render, box_style: BoxStyle) anyerror!void,
+        draw_line: *const fn (impl: *anyopaque, ctx: Render, from: Point, to: Point) anyerror!void,
+        fill_rect: *const fn (impl: *anyopaque, ctx: Render, color: Style.Color) anyerror!void,
 
         // Advanced features (may be no-ops on basic terminals)
-        draw_image: *const fn (impl: *anyopaque, ctx: RenderContext, image: Image) anyerror!void,
+        draw_image: *const fn (impl: *anyopaque, ctx: Render, image: Image) anyerror!void,
         set_hyperlink: *const fn (impl: *anyopaque, url: []const u8) anyerror!void,
         clear_hyperlink: *const fn (impl: *anyopaque) anyerror!void,
         copy_to_clipboard: *const fn (impl: *anyopaque, text: []const u8) anyerror!void,
@@ -164,7 +163,7 @@ pub const Renderer = struct {
         return self.vtable.clear(self.impl, bounds);
     }
 
-    pub inline fn drawText(self: *Self, ctx: RenderContext, text: []const u8) !void {
+    pub inline fn drawText(self: *Self, ctx: Render, text: []const u8) !void {
         return self.vtable.draw_text(self.impl, ctx, text);
     }
 
@@ -172,19 +171,19 @@ pub const Renderer = struct {
         return self.vtable.measure_text(self.impl, text, style);
     }
 
-    pub inline fn drawBox(self: *Self, ctx: RenderContext, box_style: BoxStyle) !void {
+    pub inline fn drawBox(self: *Self, ctx: Render, box_style: BoxStyle) !void {
         return self.vtable.draw_box(self.impl, ctx, box_style);
     }
 
-    pub inline fn drawLine(self: *Self, ctx: RenderContext, from: Point, to: Point) !void {
+    pub inline fn drawLine(self: *Self, ctx: Render, from: Point, to: Point) !void {
         return self.vtable.draw_line(self.impl, ctx, from, to);
     }
 
-    pub inline fn fillRect(self: *Self, ctx: RenderContext, color: Style.Color) !void {
+    pub inline fn fillRect(self: *Self, ctx: Render, color: Style.Color) !void {
         return self.vtable.fill_rect(self.impl, ctx, color);
     }
 
-    pub inline fn drawImage(self: *Self, ctx: RenderContext, image: Image) !void {
+    pub inline fn drawImage(self: *Self, ctx: Render, image: Image) !void {
         return self.vtable.draw_image(self.impl, ctx, image);
     }
 
@@ -226,13 +225,13 @@ pub const Renderer = struct {
 
     /// Convenience methods that combine multiple operations
     /// Draw text with automatic measurement and styling
-    pub fn drawStyledText(self: *Self, ctx: RenderContext, text: []const u8) !Point {
+    pub fn drawStyledText(self: *Self, ctx: Render, text: []const u8) !Point {
         try self.drawText(ctx, text);
         return self.measureText(text, ctx.style);
     }
 
     /// Draw a bordered box with content
-    pub fn drawTextBox(self: *Self, ctx: RenderContext, text: []const u8, box_style: BoxStyle) !void {
+    pub fn drawTextBox(self: *Self, ctx: Render, text: []const u8, box_style: BoxStyle) !void {
         // Draw the box background and border
         try self.drawBox(ctx, box_style);
 
@@ -244,10 +243,10 @@ pub const Renderer = struct {
             .height = ctx.bounds.height - box_style.padding.top - box_style.padding.bottom,
         };
 
-        const content_ctx = RenderContext{
+        const content_ctx = Render{
             .bounds = content_bounds,
             .style = ctx.style,
-            .z_index = ctx.z_index,
+            .zIndex = ctx.zIndex,
             .clip_region = ctx.clip_region,
         };
 
@@ -256,7 +255,7 @@ pub const Renderer = struct {
     }
 
     /// Draw a notification with progressive enhancement
-    pub fn drawNotification(self: *Self, ctx: RenderContext, title: []const u8, message: []const u8, level: NotificationLevel) !void {
+    pub fn drawNotification(self: *Self, ctx: Render, title: []const u8, message: []const u8, level: NotificationLevel) !void {
         const caps = self.getCapabilities();
 
         // Try system notification first if supported
@@ -279,10 +278,10 @@ pub const Renderer = struct {
             .bold = true,
         };
 
-        const notification_ctx = RenderContext{
+        const notification_ctx = Render{
             .bounds = ctx.bounds,
             .style = notification_style,
-            .z_index = ctx.z_index + 1000, // High z-index for notifications
+            .zIndex = ctx.zIndex + 1000, // High z-index for notifications
             .clip_region = ctx.clip_region,
         };
 

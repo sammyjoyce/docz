@@ -146,10 +146,10 @@ pub const TerminalColors = struct {
     }
 
     /// Request current terminal foreground color
-    pub const requestForegroundColor = "\x1b]10;?\x07";
+    pub const REQUEST_FOREGROUND_COLOR = "\x1b]10;?\x07";
 
     /// Reset terminal foreground color to default
-    pub const resetForegroundColor = "\x1b]110\x07";
+    pub const RESET_FOREGROUND_COLOR = "\x1b]110\x07";
 
     /// Set terminal background color using string representation
     /// Supports hex, rgb:, and rgba: formats
@@ -172,10 +172,10 @@ pub const TerminalColors = struct {
     }
 
     /// Request current terminal background color
-    pub const requestBackgroundColor = "\x1b]11;?\x07";
+    pub const REQUEST_BACKGROUND_COLOR = "\x1b]11;?\x07";
 
     /// Reset terminal background color to default
-    pub const resetBackgroundColor = "\x1b]111\x07";
+    pub const RESET_BACKGROUND_COLOR = "\x1b]111\x07";
 
     /// Set terminal cursor color using string representation
     /// Supports hex, rgb:, and rgba: formats
@@ -198,10 +198,10 @@ pub const TerminalColors = struct {
     }
 
     /// Request current terminal cursor color
-    pub const requestCursorColor = "\x1b]12;?\x07";
+    pub const REQUEST_CURSOR_COLOR = "\x1b]12;?\x07";
 
     /// Reset terminal cursor color to default
-    pub const resetCursorColor = "\x1b]112\x07";
+    pub const RESET_CURSOR_COLOR = "\x1b]112\x07";
 };
 
 // Tests

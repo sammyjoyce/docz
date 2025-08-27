@@ -9,9 +9,9 @@ const term = @import("../../../term/unified.zig");
 const DemoState = struct {
     allocator: std.mem.Allocator,
     event_system: input_system.EventSystem,
-    focus_manager: input_system.FocusManager,
-    paste_manager: input_system.PasteManager,
-    mouse_manager: input_system.MouseManager,
+    focus_controller: input_system.Focus,
+    paste_controller: input_system.Paste,
+    mouse_controller: input_system.Mouse,
 
     // Widgets
     text_input1: enhanced_text_input.EnhancedTextInput,
@@ -35,9 +35,9 @@ const DemoState = struct {
         var demo = Self{
             .allocator = allocator,
             .event_system = input_system.EventSystem.init(allocator),
-            .focus_manager = input_system.FocusManager.init(allocator),
-            .paste_manager = input_system.PasteManager.init(allocator),
-            .mouse_manager = input_system.MouseManager.init(allocator),
+            .focus_controller = input_system.Focus.init(allocator),
+            .paste_controller = input_system.Paste.init(allocator),
+            .mouse_controller = input_system.Mouse.init(allocator),
             .text_input1 = undefined,
             .text_input2 = undefined,
             .password_input = undefined,
@@ -57,29 +57,29 @@ const DemoState = struct {
         // Initialize widgets
         demo.text_input1 = try enhanced_text_input.EnhancedTextInput.init(
             allocator,
-            tui.Bounds{ .x = 2, .y = 3, .width = 40, .height = 3 },
+            tui.Bounds{ .x = 2, .y = 4, .width = 40, .height = 3 },
             "Enter text here...",
-            &demo.focus_manager,
-            &demo.paste_manager,
-            &demo.mouse_manager,
+            &demo.focus_controller,
+            &demo.paste_controller,
+            &demo.mouse_controller,
         );
 
         demo.text_input2 = try enhanced_text_input.EnhancedTextInput.init(
             allocator,
             tui.Bounds{ .x = 2, .y = 7, .width = 40, .height = 3 },
             "Second input field...",
-            &demo.focus_manager,
-            &demo.paste_manager,
-            &demo.mouse_manager,
+            &demo.focus_controller,
+            &demo.paste_controller,
+            &demo.mouse_controller,
         );
 
         demo.password_input = try enhanced_text_input.EnhancedTextInput.init(
             allocator,
             tui.Bounds{ .x = 2, .y = 11, .width = 40, .height = 3 },
             "Password...",
-            &demo.focus_manager,
-            &demo.paste_manager,
-            &demo.mouse_manager,
+            &demo.focus_controller,
+            &demo.paste_controller,
+            &demo.mouse_controller,
         );
         demo.password_input.setPassword(true);
 
@@ -110,9 +110,9 @@ const DemoState = struct {
         }
 
         self.event_system.deinit();
-        self.focus_manager.deinit();
-        self.paste_manager.deinit();
-        self.mouse_manager.deinit();
+        self.focus_controller.deinit();
+        self.paste_controller.deinit();
+        self.mouse_controller.deinit();
         self.renderer.deinit();
     }
 
@@ -178,9 +178,9 @@ const DemoState = struct {
         var stdout_buffer: [4096]u8 = undefined;
         var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
         const stdout = &stdout_writer.interface;
-        try input_system.FocusManager.enableFocusReporting(stdout);
-        try input_system.PasteManager.enableBracketedPaste(stdout);
-        try self.mouse_manager.enableMouseTracking(stdout, .sgr_pixels);
+        try input_system.Focus.enableFocusReporting(stdout);
+        try input_system.Paste.enableBracketedPaste(stdout);
+        try self.mouse_controller.enableMouseTracking(stdout, .sgr_pixels);
 
         // Initial render
         try self.render();
@@ -249,9 +249,9 @@ const DemoState = struct {
         const stdout = &stdout_writer.interface;
 
         // Disable input features
-        try input_system.FocusManager.disableFocusReporting(stdout);
-        try input_system.PasteManager.disableBracketedPaste(stdout);
-        try self.mouse_manager.disableMouseTracking(stdout);
+        try input_system.Focus.disableFocusReporting(stdout);
+        try input_system.Paste.disableBracketedPaste(stdout);
+        try self.mouse_controller.disableMouseTracking(stdout);
 
         // Show cursor
         try stdout.writeAll("\x1b[?25h");

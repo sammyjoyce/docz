@@ -2,7 +2,7 @@
 //! New unified CLI system with smart terminal integration
 
 // New unified core system
-pub const core = struct {
+pub const Core = struct {
     pub const app = @import("core/app.zig");
     pub const context = @import("core/context.zig");
     pub const router = @import("core/router.zig");
@@ -14,11 +14,11 @@ pub const core = struct {
 };
 
 // Main exports for the new system
-pub const CliApp = core.app.CliApp;
-pub const CliContext = core.context.CliContext;
-pub const CliError = core.types.CliError;
-pub const Config = core.types.Config;
-pub const CommandResult = core.types.CommandResult;
+pub const CliApp = Core.app.CliApp;
+pub const Cli = Core.context.Cli;
+pub const CliError = Core.types.CliError;
+pub const Config = Core.types.Config;
+pub const CommandResult = Core.types.CommandResult;
 
 // Components (smart + base)
 pub const components = @import("components/mod.zig");

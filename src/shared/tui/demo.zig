@@ -15,21 +15,21 @@ pub const DemoError = error{
 
 pub const Demo = struct {
     allocator: std.mem.Allocator,
-    notification_manager: tui.NotificationManager,
+    notification_controller: tui.NotificationController,
     graphics_widget: ?tui.GraphicsWidget,
     caps: term_caps.TermCaps,
 
     pub fn init(allocator: std.mem.Allocator) Demo {
         return Demo{
             .allocator = allocator,
-            .notification_manager = tui.NotificationManager.init(allocator),
+            .notification_controller = tui.NotificationController.init(allocator),
             .graphics_widget = null,
             .caps = term_caps.getTermCaps(),
         };
     }
 
     pub fn deinit(self: *Demo) void {
-        self.notification_manager.deinit();
+        self.notification_controller.deinit();
         if (self.graphics_widget) |*widget| {
             widget.deinit();
         }
@@ -46,7 +46,7 @@ pub const Demo = struct {
         print("\n");
 
         // Welcome notification
-        try self.notification_manager.info("Welcome to the Enhanced TUI Demo!");
+        try self.notification_controller.info("Welcome to the Enhanced TUI Demo!");
 
         std.time.sleep(1_500_000_000); // 1.5 seconds
 
@@ -169,7 +169,7 @@ pub const Demo = struct {
         try self.notification_manager.warning("This is a warning notification");
         std.time.sleep(800_000_000);
 
-        try self.notification_manager.error_("This is an error notification");
+        try self.notification_manager.errorNotification("This is an error notification");
         std.time.sleep(800_000_000);
 
         try self.notification_manager.debug("This is a debug notification");

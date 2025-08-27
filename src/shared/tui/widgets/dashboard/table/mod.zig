@@ -16,7 +16,6 @@ pub const DataTable = DataTableImpl;
 pub const Config = base.Config;
 pub const Cell = base.Cell;
 pub const TableState = base.TableState;
-pub const Selection = base.Selection;
 pub const DataTableError = base.DataTableError;
 
 // Event types
@@ -162,17 +161,179 @@ pub const DataTableImpl = struct {
 
     /// Handle mouse input
     fn handleMouseEvent(self: *Self, mouse: events_mod.MouseEvent) !bool {
-        _ = self;
-        _ = mouse;
-        // TODO: Implement mouse handling with cell bounds calculation
+        // Convert mouse coordinates to table-relative coordinates
+        const table_x = mouse.x - self.bounds.x;
+        const table_y = mouse.y - self.bounds.y;
+
+        // Check if mouse is within table bounds
+        if (table_x < 0 or table_y < 0 or
+            table_x >= self.bounds.width or table_y >= self.bounds.height)
+        {
+            return false;
+        }
+
+        // Calculate which cell was clicked
+        const cell_info = self.calculateCellBounds(table_x, table_y);
+        if (cell_info) |info| {
+            switch (mouse.action) {
+                .press => {
+                    switch (mouse.button) {
+                        .left => {
+                            // Move cursor to clicked cell
+                            self.state.cursor.x = info.col;
+                            self.state.cursor.y = info.row;
+                            self.state.markDirty();
+                            return true;
+                        },
+                        .right => {
+                            // Could implement context menu
+                            return false;
+                        },
+                        else => return false,
+                    }
+                },
+                .drag => {
+                    // Handle cell selection
+                    if (self.config.selection_enabled) {
+                        self.state.selection = base.Selection{
+                            .start_row = @min(self.state.cursor.y, info.row),
+                            .end_row = @max(self.state.cursor.y, info.row),
+                            .start_col = @min(self.state.cursor.x, info.col),
+                            .end_col = @max(self.state.cursor.x, info.col),
+                        };
+                        self.state.markDirty();
+                        return true;
+                    }
+                },
+                .scroll => {
+                    // Handle scrolling
+                    const scroll_amount = if (mouse.button == .scroll_up) -1 else 1;
+                    const new_scroll = @max(0, @min(@as(i32, @intCast(self.rows.len)) - @as(i32, @intCast(self.bounds.height)), self.state.scrollOffset + scroll_amount));
+
+                    if (new_scroll != self.state.scrollOffset) {
+                        self.state.scrollOffset = new_scroll;
+                    }
+                },
+                else => return false,
+            }
+        }
+
         return false;
+    }
+
+    /// Calculate which cell contains the given coordinates
+    fn calculateCellBounds(self: *Self, x: u32, y: u32) ?struct { row: i32, col: i32 } {
+        // Account for header row
+        const header_height = if (self.config.showHeaders) 1 else 0;
+        const content_y = y -| header_height;
+
+        if (content_y < 0) {
+            // Clicked on header
+            if (self.config.showHeaders) {
+                var current_x: u32 = 0;
+                for (self.state.column_widths, 0..) |width, col| {
+                    if (x >= current_x and x < current_x + width) {
+                        return .{ .row = -1, .col = @intCast(col) };
+                    }
+                    current_x += width;
+                    if (self.config.show_vertical_borders) current_x += 1;
+                }
+            }
+            return null;
+        }
+
+        // Calculate row (accounting for scroll)
+        const row = @as(i32, @intCast(content_y)) + self.state.scrollOffset;
+        if (row < 0 or row >= @as(i32, @intCast(self.rows.len))) {
+            return null;
+        }
+
+        // Calculate column
+        var current_x: u32 = 0;
+        for (self.state.column_widths, 0..) |width, col| {
+            if (x >= current_x and x < current_x + width) {
+                return .{ .row = row, .col = @intCast(col) };
+            }
+            current_x += width;
+            if (self.config.show_vertical_borders) current_x += 1;
+        }
+
+        return null;
     }
 
     /// Handle paste input
     fn handlePasteEvent(self: *Self, text: []const u8) !bool {
-        _ = self;
-        _ = text;
-        // TODO: Implement paste handling
+        if (!self.config.paste_enabled) return false;
+
+        // Parse pasted text as CSV/TSV data
+        var lines = std.mem.split(u8, text, "\n");
+        var row_data = std.ArrayList([]const u8).init(self.allocator);
+        defer {
+            for (row_data.items) |item| {
+                self.allocator.free(item);
+            }
+            row_data.deinit();
+        }
+
+        // Parse first line to determine format
+        const first_line = lines.next() orelse return false;
+        const delimiter = if (std.mem.containsAtLeast(u8, first_line, 1, "\t")) "\t" else ",";
+
+        // Parse all lines
+        var line_iter = std.mem.split(u8, text, "\n");
+        while (line_iter.next()) |line| {
+            const trimmed = std.mem.trim(u8, line, &std.ascii.whitespace);
+            if (trimmed.len == 0) continue;
+
+            // Split line by delimiter
+            var cells = std.ArrayList([]const u8).init(self.allocator);
+            defer {
+                for (cells.items) |cell| {
+                    self.allocator.free(cell);
+                }
+                cells.deinit();
+            }
+
+            var field_iter = std.mem.split(u8, trimmed, delimiter);
+            while (field_iter.next()) |field| {
+                const cell_data = try self.allocator.dupe(u8, std.mem.trim(u8, field, &std.ascii.whitespace));
+                try cells.append(cell_data);
+            }
+
+            // Convert to Cell array
+            var table_cells = try self.allocator.alloc(base.Cell, cells.items.len);
+            for (cells.items, 0..) |cell_text, i| {
+                table_cells[i] = base.Cell{
+                    .text = cell_text,
+                    .style = .{},
+                };
+            }
+
+            try row_data.append(@ptrCast(table_cells));
+        }
+
+        // Insert rows at current cursor position
+        if (row_data.items.len > 0) {
+            const insert_pos = @as(usize, @intCast(@max(0, self.state.cursor.y)));
+            const new_rows = try self.allocator.alloc([]base.Cell, self.rows.len + row_data.items.len);
+
+            // Copy existing rows before insertion point
+            @memcpy(new_rows[0..insert_pos], self.rows[0..insert_pos]);
+
+            // Insert new rows
+            @memcpy(new_rows[insert_pos .. insert_pos + row_data.items.len], @as([][]base.Cell, @ptrCast(row_data.items)));
+
+            // Copy remaining rows
+            if (insert_pos < self.rows.len) {
+                @memcpy(new_rows[insert_pos + row_data.items.len ..], self.rows[insert_pos..]);
+            }
+
+            // Update rows
+            self.rows = new_rows;
+            self.state.markDirty();
+            return true;
+        }
+
         return false;
     }
 
@@ -203,9 +364,9 @@ pub const DataTableImpl = struct {
     }
 
     /// Get information about selected data
-    pub fn getSelectionInfo(self: Self) ?SelectionInfo {
+    pub fn getSelectionInfo(self: Self) ?Selection {
         if (self.state.selection) |sel| {
-            return SelectionInfo{
+            return Selection{
                 .cell_count = sel.getCellCount(),
                 .mode = sel.mode,
                 .bounds = sel.normalize(),
@@ -228,7 +389,7 @@ pub const DataTableImpl = struct {
             const title_ctx = renderer_mod.RenderContext{
                 .bounds = base.Bounds.init(ctx.bounds.x, current_y, ctx.bounds.width, 1),
                 .style = renderer_mod.Style{ .bold = true },
-                .z_index = ctx.z_index,
+                .zIndex = ctx.zIndex,
                 .clip_region = ctx.clip_region,
             };
             try renderer.drawText(title_ctx, title);
@@ -236,7 +397,7 @@ pub const DataTableImpl = struct {
         }
 
         // Render headers
-        if (self.config.show_headers) {
+        if (self.config.showHeaders) {
             var current_x = ctx.bounds.x;
             for (self.headers, 0..) |header, col_idx| {
                 const col_width = if (col_idx < self.state.column_widths.len)
@@ -247,7 +408,7 @@ pub const DataTableImpl = struct {
                 const header_ctx = renderer_mod.RenderContext{
                     .bounds = base.Bounds.init(current_x, current_y, @intCast(col_width), 1),
                     .style = renderer_mod.Style{ .bold = true },
-                    .z_index = ctx.z_index,
+                    .zIndex = ctx.zIndex,
                     .clip_region = ctx.clip_region,
                 };
                 try renderer.drawText(header_ctx, header);
@@ -282,7 +443,7 @@ pub const DataTableImpl = struct {
                 const cell_ctx = renderer_mod.RenderContext{
                     .bounds = base.Bounds.init(current_x, current_y, @intCast(col_width), 1),
                     .style = cell_style,
-                    .z_index = ctx.z_index,
+                    .zIndex = ctx.zIndex,
                     .clip_region = ctx.clip_region,
                 };
 
@@ -311,7 +472,7 @@ pub const DataTableImpl = struct {
 };
 
 /// Information about current selection
-pub const SelectionInfo = struct {
+pub const Selection = struct {
     cell_count: u32,
     mode: base.Selection.SelectionMode,
     bounds: base.Selection,
@@ -350,7 +511,7 @@ pub fn createTableFromCSV(allocator: std.mem.Allocator, csv_data: []const u8, ha
     }
 
     const config = base.Config{
-        .show_headers = has_header,
+        .showHeaders = has_header,
         .clipboard_enabled = true,
     };
 

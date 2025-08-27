@@ -569,13 +569,13 @@ pub fn keyRelease(key: Key) KeyEvent {
 }
 
 /// Common modifier combinations
-pub const ctrl = KeyMod{ .ctrl = true };
-pub const alt = KeyMod{ .alt = true };
-pub const shift = KeyMod{ .shift = true };
-pub const ctrl_shift = KeyMod{ .ctrl = true, .shift = true };
-pub const alt_shift = KeyMod{ .alt = true, .shift = true };
-pub const ctrl_alt = KeyMod{ .ctrl = true, .alt = true };
-pub const ctrl_alt_shift = KeyMod{ .ctrl = true, .alt = true, .shift = true };
+pub const CTRL = KeyMod{ .ctrl = true };
+pub const ALT = KeyMod{ .alt = true };
+pub const SHIFT = KeyMod{ .shift = true };
+pub const CTRL_SHIFT = KeyMod{ .ctrl = true, .shift = true };
+pub const ALT_SHIFT = KeyMod{ .alt = true, .shift = true };
+pub const CTRL_ALT = KeyMod{ .ctrl = true, .alt = true };
+pub const CTRL_ALT_SHIFT = KeyMod{ .ctrl = true, .alt = true, .shift = true };
 
 /// Mouse events (for completeness)
 pub const MouseButton = enum {
@@ -808,7 +808,7 @@ test "key representation and modifiers" {
     try testing.expect(!key_a.isSpecial());
 
     // Test key with modifiers
-    const ctrl_c = keyWithMod('c', ctrl);
+    const ctrl_c = keyWithMod('c', CTRL);
     try testing.expect(ctrl_c.code == 'c');
     try testing.expect(ctrl_c.mod.ctrl);
 

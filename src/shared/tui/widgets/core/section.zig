@@ -10,7 +10,7 @@ const print = std.debug.print;
 pub const Section = struct {
     title: []const u8,
     content: std.ArrayListUnmanaged([]const u8),
-    is_expanded: bool,
+    isExpanded: bool,
     has_border: bool,
     indent_level: u32,
     icon: ?[]const u8,
@@ -63,7 +63,7 @@ pub const Section = struct {
         return Section{
             .title = title,
             .content = std.ArrayListUnmanaged([]const u8){},
-            .is_expanded = true,
+            .isExpanded = true,
             .has_border = true,
             .indent_level = 0,
             .icon = null,
@@ -76,7 +76,7 @@ pub const Section = struct {
         return Section{
             .title = title,
             .content = std.ArrayListUnmanaged([]const u8){},
-            .is_expanded = true,
+            .isExpanded = true,
             .has_border = true,
             .indent_level = 0,
             .icon = null,
@@ -115,15 +115,15 @@ pub const Section = struct {
     }
 
     pub fn toggle(self: *Section) void {
-        self.is_expanded = !self.is_expanded;
+        self.isExpanded = !self.isExpanded;
     }
 
     pub fn expand(self: *Section) void {
-        self.is_expanded = true;
+        self.isExpanded = true;
     }
 
     pub fn collapse(self: *Section) void {
-        self.is_expanded = false;
+        self.isExpanded = false;
     }
 
     /// Enhanced drawing with terminal capabilities
@@ -144,7 +144,7 @@ pub const Section = struct {
         const indent_level = @min(self.indent_level, 10);
         var indent_buf: [20]u8 = [_]u8{' '} ** 20; // Max 10 * 2 = 20 chars
         const indent = indent_buf[0..(indent_level * 2)];
-        const expand_icon = if (self.is_expanded) "▼" else "▶";
+        const expand_icon = if (self.isExpanded) "▼" else "▶";
         const section_icon = self.icon orelse "";
 
         // Title line with colors and icons
@@ -163,7 +163,7 @@ pub const Section = struct {
         try writer.writeAll("\n");
 
         // Content (only if expanded)
-        if (self.is_expanded) {
+        if (self.isExpanded) {
             const content_indent_level = if (self.indent_level > 0) self.indent_level else 1;
             var content_indent_buf: [40]u8 = [_]u8{' '} ** 40; // Max indent
             const content_indent = content_indent_buf[0..(content_indent_level * 4)];
@@ -196,7 +196,7 @@ pub const Section = struct {
     pub fn getHeight(self: Section) u32 {
         var height: u32 = 1; // Title line
 
-        if (self.is_expanded) {
+        if (self.isExpanded) {
             height += @intCast(self.content.items.len);
             if (self.content.items.len > 0) {
                 height += 1; // Extra newline

@@ -105,7 +105,7 @@ pub const AdaptiveRenderer = struct {
 
         pub const DataVisualization = struct {
             viz_type: VisualizationType,
-            data: VisualizationData,
+            data: Visualization,
             styling: VisualizationStyling,
 
             pub const VisualizationType = enum {
@@ -116,17 +116,16 @@ pub const AdaptiveRenderer = struct {
                 parallel_coordinates,
             };
 
-            pub const VisualizationData = union(enum) {
+            pub const Visualization = union(enum) {
                 matrix: []const []const f64,
-                series: []const DataSeries,
-                histogram: HistogramData,
+                series: []const Series,
 
-                pub const DataSeries = struct {
+                pub const Series = struct {
                     name: []const u8,
                     values: []const f64,
                 };
 
-                pub const HistogramData = struct {
+                pub const Histogram = struct {
                     bins: []const f64,
                     counts: []const u32,
                 };

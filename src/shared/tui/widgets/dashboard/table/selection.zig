@@ -7,16 +7,16 @@ const base = @import("base.zig");
 const events_mod = @import("../../../core/events.zig");
 
 const Point = base.Point;
-const Selection = base.Selection;
+const TableSelection = base.Selection;
 const TableState = base.TableState;
 const Cell = base.Cell;
 const KeyEvent = events_mod.KeyEvent;
 const MouseEvent = events_mod.MouseEvent;
 
-/// Selection manager handles selection operations and state
-pub const SelectionManager = struct {
+/// TableSelection manager handles selection operations and state
+pub const Selection = struct {
     /// Extend selection based on keyboard input
-    pub fn extendSelection(state: *TableState, key: KeyEvent, row_count: usize, col_count: usize) void {
+    pub fn extendTableSelection(state: *TableState, key: KeyEvent, row_count: usize, col_count: usize) void {
         _ = row_count;
         _ = col_count;
 
@@ -28,7 +28,7 @@ pub const SelectionManager = struct {
 
         // Create or extend existing selection
         if (state.selection == null) {
-            state.selection = Selection.singleCell(state.cursor);
+            state.selection = TableSelection.singleCell(state.cursor);
         }
 
         if (state.selection) |*selection| {
@@ -47,7 +47,7 @@ pub const SelectionManager = struct {
     }
 
     /// Get selected cells data for clipboard operations
-    pub fn getSelectedData(selection: Selection, headers: [][]const u8, rows: [][]Cell, allocator: std.mem.Allocator) ![]u8 {
+    pub fn getSelectedData(selection: TableSelection, headers: [][]const u8, rows: [][]Cell, allocator: std.mem.Allocator) ![]u8 {
         const norm_selection = selection.normalize();
 
         var result = std.ArrayList(u8).init(allocator);
@@ -143,7 +143,7 @@ pub const SelectionManager = struct {
     }
 
     /// Get selection in different formats for clipboard
-    pub fn formatSelectedData(selection: Selection, headers: [][]const u8, rows: [][]Cell, allocator: std.mem.Allocator, format: ClipboardFormat) ![]u8 {
+    pub fn formatSelectedData(selection: TableSelection, headers: [][]const u8, rows: [][]Cell, allocator: std.mem.Allocator, format: ClipboardFormat) ![]u8 {
         switch (format) {
             .plain_text => return getSelectedData(selection, headers, rows, allocator),
             .csv => return formatAsCSV(selection, headers, rows, allocator),
@@ -152,7 +152,7 @@ pub const SelectionManager = struct {
     }
 
     /// Format selection as CSV
-    fn formatAsCSV(selection: Selection, headers: [][]const u8, rows: [][]Cell, allocator: std.mem.Allocator) ![]u8 {
+    fn formatAsCSV(selection: TableSelection, headers: [][]const u8, rows: [][]Cell, allocator: std.mem.Allocator) ![]u8 {
         const norm_selection = selection.normalize();
 
         var result = std.ArrayList(u8).init(allocator);
@@ -205,7 +205,7 @@ pub const SelectionManager = struct {
     }
 
     /// Format selection as Markdown table
-    fn formatAsMarkdown(selection: Selection, headers: [][]const u8, rows: [][]Cell, allocator: std.mem.Allocator) ![]u8 {
+    fn formatAsMarkdown(selection: TableSelection, headers: [][]const u8, rows: [][]Cell, allocator: std.mem.Allocator) ![]u8 {
         const norm_selection = selection.normalize();
 
         var result = std.ArrayList(u8).init(allocator);

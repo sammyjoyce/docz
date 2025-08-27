@@ -8,6 +8,7 @@ pub const DefaultTheme = @import("default.zig");
 
 // Additional theme definitions
 pub const Color = Theme.Color;
+pub const ColorEnum = @import("default.zig").ColorEnum;
 pub const Box = Theme.Box;
 pub const Status = Theme.Status;
 pub const Progress = Theme.Progress;

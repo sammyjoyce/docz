@@ -12,7 +12,7 @@ const Color = unified_terminal.Color;
 const RichProgressBar = rich_progress.RichProgressBar;
 
 /// Data point for dashboard metrics
-pub const DataPoint = struct {
+pub const Point = struct {
     timestamp: i64,
     value: f32,
     label: []const u8,
@@ -39,7 +39,7 @@ pub const GraphicsDashboard = struct {
     config: DashboardConfig,
 
     // Data storage
-    data_sets: std.HashMap([]const u8, DataSet),
+    data_sets: std.HashMap([]const u8, Set),
     metrics: std.HashMap([]const u8, Metric),
 
     // Visual components
@@ -49,8 +49,8 @@ pub const GraphicsDashboard = struct {
     last_update: i64,
     animation_frame: u32,
 
-    const DataSet = struct {
-        points: std.ArrayList(DataPoint),
+    const Set = struct {
+        points: std.ArrayList(Point),
         color: Color,
         style: ChartStyle,
     };
@@ -78,7 +78,7 @@ pub const GraphicsDashboard = struct {
             .allocator = allocator,
             .terminal = terminal,
             .config = config,
-            .data_sets = std.HashMap([]const u8, DataSet).init(allocator),
+            .data_sets = std.HashMap([]const u8, Set).init(allocator),
             .metrics = std.HashMap([]const u8, Metric).init(allocator),
             .progress_bars = std.ArrayList(*RichProgressBar).init(allocator),
             .last_update = std.time.timestamp(),
@@ -95,8 +95,8 @@ pub const GraphicsDashboard = struct {
         self.progress_bars.deinit();
 
         // Clean up data sets
-        var data_iter = self.data_sets.iterator();
-        while (data_iter.next()) |entry| {
+        var dataIter = self.data_sets.iterator();
+        while (dataIter.next()) |entry| {
             entry.value_ptr.points.deinit();
         }
         self.data_sets.deinit();
@@ -108,27 +108,27 @@ pub const GraphicsDashboard = struct {
     /// Add or update a data set for visualization
     pub fn addDataSet(self: *Self, name: []const u8, color: Color, style: ChartStyle) !void {
         const key = try self.allocator.dupe(u8, name);
-        try self.data_sets.put(key, DataSet{
-            .points = std.ArrayList(DataPoint).init(self.allocator),
+        try self.data_sets.put(key, Set{
+            .points = std.ArrayList(Point).init(self.allocator),
             .color = color,
             .style = style,
         });
     }
 
     /// Add data point to a specific set
-    pub fn addDataPoint(self: *Self, set_name: []const u8, value: f32, label: []const u8) !void {
-        if (self.data_sets.getPtr(set_name)) |data_set| {
+    pub fn addDataPoint(self: *Self, setName: []const u8, value: f32, label: []const u8) !void {
+        if (self.data_sets.getPtr(setName)) |dataSet| {
             const now = std.time.timestamp();
-            try data_set.points.append(DataPoint{
+            try dataSet.points.append(Point{
                 .timestamp = now,
                 .value = value,
                 .label = try self.allocator.dupe(u8, label),
-                .category = set_name,
+                .category = setName,
             });
 
             // Limit data points to prevent memory growth
-            if (data_set.points.items.len > self.config.max_data_points) {
-                _ = data_set.points.orderedRemove(0);
+            if (dataSet.points.items.len > self.config.max_data_points) {
+                _ = dataSet.points.orderedRemove(0);
             }
         }
     }
@@ -274,98 +274,98 @@ pub const GraphicsDashboard = struct {
 
         if (self.data_sets.count() == 0) return;
 
-        const chart_height = @min(8, (size.height - 10) / 2);
-        const chart_width = size.width - 4;
+        const chartHeight = @min(8, (size.height - 10) / 2);
+        const chartWidth = size.width - 4;
 
-        var set_iter = self.data_sets.iterator();
-        while (set_iter.next()) |entry| {
+        var setIter = self.data_sets.iterator();
+        while (setIter.next()) |entry| {
             const name = entry.key_ptr.*;
-            const data_set = entry.value_ptr.*;
+            const dataSet = entry.value_ptr.*;
 
-            if (data_set.points.items.len < 2) continue;
+            if (dataSet.points.items.len < 2) continue;
 
-            try self.terminal.setForeground(data_set.color);
+            try self.terminal.setForeground(dataSet.color);
             try w.print(" 📈 {s}\n", .{name});
             try self.terminal.resetStyles();
 
-            switch (data_set.style) {
-                .sparkline => try self.renderSparkline(data_set, chart_width),
-                .bar => try self.renderBarChart(data_set, chart_width, chart_height),
-                .line => try self.renderLineChart(data_set, chart_width, chart_height),
-                .area => try self.renderAreaChart(data_set, chart_width, chart_height),
-                .gauge => try self.renderGauge(data_set, chart_width),
+            switch (dataSet.style) {
+                .sparkline => try self.renderSparkline(dataSet, chartWidth),
+                .bar => try self.renderBarChart(dataSet, chartWidth, chartHeight),
+                .line => try self.renderLineChart(dataSet, chartWidth, chartHeight),
+                .area => try self.renderAreaChart(dataSet, chartWidth, chartHeight),
+                .gauge => try self.renderGauge(dataSet, chartWidth),
             }
 
             try w.writeByte('\n');
         }
     }
 
-    fn renderSparkline(self: *Self, data_set: DataSet, width: u16) !void {
+    fn renderSparkline(self: *Self, dataSet: Set, width: u16) !void {
         const w = self.terminal.writer();
-        const sparkline_chars = [_][]const u8{ "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█" };
+        const sparklineChars = [_][]const u8{ "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█" };
 
         // Find min/max for normalization
-        var min_val: f32 = std.math.floatMax(f32);
-        var max_val: f32 = -std.math.floatMax(f32);
+        var minVal: f32 = std.math.floatMax(f32);
+        var maxVal: f32 = -std.math.floatMax(f32);
 
-        for (data_set.points.items) |point| {
-            min_val = @min(min_val, point.value);
-            max_val = @max(max_val, point.value);
+        for (dataSet.points.items) |point| {
+            minVal = @min(minVal, point.value);
+            maxVal = @max(maxVal, point.value);
         }
 
-        const range = max_val - min_val;
+        const range = maxVal - minVal;
         if (range == 0) return;
 
         try w.writeAll("  ");
 
-        const data_points = @min(width - 4, data_set.points.items.len);
-        const start_idx = if (data_set.points.items.len > data_points)
-            data_set.points.items.len - data_points
+        const dataPoints = @min(width - 4, dataSet.points.items.len);
+        const startIdx = if (dataSet.points.items.len > dataPoints)
+            dataSet.points.items.len - dataPoints
         else
             0;
 
-        for (0..data_points) |i| {
-            const point = data_set.points.items[start_idx + i];
-            const normalized = (point.value - min_val) / range;
-            const char_idx: usize = @intFromFloat(normalized * 7.0);
+        for (0..dataPoints) |i| {
+            const point = dataSet.points.items[startIdx + i];
+            const normalizedY = (point.value - minVal) / range;
+            const charIdx: usize = @intFromFloat(normalizedY * 7.0);
 
-            try self.terminal.setForeground(data_set.color);
-            try w.writeAll(sparkline_chars[@min(char_idx, sparkline_chars.len - 1)]);
+            try self.terminal.setForeground(dataSet.color);
+            try w.writeAll(sparklineChars[@min(charIdx, sparklineChars.len - 1)]);
         }
 
         try self.terminal.resetStyles();
-        try w.print(" (min: {d:.1}, max: {d:.1})\n", .{ min_val, max_val });
+        try w.print(" (min: {d:.1}, max: {d:.1})\n", .{ minVal, maxVal });
     }
 
-    fn renderBarChart(self: *Self, data_set: DataSet, width: u16, height: u16) !void {
+    fn renderBarChart(self: *Self, dataSet: Set, width: u16, height: u16) !void {
         const w = self.terminal.writer();
 
         // Simplified bar chart using Unicode blocks
-        const data_points = @min(width / 3, data_set.points.items.len);
-        if (data_points == 0) return;
+        const dataPoints = @min(width / 3, dataSet.points.items.len);
+        if (dataPoints == 0) return;
 
-        const start_idx = if (data_set.points.items.len > data_points)
-            data_set.points.items.len - data_points
+        const startIdx = if (dataSet.points.items.len > dataPoints)
+            dataSet.points.items.len - dataPoints
         else
             0;
 
         // Find max for scaling
-        var max_val: f32 = 0;
-        for (start_idx..start_idx + data_points) |i| {
-            max_val = @max(max_val, data_set.points.items[i].value);
+        var maxVal: f32 = 0;
+        for (startIdx..startIdx + dataPoints) |i| {
+            maxVal = @max(maxVal, dataSet.points.items[i].value);
         }
 
-        if (max_val == 0) return;
+        if (maxVal == 0) return;
 
         // Render bars
         for (0..height) |row| {
             try w.writeAll("  ");
-            const threshold = ((@as(f32, @floatFromInt(height - row - 1))) / @as(f32, @floatFromInt(height))) * max_val;
+            const threshold = ((@as(f32, @floatFromInt(height - row - 1))) / @as(f32, @floatFromInt(height))) * maxVal;
 
-            for (0..data_points) |i| {
-                const point = data_set.points.items[start_idx + i];
+            for (0..dataPoints) |i| {
+                const point = dataSet.points.items[startIdx + i];
                 if (point.value >= threshold) {
-                    try self.terminal.setForeground(data_set.color);
+                    try self.terminal.setForeground(dataSet.color);
                     try w.writeAll("██ ");
                 } else {
                     try w.writeAll("   ");
@@ -377,33 +377,33 @@ pub const GraphicsDashboard = struct {
         try self.terminal.resetStyles();
     }
 
-    fn renderLineChart(self: *Self, data_set: DataSet, width: u16, height: u16) !void {
+    fn renderLineChart(self: *Self, dataSet: Set, width: u16, height: u16) !void {
         _ = height; // Unused in simplified implementation
         // Simplified line chart implementation
-        try self.renderSparkline(data_set, width);
+        try self.renderSparkline(dataSet, width);
     }
 
-    fn renderAreaChart(self: *Self, data_set: DataSet, width: u16, height: u16) !void {
+    fn renderAreaChart(self: *Self, dataSet: Set, width: u16, height: u16) !void {
         // Simplified area chart implementation (uses bar chart as base)
-        try self.renderBarChart(data_set, width, height);
+        try self.renderBarChart(dataSet, width, height);
     }
 
-    fn renderGauge(self: *Self, data_set: DataSet, width: u16) !void {
+    fn renderGauge(self: *Self, dataSet: Set, width: u16) !void {
         _ = width; // Unused in simplified implementation
         const w = self.terminal.writer();
 
-        if (data_set.points.items.len == 0) return;
+        if (dataSet.points.items.len == 0) return;
 
-        const latest = data_set.points.items[data_set.points.items.len - 1];
+        const latest = dataSet.points.items[dataSet.points.items.len - 1];
         const progress = std.math.clamp(latest.value / 100.0, 0.0, 1.0); // Assume 0-100 scale
 
         // Create circular gauge using Unicode characters
-        const gauge_chars = [_][]const u8{ "○", "◔", "◑", "◕", "●" };
-        const gauge_level: usize = @intFromFloat(progress * 4.0);
+        const gaugeChars = [_][]const u8{ "○", "◔", "◑", "◕", "●" };
+        const gaugeLevel: usize = @intFromFloat(progress * 4.0);
 
         try w.writeAll("  ");
-        try self.terminal.setForeground(data_set.color);
-        try w.print("{s} {d:.1}%", .{ gauge_chars[@min(gauge_level, gauge_chars.len - 1)], progress * 100.0 });
+        try self.terminal.setForeground(dataSet.color);
+        try w.print("{s} {d:.1}%", .{ gaugeChars[@min(gaugeLevel, gaugeChars.len - 1)], progress * 100.0 });
         try w.writeByte('\n');
         try self.terminal.resetStyles();
     }
@@ -475,22 +475,22 @@ pub const GraphicsDashboard = struct {
             _ = now - 50 + @as(i64, @intCast(i));
 
             // CPU data - oscillating around 45%
-            const cpu_base: f32 = 45.0;
-            const cpu_noise = (rng.random().float(f32) - 0.5) * 20.0;
-            const cpu_value = std.math.clamp(cpu_base + cpu_noise, 0.0, 100.0);
-            try self.addDataPoint("CPU Usage", cpu_value, "cpu");
+            const cpuBase: f32 = 45.0;
+            const cpuNoise = (rng.random().float(f32) - 0.5) * 20.0;
+            const cpuValue = std.math.clamp(cpuBase + cpuNoise, 0.0, 100.0);
+            try self.addDataPoint("CPU Usage", cpuValue, "cpu");
 
             // Memory data - gradually increasing
-            const mem_value = 60.0 + @as(f32, @floatFromInt(i)) * 0.5 + (rng.random().float(f32) - 0.5) * 10.0;
-            try self.addDataPoint("Memory", std.math.clamp(mem_value, 0.0, 100.0), "mem");
+            const memValue = 60.0 + @as(f32, @floatFromInt(i)) * 0.5 + (rng.random().float(f32) - 0.5) * 10.0;
+            try self.addDataPoint("Memory", std.math.clamp(memValue, 0.0, 100.0), "mem");
 
             // Network data - spiky
-            const net_value = rng.random().float(f32) * 200.0;
-            try self.addDataPoint("Network", net_value, "net");
+            const netValue = rng.random().float(f32) * 200.0;
+            try self.addDataPoint("Network", netValue, "net");
 
             // Disk I/O - steady
-            const disk_value = 80.0 + (rng.random().float(f32) - 0.5) * 30.0;
-            try self.addDataPoint("Disk I/O", std.math.clamp(disk_value, 0.0, 100.0), "disk");
+            const diskValue = 80.0 + (rng.random().float(f32) - 0.5) * 30.0;
+            try self.addDataPoint("Disk I/O", std.math.clamp(diskValue, 0.0, 100.0), "disk");
         }
 
         // Add some progress bars

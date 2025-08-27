@@ -388,35 +388,175 @@ pub const PreciseColorMatcher = struct {
 
     /// Advanced conversion using the optimized color matching algorithm
     pub fn convertRgbTo256(target: RGBColor) u8 {
-        // TODO: Implement enhanced color distance
-        // const enhanced_distance = @import("enhanced_color_distance.zig");
-
         // Check for exact match first
         if (findExactMatch(target)) |exact| {
             return exact;
         }
 
-        // TODO: Use enhanced perceptual distance for best match
-        // const result = enhanced_distance.findClosestColor(target, &ANSI_256_PALETTE, false);
-        // return @intCast(result.index);
+        // Use enhanced perceptual distance for best match
+        return findClosestPerceptual(target);
+    }
 
-        // Fallback: use simple distance calculation
-        var min_distance: f32 = std.math.inf(f32);
-        var closest_index: usize = 0;
+    /// Enhanced color distance calculation using perceptual color spaces
+    pub fn findClosestPerceptual(target: RGBColor) u8 {
+        var best_index: u8 = 0;
+        var best_distance: f64 = std.math.floatMax(f64);
 
         for (ANSI_256_PALETTE, 0..) |color, i| {
-            const dr = @as(f32, @floatFromInt(@as(i32, target.r) - @as(i32, color.r)));
-            const dg = @as(f32, @floatFromInt(@as(i32, target.g) - @as(i32, color.g)));
-            const db = @as(f32, @floatFromInt(@as(i32, target.b) - @as(i32, color.b)));
-            const distance = dr * dr + dg * dg + db * db;
-
-            if (distance < min_distance) {
-                min_distance = distance;
-                closest_index = i;
+            const distance = perceptualDistance(target, color);
+            if (distance < best_distance) {
+                best_distance = distance;
+                best_index = @intCast(i);
             }
         }
 
-        return @intCast(closest_index);
+        return best_index;
+    }
+
+    /// Calculate perceptual color distance using Delta E (CIEDE2000)
+    /// This provides much better color matching than simple RGB distance
+    pub fn perceptualDistance(color1: RGBColor, color2: RGBColor) f64 {
+        // Convert RGB to XYZ color space
+        const xyz1 = rgbToXyz(color1);
+        const xyz2 = rgbToXyz(color2);
+
+        // Convert XYZ to LAB color space
+        const lab1 = xyzToLab(xyz1);
+        const lab2 = xyzToLab(xyz2);
+
+        // Calculate CIEDE2000 color difference
+        return ciede2000(lab1, lab2);
+    }
+
+    /// Convert RGB to XYZ color space
+    fn rgbToXyz(rgb: RGBColor) struct { x: f64, y: f64, z: f64 } {
+        const r = @as(f64, @floatFromInt(rgb.r)) / 255.0;
+        const g = @as(f64, @floatFromInt(rgb.g)) / 255.0;
+        const b = @as(f64, @floatFromInt(rgb.b)) / 255.0;
+
+        // Apply gamma correction
+        const r_linear = if (r > 0.04045) std.math.pow(f64, (r + 0.055) / 1.055, 2.4) else r / 12.92;
+        const g_linear = if (g > 0.04045) std.math.pow(f64, (g + 0.055) / 1.055, 2.4) else g / 12.92;
+        const b_linear = if (b > 0.04045) std.math.pow(f64, (b + 0.055) / 1.055, 2.4) else b / 12.92;
+
+        // Convert to XYZ using sRGB matrix
+        const x = r_linear * 0.4124 + g_linear * 0.3576 + b_linear * 0.1805;
+        const y = r_linear * 0.2126 + g_linear * 0.7152 + b_linear * 0.0722;
+        const z = r_linear * 0.0193 + g_linear * 0.1192 + b_linear * 0.9505;
+
+        return .{ .x = x, .y = y, .z = z };
+    }
+
+    /// Convert XYZ to LAB color space
+    fn xyzToLab(xyz: struct { x: f64, y: f64, z: f64 }) struct { l: f64, a: f64, b: f64 } {
+        // Reference white point (D65)
+        const x_n = 0.95047;
+        const y_n = 1.0;
+        const z_n = 1.08883;
+
+        // Normalize XYZ values
+        const x_norm = xyz.x / x_n;
+        const y_norm = xyz.y / y_n;
+        const z_norm = xyz.z / z_n;
+
+        // Apply f function
+        const f_x = if (x_norm > 0.008856) std.math.pow(f64, x_norm, 1.0 / 3.0) else (903.3 * x_norm + 16.0) / 116.0;
+        const f_y = if (y_norm > 0.008856) std.math.pow(f64, y_norm, 1.0 / 3.0) else (903.3 * y_norm + 16.0) / 116.0;
+        const f_z = if (z_norm > 0.008856) std.math.pow(f64, z_norm, 1.0 / 3.0) else (903.3 * z_norm + 16.0) / 116.0;
+
+        // Convert to LAB
+        const l = 116.0 * f_y - 16.0;
+        const a = 500.0 * (f_x - f_y);
+        const b = 200.0 * (f_y - f_z);
+
+        return .{ .l = l, .a = a, .b = b };
+    }
+
+    /// Calculate CIEDE2000 color difference
+    fn ciede2000(lab1: struct { l: f64, a: f64, b: f64 }, lab2: struct { l: f64, a: f64, b: f64 }) f64 {
+        const l1 = lab1.l;
+        const a1 = lab1.a;
+        const b1 = lab1.b;
+        const l2 = lab2.l;
+        const a2 = lab2.a;
+        const b2 = lab2.b;
+
+        // Calculate C1, C2 (chroma)
+        const c1 = std.math.sqrt(a1 * a1 + b1 * b1);
+        const c2 = std.math.sqrt(a2 * a2 + b2 * b2);
+
+        // Calculate average chroma
+        const c_avg = (c1 + c2) / 2.0;
+
+        // Calculate G (for a* correction)
+        const g = 0.5 * (1.0 - std.math.sqrt(std.math.pow(f64, c_avg, 7.0) / (std.math.pow(f64, c_avg, 7.0) + std.math.pow(f64, 25.0, 7.0))));
+
+        // Correct a* values
+        const a1_prime = a1 * (1.0 + g);
+        const a2_prime = a2 * (1.0 + g);
+
+        // Recalculate C' values
+        const c1_prime = std.math.sqrt(a1_prime * a1_prime + b1 * b1);
+        const c2_prime = std.math.sqrt(a2_prime * a2_prime + b2 * b2);
+
+        // Calculate C' average
+        const c_prime_avg = (c1_prime + c2_prime) / 2.0;
+
+        // Calculate delta C'
+        const delta_c_prime = c2_prime - c1_prime;
+
+        // Calculate h' values
+        const h1_prime = if (c1_prime == 0.0) 0.0 else std.math.atan2(b1, a1_prime) * 180.0 / std.math.pi;
+        const h2_prime = if (c2_prime == 0.0) 0.0 else std.math.atan2(b2, a2_prime) * 180.0 / std.math.pi;
+
+        // Calculate delta h'
+        var delta_h_prime = h2_prime - h1_prime;
+        if (std.math.fabs(delta_h_prime) > 180.0) {
+            if (h2_prime <= h1_prime) {
+                delta_h_prime += 360.0;
+            } else {
+                delta_h_prime -= 360.0;
+            }
+        }
+
+        // Calculate delta H'
+        const delta_H_prime = 2.0 * std.math.sqrt(c1_prime * c2_prime) * std.math.sin(delta_h_prime * std.math.pi / 180.0 / 2.0);
+
+        // Calculate L' average
+        const l_prime_avg = (l1 + l2) / 2.0;
+
+        // Calculate T
+        const t = 1.0 - 0.17 * std.math.cos((h1_prime - 30.0) * std.math.pi / 180.0) +
+            0.24 * std.math.cos((2.0 * h1_prime) * std.math.pi / 180.0) +
+            0.32 * std.math.cos((3.0 * h1_prime + 6.0) * std.math.pi / 180.0) -
+            0.20 * std.math.cos((4.0 * h1_prime - 63.0) * std.math.pi / 180.0);
+
+        // Calculate S_L, S_C, S_H
+        const s_l = 1.0 + (0.015 * std.math.pow(f64, l_prime_avg - 50.0, 2.0)) / std.math.sqrt(20.0 + std.math.pow(f64, l_prime_avg - 50.0, 2.0));
+        const s_c = 1.0 + 0.045 * c_prime_avg;
+        const s_h = 1.0 + 0.015 * c_prime_avg * t;
+
+        // Calculate R_T
+        const delta_theta = 30.0 * std.math.exp(-std.math.pow(f64, (h1_prime - 275.0) / 25.0, 2.0));
+        const r_c = 2.0 * std.math.sqrt(std.math.pow(f64, c_prime_avg, 7.0) / (std.math.pow(f64, c_prime_avg, 7.0) + std.math.pow(f64, 25.0, 7.0)));
+        const r_t = -std.math.sin(2.0 * delta_theta * std.math.pi / 180.0) * r_c;
+
+        // Calculate k_L, k_C, k_H (weighting factors, typically 1.0)
+        const k_l = 1.0;
+        const k_c = 1.0;
+        const k_h = 1.0;
+
+        // Calculate delta L', delta C', delta H'
+        const delta_l_prime = l2 - l1;
+        const delta_c_prime_weighted = delta_c_prime / (k_c * s_c);
+        const delta_h_prime_weighted = delta_H_prime / (k_h * s_h);
+
+        // Calculate CIEDE2000 color difference
+        const term1 = delta_l_prime / (k_l * s_l);
+        const term2 = delta_c_prime_weighted;
+        const term3 = delta_h_prime_weighted + r_t * delta_c_prime_weighted * delta_h_prime_weighted;
+
+        return std.math.sqrt(term1 * term1 + term2 * term2 + term3 * term3);
     }
 
     /// Convert to 16-color using precise mapping

@@ -171,6 +171,186 @@ This architecture ensures:
 - Flexible agent capabilities
 - Easy testing and maintenance
 
+## Naming Conventions
+
+Following the [Zig Style Guide](https://ziglang.org/documentation/master/#Style-Guide) and framework patterns, this section outlines naming conventions for consistent code organization. These conventions ensure readability, prevent naming conflicts, and maintain clear module boundaries.
+
+### Agent Naming
+Agent directories use **snake_case** while internal types use **PascalCase**:
+```zig
+// Good: Agent directory structure
+agents/markdown_processor/      // snake_case directory
+agents/test_agent/              // snake_case directory
+agents/api_client/              // snake_case directory
+
+// Good: Agent type definitions
+pub const MarkdownAgent = struct { ... };  // PascalCase type
+pub const TestAgent = struct { ... };      // PascalCase type
+pub const ApiClient = struct { ... };      // PascalCase type
+
+// Bad: Avoid these patterns
+agents/MarkdownProcessor/       // Wrong: PascalCase directory
+agents/markdown-processor/      // Wrong: kebab-case directory
+pub const MARKDOWN_AGENT = struct { ... }; // Correct: ALL_CAPS constant
+```
+
+### Module Naming Patterns
+Modules should have clear, descriptive names without redundant suffixes:
+```zig
+// Good: Clean module exports in mod.zig
+pub const auth = @import("auth.zig");
+pub const network = @import("network.zig");
+pub const tools = @import("tools.zig");
+
+// Good: Barrel exports without redundancy
+// In src/shared/cli/mod.zig
+pub const Command = @import("command.zig").Command;
+pub const Context = @import("context.zig").Context;
+pub const Parser = @import("parser.zig").Parser;
+
+// Bad: Redundant suffixes
+pub const AuthModule = @import("auth_module.zig");  // Redundant "Module"
+pub const NetworkLib = @import("network_lib.zig");  // Redundant "Lib"
+pub const ToolsUtils = @import("tools_utils.zig");  // Redundant "Utils"
+```
+
+### Tool Naming Guidelines
+Tools use **camelCase** for functions with descriptive names that avoid redundant prefixes:
+```zig
+// Good: Clear, action-oriented tool names
+pub fn readFile(allocator: Allocator, path: []const u8) ![]u8 { ... }
+pub fn parseMarkdown(allocator: Allocator, content: []const u8) !Document { ... }
+pub fn validateSchema(data: JsonValue) !bool { ... }
+
+// Good: JSON tool registration
+try tools_mod.registerJsonTool(registry, "format_document", "Formats a document", formatDocument);
+try tools_mod.registerJsonTool(registry, "validate_links", "Validates URLs", validateLinks);
+
+// Bad: Redundant prefixes and poor naming
+pub fn toolReadFile(...) { ... }        // Redundant "tool" prefix
+pub fn markdown_parse(...) { ... }      // Wrong: snake_case function
+pub fn DoValidation(...) { ... }        // Wrong: PascalCase function
+```
+
+### Configuration Field Naming
+Configuration uses **snake_case** for fields with clear, meaningful names:
+```zon
+// Good: Clear configuration structure in config.zon
+.{
+    .agent_config = .{
+        .max_concurrent_operations = 10,
+        .default_timeout_ms = 30000,
+        .enable_debug_logging = false,
+    },
+    .custom_settings = .{
+        .markdown_flavor = "github",
+        .auto_save_interval_ms = 5000,
+        .preserve_whitespace = true,
+    }
+}
+
+// Bad: Inconsistent or unclear naming
+.{
+    .agentConfig = .{ ... },           // Wrong: camelCase field
+    .MaxOperations = 10,                // Wrong: PascalCase field
+    .tmout = 30000,                     // Bad: Unclear abbreviation
+    .dbg = false,                       // Bad: Cryptic abbreviation
+}
+```
+
+### File Naming Rules
+Files follow specific patterns based on their content:
+```zig
+// Good: Namespace modules (snake_case.zig)
+agent_base.zig          // Multiple related items
+config_helpers.zig      // Collection of utilities
+tool_registry.zig       // Registry implementation
+
+// Good: Single type files (PascalCase.zig)
+Agent.zig              // Contains: pub const Agent = struct { ... }
+Command.zig            // Contains: pub const Command = struct { ... }
+Parser.zig             // Contains: pub const Parser = struct { ... }
+
+// Good: Barrel exports
+mod.zig                // Module entry point, always lowercase
+
+// Bad: Incorrect patterns
+AgentBase.zig          // Wrong: Should be agent_base.zig for namespace
+parser.zig             // Wrong: Should be Parser.zig for single type
+Module.zig             // Wrong: Should be mod.zig for barrel export
+```
+
+### Constant and Error Naming
+Constants use **ALL_CAPS** with underscores, errors use **PascalCase**:
+```zig
+// Good: Constants
+pub const MAX_BUFFER_SIZE = 4096;
+pub const DEFAULT_TIMEOUT = 30;
+pub const API_VERSION = "v1";
+
+// Good: Error sets
+pub const ConfigError = error{
+    InvalidFormat,
+    MissingRequired,
+    ValidationFailed,
+};
+
+// Bad: Incorrect patterns
+pub const maxBufferSize = 4096;        // Wrong: Should be ALL_CAPS
+pub const config_error = error{ ... }; // Wrong: Should be PascalCase
+pub const CONFIGERROR = error{ ... };  // Wrong: Should be PascalCase
+```
+
+### Examples: Good vs Bad Patterns
+
+#### Complete Agent Structure (Good)
+```zig
+// agents/markdown_processor/agent.zig
+pub const MarkdownAgent = struct {
+    config: Config,
+    allocator: std.mem.Allocator,
+    
+    pub fn processDocument(self: *MarkdownAgent, content: []const u8) !Document {
+        // Implementation
+    }
+};
+
+// agents/markdown_processor/tools/mod.zig
+pub fn formatTable(allocator: Allocator, params: JsonValue) ![]u8 { ... }
+pub fn validateLinks(allocator: Allocator, params: JsonValue) ![]u8 { ... }
+
+// agents/markdown_processor/config.zon
+.{
+    .enable_auto_format = true,
+    .max_heading_depth = 6,
+    .preserve_line_breaks = false,
+}
+```
+
+#### Common Mistakes to Avoid (Bad)
+```zig
+// Wrong: Mixed naming conventions
+pub const markdown_processor = struct { ... };  // Should be MarkdownProcessor
+pub fn ProcessDocument(...) { ... }             // Should be processDocument
+pub const max_size = 100;                       // Should be MAX_SIZE
+
+// Wrong: Redundant naming
+pub const MarkdownProcessorAgent = struct { ... };  // Redundant "Agent"
+pub fn toolFormatTable(...) { ... }                 // Redundant "tool"
+pub const ConfigModule = @import("config_module.zig"); // Redundant "Module"
+
+// Wrong: Inconsistent configuration
+.{
+    .enableAutoFormat = true,    // Should be snake_case
+    .MaxHeadingDepth = 6,        // Should be snake_case
+    .preserve_line_breaks = false, // Inconsistent with others
+}
+```
+
+These conventions ensure consistency across the codebase while maintaining Zig's idiomatic style. When in doubt, follow the pattern established in the standard library and refer to the official Zig Style Guide.
+
+For comprehensive style guide details including philosophy, safety practices, and performance considerations, see @docs/STYLE.md
+
 ## Build / Run
 
 ### Enhanced Build System

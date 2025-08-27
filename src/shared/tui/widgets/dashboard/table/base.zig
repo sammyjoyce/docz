@@ -18,8 +18,8 @@ pub const DataTableError = error{
 /// Table configuration options
 pub const Config = struct {
     title: ?[]const u8 = null,
-    show_headers: bool = true,
-    show_row_numbers: bool = false,
+    showHeaders: bool = true,
+    showRowNumbers: bool = false,
     show_grid_lines: bool = true,
     allow_selection: bool = true,
     clipboard_enabled: bool = true,
@@ -39,8 +39,8 @@ pub const Cell = struct {
     editable: bool = false,
 
     pub const CellStyle = struct {
-        foreground_color: ?terminal_mod.Color = null,
-        background_color: ?terminal_mod.Color = null,
+        foregroundColor: ?terminal_mod.Color = null,
+        backgroundColor: ?terminal_mod.Color = null,
         bold: bool = false,
         italic: bool = false,
         alignment: Alignment = .left,
@@ -57,7 +57,7 @@ pub const Cell = struct {
 pub const TableState = struct {
     cursor: Point = Point.init(0, 0),
     selection: ?Selection = null,
-    scroll_offset: Point = Point.init(0, 0),
+    scrollOffset: Point = Point.init(0, 0),
     column_widths: []u32,
     focused: bool = false,
     editing_cell: ?Point = null,
@@ -197,7 +197,7 @@ pub const Selection = struct {
 };
 
 /// Column information and metadata
-pub const ColumnInfo = struct {
+pub const Column = struct {
     index: usize,
     header: []const u8,
     width: u32,
@@ -206,7 +206,7 @@ pub const ColumnInfo = struct {
     alignment: Cell.CellStyle.Alignment = .left,
 
     /// Calculate the display width needed for this column
-    pub fn calculateWidth(self: ColumnInfo, rows: [][]Cell, config: Config) u32 {
+    pub fn calculateWidth(self: Column, rows: [][]Cell, config: Config) u32 {
         var max_width = self.header.len;
 
         for (rows) |row| {
@@ -280,7 +280,7 @@ pub const TableLayout = struct {
         if (total_width > 0) total_width -= 1; // Remove last separator
 
         // Calculate layout dimensions
-        const header_height: u32 = if (config.show_headers) 1 else 0;
+        const header_height: u32 = if (config.showHeaders) 1 else 0;
         const row_height: u32 = 1;
         const available_height = @as(u32, @intCast(bounds.height));
         const content_height = available_height - header_height - 1; // -1 for title

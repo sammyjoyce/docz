@@ -86,7 +86,7 @@ pub const ScreenState = struct {
 };
 
 /// Comprehensive screen manager with state tracking and restoration
-pub const ScreenManager = struct {
+pub const Screen = struct {
     allocator: std.mem.Allocator,
     state: ScreenState,
     restore_on_exit: bool = true,
@@ -327,11 +327,11 @@ pub const ScreenManager = struct {
 
 /// RAII wrapper for automatic screen restoration
 pub const ScreenGuard = struct {
-    manager: *ScreenManager,
+    manager: *Screen,
 
     const Self = @This();
 
-    pub fn init(manager: *ScreenManager) !Self {
+    pub fn init(manager: *Screen) !Self {
         try manager.setupForTUI();
         return Self{ .manager = manager };
     }
@@ -343,7 +343,7 @@ pub const ScreenGuard = struct {
 
 /// Utility for creating safe screen management blocks
 pub fn withScreen(allocator: std.mem.Allocator, comptime func: anytype, args: anytype) !void {
-    var manager = ScreenManager.init(allocator);
+    var manager = Screen.init(allocator);
     defer manager.deinit();
 
     const guard = try ScreenGuard.init(&manager);
@@ -357,7 +357,7 @@ test "screen manager initialization" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    var manager = ScreenManager.init(allocator);
+    var manager = Screen.init(allocator);
     defer manager.deinit();
 
     try testing.expect(!manager.state.in_alt_screen);
@@ -369,7 +369,7 @@ test "screen state tracking" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    var manager = ScreenManager.init(allocator);
+    var manager = Screen.init(allocator);
     defer manager.deinit();
 
     // Simulate state changes (without actual terminal I/O)
@@ -385,7 +385,7 @@ test "title management" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    var manager = ScreenManager.init(allocator);
+    var manager = Screen.init(allocator);
     defer manager.deinit();
 
     // This would normally send to terminal, but we're just testing the allocation
@@ -399,7 +399,7 @@ test "screen guard RAII" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    var manager = ScreenManager.init(allocator);
+    var manager = Screen.init(allocator);
     defer manager.deinit();
 
     // Simulate guard setup without terminal I/O

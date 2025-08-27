@@ -67,22 +67,22 @@ pub const ThemeExporter = struct {
         try writer.print("  \"description\": \"{s}\",\n", .{theme.description});
         try writer.print("  \"author\": \"{s}\",\n", .{theme.author});
         try writer.print("  \"version\": \"{s}\",\n", .{theme.version});
-        try writer.print("  \"is_dark\": {},\n", .{theme.is_dark});
+        try writer.print("  \"is_dark\": {},\n", .{theme.isDark});
 
         try writer.writeAll("  \"colors\": {\n");
-        try self.writeJsonColor(writer, "background", theme.background, false);
-        try self.writeJsonColor(writer, "foreground", theme.foreground, false);
-        try self.writeJsonColor(writer, "cursor", theme.cursor, false);
-        try self.writeJsonColor(writer, "selection", theme.selection, false);
+        try self.writeJSONColor(writer, "background", theme.background, false);
+        try self.writeJSONColor(writer, "foreground", theme.foreground, false);
+        try self.writeJSONColor(writer, "cursor", theme.cursor, false);
+        try self.writeJSONColor(writer, "selection", theme.selection, false);
 
-        try self.writeJsonColor(writer, "black", theme.black, false);
-        try self.writeJsonColor(writer, "red", theme.red, false);
-        try self.writeJsonColor(writer, "green", theme.green, false);
-        try self.writeJsonColor(writer, "yellow", theme.yellow, false);
-        try self.writeJsonColor(writer, "blue", theme.blue, false);
-        try self.writeJsonColor(writer, "magenta", theme.magenta, false);
-        try self.writeJsonColor(writer, "cyan", theme.cyan, false);
-        try self.writeJsonColor(writer, "white", theme.white, true);
+        try self.writeJSONColor(writer, "black", theme.black, false);
+        try self.writeJSONColor(writer, "red", theme.red, false);
+        try self.writeJSONColor(writer, "green", theme.green, false);
+        try self.writeJSONColor(writer, "yellow", theme.yellow, false);
+        try self.writeJSONColor(writer, "blue", theme.blue, false);
+        try self.writeJSONColor(writer, "magenta", theme.magenta, false);
+        try self.writeJSONColor(writer, "cyan", theme.cyan, false);
+        try self.writeJSONColor(writer, "white", theme.white, true);
         try writer.writeAll("  }\n");
 
         try writer.writeAll("}\n");
@@ -90,7 +90,7 @@ pub const ThemeExporter = struct {
         return buffer.toOwnedSlice();
     }
 
-    fn writeJsonColor(self: *Self, writer: anytype, name: []const u8, color: Color, is_last: bool) !void {
+    fn writeJSONColor(self: *Self, writer: anytype, name: []const u8, color: Color, is_last: bool) !void {
         const hex = try color.rgb.toHex(self.allocator);
         defer self.allocator.free(hex);
 
@@ -110,7 +110,7 @@ pub const ThemeExporter = struct {
         try writer.print("description: {s}\n", .{theme.description});
         try writer.print("author: {s}\n", .{theme.author});
         try writer.print("version: {s}\n", .{theme.version});
-        try writer.print("is_dark: {}\n", .{theme.is_dark});
+        try writer.print("is_dark: {}\n", .{theme.isDark});
         try writer.writeAll("\ncolors:\n");
 
         try self.writeYamlColor(writer, "background", theme.background);
@@ -138,7 +138,7 @@ pub const ThemeExporter = struct {
         try writer.print("description = \"{s}\"\n", .{theme.description});
         try writer.print("author = \"{s}\"\n", .{theme.author});
         try writer.print("version = \"{s}\"\n", .{theme.version});
-        try writer.print("is_dark = {}\n", .{theme.is_dark});
+        try writer.print("is_dark = {}\n", .{theme.isDark});
 
         try writer.writeAll("\n[colors]\n");
         try self.writeTomlColor(writer, "background", theme.background);
@@ -279,7 +279,7 @@ pub const ThemeExporter = struct {
         try writer.writeAll("{\n");
         try writer.print("  \"name\": \"{s}\",\n", .{theme.name});
         try writer.writeAll("  \"type\": ");
-        if (theme.is_dark) {
+        if (theme.isDark) {
             try writer.writeAll("\"dark\",\n");
         } else {
             try writer.writeAll("\"light\",\n");
@@ -325,7 +325,7 @@ pub const ThemeExporter = struct {
         try writer.print("\" {s}\n\n", .{theme.description});
 
         try writer.writeAll("set background=");
-        if (theme.is_dark) {
+        if (theme.isDark) {
             try writer.writeAll("dark\n");
         } else {
             try writer.writeAll("light\n");

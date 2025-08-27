@@ -47,6 +47,7 @@ pub const Program = enum {
     AppleTerminal,
     VTE,
     Alacritty,
+    Ghostty,
     Konsole,
     Xterm,
     VSCode,
@@ -131,6 +132,7 @@ fn capsForProgram(comptime P: Program) TermCaps {
         .AppleTerminal => overlayCaps(@TypeOf(bp.apple_terminal), bp.apple_terminal, &caps),
         .VTE => overlayCaps(@TypeOf(bp.vte), bp.vte, &caps),
         .Alacritty => overlayCaps(@TypeOf(bp.alacritty), bp.alacritty, &caps),
+        .Ghostty => overlayCaps(@TypeOf(bp.ghostty), bp.ghostty, &caps),
         .Konsole => overlayCaps(@TypeOf(bp.konsole), bp.konsole, &caps),
         .Xterm => overlayCaps(@TypeOf(bp.xterm), bp.xterm, &caps),
         .VSCode => overlayCaps(@TypeOf(bp.vscode), bp.vscode, &caps),
@@ -147,6 +149,9 @@ pub fn detectProgram(env: *const std.process.EnvMap) Program {
     if (env.get("WT_SESSION") != null) return .WindowsTerminal;
     if (env.get("VSCODE_GIT_IPC_HANDLE") != null) return .VSCode;
 
+    // Check for Ghostty
+    if (env.get("GHOSTTY_RESOURCES_DIR") != null) return .Ghostty;
+
     if (env.get("TERM_PROGRAM")) |tp| {
         if (std.mem.eql(u8, tp, "WezTerm")) return .WezTerm;
         if (std.mem.eql(u8, tp, "iTerm.app")) return .ITerm2;
@@ -161,6 +166,7 @@ pub fn detectProgram(env: *const std.process.EnvMap) Program {
         if (std.mem.eql(u8, term, "linux")) return .LinuxConsole;
         if (std.mem.indexOf(u8, term, "xterm-kitty") != null) return .Kitty;
         if (std.mem.indexOf(u8, term, "alacritty") != null) return .Alacritty;
+        if (std.mem.startsWith(u8, term, "xterm-ghostty")) return .Ghostty;
         if (std.mem.indexOf(u8, term, "xterm") != null) return .Xterm;
         if (std.mem.indexOf(u8, term, "gnome") != null) return .VTE;
         if (std.mem.indexOf(u8, term, "konsole") != null) return .Konsole;
@@ -198,6 +204,7 @@ pub fn detectCapsFromEnv(env: *const std.process.EnvMap) TermCaps {
         .AppleTerminal => capsForProgram(.AppleTerminal),
         .VTE => capsForProgram(.VTE),
         .Alacritty => capsForProgram(.Alacritty),
+        .Ghostty => capsForProgram(.Ghostty),
         .Konsole => capsForProgram(.Konsole),
         .Xterm => capsForProgram(.Xterm),
         .VSCode => capsForProgram(.VSCode),

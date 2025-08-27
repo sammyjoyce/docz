@@ -17,7 +17,7 @@ pub const Screen = struct {
         content: []const u8,
         visible: bool,
         dirty: bool, // Needs redraw
-        z_index: i32, // For layering
+        zIndex: i32, // For layering
     };
 
     components: std.ArrayList(Component),
@@ -44,14 +44,14 @@ pub const Screen = struct {
         self.dirty_regions.deinit();
     }
 
-    pub fn addComponent(self: *Screen, id: []const u8, bounds: Bounds, z_index: i32) !void {
+    pub fn addComponent(self: *Screen, id: []const u8, bounds: Bounds, zIndex: i32) !void {
         const component = Component{
             .id = try self.allocator.dupe(u8, id),
             .bounds = bounds,
             .content = try self.allocator.alloc(u8, 0),
             .visible = true,
             .dirty = true,
-            .z_index = z_index,
+            .zIndex = zIndex,
         };
         try self.components.append(component);
         try self.markDirty(bounds);
@@ -152,7 +152,7 @@ pub const Screen = struct {
 
     fn compareComponents(context: void, a: Component, b: Component) bool {
         _ = context;
-        return a.z_index < b.z_index;
+        return a.zIndex < b.zIndex;
     }
 
     fn renderRegion(self: *Screen, region: Bounds) !void {

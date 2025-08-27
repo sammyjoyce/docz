@@ -34,7 +34,7 @@ const SimpleTui = struct {
 };
 
 // Stub implementations for term modules
-const caps_mod = struct {
+const CapsMod = struct {
     pub const TermCaps = struct {
         has_color: bool = true,
         has_hyperlinks: bool = false,
@@ -51,11 +51,11 @@ const caps_mod = struct {
     }
 };
 
-const color_mod = struct {
+const ColorMod = struct {
     pub const Color = SimpleTui.Color;
 };
 
-const sgr_mod = struct {
+const SgrMod = struct {
     pub const Sgr = struct {
         pub const BOLD = SimpleTui.Color.BOLD;
         pub const RESET = SimpleTui.Color.RESET;
@@ -63,23 +63,23 @@ const sgr_mod = struct {
     };
 };
 
-const hyperlink_mod = struct {
+const HyperlinkMod = struct {
     pub fn create(_: []const u8, _: []const u8) []const u8 {
         return "";
     }
 };
 
-const clipboard_mod = struct {
+const ClipboardMod = struct {
     pub fn copy(_: []const u8) bool {
         return false;
     }
 };
 
-const notification_mod = struct {
+const NotificationMod = struct {
     pub fn notify(_: []const u8, _: []const u8) void {}
 };
 
-const title_mod = struct {
+const TitleMod = struct {
     pub fn set(_: []const u8) void {}
 };
 
@@ -88,7 +88,7 @@ const tui = SimpleTui;
 /// Enhanced CLI formatter with terminal capability awareness
 pub const CliFormatter = struct {
     allocator: std.mem.Allocator,
-    caps: caps_mod.TermCaps,
+    caps: CapsMod.TermCaps,
     terminal_size: tui.TerminalSize,
 
     // Color scheme adapted to terminal capabilities
@@ -108,12 +108,12 @@ pub const CliFormatter = struct {
     };
 
     pub fn init(allocator: std.mem.Allocator) CliFormatter {
-        const caps = caps_mod.detectCaps(allocator) catch |err| {
+        const caps = CapsMod.detectCaps(allocator) catch |err| {
             std.log.warn("Failed to detect terminal capabilities: {any}", .{err});
             // Fallback to basic capabilities
             return CliFormatter{
                 .allocator = allocator,
-                .caps = caps_mod.TermCaps{
+                .caps = CapsMod.TermCaps{
                     .supportsTruecolor = false,
                     .supportsHyperlinkOsc8 = false,
                     .supportsClipboardOsc52 = false,
@@ -406,7 +406,7 @@ pub const CliFormatter = struct {
         var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
         const writer = &stdout_writer.interface;
 
-        clipboard_mod.writeClipboard(writer, self.allocator, self.caps, text) catch return false;
+        ClipboardMod.writeClipboard(writer, self.allocator, self.caps, text) catch return false;
         try writer.flush(); // Don't forget to flush!
 
         print("{s}📋 Copied to clipboard{s}\n", .{ self.colors.muted, self.colors.reset });

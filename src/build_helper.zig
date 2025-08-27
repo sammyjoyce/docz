@@ -4,8 +4,8 @@ const std = @import("std");
 const builtin = @import("builtin");
 
 pub const AgentBuildConfig = struct {
-    agent_id: []const u8,
-    agent_path: []const u8,
+    agentId: []const u8,
+    agentPath: []const u8,
     manifest: AgentManifest,
     allocator: std.mem.Allocator,
 };
@@ -344,22 +344,22 @@ pub fn generateBuildSummary(allocator: std.mem.Allocator, config: AgentBuildConf
     });
     try writer.print("  Capabilities:\n", .{});
 
-    if (config.manifest.capabilities.supports_streaming) {
+    if (config.manifest.capabilities.supportsStreaming) {
         try writer.print("    - Streaming responses\n", .{});
     }
-    if (config.manifest.capabilities.supports_tools) {
+    if (config.manifest.capabilities.supportsTools) {
         try writer.print("    - Tool support\n", .{});
     }
-    if (config.manifest.capabilities.supports_file_operations) {
+    if (config.manifest.capabilities.supportsFileOperations) {
         try writer.print("    - File operations\n", .{});
     }
-    if (config.manifest.capabilities.supports_network_access) {
+    if (config.manifest.capabilities.supportsNetworkAccess) {
         try writer.print("    - Network access\n", .{});
     }
-    if (config.manifest.capabilities.supports_system_commands) {
+    if (config.manifest.capabilities.supportsSystemCommands) {
         try writer.print("    - System commands\n", .{});
     }
-    if (config.manifest.capabilities.supports_interactive_mode) {
+    if (config.manifest.capabilities.supportsInteractiveMode) {
         try writer.print("    - Interactive mode\n", .{});
     }
 

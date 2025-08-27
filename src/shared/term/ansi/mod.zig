@@ -30,7 +30,9 @@ pub const xterm = @import("xterm.zig");
 pub const kitty = @import("kitty.zig");
 pub const iterm2 = @import("iterm2.zig");
 pub const iterm2_images = @import("iterm2_images.zig");
+pub const iterm2_shell_integration = @import("iterm2_shell_integration.zig");
 pub const finalterm = @import("finalterm.zig");
+pub const ghostty = @import("ghostty.zig");
 
 // Advanced functionality
 pub const enhanced_color = @import("enhanced_color.zig");

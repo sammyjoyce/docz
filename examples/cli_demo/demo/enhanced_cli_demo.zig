@@ -216,14 +216,14 @@ pub const EnhancedCliDemo = struct {
         defer graphics.deinit();
 
         // Generate sample data
-        const data_points = try self.allocator.alloc(terminal_graphics.DataPoint, 20);
+        const data_points = try self.allocator.alloc(terminal_graphics.Point, 20);
         defer self.allocator.free(data_points);
 
         // Create sine wave data
         for (data_points, 0..) |*point, i| {
             const x = @as(f64, @floatFromInt(i));
             const y = @sin(x * 0.5) * 10 + 15; // Scale and offset
-            point.* = terminal_graphics.DataPoint{
+            point.* = terminal_graphics.Point{
                 .x = x,
                 .y = y,
                 .label = null,
@@ -231,13 +231,13 @@ pub const EnhancedCliDemo = struct {
         }
 
         // Create dataset
-        const dataset = terminal_graphics.Dataset{
+        const dataset = terminal_graphics.Set{
             .name = "Sample Data",
             .data = data_points,
             .color = terminal_abstraction.CliColors.PRIMARY,
         };
 
-        const datasets = [_]terminal_graphics.Dataset{dataset};
+        const datasets = [_]terminal_graphics.Set{dataset};
 
         // Render different chart types
         try self.abstraction.print("Line Chart:\n", terminal_abstraction.CliStyles.HEADER);

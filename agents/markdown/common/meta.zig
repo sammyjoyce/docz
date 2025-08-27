@@ -12,17 +12,17 @@ pub const MetadataFormat = enum {
     json,
 };
 
-pub const MetadataValue = union(enum) {
+pub const Metadata = union(enum) {
     string: []const u8,
     integer: i64,
     float: f64,
     boolean: bool,
-    array: []const MetadataValue,
-    object: std.StringHashMap(MetadataValue),
+    array: []const Metadata,
+    object: std.StringHashMap(Metadata),
 };
 
 pub const DocumentMetadata = struct {
-    content: std.StringHashMap(MetadataValue),
+    content: std.StringHashMap(Metadata),
     format: MetadataFormat,
     raw_content: []const u8,
 
@@ -31,17 +31,17 @@ pub const DocumentMetadata = struct {
         var iterator = self.content.iterator();
         while (iterator.next()) |entry| {
             allocator.free(entry.key_ptr.*);
-            freeMetadataValue(entry.value_ptr.*, allocator);
+            freeMetadata(entry.value_ptr.*, allocator);
         }
         self.content.deinit();
         allocator.free(self.raw_content);
     }
 
-    pub fn get(self: *const DocumentMetadata, key: []const u8) ?*const MetadataValue {
+    pub fn get(self: *const DocumentMetadata, key: []const u8) ?*const Metadata {
         return self.content.getPtr(key);
     }
 
-    pub fn set(self: *DocumentMetadata, allocator: std.mem.Allocator, key: []const u8, value: MetadataValue) Error!void {
+    pub fn set(self: *DocumentMetadata, allocator: std.mem.Allocator, key: []const u8, value: Metadata) Error!void {
         const owned_key = try allocator.dupe(u8, key);
         try self.content.put(owned_key, value);
     }
@@ -99,25 +99,25 @@ pub fn extractContent(content: []const u8) []const u8 {
 }
 
 /// Parse basic YAML-like metadata (simplified parser)
-fn parseYamlMetadata(allocator: std.mem.Allocator, yaml_content: []const u8) Error!DocumentMetadata {
+fn parseYamlMetadata(allocator: std.mem.Allocator, yamlContent: []const u8) Error!DocumentMetadata {
     var metadata = DocumentMetadata{
-        .content = std.StringHashMap(MetadataValue).init(allocator),
+        .content = std.StringHashMap(Metadata).init(allocator),
         .format = .yaml,
-        .raw_content = try allocator.dupe(u8, yaml_content),
+        .raw_content = try allocator.dupe(u8, yamlContent),
     };
 
-    var lines = std.mem.splitScalar(u8, yaml_content, '\n');
+    var lines = std.mem.splitScalar(u8, yamlContent, '\n');
     while (lines.next()) |line| {
         const trimmed = std.mem.trim(u8, line, " \t");
         if (trimmed.len == 0) continue;
 
-        const colon_pos = std.mem.indexOf(u8, trimmed, ":");
-        if (colon_pos) |pos| {
+        const colonPos = std.mem.indexOf(u8, trimmed, ":");
+        if (colonPos) |pos| {
             const key = std.mem.trim(u8, trimmed[0..pos], " \t");
-            const value_str = std.mem.trim(u8, trimmed[pos + 1 ..], " \t");
+            const valueStr = std.mem.trim(u8, trimmed[pos + 1 ..], " \t");
 
             if (key.len > 0) {
-                const value = try parseYamlValue(allocator, value_str);
+                const value = try parseYamlValue(allocator, valueStr);
                 try metadata.set(allocator, key, value);
             }
         }
@@ -127,25 +127,25 @@ fn parseYamlMetadata(allocator: std.mem.Allocator, yaml_content: []const u8) Err
 }
 
 /// Parse basic TOML-like metadata (simplified parser)
-fn parseTomlMetadata(allocator: std.mem.Allocator, toml_content: []const u8) Error!?DocumentMetadata {
+fn parseTomlMetadata(allocator: std.mem.Allocator, tomlContent: []const u8) Error!?DocumentMetadata {
     var metadata = DocumentMetadata{
-        .content = std.StringHashMap(MetadataValue).init(allocator),
+        .content = std.StringHashMap(Metadata).init(allocator),
         .format = .toml,
-        .raw_content = try allocator.dupe(u8, toml_content),
+        .raw_content = try allocator.dupe(u8, tomlContent),
     };
 
-    var lines = std.mem.splitScalar(u8, toml_content, '\n');
+    var lines = std.mem.splitScalar(u8, tomlContent, '\n');
     while (lines.next()) |line| {
         const trimmed = std.mem.trim(u8, line, " \t");
         if (trimmed.len == 0 or trimmed[0] == '#') continue; // Skip comments
 
-        const equals_pos = std.mem.indexOf(u8, trimmed, "=");
-        if (equals_pos) |pos| {
+        const equalsPos = std.mem.indexOf(u8, trimmed, "=");
+        if (equalsPos) |pos| {
             const key = std.mem.trim(u8, trimmed[0..pos], " \t");
-            const value_str = std.mem.trim(u8, trimmed[pos + 1 ..], " \t");
+            const valueStr = std.mem.trim(u8, trimmed[pos + 1 ..], " \t");
 
             if (key.len > 0) {
-                const value = try parseTomlValue(allocator, value_str);
+                const value = try parseTomlValue(allocator, valueStr);
                 try metadata.set(allocator, key, value);
             }
         }
@@ -155,74 +155,74 @@ fn parseTomlMetadata(allocator: std.mem.Allocator, toml_content: []const u8) Err
 }
 
 /// Parse a YAML value (simplified)
-fn parseYamlValue(allocator: std.mem.Allocator, value_str: []const u8) Error!MetadataValue {
-    if (value_str.len == 0) {
-        return MetadataValue{ .string = try allocator.dupe(u8, "") };
+fn parseYamlValue(allocator: std.mem.Allocator, valueStr: []const u8) Error!Metadata {
+    if (valueStr.len == 0) {
+        return Metadata{ .string = try allocator.dupe(u8, "") };
     }
 
     // Boolean values
-    if (std.mem.eql(u8, value_str, "true")) {
-        return MetadataValue{ .boolean = true };
+    if (std.mem.eql(u8, valueStr, "true")) {
+        return Metadata{ .boolean = true };
     }
-    if (std.mem.eql(u8, value_str, "false")) {
-        return MetadataValue{ .boolean = false };
+    if (std.mem.eql(u8, valueStr, "false")) {
+        return Metadata{ .boolean = false };
     }
 
     // Quoted string
-    if (value_str.len >= 2 and
-        ((value_str[0] == '"' and value_str[value_str.len - 1] == '"') or
-            (value_str[0] == '\'' and value_str[value_str.len - 1] == '\'')))
+    if (valueStr.len >= 2 and
+        ((valueStr[0] == '"' and valueStr[valueStr.len - 1] == '"') or
+            (valueStr[0] == '\'' and valueStr[valueStr.len - 1] == '\'')))
     {
-        const unquoted = value_str[1 .. value_str.len - 1];
-        return MetadataValue{ .string = try allocator.dupe(u8, unquoted) };
+        const unquoted = valueStr[1 .. valueStr.len - 1];
+        return Metadata{ .string = try allocator.dupe(u8, unquoted) };
     }
 
     // Try to parse as integer
-    if (std.fmt.parseInt(i64, value_str, 10)) |int_val| {
-        return MetadataValue{ .integer = int_val };
+    if (std.fmt.parseInt(i64, valueStr, 10)) |intVal| {
+        return Metadata{ .integer = intVal };
     } else |_| {}
 
     // Try to parse as float
-    if (std.fmt.parseFloat(f64, value_str)) |float_val| {
-        return MetadataValue{ .float = float_val };
+    if (std.fmt.parseFloat(f64, valueStr)) |floatVal| {
+        return Metadata{ .float = floatVal };
     } else |_| {}
 
     // Default to string
-    return MetadataValue{ .string = try allocator.dupe(u8, value_str) };
+    return Metadata{ .string = try allocator.dupe(u8, valueStr) };
 }
 
 /// Parse a TOML value (simplified)
-fn parseTomlValue(allocator: std.mem.Allocator, value_str: []const u8) Error!MetadataValue {
-    if (value_str.len == 0) {
-        return MetadataValue{ .string = try allocator.dupe(u8, "") };
+fn parseTomlValue(allocator: std.mem.Allocator, valueStr: []const u8) Error!Metadata {
+    if (valueStr.len == 0) {
+        return Metadata{ .string = try allocator.dupe(u8, "") };
     }
 
     // Boolean values
-    if (std.mem.eql(u8, value_str, "true")) {
-        return MetadataValue{ .boolean = true };
+    if (std.mem.eql(u8, valueStr, "true")) {
+        return Metadata{ .boolean = true };
     }
-    if (std.mem.eql(u8, value_str, "false")) {
-        return MetadataValue{ .boolean = false };
+    if (std.mem.eql(u8, valueStr, "false")) {
+        return Metadata{ .boolean = false };
     }
 
     // Quoted string
-    if (value_str.len >= 2 and value_str[0] == '"' and value_str[value_str.len - 1] == '"') {
-        const unquoted = value_str[1 .. value_str.len - 1];
-        return MetadataValue{ .string = try allocator.dupe(u8, unquoted) };
+    if (valueStr.len >= 2 and valueStr[0] == '"' and valueStr[valueStr.len - 1] == '"') {
+        const unquoted = valueStr[1 .. valueStr.len - 1];
+        return Metadata{ .string = try allocator.dupe(u8, unquoted) };
     }
 
     // Try to parse as integer
-    if (std.fmt.parseInt(i64, value_str, 10)) |int_val| {
-        return MetadataValue{ .integer = int_val };
+    if (std.fmt.parseInt(i64, valueStr, 10)) |intVal| {
+        return Metadata{ .integer = intVal };
     } else |_| {}
 
     // Try to parse as float
-    if (std.fmt.parseFloat(f64, value_str)) |float_val| {
-        return MetadataValue{ .float = float_val };
+    if (std.fmt.parseFloat(f64, valueStr)) |floatVal| {
+        return Metadata{ .float = floatVal };
     } else |_| {}
 
     // Default to string
-    return MetadataValue{ .string = try allocator.dupe(u8, value_str) };
+    return Metadata{ .string = try allocator.dupe(u8, valueStr) };
 }
 
 /// Serialize metadata back to string format
@@ -259,7 +259,7 @@ pub fn serializeMetadata(allocator: std.mem.Allocator, metadata: *const Document
 }
 
 /// Helper to serialize YAML values
-fn serializeYamlValue(result: *std.array_list.Managed(u8), value: MetadataValue, allocator: std.mem.Allocator) Error!void {
+fn serializeYamlValue(result: *std.array_list.Managed(u8), value: Metadata, allocator: std.mem.Allocator) Error!void {
     switch (value) {
         .string => |s| {
             // Quote strings that need quoting
@@ -293,7 +293,7 @@ fn serializeYamlValue(result: *std.array_list.Managed(u8), value: MetadataValue,
 }
 
 /// Helper to serialize TOML values
-fn serializeTomlValue(result: *std.array_list.Managed(u8), value: MetadataValue, allocator: std.mem.Allocator) Error!void {
+fn serializeTomlValue(result: *std.array_list.Managed(u8), value: Metadata, allocator: std.mem.Allocator) Error!void {
     switch (value) {
         .string => |s| {
             try result.append(allocator, '"');
@@ -321,12 +321,12 @@ fn serializeTomlValue(result: *std.array_list.Managed(u8), value: MetadataValue,
 }
 
 /// Free a metadata value recursively
-fn freeMetadataValue(value: MetadataValue, allocator: std.mem.Allocator) void {
+fn freeMetadata(value: Metadata, allocator: std.mem.Allocator) void {
     switch (value) {
         .string => |s| allocator.free(s),
         .array => |arr| {
             for (arr) |item| {
-                freeMetadataValue(item, allocator);
+                freeMetadata(item, allocator);
             }
             allocator.free(arr);
         },
@@ -334,7 +334,7 @@ fn freeMetadataValue(value: MetadataValue, allocator: std.mem.Allocator) void {
             var iterator = obj.iterator();
             while (iterator.next()) |entry| {
                 allocator.free(entry.key_ptr.*);
-                freeMetadataValue(entry.value_ptr.*, allocator);
+                freeMetadata(entry.value_ptr.*, allocator);
             }
             // Note: obj.deinit() should be called by the parent
         },

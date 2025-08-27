@@ -249,47 +249,47 @@ pub fn renderTemplate(allocator: std.mem.Allocator, template: *const Template, v
 
     while (pos < content.len) {
         // Look for variable substitution {{variable_name}}
-        const start_marker = std.mem.indexOf(u8, content[pos..], "{{");
+        const startMarker = std.mem.indexOf(u8, content[pos..], "{{");
 
-        if (start_marker == null) {
+        if (startMarker == null) {
             // No more variables, append rest of content
             try result.appendSlice(allocator, content[pos..]);
             break;
         }
 
-        const marker_start = pos + start_marker.?;
+        const markerStart = pos + startMarker.?;
 
         // Append content before marker
-        try result.appendSlice(allocator, content[pos..marker_start]);
+        try result.appendSlice(allocator, content[pos..markerStart]);
 
         // Find end marker
-        const end_marker = std.mem.indexOf(u8, content[marker_start + 2 ..], "}}");
-        if (end_marker == null) {
+        const endMarker = std.mem.indexOf(u8, content[markerStart + 2 ..], "}}");
+        if (endMarker == null) {
             // Malformed template, append rest as-is
-            try result.appendSlice(allocator, content[marker_start..]);
+            try result.appendSlice(allocator, content[markerStart..]);
             break;
         }
 
-        const marker_end = marker_start + 2 + end_marker.? + 2;
-        const var_name = std.mem.trim(u8, content[marker_start + 2 .. marker_end - 2], " \t");
+        const markerEnd = markerStart + 2 + endMarker.? + 2;
+        const varName = std.mem.trim(u8, content[markerStart + 2 .. markerEnd - 2], " \t");
 
         // Look up variable value
-        if (variables.get(var_name)) |var_value| {
-            const var_str = try variableToString(allocator, var_value);
-            defer allocator.free(var_str);
-            try result.appendSlice(allocator, var_str);
-        } else if (template.variables.get(var_name)) |var_value| {
-            const var_str = try variableToString(allocator, var_value);
-            defer allocator.free(var_str);
-            try result.appendSlice(allocator, var_str);
+        if (variables.get(varName)) |varValue| {
+            const varStr = try variableToString(allocator, varValue);
+            defer allocator.free(varStr);
+            try result.appendSlice(allocator, varStr);
+        } else if (template.variables.get(varName)) |varValue| {
+            const varStr = try variableToString(allocator, varValue);
+            defer allocator.free(varStr);
+            try result.appendSlice(allocator, varStr);
         } else {
             // Variable not found, keep placeholder or use default
-            const placeholder = std.fmt.allocPrint(allocator, "[{s}]", .{var_name}) catch return Error.OutOfMemory;
+            const placeholder = std.fmt.allocPrint(allocator, "[{s}]", .{varName}) catch return Error.OutOfMemory;
             defer allocator.free(placeholder);
             try result.appendSlice(allocator, placeholder);
         }
 
-        pos = marker_end;
+        pos = markerEnd;
     }
 
     return result.toOwnedSlice(allocator);
@@ -309,11 +309,11 @@ fn variableToString(allocator: std.mem.Allocator, variable: TemplateVariable) Er
 pub fn createVariables(allocator: std.mem.Allocator, vars: []const struct { key: []const u8, value: TemplateVariable }) Error!std.StringHashMap(TemplateVariable) {
     var variables = std.StringHashMap(TemplateVariable).init(allocator);
 
-    for (vars) |var_pair| {
-        const key = try allocator.dupe(u8, var_pair.key);
-        const value = switch (var_pair.value) {
+    for (vars) |varPair| {
+        const key = try allocator.dupe(u8, varPair.key);
+        const value = switch (varPair.value) {
             .string => |s| TemplateVariable{ .string = try allocator.dupe(u8, s) },
-            else => var_pair.value,
+            else => varPair.value,
         };
         try variables.put(key, value);
     }
@@ -346,23 +346,23 @@ pub fn extractVariables(allocator: std.mem.Allocator, content: []const u8) Error
 
     var pos: usize = 0;
     while (pos < content.len) {
-        const start_marker = std.mem.indexOf(u8, content[pos..], "{{");
-        if (start_marker == null) break;
+        const startMarker = std.mem.indexOf(u8, content[pos..], "{{");
+        if (startMarker == null) break;
 
-        const marker_start = pos + start_marker.?;
-        const end_marker = std.mem.indexOf(u8, content[marker_start + 2 ..], "}}");
-        if (end_marker == null) break;
+        const markerStart = pos + startMarker.?;
+        const endMarker = std.mem.indexOf(u8, content[markerStart + 2 ..], "}}");
+        if (endMarker == null) break;
 
-        const marker_end = marker_start + 2 + end_marker.?;
-        const var_name = std.mem.trim(u8, content[marker_start + 2 .. marker_end], " \t");
+        const markerEnd = markerStart + 2 + endMarker.?;
+        const varName = std.mem.trim(u8, content[markerStart + 2 .. markerEnd], " \t");
 
-        if (!seen.contains(var_name) and var_name.len > 0) {
-            const owned_name = try allocator.dupe(u8, var_name);
-            try variables.append(owned_name);
-            try seen.put(owned_name, {});
+        if (!seen.contains(varName) and varName.len > 0) {
+            const ownedName = try allocator.dupe(u8, varName);
+            try variables.append(ownedName);
+            try seen.put(ownedName, {});
         }
 
-        pos = marker_end + 2;
+        pos = markerEnd + 2;
     }
 
     return variables.toOwnedSlice(allocator);

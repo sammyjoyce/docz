@@ -84,7 +84,7 @@ pub fn main() !void {
                     .height = 2,
                 },
                 .style = .{},
-                .z_index = 0,
+                .zIndex = 0,
             };
 
             var progress_bar = smart_progress.SmartProgressBar.init(name, style);
@@ -131,7 +131,7 @@ pub fn main() !void {
                 .height = 5,
             },
             .style = .{},
-            .z_index = 0,
+            .zIndex = 0,
         };
 
         try renderer.drawTextBox(box_ctx, name, box_style);
@@ -157,7 +157,7 @@ pub fn main() !void {
                 .fg_color = .{ .ansi = 12 }, // Bright blue
                 .underline = true,
             },
-            .z_index = 0,
+            .zIndex = 0,
         };
         try renderer.drawText(link_ctx, "Click here to visit Zig homepage (hyperlink supported!)");
         try renderer.clearHyperlink();
@@ -199,7 +199,7 @@ fn demonstrateColors(renderer: *tui.Renderer) !void {
                 .style = .{
                     .bg_color = .{ .rgb = .{ .r = r, .g = 100, .b = 200 } },
                 },
-                .z_index = 0,
+                .zIndex = 0,
             };
             try renderer.fillRect(ctx, ctx.style.bg_color.?);
         }
@@ -218,7 +218,7 @@ fn demonstrateColors(renderer: *tui.Renderer) !void {
                 .style = .{
                     .bg_color = .{ .palette = color },
                 },
-                .z_index = 0,
+                .zIndex = 0,
             };
             try renderer.fillRect(ctx, ctx.style.bg_color.?);
         }

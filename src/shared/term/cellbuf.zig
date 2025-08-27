@@ -394,10 +394,10 @@ pub fn rgbColor(r: u8, g: u8, b: u8) CellColor {
 }
 
 // Common attribute combinations
-pub const bold = CellAttrs{ .bold = true };
-pub const italic = CellAttrs{ .italic = true };
-pub const underline = CellAttrs{ .underline = true };
-pub const reverse = CellAttrs{ .reverse = true };
+pub const BOLD = CellAttrs{ .bold = true };
+pub const ITALIC = CellAttrs{ .italic = true };
+pub const UNDERLINE = CellAttrs{ .underline = true };
+pub const REVERSE = CellAttrs{ .reverse = true };
 
 // Tests
 test "cell buffer creation and basic operations" {

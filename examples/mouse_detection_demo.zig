@@ -7,8 +7,12 @@ const enhanceCapabilityDetectorWithMouse = @import("../src/shared/term/mouse_cap
 /// Demo program showing comprehensive mouse capability detection
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
-    const stdout = std.io.getStdOut().writer();
-    const stdin = std.io.getStdIn();
+    var stdout_buffer: [4096]u8 = undefined;
+    const stdout_file = std.fs.File.stdout();
+    var stdout = stdout_file.writer(&stdout_buffer);
+    var stdin_buffer: [4096]u8 = undefined;
+    const stdin_file = std.fs.File.stdin();
+    var stdin_reader = stdin_file.reader(&stdin_buffer);
 
     try stdout.writeAll("\x1b[2J\x1b[H"); // Clear screen
     try stdout.writeAll("=== Terminal Mouse Capability Detection Demo ===\n\n");
@@ -56,7 +60,7 @@ pub fn main() !void {
     try stdout.writeAll("Would you like to test mouse functionality? (y/n): ");
 
     var buf: [10]u8 = undefined;
-    if (try stdin.read(&buf) > 0 and (buf[0] == 'y' or buf[0] == 'Y')) {
+    if (try stdin_reader.read(&buf) > 0 and (buf[0] == 'y' or buf[0] == 'Y')) {
         try stdout.writeAll("\nEnabling best available mouse mode...\n");
         try mouse_detector.enableBestMouseMode(stdout);
 
@@ -67,7 +71,7 @@ pub fn main() !void {
         try stdout.writeAll("  - Using modifier keys (Shift, Ctrl, Alt) with clicks\n");
         try stdout.writeAll("\nPress Enter to disable mouse mode...\n");
 
-        _ = try stdin.read(&buf);
+        _ = try stdin_reader.read(&buf);
 
         try stdout.writeAll("Disabling mouse mode...\n");
         try mouse_detector.disableMouseMode(stdout);
@@ -78,17 +82,19 @@ pub fn main() !void {
     try stdout.writeAll("\n=== Runtime Tests ===\n");
     try stdout.writeAll("Would you like to run automated runtime tests? (y/n): ");
 
-    if (try stdin.read(&buf) > 0 and (buf[0] == 'y' or buf[0] == 'Y')) {
-        try mouse_detector.performRuntimeTests(stdout, stdin.reader());
+    if (try stdin_reader.read(&buf) > 0 and (buf[0] == 'y' or buf[0] == 'Y')) {
+        try mouse_detector.performRuntimeTests(stdout, stdin_reader);
     }
 
     try stdout.writeAll("\nDemo complete. Press Enter to exit...");
-    _ = try stdin.read(&buf);
+    _ = try stdin_reader.read(&buf);
 }
 
 /// Helper function to demonstrate mouse event parsing
 pub fn parseMouseEvent(data: []const u8) !void {
-    const stdout = std.io.getStdOut().writer();
+    var stdout_buffer: [4096]u8 = undefined;
+    const stdout_file = std.fs.File.stdout();
+    var stdout = stdout_file.writer(&stdout_buffer);
 
     // SGR format: ESC[<buttons>;<x>;<y>M (press) or m (release)
     if (std.mem.startsWith(u8, data, "\x1b[<")) {

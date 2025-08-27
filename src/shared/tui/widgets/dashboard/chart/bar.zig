@@ -8,7 +8,7 @@ const graphics = @import("graphics.zig");
 const renderer_mod = @import("../../../core/renderer.zig");
 
 const Color = base.Color;
-const ChartData = base.ChartData;
+const ChartData = base.Chart;
 const ChartStyle = base.ChartStyle;
 const Bounds = base.Bounds;
 const DrawingContext = graphics.DrawingContext;
@@ -279,7 +279,7 @@ pub const StackedBarChart = struct {
             max_total = @max(max_total, total);
         }
 
-        const value_range = base.ChartData.Range{ .min = 0.0, .max = max_total };
+        const value_range = base.Chart.Range{ .min = 0.0, .max = max_total };
 
         // Draw grid and axes
         if (style.show_grid) {

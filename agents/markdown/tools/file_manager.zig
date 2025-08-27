@@ -118,12 +118,12 @@ fn createDirectory(allocator: std.mem.Allocator, params: json.ObjectMap) !json.V
     const recursive = recursive_json.bool;
 
     // Check if directory already exists
-    const file_info = fs.getFileInfo(directory_path) catch |err| switch (err) {
+    const file_metadata = fs.getFileInfo(directory_path) catch |err| switch (err) {
         fs.Error.FileNotFound => null,
         else => return err,
     };
 
-    if (file_info) |info| {
+    if (file_metadata) |info| {
         if (info.is_dir) {
             var result = json.ObjectMap.init(allocator);
             try result.put("success", json.Value{ .bool = true });
@@ -164,8 +164,8 @@ fn copyFile(allocator: std.mem.Allocator, params: json.ObjectMap) !json.Value {
     const overwrite = overwrite_json.bool;
 
     // Check if source exists
-    const source_info = try fs.getFileInfo(source_path);
-    if (!source_info.is_file) {
+    const source_metadata = try fs.getFileInfo(source_path);
+    if (!source_metadata.is_file) {
         return Error.SourceNotFound;
     }
 
@@ -190,7 +190,7 @@ fn copyFile(allocator: std.mem.Allocator, params: json.ObjectMap) !json.Value {
     try result.put("source_path", json.Value{ .string = source_path });
     try result.put("destination_path", json.Value{ .string = destination_path });
     try result.put("overwritten", json.Value{ .bool = dest_exists });
-    try result.put("size", json.Value{ .integer = @intCast(source_info.size) });
+    try result.put("size", json.Value{ .integer = @intCast(source_metadata.size) });
 
     return json.Value{ .object = result };
 }
@@ -209,8 +209,8 @@ fn moveFile(allocator: std.mem.Allocator, params: json.ObjectMap) !json.Value {
     const overwrite = overwrite_json.bool;
 
     // Check if source exists
-    const source_info = try fs.getFileInfo(source_path);
-    if (!source_info.is_file) {
+    const source_metadata = try fs.getFileInfo(source_path);
+    if (!source_metadata.is_file) {
         return Error.SourceNotFound;
     }
 
@@ -235,7 +235,7 @@ fn moveFile(allocator: std.mem.Allocator, params: json.ObjectMap) !json.Value {
     try result.put("source_path", json.Value{ .string = source_path });
     try result.put("destination_path", json.Value{ .string = destination_path });
     try result.put("overwritten", json.Value{ .bool = dest_exists });
-    try result.put("size", json.Value{ .integer = @intCast(source_info.size) });
+    try result.put("size", json.Value{ .integer = @intCast(source_metadata.size) });
 
     return json.Value{ .object = result };
 }
@@ -250,8 +250,8 @@ fn deleteFile(allocator: std.mem.Allocator, params: json.ObjectMap) !json.Value 
     }
 
     // Check if file exists and is a file
-    const file_info = try fs.getFileInfo(file_path);
-    if (!file_info.is_file) {
+    const file_metadata = try fs.getFileInfo(file_path);
+    if (!file_metadata.is_file) {
         return Error.SourceNotFound;
     }
 
@@ -263,7 +263,7 @@ fn deleteFile(allocator: std.mem.Allocator, params: json.ObjectMap) !json.Value 
     try result.put("tool", json.Value{ .string = "file_manager" });
     try result.put("command", json.Value{ .string = "delete_file" });
     try result.put("file_path", json.Value{ .string = file_path });
-    try result.put("deleted_size", json.Value{ .integer = @intCast(file_info.size) });
+    try result.put("deleted_size", json.Value{ .integer = @intCast(file_metadata.size) });
 
     return json.Value{ .object = result };
 }
@@ -281,8 +281,8 @@ fn deleteDirectory(allocator: std.mem.Allocator, params: json.ObjectMap) !json.V
     const recursive = recursive_json.bool;
 
     // Check if directory exists and is a directory
-    const file_info = try fs.getFileInfo(directory_path);
-    if (!file_info.is_dir) {
+    const file_metadata = try fs.getFileInfo(directory_path);
+    if (!file_metadata.is_dir) {
         return Error.SourceNotFound;
     }
 

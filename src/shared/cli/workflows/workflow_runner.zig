@@ -20,39 +20,39 @@ pub const WorkflowStatus = enum {
 
 pub const WorkflowResult = struct {
     status: WorkflowStatus,
-    completed_steps: u32,
-    total_steps: u32,
-    error_message: ?[]const u8 = null,
-    elapsed_time: i64,
+    completedSteps: u32,
+    totalSteps: u32,
+    errorMessage: ?[]const u8 = null,
+    elapsedTime: i64,
 };
 
 pub const WorkflowRunner = struct {
     allocator: Allocator,
     caps: term_caps.TermCaps,
-    notification_manager: *notification_manager.NotificationManager,
+    notificationManager: *notification_manager.NotificationHandler,
     steps: std.ArrayList(WorkflowStep.Step),
-    current_step: u32,
+    currentStep: u32,
     status: WorkflowStatus,
-    start_time: ?i64,
-    progress_bar: ?ProgressBar,
-    show_progress: bool,
+    startTime: ?i64,
+    progressBar: ?ProgressBar,
+    showProgress: bool,
     interactive: bool,
     writer: ?*std.Io.Writer,
 
     pub fn init(
         allocator: Allocator,
-        notification_mgr: *notification_manager.NotificationManager,
+        notificationMgr: *notification_manager.NotificationHandler,
     ) WorkflowRunner {
         return .{
             .allocator = allocator,
             .caps = term_caps.getTermCaps(),
-            .notification_manager = notification_mgr,
+            .notificationManager = notificationMgr,
             .steps = std.ArrayList(WorkflowStep.Step).init(allocator),
-            .current_step = 0,
+            .currentStep = 0,
             .status = .pending,
-            .start_time = null,
-            .progress_bar = null,
-            .show_progress = true,
+            .startTime = null,
+            .progressBar = null,
+            .showProgress = true,
             .interactive = false,
             .writer = null,
         };
@@ -60,7 +60,7 @@ pub const WorkflowRunner = struct {
 
     pub fn deinit(self: *WorkflowRunner) void {
         self.steps.deinit();
-        if (self.progress_bar) |*bar| {
+        if (self.progressBar) |*bar| {
             bar.clear(self.writer.?) catch {};
         }
     }
@@ -73,11 +73,11 @@ pub const WorkflowRunner = struct {
     pub fn configure(
         self: *WorkflowRunner,
         options: struct {
-            show_progress: bool = true,
+            showProgress: bool = true,
             interactive: bool = false,
         },
     ) void {
-        self.show_progress = options.show_progress;
+        self.showProgress = options.showProgress;
         self.interactive = options.interactive;
     }
 
@@ -100,12 +100,12 @@ pub const WorkflowRunner = struct {
         }
 
         self.status = .running;
-        self.start_time = std.time.timestamp();
-        self.current_step = 0;
+        self.startTime = std.time.timestamp();
+        self.currentStep = 0;
 
         // Initialize progress bar if enabled
-        if (self.show_progress) {
-            self.progress_bar = try ProgressBar.init(
+        if (self.showProgress) {
+            self.progressBar = try ProgressBar.init(
                 self.allocator,
                 .unicode,
                 40,
@@ -114,7 +114,7 @@ pub const WorkflowRunner = struct {
         }
 
         // Send initial notification
-        _ = try self.notification_manager.notify(
+        _ = try self.notificationManager.notify(
             .info,
             "Workflow Started",
             workflow_name,
@@ -124,14 +124,14 @@ pub const WorkflowRunner = struct {
 
         // Execute each step
         for (self.steps.items, 0..) |step, i| {
-            self.current_step = @intCast(i);
+            self.currentStep = @intCast(i);
 
             // Update progress
             const progress = @as(f32, @floatFromInt(i)) / @as(f32, @floatFromInt(self.steps.items.len));
 
-            if (self.show_progress and self.progress_bar != null) {
-                self.progress_bar.?.setProgress(progress);
-                try self.progress_bar.?.render(self.writer.?);
+            if (self.showProgress and self.progressBar != null) {
+                self.progressBar.?.setProgress(progress);
+                try self.progressBar.?.render(self.writer.?);
             }
 
             // Execute step
@@ -156,10 +156,10 @@ pub const WorkflowRunner = struct {
 
                 return WorkflowResult{
                     .status = .failed,
-                    .completed_steps = @intCast(i),
-                    .total_steps = @intCast(self.steps.items.len),
-                    .error_message = error_msg,
-                    .elapsed_time = std.time.timestamp() - self.start_time.?,
+                    .completedSteps = @intCast(i),
+                    .totalSteps = @intCast(self.steps.items.len),
+                    .errorMessage = error_msg,
+                    .elapsedTime = std.time.timestamp() - self.startTime.?,
                 };
             };
 
@@ -176,10 +176,10 @@ pub const WorkflowRunner = struct {
 
                 return WorkflowResult{
                     .status = .failed,
-                    .completed_steps = @intCast(i),
-                    .total_steps = @intCast(self.steps.items.len),
-                    .error_message = step_result.error_message,
-                    .elapsed_time = std.time.timestamp() - self.start_time.?,
+                    .completedSteps = @intCast(i),
+                    .totalSteps = @intCast(self.steps.items.len),
+                    .errorMessage = step_result.error_message,
+                    .elapsedTime = std.time.timestamp() - self.startTime.?,
                 };
             }
 
@@ -194,9 +194,9 @@ pub const WorkflowRunner = struct {
         // Complete workflow
         self.status = .completed;
 
-        if (self.show_progress and self.progress_bar != null) {
-            self.progress_bar.?.setProgress(1.0);
-            try self.progress_bar.?.render(self.writer.?);
+        if (self.showProgress and self.progressBar != null) {
+            self.progressBar.?.setProgress(1.0);
+            try self.progressBar.?.render(self.writer.?);
         }
 
         try self.renderWorkflowComplete();
@@ -209,10 +209,10 @@ pub const WorkflowRunner = struct {
 
         return WorkflowResult{
             .status = .completed,
-            .completed_steps = @intCast(self.steps.items.len),
-            .total_steps = @intCast(self.steps.items.len),
-            .error_message = null,
-            .elapsed_time = std.time.timestamp() - self.start_time.?,
+            .completedSteps = @intCast(self.steps.items.len),
+            .totalSteps = @intCast(self.steps.items.len),
+            .errorMessage = null,
+            .elapsedTime = std.time.timestamp() - self.startTime.?,
         };
     }
 
@@ -242,7 +242,7 @@ pub const WorkflowRunner = struct {
             try term_ansi.setForeground256(writer.*, self.caps, 11);
         }
 
-        try writer.print("⧖ Step {d}/{d}: {s}", .{ self.current_step + 1, self.steps.items.len, step.name });
+        try writer.print("⧖ Step {d}/{d}: {s}", .{ self.currentStep + 1, self.steps.items.len, step.name });
 
         if (step.description) |desc| {
             if (self.caps.supportsTrueColor()) {
@@ -291,7 +291,7 @@ pub const WorkflowRunner = struct {
 
     fn renderWorkflowComplete(self: *WorkflowRunner) !void {
         const writer = self.writer.?;
-        const elapsed = std.time.timestamp() - self.start_time.?;
+        const elapsed = std.time.timestamp() - self.startTime.?;
 
         if (self.caps.supportsTrueColor()) {
             try term_ansi.setForegroundRgb(writer.*, self.caps, 50, 205, 50);
@@ -335,22 +335,22 @@ pub const WorkflowRunner = struct {
             "Workflow execution was cancelled by user",
         );
 
-        if (self.show_progress and self.progress_bar != null) {
-            try self.progress_bar.?.clear(self.writer.?);
+        if (self.showProgress and self.progressBar != null) {
+            try self.progressBar.?.clear(self.writer.?);
         }
     }
 
     /// Get current progress
     pub fn getProgress(self: WorkflowRunner) f32 {
         if (self.steps.items.len == 0) return 0.0;
-        return @as(f32, @floatFromInt(self.current_step)) / @as(f32, @floatFromInt(self.steps.items.len));
+        return @as(f32, @floatFromInt(self.currentStep)) / @as(f32, @floatFromInt(self.steps.items.len));
     }
 
     /// Get estimated time remaining
     pub fn getEstimatedTimeRemaining(self: WorkflowRunner) ?i64 {
-        if (self.start_time == null or self.current_step == 0) return null;
+        if (self.startTime == null or self.currentStep == 0) return null;
 
-        const elapsed = std.time.timestamp() - self.start_time.?;
+        const elapsed = std.time.timestamp() - self.startTime.?;
         const progress = self.getProgress();
 
         if (progress <= 0.0) return null;

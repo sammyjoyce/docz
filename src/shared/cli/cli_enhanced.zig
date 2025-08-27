@@ -26,7 +26,7 @@ pub const Section = tui.Section;
 pub const Menu = tui.Menu;
 pub const MenuItem = tui.MenuItem;
 pub const Notification = tui.Notification;
-pub const NotificationManager = tui.NotificationManager;
+pub const NotificationHandler = interactive.notification_manager.NotificationHandler;
 pub const GraphicsWidget = tui.GraphicsWidget;
 
 // Terminal capabilities

@@ -8,13 +8,12 @@
 
 const std = @import("std");
 const engine = @import("core_engine");
-const impl = @import("agent.zig");
+const impl = @import("Agent.zig");
 const tools_mod = @import("tools_shared");
 
 /// ============================================================================
 /// SYSTEM PROMPT BUILDING
 /// ============================================================================
-
 /// Build the system prompt for this agent.
 /// This function is called by the core engine to generate the system prompt
 /// that will be sent to the AI model.
@@ -43,7 +42,6 @@ fn buildSystemPromptImpl(allocator: std.mem.Allocator, options: engine.CliOption
 /// ============================================================================
 /// TOOL REGISTRATION
 /// ============================================================================
-
 /// Register all tools provided by this agent.
 /// This function is called by the core engine during initialization to
 /// register agent-specific tools with the shared tools registry.
@@ -70,12 +68,10 @@ fn registerToolsImpl(registry: *tools_mod.Registry) !void {
     const tools = @import("tools/mod.zig");
 
     // Register the example tool with comprehensive metadata
-    try tools_mod.registerJsonTool(
-        registry,
-        "template_example",                                    // tool_name (unique identifier)
-        "Example tool demonstrating JSON input/output and basic functionality", // description
-        tools.exampleTool,                                    // tool_function
-        "_template"                                           // agent_name (for attribution)
+    try tools_mod.registerJSONTool(registry, "template_example", // tool_name (unique identifier)
+        "Example tool demonstrating JSON input/output patterns, parameter validation, and structured responses", // description
+        tools.exampleTool, // tool_function
+        "_template" // agent_name (for attribution)
     );
 
     // ============================================================================
@@ -95,7 +91,7 @@ fn registerToolsImpl(registry: *tools_mod.Registry) !void {
     // Example: Only register advanced tools if custom features are enabled
     // const config = try impl.Config.loadFromFile(allocator, "agents/_template/config.zon");
     // if (config.custom_feature_enabled) {
-    //     try tools_mod.registerJsonTool(registry, "advanced_tool", "Advanced feature tool", tools.advancedTool, "_template");
+    //     try tools_mod.registerJSONTool(registry, "advanced_tool", "Advanced feature tool", tools.advancedTool, "_template");
     // }
 
     // ============================================================================
@@ -104,7 +100,7 @@ fn registerToolsImpl(registry: *tools_mod.Registry) !void {
     // When adding new tools to your agent, register them here following these patterns:
 
     // Example custom tool registration:
-    // try tools_mod.registerJsonTool(
+    // try tools_mod.registerJSONTool(
     //     registry,
     //     "my_custom_tool",
     //     "Description of what my tool does",
@@ -129,7 +125,6 @@ fn registerToolsImpl(registry: *tools_mod.Registry) !void {
 /// ============================================================================
 /// AGENT SPECIFICATION EXPORT
 /// ============================================================================
-
 /// The agent specification that defines this agent's interface to the core engine.
 /// This is the main export of this file and is used by the core engine to
 /// interact with this agent.

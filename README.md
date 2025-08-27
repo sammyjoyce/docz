@@ -4,13 +4,13 @@ A multi-agent terminal AI system with shared infrastructure for building special
 
 ## Overview
 
-**docz** provides a flexible framework for creating terminal-based AI agents that leverage Claude's capabilities through a structured, extensible architecture. Each agent operates independently but benefits from a comprehensive shared infrastructure including CLI components, TUI widgets, network clients, authentication systems, and more.
+**docz** provides a flexible framework for creating terminal-based AI agents that leverage Claude's capabilities through a structured, extensible architecture. Each agent operates independently but benefits from a comprehensive shared infrastructure including CLI components, TUI widgets, network clients, authentication systems, advanced terminal capabilities, and full support for modern terminals like Ghostty, Kitty, and iTerm2.
 
 ### Key Features
 
 - **Multi-Agent Architecture**: Build and deploy independent agents with shared core infrastructure
 - **Enhanced Build System**: Individual agent builds with validation and comprehensive build options
-- **Shared Infrastructure**: Organized modules for CLI, TUI, networking, tools, authentication, and rendering
+- **Shared Infrastructure**: Organized modules for CLI, TUI, networking, tools, authentication, rendering, and advanced terminal capabilities
 - **Standardized Patterns**: Consistent agent structure, configuration management, and tool registration
 - **Advanced Tool System**: Metadata-rich tools with JSON support and automatic registration
 - **Configuration Management**: Structured ZON-based configuration with validation and templates
@@ -24,6 +24,7 @@ A multi-agent terminal AI system with shared infrastructure for building special
 - **New Core Modules**: Added `agent_base.zig` and `agent_main.zig` to provide standardized base functionality
 - **Reduced Code Duplication**: Base classes and shared patterns eliminate repetitive boilerplate code
 - **Enhanced Agent Creation**: Simplified agent development with inheritance and helper functions
+- **Advanced Terminal Support**: Full Ghostty integration with automatic detection, shell integration, and graphics protocol support
 
 ## Available Agents
 
@@ -85,6 +86,34 @@ vim agents/my-agent/config.zon   # Set default configuration
 zig build -Dagent=my-agent run -- "Hello from my new agent!"
 ```
 
+### Terminal Demos
+
+The framework includes comprehensive demos showcasing advanced terminal capabilities:
+
+```bash
+# Ghostty terminal integration demo
+zig build run-ghostty-demo
+
+# iTerm2 shell integration demo
+zig build run-iterm2-shell-integration-demo
+
+# Mouse detection and capabilities demo
+zig build run-mouse-detection-demo
+
+# Other demos
+zig build run-enhanced-demo         # Enhanced terminal features
+zig build run-simple-demo           # Basic terminal capabilities
+zig build run-theme-demo            # Theme and color schemes
+```
+
+**Terminal Support Highlights:**
+- **Ghostty**: Full support with automatic detection via `GHOSTTY_RESOURCES_DIR` and `xterm-ghostty`
+- **Kitty**: Complete Kitty Graphics Protocol and keyboard protocol support
+- **iTerm2**: Comprehensive shell integration and inline image support
+- **Modern Terminals**: Alacritty, WezTerm, and others with advanced feature detection
+- **Graphics Protocols**: Sixel, Kitty Graphics, and iTerm2 inline images
+- **Shell Integration**: Prompt marking, command output tracking, and navigation
+
 ## Project Structure
 
 ```
@@ -145,7 +174,9 @@ docz/
 │
 ├── examples/               # Demo applications
 │   ├── cli_demo/          # Comprehensive CLI demo with enhanced features
-│   └── *.zig              # Various demo applications
+│   ├── ghostty_demo.zig   # Ghostty terminal integration demo
+│   ├── iterm2_shell_integration_demo.zig # iTerm2 shell integration demo
+│   └── *.zig              # Additional demo applications
 ├── tests/                 # Test suites
 └── build.zig             # Build configuration
 ```
@@ -185,6 +216,14 @@ Authentication system:
 - **Core**: Authentication logic and credential management
 - **OAuth**: OAuth 2.0 implementation for Claude Pro/Max
 - **TUI/CLI**: Terminal UI and CLI commands for auth flows
+
+### Term Module (`src/shared/term/`)
+Advanced terminal capabilities and detection:
+- **Terminal Detection**: Automatic detection of terminal types (Ghostty, Kitty, iTerm2, Alacritty, WezTerm, etc.)
+- **Graphics Protocols**: Full support for Kitty Graphics Protocol, Sixel, and iTerm2 inline images
+- **Shell Integration**: Comprehensive shell integration for Ghostty and iTerm2 with prompt marking and command output tracking
+- **Modern Features**: Mouse support, hyperlinks, 24-bit color, synchronized output, and advanced terminal queries
+- **Capability Detection**: Real-time detection of supported features and protocols
 
 ## Agent Development
 
@@ -343,6 +382,9 @@ try stdout.flush(); // Don't forget to flush!
 - [AGENTS.md](AGENTS.md) - Detailed agent development guide with new architecture
 - [PROJECT.md](PROJECT.md) - Project architecture documentation
 - [CLI_ENHANCEMENTS.md](CLI_ENHANCEMENTS.md) - CLI system details
+- [MOUSE_DETECTION_GUIDE.md](MOUSE_DETECTION_GUIDE.md) - Mouse support and terminal capabilities
+- [src/shared/term/ADVANCED_TERMINAL_ENHANCEMENTS.md](src/shared/term/ADVANCED_TERMINAL_ENHANCEMENTS.md) - Advanced terminal features
+- [src/shared/term/ansi/iterm2_shell_integration_README.md](src/shared/term/ansi/iterm2_shell_integration_README.md) - iTerm2 shell integration
 - [examples/cli_demo/README.md](examples/cli_demo/README.md) - CLI demo documentation
 - Individual agent READMEs in `agents/*/README.md`
 

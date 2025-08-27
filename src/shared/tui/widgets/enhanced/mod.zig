@@ -10,10 +10,10 @@ pub const progress = @import("progress.zig");
 // Re-export main types
 pub const GraphicsWidget = graphics.GraphicsWidget;
 pub const SmartNotification = smart_notification.SmartNotification;
-pub const SmartNotificationManager = smart_notification.SmartNotificationManager;
+pub const SmartNotificationController = smart_notification.SmartNotificationController;
 pub const SmartProgressBar = smart_progress.SmartProgressBar;
 pub const Notification = notification.Notification;
-pub const NotificationManager = notification.NotificationManager;
+pub const NotificationController = notification.NotificationController;
 pub const ProgressBar = progress.ProgressBar;
 
 // Re-export convenience functions
@@ -22,6 +22,6 @@ pub const deinitGlobalNotifications = smart_notification.deinitGlobalManager;
 pub const notifyInfo = smart_notification.info;
 pub const notifySuccess = smart_notification.success;
 pub const notifyWarning = smart_notification.warning;
-pub const notifyError = smart_notification.error_;
+pub const notifyError = smart_notification.errorNotification;
 pub const notifyDebug = smart_notification.debug;
 pub const notifyCritical = smart_notification.critical;

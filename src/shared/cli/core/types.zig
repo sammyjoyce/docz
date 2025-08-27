@@ -46,7 +46,7 @@ pub const UnifiedCommand = enum {
         const info = @typeInfo(UnifiedCommand).@"enum";
         inline for (info.fields) |field| {
             const field_name = field.name;
-            const cmd_str = comptime blk: {
+            const commandString = comptime blk: {
                 if (std.mem.eql(u8, field_name, "tui_demo")) {
                     break :blk "tui-demo";
                 } else {
@@ -54,7 +54,7 @@ pub const UnifiedCommand = enum {
                 }
             };
 
-            if (std.mem.eql(u8, str, cmd_str)) {
+            if (std.mem.eql(u8, str, commandString)) {
                 return @field(UnifiedCommand, field_name);
             }
         }
@@ -96,7 +96,7 @@ pub const ParsedOptions = struct {
     input: ?[]const u8 = null,
     system: ?[]const u8 = null,
     config: ?[]const u8 = null,
-    max_tokens: ?u32 = null,
+    maxTokens: ?u32 = null,
     temperature: ?f32 = null,
 };
 
@@ -192,7 +192,7 @@ pub const Config = struct {
 pub const CommandResult = struct {
     success: bool,
     output: ?[]const u8 = null,
-    error_msg: ?[]const u8 = null,
+    errorMessage: ?[]const u8 = null,
     exit_code: u8 = 0,
 
     pub fn ok(output: ?[]const u8) CommandResult {
@@ -205,7 +205,7 @@ pub const CommandResult = struct {
     pub fn err(msg: []const u8, exit_code: u8) CommandResult {
         return CommandResult{
             .success = false,
-            .error_msg = msg,
+            .errorMessage = msg,
             .exit_code = exit_code,
         };
     }
@@ -221,15 +221,15 @@ pub const ConfigReflection = struct {
                 const info = @typeInfo(ConfigType).@"struct";
 
                 inline for (info.fields) |field| {
-                    const field_name = field.name;
-                    const field_value = @field(config, field_name);
+                    const fieldName = field.name;
+                    const fieldValue = @field(config, fieldName);
 
                     switch (field.type) {
                         []const u8 => {
                             // Validate string fields are not empty (except optional ones)
-                            if (!std.mem.eql(u8, field_name, "description") and
-                                !std.mem.eql(u8, field_name, "version") and
-                                field_value.len == 0)
+                            if (!std.mem.eql(u8, fieldName, "description") and
+                                !std.mem.eql(u8, fieldName, "version") and
+                                fieldValue.len == 0)
                             {
                                 return error.InvalidConfig;
                             }
@@ -239,14 +239,14 @@ pub const ConfigReflection = struct {
                         },
                         u32 => {
                             // Validate positive numbers
-                            if (std.mem.eql(u8, field_name, "max_tokens") and field_value == 0) {
+                            if (std.mem.eql(u8, fieldName, "maxTokens") and fieldValue == 0) {
                                 return error.InvalidConfig;
                             }
                         },
                         f32 => {
                             // Validate temperature range
-                            if (std.mem.eql(u8, field_name, "temperature") and
-                                (field_value < 0.0 or field_value > 1.0))
+                            if (std.mem.eql(u8, fieldName, "temperature") and
+                                (fieldValue < 0.0 or fieldValue > 1.0))
                             {
                                 return error.InvalidConfig;
                             }
@@ -286,15 +286,15 @@ pub const ConfigReflection = struct {
 
             /// Generate help text from config struct
             pub fn generateHelp() []const u8 {
-                comptime var help_text: []const u8 = "";
+                comptime var helpText: []const u8 = "";
                 const info = @typeInfo(ConfigType).@"struct";
 
                 inline for (info.fields) |field| {
-                    const field_help = comptime blk: {
+                    const fieldHelp = comptime blk: {
                         if (std.mem.eql(u8, field.name, "model")) {
                             break :blk "- model: Claude model to use for generation\n";
-                        } else if (std.mem.eql(u8, field.name, "max_tokens")) {
-                            break :blk "- max_tokens: Maximum tokens to generate\n";
+                        } else if (std.mem.eql(u8, field.name, "maxTokens")) {
+                            break :blk "- maxTokens: Maximum tokens to generate\n";
                         } else if (std.mem.eql(u8, field.name, "temperature")) {
                             break :blk "- temperature: Response randomness (0.0-1.0)\n";
                         } else {
@@ -302,10 +302,10 @@ pub const ConfigReflection = struct {
                         }
                     };
 
-                    help_text = help_text ++ field_help;
+                    helpText = helpText ++ fieldHelp;
                 }
 
-                return help_text;
+                return helpText;
             }
         };
     }
@@ -345,11 +345,11 @@ pub const ParsedArgsUnified = struct {
 
     // Command structure
     command: ?UnifiedCommand,
-    auth_subcommand: ?AuthSubcommand,
-    positional_args: [][]const u8,
+    authSubcommand: ?AuthSubcommand,
+    positionalArguments: [][]const u8,
 
     // Raw input
-    raw_message: ?[]const u8,
+    rawMessage: ?[]const u8,
 
     allocator: Allocator,
 
@@ -370,17 +370,17 @@ pub const ParsedArgsUnified = struct {
             .help = false,
             .version = false,
             .command = null,
-            .auth_subcommand = null,
-            .positional_args = &[0][]const u8{},
-            .raw_message = null,
+            .authSubcommand = null,
+            .positionalArguments = &[0][]const u8{},
+            .rawMessage = null,
             .allocator = allocator,
         };
     }
 
     pub fn deinit(self: *ParsedArgsUnified) void {
         // Clean up allocated arrays if needed
-        if (self.positional_args.len > 0) {
-            self.allocator.free(self.positional_args);
+        if (self.positionalArguments.len > 0) {
+            self.allocator.free(self.positionalArguments);
         }
     }
 };

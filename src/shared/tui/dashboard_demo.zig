@@ -102,8 +102,8 @@ pub const DashboardDemo = struct {
 
     fn setupDashboard(self: *Self) !void {
         // Create main stock chart (top-left, spans 2 columns)
-        var stock_chart = Chart.init(self.allocator, Chart.ChartData{
-            .series = &[_]Chart.ChartData.Series{
+        var stock_chart = Chart.init(self.allocator, Chart.Chart{
+            .series = &[_]Chart.Chart.Series{
                 .{
                     .name = "ACME Corp Stock",
                     .values = self.stock_data,
@@ -128,8 +128,8 @@ pub const DashboardDemo = struct {
         _ = try self.dashboard.addWidget(&stock_widget);
 
         // Create system metrics chart (top-right)
-        var system_chart = Chart.init(self.allocator, Chart.ChartData{
-            .series = &[_]Chart.ChartData.Series{
+        var system_chart = Chart.init(self.allocator, Chart.Chart{
+            .series = &[_]Chart.Chart.Series{
                 .{
                     .name = "CPU Usage",
                     .values = self.cpu_data,
@@ -160,7 +160,7 @@ pub const DashboardDemo = struct {
         const headers = [_][]const u8{ "Product", "Sales", "Revenue", "Growth" };
         var sales_table = try DataTable.init(self.allocator, &headers, DataTable.Config{
             .title = "Q4 Sales Report",
-            .show_headers = true,
+            .showHeaders = true,
             .show_grid_lines = true,
             .clipboard_enabled = true,
             .sortable = true,
@@ -194,8 +194,8 @@ pub const DashboardDemo = struct {
 
         // Create CPU usage pie chart (bottom-left)
         const cpu_usage_data = [_]f64{ 35.5, 20.2, 15.8, 28.5 }; // User, System, I/O, Idle
-        var cpu_pie_chart = Chart.init(self.allocator, Chart.ChartData{
-            .series = &[_]Chart.ChartData.Series{
+        var cpu_pie_chart = Chart.init(self.allocator, Chart.Chart{
+            .series = &[_]Chart.Chart.Series{
                 .{
                     .name = "CPU Usage Breakdown",
                     .values = &cpu_usage_data,
@@ -218,8 +218,8 @@ pub const DashboardDemo = struct {
 
         // Create memory bar chart (bottom-middle)
         const memory_breakdown = [_]f64{ 2.1, 1.8, 0.9, 0.7, 0.5 };
-        var memory_chart = Chart.init(self.allocator, Chart.ChartData{
-            .series = &[_]Chart.ChartData.Series{
+        var memory_chart = Chart.init(self.allocator, Chart.Chart{
+            .series = &[_]Chart.Chart.Series{
                 .{
                     .name = "Memory Usage",
                     .values = &memory_breakdown,
@@ -586,7 +586,7 @@ fn generateTableData(allocator: std.mem.Allocator) ![][]DataTable.Cell {
         cells[3] = DataTable.Cell{
             .value = try std.fmt.allocPrint(allocator, "{d:+.1}%", .{growth}),
             .style = DataTable.Cell.CellStyle{
-                .foreground_color = growth_color,
+                .foregroundColor = growth_color,
                 .bold = true,
             },
         };
@@ -616,4 +616,4 @@ pub fn main() !void {
 }
 
 // Export for use as a module
-pub const demo = DashboardDemo;
+pub const DEMO = DashboardDemo;

@@ -44,10 +44,10 @@ pub const CapabilitySet = struct {
 };
 
 /// Notification manager for CLI operations
-pub const NotificationManager = struct {
+pub const NotificationHandler = struct {
     allocator: std.mem.Allocator,
     capabilities: CapabilitySet,
-    term_caps: term.caps.TermCaps,
+    termCaps: term.caps.TermCaps,
     enabled: bool = true,
 
     pub const NotificationLevel = enum {
@@ -65,22 +65,22 @@ pub const NotificationManager = struct {
         duration: ?u32 = null, // seconds
     };
 
-    pub fn init(allocator: std.mem.Allocator, capabilities: CapabilitySet, term_caps: term.caps.TermCaps) NotificationManager {
-        return NotificationManager{
+    pub fn init(allocator: std.mem.Allocator, capabilities: CapabilitySet, termCaps: term.caps.TermCaps) NotificationHandler {
+        return NotificationHandler{
             .allocator = allocator,
             .capabilities = capabilities,
-            .term_caps = term_caps,
+            .termCaps = termCaps,
         };
     }
 
-    pub fn send(self: *NotificationManager, notification: Notification) !void {
+    pub fn send(self: *NotificationHandler, notification: Notification) !void {
         if (!self.enabled) return;
 
         if (self.capabilities.notifications) {
             // Use system notifications via OSC sequences
-            var stdout_buffer: [4096]u8 = undefined;
-            var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
-            try ansi_notification.writeNotification(&stdout_writer.interface, self.allocator, self.term_caps, notification.body orelse notification.title);
+            var stdoutBuffer: [4096]u8 = undefined;
+            var stdoutWriter = std.fs.File.stdout().writer(&stdoutBuffer);
+            try ansi_notification.writeNotification(&stdoutWriter.interface, self.allocator, self.termCaps, notification.body orelse notification.title);
         } else {
             // Fallback to formatted terminal output
             const level_prefix = switch (notification.level) {
@@ -100,22 +100,22 @@ pub const NotificationManager = struct {
 };
 
 /// Graphics manager for enhanced visual elements
-pub const GraphicsManager = struct {
+pub const Graphics = struct {
     allocator: std.mem.Allocator,
     capabilities: CapabilitySet,
 
-    pub fn init(allocator: std.mem.Allocator, capabilities: CapabilitySet) GraphicsManager {
-        return GraphicsManager{
+    pub fn init(allocator: std.mem.Allocator, capabilities: CapabilitySet) Graphics {
+        return Graphics{
             .allocator = allocator,
             .capabilities = capabilities,
         };
     }
 
-    pub fn isAvailable(self: *GraphicsManager) bool {
+    pub fn isAvailable(self: *Graphics) bool {
         return self.capabilities.graphics;
     }
 
-    pub fn showProgress(self: *GraphicsManager, progress: f32) !void {
+    pub fn showProgress(self: *Graphics, progress: f32) !void {
         if (self.capabilities.graphics) {
             // Use advanced graphics for progress (charts, graphics)
             // For now, fall back to ASCII since renderProgressBar doesn't exist
@@ -139,100 +139,100 @@ pub const GraphicsManager = struct {
 };
 
 /// Clipboard manager for copy/paste operations
-pub const ClipboardManager = struct {
+pub const Clipboard = struct {
     allocator: std.mem.Allocator,
     capabilities: CapabilitySet,
-    term_caps: term.caps.TermCaps,
+    termCaps: term.caps.TermCaps,
 
-    pub fn init(allocator: std.mem.Allocator, capabilities: CapabilitySet, term_caps: term.caps.TermCaps) ClipboardManager {
-        return ClipboardManager{
+    pub fn init(allocator: std.mem.Allocator, capabilities: CapabilitySet, termCaps: term.caps.TermCaps) Clipboard {
+        return Clipboard{
             .allocator = allocator,
             .capabilities = capabilities,
-            .term_caps = term_caps,
+            .termCaps = termCaps,
         };
     }
 
-    pub fn copy(self: *ClipboardManager, data: []const u8) !void {
+    pub fn copy(self: *Clipboard, data: []const u8) !void {
         if (self.capabilities.clipboard) {
-            var stdout_buffer: [4096]u8 = undefined;
-            var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
-            try ansi_clipboard.writeClipboardDefault(&stdout_writer.interface, self.allocator, self.term_caps, data);
+            var stdoutBuffer: [4096]u8 = undefined;
+            var stdoutWriter = std.fs.File.stdout().writer(&stdoutBuffer);
+            try ansi_clipboard.writeClipboardDefault(&stdoutWriter.interface, self.allocator, self.termCaps, data);
         } else {
             // Fallback: display data and suggest manual copy
             std.debug.print("Copy the following to clipboard:\n{s}\n", .{data});
         }
     }
 
-    pub fn isAvailable(self: *ClipboardManager) bool {
+    pub fn isAvailable(self: *Clipboard) bool {
         return self.capabilities.clipboard;
     }
 };
 
 /// Hyperlink manager for clickable links
-pub const HyperlinkManager = struct {
+pub const Hyperlink = struct {
     allocator: std.mem.Allocator,
     capabilities: CapabilitySet,
-    term_caps: term.caps.TermCaps,
+    termCaps: term.caps.TermCaps,
 
-    pub fn init(allocator: std.mem.Allocator, capabilities: CapabilitySet, term_caps: term.caps.TermCaps) HyperlinkManager {
-        return HyperlinkManager{
+    pub fn init(allocator: std.mem.Allocator, capabilities: CapabilitySet, termCaps: term.caps.TermCaps) Hyperlink {
+        return Hyperlink{
             .allocator = allocator,
             .capabilities = capabilities,
-            .term_caps = term_caps,
+            .termCaps = termCaps,
         };
     }
 
-    pub fn writeLink(self: *HyperlinkManager, writer: anytype, url: []const u8, text: []const u8) !void {
+    pub fn writeLink(self: *Hyperlink, writer: anytype, url: []const u8, text: []const u8) !void {
         if (self.capabilities.hyperlinks) {
-            try ansi_hyperlink.writeHyperlink(writer, self.allocator, self.term_caps, url, text);
+            try ansi_hyperlink.writeHyperlink(writer, self.allocator, self.termCaps, url, text);
         } else {
             try writer.print("{s} ({s})", .{ text, url });
         }
     }
 
-    pub fn isAvailable(self: *HyperlinkManager) bool {
+    pub fn isAvailable(self: *Hyperlink) bool {
         return self.capabilities.hyperlinks;
     }
 };
 
 /// Main CLI context that ties everything together
-pub const CliContext = struct {
+pub const Cli = struct {
     allocator: std.mem.Allocator,
     capabilities: CapabilitySet,
-    term_caps: term.caps.TermCaps,
-    notification: NotificationManager,
-    graphics: GraphicsManager,
-    clipboard: ClipboardManager,
-    hyperlink: HyperlinkManager,
+    termCaps: term.caps.TermCaps,
+    notification: NotificationHandler,
+    graphics: Graphics,
+    clipboard: Clipboard,
+    hyperlink: Hyperlink,
     config: types.Config,
     verbose: bool = false,
 
-    pub fn init(allocator: std.mem.Allocator) !CliContext {
+    pub fn init(allocator: std.mem.Allocator) !Cli {
         // Detect terminal capabilities
         const capabilities = CapabilitySet.detect(allocator);
-        const term_caps = try term.caps.detectCaps(allocator);
+        const termCaps = try term.caps.detectCaps(allocator);
 
         // Load configuration
         const config = types.Config.loadDefault(allocator);
 
-        return CliContext{
+        return Cli{
             .allocator = allocator,
             .capabilities = capabilities,
-            .term_caps = term_caps,
-            .notification = NotificationManager.init(allocator, capabilities, term_caps),
-            .graphics = GraphicsManager.init(allocator, capabilities),
-            .clipboard = ClipboardManager.init(allocator, capabilities, term_caps),
-            .hyperlink = HyperlinkManager.init(allocator, capabilities, term_caps),
+            .termCaps = termCaps,
+            .notification = NotificationHandler.init(allocator, capabilities, termCaps),
+            .graphics = Graphics.init(allocator, capabilities),
+            .clipboard = Clipboard.init(allocator, capabilities, termCaps),
+            .hyperlink = Hyperlink.init(allocator, capabilities, termCaps),
             .config = config,
         };
     }
 
-    pub fn deinit(self: *CliContext) void {
+    pub fn deinit(self: *Cli) void {
         self.config.deinit(self.allocator);
     }
 
     /// Get a summary of available capabilities for debugging
-    pub fn capabilitySummary(self: *CliContext) []const u8 {
+    pub fn capabilitySummary(self: *Cli) []const u8 {
         // This could be enhanced to provide detailed capability info
         if (self.capabilities.hyperlinks and self.capabilities.clipboard and self.capabilities.graphics) {
             return "Full Enhanced Terminal";
@@ -244,12 +244,12 @@ pub const CliContext = struct {
     }
 
     /// Enable verbose mode for detailed output
-    pub fn enableVerbose(self: *CliContext) void {
+    pub fn enableVerbose(self: *Cli) void {
         self.verbose = true;
     }
 
     /// Check if a specific feature is available
-    pub fn hasFeature(self: *CliContext, feature: enum { hyperlinks, clipboard, notifications, graphics, truecolor, mouse }) bool {
+    pub fn hasFeature(self: *Cli, feature: enum { hyperlinks, clipboard, notifications, graphics, truecolor, mouse }) bool {
         return switch (feature) {
             .hyperlinks => self.capabilities.hyperlinks,
             .clipboard => self.capabilities.clipboard,
@@ -261,7 +261,7 @@ pub const CliContext = struct {
     }
 
     /// Log a message if verbose mode is enabled
-    pub fn verboseLog(self: *CliContext, comptime fmt: []const u8, args: anytype) void {
+    pub fn verboseLog(self: *Cli, comptime fmt: []const u8, args: anytype) void {
         if (self.verbose) {
             std.debug.print("[VERBOSE] " ++ fmt ++ "\n", args);
         }

@@ -65,7 +65,7 @@ extern "kernel32" fn CreateProcessW(
 // across Unix-like systems and Windows (ConPTY support planned).
 
 /// PTY error types
-pub const PtyError = error{
+pub const PtyInstanceError = error{
     /// Failed to create master/slave pair
     CreateFailed,
     /// Failed to fork process
@@ -91,7 +91,7 @@ pub const PtyError = error{
 };
 
 /// PTY configuration options
-pub const PtyOptions = struct {
+pub const PtyInstanceOptions = struct {
     /// Initial window size
     rows: u16 = 24,
     cols: u16 = 80,
@@ -107,9 +107,9 @@ pub const PtyOptions = struct {
     /// Whether to create a controlling terminal
     controlling_terminal: bool = true,
     /// Additional flags for PTY creation
-    flags: PtyFlags = .{},
+    flags: PtyInstanceFlags = .{},
 
-    pub const PtyFlags = packed struct {
+    pub const PtyInstanceFlags = packed struct {
         /// Enable UTF-8 support
         utf8: bool = true,
         /// Enable window size reporting
@@ -124,7 +124,7 @@ pub const PtyOptions = struct {
 };
 
 /// Functional option type for configuring PTY options
-pub const PtyOption = union(enum) {
+pub const PtyInstanceOption = union(enum) {
     rows: u16,
     cols: u16,
     cwd: []const u8,
@@ -139,67 +139,67 @@ pub const PtyOption = union(enum) {
 };
 
 /// Create default PTY options
-pub fn defaultPtyOptions() PtyOptions {
-    return PtyOptions{};
+pub fn defaultPtyInstanceOptions() PtyInstanceOptions {
+    return PtyInstanceOptions{};
 }
 
 /// Set the number of rows for the PTY
-pub fn withRows(rows: u16) PtyOption {
+pub fn withRows(rows: u16) PtyInstanceOption {
     return .{ .rows = rows };
 }
 
 /// Set the number of columns for the PTY
-pub fn withCols(cols: u16) PtyOption {
+pub fn withCols(cols: u16) PtyInstanceOption {
     return .{ .cols = cols };
 }
 
 /// Set the working directory for the PTY
-pub fn withCwd(cwd: []const u8) PtyOption {
+pub fn withCwd(cwd: []const u8) PtyInstanceOption {
     return .{ .cwd = cwd };
 }
 
 /// Set the environment variables for the PTY
-pub fn withEnv(env: std.process.EnvMap) PtyOption {
+pub fn withEnv(env: std.process.EnvMap) PtyInstanceOption {
     return .{ .env = env };
 }
 
 /// Set the terminal type for the PTY
-pub fn withTerm(term: []const u8) PtyOption {
+pub fn withTerm(term: []const u8) PtyInstanceOption {
     return .{ .term = term };
 }
 
 /// Set whether to create a controlling terminal
-pub fn withControllingTerminal(controlling_terminal: bool) PtyOption {
+pub fn withControllingTerminal(controlling_terminal: bool) PtyInstanceOption {
     return .{ .controlling_terminal = controlling_terminal };
 }
 
 /// Set the pixel dimensions for the PTY
-pub fn withPixels(xpixel: u16, ypixel: u16) PtyOption {
+pub fn withPixels(xpixel: u16, ypixel: u16) PtyInstanceOption {
     return .{ .pixels = .{ .xpixel = xpixel, .ypixel = ypixel } };
 }
 
 /// Set UTF-8 support flag
-pub fn withUtf8(utf8: bool) PtyOption {
+pub fn withUtf8(utf8: bool) PtyInstanceOption {
     return .{ .utf8 = utf8 };
 }
 
 /// Set window size reporting flag
-pub fn withWinsizeReporting(winsize_reporting: bool) PtyOption {
+pub fn withWinsizeReporting(winsize_reporting: bool) PtyInstanceOption {
     return .{ .winsize_reporting = winsize_reporting };
 }
 
 /// Set echo flag
-pub fn withEcho(echo: bool) PtyOption {
+pub fn withEcho(echo: bool) PtyInstanceOption {
     return .{ .echo = echo };
 }
 
 /// Set raw mode flag
-pub fn withRawMode(raw_mode: bool) PtyOption {
+pub fn withRawMode(raw_mode: bool) PtyInstanceOption {
     return .{ .raw_mode = raw_mode };
 }
 
 /// Apply functional options to PTY options
-fn applyOptions(base_options: PtyOptions, options: []PtyOption) PtyOptions {
+fn applyOptions(base_options: PtyInstanceOptions, options: []PtyInstanceOption) PtyInstanceOptions {
     var result = base_options;
     for (options) |option| {
         switch (option) {
@@ -223,7 +223,7 @@ fn applyOptions(base_options: PtyOptions, options: []PtyOption) PtyOptions {
 }
 
 /// Represents a PTY master/slave pair
-pub const Pty = struct {
+pub const PtyInstance = struct {
     /// Master file descriptor (for I/O)
     master_fd: posix.fd_t,
     /// Slave file descriptor (for process)
@@ -240,22 +240,22 @@ pub const Pty = struct {
     window_size: termios.Winsize,
 
     /// Create a new PTY pair with functional options
-    pub fn init(allocator: std.mem.Allocator, options: []PtyOption) PtyError!Pty {
-        const pty_options = applyOptions(defaultPtyOptions(), options);
+    pub fn init(allocator: std.mem.Allocator, options: []PtyInstanceOption) PtyInstanceError!PtyInstance {
+        const pty_options = applyOptions(defaultPtyInstanceOptions(), options);
         return initWithOptions(allocator, pty_options);
     }
 
     /// Create a new PTY pair with explicit options (legacy compatibility)
-    pub fn initWithOptions(allocator: std.mem.Allocator, options: PtyOptions) PtyError!Pty {
-        const result = createPtyPair(allocator, options) catch |err| switch (err) {
-            error.OutOfMemory => return PtyError.OutOfMemory,
-            error.AccessDenied => return PtyError.AccessDenied,
-            error.FileNotFound => return PtyError.FileNotFound,
-            error.InvalidArgument => return PtyError.InvalidArgument,
-            else => return PtyError.CreateFailed,
+    pub fn initWithOptions(allocator: std.mem.Allocator, options: PtyInstanceOptions) PtyInstanceError!PtyInstance {
+        const result = createPtyInstancePair(allocator, options) catch |err| switch (err) {
+            error.OutOfMemory => return PtyInstanceError.OutOfMemory,
+            error.AccessDenied => return PtyInstanceError.AccessDenied,
+            error.FileNotFound => return PtyInstanceError.FileNotFound,
+            error.InvalidArgument => return PtyInstanceError.InvalidArgument,
+            else => return PtyInstanceError.CreateFailed,
         };
 
-        var pty = Pty{
+        var pty = PtyInstance{
             .master_fd = result.master_fd,
             .slave_fd = result.slave_fd,
             .slave_path = result.slave_path,
@@ -280,7 +280,7 @@ pub const Pty = struct {
     }
 
     /// Clean up PTY resources
-    pub fn deinit(self: *Pty) void {
+    pub fn deinit(self: *PtyInstance) void {
         // Restore original terminal settings if saved
         if (self.original_termios) |config| {
             termios.restoreMode(self.slave_fd, config) catch {};
@@ -322,9 +322,9 @@ pub const Pty = struct {
     }
 
     /// Spawn a command in the PTY
-    pub fn spawn(self: *Pty, argv: []const []const u8, options: PtyOptions) PtyError!void {
+    pub fn spawn(self: *PtyInstance, argv: []const []const u8, options: PtyInstanceOptions) PtyInstanceError!void {
         if (self.process != null) {
-            return PtyError.InvalidArgument; // Process already spawned
+            return PtyInstanceError.InvalidArgument; // Process already spawned
         }
 
         switch (builtin.target.os.tag) {
@@ -338,9 +338,9 @@ pub const Pty = struct {
     }
 
     /// Spawn a command in a Unix PTY
-    fn spawnUnix(self: *Pty, argv: []const []const u8, options: PtyOptions) PtyError!void {
+    fn spawnUnix(self: *PtyInstance, argv: []const []const u8, options: PtyInstanceOptions) PtyInstanceError!void {
         // Fork the process manually to properly set up PTY file descriptors
-        const pid = posix.fork() catch return PtyError.ForkFailed;
+        const pid = posix.fork() catch return PtyInstanceError.ForkFailed;
 
         if (pid == 0) {
             // Child process
@@ -401,9 +401,9 @@ pub const Pty = struct {
     }
 
     /// Spawn a command in a Windows ConPTY
-    fn spawnWindows(self: *Pty, argv: []const []const u8, options: PtyOptions) PtyError!void {
+    fn spawnWindows(self: *PtyInstance, argv: []const []const u8, options: PtyInstanceOptions) PtyInstanceError!void {
         if (argv.len == 0) {
-            return PtyError.InvalidArgument;
+            return PtyInstanceError.InvalidArgument;
         }
 
         // Get the ConPTY handle from the stored process
@@ -473,7 +473,7 @@ pub const Pty = struct {
         );
 
         if (success == 0) {
-            return PtyError.ExecFailed;
+            return PtyInstanceError.ExecFailed;
         }
 
         // Update process information
@@ -505,31 +505,31 @@ pub const Pty = struct {
     }
 
     /// Read data from PTY master
-    pub fn read(self: *Pty, buffer: []u8) PtyError!usize {
+    pub fn read(self: *PtyInstance, buffer: []u8) PtyInstanceError!usize {
         const bytes_read = os.read(self.master_fd, buffer) catch |err| switch (err) {
             error.WouldBlock => return 0,
-            error.AccessDenied => return PtyError.PermissionDenied,
+            error.AccessDenied => return PtyInstanceError.PermissionDenied,
             error.BrokenPipe, error.ConnectionResetByPeer => return 0,
-            else => return PtyError.SystemError,
+            else => return PtyInstanceError.SystemError,
         };
 
         return bytes_read;
     }
 
     /// Write data to PTY master
-    pub fn write(self: *Pty, data: []const u8) PtyError!usize {
+    pub fn write(self: *PtyInstance, data: []const u8) PtyInstanceError!usize {
         const bytes_written = os.write(self.master_fd, data) catch |err| switch (err) {
             error.WouldBlock => return 0,
-            error.AccessDenied => return PtyError.PermissionDenied,
+            error.AccessDenied => return PtyInstanceError.PermissionDenied,
             error.BrokenPipe, error.ConnectionResetByPeer => return 0,
-            else => return PtyError.SystemError,
+            else => return PtyInstanceError.SystemError,
         };
 
         return bytes_written;
     }
 
     /// Resize the PTY window
-    pub fn resize(self: *Pty, rows: u16, cols: u16) PtyError!void {
+    pub fn resize(self: *PtyInstance, rows: u16, cols: u16) PtyInstanceError!void {
         self.window_size.rows = rows;
         self.window_size.cols = cols;
         // Keep existing pixel dimensions
@@ -545,13 +545,13 @@ pub const Pty = struct {
     }
 
     /// Resize Unix PTY window
-    fn resizeUnix(self: *Pty, rows: u16, cols: u16) PtyError!void {
+    fn resizeUnix(self: *PtyInstance, rows: u16, cols: u16) PtyInstanceError!void {
         self.window_size.rows = rows;
         self.window_size.cols = cols;
         termios.setWinsize(self.master_fd, self.window_size) catch |err| switch (err) {
-            termios.TermiosError.InvalidFd => return PtyError.InvalidArgument,
-            termios.TermiosError.NotSupported => return PtyError.NotSupported,
-            else => return PtyError.SystemError,
+            termios.TermiosError.InvalidFd => return PtyInstanceError.InvalidArgument,
+            termios.TermiosError.NotSupported => return PtyInstanceError.NotSupported,
+            else => return PtyInstanceError.SystemError,
         };
 
         // Send SIGWINCH to process if running
@@ -561,7 +561,7 @@ pub const Pty = struct {
     }
 
     /// Resize Windows ConPTY window
-    fn resizeWindows(self: *Pty, rows: u16, cols: u16) PtyError!void {
+    fn resizeWindows(self: *PtyInstance, rows: u16, cols: u16) PtyInstanceError!void {
         if (self.process) |proc| {
             const conpty_handle = @as(HPCON, @ptrCast(proc.thread_handle));
             var size: COORD = undefined;
@@ -569,13 +569,13 @@ pub const Pty = struct {
             size.Y = @as(i16, @intCast(rows));
             const hr = ResizePseudoConsole(conpty_handle, size);
             if (hr < 0) {
-                return PtyError.SystemError;
+                return PtyInstanceError.SystemError;
             }
         }
     }
 
     /// Resize the PTY window with pixel dimensions
-    pub fn resizeWithPixels(self: *Pty, rows: u16, cols: u16, xpixel: u16, ypixel: u16) PtyError!void {
+    pub fn resizeWithPixels(self: *PtyInstance, rows: u16, cols: u16, xpixel: u16, ypixel: u16) PtyInstanceError!void {
         self.window_size.rows = rows;
         self.window_size.cols = cols;
         self.window_size.xpixel = xpixel;
@@ -592,7 +592,7 @@ pub const Pty = struct {
     }
 
     /// Resize Unix PTY window with pixel dimensions
-    fn resizeUnixWithPixels(self: *Pty, rows: u16, cols: u16, xpixel: u16, ypixel: u16) PtyError!void {
+    fn resizeUnixWithPixels(self: *PtyInstance, rows: u16, cols: u16, xpixel: u16, ypixel: u16) PtyInstanceError!void {
         // Note: Unix PTYs don't use pixel dimensions in the same way
         // We store them for compatibility but don't use them in the actual resize
         self.window_size.rows = rows;
@@ -602,9 +602,9 @@ pub const Pty = struct {
         _ = ypixel;
 
         termios.setWinsize(self.master_fd, self.window_size) catch |err| switch (err) {
-            termios.TermiosError.InvalidFd => return PtyError.InvalidArgument,
-            termios.TermiosError.NotSupported => return PtyError.NotSupported,
-            else => return PtyError.SystemError,
+            termios.TermiosError.InvalidFd => return PtyInstanceError.InvalidArgument,
+            termios.TermiosError.NotSupported => return PtyInstanceError.NotSupported,
+            else => return PtyInstanceError.SystemError,
         };
 
         // Send SIGWINCH to process if running
@@ -614,48 +614,48 @@ pub const Pty = struct {
     }
 
     /// Get current window size
-    pub fn getSize(self: *Pty) PtyError!termios.Winsize {
+    pub fn getSize(self: *PtyInstance) PtyInstanceError!termios.Winsize {
         const winsize = termios.getWinsize(self.master_fd) catch |err| switch (err) {
-            termios.TermiosError.InvalidFd => return PtyError.InvalidArgument,
-            termios.TermiosError.NotSupported => return PtyError.NotSupported,
-            else => return PtyError.SystemError,
+            termios.TermiosError.InvalidFd => return PtyInstanceError.InvalidArgument,
+            termios.TermiosError.NotSupported => return PtyInstanceError.NotSupported,
+            else => return PtyInstanceError.SystemError,
         };
 
         return winsize;
     }
 
     /// Get the slave device path
-    pub fn getSlavePath(self: *Pty) []const u8 {
+    pub fn getSlavePath(self: *PtyInstance) []const u8 {
         return self.slave_path;
     }
 
     /// Get the slave device name (alias for getSlavePath)
-    pub fn slaveName(self: *Pty) []const u8 {
+    pub fn slaveName(self: *PtyInstance) []const u8 {
         return self.slave_path;
     }
 
     /// Get the master file descriptor (alias for Control)
-    pub fn master(self: *Pty) posix.fd_t {
+    pub fn master(self: *PtyInstance) posix.fd_t {
         return self.master_fd;
     }
 
     /// Get the master file descriptor (alias for Master)
-    pub fn control(self: *Pty) posix.fd_t {
+    pub fn control(self: *PtyInstance) posix.fd_t {
         return self.master_fd;
     }
 
     /// Get the master file descriptor (primary file descriptor)
-    pub fn fd(self: *Pty) posix.fd_t {
+    pub fn fd(self: *PtyInstance) posix.fd_t {
         return self.master_fd;
     }
 
     /// Get the slave file descriptor
-    pub fn slave(self: *Pty) posix.fd_t {
+    pub fn slave(self: *PtyInstance) posix.fd_t {
         return self.slave_fd;
     }
 
     /// Check if the spawned process is still running
-    pub fn isRunning(self: *Pty) bool {
+    pub fn isRunning(self: *PtyInstance) bool {
         if (self.process) |*proc| {
             if (proc.poll()) {
                 return false;
@@ -667,72 +667,72 @@ pub const Pty = struct {
     }
 
     /// Wait for the spawned process to exit
-    pub fn wait(self: *Pty) PtyError!std.process.Child.Term {
+    pub fn wait(self: *PtyInstance) PtyInstanceError!std.process.Child.Term {
         if (self.process) |*proc| {
             const term = proc.wait() catch |err| switch (err) {
                 error.ChildAlreadyReaped => return std.process.Child.Term{ .Exited = 0 },
-                else => return PtyError.SystemError,
+                else => return PtyInstanceError.SystemError,
             };
             return term;
         }
-        return PtyError.InvalidArgument;
+        return PtyInstanceError.InvalidArgument;
     }
 
     /// Set PTY to non-blocking mode
-    pub fn setNonBlocking(self: *Pty, non_blocking: bool) PtyError!void {
-        const flags = posix.fcntl(self.master_fd, posix.F.GETFL, 0) catch return PtyError.SystemError;
+    pub fn setNonBlocking(self: *PtyInstance, non_blocking: bool) PtyInstanceError!void {
+        const flags = posix.fcntl(self.master_fd, posix.F.GETFL, 0) catch return PtyInstanceError.SystemError;
         const new_flags = if (non_blocking) flags | @as(u32, posix.O.NONBLOCK) else flags & ~@as(u32, posix.O.NONBLOCK);
-        _ = posix.fcntl(self.master_fd, posix.F.SETFL, new_flags) catch return PtyError.SystemError;
+        _ = posix.fcntl(self.master_fd, posix.F.SETFL, new_flags) catch return PtyInstanceError.SystemError;
     }
 };
 
 /// Cross-platform PTY constructor
 /// Detects the platform and returns the appropriate PTY implementation
-pub fn newPty(allocator: std.mem.Allocator, options: []PtyOption) PtyError!Pty {
+pub fn newPtyInstance(allocator: std.mem.Allocator, options: []PtyInstanceOption) PtyInstanceError!PtyInstance {
     switch (builtin.target.os.tag) {
         .linux, .macos, .freebsd, .openbsd, .netbsd, .dragonfly => {
-            return UnixPty.init(allocator, options);
+            return UnixPtyInstance.init(allocator, options);
         },
         .windows => {
-            return WindowsPty.init(allocator, options);
+            return WindowsPtyInstance.init(allocator, options);
         },
         else => {
-            return PtyError.NotSupported;
+            return PtyInstanceError.NotSupported;
         },
     }
 }
 
 /// Unix-specific PTY implementation
-pub const UnixPty = struct {
+pub const UnixPtyInstance = struct {
     /// Create a new Unix PTY pair with functional options
-    pub fn init(allocator: std.mem.Allocator, options: []PtyOption) PtyError!Pty {
-        return Pty.init(allocator, options);
+    pub fn init(allocator: std.mem.Allocator, options: []PtyInstanceOption) PtyInstanceError!PtyInstance {
+        return PtyInstance.init(allocator, options);
     }
 
     /// Create a new Unix PTY pair with explicit options
-    pub fn initWithOptions(allocator: std.mem.Allocator, options: PtyOptions) PtyError!Pty {
-        return Pty.initWithOptions(allocator, options);
+    pub fn initWithOptions(allocator: std.mem.Allocator, options: PtyInstanceOptions) PtyInstanceError!PtyInstance {
+        return PtyInstance.initWithOptions(allocator, options);
     }
 };
 
 /// Windows ConPTY implementation using Windows Console Host APIs
-pub const WindowsPty = struct {
+pub const WindowsPtyInstance = struct {
     /// Create a new Windows ConPTY with functional options
-    pub fn init(allocator: std.mem.Allocator, options: []PtyOption) PtyError!Pty {
-        const pty_options = applyOptions(defaultPtyOptions(), options);
+    pub fn init(allocator: std.mem.Allocator, options: []PtyInstanceOption) PtyInstanceError!PtyInstance {
+        const pty_options = applyOptions(defaultPtyInstanceOptions(), options);
         return initWithOptions(allocator, pty_options);
     }
 
     /// Create a new Windows ConPTY with explicit options
-    pub fn initWithOptions(allocator: std.mem.Allocator, options: PtyOptions) PtyError!Pty {
-        const result = createConPtyPair(allocator, options) catch |err| switch (err) {
-            error.OutOfMemory => return PtyError.OutOfMemory,
-            error.AccessDenied => return PtyError.AccessDenied,
-            error.InvalidArgument => return PtyError.InvalidArgument,
-            else => return PtyError.CreateFailed,
+    pub fn initWithOptions(allocator: std.mem.Allocator, options: PtyInstanceOptions) PtyInstanceError!PtyInstance {
+        const result = createConPtyInstancePair(allocator, options) catch |err| switch (err) {
+            error.OutOfMemory => return PtyInstanceError.OutOfMemory,
+            error.AccessDenied => return PtyInstanceError.AccessDenied,
+            error.InvalidArgument => return PtyInstanceError.InvalidArgument,
+            else => return PtyInstanceError.CreateFailed,
         };
 
-        var pty = Pty{
+        var pty = PtyInstance{
             .master_fd = result.master_fd,
             .slave_fd = result.slave_fd,
             .slave_path = result.slave_path,
@@ -774,7 +774,7 @@ pub const WindowsPty = struct {
 };
 
 /// Create a PTY master/slave pair
-fn createPtyPair(allocator: std.mem.Allocator, options: PtyOptions) !struct {
+fn createPtyInstancePair(allocator: std.mem.Allocator, options: PtyInstanceOptions) !struct {
     master_fd: posix.fd_t,
     slave_fd: posix.fd_t,
     slave_path: []u8,
@@ -783,31 +783,31 @@ fn createPtyPair(allocator: std.mem.Allocator, options: PtyOptions) !struct {
 
     // Open /dev/ptmx (master PTY multiplexer)
     const master_fd = posix.open("/dev/ptmx", .{ .ACCMODE = .RDWR }, 0) catch |err| switch (err) {
-        error.AccessDenied => return PtyError.PermissionDenied,
-        error.FileNotFound => return PtyError.NotSupported, // No PTY support
-        else => return PtyError.CreateFailed,
+        error.AccessDenied => return PtyInstanceError.PermissionDenied,
+        error.FileNotFound => return PtyInstanceError.NotSupported, // No PTY support
+        else => return PtyInstanceError.CreateFailed,
     };
 
     errdefer posix.close(master_fd);
 
     // Grant access to the slave PTY
     if (grantpt(master_fd) != 0) {
-        return PtyError.CreateFailed;
+        return PtyInstanceError.CreateFailed;
     }
 
     // Unlock the slave PTY
     if (unlockpt(master_fd) != 0) {
-        return PtyError.CreateFailed;
+        return PtyInstanceError.CreateFailed;
     }
 
     // Get the slave PTY name
-    const slave_path = try getPtyName(allocator, master_fd);
+    const slave_path = try getPtyInstanceName(allocator, master_fd);
     errdefer allocator.free(slave_path);
 
     // Open the slave PTY
     const slave_fd = posix.open(slave_path, .{ .ACCMODE = .RDWR }, 0) catch |err| switch (err) {
-        error.AccessDenied => return PtyError.PermissionDenied,
-        else => return PtyError.CreateFailed,
+        error.AccessDenied => return PtyInstanceError.PermissionDenied,
+        else => return PtyInstanceError.CreateFailed,
     };
 
     errdefer os.close(slave_fd);
@@ -834,14 +834,14 @@ fn unlockpt(master_fd: posix.fd_t) c_int {
 }
 
 /// Get the slave PTY device name
-fn getPtyName(allocator: std.mem.Allocator, master_fd: posix.fd_t) ![]u8 {
+fn getPtyInstanceName(allocator: std.mem.Allocator, master_fd: posix.fd_t) ![]u8 {
     // Placeholder implementation - in a real implementation this would get the actual PTY number
     _ = master_fd;
     return try std.fmt.allocPrint(allocator, "/dev/pts/{d}", .{0});
 }
 
 /// Create a Windows ConPTY pair
-fn createConPtyPair(allocator: std.mem.Allocator, options: PtyOptions) !struct {
+fn createConPtyInstancePair(allocator: std.mem.Allocator, options: PtyInstanceOptions) !struct {
     master_fd: posix.fd_t,
     slave_fd: posix.fd_t,
     slave_path: []u8,
@@ -898,20 +898,20 @@ fn createConPtyPair(allocator: std.mem.Allocator, options: PtyOptions) !struct {
 }
 
 /// Convenience function to spawn a shell in a PTY with functional options
-pub fn spawnShell(allocator: std.mem.Allocator, options: []PtyOption) PtyError!Pty {
-    const pty_options = applyOptions(defaultPtyOptions(), options);
+pub fn spawnShell(allocator: std.mem.Allocator, options: []PtyInstanceOption) PtyInstanceError!PtyInstance {
+    const pty_options = applyOptions(defaultPtyInstanceOptions(), options);
     return spawnShellWithOptions(allocator, pty_options);
 }
 
 /// Convenience function to spawn a shell in a PTY with explicit options (legacy compatibility)
-pub fn spawnShellWithOptions(allocator: std.mem.Allocator, options: PtyOptions) PtyError!Pty {
-    var pty = try Pty.initWithOptions(allocator, options);
+pub fn spawnShellWithOptions(allocator: std.mem.Allocator, options: PtyInstanceOptions) PtyInstanceError!PtyInstance {
+    var pty = try PtyInstance.initWithOptions(allocator, options);
     errdefer pty.deinit();
 
     // Determine shell to use
     const shell = std.process.getEnvVarOwned(allocator, "SHELL") catch |err| switch (err) {
         error.EnvironmentVariableNotFound => try allocator.dupe(u8, "/bin/sh"),
-        else => return PtyError.SystemError,
+        else => return PtyInstanceError.SystemError,
     };
     defer allocator.free(shell);
 
@@ -922,18 +922,18 @@ pub fn spawnShellWithOptions(allocator: std.mem.Allocator, options: PtyOptions) 
 }
 
 /// High-level PTY manager for common use cases
-pub const PtyManager = struct {
+pub const Pty = struct {
     allocator: std.mem.Allocator,
-    ptys: std.ArrayList(Pty),
+    ptys: std.ArrayList(PtyInstance),
 
-    pub fn init(allocator: std.mem.Allocator) PtyManager {
-        return PtyManager{
+    pub fn init(allocator: std.mem.Allocator) Pty {
+        return Pty{
             .allocator = allocator,
-            .ptys = std.ArrayList(Pty).initCapacity(allocator, 0) catch unreachable,
+            .ptys = std.ArrayList(PtyInstance).initCapacity(allocator, 0) catch unreachable,
         };
     }
 
-    pub fn deinit(self: *PtyManager) void {
+    pub fn deinit(self: *Pty) void {
         for (self.ptys.items) |*pty| {
             pty.deinit();
         }
@@ -941,35 +941,35 @@ pub const PtyManager = struct {
     }
 
     /// Create and register a new PTY with functional options
-    pub fn createPty(self: *PtyManager, options: []PtyOption) PtyError!*Pty {
-        const pty = try Pty.init(self.allocator, options);
+    pub fn createPtyInstance(self: *Pty, options: []PtyInstanceOption) PtyInstanceError!*PtyInstance {
+        const pty = try PtyInstance.init(self.allocator, options);
         try self.ptys.append(self.allocator, pty);
         return &self.ptys.items[self.ptys.items.len - 1];
     }
 
     /// Create and register a new PTY with explicit options (legacy compatibility)
-    pub fn createPtyWithOptions(self: *PtyManager, options: PtyOptions) PtyError!*Pty {
-        const pty = try Pty.initWithOptions(self.allocator, options);
+    pub fn createPtyInstanceWithOptions(self: *Pty, options: PtyInstanceOptions) PtyInstanceError!*PtyInstance {
+        const pty = try PtyInstance.initWithOptions(self.allocator, options);
         try self.ptys.append(self.allocator, pty);
         return &self.ptys.items[self.ptys.items.len - 1];
     }
 
     /// Create and spawn shell in new PTY with functional options
-    pub fn createShell(self: *PtyManager, options: []const PtyOption) PtyError!*Pty {
+    pub fn createShell(self: *Pty, options: []const PtyInstanceOption) PtyInstanceError!*PtyInstance {
         const pty = try spawnShell(self.allocator, options);
         try self.ptys.append(self.allocator, pty);
         return &self.ptys.items[self.ptys.items.len - 1];
     }
 
     /// Create and spawn shell in new PTY with explicit options (legacy compatibility)
-    pub fn createShellWithOptions(self: *PtyManager, options: PtyOptions) PtyError!*Pty {
+    pub fn createShellWithOptions(self: *Pty, options: PtyInstanceOptions) PtyInstanceError!*PtyInstance {
         const pty = try spawnShellWithOptions(self.allocator, options);
         try self.ptys.append(self.allocator, pty);
         return &self.ptys.items[self.ptys.items.len - 1];
     }
 
     /// Remove and cleanup a PTY
-    pub fn removePty(self: *PtyManager, target_pty: *Pty) void {
+    pub fn removePtyInstance(self: *Pty, target_pty: *PtyInstance) void {
         for (self.ptys.items, 0..) |*pty, i| {
             if (pty == target_pty) {
                 pty.deinit();
@@ -980,14 +980,14 @@ pub const PtyManager = struct {
     }
 
     /// Get number of active PTYs
-    pub fn count(self: *PtyManager) usize {
+    pub fn count(self: *Pty) usize {
         return self.ptys.items.len;
     }
 };
 
 // Tests
 test "PTY creation with functional options" {
-    var pty = try Pty.init(std.testing.allocator, &[_]PtyOption{});
+    var pty = try PtyInstance.init(std.testing.allocator, &[_]PtyInstanceOption{});
     defer pty.deinit();
 
     try std.testing.expect(pty.master_fd >= 0);
@@ -1003,7 +1003,7 @@ test "PTY creation with functional options" {
 }
 
 test "PTY creation with explicit options (legacy)" {
-    var pty = try Pty.initWithOptions(std.testing.allocator, .{});
+    var pty = try PtyInstance.initWithOptions(std.testing.allocator, .{});
     defer pty.deinit();
 
     try std.testing.expect(pty.master_fd >= 0);
@@ -1012,7 +1012,7 @@ test "PTY creation with explicit options (legacy)" {
 }
 
 test "PTY functional options" {
-    var options = [_]PtyOption{
+    var options = [_]PtyInstanceOption{
         withRows(30),
         withCols(100),
         withPixels(800, 600),
@@ -1022,7 +1022,7 @@ test "PTY functional options" {
         withRawMode(true),
     };
 
-    var pty = try Pty.init(std.testing.allocator, options[0..]);
+    var pty = try PtyInstance.init(std.testing.allocator, options[0..]);
     defer pty.deinit();
 
     const size = try pty.getSize();
@@ -1033,13 +1033,13 @@ test "PTY functional options" {
 }
 
 test "PTY window sizing" {
-    var options = [_]PtyOption{
+    var options = [_]PtyInstanceOption{
         withRows(30),
         withCols(100),
         withPixels(800, 600),
     };
 
-    var pty = try Pty.init(std.testing.allocator, options[0..]);
+    var pty = try PtyInstance.init(std.testing.allocator, options[0..]);
     defer pty.deinit();
 
     const size = try pty.getSize();
@@ -1064,20 +1064,20 @@ test "PTY window sizing" {
 }
 
 test "PTY manager with functional options" {
-    var manager = PtyManager.init(std.testing.allocator);
+    var manager = Pty.init(std.testing.allocator);
     defer manager.deinit();
 
-    const pty1 = try manager.createPty(&[_]PtyOption{});
-    var pty2_options = [_]PtyOption{
+    const pty1 = try manager.createPtyInstance(&[_]PtyInstanceOption{});
+    var pty2_options = [_]PtyInstanceOption{
         withRows(25),
         withCols(90),
         withPixels(640, 480),
     };
-    const pty2 = try manager.createPty(pty2_options[0..]);
+    const pty2 = try manager.createPtyInstance(pty2_options[0..]);
 
     try std.testing.expectEqual(@as(usize, 2), manager.count());
 
-    manager.removePty(pty1);
+    manager.removePtyInstance(pty1);
     try std.testing.expectEqual(@as(usize, 1), manager.count());
 
     const size = try pty2.getSize();
@@ -1088,15 +1088,15 @@ test "PTY manager with functional options" {
 }
 
 test "PTY manager with explicit options (legacy)" {
-    var manager = PtyManager.init(std.testing.allocator);
+    var manager = Pty.init(std.testing.allocator);
     defer manager.deinit();
 
-    const pty1 = try manager.createPtyWithOptions(.{});
-    const pty2 = try manager.createPtyWithOptions(.{ .rows = 25, .cols = 90, .xpixel = 640, .ypixel = 480 });
+    const pty1 = try manager.createPtyInstanceWithOptions(.{});
+    const pty2 = try manager.createPtyInstanceWithOptions(.{ .rows = 25, .cols = 90, .xpixel = 640, .ypixel = 480 });
 
     try std.testing.expectEqual(@as(usize, 2), manager.count());
 
-    manager.removePty(pty1);
+    manager.removePtyInstance(pty1);
     try std.testing.expectEqual(@as(usize, 1), manager.count());
 
     const size = try pty2.getSize();
@@ -1107,7 +1107,7 @@ test "PTY manager with explicit options (legacy)" {
 }
 
 test "spawnShell with functional options" {
-    var options = [_]PtyOption{
+    var options = [_]PtyInstanceOption{
         withRows(24),
         withCols(80),
         withTerm("xterm-256color"),
@@ -1131,12 +1131,12 @@ test "spawnShell with explicit options (legacy)" {
 }
 
 test "cross-platform constructor" {
-    var options = [_]PtyOption{
+    var options = [_]PtyInstanceOption{
         withRows(24),
         withCols(80),
     };
 
-    var pty = try NewPty(std.testing.allocator, options[0..]);
+    var pty = try newPtyInstance(std.testing.allocator, options[0..]);
     defer pty.deinit();
 
     try std.testing.expect(pty.master_fd >= 0);

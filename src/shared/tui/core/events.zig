@@ -111,7 +111,7 @@ pub fn parseSgrMouseEvent(sequence: []const u8) ?MouseEvent {
 
     // Decode button and modifiers
     const base_button = button_num & 0x3;
-    const modifiers = struct {
+    const Modifiers = struct {
         ctrl: bool = (button_num & 0x10) != 0,
         shift: bool = (button_num & 0x04) != 0,
         alt: bool = (button_num & 0x08) != 0,
@@ -125,7 +125,7 @@ pub fn parseSgrMouseEvent(sequence: []const u8) ?MouseEvent {
             .action = .scroll,
             .x = x,
             .y = y,
-            .modifiers = modifiers,
+            .modifiers = Modifiers,
         };
     }
 
@@ -142,7 +142,7 @@ pub fn parseSgrMouseEvent(sequence: []const u8) ?MouseEvent {
         .action = action,
         .x = x,
         .y = y,
-        .modifiers = modifiers,
+        .modifiers = Modifiers,
     };
 }
 
@@ -150,7 +150,12 @@ pub fn parseSgrMouseEvent(sequence: []const u8) ?MouseEvent {
 pub const ShortcutRegistry = struct {
     const Shortcut = struct {
         keys: []const KeyEvent.Key,
-        modifiers: KeyEvent.KeyEvent.modifiers,
+        modifiers: struct {
+            ctrl: bool = false,
+            shift: bool = false,
+            alt: bool = false,
+            super: bool = false,
+        },
         action: []const u8, // Action identifier
         handler: KeyboardHandler,
     };

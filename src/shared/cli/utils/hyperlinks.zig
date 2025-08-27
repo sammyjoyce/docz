@@ -55,7 +55,7 @@ pub const HyperlinkBuilder = struct {
         title: []const u8,
     ) !void {
         const repo_url = "https://github.com/anthropic/docz/issues/new";
-        const encoded_title = try std.Uri.escapeString(self.allocator, title);
+        const encoded_title = try std.URI.escapeString(self.allocator, title);
         defer self.allocator.free(encoded_title);
 
         const url = try std.fmt.allocPrint(self.allocator, "{s}?title={s}", .{ repo_url, encoded_title });
@@ -90,7 +90,7 @@ pub const HyperlinkBuilder = struct {
         subject: ?[]const u8,
     ) !void {
         const url = if (subject) |subj| blk: {
-            const encoded_subject = try std.Uri.escapeString(self.allocator, subj);
+            const encoded_subject = try std.URI.escapeString(self.allocator, subj);
             defer self.allocator.free(encoded_subject);
             break :blk try std.fmt.allocPrint(self.allocator, "mailto:{s}?subject={s}", .{ email, encoded_subject });
         } else try std.fmt.allocPrint(self.allocator, "mailto:{s}", .{email});

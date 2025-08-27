@@ -44,7 +44,88 @@ pub const PkceParams = struct {
     code_verifier: []const u8,
     code_challenge: []const u8,
     state: []const u8,
+
+    /// Clean up allocated memory
+    pub fn deinit(self: PkceParams, allocator: std.mem.Allocator) void {
+        allocator.free(self.code_verifier);
+        allocator.free(self.code_challenge);
+        allocator.free(self.state);
+    }
 };
+
+/// Generate PKCE parameters with cryptographically secure random values
+pub fn generatePkceParams(allocator: std.mem.Allocator) !PkceParams {
+    // Generate random code verifier (43-128 characters)
+    const verifier_length = 64; // Use 64 characters for good entropy
+    const code_verifier = try generateCodeVerifier(allocator, verifier_length);
+
+    // Generate code challenge by SHA256 hashing and base64url encoding
+    const code_challenge = try generateCodeChallenge(allocator, code_verifier);
+
+    // Generate random state parameter (32 characters)
+    const state = try generateRandomState(allocator, 32);
+
+    return PkceParams{
+        .code_verifier = code_verifier,
+        .code_challenge = code_challenge,
+        .state = state,
+    };
+}
+
+/// Generate a cryptographically secure random code verifier
+fn generateCodeVerifier(allocator: std.mem.Allocator, length: usize) ![]u8 {
+    if (length < 43 or length > 128) {
+        return error.InvalidLength;
+    }
+
+    // Generate random bytes
+    const random_bytes = try allocator.alloc(u8, length);
+    defer allocator.free(random_bytes);
+    std.crypto.random.bytes(random_bytes);
+
+    // Convert to valid PKCE characters (alphanumeric + -._~)
+    const valid_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
+    const verifier = try allocator.alloc(u8, length);
+
+    for (random_bytes, 0..) |byte, i| {
+        verifier[i] = valid_chars[byte % valid_chars.len];
+    }
+
+    return verifier;
+}
+
+/// Generate code challenge by SHA256 hashing and base64url encoding the verifier
+fn generateCodeChallenge(allocator: std.mem.Allocator, code_verifier: []const u8) ![]u8 {
+    // SHA256 hash the verifier
+    var hasher = std.crypto.hash.sha2.Sha256.init(.{});
+    hasher.update(code_verifier);
+    const hash = hasher.finalResult();
+
+    // Base64url encode the hash
+    const encoded_size = std.base64.url_safe_no_pad.Encoder.calcSize(hash.len);
+    const challenge = try allocator.alloc(u8, encoded_size);
+    _ = std.base64.url_safe_no_pad.Encoder.encode(challenge, &hash);
+
+    return challenge;
+}
+
+/// Generate a cryptographically secure random state parameter
+fn generateRandomState(allocator: std.mem.Allocator, length: usize) ![]u8 {
+    // Generate random bytes
+    const random_bytes = try allocator.alloc(u8, length);
+    defer allocator.free(random_bytes);
+    std.crypto.random.bytes(random_bytes);
+
+    // Convert to URL-safe characters
+    const valid_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    const state = try allocator.alloc(u8, length);
+
+    for (random_bytes, 0..) |byte, i| {
+        state[i] = valid_chars[byte % valid_chars.len];
+    }
+
+    return state;
+}
 
 /// Authentication methods supported
 pub const AuthMethod = union(enum) {
@@ -60,7 +141,7 @@ pub const OAuthProvider = struct {
     redirect_uri: []const u8,
     scopes: []const []const u8,
 
-    pub fn buildAuthUrl(self: OAuthProvider, allocator: std.mem.Allocator, pkce_params: PkceParams) ![]u8 {
+    pub fn buildAuthURL(self: OAuthProvider, allocator: std.mem.Allocator, pkce_params: PkceParams) ![]u8 {
         const scopes_joined = try std.mem.join(allocator, " ", self.scopes);
         defer allocator.free(scopes_joined);
 
@@ -87,6 +168,7 @@ var GLOBAL_REFRESH_STATE = RefreshState.init();
 /// Global content collector for complete method (not thread-safe)
 var GLOBAL_CONTENT_COLLECTOR: std.ArrayList(u8) = undefined;
 var GLOBAL_ALLOCATOR: std.mem.Allocator = undefined;
+var GLOBAL_USAGE_INFO: Usage = undefined;
 
 /// Model pricing information (rates per million tokens)
 pub const ModelPricing = struct {
@@ -168,11 +250,11 @@ pub const CostCalculator = struct {
 };
 
 /// Error set for client operations.
-pub const Error = error{ MissingAPIKey, ApiError, AuthError, TokenExpired, OutOfMemory, InvalidFormat, InvalidPort, UnexpectedCharacter, InvalidGrant, NetworkError, RefreshInProgress, ChunkParseError, MalformedChunk, InvalidChunkSize, PayloadTooLarge, StreamingFailed, BufferOverflow, ChunkProcessingFailed,
+pub const Error = error{ MissingAPIKey, APIError, AuthError, TokenExpired, OutOfMemory, InvalidFormat, InvalidPort, UnexpectedCharacter, InvalidGrant, NetworkError, RefreshInProgress, ChunkParseError, MalformedChunk, InvalidChunkSize, PayloadTooLarge, StreamingFailed, BufferOverflow, ChunkProcessingFailed,
     // OAuth and network related errors
-    WriteFailed, ReadFailed, EndOfStream, ConnectionResetByPeer, ConnectionTimedOut, NetworkUnreachable, ConnectionRefused, TemporaryNameServerFailure, NameServerFailure, UnknownHostName, HostLacksNetworkAddresses, UnexpectedConnectFailure, TlsInitializationFailed, UnsupportedUriScheme, UriMissingHost, UriHostTooLong, CertificateBundleLoadFailure,
+    WriteFailed, ReadFailed, EndOfStream, ConnectionResetByPeer, ConnectionTimedOut, NetworkUnreachable, ConnectionRefused, TemporaryNameServerFailure, NameServerFailure, UnknownHostName, HostLacksNetworkAddresses, UnexpectedConnectFailure, TlsInitializationFailed, UnsupportedURIScheme, URIMissingHost, URIHostTooLong, CertificateBundleLoadFailure,
     // HTTP protocol errors
-    HttpChunkInvalid, HttpChunkTruncated, HttpHeadersOversize, HttpRequestTruncated, HttpConnectionClosing, HttpHeadersInvalid, TooManyHttpRedirects, RedirectRequiresResend, HttpRedirectLocationMissing, HttpRedirectLocationOversize, HttpRedirectLocationInvalid, HttpContentEncodingUnsupported,
+    HTTPChunkInvalid, HTTPChunkTruncated, HTTPHeadersOversize, HTTPRequestTruncated, HTTPConnectionClosing, HTTPHeadersInvalid, TooManyHttpRedirects, RedirectRequiresResend, HTTPRedirectLocationMissing, HTTPRedirectLocationOversize, HTTPRedirectLocationInvalid, HTTPContentEncodingUnsupported,
     // Buffer errors
     NoSpaceLeft, StreamTooLong };
 
@@ -189,7 +271,7 @@ pub const StreamParams = struct {
 /// Response structure for non-streaming completion
 pub const CompletionResponse = struct {
     content: []const u8,
-    usage: UsageInfo,
+    usage: Usage,
     allocator: std.mem.Allocator,
 
     pub fn deinit(self: *CompletionResponse, allocator: std.mem.Allocator) void {
@@ -199,7 +281,7 @@ pub const CompletionResponse = struct {
     }
 };
 
-pub const UsageInfo = struct {
+pub const Usage = struct {
     input_tokens: u32 = 0,
     output_tokens: u32 = 0,
 };
@@ -314,6 +396,7 @@ pub const AnthropicClient = struct {
         GLOBAL_ALLOCATOR = self.allocator;
         GLOBAL_CONTENT_COLLECTOR = std.ArrayList(u8){};
         defer GLOBAL_CONTENT_COLLECTOR.deinit(self.allocator);
+        GLOBAL_USAGE_INFO = Usage{ .input_tokens = 0, .output_tokens = 0 };
 
         // Create stream params with our collector callback
         const stream_params = StreamParams{
@@ -322,8 +405,38 @@ pub const AnthropicClient = struct {
             .temperature = params.temperature,
             .messages = params.messages,
             .on_token = struct {
-                fn callback(token: []const u8) void {
-                    GLOBAL_CONTENT_COLLECTOR.appendSlice(GLOBAL_ALLOCATOR, token) catch return;
+                fn callback(data: []const u8) void {
+                    // Try to parse as JSON to extract usage and content
+                    const DeltaMessage = struct {
+                        delta: ?struct {
+                            text: ?[]const u8,
+                        },
+                        usage: ?struct {
+                            input_tokens: u32,
+                            output_tokens: u32,
+                        },
+                        type: ?[]const u8,
+                    };
+
+                    const parsed = std.json.parseFromSlice(DeltaMessage, GLOBAL_ALLOCATOR, data, .{}) catch {
+                        // If not valid JSON, treat as raw text content
+                        GLOBAL_CONTENT_COLLECTOR.appendSlice(GLOBAL_ALLOCATOR, data) catch return;
+                        return;
+                    };
+                    defer parsed.deinit();
+
+                    // Extract content from delta if present
+                    if (parsed.value.delta) |delta| {
+                        if (delta.text) |text| {
+                            GLOBAL_CONTENT_COLLECTOR.appendSlice(GLOBAL_ALLOCATOR, text) catch return;
+                        }
+                    }
+
+                    // Extract usage if present
+                    if (parsed.value.usage) |usage| {
+                        GLOBAL_USAGE_INFO.input_tokens = usage.input_tokens;
+                        GLOBAL_USAGE_INFO.output_tokens = usage.output_tokens;
+                    }
                 }
             }.callback,
         };
@@ -335,7 +448,7 @@ pub const AnthropicClient = struct {
 
         return CompletionResponse{
             .content = owned_content,
-            .usage = UsageInfo{ .input_tokens = 0, .output_tokens = 0 }, // TODO: Extract from response
+            .usage = GLOBAL_USAGE_INFO,
             .allocator = self.allocator,
         };
     }
@@ -348,11 +461,11 @@ pub const AnthropicClient = struct {
         }
 
         // Build request body
-        const body_json = try buildBodyJson(self.allocator, params);
+        const body_json = try buildBodyJSON(self.allocator, params);
         defer self.allocator.free(body_json);
 
         // Initialize libcurl client
-        var client = curl.HttpClient.init(self.allocator) catch |err| {
+        var client = curl.HTTPClient.init(self.allocator) catch |err| {
             std.log.err("Failed to initialize HTTP client for streaming: {}", .{err});
             return Error.NetworkError;
         };
@@ -383,7 +496,7 @@ pub const AnthropicClient = struct {
         };
 
         // Create streaming context
-        const StreamingContext = struct {
+        const Streaming = struct {
             allocator: std.mem.Allocator,
             callback: *const fn ([]const u8) void,
             buffer: std.ArrayListUnmanaged(u8),
@@ -401,10 +514,10 @@ pub const AnthropicClient = struct {
             }
         };
 
-        var stream_context = StreamingContext.init(self.allocator, params.on_token);
+        var stream_context = Streaming.init(self.allocator, params.on_token);
         defer stream_context.deinit();
 
-        const req = curl.HttpRequest{
+        const req = curl.HTTPRequest{
             .method = .POST,
             .url = "https://api.anthropic.com/v1/messages",
             .headers = &headers,
@@ -423,10 +536,10 @@ pub const AnthropicClient = struct {
         ) catch |err| {
             std.log.err("Streaming request failed: {}", .{err});
             switch (err) {
-                curl.HttpError.NetworkError => return Error.NetworkError,
-                curl.HttpError.TlsError => return Error.NetworkError,
-                curl.HttpError.Timeout => return Error.NetworkError,
-                else => return Error.ApiError,
+                curl.HTTPError.NetworkError => return Error.NetworkError,
+                curl.HTTPError.TlsError => return Error.NetworkError,
+                curl.HTTPError.Timeout => return Error.NetworkError,
+                else => return Error.APIError,
             }
         };
 
@@ -438,7 +551,7 @@ pub const AnthropicClient = struct {
 
         if (status_code != 200) {
             std.log.err("HTTP error: {}", .{status_code});
-            return Error.ApiError;
+            return Error.APIError;
         }
 
         // Process any remaining buffered data
@@ -450,7 +563,7 @@ pub const AnthropicClient = struct {
     }
 };
 
-fn buildBodyJson(allocator: std.mem.Allocator, params: StreamParams) ![]u8 {
+fn buildBodyJSON(allocator: std.mem.Allocator, params: StreamParams) ![]u8 {
     var buffer = std.array_list.Managed(u8).init(allocator);
     defer buffer.deinit();
 
@@ -476,7 +589,7 @@ fn buildBodyJson(allocator: std.mem.Allocator, params: StreamParams) ![]u8 {
 
 /// Callback function for processing streaming chunks from libcurl
 fn processStreamChunk(chunk: []const u8, context: *anyopaque) void {
-    const StreamingContext = struct {
+    const Streaming = struct {
         allocator: std.mem.Allocator,
         callback: *const fn ([]const u8) void,
         buffer: std.ArrayListUnmanaged(u8),
@@ -494,7 +607,7 @@ fn processStreamChunk(chunk: []const u8, context: *anyopaque) void {
         }
     };
 
-    const stream_context: *StreamingContext = @ptrCast(@alignCast(context));
+    const stream_context: *Streaming = @ptrCast(@alignCast(context));
 
     // Process chunk for SSE events
     processSSEChunk(stream_context, chunk) catch |err| {
@@ -1085,42 +1198,8 @@ fn processSSELine(line: []const u8, event_state: *sse.SSEEventState, sse_config:
 
 // ================== OAuth Implementation ==================
 
-/// Generate PKCE parameters for OAuth flow
-pub fn generatePkceParams(allocator: std.mem.Allocator) !PkceParams {
-    // Generate random code verifier (43-128 chars, URL-safe base64)
-    var random_bytes: [64]u8 = undefined;
-    std.crypto.random.bytes(&random_bytes);
-
-    const verifier_size = std.base64.url_safe.Encoder.calcSize(random_bytes.len);
-    const verifier = try allocator.alloc(u8, verifier_size);
-    _ = std.base64.url_safe.Encoder.encode(verifier, &random_bytes);
-
-    // Create code challenge using SHA256
-    var hasher = std.crypto.hash.sha2.Sha256.init(.{});
-    hasher.update(verifier);
-    var challenge_hash: [32]u8 = undefined;
-    hasher.final(&challenge_hash);
-
-    const challenge_size = std.base64.url_safe.Encoder.calcSize(challenge_hash.len);
-    const challenge = try allocator.alloc(u8, challenge_size);
-    _ = std.base64.url_safe.Encoder.encode(challenge, &challenge_hash);
-
-    // Generate state parameter
-    var state_bytes: [32]u8 = undefined;
-    std.crypto.random.bytes(&state_bytes);
-    const state_size = std.base64.url_safe.Encoder.calcSize(state_bytes.len);
-    const state = try allocator.alloc(u8, state_size);
-    _ = std.base64.url_safe.Encoder.encode(state, &state_bytes);
-
-    return PkceParams{
-        .code_verifier = verifier,
-        .code_challenge = challenge,
-        .state = state,
-    };
-}
-
 /// Build OAuth authorization URL with default provider
-pub fn buildAuthorizationUrl(allocator: std.mem.Allocator, pkce_params: PkceParams) ![]u8 {
+pub fn buildAuthorizationURL(allocator: std.mem.Allocator, pkce_params: PkceParams) ![]u8 {
     const scopes = [_][]const u8{ "org:create_api_key", "user:profile", "user:inference" };
     const provider = OAuthProvider{
         .client_id = OAUTH_CLIENT_ID,
@@ -1130,14 +1209,14 @@ pub fn buildAuthorizationUrl(allocator: std.mem.Allocator, pkce_params: PkcePara
         .scopes = &scopes,
     };
 
-    return try provider.buildAuthUrl(allocator, pkce_params);
+    return try provider.buildAuthURL(allocator, pkce_params);
 }
 
 /// Exchange authorization code for tokens
 pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorization_code: []const u8, pkce_params: PkceParams) !OAuthCredentials {
     std.log.info("🔄 Exchanging authorization code for OAuth tokens...", .{});
 
-    var client = curl.HttpClient.init(allocator) catch |err| {
+    var client = curl.HTTPClient.init(allocator) catch |err| {
         std.log.err("Failed to initialize HTTP client: {}", .{err});
         return Error.NetworkError;
     };
@@ -1169,7 +1248,7 @@ pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorization_code: [
         .{ .name = "user-agent", .value = "docz/1.0 (libcurl)" },
     };
 
-    const req = curl.HttpRequest{
+    const req = curl.HTTPRequest{
         .method = .POST,
         .url = OAUTH_TOKEN_ENDPOINT,
         .headers = &headers,
@@ -1183,16 +1262,16 @@ pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorization_code: [
     var resp = client.request(req) catch |err| {
         std.log.err("❌ Token exchange request failed: {}", .{err});
         switch (err) {
-            curl.HttpError.NetworkError => {
+            curl.HTTPError.NetworkError => {
                 std.log.err("   Network connection failed", .{});
                 std.log.err("   • Check your internet connection", .{});
                 std.log.err("   • Check if corporate firewall blocks HTTPS", .{});
             },
-            curl.HttpError.TlsError => {
+            curl.HTTPError.TlsError => {
                 std.log.err("   TLS/SSL connection failed", .{});
                 std.log.err("   • Certificate validation or security settings issue", .{});
             },
-            curl.HttpError.Timeout => {
+            curl.HTTPError.Timeout => {
                 std.log.err("   Request timed out", .{});
                 std.log.err("   🔄 Try again - this is often temporary", .{});
             },
@@ -1246,7 +1325,7 @@ pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorization_code: [
 pub fn refreshTokens(allocator: std.mem.Allocator, refresh_token: []const u8) !OAuthCredentials {
     std.log.info("🔄 Refreshing OAuth tokens...", .{});
 
-    var client = curl.HttpClient.init(allocator) catch |err| {
+    var client = curl.HTTPClient.init(allocator) catch |err| {
         std.log.err("Failed to initialize HTTP client: {}", .{err});
         return Error.NetworkError;
     };
@@ -1268,7 +1347,7 @@ pub fn refreshTokens(allocator: std.mem.Allocator, refresh_token: []const u8) !O
         .{ .name = "user-agent", .value = "docz/1.0 (libcurl)" },
     };
 
-    const req = curl.HttpRequest{
+    const req = curl.HTTPRequest{
         .method = .POST,
         .url = OAUTH_TOKEN_ENDPOINT,
         .headers = &headers,
@@ -1282,15 +1361,15 @@ pub fn refreshTokens(allocator: std.mem.Allocator, refresh_token: []const u8) !O
     var resp = client.request(req) catch |err| {
         std.log.err("❌ Token refresh request failed: {}", .{err});
         switch (err) {
-            curl.HttpError.NetworkError => {
+            curl.HTTPError.NetworkError => {
                 std.log.err("Connection was reset by Anthropic's OAuth server during token refresh. This can happen due to network issues or server load.", .{});
                 std.log.err("Please try again in a few moments.", .{});
             },
-            curl.HttpError.TlsError => {
+            curl.HTTPError.TlsError => {
                 std.log.err("TLS connection failed during token refresh.", .{});
                 std.log.err("Please check your network settings.", .{});
             },
-            curl.HttpError.Timeout => {
+            curl.HTTPError.Timeout => {
                 std.log.err("Token refresh request timed out.", .{});
                 std.log.err("🔄 Try again - this is often temporary", .{});
             },
@@ -1370,7 +1449,7 @@ pub fn saveOAuthCredentials(allocator: std.mem.Allocator, file_path: []const u8,
 /// Parse authorization code from callback URL (handles fragments)
 pub fn parseAuthorizationCode(allocator: std.mem.Allocator, callback_url: []const u8) ![]const u8 {
     // Parse URL and extract code parameter
-    const url = try std.Uri.parse(callback_url);
+    const url = try std.URI.parse(callback_url);
 
     // Handle both query parameters and fragments
     if (url.query) |query_component| {
@@ -1477,7 +1556,7 @@ pub fn waitForOAuthCallback(allocator: std.mem.Allocator, port: u16) ![]const u8
 
         const request_data = request_buffer[0..bytes_read];
         const request_line_end = std.mem.indexOf(u8, request_data, "\n") orelse {
-            sendHttpError(&connection.stream, 400, "Invalid request format - no line ending") catch {};
+            sendHTTPError(&connection.stream, 400, "Invalid request format - no line ending") catch {};
             continue;
         };
 
@@ -1490,17 +1569,17 @@ pub fn waitForOAuthCallback(allocator: std.mem.Allocator, port: u16) ![]const u8
         // Parse HTTP request: "GET /path?query HTTP/1.1"
         var request_parts = std.mem.splitSequence(u8, request_line_trimmed, " ");
         const method = request_parts.next() orelse {
-            sendHttpError(&connection.stream, 400, "Invalid request format") catch {};
+            sendHTTPError(&connection.stream, 400, "Invalid request format") catch {};
             continue;
         };
         const path_and_query = request_parts.next() orelse {
-            sendHttpError(&connection.stream, 400, "Invalid request format") catch {};
+            sendHTTPError(&connection.stream, 400, "Invalid request format") catch {};
             continue;
         };
 
         // Only handle GET requests for OAuth callback
         if (!std.mem.eql(u8, method, "GET")) {
-            sendHttpError(&connection.stream, 405, "Method not allowed") catch {};
+            sendHTTPError(&connection.stream, 405, "Method not allowed") catch {};
             continue;
         }
 
@@ -1509,7 +1588,7 @@ pub fn waitForOAuthCallback(allocator: std.mem.Allocator, port: u16) ![]const u8
         // Extract query parameters from the path
         const query_start = std.mem.indexOf(u8, path_and_query, "?");
         if (query_start == null) {
-            sendHttpError(&connection.stream, 400, "No query parameters in OAuth callback") catch {};
+            sendHTTPError(&connection.stream, 400, "No query parameters in OAuth callback") catch {};
             continue;
         }
 
@@ -1540,14 +1619,14 @@ pub fn waitForOAuthCallback(allocator: std.mem.Allocator, port: u16) ![]const u8
             return allocator.dupe(u8, auth_code);
         } else {
             // No code parameter found
-            sendHttpError(&connection.stream, 400, "Authorization code not found in OAuth callback") catch {};
+            sendHTTPError(&connection.stream, 400, "Authorization code not found in OAuth callback") catch {};
             continue;
         }
     }
 }
 
 /// Send HTTP error response to client
-fn sendHttpError(stream: *std.net.Stream, status_code: u16, message: []const u8) !void {
+fn sendHTTPError(stream: *std.net.Stream, status_code: u16, message: []const u8) !void {
     const status_text = switch (status_code) {
         400 => "Bad Request",
         404 => "Not Found",

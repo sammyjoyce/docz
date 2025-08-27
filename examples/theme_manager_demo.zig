@@ -9,7 +9,9 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    const stdout = std.io.getStdOut().writer();
+    var stdout_buffer: [4096]u8 = undefined;
+    const stdout_file = std.fs.File.stdout();
+    var stdout = stdout_file.writer(&stdout_buffer);
 
     try stdout.writeAll("\n╔══════════════════════════════════════════════════════════════╗\n");
     try stdout.writeAll("║         Enhanced Theme Management System Demo                 ║\n");

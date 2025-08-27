@@ -102,8 +102,8 @@ pub const ProgressBar = struct {
         // ETA
         if (self.show_eta and self.start_time != null and self.current_progress > 0.01) {
             const elapsed = std.time.timestamp() - self.start_time.?;
-            const total_estimated = @as(f32, @floatFromInt(elapsed)) / self.current_progress;
-            const remaining = @as(i64, @intFromFloat(total_estimated)) - elapsed;
+            const totalEstimated = @as(f32, @floatFromInt(elapsed)) / self.current_progress;
+            const remaining = @as(i64, @intFromFloat(totalEstimated)) - elapsed;
 
             if (remaining > 0) {
                 try writer.print(" ETA: {d}s", .{remaining});
@@ -114,7 +114,7 @@ pub const ProgressBar = struct {
     }
 
     fn renderSimpleBar(self: *ProgressBar, writer: anytype) !void {
-        const filled_chars = @as(u32, @intFromFloat(self.current_progress * @as(f32, @floatFromInt(self.width))));
+        const filledChars = @as(u32, @intFromFloat(self.current_progress * @as(f32, @floatFromInt(self.width))));
 
         try writer.writeAll("[");
 
@@ -124,7 +124,7 @@ pub const ProgressBar = struct {
         } else {
             try term_ansi.setForeground256(writer, self.caps, 10);
         }
-        for (0..filled_chars) |_| {
+        for (0..filledChars) |_| {
             try writer.writeAll("=");
         }
 
@@ -134,7 +134,7 @@ pub const ProgressBar = struct {
         } else {
             try term_ansi.setForeground256(writer, self.caps, 8);
         }
-        for (filled_chars..self.width) |_| {
+        for (filledChars..self.width) |_| {
             try writer.writeAll("-");
         }
 
@@ -143,7 +143,7 @@ pub const ProgressBar = struct {
     }
 
     fn renderUnicodeBar(self: *ProgressBar, writer: anytype) !void {
-        const filled_chars = @as(u32, @intFromFloat(self.current_progress * @as(f32, @floatFromInt(self.width))));
+        const filledChars = @as(u32, @intFromFloat(self.current_progress * @as(f32, @floatFromInt(self.width))));
 
         try writer.writeAll("▕");
 
@@ -153,7 +153,7 @@ pub const ProgressBar = struct {
         } else {
             try term_ansi.setForeground256(writer, self.caps, 10);
         }
-        for (0..filled_chars) |_| {
+        for (0..filledChars) |_| {
             try writer.writeAll("█");
         }
 
@@ -163,7 +163,7 @@ pub const ProgressBar = struct {
         } else {
             try term_ansi.setForeground256(writer, self.caps, 8);
         }
-        for (filled_chars..self.width) |_| {
+        for (filledChars..self.width) |_| {
             try writer.writeAll("░");
         }
 
@@ -172,17 +172,17 @@ pub const ProgressBar = struct {
     }
 
     fn renderGradientBar(self: *ProgressBar, writer: anytype) !void {
-        const filled_chars = @as(u32, @intFromFloat(self.current_progress * @as(f32, @floatFromInt(self.width))));
+        const filledChars = @as(u32, @intFromFloat(self.current_progress * @as(f32, @floatFromInt(self.width))));
 
         try writer.writeAll("▕");
 
         // Gradient from red to green based on progress
         for (0..self.width) |i| {
             const pos = @as(f32, @floatFromInt(i)) / @as(f32, @floatFromInt(self.width));
-            const is_filled = i < filled_chars;
+            const isFilled = i < filledChars;
 
             if (self.caps.supportsTrueColor()) {
-                if (is_filled) {
+                if (isFilled) {
                     // Gradient from red (0.0) to green (1.0)
                     const red = @as(u8, @intFromFloat(255.0 * (1.0 - pos)));
                     const green = @as(u8, @intFromFloat(255.0 * pos));
@@ -191,14 +191,14 @@ pub const ProgressBar = struct {
                     try term_ansi.setForegroundRgb(writer, self.caps, 60, 60, 60);
                 }
             } else {
-                if (is_filled) {
+                if (isFilled) {
                     try term_ansi.setForeground256(writer, self.caps, 10);
                 } else {
                     try term_ansi.setForeground256(writer, self.caps, 8);
                 }
             }
 
-            if (is_filled) {
+            if (isFilled) {
                 try writer.writeAll("█");
             } else {
                 try writer.writeAll("░");
@@ -210,20 +210,20 @@ pub const ProgressBar = struct {
     }
 
     fn renderAnimatedBar(self: *ProgressBar, writer: anytype) !void {
-        const filled_chars = @as(u32, @intFromFloat(self.current_progress * @as(f32, @floatFromInt(self.width))));
-        const animation_pos = self.animation_frame % self.width;
+        const filledChars = @as(u32, @intFromFloat(self.current_progress * @as(f32, @floatFromInt(self.width))));
+        const animationPos = self.animation_frame % self.width;
 
         try writer.writeAll("▕");
 
         for (0..self.width) |i| {
-            const is_filled = i < filled_chars;
-            const is_wave_pos = i == animation_pos and is_filled;
+            const isFilled = i < filledChars;
+            const is_wave_pos = i == animationPos and isFilled;
 
             if (self.caps.supportsTrueColor()) {
                 if (is_wave_pos) {
                     // Bright white for wave
                     try term_ansi.setForegroundRgb(writer, self.caps, 255, 255, 255);
-                } else if (is_filled) {
+                } else if (isFilled) {
                     try term_ansi.setForegroundRgb(writer, self.caps, 50, 205, 50);
                 } else {
                     try term_ansi.setForegroundRgb(writer, self.caps, 60, 60, 60);
@@ -231,14 +231,14 @@ pub const ProgressBar = struct {
             } else {
                 if (is_wave_pos) {
                     try term_ansi.setForeground256(writer, self.caps, 15);
-                } else if (is_filled) {
+                } else if (isFilled) {
                     try term_ansi.setForeground256(writer, self.caps, 10);
                 } else {
                     try term_ansi.setForeground256(writer, self.caps, 8);
                 }
             }
 
-            if (is_filled) {
+            if (isFilled) {
                 try writer.writeAll("█");
             } else {
                 try writer.writeAll("░");
@@ -250,20 +250,20 @@ pub const ProgressBar = struct {
     }
 
     fn renderRainbowBar(self: *ProgressBar, writer: anytype) !void {
-        const filled_chars = @as(u32, @intFromFloat(self.current_progress * @as(f32, @floatFromInt(self.width))));
+        const filledChars = @as(u32, @intFromFloat(self.current_progress * @as(f32, @floatFromInt(self.width))));
 
         try writer.writeAll("▕");
 
         // Rainbow colors based on HSV color space
         for (0..self.width) |i| {
-            const is_filled = i < filled_chars;
+            const isFilled = i < filledChars;
 
-            if (self.caps.supportsTrueColor() and is_filled) {
+            if (self.caps.supportsTrueColor() and isFilled) {
                 // HSV to RGB conversion for rainbow effect
                 const hue = (@as(f32, @floatFromInt(i)) / @as(f32, @floatFromInt(self.width))) * 360.0;
                 const rgb = hsvToRgb(hue, 1.0, 1.0);
                 try term_ansi.setForegroundRgb(writer, self.caps, rgb[0], rgb[1], rgb[2]);
-            } else if (is_filled) {
+            } else if (isFilled) {
                 // Fallback color cycling for 256-color terminals
                 const color_idx = @as(u8, @intCast((i % 6) + 9)); // Colors 9-14
                 try term_ansi.setForeground256(writer, self.caps, color_idx);
@@ -275,7 +275,7 @@ pub const ProgressBar = struct {
                 }
             }
 
-            if (is_filled) {
+            if (isFilled) {
                 try writer.writeAll("█");
             } else {
                 try writer.writeAll("░");

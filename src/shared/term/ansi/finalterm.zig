@@ -247,8 +247,8 @@ pub fn createCommandContext(
     writer: anytype,
     allocator: std.mem.Allocator,
     caps: TermCaps,
-) CommandContext(@TypeOf(writer)) {
-    return CommandContext(@TypeOf(writer)){
+) commandContext(@TypeOf(writer)) {
+    return commandContext(@TypeOf(writer)){
         .writer = writer,
         .allocator = allocator,
         .caps = caps,

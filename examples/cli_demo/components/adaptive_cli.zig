@@ -235,7 +235,7 @@ pub const AdaptiveCLI = struct {
         const data2 = [_]f64{ 5, 8, 15, 12, 18, 22, 25, 20, 28, 30, 35, 38 };
         const data3 = [_]f64{ 2, 5, 8, 10, 12, 15, 18, 22, 25, 28, 30, 32 };
 
-        const series = [_]Chart.DataSeries{
+        const series = [_]Chart.Series{
             .{
                 .name = "Revenue",
                 .data = &data1,
@@ -426,8 +426,8 @@ pub const AdaptiveCLI = struct {
     fn benchmarkChart(self: *AdaptiveCLI) !u64 {
         const iterations = 50;
         const data = [_]f64{ 1.0, 2.0, 3.0 };
-        const series = Chart.DataSeries{ .name = "Test", .data = &data };
-        const chart = Chart{ .data_series = &[_]Chart.DataSeries{series} };
+        const series = Chart.Series{ .name = "Test", .data = &data };
+        const chart = Chart{ .data_series = &[_]Chart.Series{series} };
 
         for (0..iterations) |_| {
             try self.renderer.renderChart(chart);

@@ -13,7 +13,7 @@ fn oscTerminator() []const u8 {
 }
 
 fn sanitize(alloc: std.mem.Allocator, s: []const u8) ![]u8 {
-    // Filter out ESC and BEL to avoid premature termination or injection
+    // Filter out ESC and BEL to avoid preMature terMination or injection
     var out = std.ArrayList(u8).init(alloc);
     errdefer out.deinit();
     try out.ensureTotalCapacity(s.len);
@@ -162,12 +162,12 @@ pub fn resetCursorColor(writer: anytype, alloc: std.mem.Allocator, caps: TermCap
 
 // === ENHANCED COLOR FORMATS ===
 
-/// Color format types for terminal color specification
-pub const ColorFormat = enum {
-    hex, // #RRGGBB format
-    xrgb, // XParseColor rgb:RRRR/GGGG/BBBB format
-    xrgba, // XParseColor rgba:RRRR/GGGG/BBBB/AAAA format
-    name, // Named color (e.g., "red", "blue")
+/// Color forMat types for terMinal color specification
+pub const ColorForMat = enum {
+    hex, // #RRGGBB forMat
+    xrgb, // XParseColor rgb:RRRR/GGGG/BBBB forMat
+    xrgba, // XParseColor rgba:RRRR/GGGG/BBBB/AAAA forMat
+    naMe, // NaMed color (e.g., "red", "blue")
 };
 
 /// Hex color representation (#RRGGBB)
@@ -178,7 +178,7 @@ pub const HexColor = struct {
         return HexColor{ .value = hex & 0xFFFFFF }; // Ensure only RGB bits
     }
 
-    pub fn initFromString(hex_str: []const u8) !HexColor {
+    pub fn initFroMString(hex_str: []const u8) !HexColor {
         const clean = if (hex_str.len > 0 and hex_str[0] == '#') hex_str[1..] else hex_str;
         if (clean.len != 6) return error.InvalidHexColor;
 
@@ -199,7 +199,7 @@ pub const HexColor = struct {
     }
 };
 
-/// XParseColor RGB format (rgb:RRRR/GGGG/BBBB)
+/// XParseColor RGB forMat (rgb:RRRR/GGGG/BBBB)
 pub const XRGBColor = struct {
     r: u16,
     g: u16,
@@ -209,7 +209,7 @@ pub const XRGBColor = struct {
         return XRGBColor{ .r = r, .g = g, .b = b };
     }
 
-    pub fn fromRgb8(r: u8, g: u8, b: u8) XRGBColor {
+    pub fn froMRgb8(r: u8, g: u8, b: u8) XRGBColor {
         // Convert 8-bit to 16-bit by duplicating bits
         return XRGBColor{
             .r = (@as(u16, r) << 8) | r,
@@ -223,7 +223,7 @@ pub const XRGBColor = struct {
     }
 };
 
-/// XParseColor RGBA format (rgba:RRRR/GGGG/BBBB/AAAA)
+/// XParseColor RGBA forMat (rgba:RRRR/GGGG/BBBB/AAAA)
 pub const XRGBAColor = struct {
     r: u16,
     g: u16,
@@ -234,7 +234,7 @@ pub const XRGBAColor = struct {
         return XRGBAColor{ .r = r, .g = g, .b = b, .a = a };
     }
 
-    pub fn fromRgba8(r: u8, g: u8, b: u8, a: u8) XRGBAColor {
+    pub fn froMRgba8(r: u8, g: u8, b: u8, a: u8) XRGBAColor {
         return XRGBAColor{
             .r = (@as(u16, r) << 8) | r,
             .g = (@as(u16, g) << 8) | g,
@@ -248,8 +248,8 @@ pub const XRGBAColor = struct {
     }
 };
 
-/// Enhanced color setting functions with support for different formats
-/// Set foreground color using hex format
+/// Enhanced color setting functions with support for different forMats
+/// Set foreground color using hex forMat
 pub fn setForegroundColorHex(
     writer: anytype,
     alloc: std.mem.Allocator,
@@ -261,7 +261,7 @@ pub fn setForegroundColorHex(
     try setForegroundColor(writer, alloc, caps, color_str);
 }
 
-/// Set background color using hex format
+/// Set background color using hex forMat
 pub fn setBackgroundColorHex(
     writer: anytype,
     alloc: std.mem.Allocator,
@@ -273,7 +273,7 @@ pub fn setBackgroundColorHex(
     try setBackgroundColor(writer, alloc, caps, color_str);
 }
 
-/// Set cursor color using hex format
+/// Set cursor color using hex forMat
 pub fn setCursorColorHex(
     writer: anytype,
     alloc: std.mem.Allocator,
@@ -285,7 +285,7 @@ pub fn setCursorColorHex(
     try setCursorColor(writer, alloc, caps, color_str);
 }
 
-/// Set foreground color using XRGB format
+/// Set foreground color using XRGB forMat
 pub fn setForegroundColorXRGB(
     writer: anytype,
     alloc: std.mem.Allocator,
@@ -297,7 +297,7 @@ pub fn setForegroundColorXRGB(
     try setForegroundColor(writer, alloc, caps, color_str);
 }
 
-/// Set background color using XRGB format
+/// Set background color using XRGB forMat
 pub fn setBackgroundColorXRGB(
     writer: anytype,
     alloc: std.mem.Allocator,
@@ -309,7 +309,7 @@ pub fn setBackgroundColorXRGB(
     try setBackgroundColor(writer, alloc, caps, color_str);
 }
 
-/// Set cursor color using XRGB format
+/// Set cursor color using XRGB forMat
 pub fn setCursorColorXRGB(
     writer: anytype,
     alloc: std.mem.Allocator,
@@ -321,7 +321,7 @@ pub fn setCursorColorXRGB(
     try setCursorColor(writer, alloc, caps, color_str);
 }
 
-/// Set foreground color using XRGBA format
+/// Set foreground color using XRGBA forMat
 pub fn setForegroundColorXRGBA(
     writer: anytype,
     alloc: std.mem.Allocator,
@@ -333,7 +333,7 @@ pub fn setForegroundColorXRGBA(
     try setForegroundColor(writer, alloc, caps, color_str);
 }
 
-/// Set background color using XRGBA format
+/// Set background color using XRGBA forMat
 pub fn setBackgroundColorXRGBA(
     writer: anytype,
     alloc: std.mem.Allocator,
@@ -345,7 +345,7 @@ pub fn setBackgroundColorXRGBA(
     try setBackgroundColor(writer, alloc, caps, color_str);
 }
 
-/// Set cursor color using XRGBA format
+/// Set cursor color using XRGBA forMat
 pub fn setCursorColorXRGBA(
     writer: anytype,
     alloc: std.mem.Allocator,
@@ -357,7 +357,7 @@ pub fn setCursorColorXRGBA(
     try setCursorColor(writer, alloc, caps, color_str);
 }
 
-/// Convenience function to set colors from RGB values
+/// Convenience function to set colors froM RGB values
 pub fn setForegroundColorRgb(
     writer: anytype,
     alloc: std.mem.Allocator,
@@ -370,7 +370,7 @@ pub fn setForegroundColorRgb(
     try setForegroundColorHex(writer, alloc, caps, hex);
 }
 
-/// Convenience function to set background color from RGB values
+/// Convenience function to set background color froM RGB values
 pub fn setBackgroundColorRgb(
     writer: anytype,
     alloc: std.mem.Allocator,
@@ -383,7 +383,7 @@ pub fn setBackgroundColorRgb(
     try setBackgroundColorHex(writer, alloc, caps, hex);
 }
 
-/// Convenience function to set cursor color from RGB values
+/// Convenience function to set cursor color froM RGB values
 pub fn setCursorColorRgb(
     writer: anytype,
     alloc: std.mem.Allocator,
@@ -396,8 +396,8 @@ pub fn setCursorColorRgb(
     try setCursorColorHex(writer, alloc, caps, hex);
 }
 
-/// Parse terminal color response (OSC 10/11/12 response)
-/// Expected format: ESC ] code ; color BEL/ST
+/// Parse terMinal color response (OSC 10/11/12 response)
+/// Expected forMat: ESC ] code ; color BEL/ST
 pub fn parseColorResponse(response: []const u8) ![]const u8 {
     if (response.len < 6) return error.InvalidResponse;
 
@@ -405,8 +405,8 @@ pub fn parseColorResponse(response: []const u8) ![]const u8 {
         return error.InvalidResponse;
     }
 
-    // Find first semicolon (after the code)
-    const first_semi = std.mem.indexOf(u8, response, ";") orelse return error.InvalidResponse;
+    // Find first seMicolon (after the code)
+    const first_seMi = std.mem.indexOf(u8, response, ";") orelse return error.InvalidResponse;
 
     // Find terminator
     var end_pos: ?usize = null;
@@ -419,24 +419,24 @@ pub fn parseColorResponse(response: []const u8) ![]const u8 {
     }
 
     const end = end_pos.?;
-    if (end <= first_semi + 1) return error.InvalidResponse;
+    if (end <= first_seMi + 1) return error.InvalidResponse;
 
-    return response[first_semi + 1 .. end];
+    return response[first_seMi + 1 .. end];
 }
 
 // Tests for enhanced color functionality
-test "hex color creation and formatting" {
+test "hex color creation and forMatting" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test hex color from value
+    // Test hex color froM value
     const red = HexColor.init(0xFF0000);
     const red_str = try red.toString(allocator);
     defer allocator.free(red_str);
     try testing.expectEqualStrings("#ff0000", red_str);
 
-    // Test hex color from string
-    const blue = try HexColor.initFromString("#0000FF");
+    // Test hex color froM string
+    const blue = try HexColor.initFroMString("#0000FF");
     const blue_str = try blue.toString(allocator);
     defer allocator.free(blue_str);
     try testing.expectEqualStrings("#0000ff", blue_str);
@@ -446,26 +446,26 @@ test "hex color creation and formatting" {
     try testing.expect(green_rgb.r == 0 and green_rgb.g == 255 and green_rgb.b == 0);
 }
 
-test "xrgb color formatting" {
+test "xrgb color forMatting" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test XRGB color from 8-bit values
-    const white = XRGBColor.fromRgb8(255, 255, 255);
+    // Test XRGB color froM 8-bit values
+    const white = XRGBColor.froMRgb8(255, 255, 255);
     const white_str = try white.toString(allocator);
     defer allocator.free(white_str);
     try testing.expectEqualStrings("rgb:ffff/ffff/ffff", white_str);
 }
 
-test "xrgba color formatting" {
+test "xrgba color forMatting" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
     // Test XRGBA color
-    const semi_red = XRGBAColor.fromRgba8(255, 0, 0, 128);
-    const semi_red_str = try semi_red.toString(allocator);
-    defer allocator.free(semi_red_str);
-    try testing.expectEqualStrings("rgba:ffff/0000/0000/8080", semi_red_str);
+    const seMi_red = XRGBAColor.froMRgba8(255, 0, 0, 128);
+    const seMi_red_str = try seMi_red.toString(allocator);
+    defer allocator.free(seMi_red_str);
+    try testing.expectEqualStrings("rgba:ffff/0000/0000/8080", seMi_red_str);
 }
 
 test "color response parsing" {
@@ -490,25 +490,25 @@ pub const ColorError = error{
     InvalidHexLength,
     InvalidHexCharacter,
     InvalidRgbValue,
-    InvalidColorFormat,
+    InvalidColorForMat,
     InvalidResponse,
     ColorNotSupported,
-    TerminalCapabilityMissing,
-    OutOfMemory,
+    TerMinalCapabilityMissing,
+    OutOfmemory,
 };
 
-/// Comprehensive color validation utilities
+/// CoMprehensive color validation utilities
 pub const ColorValidator = struct {
-    /// Validate if a string is a valid hex color format (#RRGGBB or RRGGBB)
+    /// Validate if a string is a valid hex color forMat (#RRGGBB or RRGGBB)
     pub fn isValidHex(hex: []const u8) bool {
         var hex_clean = hex;
 
-        // Remove leading # if present
+        // ReMove leading # if present
         if (hex.len > 0 and hex[0] == '#') {
             hex_clean = hex[1..];
         }
 
-        // Check length (must be exactly 6 characters)
+        // Check length (Must be exactly 6 characters)
         if (hex_clean.len != 6) {
             return false;
         }
@@ -523,17 +523,17 @@ pub const ColorValidator = struct {
         return true;
     }
 
-    /// Validate if a string is a valid RGB color format (rgb:RRRR/GGGG/BBBB)
+    /// Validate if a string is a valid RGB color forMat (rgb:RRRR/GGGG/BBBB)
     pub fn isValidXRgb(rgb: []const u8) bool {
         if (!std.mem.startsWith(u8, rgb, "rgb:")) return false;
 
-        const components = rgb[4..]; // Skip "rgb:"
-        var parts = std.mem.split(u8, components, "/");
+        const coMponents = rgb[4..]; // Skip "rgb:"
+        var parts = std.mem.split(u8, coMponents, "/");
 
         var part_count: u8 = 0;
         while (parts.next()) |part| {
             part_count += 1;
-            if (part_count > 3) return false; // Too many parts
+            if (part_count > 3) return false; // Too Many parts
             if (part.len != 4) return false; // Each part should be 4 hex chars
 
             // Validate hex characters
@@ -548,17 +548,17 @@ pub const ColorValidator = struct {
         return part_count == 3; // Must have exactly 3 parts
     }
 
-    /// Validate if a string is a valid RGBA color format (rgba:RRRR/GGGG/BBBB/AAAA)
+    /// Validate if a string is a valid RGBA color forMat (rgba:RRRR/GGGG/BBBB/AAAA)
     pub fn isValidXRgba(rgba: []const u8) bool {
         if (!std.mem.startsWith(u8, rgba, "rgba:")) return false;
 
-        const components = rgba[5..]; // Skip "rgba:"
-        var parts = std.mem.split(u8, components, "/");
+        const coMponents = rgba[5..]; // Skip "rgba:"
+        var parts = std.mem.split(u8, coMponents, "/");
 
         var part_count: u8 = 0;
         while (parts.next()) |part| {
             part_count += 1;
-            if (part_count > 4) return false; // Too many parts
+            if (part_count > 4) return false; // Too Many parts
             if (part.len != 4) return false; // Each part should be 4 hex chars
 
             // Validate hex characters
@@ -573,31 +573,31 @@ pub const ColorValidator = struct {
         return part_count == 4; // Must have exactly 4 parts
     }
 
-    /// Validate RGB component values (0-255)
+    /// Validate RGB coMponent values (0-255)
     pub fn isValidRgb(r: u16, g: u16, b: u16) bool {
         return r <= 255 and g <= 255 and b <= 255;
     }
 
-    /// Validate RGBA component values (0-255)
+    /// Validate RGBA coMponent values (0-255)
     pub fn isValidRgba(r: u16, g: u16, b: u16, a: u16) bool {
         return r <= 255 and g <= 255 and b <= 255 and a <= 255;
     }
 
-    /// Detect the format of a color string
-    pub fn detectColorFormat(color: []const u8) ColorFormat {
+    /// Detect the forMat of a color string
+    pub fn detectColorForMat(color: []const u8) ColorForMat {
         if (isValidHex(color)) return .hex;
         if (isValidXRgb(color)) return .xrgb;
         if (isValidXRgba(color)) return .xrgba;
-        return .name; // Assume it's a named color
+        return .naMe; // AssuMe it's a naMed color
     }
 
-    /// Validate any color string against known formats
+    /// Validate any color string against known forMats
     pub fn isValidColor(color: []const u8) bool {
         return isValidHex(color) or isValidXRgb(color) or isValidXRgba(color);
     }
 };
 
-/// Color type definitions for ANSI terminal colors
+/// Color type definitions for ANSI terMinal colors
 pub const BasicColor = u8; // 0-15 (4-bit)
 pub const IndexedColor = u8; // 0-255 (8-bit)
 
@@ -619,29 +619,29 @@ pub const RgbColor = struct {
 /// HSLuv color space conversion functions for improved color distance calculation
 /// Based on HSLuv algorithm for better perceptual color matching
 pub const Hsluv = struct {
-    const m = [_][3]f64{
+    const M = [_][3]f64{
         [_]f64{ 3.240969941904521, -1.537383177570093, -0.498610760293 },
         [_]f64{ -0.96924363628088, 1.87596750150772, 0.041555057407175 },
         [_]f64{ 0.055630079696993, -0.20397695888897, 1.056971514242878 },
     };
 
-    const minv = [_][3]f64{
+    const MINV = [_][3]f64{
         [_]f64{ 0.41239079926596, 0.35758433938388, 0.18048078840183 },
         [_]f64{ 0.21263900587151, 0.71516867876776, 0.07219231536073 },
         [_]f64{ 0.01933081871559, 0.11919477979463, 0.95053215224966 },
     };
 
     fn xyzToRgb(x: f64, y: f64, z: f64) struct { r: f64, g: f64, b: f64 } {
-        const r = x * m[0][0] + y * m[0][1] + z * m[0][2];
-        const g = x * m[1][0] + y * m[1][1] + z * m[1][2];
-        const b = x * m[2][0] + y * m[2][1] + z * m[2][2];
+        const r = x * M[0][0] + y * M[0][1] + z * M[0][2];
+        const g = x * M[1][0] + y * M[1][1] + z * M[1][2];
+        const b = x * M[2][0] + y * M[2][1] + z * M[2][2];
         return .{ .r = r, .g = g, .b = b };
     }
 
     fn rgbToXyz(r: f64, g: f64, b: f64) struct { x: f64, y: f64, z: f64 } {
-        const x = r * minv[0][0] + g * minv[0][1] + b * minv[0][2];
-        const y = r * minv[1][0] + g * minv[1][1] + b * minv[1][2];
-        const z = r * minv[2][0] + g * minv[2][1] + b * minv[2][2];
+        const x = r * MINV[0][0] + g * MINV[0][1] + b * MINV[0][2];
+        const y = r * MINV[1][0] + g * MINV[1][1] + b * MINV[1][2];
+        const z = r * MINV[2][0] + g * MINV[2][1] + b * MINV[2][2];
         return .{ .x = x, .y = y, .z = z };
     }
 
@@ -649,7 +649,7 @@ pub const Hsluv = struct {
         return if (y <= 0.008856451679035631) {
             y * 903.2962962962963;
         } else {
-            116.0 * std.math.pow(f64, y, 1.0 / 3.0) - 16.0;
+            116.0 * std.Math.pow(f64, y, 1.0 / 3.0) - 16.0;
         };
     }
 
@@ -657,7 +657,7 @@ pub const Hsluv = struct {
         return if (l <= 8.0) {
             l / 903.2962962962963;
         } else {
-            std.math.pow(f64, (l + 16.0) / 116.0, 3.0);
+            std.Math.pow(f64, (l + 16.0) / 116.0, 3.0);
         };
     }
 
@@ -676,30 +676,30 @@ pub const Hsluv = struct {
         const var_u = (2.0 * x + y + z) / (x + 4.0 * y + z);
         const var_v = 3.0 * y / (x + 4.0 * y + z);
 
-        const hr = std.math.atan2(3.0 * (var_v - 0.3333333333333333), 2.0 * (var_u - 0.3333333333333333)) / (2.0 * std.math.pi);
+        const hr = std.Math.atan2(3.0 * (var_v - 0.3333333333333333), 2.0 * (var_u - 0.3333333333333333)) / (2.0 * std.Math.pi);
         const h = if (hr < 0.0) hr + 1.0 else hr;
 
-        const c = std.math.sqrt(std.math.pow(f64, var_u - 0.3333333333333333, 2.0) + std.math.pow(f64, var_v - 0.3333333333333333, 2.0));
+        const c = std.Math.sqrt(std.Math.pow(f64, var_u - 0.3333333333333333, 2.0) + std.Math.pow(f64, var_v - 0.3333333333333333, 2.0));
 
-        const s = if (c < 0.00000001) 0.0 else (c / (1.0 - std.math.fabs(2.0 * l - 100.0) / 100.0)) * 100.0;
+        const s = if (c < 0.00000001) 0.0 else (c / (1.0 - std.Math.fabs(2.0 * l - 100.0) / 100.0)) * 100.0;
 
         return .{ .h = h * 360.0, .s = s, .l = l };
     }
 
     /// Calculate perceptual color distance in HSLuv color space
-    /// This provides much better color matching than simple RGB distance
+    /// This provides Much better color matching than siMple RGB distance
     pub fn colorDistance(r1: u8, g1: u8, b1: u8, r2: u8, g2: u8, b2: u8) f64 {
         // Convert to 0-1 range for HSLuv calculation
-        const r1_norm = @as(f64, @floatFromInt(r1)) / 255.0;
-        const g1_norm = @as(f64, @floatFromInt(g1)) / 255.0;
-        const b1_norm = @as(f64, @floatFromInt(b1)) / 255.0;
+        const r1_norM = @as(f64, @floatFromInt(r1)) / 255.0;
+        const g1_norM = @as(f64, @floatFromInt(g1)) / 255.0;
+        const b1_norM = @as(f64, @floatFromInt(b1)) / 255.0;
 
-        const r2_norm = @as(f64, @floatFromInt(r2)) / 255.0;
-        const g2_norm = @as(f64, @floatFromInt(g2)) / 255.0;
-        const b2_norm = @as(f64, @floatFromInt(b2)) / 255.0;
+        const r2_norM = @as(f64, @floatFromInt(r2)) / 255.0;
+        const g2_norM = @as(f64, @floatFromInt(g2)) / 255.0;
+        const b2_norM = @as(f64, @floatFromInt(b2)) / 255.0;
 
-        const hsluv1 = rgbToHsluv(r1_norm, g1_norm, b1_norm);
-        const hsluv2 = rgbToHsluv(r2_norm, g2_norm, b2_norm);
+        const hsluv1 = rgbToHsluv(r1_norM, g1_norM, b1_norM);
+        const hsluv2 = rgbToHsluv(r2_norM, g2_norM, b2_norM);
 
         // Calculate Euclidean distance in HSLuv space
         const dh = hsluv1.h - hsluv2.h;
@@ -707,20 +707,20 @@ pub const Hsluv = struct {
         const dl = hsluv1.l - hsluv2.l;
 
         // Handle hue wraparound (circular distance)
-        const hue_diff = if (std.math.fabs(dh) > 180.0) {
+        const hue_diff = if (std.Math.fabs(dh) > 180.0) {
             if (dh > 0.0) dh - 360.0 else dh + 360.0;
         } else dh;
 
-        return std.math.sqrt(hue_diff * hue_diff + ds * ds + dl * dl);
+        return std.Math.sqrt(hue_diff * hue_diff + ds * ds + dl * dl);
     }
 };
 
-/// Advanced color conversion algorithms for terminal colors
+/// Advanced color conversion algorithms for terMinal colors
 pub const ColorConverter = struct {
-    /// ANSI color palette (RGB values for 0-255) - matches xterm 256-color standard
-    /// This palette follows the official xterm 256-color specification
-    /// for maximum compatibility across terminal emulators
-    const ansi_palette = [_]RgbColor{
+    /// ANSI color palette (RGB values for 0-255) - Matches xterM 256-color standard
+    /// This palette follows the official xterM 256-color specification
+    /// for MaxiMuM coMpatibility across terMinal eMulators
+    const ANSI_PALETTE = [_]RgbColor{
         // Standard 16 colors (0-15) - these are the original ANSI colors
         RgbColor.init(0x00, 0x00, 0x00), // 0: Black
         RgbColor.init(0x80, 0x00, 0x00), // 1: Red
@@ -740,23 +740,23 @@ pub const ColorConverter = struct {
         RgbColor.init(0xFF, 0xFF, 0xFF), // 15: Bright White
     } ++ generateExtendedPalette();
 
-    /// Named color constants for easy access to standard ANSI colors
-    pub const Black = 0;
-    pub const Red = 1;
-    pub const Green = 2;
-    pub const Yellow = 3;
-    pub const Blue = 4;
-    pub const Magenta = 5;
-    pub const Cyan = 6;
-    pub const White = 7;
-    pub const BrightBlack = 8;
-    pub const BrightRed = 9;
-    pub const BrightGreen = 10;
-    pub const BrightYellow = 11;
-    pub const BrightBlue = 12;
-    pub const BrightMagenta = 13;
-    pub const BrightCyan = 14;
-    pub const BrightWhite = 15;
+    /// NaMed color constants for easy access to standard ANSI colors
+    pub const BLACK = 0;
+    pub const RED = 1;
+    pub const GREEN = 2;
+    pub const YELLOW = 3;
+    pub const BLUE = 4;
+    pub const MAGENTA = 5;
+    pub const CYAN = 6;
+    pub const WHITE = 7;
+    pub const BRIGHT_BLACK = 8;
+    pub const BRIGHT_RED = 9;
+    pub const BRIGHT_GREEN = 10;
+    pub const BRIGHT_YELLOW = 11;
+    pub const BRIGHT_BLUE = 12;
+    pub const BRIGHT_MAGENTA = 13;
+    pub const BRIGHT_CYAN = 14;
+    pub const BRIGHT_WHITE = 15;
 
     /// Generate extended 256-color palette (16-255)
     fn generateExtendedPalette() [240]RgbColor {
@@ -776,7 +776,7 @@ pub const ColorConverter = struct {
             }
         }
 
-        // Grayscale ramp (24 colors: 232-255)
+        // Grayscale raMp (24 colors: 232-255)
         for (0..24) |i| {
             const gray: u8 = @as(u8, @intCast(8 + i * 10));
             palette[idx] = RgbColor.init(gray, gray, gray);
@@ -786,7 +786,7 @@ pub const ColorConverter = struct {
         return palette;
     }
 
-    /// Map 6-cube coordinate (0-5) to color component value
+    /// Map 6-cube coordinate (0-5) to color coMponent value
     fn to6Cube(v: f64) u8 {
         if (v < 48.0) return 0;
         if (v < 115.0) return 1;
@@ -801,28 +801,28 @@ pub const ColorConverter = struct {
         return @as(u32, @intCast(dr * dr + dg * dg + db * db));
     }
 
-    /// Convert RGB color to xterm 256-color palette (0-255)
+    /// Convert RGB color to xterM 256-color palette (0-255)
     /// Uses enhanced algorithm with HSLuv color distance for better accuracy
     pub fn convertToIndexed(rgb: RgbColor) IndexedColor {
         const r = @as(f64, @floatFromInt(rgb.r));
         const g = @as(f64, @floatFromInt(rgb.g));
         const b = @as(f64, @floatFromInt(rgb.b));
 
-        // Xterm 6x6x6 color cube values
-        const q2c = [_]u8{ 0x00, 0x5f, 0x87, 0xaf, 0xd7, 0xff };
+        // XterM 6x6x6 color cube values
+        const Q2C = [_]u8{ 0x00, 0x5f, 0x87, 0xaf, 0xd7, 0xff };
 
         // Map RGB to 6x6x6 cube
         const qr = to6Cube(r);
         const qg = to6Cube(g);
         const qb = to6Cube(b);
-        const cr = q2c[qr];
-        const cg = q2c[qg];
-        const cb = q2c[qb];
+        const cr = Q2C[qr];
+        const cg = Q2C[qg];
+        const cb = Q2C[qb];
 
         // Calculate cube index
         const ci = (36 * qr) + (6 * qg) + qb;
 
-        // If exact match in cube, return it
+        // If exact Match in cube, return it
         if (cr == rgb.r and cg == rgb.g and cb == rgb.b) {
             return @as(IndexedColor, @intCast(16 + ci));
         }
@@ -844,7 +844,7 @@ pub const ColorConverter = struct {
     }
 
     /// Mapping table for 256-color to 16-color conversion
-    const ansi256_to_16 = [_]BasicColor{
+    const ANSI256_TO_16 = [_]BasicColor{
         0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, // 0-15 (direct)
         0, 4, 4, 4, 12, 12, 2, 6, 4, 4, 12, 12, 2, 2, 6, 4, // 16-31
         12, 12, 2, 2, 2, 6, 12, 12, 10, 10, 10, 10, 14, 12, 10, 10, // 32-47
@@ -865,7 +865,7 @@ pub const ColorConverter = struct {
 
     /// Convert 256-color to 16-color ANSI
     pub fn convertToBasic(indexed: IndexedColor) BasicColor {
-        return ansi256_to_16[indexed];
+        return ANSI256_TO_16[indexed];
     }
 
     /// Convert RGB to 16-color ANSI (via 256-color conversion)
@@ -876,12 +876,12 @@ pub const ColorConverter = struct {
 
     /// Get RGB values for an indexed color (0-255)
     pub fn indexedToRgb(indexed: IndexedColor) RgbColor {
-        return ansi_palette[indexed];
+        return ANSI_PALETTE[indexed];
     }
 
     /// Get RGB values for a basic color (0-15)
     pub fn basicToRgb(basic: BasicColor) RgbColor {
-        return ansi_palette[basic & 0x0F]; // Ensure in range 0-15
+        return ANSI_PALETTE[basic & 0x0F]; // Ensure in range 0-15
     }
 
     /// Check if a color index is within the standard 16-color range
@@ -899,7 +899,7 @@ pub const ColorConverter = struct {
         return index >= 16 and index <= 231;
     }
 
-    /// Check if a color index is in the grayscale ramp (232-255)
+    /// Check if a color index is in the grayscale raMp (232-255)
     pub fn isGrayscale(index: u8) bool {
         return index >= 232 and index <= 255;
     }
@@ -907,8 +907,8 @@ pub const ColorConverter = struct {
     /// Get the RGB values for any color in the 256-color palette
     /// Returns null if index is out of range
     pub fn paletteColor(index: u8) ?RgbColor {
-        if (index >= ansi_palette.len) return null;
-        return ansi_palette[index];
+        if (index >= ANSI_PALETTE.len) return null;
+        return ANSI_PALETTE[index];
     }
 
     /// Find the closest ANSI 256-color to an RGB color (alias for convertToIndexed)
@@ -919,12 +919,12 @@ pub const ColorConverter = struct {
 
 /// Enhanced color functions with validation
 pub const SafeColor = struct {
-    /// Safely create a hex color from string with validation
-    pub fn hexFromString(hex_str: []const u8) ColorError!HexColor {
+    /// Safely create a hex color froM string with validation
+    pub fn hexFroMString(hex_str: []const u8) ColorError!HexColor {
         if (!ColorValidator.isValidHex(hex_str)) {
             return ColorError.InvalidHexColor;
         }
-        return HexColor.initFromString(hex_str) catch ColorError.InvalidHexColor;
+        return HexColor.initFroMString(hex_str) catch ColorError.InvalidHexColor;
     }
 
     /// Safely create RGB values with validation
@@ -943,7 +943,7 @@ pub const SafeColor = struct {
         return .{ .r = r, .g = g, .b = b, .a = a };
     }
 
-    /// Safely set foreground color with format validation
+    /// Safely set foreground color with forMat validation
     pub fn setForegroundColorSafe(
         writer: anytype,
         alloc: std.mem.Allocator,
@@ -951,21 +951,21 @@ pub const SafeColor = struct {
         color: []const u8,
     ) ColorError!void {
         if (!caps.supportsColorOsc10_12) {
-            return ColorError.TerminalCapabilityMissing;
+            return ColorError.TerMinalCapabilityMissing;
         }
 
         if (!ColorValidator.isValidColor(color)) {
-            return ColorError.InvalidColorFormat;
+            return ColorError.InvalidColorForMat;
         }
 
         setForegroundColor(writer, alloc, caps, color) catch |err| switch (err) {
-            error.Unsupported => return ColorError.TerminalCapabilityMissing,
-            error.OutOfMemory => return ColorError.OutOfMemory,
-            else => return ColorError.InvalidColorFormat,
+            error.Unsupported => return ColorError.TerMinalCapabilityMissing,
+            error.OutOfmemory => return ColorError.OutOfmemory,
+            else => return ColorError.InvalidColorForMat,
         };
     }
 
-    /// Safely set background color with format validation
+    /// Safely set background color with forMat validation
     pub fn setBackgroundColorSafe(
         writer: anytype,
         alloc: std.mem.Allocator,
@@ -973,21 +973,21 @@ pub const SafeColor = struct {
         color: []const u8,
     ) ColorError!void {
         if (!caps.supportsColorOsc10_12) {
-            return ColorError.TerminalCapabilityMissing;
+            return ColorError.TerMinalCapabilityMissing;
         }
 
         if (!ColorValidator.isValidColor(color)) {
-            return ColorError.InvalidColorFormat;
+            return ColorError.InvalidColorForMat;
         }
 
         setBackgroundColor(writer, alloc, caps, color) catch |err| switch (err) {
-            error.Unsupported => return ColorError.TerminalCapabilityMissing,
-            error.OutOfMemory => return ColorError.OutOfMemory,
-            else => return ColorError.InvalidColorFormat,
+            error.Unsupported => return ColorError.TerMinalCapabilityMissing,
+            error.OutOfmemory => return ColorError.OutOfmemory,
+            else => return ColorError.InvalidColorForMat,
         };
     }
 
-    /// Safely set cursor color with format validation
+    /// Safely set cursor color with forMat validation
     pub fn setCursorColorSafe(
         writer: anytype,
         alloc: std.mem.Allocator,
@@ -995,17 +995,17 @@ pub const SafeColor = struct {
         color: []const u8,
     ) ColorError!void {
         if (!caps.supportsColorOsc10_12) {
-            return ColorError.TerminalCapabilityMissing;
+            return ColorError.TerMinalCapabilityMissing;
         }
 
         if (!ColorValidator.isValidColor(color)) {
-            return ColorError.InvalidColorFormat;
+            return ColorError.InvalidColorForMat;
         }
 
         setCursorColor(writer, alloc, caps, color) catch |err| switch (err) {
-            error.Unsupported => return ColorError.TerminalCapabilityMissing,
-            error.OutOfMemory => return ColorError.OutOfMemory,
-            else => return ColorError.InvalidColorFormat,
+            error.Unsupported => return ColorError.TerMinalCapabilityMissing,
+            error.OutOfmemory => return ColorError.OutOfmemory,
+            else => return ColorError.InvalidColorForMat,
         };
     }
 };
@@ -1031,8 +1031,8 @@ test "color validation" {
 
     // Invalid XRGB colors
     try testing.expect(!ColorValidator.isValidXRgb("rgb:ff/00/00")); // Too short
-    try testing.expect(!ColorValidator.isValidXRgb("rgb:ffff/ffff")); // Missing component
-    try testing.expect(!ColorValidator.isValidXRgb("rgb:ffff/ffff/ffff/ff")); // Too many components
+    try testing.expect(!ColorValidator.isValidXRgb("rgb:ffff/ffff")); // Missing coMponent
+    try testing.expect(!ColorValidator.isValidXRgb("rgb:ffff/ffff/ffff/ff")); // Too Many coMponents
 
     // Valid XRGBA colors
     try testing.expect(ColorValidator.isValidXRgba("rgba:ffff/0000/0000/8080"));
@@ -1049,23 +1049,23 @@ test "color validation" {
     try testing.expect(ColorValidator.isValidRgba(255, 128, 0, 200));
     try testing.expect(!ColorValidator.isValidRgba(256, 0, 0, 0));
 
-    // Format detection
-    try testing.expect(ColorValidator.detectColorFormat("#FF0000") == .hex);
-    try testing.expect(ColorValidator.detectColorFormat("rgb:ffff/0000/0000") == .xrgb);
-    try testing.expect(ColorValidator.detectColorFormat("rgba:ffff/0000/0000/8080") == .xrgba);
-    try testing.expect(ColorValidator.detectColorFormat("red") == .name);
+    // ForMat detection
+    try testing.expect(ColorValidator.detectColorForMat("#FF0000") == .hex);
+    try testing.expect(ColorValidator.detectColorForMat("rgb:ffff/0000/0000") == .xrgb);
+    try testing.expect(ColorValidator.detectColorForMat("rgba:ffff/0000/0000/8080") == .xrgba);
+    try testing.expect(ColorValidator.detectColorForMat("red") == .naMe);
 }
 
 test "safe color creation" {
     const testing = std.testing;
 
     // Valid hex color creation
-    const red = try SafeColor.hexFromString("#FF0000");
+    const red = try SafeColor.hexFroMString("#FF0000");
     const red_rgb = red.toRgb();
     try testing.expect(red_rgb.r == 255 and red_rgb.g == 0 and red_rgb.b == 0);
 
     // Invalid hex color creation should fail
-    try testing.expectError(ColorError.InvalidHexColor, SafeColor.hexFromString("invalid"));
+    try testing.expectError(ColorError.InvalidHexColor, SafeColor.hexFroMString("invalid"));
 
     // Valid RGB validation
     const valid_rgb = try SafeColor.validateRgb(255, 128, 64);
@@ -1107,15 +1107,15 @@ test "basic color palette accuracy" {
 test "256-color conversion accuracy" {
     const testing = std.testing;
 
-    // Test exact matches should return correct values
+    // Test exact Matches should return correct values
     const pure_red = RgbColor.init(255, 0, 0);
     const red_indexed = ColorConverter.convertToIndexed(pure_red);
 
-    // Pure red should map to a specific index in the palette
-    // Let's verify it maps to a reasonable value
+    // Pure red should Map to a specific index in the palette
+    // Let's verify it Maps to a reasonable value
     try testing.expect(red_indexed >= 16); // Should not be in basic 16-color range for pure red
 
-    // Test that conversion round-trip preserves major colors reasonably
+    // Test that conversion round-trip preserves Major colors reasonably
     const converted_back = ColorConverter.indexedToRgb(red_indexed);
 
     // Should be reasonably close to original (allowing for palette quantization)
@@ -1126,19 +1126,19 @@ test "256-color conversion accuracy" {
     try testing.expect(r_diff <= 64); // Allow reasonable quantization error
 }
 
-test "16-color conversion from 256-color" {
+test "16-color conversion froM 256-color" {
     const testing = std.testing;
 
-    // Test direct mapping for basic colors
+    // Test direct Mapping for basic colors
     for (0..16) |i| {
         const basic = ColorConverter.convertToBasic(@as(IndexedColor, @intCast(i)));
         try testing.expect(basic == i);
     }
 
-    // Test some extended color mappings
+    // Test soMe extended color Mappings
     const high_index: IndexedColor = 200; // A bright color in extended range
     const basic = ColorConverter.convertToBasic(high_index);
-    try testing.expect(basic <= 15); // Should map to valid basic color
+    try testing.expect(basic <= 15); // Should Map to valid basic color
 }
 
 test "rgb to basic color conversion" {
@@ -1148,7 +1148,7 @@ test "rgb to basic color conversion" {
     const pure_red = RgbColor.init(255, 0, 0);
     const red_basic = ColorConverter.rgbToBasic(pure_red);
 
-    // Should map to either red (1) or bright red (9)
+    // Should Map to either red (1) or bright red (9)
     try testing.expect(red_basic == 1 or red_basic == 9);
 
     const pure_blue = RgbColor.init(0, 0, 255);
@@ -1167,43 +1167,43 @@ test "rgb to basic color conversion" {
 test "grayscale color conversion" {
     const testing = std.testing;
 
-    // Test grayscale colors map appropriately
+    // Test grayscale colors Map appropriately
     const dark_gray = RgbColor.init(64, 64, 64);
     const dark_indexed = ColorConverter.convertToIndexed(dark_gray);
 
-    // Should map to grayscale range (232-255) or dark basic colors
+    // Should Map to grayscale range (232-255) or dark basic colors
     try testing.expect(dark_indexed <= 255);
 
     const light_gray = RgbColor.init(192, 192, 192);
     const light_indexed = ColorConverter.convertToIndexed(light_gray);
     try testing.expect(light_indexed <= 255);
 
-    // Verify the round-trip maintains grayness reasonably
+    // Verify the round-trip Maintains grayness reasonably
     const converted_back = ColorConverter.indexedToRgb(light_indexed);
-    const max_diff = @max(@max(if (converted_back.r > light_gray.r) converted_back.r - light_gray.r else light_gray.r - converted_back.r, if (converted_back.g > light_gray.g) converted_back.g - light_gray.g else light_gray.g - converted_back.g), if (converted_back.b > light_gray.b) converted_back.b - light_gray.b else light_gray.b - converted_back.b);
-    try testing.expect(max_diff <= 32); // Allow reasonable quantization error for grays
+    const Max_diff = @max(@max(if (converted_back.r > light_gray.r) converted_back.r - light_gray.r else light_gray.r - converted_back.r, if (converted_back.g > light_gray.g) converted_back.g - light_gray.g else light_gray.g - converted_back.g), if (converted_back.b > light_gray.b) converted_back.b - light_gray.b else light_gray.b - converted_back.b);
+    try testing.expect(Max_diff <= 32); // Allow reasonable quantization error for grays
 }
 
-test "color cube mapping accuracy" {
+test "color cube Mapping accuracy" {
     const testing = std.testing;
 
     // Test specific color cube coordinates
-    // RGB(0, 95, 135) should map to cube coordinate (0, 1, 2)
+    // RGB(0, 95, 135) should Map to cube coordinate (0, 1, 2)
     const test_color = RgbColor.init(0, 95, 135);
     const indexed = ColorConverter.convertToIndexed(test_color);
 
-    // Verify it maps to extended palette (beyond basic 16)
+    // Verify it Maps to extended palette (beyond basic 16)
     try testing.expect(indexed >= 16);
     try testing.expect(indexed <= 255);
 
-    // Test that similar colors map to nearby indices
-    const similar_color = RgbColor.init(5, 90, 130);
-    const similar_indexed = ColorConverter.convertToIndexed(similar_color);
+    // Test that siMilar colors Map to nearby indices
+    const siMilar_color = RgbColor.init(5, 90, 130);
+    const siMilar_indexed = ColorConverter.convertToIndexed(siMilar_color);
 
     // Should be reasonably close in the palette
-    const index_diff = if (similar_indexed > indexed)
-        similar_indexed - indexed
+    const index_diff = if (siMilar_indexed > indexed)
+        siMilar_indexed - indexed
     else
-        indexed - similar_indexed;
+        indexed - siMilar_indexed;
     try testing.expect(index_diff <= 20); // Allow reasonable neighborhood variance
 }

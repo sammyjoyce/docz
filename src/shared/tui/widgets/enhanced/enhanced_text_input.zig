@@ -10,8 +10,8 @@ pub const EnhancedTextInput = struct {
     // Core properties
     allocator: std.mem.Allocator,
     content: std.ArrayListUnmanaged(u8),
-    cursor_pos: usize,
-    scroll_offset: usize,
+    cursorPos: usize,
+    scrollOffset: usize,
 
     // Display properties
     bounds: tui.Bounds,
@@ -39,22 +39,22 @@ pub const EnhancedTextInput = struct {
         allocator: std.mem.Allocator,
         bounds: tui.Bounds,
         placeholder: []const u8,
-        focus_manager: *input_system.FocusManager,
-        paste_manager: *input_system.PasteManager,
-        mouse_manager: *input_system.MouseManager,
+        focus_controller: *input_system.Focus,
+        paste_controller: *input_system.Paste,
+        mouse_controller: *input_system.Mouse,
     ) !EnhancedTextInput {
         var widget = EnhancedTextInput{
             .allocator = allocator,
             .content = std.ArrayListUnmanaged(u8){},
-            .cursor_pos = 0,
-            .scroll_offset = 0,
+            .cursorPos = 0,
+            .scrollOffset = 0,
             .bounds = bounds,
             .placeholder = placeholder,
             .is_password = false,
             .max_length = null,
-            .focus_aware = input_system.FocusAware.init(focus_manager),
-            .paste_aware = input_system.PasteAware.init(paste_manager),
-            .mouse_aware = input_system.MouseAware.init(mouse_manager),
+            .focus_aware = input_system.FocusAware.init(focus_controller),
+            .paste_aware = input_system.PasteAware.init(paste_controller),
+            .mouse_aware = input_system.MouseAware.init(mouse_controller),
             .is_focused = false,
             .is_dirty = true,
             .selection_start = null,
@@ -155,7 +155,7 @@ pub const EnhancedTextInput = struct {
         if (!self.is_focused) return;
 
         // Sanitize paste content
-        const sanitized = input_system.PasteUtils.sanitizeContent(self.allocator, paste_content) catch return;
+        const sanitized = input_system.PasteHelper.sanitizeContent(self.allocator, paste_content) catch return;
         defer self.allocator.free(sanitized);
 
         // Replace selection or insert at cursor
@@ -203,7 +203,7 @@ pub const EnhancedTextInput = struct {
             },
             .drag => {
                 self.selection_end = end_pos;
-                self.cursor_pos = end_pos;
+                self.cursorPos = end_pos;
             },
             .end => {
                 // Selection complete
@@ -233,9 +233,9 @@ pub const EnhancedTextInput = struct {
                     .backspace => {
                         if (self.hasSelection()) {
                             self.deleteSelection() catch {};
-                        } else if (self.cursor_pos > 0) {
-                            self.cursor_pos -= 1;
-                            _ = self.content.swapRemove(self.cursor_pos);
+                        } else if (self.cursorPos > 0) {
+                            self.cursorPos -= 1;
+                            _ = self.content.swapRemove(self.cursorPos);
                         }
                         self.triggerChange();
                         return true;
@@ -243,8 +243,8 @@ pub const EnhancedTextInput = struct {
                     .delete_key => {
                         if (self.hasSelection()) {
                             self.deleteSelection() catch {};
-                        } else if (self.cursor_pos < self.content.items.len) {
-                            _ = self.content.swapRemove(self.cursor_pos);
+                        } else if (self.cursorPos < self.content.items.len) {
+                            _ = self.content.swapRemove(self.cursorPos);
                         }
                         self.triggerChange();
                         return true;
@@ -253,7 +253,7 @@ pub const EnhancedTextInput = struct {
                         if (key_event.mod.ctrl) {
                             self.moveCursorWordLeft();
                         } else {
-                            if (self.cursor_pos > 0) self.cursor_pos -= 1;
+                            if (self.cursorPos > 0) self.cursorPos -= 1;
                         }
                         if (!key_event.mod.shift) self.clearSelection();
                         self.is_dirty = true;
@@ -263,20 +263,20 @@ pub const EnhancedTextInput = struct {
                         if (key_event.mod.ctrl) {
                             self.moveCursorWordRight();
                         } else {
-                            if (self.cursor_pos < self.content.items.len) self.cursor_pos += 1;
+                            if (self.cursorPos < self.content.items.len) self.cursorPos += 1;
                         }
                         if (!key_event.mod.shift) self.clearSelection();
                         self.is_dirty = true;
                         return true;
                     },
                     .home => {
-                        self.cursor_pos = 0;
+                        self.cursorPos = 0;
                         if (!key_event.mod.shift) self.clearSelection();
                         self.is_dirty = true;
                         return true;
                     },
                     .end => {
-                        self.cursor_pos = self.content.items.len;
+                        self.cursorPos = self.content.items.len;
                         if (!key_event.mod.shift) self.clearSelection();
                         self.is_dirty = true;
                         return true;
@@ -348,7 +348,7 @@ pub const EnhancedTextInput = struct {
 
             // Draw cursor if focused
             if (self.is_focused) {
-                const cursor_x = content_area.x + @as(i32, @intCast(self.cursor_pos - self.scroll_offset));
+                const cursor_x = content_area.x + @as(i32, @intCast(self.cursorPos - self.scrollOffset));
                 if (cursor_x >= content_area.x and cursor_x < content_area.x + @as(i32, @intCast(content_area.width))) {
                     try renderer.setCursor(cursor_x, content_area.y);
                     try renderer.showCursor();
@@ -385,7 +385,7 @@ pub const EnhancedTextInput = struct {
     }
 
     fn setCursorPosition(self: *EnhancedTextInput, pos: usize) void {
-        self.cursor_pos = @min(pos, self.content.items.len);
+        self.cursorPos = @min(pos, self.content.items.len);
     }
 
     fn insertText(self: *EnhancedTextInput, text: []const u8) !void {
@@ -393,8 +393,8 @@ pub const EnhancedTextInput = struct {
             if (self.content.items.len + text.len > max_len) return;
         }
 
-        try self.content.insertSlice(self.allocator, self.cursor_pos, text);
-        self.cursor_pos += text.len;
+        try self.content.insertSlice(self.allocator, self.cursorPos, text);
+        self.cursorPos += text.len;
         self.is_dirty = true;
     }
 
@@ -411,7 +411,7 @@ pub const EnhancedTextInput = struct {
 
         // Insert new text
         try self.content.insertSlice(self.allocator, start, text);
-        self.cursor_pos = start + text.len;
+        self.cursorPos = start + text.len;
         self.clearSelection();
         self.is_dirty = true;
     }
@@ -426,7 +426,7 @@ pub const EnhancedTextInput = struct {
             _ = self.content.swapRemove(start);
         }
 
-        self.cursor_pos = start;
+        self.cursorPos = start;
         self.clearSelection();
         self.is_dirty = true;
     }
@@ -451,15 +451,15 @@ pub const EnhancedTextInput = struct {
 
         self.selection_start = start;
         self.selection_end = end;
-        self.cursor_pos = end;
+        self.cursorPos = end;
         self.is_dirty = true;
     }
 
     fn moveCursorWordLeft(self: *EnhancedTextInput) void {
-        if (self.cursor_pos == 0) return;
+        if (self.cursorPos == 0) return;
 
         const text = self.content.items;
-        var pos = self.cursor_pos - 1;
+        var pos = self.cursorPos - 1;
 
         // Skip whitespace
         while (pos > 0 and std.ascii.isWhitespace(text[pos])) {
@@ -471,15 +471,15 @@ pub const EnhancedTextInput = struct {
             pos -= 1;
         }
 
-        self.cursor_pos = pos;
+        self.cursorPos = pos;
         self.is_dirty = true;
     }
 
     fn moveCursorWordRight(self: *EnhancedTextInput) void {
         const text = self.content.items;
-        if (self.cursor_pos >= text.len) return;
+        if (self.cursorPos >= text.len) return;
 
-        var pos = self.cursor_pos;
+        var pos = self.cursorPos;
 
         // Skip current word
         while (pos < text.len and std.ascii.isAlphanumeric(text[pos])) {
@@ -491,7 +491,7 @@ pub const EnhancedTextInput = struct {
             pos += 1;
         }
 
-        self.cursor_pos = pos;
+        self.cursorPos = pos;
         self.is_dirty = true;
     }
 
@@ -533,7 +533,7 @@ pub const EnhancedTextInput = struct {
     pub fn setText(self: *EnhancedTextInput, text: []const u8) !void {
         self.content.clearRetainingCapacity();
         try self.content.appendSlice(self.allocator, text);
-        self.cursor_pos = text.len;
+        self.cursorPos = text.len;
         self.clearSelection();
         self.triggerChange();
     }
@@ -544,7 +544,7 @@ pub const EnhancedTextInput = struct {
 
     pub fn clear(self: *EnhancedTextInput) void {
         self.content.clearRetainingCapacity();
-        self.cursor_pos = 0;
+        self.cursorPos = 0;
         self.clearSelection();
         self.triggerChange();
     }

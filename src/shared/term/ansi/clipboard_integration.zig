@@ -193,63 +193,63 @@ pub fn parseClipboardResponse(allocator: std.mem.Allocator, response: []const u8
 
 // ==== Advanced Clipboard Operations ====
 
-/// ClipboardManager provides high-level clipboard operations
-pub const ClipboardManager = struct {
+/// Clipboard provides high-level clipboard operations
+pub const Clipboard = struct {
     allocator: std.mem.Allocator,
 
-    pub fn init(allocator: std.mem.Allocator) ClipboardManager {
-        return ClipboardManager{
+    pub fn init(allocator: std.mem.Allocator) Clipboard {
+        return Clipboard{
             .allocator = allocator,
         };
     }
 
     /// Copy text to clipboard with automatic encoding
-    pub fn copy(self: ClipboardManager, clipboard_type: ClipboardType, text: []const u8) ![]u8 {
+    pub fn copy(self: Clipboard, clipboard_type: ClipboardType, text: []const u8) ![]u8 {
         return try setClipboard(self.allocator, clipboard_type, text);
     }
 
     /// Copy text to system clipboard
-    pub fn copyToSystem(self: ClipboardManager, text: []const u8) ![]u8 {
+    pub fn copyToSystem(self: Clipboard, text: []const u8) ![]u8 {
         return try self.copy(.system, text);
     }
 
     /// Copy text to primary clipboard
-    pub fn copyToPrimary(self: ClipboardManager, text: []const u8) ![]u8 {
+    pub fn copyToPrimary(self: Clipboard, text: []const u8) ![]u8 {
         return try self.copy(.primary, text);
     }
 
     /// Request clipboard content
-    pub fn paste(self: ClipboardManager, clipboard_type: ClipboardType) ![]u8 {
+    pub fn paste(self: Clipboard, clipboard_type: ClipboardType) ![]u8 {
         return try requestClipboard(self.allocator, clipboard_type);
     }
 
     /// Request system clipboard content
-    pub fn pasteFromSystem(self: ClipboardManager) ![]u8 {
+    pub fn pasteFromSystem(self: Clipboard) ![]u8 {
         return try self.paste(.system);
     }
 
     /// Request primary clipboard content
-    pub fn pasteFromPrimary(self: ClipboardManager) ![]u8 {
+    pub fn pasteFromPrimary(self: Clipboard) ![]u8 {
         return try self.paste(.primary);
     }
 
     /// Clear clipboard
-    pub fn clear(self: ClipboardManager, clipboard_type: ClipboardType) ![]u8 {
+    pub fn clear(self: Clipboard, clipboard_type: ClipboardType) ![]u8 {
         return try resetClipboard(self.allocator, clipboard_type);
     }
 
     /// Clear system clipboard
-    pub fn clearSystem(self: ClipboardManager) ![]u8 {
+    pub fn clearSystem(self: Clipboard) ![]u8 {
         return try self.clear(.system);
     }
 
     /// Clear primary clipboard
-    pub fn clearPrimary(self: ClipboardManager) ![]u8 {
+    pub fn clearPrimary(self: Clipboard) ![]u8 {
         return try self.clear(.primary);
     }
 
     /// Copy to multiple clipboards at once
-    pub fn copyToMultiple(self: ClipboardManager, clipboard_types: []const ClipboardType, text: []const u8) ![]u8 {
+    pub fn copyToMultiple(self: Clipboard, clipboard_types: []const ClipboardType, text: []const u8) ![]u8 {
         var sequences = std.ArrayList([]const u8).init(self.allocator);
         defer {
             for (sequences.items) |seq| {
@@ -267,7 +267,7 @@ pub const ClipboardManager = struct {
     }
 
     /// Copy text to both system and primary clipboards
-    pub fn copyToAll(self: ClipboardManager, text: []const u8) ![]u8 {
+    pub fn copyToAll(self: Clipboard, text: []const u8) ![]u8 {
         const clipboards = [_]ClipboardType{ .system, .primary };
         return try self.copyToMultiple(&clipboards, text);
     }
@@ -414,7 +414,7 @@ test "clipboard manager operations" {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    const manager = ClipboardManager.init(allocator);
+    const manager = Clipboard.init(allocator);
 
     // Test copy to system
     {

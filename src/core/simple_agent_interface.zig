@@ -22,7 +22,7 @@ pub const SimpleAgentInterface = struct {
 /// Helper to create a SimpleAgentInterface from a concrete type
 pub fn createSimpleInterface(comptime T: type, instance: *T) SimpleAgentInterface {
     _ = instance; // Suppress unused parameter warning
-    const gen = struct {
+    const Gen = struct {
         fn processMessage(ptr: *anyopaque, allocator: std.mem.Allocator, message: []const u8) anyerror![]const u8 {
             const self: *T = @ptrCast(@alignCast(ptr));
             return self.processMessage(allocator, message);
@@ -51,10 +51,10 @@ pub fn createSimpleInterface(comptime T: type, instance: *T) SimpleAgentInterfac
     };
 
     return SimpleAgentInterface{
-        .processMessage = gen.processMessage,
-        .getSystemPrompt = gen.getSystemPrompt,
-        .registerTools = if (@hasDecl(T, "registerTools")) gen.registerTools else null,
-        .init = if (@hasDecl(T, "init")) gen.init else null,
-        .deinit = if (@hasDecl(T, "deinit")) gen.deinit else null,
+        .processMessage = Gen.processMessage,
+        .getSystemPrompt = Gen.getSystemPrompt,
+        .registerTools = if (@hasDecl(T, "registerTools")) Gen.registerTools else null,
+        .init = if (@hasDecl(T, "init")) Gen.init else null,
+        .deinit = if (@hasDecl(T, "deinit")) Gen.deinit else null,
     };
 }

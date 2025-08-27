@@ -38,21 +38,21 @@ pub fn fileExists(path: []const u8) bool {
 }
 
 /// Get file metadata
-pub const FileInfo = struct {
+pub const FileMetadata = struct {
     size: u64,
     modified: i64,
     is_file: bool,
     is_dir: bool,
 };
 
-pub fn getFileInfo(path: []const u8) Error!FileInfo {
+pub fn getFileInfo(path: []const u8) Error!FileMetadata {
     const stat = std.fs.cwd().statFile(path) catch |err| switch (err) {
         error.FileNotFound => return Error.FileNotFound,
         error.AccessDenied => return Error.AccessDenied,
         else => return Error.IoError,
     };
 
-    return FileInfo{
+    return FileMetadata{
         .size = stat.size,
         .modified = @as(i64, @intCast(stat.mtime)),
         .is_file = stat.kind == .file,

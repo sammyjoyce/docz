@@ -47,7 +47,7 @@
 //!
 //!     pub fn processMessage(agent: *anyopaque, context: AgentInterface.MessageContext) ![]const u8 {
 //!         var self = @as(*MyAgent, @ptrCast(@alignCast(agent)));
-//!         self.status.messages_processed += 1;
+//!         self.status.messagesProcessed += 1;
 //!
 //!         // Agent-specific message processing logic
 //!         return try self.generateResponse(context.message);
@@ -95,8 +95,8 @@
 //!     var self = @as(*MyAgent, @ptrCast(@alignCast(agent)));
 //!
 //!     // Update error statistics
-//!     self.status.error_count += 1;
-//!     self.status.last_error = .{ .code = "PROCESSING_ERROR", .message = @errorName(err) };
+//!     self.status.errorCount += 1;
+//!     self.status.lastError = .{ .code = "PROCESSING_ERROR", .message = @errorName(err) };
 //!
 //!     // Return user-friendly error message
 //!     return "I encountered an error while processing your request. Please try again.";
@@ -110,21 +110,21 @@
 //!     var self = @as(*MyAgent, @ptrCast(@alignCast(agent)));
 //!
 //!     // Register tools with enhanced metadata
-//!     const tool_metadata = AgentInterface.ToolMetadata{
+//!     const toolMetadata = AgentInterface.ToolMetadata{
 //!         .name = "my_custom_tool",
 //!         .description = "A custom tool for specialized processing",
 //!         .category = "processing",
 //!         .version = "1.0.0",
 //!         .author = "My Team",
-//!         .requires_network = false,
-//!         .requires_filesystem = false,
-//!         .execution_cost = 10,
-//!         .timeout_ms = 5000,
+//!         .requiresNetwork = false,
+//!         .requiresFilesystem = false,
+//!         .executionCost = 10,
+//!         .timeoutMs = 5000,
 //!         .dependencies = &.{},
 //!     };
 //!
 //!     // Register the tool with the shared registry
-//!     try registerToolWithMetadata(context.registry, tool_metadata, myToolFunction);
+//!     try registerToolWithMetadata(context.registry, toolMetadata, myToolFunction);
 //! }
 //! ```
 
@@ -135,22 +135,22 @@ const Allocator = std.mem.Allocator;
 /// This provides dependency injection for common infrastructure.
 pub const SharedServices = struct {
     /// Tools registry for registering agent-specific tools
-    tools_registry: *anyopaque,
+    toolsRegistry: *anyopaque,
 
     /// Network client for HTTP requests (if network access enabled)
-    network_client: ?*anyopaque,
+    networkClient: ?*anyopaque,
 
     /// File system abstraction (if file operations enabled)
-    file_system: ?*anyopaque,
+    fileSystem: ?*anyopaque,
 
     /// Authentication client
-    auth_client: *anyopaque,
+    authClient: *anyopaque,
 
     /// Terminal interface for CLI/TUI operations
     terminal: *anyopaque,
 
     /// Configuration loader
-    config_loader: *anyopaque,
+    configLoader: *anyopaque,
 };
 
 /// Capability flags that agents declare to indicate their features and requirements.
@@ -203,12 +203,12 @@ pub const LifecycleResult = union(enum) {
         /// Reason for retry
         reason: []const u8,
         /// Delay before retry in milliseconds
-        delay_ms: u32,
+        delayMs: u32,
     },
 };
 
 /// Enhanced error information
-pub const ErrorInfo = struct {
+pub const ErrorDetails = struct {
     /// Error code
     code: []const u8,
 
@@ -233,7 +233,7 @@ pub const ErrorInfo = struct {
     recoverable: bool,
 
     /// Suggested recovery action
-    recovery_action: ?[]const u8,
+    recoveryAction: ?[]const u8,
 
     /// Additional error context
     context: ?std.json.Value = null,
@@ -257,22 +257,22 @@ pub const AgentStatus = struct {
     description: []const u8,
 
     /// Uptime in milliseconds
-    uptime_ms: u64,
+    uptimeMs: u64,
 
     /// Number of messages processed
-    messages_processed: u64,
+    messagesProcessed: u64,
 
     /// Number of errors encountered
-    error_count: u64,
+    errorCount: u64,
 
     /// Memory usage in bytes
-    memory_usage_bytes: usize,
+    memoryUsageBytes: usize,
 
     /// Active tool executions
-    active_tools: u32,
+    activeTools: u32,
 
     /// Last error (if any)
-    last_error: ?ErrorInfo,
+    lastError: ?ErrorDetails,
 };
 
 /// Agent interface definition.
@@ -280,7 +280,7 @@ pub const AgentStatus = struct {
 /// This is implemented as a struct with function pointers to simulate an interface.
 pub const AgentInterface = struct {
     /// Agent metadata and identification
-    pub const AgentInfo = struct {
+    pub const AgentMetadata = struct {
         /// Unique agent name (used for configuration and identification)
         name: []const u8,
 
@@ -295,46 +295,46 @@ pub const AgentInterface = struct {
     };
 
     /// Configuration context passed to agents during initialization
-    pub const ConfigContext = struct {
+    pub const Config = struct {
         /// Agent's declared capabilities
         capabilities: CapabilityFlags,
 
         /// Agent information
-        info: AgentInfo,
+        info: AgentMetadata,
 
         /// Configuration file path (if any)
-        config_path: ?[]const u8,
+        configPath: ?[]const u8,
 
         /// Working directory for the agent
-        working_directory: []const u8,
+        workingDirectory: []const u8,
 
         /// Environment variables available to the agent
         environment: std.StringHashMap([]const u8),
 
         /// Command line arguments passed to the agent
-        cli_args: []const []const u8,
+        cliArgs: []const []const u8,
 
         /// Runtime configuration overrides
         overrides: ?*anyopaque,
     };
 
     /// Message processing context
-    pub const MessageContext = struct {
+    pub const Message = struct {
         /// The user input message
         message: []const u8,
 
         /// Conversation history (previous messages)
-        conversation_history: []const Message,
+        conversationHistory: []const ConversationMessage,
 
         /// Current CLI options
-        cli_options: CliOptions,
+        cliOptions: CliOptions,
 
         /// Agent-specific context data
-        agent_context: ?*anyopaque,
+        agentContext: ?*anyopaque,
     };
 
     /// Message structure for conversation history
-    pub const Message = struct {
+    pub const ConversationMessage = struct {
         /// Message role (system, user, assistant)
         role: enum { system, user, assistant },
 
@@ -353,7 +353,7 @@ pub const AgentInterface = struct {
             input: ?[]const u8,
             system: ?[]const u8,
             config: ?[]const u8,
-            max_tokens: u32,
+            maxTokens: u32,
             temperature: f32,
         },
         flags: struct {
@@ -369,7 +369,7 @@ pub const AgentInterface = struct {
     };
 
     /// Tool registration context
-    pub const ToolContext = struct {
+    pub const Tool = struct {
         /// Registry to register tools with
         registry: *anyopaque,
 
@@ -380,13 +380,13 @@ pub const AgentInterface = struct {
         config: ?*anyopaque,
 
         /// Tool categories supported by this agent
-        supported_categories: []const []const u8,
+        supportedCategories: []const []const u8,
 
         /// Maximum number of tools this agent can register
-        max_tools: u32,
+        maxTools: u32,
 
         /// Tool execution timeout in milliseconds
-        tool_timeout_ms: u32,
+        toolTimeoutMs: u32,
     };
 
     /// Tool metadata for enhanced tool management
@@ -407,23 +407,23 @@ pub const AgentInterface = struct {
         author: []const u8,
 
         /// Whether tool requires network access
-        requires_network: bool,
+        requiresNetwork: bool,
 
         /// Whether tool requires file system access
-        requires_filesystem: bool,
+        requiresFilesystem: bool,
 
         /// Tool execution cost (relative units)
-        execution_cost: u32,
+        executionCost: u32,
 
         /// Tool timeout in milliseconds
-        timeout_ms: u32,
+        timeoutMs: u32,
 
         /// Tool dependencies
         dependencies: []const []const u8,
     };
 
     /// System prompt context
-    pub const PromptContext = struct {
+    pub const Prompt = struct {
         /// CLI options that may override default prompt
         cli_options: CliOptions,
 
@@ -431,7 +431,7 @@ pub const AgentInterface = struct {
         config: ?*anyopaque,
 
         /// Template variables available for substitution
-        template_vars: std.StringHashMap([]const u8),
+        templateVars: std.StringHashMap([]const u8),
     };
 
     // ============================================================================
@@ -450,7 +450,7 @@ pub const AgentInterface = struct {
     init: *const fn (
         allocator: Allocator,
         shared_services: SharedServices,
-        config_context: ConfigContext,
+        config_context: Config,
     ) anyerror!*anyopaque,
 
     /// Start the agent and prepare it for message processing.
@@ -472,7 +472,7 @@ pub const AgentInterface = struct {
     /// Returns: Response message or error
     processMessage: *const fn (
         agent: *anyopaque,
-        context: MessageContext,
+        context: Message,
     ) anyerror![]const u8,
 
     /// Stop the agent and clean up resources.
@@ -510,7 +510,7 @@ pub const AgentInterface = struct {
     /// Returns: Success or error
     registerTools: *const fn (
         agent: *anyopaque,
-        context: ToolContext,
+        context: Tool,
     ) anyerror!void,
 
     /// Build the system prompt for this agent.
@@ -523,7 +523,7 @@ pub const AgentInterface = struct {
     /// Returns: System prompt string or error
     buildSystemPrompt: *const fn (
         agent: *anyopaque,
-        context: PromptContext,
+        context: Prompt,
     ) anyerror![]const u8,
 
     /// Validate the agent's configuration.
@@ -572,14 +572,14 @@ pub const AgentInterface = struct {
     /// Return failure to prevent message processing.
     beforeProcess: ?*const fn (
         agent: *anyopaque,
-        context: MessageContext,
+        context: Message,
     ) LifecycleResult = null,
 
     /// Called after processing a message (optional).
     /// Allows agents to perform post-processing, logging, or cleanup.
     afterProcess: ?*const fn (
         agent: *anyopaque,
-        context: MessageContext,
+        context: Message,
         response: []const u8,
     ) LifecycleResult = null,
 
@@ -587,7 +587,7 @@ pub const AgentInterface = struct {
     /// Allows agents to handle errors gracefully and provide custom error responses.
     onError: ?*const fn (
         agent: *anyopaque,
-        context: MessageContext,
+        context: Message,
         err: anyerror,
     ) []const u8 = null,
 
@@ -632,7 +632,7 @@ pub const AgentInterface = struct {
     /// Allows agents to reject invalid messages early.
     validateMessage: ?*const fn (
         agent: *anyopaque,
-        context: MessageContext,
+        context: Message,
     ) LifecycleResult = null,
 
     /// Get agent metrics and statistics (optional).
@@ -662,16 +662,16 @@ pub const BaseAgent = struct {
 
     /// Get current date in YYYY-MM-DD format
     pub fn getCurrentDate(self: *Self) ![]const u8 {
-        const now = std.time.timestamp();
-        const epoch_seconds = std.time.epoch.EpochSeconds{ .secs = @intCast(now) };
-        const epoch_day = epoch_seconds.getEpochDay();
-        const year_day = epoch_day.calculateYearDay();
-        const month_day = year_day.calculateMonthDay();
+        const NOW = std.time.timestamp();
+        const EPOCH_SECONDS = std.time.epoch.EpochSeconds{ .secs = @intCast(NOW) };
+        const EPOCH_DAY = EPOCH_SECONDS.getEpochDay();
+        const YEAR_DAY = EPOCH_DAY.calculateYearDay();
+        const MONTH_DAY = YEAR_DAY.calculateMonthDay();
 
         return try std.fmt.allocPrint(self.allocator, "{d:0>4}-{d:0>2}-{d:0>2}", .{
-            year_day.year,
-            @intFromEnum(month_day.month),
-            month_day.day_index + 1,
+            YEAR_DAY.year,
+            @intFromEnum(MONTH_DAY.month),
+            MONTH_DAY.day_index + 1,
         });
     }
 
@@ -693,8 +693,8 @@ pub const BaseAgent = struct {
                 i += start;
 
                 if (std.mem.indexOf(u8, template[i..], "}")) |end| {
-                    const var_name = template[i + 1 .. i + end];
-                    if (variables.get(var_name)) |replacement| {
+                    const varName = template[i + 1 .. i + end];
+                    if (variables.get(varName)) |replacement| {
                         try result.appendSlice(replacement);
                     } else {
                         // Unknown variable, keep as-is with braces
@@ -736,25 +736,25 @@ pub const InterfaceHelpers = struct {
     }
 
     /// Validate interface version compatibility
-    pub fn validateInterfaceVersion(agent_version: InterfaceVersion, required_version: InterfaceVersion) !void {
-        if (agent_version.major != required_version.major) {
+    pub fn validateInterfaceVersion(agentVersion: InterfaceVersion, requiredVersion: InterfaceVersion) !void {
+        if (agentVersion.major != requiredVersion.major) {
             return error.UnsupportedInterfaceVersion;
         }
-        if (agent_version.minor < required_version.minor) {
+        if (agentVersion.minor < requiredVersion.minor) {
             return error.AgentNotCompatible;
         }
     }
 
     /// Create a default agent status
-    pub fn createDefaultStatus(allocator: Allocator, agent_name: []const u8) !AgentStatus {
+    pub fn createDefaultStatus(allocator: Allocator, agentName: []const u8) !AgentStatus {
         return AgentStatus{
             .state = .ready,
-            .description = try std.fmt.allocPrint(allocator, "{s} agent ready", .{agent_name}),
-            .uptime_ms = 0,
-            .messages_processed = 0,
-            .error_count = 0,
-            .memory_usage_bytes = 0,
-            .active_tools = 0,
+            .description = try std.fmt.allocPrint(allocator, "{s} agent ready", .{agentName}),
+            .uptimeMs = 0,
+            .messagesProcessed = 0,
+            .errorCount = 0,
+            .memoryUsageBytes = 0,
+            .activeTools = 0,
             .last_error = null,
         };
     }
@@ -789,20 +789,20 @@ pub const InterfaceHelpers = struct {
 
     /// Create shared services struct from individual components
     pub fn createSharedServices(
-        tools_registry: anytype,
-        network_client: anytype,
-        file_system: anytype,
-        auth_client: anytype,
+        toolsRegistry: anytype,
+        networkClient: anytype,
+        fileSystem: anytype,
+        authClient: anytype,
         terminal: anytype,
-        config_loader: anytype,
+        configLoader: anytype,
     ) SharedServices {
         return SharedServices{
-            .tools_registry = @ptrCast(tools_registry),
-            .network_client = if (network_client) |nc| @ptrCast(nc) else null,
-            .file_system = if (file_system) |fs| @ptrCast(fs) else null,
-            .auth_client = @ptrCast(auth_client),
+            .toolsRegistry = @ptrCast(toolsRegistry),
+            .networkClient = if (networkClient) |nc| @ptrCast(nc) else null,
+            .fileSystem = if (fileSystem) |fs| @ptrCast(fs) else null,
+            .authClient = @ptrCast(authClient),
             .terminal = @ptrCast(terminal),
-            .config_loader = @ptrCast(config_loader),
+            .configLoader = @ptrCast(configLoader),
         };
     }
 };
@@ -840,21 +840,21 @@ pub const InterfaceVersion = struct {
     patch: u32,
 
     /// Pre-release identifier
-    pre_release: ?[]const u8,
+    preRelease: ?[]const u8,
 
     /// Build metadata
-    build_metadata: ?[]const u8,
+    buildMetadata: ?[]const u8,
 
     /// Get version string
     pub fn toString(self: InterfaceVersion, allocator: Allocator) ![]const u8 {
-        if (self.pre_release) |pre| {
-            if (self.build_metadata) |build| {
+        if (self.preRelease) |pre| {
+            if (self.buildMetadata) |build| {
                 return try std.fmt.allocPrint(allocator, "{d}.{d}.{d}-{s}+{s}", .{ self.major, self.minor, self.patch, pre, build });
             } else {
                 return try std.fmt.allocPrint(allocator, "{d}.{d}.{d}-{s}", .{ self.major, self.minor, self.patch, pre });
             }
         } else {
-            if (self.build_metadata) |build| {
+            if (self.buildMetadata) |build| {
                 return try std.fmt.allocPrint(allocator, "{d}.{d}.{d}+{s}", .{ self.major, self.minor, self.patch, build });
             } else {
                 return try std.fmt.allocPrint(allocator, "{d}.{d}.{d}", .{ self.major, self.minor, self.patch });
@@ -875,7 +875,7 @@ pub const AgentDiscovery = struct {
     version: []const u8,
 
     /// Supported interface version
-    interface_version: InterfaceVersion,
+    interfaceVersion: InterfaceVersion,
 
     /// Agent capabilities
     capabilities: CapabilityFlags,

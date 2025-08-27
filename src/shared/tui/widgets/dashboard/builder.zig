@@ -112,7 +112,7 @@ pub const DashboardBuilder = struct {
             filterable: bool = true,
             paginated: bool = false,
             page_size: u32 = 50,
-            show_row_numbers: bool = true,
+            showRowNumbers: bool = true,
         };
 
         pub const GaugeProps = struct {
@@ -239,36 +239,36 @@ pub const DashboardBuilder = struct {
     }
 
     // Widget builder methods
-    pub fn addLineChart(self: *DashboardBuilder, x: u32, y: u32, width: u32, height: u32) *ChartBuilder(WidgetConfig.LineChartProps) {
-        return ChartBuilder(WidgetConfig.LineChartProps).init(self, .line_chart, x, y, width, height);
+    pub fn addLineChart(self: *DashboardBuilder, x: u32, y: u32, width: u32, height: u32) *chartBuilder(WidgetConfig.LineChartProps) {
+        return chartBuilder(WidgetConfig.LineChartProps).init(self, .line_chart, x, y, width, height);
     }
 
-    pub fn addAreaChart(self: *DashboardBuilder, x: u32, y: u32, width: u32, height: u32) *ChartBuilder(WidgetConfig.AreaChartProps) {
-        return ChartBuilder(WidgetConfig.AreaChartProps).init(self, .area_chart, x, y, width, height);
+    pub fn addAreaChart(self: *DashboardBuilder, x: u32, y: u32, width: u32, height: u32) *chartBuilder(WidgetConfig.AreaChartProps) {
+        return chartBuilder(WidgetConfig.AreaChartProps).init(self, .area_chart, x, y, width, height);
     }
 
-    pub fn addBarChart(self: *DashboardBuilder, x: u32, y: u32, width: u32, height: u32) *ChartBuilder(WidgetConfig.BarChartProps) {
-        return ChartBuilder(WidgetConfig.BarChartProps).init(self, .bar_chart, x, y, width, height);
+    pub fn addBarChart(self: *DashboardBuilder, x: u32, y: u32, width: u32, height: u32) *chartBuilder(WidgetConfig.BarChartProps) {
+        return chartBuilder(WidgetConfig.BarChartProps).init(self, .bar_chart, x, y, width, height);
     }
 
-    pub fn addHeatmap(self: *DashboardBuilder, x: u32, y: u32, width: u32, height: u32) *ChartBuilder(WidgetConfig.HeatmapProps) {
-        return ChartBuilder(WidgetConfig.HeatmapProps).init(self, .heatmap, x, y, width, height);
+    pub fn addHeatmap(self: *DashboardBuilder, x: u32, y: u32, width: u32, height: u32) *chartBuilder(WidgetConfig.HeatmapProps) {
+        return chartBuilder(WidgetConfig.HeatmapProps).init(self, .heatmap, x, y, width, height);
     }
 
-    pub fn addDataGrid(self: *DashboardBuilder, x: u32, y: u32, width: u32, height: u32) *ChartBuilder(WidgetConfig.DataGridProps) {
-        return ChartBuilder(WidgetConfig.DataGridProps).init(self, .data_grid, x, y, width, height);
+    pub fn addDataGrid(self: *DashboardBuilder, x: u32, y: u32, width: u32, height: u32) *chartBuilder(WidgetConfig.DataGridProps) {
+        return chartBuilder(WidgetConfig.DataGridProps).init(self, .data_grid, x, y, width, height);
     }
 
-    pub fn addGauge(self: *DashboardBuilder, x: u32, y: u32, width: u32, height: u32) *ChartBuilder(WidgetConfig.GaugeProps) {
-        return ChartBuilder(WidgetConfig.GaugeProps).init(self, .gauge, x, y, width, height);
+    pub fn addGauge(self: *DashboardBuilder, x: u32, y: u32, width: u32, height: u32) *chartBuilder(WidgetConfig.GaugeProps) {
+        return chartBuilder(WidgetConfig.GaugeProps).init(self, .gauge, x, y, width, height);
     }
 
-    pub fn addSparkline(self: *DashboardBuilder, x: u32, y: u32, width: u32, height: u32) *ChartBuilder(WidgetConfig.SparklineProps) {
-        return ChartBuilder(WidgetConfig.SparklineProps).init(self, .sparkline, x, y, width, height);
+    pub fn addSparkline(self: *DashboardBuilder, x: u32, y: u32, width: u32, height: u32) *chartBuilder(WidgetConfig.SparklineProps) {
+        return chartBuilder(WidgetConfig.SparklineProps).init(self, .sparkline, x, y, width, height);
     }
 
-    pub fn addKPICard(self: *DashboardBuilder, x: u32, y: u32, width: u32, height: u32) *ChartBuilder(WidgetConfig.KPICardProps) {
-        return ChartBuilder(WidgetConfig.KPICardProps).init(self, .kpi_card, x, y, width, height);
+    pub fn addKPICard(self: *DashboardBuilder, x: u32, y: u32, width: u32, height: u32) *chartBuilder(WidgetConfig.KPICardProps) {
+        return chartBuilder(WidgetConfig.KPICardProps).init(self, .kpi_card, x, y, width, height);
     }
 
     // Build the final dashboard
