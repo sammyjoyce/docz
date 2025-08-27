@@ -76,7 +76,7 @@ pub const Renderer = struct {
     /// Cache for rendered content to avoid recomputation
     pub const Cache = struct {
         allocator: Allocator,
-        entries: std.HashMap(u64, CacheEntry, std.HashMap.DefaultContext(u64), 80),
+        entries: std.HashMap(u64, CacheEntry, std.HashMap.DefaultRender(u64), 80),
 
         const CacheEntry = struct {
             content: []u8,
@@ -87,7 +87,7 @@ pub const Renderer = struct {
         pub fn init(allocator: Allocator) Cache {
             return Cache{
                 .allocator = allocator,
-                .entries = std.HashMap(u64, CacheEntry, std.HashMap.DefaultContext(u64), 80).init(allocator),
+                .entries = std.HashMap(u64, CacheEntry, std.HashMap.DefaultRender(u64), 80).init(allocator),
             };
         }
 
@@ -138,7 +138,7 @@ pub const Renderer = struct {
     // ============================================================================
 
     /// Point for widget positioning
-    pub const Point = @import("../types.zig").PointI16;
+    pub const Point = @import("shared_types").PointI16;
 
     /// Bounds for widget layout
     pub const Bounds = @import("../types.zig").BoundsI16;
@@ -206,20 +206,20 @@ pub const Renderer = struct {
     pub const Color = Style.StyleColor;
 
     /// Render context for widget rendering operations
-    pub const Context = struct {
+    pub const Render = struct {
         bounds: Bounds,
         style: Style = .{},
         zIndex: i32 = 0,
         clipRegion: ?Bounds = null,
 
         /// Create a context clipped to a smaller region
-        pub fn clipped(self: Context, clip_bounds: Bounds) Context {
+        pub fn clipped(self: Render, clip_bounds: Bounds) Render {
             const intersection = if (self.clipRegion) |existing|
                 existing.intersection(clip_bounds)
             else
                 clip_bounds;
 
-            return Context{
+            return Render{
                 .bounds = self.bounds.intersection(intersection),
                 .style = self.style,
                 .zIndex = self.zIndex,
@@ -228,8 +228,8 @@ pub const Renderer = struct {
         }
 
         /// Offset the context by a certain amount
-        pub fn offset(self: Context, dx: i32, dy: i32) Context {
-            return Context{
+        pub fn offset(self: Render, dx: i32, dy: i32) Render {
+            return Render{
                 .bounds = self.bounds.offset(dx, dy),
                 .style = self.style,
                 .zIndex = self.zIndex,
@@ -535,7 +535,7 @@ pub const Renderer = struct {
             // Draw background
             if (self.background) |bg| {
                 const bg_style = Style{ .bg_color = bg };
-                const bg_ctx = Context{
+                const bg_ctx = Render{
                     .bounds = area.toBounds(),
                     .style = bg_style,
                     .zIndex = 0,
@@ -556,7 +556,7 @@ pub const Renderer = struct {
                         .color = border.color,
                     },
                 };
-                const border_ctx = Context{
+                const border_ctx = Render{
                     .bounds = area.toBounds(),
                     .style = .{},
                     .zIndex = 0,
@@ -658,7 +658,7 @@ pub const Renderer = struct {
         const term_caps = self.capabilities;
 
         switch (self.render_tier) {
-            .ultra, .enhanced => {
+            .ultra, .rich => {
                 if (term_caps.supportsTruecolor) {
                     try term_sgr.setForegroundRgb(writer, term_caps, color.rgb.r, color.rgb.g, color.rgb.b);
                 } else {
@@ -1055,7 +1055,7 @@ pub const Renderer = struct {
     // ============================================================================
 
     /// Draw text with style context
-    pub fn drawText(self: *Renderer, ctx: Context, text: []const u8) !void {
+    pub fn drawText(self: *Renderer, ctx: Render, text: []const u8) !void {
         // Move cursor to position
         try self.moveCursor(@intCast(ctx.bounds.x), @intCast(ctx.bounds.y));
 
@@ -1094,7 +1094,7 @@ pub const Renderer = struct {
     }
 
     /// Draw a box with style
-    pub fn drawBox(self: *Renderer, ctx: Context, box_style: BoxStyle) !void {
+    pub fn drawBox(self: *Renderer, ctx: Render, box_style: BoxStyle) !void {
         if (box_style.border) |border| {
             const border_chars = switch (border.style) {
                 .single => .{ '┌', '─', '┐', '│', '└', '┘' },
@@ -1138,7 +1138,7 @@ pub const Renderer = struct {
     }
 
     /// Draw a line
-    pub fn drawLine(self: *Renderer, ctx: Context, from: Point, to: Point) !void {
+    pub fn drawLine(self: *Renderer, ctx: Render, from: Point, to: Point) !void {
         _ = ctx;
         // Simple line drawing implementation
         const dx = @abs(to.x - from.x);
@@ -1169,7 +1169,7 @@ pub const Renderer = struct {
     }
 
     /// Fill a rectangle
-    pub fn fillRect(self: *Renderer, ctx: Context, color: Style.StyleColor) !void {
+    pub fn fillRect(self: *Renderer, ctx: Render, color: Style.StyleColor) !void {
         try self.applyStyleColor(color);
 
         for (0..ctx.bounds.height) |y| {

@@ -19,7 +19,7 @@ pub const CliOptions = struct {
         input: ?[]const u8,
         system: ?[]const u8,
         config: ?[]const u8,
-        maxTokens: u32,
+        max_tokens: u32,
         temperature: f32,
     },
     flags: struct {
@@ -45,7 +45,7 @@ pub const AgentSpec = struct {
 };
 
 /// Map auth errors to anthropic errors
-fn mapAuthError(err: auth.AuthError) anthropic.Error {
+fn map_auth_error(err: auth.AuthError) anthropic.Error {
     return switch (err) {
         auth.AuthError.MissingAPIKey => anthropic.Error.MissingAPIKey,
         auth.AuthError.InvalidAPIKey => anthropic.Error.AuthError,
@@ -60,11 +60,11 @@ fn mapAuthError(err: auth.AuthError) anthropic.Error {
 }
 
 /// Initialize Anthropic client using the auth system
-fn initAnthropicClient(allocator: std.mem.Allocator) !anthropic.AnthropicClient {
+fn init_anthropic_client(allocator: std.mem.Allocator) !anthropic.AnthropicClient {
     // Try to create auth client using available methods
     var auth_client = auth.createClient(allocator) catch |err| {
         std.log.err("Failed to initialize authentication: {any}", .{err});
-        return mapAuthError(err);
+        return map_auth_error(err);
     };
     defer auth_client.deinit();
 
@@ -86,7 +86,7 @@ fn initAnthropicClient(allocator: std.mem.Allocator) !anthropic.AnthropicClient 
 }
 
 /// Start OAuth flow using the auth system
-pub fn setupOAuth(allocator: std.mem.Allocator) !void {
+pub fn setup_oauth(allocator: std.mem.Allocator) !void {
     // Use enhanced flow with local callback server for better UX
     const credentials = try auth.oauth.completeOAuthFlow(allocator);
     defer credentials.deinit(allocator);
@@ -96,12 +96,12 @@ pub fn setupOAuth(allocator: std.mem.Allocator) !void {
 }
 
 /// Display current authentication status using the auth system
-pub fn showAuthStatus(allocator: std.mem.Allocator) !void {
+pub fn show_auth_status(allocator: std.mem.Allocator) !void {
     try auth.tui.showAuthStatus(allocator);
 }
 
 /// Refresh authentication tokens using the auth system
-pub fn refreshAuth(allocator: std.mem.Allocator) !void {
+pub fn refresh_auth(allocator: std.mem.Allocator) !void {
     var client = try auth.createClient(allocator);
     defer client.deinit();
 
@@ -110,83 +110,83 @@ pub fn refreshAuth(allocator: std.mem.Allocator) !void {
 }
 
 /// Global stdout writer with buffer for streaming output
-var stdoutBuffer: [4096]u8 = undefined;
-var stdoutWriterInitialized = false;
-var stdoutWriter: std.fs.File.Writer = undefined;
+var stdout_buffer: [4096]u8 = undefined;
+var stdout_writer_initialized = false;
+var stdout_writer: std.fs.File.Writer = undefined;
 
 /// Global output file writer for saving responses to files
-var globalOutputFile: ?std.fs.File = null;
-var outputBuffer: [4096]u8 = undefined;
-var outputWriterInitialized = false;
-var outputWriter: ?std.fs.File.Writer = null;
+var global_output_file: ?std.fs.File = null;
+var output_buffer: [4096]u8 = undefined;
+var output_writer_initialized = false;
+var output_writer: ?std.fs.File.Writer = null;
 
-fn initStdoutWriter() void {
-    if (!stdoutWriterInitialized) {
-        stdoutWriter = std.fs.File.stdout().writer(&stdoutBuffer);
-        stdoutWriterInitialized = true;
+fn init_stdout_writer() void {
+    if (!stdout_writer_initialized) {
+        stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+        stdout_writer_initialized = true;
     }
 }
 
-fn initOutputFile(filePath: []const u8) !void {
-    if (!outputWriterInitialized) {
-        globalOutputFile = try std.fs.cwd().createFile(filePath, .{});
-        outputWriter = globalOutputFile.?.writer(&outputBuffer);
-        outputWriterInitialized = true;
+fn init_output_file(file_path: []const u8) !void {
+    if (!output_writer_initialized) {
+        global_output_file = try std.fs.cwd().createFile(file_path, .{});
+        output_writer = global_output_file.?.writer(&output_buffer);
+        output_writer_initialized = true;
     }
 }
 
-fn flushAllOutputs() !void {
-    if (stdoutWriterInitialized) {
-        const stdout = &stdoutWriter.interface;
+fn flush_all_outputs() !void {
+    if (stdout_writer_initialized) {
+        const stdout = &stdout_writer.interface;
         stdout.flush() catch |err| {
             std.log.warn("Failed to flush stdout after streaming: {any}", .{err});
         };
     }
 
-    if (outputWriterInitialized) {
-        if (outputWriter) |*writer| {
-            const fileWriter = &writer.interface;
-            fileWriter.flush() catch |err| {
+    if (output_writer_initialized) {
+        if (output_writer) |*writer| {
+            const file_writer = &writer.interface;
+            file_writer.flush() catch |err| {
                 std.log.warn("Failed to flush output file: {any}", .{err});
             };
         }
-        if (globalOutputFile) |file| {
+        if (global_output_file) |file| {
             file.close();
-            globalOutputFile = null;
-            outputWriter = null;
-            outputWriterInitialized = false;
+            global_output_file = null;
+            output_writer = null;
+            output_writer_initialized = false;
         }
     }
 }
 
-fn onToken(chunk: []const u8) void {
-    initStdoutWriter();
-    const stdout = &stdoutWriter.interface;
+fn on_token(chunk: []const u8) void {
+    init_stdout_writer();
+    const stdout = &stdout_writer.interface;
     stdout.writeAll(chunk) catch |err| {
         std.log.err("Failed to write streaming output to stdout: {any}", .{err});
     };
 
-    if (outputWriterInitialized) {
-        if (outputWriter) |*writer| {
-            const fileWriter = &writer.interface;
-            fileWriter.writeAll(chunk) catch |err| {
+    if (output_writer_initialized) {
+        if (output_writer) |*writer| {
+            const file_writer = &writer.interface;
+            file_writer.writeAll(chunk) catch |err| {
                 std.log.err("Failed to write streaming output to file: {any}", .{err});
             };
         }
     }
 }
 
-fn writeCompleteResponse(content: []const u8) void {
-    initStdoutWriter();
-    const stdout = &stdoutWriter.interface;
+fn write_complete_response(content: []const u8) void {
+    init_stdout_writer();
+    const stdout = &stdout_writer.interface;
     stdout.writeAll(content) catch |err| {
         std.log.err("Failed to write complete response to stdout: {any}", .{err});
     };
 
-    if (outputWriterInitialized) {
-        if (outputWriter) |*writer| {
-            const fileWriter = &writer.interface;
-            fileWriter.writeAll(content) catch |err| {
+    if (output_writer_initialized) {
+        if (output_writer) |*writer| {
+            const file_writer = &writer.interface;
+            file_writer.writeAll(content) catch |err| {
                 std.log.err("Failed to write complete response to file: {any}", .{err});
             };
         }
@@ -194,8 +194,8 @@ fn writeCompleteResponse(content: []const u8) void {
 }
 
 /// Main engine entry point used by all agents.
-pub fn runWithOptions(allocator: std.mem.Allocator, options: CliOptions, spec: AgentSpec) !void {
-    var client = try initAnthropicClient(allocator);
+pub fn run_with_options(allocator: std.mem.Allocator, options: CliOptions, spec: AgentSpec) !void {
+    var client = try init_anthropic_client(allocator);
     defer client.deinit();
 
     if (client.isOAuthSession()) {
@@ -216,25 +216,25 @@ pub fn runWithOptions(allocator: std.mem.Allocator, options: CliOptions, spec: A
     var messages = std.array_list.Managed(Message).init(allocator);
     defer messages.deinit();
 
-    const systemPrompt = blk: {
+    const system_prompt = blk: {
         if (options.options.system) |explicit| break :blk try allocator.dupe(u8, explicit);
         break :blk try spec.buildSystemPrompt(allocator, options);
     };
-    defer allocator.free(systemPrompt);
-    try messages.append(.{ .role = .system, .content = systemPrompt });
+    defer allocator.free(system_prompt);
+    try messages.append(.{ .role = .system, .content = system_prompt });
 
-    const userPrompt = blk: {
+    const user_prompt = blk: {
         if (options.positionals) |prompt| break :blk try allocator.dupe(u8, prompt);
 
-        if (options.options.input) |inputFile| {
-            if (!std.mem.eql(u8, inputFile, "-")) {
-                const file = std.fs.cwd().openFile(inputFile, .{}) catch |err| {
-                    std.log.err("Failed to open input file '{s}': {any}", .{ inputFile, err });
+        if (options.options.input) |input_file| {
+            if (!std.mem.eql(u8, input_file, "-")) {
+                const file = std.fs.cwd().openFile(input_file, .{}) catch |err| {
+                    std.log.err("Failed to open input file '{s}': {any}", .{ input_file, err });
                     return err;
                 };
                 defer file.close();
                 const content = file.readToEndAlloc(allocator, 1024 * 1024) catch |err| {
-                    std.log.err("Failed to read input file '{s}': {any}", .{ inputFile, err });
+                    std.log.err("Failed to read input file '{s}': {any}", .{ input_file, err });
                     return err;
                 };
                 break :blk content;
@@ -242,24 +242,24 @@ pub fn runWithOptions(allocator: std.mem.Allocator, options: CliOptions, spec: A
         }
 
         const stdin = std.fs.File.stdin();
-        const stdinBuffer = try allocator.alloc(u8, 64 * 1024);
-        defer allocator.free(stdinBuffer);
-        const bytesRead = try stdin.readAll(stdinBuffer);
-        const stdinContent = std.mem.trim(u8, stdinBuffer[0..bytesRead], " \t\r\n");
-        if (stdinContent.len == 0) {
+        const stdin_buffer = try allocator.alloc(u8, 64 * 1024);
+        defer allocator.free(stdin_buffer);
+        const bytes_read = try stdin.readAll(stdin_buffer);
+        const stdin_content = std.mem.trim(u8, stdin_buffer[0..bytes_read], " \t\r\n");
+        if (stdin_content.len == 0) {
             std.log.err("No input provided. Provide input via:\n  - Command argument: docz \"your prompt\"\n  - Input file: docz --input file.txt\n  - Stdin: echo \"your prompt\" | docz", .{});
             return error.NoInputProvided;
         }
-        break :blk try allocator.dupe(u8, stdinContent);
+        break :blk try allocator.dupe(u8, stdin_content);
     };
-    defer allocator.free(userPrompt);
+    defer allocator.free(user_prompt);
 
-    try messages.append(.{ .role = .user, .content = userPrompt });
+    try messages.append(.{ .role = .user, .content = user_prompt });
 
-    if (options.options.output) |outputFile| {
-        if (!std.mem.eql(u8, outputFile, "-")) {
-            try initOutputFile(outputFile);
-            std.log.info("Output will be saved to: {s}", .{outputFile});
+    if (options.options.output) |output_file| {
+        if (!std.mem.eql(u8, output_file, "-")) {
+            try init_output_file(output_file);
+            std.log.info("Output will be saved to: {s}", .{output_file});
         }
     }
 
@@ -267,33 +267,33 @@ pub fn runWithOptions(allocator: std.mem.Allocator, options: CliOptions, spec: A
         std.log.info("Using non-streaming mode (complete response).", .{});
         const response = try client.complete(.{
             .model = options.options.model,
-            .max_tokens = options.options.maxTokens,
+            .max_tokens = options.options.max_tokens,
             .temperature = options.options.temperature,
             .messages = messages.items,
         });
         defer {
-            var mutableResponse = response;
-            mutableResponse.deinit(allocator);
+            var mutable_response = response;
+            mutable_response.deinit(allocator);
         }
-        writeCompleteResponse(response.content);
+        write_complete_response(response.content);
         std.log.info("Completion: {d} input tokens, {d} output tokens", .{ response.usage.input_tokens, response.usage.output_tokens });
 
-        const costCalculator = anthropic.CostCalculator.init(client.isOAuthSession());
+        const cost_calculator = anthropic.CostCalculator.init(client.isOAuthSession());
         if (!client.isOAuthSession()) {
-            const inputCost = costCalculator.calculateInputCost(response.usage.input_tokens, options.options.model);
-            const outputCost = costCalculator.calculateOutputCost(response.usage.output_tokens, options.options.model);
-            const totalCost = inputCost + outputCost;
-            std.log.info("Estimated cost: ${d:.4} (Input: ${d:.4}, Output: ${d:.4})", .{ totalCost, inputCost, outputCost });
+            const input_cost = cost_calculator.calculateInputCost(response.usage.input_tokens, options.options.model);
+            const output_cost = cost_calculator.calculateOutputCost(response.usage.output_tokens, options.options.model);
+            const total_cost = input_cost + output_cost;
+            std.log.info("Estimated cost: ${d:.4} (Input: ${d:.4}, Output: ${d:.4})", .{ total_cost, input_cost, output_cost });
         }
     } else {
         try client.stream(.{
             .model = options.options.model,
-            .max_tokens = options.options.maxTokens,
+            .max_tokens = options.options.max_tokens,
             .temperature = options.options.temperature,
             .messages = messages.items,
-            .on_token = &onToken,
+            .on_token = &on_token,
         });
     }
 
-    try flushAllOutputs();
+    try flush_all_outputs();
 }

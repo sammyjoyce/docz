@@ -1,6 +1,6 @@
-//! DataTable module exports
+//! Table module exports
 //!
-//! This module provides the public interface for the modular data table system.
+//! This module provides the public interface for the modular table system.
 
 const std = @import("std");
 const renderer_mod = @import("../../../core/renderer.zig");
@@ -12,11 +12,12 @@ pub const selection = @import("selection.zig");
 pub const clipboard = @import("clipboard.zig");
 
 // Re-export commonly used types for convenience
-pub const DataTable = DataTableImpl;
+pub const Table = DataTableImpl;
+pub const DataTable = Table; // Backward compatibility alias
 pub const Config = base.Config;
 pub const Cell = base.Cell;
 pub const TableState = base.TableState;
-pub const DataTableError = base.DataTableError;
+pub const TableError = base.TableError;
 
 // Event types
 pub const InputEvent = union(enum) {
@@ -25,7 +26,7 @@ pub const InputEvent = union(enum) {
     paste: []const u8,
 };
 
-/// Main DataTable implementation that combines all modules
+/// Main Table implementation that combines all modules
 pub const DataTableImpl = struct {
     const Self = @This();
 
@@ -380,7 +381,7 @@ pub const DataTableImpl = struct {
     }
 
     /// Simple render method for basic usage (advanced rendering would be in a separate renderer module)
-    pub fn render(self: *Self, renderer: *renderer_mod.Renderer, ctx: renderer_mod.RenderContext) !void {
+    pub fn render(self: *Self, renderer: *renderer_mod.Renderer, ctx: renderer_mod.Render) !void {
         self.bounds = ctx.bounds;
         self.renderer = renderer;
 
@@ -391,7 +392,7 @@ pub const DataTableImpl = struct {
 
         // Render title if present
         if (self.config.title) |title| {
-            const title_ctx = renderer_mod.RenderContext{
+            const title_ctx = renderer_mod.Render{
                 .bounds = ctx.bounds,
                 .style = renderer_mod.Style{ .bold = true },
                 .zIndex = ctx.zIndex,
@@ -410,7 +411,7 @@ pub const DataTableImpl = struct {
                 else
                     self.config.min_cell_width;
 
-                const header_ctx = renderer_mod.RenderContext{
+                const header_ctx = renderer_mod.Render{
                     .bounds = base.Bounds.init(current_x, current_y, @intCast(col_width), 1),
                     .style = renderer_mod.Style{ .bold = true },
                     .zIndex = ctx.zIndex,
@@ -445,7 +446,7 @@ pub const DataTableImpl = struct {
                 else
                     renderer_mod.Style{};
 
-                const cell_ctx = renderer_mod.RenderContext{
+                const cell_ctx = renderer_mod.Render{
                     .bounds = base.Bounds.init(current_x, current_y, @intCast(col_width), 1),
                     .style = cell_style,
                     .zIndex = ctx.zIndex,
@@ -506,7 +507,7 @@ pub fn createTableFromCSV(allocator: std.mem.Allocator, csv_data: []const u8, ha
     var lines = std.mem.split(u8, csv_data, "\n");
 
     // Parse header
-    const header_line = lines.next() orelse return base.DataTableError.InvalidData;
+    const header_line = lines.next() orelse return base.TableError.InvalidData;
     var headers = std.ArrayList([]const u8).init(allocator);
     defer headers.deinit();
 

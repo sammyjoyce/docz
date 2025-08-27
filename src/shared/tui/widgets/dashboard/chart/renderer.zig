@@ -19,7 +19,7 @@ const Bounds = base.Bounds;
 const RenderedImage = base.RenderedImage;
 const DrawingContext = graphics.DrawingContext;
 const Renderer = renderer_mod.Renderer;
-const RenderContext = renderer_mod.RenderContext;
+const Render = renderer_mod.Render;
 const GraphicsMode = graphics_manager.GraphicsMode;
 
 /// Main chart renderer that handles all chart types and rendering modes
@@ -65,7 +65,7 @@ pub const ChartRenderer = struct {
     }
 
     /// Main rendering method that chooses the appropriate rendering mode
-    pub fn render(self: *ChartRenderer, renderer: *Renderer, ctx: RenderContext) !void {
+    pub fn render(self: *ChartRenderer, renderer: *Renderer, ctx: Render) !void {
         self.bounds = ctx.bounds;
 
         // Determine the best rendering mode based on terminal capabilities
@@ -88,7 +88,7 @@ pub const ChartRenderer = struct {
     }
 
     /// Render chart using graphics protocols (Kitty/Sixel)
-    fn renderGraphics(self: *ChartRenderer, renderer: *Renderer, ctx: RenderContext, mode: GraphicsMode) !void {
+    fn renderGraphics(self: *ChartRenderer, renderer: *Renderer, ctx: Render, mode: GraphicsMode) !void {
         // Generate or use cached image
         if (self.graphics_dirty or self.rendered_image == null) {
             try self.generateImage(mode);
@@ -112,7 +112,7 @@ pub const ChartRenderer = struct {
     }
 
     /// Render chart using Unicode block characters
-    fn renderUnicode(self: *ChartRenderer, renderer: *Renderer, ctx: RenderContext) !void {
+    fn renderUnicode(self: *ChartRenderer, renderer: *Renderer, ctx: Render) !void {
         switch (self.config.chart_type) {
             .line => try line.LineChart.renderUnicode(self.data, self.style, renderer, ctx),
             .bar => try bar.BarChart.renderUnicode(self.data, self.style, renderer, ctx),
@@ -122,7 +122,7 @@ pub const ChartRenderer = struct {
     }
 
     /// Render chart using ASCII characters
-    fn renderAscii(self: *ChartRenderer, renderer: *Renderer, ctx: RenderContext) !void {
+    fn renderAscii(self: *ChartRenderer, renderer: *Renderer, ctx: Render) !void {
         switch (self.config.chart_type) {
             .line => try line.LineChart.renderAscii(self.data, self.style, renderer, ctx),
             .bar => try bar.BarChart.renderAscii(self.data, self.style, renderer, ctx),
@@ -131,9 +131,9 @@ pub const ChartRenderer = struct {
     }
 
     /// Fallback text-only rendering
-    fn renderTextOnly(self: *ChartRenderer, renderer: *Renderer, ctx: RenderContext) !void {
+    fn renderTextOnly(self: *ChartRenderer, renderer: *Renderer, ctx: Render) !void {
         // Simple text representation of data
-        const title_ctx = RenderContext{
+        const title_ctx = Render{
             .bounds = Bounds.init(ctx.bounds.x, ctx.bounds.y, ctx.bounds.width, 1),
             .style = ctx.style,
             .zIndex = ctx.zIndex,
@@ -144,7 +144,7 @@ pub const ChartRenderer = struct {
         var row: i32 = 2;
         for (self.data.series) |series| {
             // Series name
-            const series_ctx = RenderContext{
+            const series_ctx = Render{
                 .bounds = Bounds.init(ctx.bounds.x, ctx.bounds.y + row, ctx.bounds.width, 1),
                 .style = ctx.style,
                 .zIndex = ctx.zIndex,
@@ -158,7 +158,7 @@ pub const ChartRenderer = struct {
 
             // Values (abbreviated)
             for (series.values[0..@min(5, series.values.len)], 0..) |value, i| {
-                const value_ctx = RenderContext{
+                const value_ctx = Render{
                     .bounds = Bounds.init(ctx.bounds.x + 2, ctx.bounds.y + row, ctx.bounds.width - 2, 1),
                     .style = ctx.style,
                     .zIndex = ctx.zIndex,
@@ -173,7 +173,7 @@ pub const ChartRenderer = struct {
             }
 
             if (series.values.len > 5) {
-                const more_ctx = RenderContext{
+                const more_ctx = Render{
                     .bounds = Bounds.init(ctx.bounds.x + 2, ctx.bounds.y + row, ctx.bounds.width - 2, 1),
                     .style = ctx.style,
                     .zIndex = ctx.zIndex,

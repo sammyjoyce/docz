@@ -156,13 +156,13 @@ pub const AgentLauncher = struct {
         var agent_stats = std.StringHashMap(AgentStats).init(allocator);
 
         // Load favorites
-        try loadFavorites(allocator, config.favorites_file, &favorites);
+        try load_favorites(allocator, config.favorites_file, &favorites);
 
         // Load recent agents
-        try loadRecentAgents(allocator, config.recent_file, &recent_agents);
+        try load_recent_agents(allocator, config.recent_file, &recent_agents);
 
         // Load statistics
-        try loadAgentStats(allocator, config.stats_file, &agent_stats);
+        try load_agent_stats(allocator, config.stats_file, &agent_stats);
 
         return Self{
             .allocator = allocator,
@@ -220,20 +220,20 @@ pub const AgentLauncher = struct {
     /// Run the launcher
     pub fn run(self: *Self) !void {
         if (self.config.enable_interactive and !self.config.enable_batch_mode) {
-            try self.runInteractive();
+            try self.run_interactive();
         } else {
-            try self.runBatch();
+            try self.run_batch();
         }
     }
 
     /// Run interactive launcher (simple terminal UI)
-    pub fn runInteractive(self: *Self) !void {
+    pub fn run_interactive(self: *Self) !void {
         self.is_running = true;
         defer self.is_running = false;
 
         // Show welcome screen
         if (self.config.show_welcome) {
-            try self.showWelcomeScreen();
+            try self.show_welcome_screen();
         }
 
         // Get available agents
@@ -241,14 +241,14 @@ pub const AgentLauncher = struct {
         defer self.allocator.free(agents); // Borrowed view; registry owns inner fields
 
         // Display agents in simple interactive mode
-        try self.displayAgentMenu(agents);
+        try self.display_agent_menu(agents);
 
         // Save persistent data
-        try self.savePersistentData();
+        try self.save_persistent_data();
     }
 
     /// Run batch mode launcher (list to stdout)
-    pub fn runBatch(self: *Self) !void {
+    pub fn run_batch(self: *Self) !void {
         const agents = try self.registry.getAllAgents();
         defer self.allocator.free(agents); // Borrowed view; registry owns inner fields
 
@@ -273,7 +273,7 @@ pub const AgentLauncher = struct {
     }
 
     /// Show welcome screen
-    pub fn showWelcomeScreen(self: *Self) !void {
+    pub fn show_welcome_screen(self: *Self) !void {
         std.debug.print("\n", .{});
         std.debug.print("╔══════════════════════════════════════════════════════════════════════════════╗\n", .{});
         std.debug.print("║                        Multi-Agent Terminal AI System                       ║\n", .{});
@@ -293,12 +293,13 @@ pub const AgentLauncher = struct {
 
         std.debug.print("Press Enter to continue...", .{});
         var ch: [1]u8 = undefined;
-        _ = try std.io.getStdIn().read(&ch);
+        const stdin = std.fs.File.stdin();
+        _ = try stdin.read(&ch);
         std.debug.print("\n\n", .{});
     }
 
     /// Display simple interactive agent menu
-    pub fn displayAgentMenu(self: *Self, agents: []@import("agent_registry.zig").Agent) !void {
+    pub fn display_agent_menu(self: *Self, agents: []@import("agent_registry.zig").Agent) !void {
         while (true) {
             std.debug.print("\nAvailable Agents:\n", .{});
             std.debug.print("================\n", .{});
@@ -325,16 +326,24 @@ pub const AgentLauncher = struct {
             std.debug.print("Select agent: ", .{});
 
             var buf: [256]u8 = undefined;
-            const input = try std.io.getStdIn().readUntilDelimiterOrEof(&buf, '\n');
+            var stdin = std.fs.File.stdin();
+            var total: usize = 0;
+            while (total < buf.len) {
+                const n = try stdin.read(buf[total..]);
+                if (n == 0) break;
+                total += n;
+                if (buf[total - 1] == '\n') break;
+            }
 
-            if (input) |line| {
+            {
+                const line = buf[0..total];
                 const trimmed = mem.trim(u8, line, &std.ascii.whitespace);
 
                 if (mem.eql(u8, trimmed, "q") or mem.eql(u8, trimmed, "quit")) {
                     break;
                 } else if (mem.eql(u8, trimmed, "f")) {
                     if (self.selected_index < agents.len) {
-                        try self.toggleFavorite(agents[self.selected_index].name);
+                        try self.toggle_favorite(agents[self.selected_index].name);
                     }
                 } else if (trimmed.len == 0) {
                     // Launch selected agent
@@ -343,8 +352,8 @@ pub const AgentLauncher = struct {
                             .agent_name = agents[self.selected_index].name,
                             .session_type = self.config.default_session_type,
                         };
-                        try self.launchAgent(options);
-                        try self.addRecentAgent(agents[self.selected_index].name);
+                        try self.launch_agent(options);
+                        try self.add_recent_agent(agents[self.selected_index].name);
                     }
                 } else {
                     const maybe_index = std.fmt.parseInt(usize, trimmed, 10) catch null;
@@ -359,27 +368,27 @@ pub const AgentLauncher = struct {
     }
 
     /// Launch an agent with specified options
-    pub fn launchAgent(self: *Self, options: LaunchOptions) !void {
+    pub fn launch_agent(self: *Self, options: LaunchOptions) !void {
         // Validate agent exists
         const agent_info = (try self.registry.getAgent(options.agent_name)) orelse {
             return error.AgentNotFound;
         };
 
         // Update statistics (start)
-        try self.updateAgentStats(options.agent_name, true, 0, options.session_type, null);
+        try self.update_agent_stats(options.agent_name, true, 0, options.session_type, null);
 
         // Add to recent agents
-        try self.addRecentAgent(options.agent_name);
+        try self.add_recent_agent(options.agent_name);
 
         // Execute agent (placeholder)
-        try self.executeAgentSimple(agent_info, options);
+        try self.execute_agent_simple(agent_info, options);
 
         // Update statistics (completion)
-        try self.updateAgentStats(options.agent_name, false, 0, options.session_type, null);
+        try self.update_agent_stats(options.agent_name, false, 0, options.session_type, null);
     }
 
     /// Execute the actual agent (simplified)
-    pub fn executeAgentSimple(self: *Self, agent_info: @import("agent_registry.zig").Agent, options: LaunchOptions) !void {
+    pub fn execute_agent_simple(self: *Self, agent_info: @import("agent_registry.zig").Agent, options: LaunchOptions) !void {
         _ = self;
 
         std.debug.print("Launching agent: {s} v{s}\n", .{ agent_info.name, agent_info.version });
@@ -402,7 +411,7 @@ pub const AgentLauncher = struct {
     }
 
     /// Add agent to recent list
-    pub fn addRecentAgent(self: *Self, agent_name: []const u8) !void {
+    pub fn add_recent_agent(self: *Self, agent_name: []const u8) !void {
         // Remove if already exists
         var i: usize = 0;
         while (i < self.recent_agents.items.len) {
@@ -426,7 +435,7 @@ pub const AgentLauncher = struct {
     }
 
     /// Toggle favorite status for an agent
-    pub fn toggleFavorite(self: *Self, agent_name: []const u8) !void {
+    pub fn toggle_favorite(self: *Self, agent_name: []const u8) !void {
         if (self.favorites.contains(agent_name)) {
             // Remove from favorites
             const key = self.favorites.getKey(agent_name).?;
@@ -458,7 +467,7 @@ pub const AgentLauncher = struct {
     }
 
     /// Update agent statistics
-    pub fn updateAgentStats(
+    pub fn update_agent_stats(
         self: *Self,
         agent_name: []const u8,
         is_start: bool,
@@ -506,15 +515,15 @@ pub const AgentLauncher = struct {
     }
 
     /// Save persistent data to disk
-    pub fn savePersistentData(self: *Self) !void {
-        try saveFavorites(self.allocator, self.config.favorites_file, &self.favorites);
-        try saveRecentAgents(self.allocator, self.config.recent_file, &self.recent_agents);
-        try saveAgentStats(self.allocator, self.config.stats_file, &self.agent_stats);
+    pub fn save_persistent_data(self: *Self) !void {
+        try save_favorites(self.allocator, self.config.favorites_file, &self.favorites);
+        try save_recent_agents(self.allocator, self.config.recent_file, &self.recent_agents);
+        try save_agent_stats(self.allocator, self.config.stats_file, &self.agent_stats);
     }
 };
 
 /// ---------- Helper functions for persistent data management ----------
-fn parseSessionType(type_str: []const u8) SessionType {
+fn parse_session_type(type_str: []const u8) SessionType {
     if (mem.eql(u8, type_str, "interactive")) return .interactive;
     if (mem.eql(u8, type_str, "batch")) return .batch;
     if (mem.eql(u8, type_str, "temporary")) return .temporary;
@@ -523,7 +532,7 @@ fn parseSessionType(type_str: []const u8) SessionType {
     return .interactive; // default
 }
 
-fn loadFavorites(allocator: Allocator, filepath: []const u8, favorites: *std.StringHashMap(void)) !void {
+fn load_favorites(allocator: Allocator, filepath: []const u8, favorites: *std.StringHashMap(void)) !void {
     const file = fs.cwd().openFile(filepath, .{}) catch return;
     defer file.close();
 
@@ -543,7 +552,7 @@ fn loadFavorites(allocator: Allocator, filepath: []const u8, favorites: *std.Str
     }
 }
 
-fn saveFavorites(allocator: Allocator, filepath: []const u8, favorites: *std.StringHashMap(void)) !void {
+fn save_favorites(allocator: Allocator, filepath: []const u8, favorites: *std.StringHashMap(void)) !void {
     const file = try fs.cwd().createFile(filepath, .{});
     defer file.close();
 
@@ -562,7 +571,7 @@ fn saveFavorites(allocator: Allocator, filepath: []const u8, favorites: *std.Str
     try file.writeAll(serialized);
 }
 
-fn loadRecentAgents(allocator: Allocator, filepath: []const u8, recent: *std.array_list.Managed([]const u8)) !void {
+fn load_recent_agents(allocator: Allocator, filepath: []const u8, recent: *std.array_list.Managed([]const u8)) !void {
     const file = fs.cwd().openFile(filepath, .{}) catch return;
     defer file.close();
 
@@ -582,7 +591,7 @@ fn loadRecentAgents(allocator: Allocator, filepath: []const u8, recent: *std.arr
     }
 }
 
-fn saveRecentAgents(allocator: Allocator, filepath: []const u8, recent: *std.array_list.Managed([]const u8)) !void {
+fn save_recent_agents(allocator: Allocator, filepath: []const u8, recent: *std.array_list.Managed([]const u8)) !void {
     const file = try fs.cwd().createFile(filepath, .{});
     defer file.close();
 
@@ -600,7 +609,7 @@ fn saveRecentAgents(allocator: Allocator, filepath: []const u8, recent: *std.arr
     try file.writeAll(serialized);
 }
 
-fn loadAgentStats(allocator: Allocator, filepath: []const u8, stats: *std.StringHashMap(AgentStats)) !void {
+fn load_agent_stats(allocator: Allocator, filepath: []const u8, stats: *std.StringHashMap(AgentStats)) !void {
     const file = fs.cwd().openFile(filepath, .{}) catch return;
     defer file.close();
 
@@ -641,7 +650,7 @@ fn loadAgentStats(allocator: Allocator, filepath: []const u8, stats: *std.String
                             .timestamp = record_obj.get("timestamp").?.integer,
                             .success = record_obj.get("success").?.bool,
                             .duration_seconds = @intCast(record_obj.get("duration_seconds").?.integer),
-                            .session_type = parseSessionType(record_obj.get("session_type").?.string),
+                            .session_type = parse_session_type(record_obj.get("session_type").?.string),
                             .error_message = if (record_obj.get("error_message")) |msg| try allocator.dupe(u8, msg.string) else null,
                         };
                         try agent_stats.launch_history.append(record);
@@ -654,7 +663,7 @@ fn loadAgentStats(allocator: Allocator, filepath: []const u8, stats: *std.String
     }
 }
 
-fn saveAgentStats(allocator: Allocator, filepath: []const u8, stats: *std.StringHashMap(AgentStats)) !void {
+fn save_agent_stats(allocator: Allocator, filepath: []const u8, stats: *std.StringHashMap(AgentStats)) !void {
     const file = try fs.cwd().createFile(filepath, .{});
     defer file.close();
 
@@ -709,7 +718,7 @@ fn saveAgentStats(allocator: Allocator, filepath: []const u8, stats: *std.String
 }
 
 /// Create a default launcher configuration
-pub fn createDefaultConfig(_: Allocator) LauncherConfig {
+pub fn create_default_config(_: Allocator) LauncherConfig {
     return LauncherConfig{
         .enable_interactive = true,
         .enable_batch_mode = false,
@@ -736,8 +745,8 @@ pub fn createDefaultConfig(_: Allocator) LauncherConfig {
 }
 
 /// Launch the agent launcher as the default entry point
-pub fn runLauncher(allocator: Allocator, config: ?LauncherConfig) !void {
-    const launcher_config = config orelse createDefaultConfig(allocator);
+pub fn run_launcher(allocator: Allocator, config: ?LauncherConfig) !void {
+    const launcher_config = config orelse create_default_config(allocator);
     var launcher = try AgentLauncher.init(allocator, launcher_config);
     defer launcher.deinit();
 

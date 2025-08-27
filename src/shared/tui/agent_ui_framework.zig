@@ -13,16 +13,16 @@ const text_input_mod = @import("../widgets/rich/text_input.zig");
 const theme_manager_mod = @import("../../theme_manager/mod.zig");
 const input_system = @import("../../components/input.zig");
 const oauth_mod = @import("../../auth/oauth/mod.zig");
-const markdown_renderer = @import("../../render/markdown_renderer.zig");
+const markdown_renderer = @import("../../render/markdown.zig");
 
 const Renderer = renderer_mod.Renderer;
-const RenderContext = renderer_mod.RenderContext;
+const Render = renderer_mod.Render;
 const Style = renderer_mod.Style;
 const NotificationController = notification_mod.NotificationController;
 const NotificationType = notification_mod.NotificationType;
 const ProgressBar = progress_mod.ProgressBar;
 const TextInput = text_input_mod.TextInput;
-const ThemeManager = theme_manager_mod.ThemeManager;
+const ThemeManager = theme_manager_mod.Theme;
 const InputManager = input_system.InputManager;
 
 /// Standard UI patterns that all agents can use
@@ -96,7 +96,7 @@ pub const StandardUIPatterns = struct {
             .height = 1,
         };
 
-        const title_ctx = RenderContext{
+        const title_ctx = Render{
             .bounds = title_bounds,
             .style = .{ .fg_color = theme.primary, .bold = true },
             .zIndex = 0,
@@ -113,7 +113,7 @@ pub const StandardUIPatterns = struct {
             .height = 2,
         };
 
-        const message_ctx = RenderContext{
+        const message_ctx = Render{
             .bounds = message_bounds,
             .style = .{ .fg_color = theme.foreground },
             .zIndex = 0,
@@ -139,7 +139,7 @@ pub const StandardUIPatterns = struct {
         };
 
         // Draw Yes button
-        const button_ctx = RenderContext{
+        const button_ctx = Render{
             .bounds = yes_button_bounds,
             .style = .{ .fg_color = theme.success, .bold = true },
             .zIndex = 0,
@@ -149,7 +149,7 @@ pub const StandardUIPatterns = struct {
         try self.renderer.drawText(button_ctx, "[Y]es");
 
         // Draw No button
-        const no_button_ctx = RenderContext{
+        const no_button_ctx = Render{
             .bounds = no_button_bounds,
             .style = .{ .fg_color = theme.error_color, .bold = true },
             .zIndex = 0,
@@ -315,7 +315,7 @@ pub const OAuthIntegration = struct {
             .height = 3,
         };
 
-        const input_ctx = RenderContext{
+        const input_ctx = Render{
             .bounds = input_bounds,
             .style = .{ .fg_color = theme.foreground },
             .zIndex = 0,
@@ -330,7 +330,7 @@ pub const OAuthIntegration = struct {
             .height = 2,
         };
 
-        const prompt_ctx = RenderContext{
+        const prompt_ctx = Render{
             .bounds = prompt_bounds,
             .style = .{ .fg_color = theme.primary, .bold = true },
             .zIndex = 0,
@@ -521,7 +521,7 @@ pub const MarkdownEditor = struct {
                 .height = 1,
             };
 
-            const line_ctx = RenderContext{
+            const line_ctx = Render{
                 .bounds = line_bounds,
                 .style = .{ .fg_color = theme.foreground },
                 .zIndex = 0,
@@ -540,7 +540,7 @@ pub const MarkdownEditor = struct {
                     .height = 1,
                 };
 
-                const cursor_ctx = RenderContext{
+                const cursor_ctx = Render{
                     .bounds = cursor_bounds,
                     .style = .{ .fg_color = theme.cursor, .bg_color = theme.cursor_bg, .bold = true },
                     .zIndex = 0,

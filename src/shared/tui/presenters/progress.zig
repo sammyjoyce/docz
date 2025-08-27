@@ -6,14 +6,14 @@ const renderer_mod = @import("../core/renderer.zig");
 const progress_mod = @import("../../components/progress.zig");
 
 const Renderer = renderer_mod.Renderer;
-const RenderContext = renderer_mod.RenderContext;
-const ProgressData = progress_mod.ProgressData;
+const Render = renderer_mod.Render;
+const Progress = progress_mod.Progress;
 const ProgressRenderer = progress_mod.ProgressRenderer;
 const ProgressStyle = progress_mod.ProgressStyle;
 
 /// Draw a progress bar using the shared ProgressRenderer directly.
 /// This provides better performance and more control than going through the widget wrapper.
-pub fn draw(renderer: *Renderer, ctx: RenderContext, data: *const ProgressData) !void {
+pub fn draw(renderer: *Renderer, ctx: Render, data: *const Progress) !void {
     var output = std.ArrayList(u8).init(renderer.allocator);
     defer output.deinit();
 

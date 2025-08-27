@@ -1,5 +1,5 @@
 const std = @import("std");
-const render = @import("../src/shared/render/markdown_renderer.zig");
+const render = @import("../src/shared/render/markdown.zig");
 
  test "markdownRendering" {
     const allocator = std.testing.allocator;
@@ -171,7 +171,7 @@ test "qualityTiers" {
     const markdown = "# Test";
     
     const tiers = [_]render.RenderMode{
-        .enhanced,
+        .rich,
         .standard,
         .compatible,
         .minimal,

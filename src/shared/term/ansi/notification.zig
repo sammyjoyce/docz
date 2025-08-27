@@ -15,10 +15,10 @@ fn sanitize(alloc: std.mem.Allocator, s: []const u8) ![]u8 {
     return try out.toOwnedSlice();
 }
 
-fn appendDec(buf: *std.ArrayList(u8), n: u32) !void {
+fn appendDec(buf: *std.ArrayListUnmanaged(u8), alloc: std.mem.Allocator, n: u32) !void {
     var tmp: [10]u8 = undefined;
     const s = try std.fmt.bufPrint(&tmp, "{d}", .{n});
-    try buf.appendSlice(s);
+    try buf.appendSlice(alloc, s);
 }
 
 fn oscTerminator() []const u8 {
@@ -30,14 +30,14 @@ fn buildOscNotification(alloc: std.mem.Allocator, message: []const u8) ![]u8 {
     const clean = try sanitize(alloc, message);
     defer alloc.free(clean);
 
-    var buf = std.ArrayList(u8).init(alloc);
-    errdefer buf.deinit();
-    try buf.appendSlice("\x1b]");
-    try appendDec(&buf, seqcfg.osc.ops.notification);
-    try buf.append(';');
-    try buf.appendSlice(clean);
-    try buf.appendSlice(st);
-    return try buf.toOwnedSlice();
+    var buf = std.ArrayListUnmanaged(u8){};
+    defer buf.deinit(alloc);
+    try buf.appendSlice(alloc, "\x1b]");
+    try appendDec(&buf, alloc, seqcfg.osc.ops.notification);
+    try buf.append(alloc, ';');
+    try buf.appendSlice(alloc, clean);
+    try buf.appendSlice(alloc, st);
+    return try buf.toOwnedSlice(alloc);
 }
 
 pub fn writeNotification(

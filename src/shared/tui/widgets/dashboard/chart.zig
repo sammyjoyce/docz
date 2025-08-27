@@ -13,7 +13,7 @@ const graphics_manager = @import("../../../term/graphics_manager.zig");
 const unified = @import("../../../term/unified.zig");
 
 const Renderer = renderer_mod.Renderer;
-const RenderContext = renderer_mod.RenderContext;
+const Render = renderer_mod.Render;
 const Bounds = bounds_mod.Bounds;
 const Point = bounds_mod.Point;
 const GraphicsMode = graphics_manager.GraphicsMode;
@@ -180,7 +180,7 @@ pub const ChartRenderer = struct {
         self.graphics_dirty = true;
     }
 
-    pub fn render(self: *Self, renderer: *Renderer, ctx: RenderContext) !void {
+    pub fn render(self: *Self, renderer: *Renderer, ctx: Render) !void {
         self.bounds = ctx.bounds;
 
         // Determine the best rendering mode based on terminal capabilities
@@ -206,7 +206,7 @@ pub const ChartRenderer = struct {
         return .unicode;
     }
 
-    fn renderGraphics(self: *Self, renderer: *Renderer, ctx: RenderContext, mode: GraphicsMode) !void {
+    fn renderGraphics(self: *Self, renderer: *Renderer, ctx: Render, mode: GraphicsMode) !void {
         // Generate or use cached image
         if (self.graphics_dirty or self.rendered_image == null) {
             try self.generateImage(mode);
@@ -552,7 +552,7 @@ pub const ChartRenderer = struct {
         }
     }
 
-    fn displayImage(self: *Self, renderer: *Renderer, ctx: RenderContext, image: *const RenderedImage) !void {
+    fn displayImage(self: *Self, renderer: *Renderer, ctx: Render, image: *const RenderedImage) !void {
         _ = self;
         _ = renderer;
         _ = ctx;
@@ -562,7 +562,7 @@ pub const ChartRenderer = struct {
     }
 
     // Fallback rendering methods
-    fn renderUnicodeBlocks(self: *Self, renderer: *Renderer, ctx: RenderContext) !void {
+    fn renderUnicodeBlocks(self: *Self, renderer: *Renderer, ctx: Render) !void {
         // Use Unicode block characters to create a simplified chart
         switch (self.config.chart_type) {
             .line => try self.renderUnicodeLineChart(renderer, ctx),
@@ -571,7 +571,7 @@ pub const ChartRenderer = struct {
         }
     }
 
-    fn renderUnicodeLineChart(self: *Self, renderer: *Renderer, ctx: RenderContext) !void {
+    fn renderUnicodeLineChart(self: *Self, renderer: *Renderer, ctx: Render) !void {
         if (self.data.series.len == 0) return;
 
         const chart_height = ctx.bounds.height - 4; // Leave space for axes and labels
@@ -614,7 +614,7 @@ pub const ChartRenderer = struct {
         }
     }
 
-    fn renderUnicodeBarChart(self: *Self, renderer: *Renderer, ctx: RenderContext) !void {
+    fn renderUnicodeBarChart(self: *Self, renderer: *Renderer, ctx: Render) !void {
         if (self.data.series.len == 0) return;
 
         const series = self.data.series[0];
@@ -639,7 +639,7 @@ pub const ChartRenderer = struct {
         }
     }
 
-    fn renderAsciiArt(self: *Self, renderer: *Renderer, ctx: RenderContext) !void {
+    fn renderAsciiArt(self: *Self, renderer: *Renderer, ctx: Render) !void {
         // Simplified ASCII chart using basic characters
         switch (self.config.chart_type) {
             .line => try self.renderAsciiLineChart(renderer, ctx),
@@ -648,12 +648,12 @@ pub const ChartRenderer = struct {
         }
     }
 
-    fn renderAsciiLineChart(self: *Self, renderer: *Renderer, ctx: RenderContext) !void {
+    fn renderAsciiLineChart(self: *Self, renderer: *Renderer, ctx: Render) !void {
         // Similar to Unicode version but with ASCII characters only
         try self.renderUnicodeLineChart(renderer, ctx); // Reuse for now
     }
 
-    fn renderAsciiBarChart(self: *Self, renderer: *Renderer, ctx: RenderContext) !void {
+    fn renderAsciiBarChart(self: *Self, renderer: *Renderer, ctx: Render) !void {
         if (self.data.series.len == 0) return;
 
         const series = self.data.series[0];
@@ -678,7 +678,7 @@ pub const ChartRenderer = struct {
         }
     }
 
-    fn renderTextOnly(self: *Self, renderer: *Renderer, ctx: RenderContext) !void {
+    fn renderTextOnly(self: *Self, renderer: *Renderer, ctx: Render) !void {
         // Fallback to simple text representation
         try renderer.moveCursor(ctx.bounds.x, ctx.bounds.y);
         try renderer.writeText("{s}", .{self.config.title orelse "Chart"});

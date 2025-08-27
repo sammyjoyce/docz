@@ -1,5 +1,5 @@
 const std = @import("std");
-const terminal_background = @import("terminal_background.zig");
+const background_control = @import("background_control.zig");
 
 /// Terminal query system for retrieving colors and other terminal properties
 /// Handles OSC response parsing and async query management
@@ -20,9 +20,9 @@ pub const QueryType = enum {
 
     pub fn requestSequence(self: QueryType) []const u8 {
         return switch (self) {
-            .foreground_color => terminal_background.OSC.REQUEST_FOREGROUND_COLOR,
-            .background_color => terminal_background.OSC.REQUEST_BACKGROUND_COLOR,
-            .cursor_color => terminal_background.OSC.REQUEST_CURSOR_COLOR,
+            .foreground_color => background_control.OSC.REQUEST_FOREGROUND_COLOR,
+            .background_color => background_control.OSC.REQUEST_BACKGROUND_COLOR,
+            .cursor_color => background_control.OSC.REQUEST_CURSOR_COLOR,
             .cursor_position => "\x1b[6n",
             .device_attributes => "\x1b[c",
         };
@@ -31,9 +31,9 @@ pub const QueryType = enum {
 
 /// Parsed response from terminal queries
 pub const QueryResponse = union(QueryType) {
-    foreground_color: terminal_background.Color,
-    background_color: terminal_background.Color,
-    cursor_color: terminal_background.Color,
+    foreground_color: background_control.Color,
+    background_color: background_control.Color,
+    cursor_color: background_control.Color,
     cursor_position: struct { row: u16, col: u16 },
     device_attributes: []const u8, // Raw attribute string
 
@@ -190,18 +190,18 @@ pub const ResponseParser = struct {
         return error.UnexpectedSequence;
     }
 
-    fn parseColorValue(value_str: []const u8) !terminal_background.Color {
+    fn parseColorValue(value_str: []const u8) !background_control.Color {
         // Parse various color formats returned by terminals
         if (std.mem.startsWith(u8, value_str, "#")) {
             // Hex format: #RRGGBB or #RRGGBBAA
-            return try terminal_background.Color.fromHex(value_str);
+            return try background_control.Color.fromHex(value_str);
         } else if (std.mem.startsWith(u8, value_str, "rgb:")) {
             // XParseColor RGB format: rgb:RRRR/GGGG/BBBB
-            const xrgb = try terminal_background.XRGBColor.fromString(value_str);
+            const xrgb = try background_control.XRGBColor.fromString(value_str);
             return xrgb.color;
         } else if (std.mem.startsWith(u8, value_str, "rgba:")) {
             // XParseColor RGBA format: rgba:RRRR/GGGG/BBBB/AAAA
-            const xrgba = try terminal_background.XRGBAColor.fromString(value_str);
+            const xrgba = try background_control.XRGBAColor.fromString(value_str);
             return xrgba.color;
         } else {
             // Try to parse as simple RGB values
@@ -277,19 +277,19 @@ pub const Query = struct {
     }
 
     /// Query terminal foreground color
-    pub fn queryForegroundColor(self: *Query) !terminal_background.Color {
+    pub fn queryForegroundColor(self: *Query) !background_control.Color {
         const response = try self.query(.foreground_color);
         return response.foreground_color;
     }
 
     /// Query terminal background color
-    pub fn queryBackgroundColor(self: *Query) !terminal_background.Color {
+    pub fn queryBackgroundColor(self: *Query) !background_control.Color {
         const response = try self.query(.background_color);
         return response.background_color;
     }
 
     /// Query terminal cursor color
-    pub fn queryCursorColor(self: *Query) !terminal_background.Color {
+    pub fn queryCursorColor(self: *Query) !background_control.Color {
         const response = try self.query(.cursor_color);
         return response.cursor_color;
     }
@@ -331,7 +331,7 @@ pub fn testColorQueries(allocator: std.mem.Allocator) !void {
 
     // Test querying terminal colors
     if (manager.queryForegroundColor()) |fg_color| {
-        const hex = terminal_background.HexColor.init(fg_color);
+        const hex = background_control.HexColor.init(fg_color);
         const hex_str = try hex.toHex(allocator);
         defer allocator.free(hex_str);
         std.debug.print("Foreground color: {s}\n", .{hex_str});
@@ -340,7 +340,7 @@ pub fn testColorQueries(allocator: std.mem.Allocator) !void {
     }
 
     if (manager.queryBackgroundColor()) |bg_color| {
-        const hex = terminal_background.HexColor.init(bg_color);
+        const hex = background_control.HexColor.init(bg_color);
         const hex_str = try hex.toHex(allocator);
         defer allocator.free(hex_str);
         std.debug.print("Background color: {s}\n", .{hex_str});

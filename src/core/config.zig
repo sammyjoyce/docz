@@ -62,20 +62,20 @@ pub fn validateConfigFile(path: []const u8) !void {
 }
 
 /// Validate agent configuration and provide helpful error messages
-pub fn validateAgentConfig(config: AgentConfig) !void {
+pub fn validate_agent_config(config: AgentConfig) !void {
     // Validate agent info
-    if (config.agentInfo.name.len == 0) {
+    if (config.agent_info.name.len == 0) {
         return error.InvalidConfigFormat;
     }
-    if (config.agentInfo.version.len == 0) {
+    if (config.agent_info.version.len == 0) {
         return error.InvalidConfigFormat;
     }
 
     // Validate model configuration
-    if (config.model.defaultModel.len == 0) {
+    if (config.model.default_model.len == 0) {
         return error.InvalidConfigFormat;
     }
-    if (config.model.maxTokens == 0) {
+    if (config.model.max_tokens == 0) {
         return error.InvalidConfigFormat;
     }
     if (config.model.temperature < 0.0 or config.model.temperature > 2.0) {
@@ -83,29 +83,29 @@ pub fn validateAgentConfig(config: AgentConfig) !void {
     }
 
     // Validate resource limits
-    if (config.limits.maxInputSize == 0) {
+    if (config.limits.max_input_size == 0) {
         return error.InvalidConfigFormat;
     }
-    if (config.limits.maxOutputSize == 0) {
+    if (config.limits.max_output_size == 0) {
         return error.InvalidConfigFormat;
     }
-    if (config.limits.maxProcessingTimeMs == 0) {
+    if (config.limits.max_processing_time_ms == 0) {
         return error.InvalidConfigFormat;
     }
 
     // Validate defaults
-    if (config.defaults.maxConcurrentOperations == 0) {
+    if (config.defaults.max_concurrent_operations == 0) {
         return error.InvalidConfigFormat;
     }
-    if (config.defaults.defaultTimeoutMs == 0) {
+    if (config.defaults.default_timeout_ms == 0) {
         return error.InvalidConfigFormat;
     }
 }
 
 /// Create a default agent configuration with validation
-pub fn createValidatedAgentConfig(name: []const u8, description: []const u8, author: []const u8) AgentConfig {
+pub fn create_validated_agent_config(name: []const u8, description: []const u8, author: []const u8) AgentConfig {
     const config = AgentConfig{
-        .agentInfo = .{
+        .agent_info = .{
             .name = name,
             .description = description,
             .author = author,
@@ -113,7 +113,7 @@ pub fn createValidatedAgentConfig(name: []const u8, description: []const u8, aut
     };
 
     // Validate the created config
-    validateAgentConfig(config) catch |err| {
+    validate_agent_config(config) catch |err| {
         std.log.err("Invalid default configuration: {any}", .{err});
         std.log.err("Default configuration validation failed", .{});
     };
@@ -134,15 +134,15 @@ pub const ConfigError = error{
 };
 
 /// Get the standard config path for an agent
-pub fn getAgentConfigPath(allocator: Allocator, agentName: []const u8) ![]const u8 {
-    return try std.fmt.allocPrint(allocator, "agents/{s}/config.zon", .{agentName});
+pub fn get_agent_config_path(allocator: Allocator, agent_name: []const u8) ![]const u8 {
+    return try std.fmt.allocPrint(allocator, "agents/{s}/config.zon", .{agent_name});
 }
 
 /// Standard agent configuration structure that all agents should implement
 /// Agents can extend this with their own specific configuration fields
 pub const AgentConfig = struct {
     /// Basic agent information
-    agentInfo: struct {
+    agent_info: struct {
         name: []const u8,
         version: []const u8 = "1.0.0",
         description: []const u8 = "",
@@ -153,53 +153,53 @@ pub const AgentConfig = struct {
 
     /// Default settings that apply to most agents
     defaults: struct {
-        maxConcurrentOperations: u32 = 10,
-        defaultTimeoutMs: u32 = 30000,
-        enableDebugLogging: bool = false,
-        enableVerboseOutput: bool = false,
+        max_concurrent_operations: u32 = 10,
+        default_timeout_ms: u32 = 30000,
+        enable_debug_logging: bool = false,
+        enable_verbose_output: bool = false,
     } = .{},
 
     /// Feature flags for enabling/disabling agent capabilities
     features: struct {
-        enableCustomTools: bool = true,
-        enableFileOperations: bool = true,
-        enableNetworkAccess: bool = false,
-        enableSystemCommands: bool = false,
+        enable_custom_tools: bool = true,
+        enable_file_operations: bool = true,
+        enable_network_access: bool = false,
+        enable_system_commands: bool = false,
     } = .{},
 
     /// Resource limits
     limits: struct {
-        maxInputSize: u64 = 1048576, // 1MB
-        maxOutputSize: u64 = 1048576, // 1MB
-        maxProcessingTimeMs: u32 = 60000, // 1 minute
+        max_input_size: u64 = 1048576, // 1MB
+        max_output_size: u64 = 1048576, // 1MB
+        max_processing_time_ms: u32 = 60000, // 1 minute
     } = .{},
 
     /// Model configuration
     model: struct {
-        defaultModel: []const u8 = "claude-3-sonnet-20240229",
-        maxTokens: u32 = 4096,
+        default_model: []const u8 = "claude-3-sonnet-20240229",
+        max_tokens: u32 = 4096,
         temperature: f32 = 0.7,
-        streamResponses: bool = true,
+        stream_responses: bool = true,
     } = .{},
 };
 
 /// Load agent configuration with standardized defaults
-pub fn loadAgentConfig(allocator: Allocator, agentName: []const u8, comptime ExtendedConfig: type) ExtendedConfig {
-    const configPath = getAgentConfigPath(allocator, agentName) catch {
-        std.log.info("Using default configuration for agent: {s}", .{agentName});
+pub fn load_agent_config(allocator: Allocator, agent_name: []const u8, comptime ExtendedConfig: type) ExtendedConfig {
+    const config_path = get_agent_config_path(allocator, agent_name) catch {
+        std.log.info("Using default configuration for agent: {s}", .{agent_name});
         // Create a default instance using reflection
         return std.mem.zeroes(ExtendedConfig);
     };
-    defer allocator.free(configPath);
+    defer allocator.free(config_path);
 
     // Create default config based on the extended type
     const defaults = if (@hasDecl(ExtendedConfig, "default")) ExtendedConfig.default() else std.mem.zeroes(ExtendedConfig);
 
-    return loadWithDefaults(ExtendedConfig, allocator, configPath, defaults);
+    return loadWithDefaults(ExtendedConfig, allocator, config_path, defaults);
 }
 
 /// Generate a standardized configuration file template for a new agent
-pub fn generateConfigTemplate(allocator: Allocator, agentName: []const u8, description: []const u8, author: []const u8) ![]const u8 {
+pub fn generate_config_template(allocator: Allocator, agent_name: []const u8, description: []const u8, author: []const u8) ![]const u8 {
     return try std.fmt.allocPrint(allocator,
         \\.{{
         \\    .agent_config = .{{
@@ -241,25 +241,25 @@ pub fn generateConfigTemplate(allocator: Allocator, agentName: []const u8, descr
         \\    // Agent-specific configuration fields go here
         \\    // Add your custom configuration options below this line
         \\}}
-    , .{ agentName, description, author });
+    , .{ agent_name, description, author });
 }
 
 /// Validate and save agent configuration
-pub fn saveAgentConfig(allocator: Allocator, agentName: []const u8, config: anytype) !void {
-    const configPath = try getAgentConfigPath(allocator, agentName);
-    defer allocator.free(configPath);
+pub fn save_agent_config(allocator: Allocator, agent_name: []const u8, config: anytype) !void {
+    const config_path = try get_agent_config_path(allocator, agent_name);
+    defer allocator.free(config_path);
 
     // Validate configuration before saving
     if (@hasDecl(@TypeOf(config), "agent_config")) {
-        try validateAgentConfig(config.agent_config);
+        try validate_agent_config(config.agent_config);
     }
 
     // Create directory if it doesn't exist
-    const configDir = std.fs.path.dirname(configPath) orelse "";
-    try std.fs.cwd().makePath(configDir);
+    const config_dir = std.fs.path.dirname(config_path) orelse "";
+    try std.fs.cwd().makePath(config_dir);
 
     // Write configuration to file
-    const file = try std.fs.cwd().createFile(configPath, .{});
+    const file = try std.fs.cwd().createFile(config_path, .{});
     defer file.close();
 
     const writer = file.writer();

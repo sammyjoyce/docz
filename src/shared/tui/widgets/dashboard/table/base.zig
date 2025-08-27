@@ -9,7 +9,7 @@ const terminal_mod = @import("../../../../term/unified.zig");
 pub const Point = bounds_mod.Point;
 pub const Bounds = bounds_mod.Bounds;
 
-pub const DataTableError = error{
+pub const TableError = error{
     InvalidSelection,
     ClipboardUnavailable,
     InvalidData,

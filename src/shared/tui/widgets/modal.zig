@@ -16,7 +16,7 @@ pub const Bounds = bounds_mod.Bounds;
 pub const Style = renderer_mod.Style;
 pub const BoxStyle = renderer_mod.BoxStyle;
 pub const Render = renderer_mod.Render;
-pub const RenderContext = renderer_mod.Render;
+
 pub const Renderer = renderer_mod.Renderer;
 pub const InputEvent = input_mod.InputEvent;
 pub const KeyEvent = events_mod.KeyEvent;
@@ -362,7 +362,7 @@ pub const Modal = struct {
     }
 
     /// Render the modal
-    pub fn render(self: *Self, renderer: *Renderer, ctx: RenderContext) !void {
+    pub fn render(self: *Self, renderer: *Renderer, ctx: Render) !void {
         // Update animation state
         self.updateAnimation();
 
@@ -616,7 +616,7 @@ pub const Modal = struct {
         }
     }
 
-    fn applyAnimation(self: *Self, ctx: RenderContext) RenderContext {
+    fn applyAnimation(self: *Self, ctx: Render) Render {
         var animated_ctx = ctx;
 
         // Apply easing to animation progress
@@ -787,7 +787,7 @@ pub const Modal = struct {
         return animated_ctx;
     }
 
-    fn renderBackdrop(self: *Self, renderer: *Renderer, ctx: RenderContext) !void {
+    fn renderBackdrop(self: *Self, renderer: *Renderer, ctx: Render) !void {
         // Render semi-transparent backdrop
         // Create a full-screen context for the backdrop
         const screen_bounds = Bounds{
@@ -815,7 +815,7 @@ pub const Modal = struct {
         try renderer.fillRect(backdrop_ctx, .{ .rgb = .{ .r = color_value, .g = color_value, .b = color_value } });
     }
 
-    fn renderShadow(self: *Self, renderer: *Renderer, ctx: RenderContext) !void {
+    fn renderShadow(self: *Self, renderer: *Renderer, ctx: Render) !void {
         _ = self; // Shadow configuration could be added later
         // Render drop shadow effect using Unicode block characters
         const shadow_offset = 2;
@@ -839,7 +839,7 @@ pub const Modal = struct {
         try renderer.fillRect(shadow_ctx, .{ .rgb = .{ .r = 50, .g = 50, .b = 50 } });
     }
 
-    fn renderFrame(self: *Self, renderer: *Renderer, ctx: RenderContext) !void {
+    fn renderFrame(self: *Self, renderer: *Renderer, ctx: Render) !void {
         // Render modal frame with border
         const box_style = BoxStyle{
             .border = .{
@@ -858,7 +858,7 @@ pub const Modal = struct {
         try renderer.drawBox(ctx, box_style);
     }
 
-    fn renderDialog(self: *Self, renderer: *Renderer, ctx: RenderContext) !void {
+    fn renderDialog(self: *Self, renderer: *Renderer, ctx: Render) !void {
         var y_offset: u32 = 0;
 
         // Render title bar
@@ -997,7 +997,7 @@ pub const Modal = struct {
         }
     }
 
-    fn renderTooltip(self: *Self, renderer: *Renderer, ctx: RenderContext) !void {
+    fn renderTooltip(self: *Self, renderer: *Renderer, ctx: Render) !void {
         // Simple content rendering for tooltip
         var y_offset: u32 = 0;
         var lines = std.mem.tokenize(u8, self.content.items, "\n");
@@ -1021,7 +1021,7 @@ pub const Modal = struct {
         }
     }
 
-    fn renderContextMenu(self: *Self, renderer: *Renderer, ctx: RenderContext) !void {
+    fn renderContextMenu(self: *Self, renderer: *Renderer, ctx: Render) !void {
         if (self.menu_stack.items.len == 0) return;
 
         const items = self.menu_stack.getLast();
@@ -1105,7 +1105,7 @@ pub const Modal = struct {
         }
     }
 
-    fn renderNotification(self: *Self, renderer: *Renderer, ctx: RenderContext) !void {
+    fn renderNotification(self: *Self, renderer: *Renderer, ctx: Render) !void {
         // Render notification content with appropriate styling
         var y_offset: u32 = 0;
         var lines = std.mem.tokenize(u8, self.content.items, "\n");
@@ -1129,7 +1129,7 @@ pub const Modal = struct {
         }
     }
 
-    fn renderPopup(self: *Self, renderer: *Renderer, ctx: RenderContext) !void {
+    fn renderPopup(self: *Self, renderer: *Renderer, ctx: Render) !void {
         // Generic popup content rendering
         var y_offset: u32 = 0;
         var lines = std.mem.tokenize(u8, self.content.items, "\n");
@@ -1560,7 +1560,7 @@ pub const ModalManager = struct {
         return false;
     }
 
-    pub fn render(self: *ModalManager, ctx: RenderContext) !void {
+    pub fn render(self: *ModalManager, ctx: Render) !void {
         // Render all visible modals in z-order
         for (self.modals.items) |modal| {
             if (modal.state != .hidden) {

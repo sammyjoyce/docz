@@ -9,7 +9,7 @@ const ThemeInheritance = @import("theme_inheritance.zig").ThemeInheritance;
 const SystemThemeDetector = @import("system_theme.zig").SystemThemeDetector;
 const ThemeValidator = @import("theme_validator.zig").ThemeValidator;
 
-pub const ThemeManager = struct {
+pub const Theme = struct {
     allocator: std.mem.Allocator,
     themes: std.StringHashMap(*ColorScheme),
     currentTheme: ?*ColorScheme,

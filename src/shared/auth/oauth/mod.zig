@@ -62,13 +62,13 @@ pub const OAuthCredentials = struct {
 };
 
 /// PKCE parameters - compatible with anthropic module
-pub const PkceParams = struct {
+pub const Pkce = struct {
     code_verifier: []const u8,
     code_challenge: []const u8,
     state: []const u8,
 
     /// Clean up allocated memory
-    pub fn deinit(self: PkceParams, allocator: std.mem.Allocator) void {
+    pub fn deinit(self: Pkce, allocator: std.mem.Allocator) void {
         allocator.free(self.code_verifier);
         allocator.free(self.code_challenge);
         allocator.free(self.state);
@@ -84,7 +84,7 @@ pub const OAuthProvider = struct {
     scopes: []const []const u8,
 
     /// Build authorization URL with PKCE parameters
-    pub fn buildAuthorizationUrl(self: OAuthProvider, allocator: std.mem.Allocator, pkce_params: PkceParams) ![]u8 {
+    pub fn buildAuthorizationUrl(self: OAuthProvider, allocator: std.mem.Allocator, pkce_params: Pkce) ![]u8 {
         const scopes_joined = try std.mem.join(allocator, " ", self.scopes);
         defer allocator.free(scopes_joined);
 
@@ -103,7 +103,7 @@ pub const OAuthProvider = struct {
 // Note: These functions will be implemented as pass-through to the anthropic module
 
 /// Generate PKCE parameters with cryptographically secure random values
-pub fn generatePkceParams(allocator: std.mem.Allocator) !PkceParams {
+pub fn generatePkceParams(allocator: std.mem.Allocator) !Pkce {
     // Generate random code verifier (43-128 characters)
     const verifier_length = 64; // Use 64 characters for good entropy
     const code_verifier = try generateCodeVerifier(allocator, verifier_length);
@@ -114,7 +114,7 @@ pub fn generatePkceParams(allocator: std.mem.Allocator) !PkceParams {
     // Generate random state parameter (32 characters)
     const state = try generateRandomState(allocator, 32);
 
-    return PkceParams{
+    return Pkce{
         .code_verifier = code_verifier,
         .code_challenge = code_challenge,
         .state = state,
@@ -177,7 +177,7 @@ fn generateRandomState(allocator: std.mem.Allocator, length: usize) ![]u8 {
 }
 
 /// Build OAuth authorization URL
-pub fn buildAuthorizationUrl(allocator: std.mem.Allocator, pkce_params: PkceParams) ![]u8 {
+pub fn buildAuthorizationUrl(allocator: std.mem.Allocator, pkce_params: Pkce) ![]u8 {
     const scopes = [_][]const u8{ "org:create_api_key", "user:profile", "user:inference" };
     const provider = OAuthProvider{
         .client_id = OAUTH_CLIENT_ID,
@@ -191,29 +191,31 @@ pub fn buildAuthorizationUrl(allocator: std.mem.Allocator, pkce_params: PkcePara
 }
 
 /// Helper function to encode form data for OAuth requests
-fn encodeFormData(allocator: std.mem.Allocator, fields: []const struct { key: []const u8, value: []const u8 }) ![]u8 {
-    var form_data = std.ArrayList(u8).init(allocator);
-    defer form_data.deinit();
+fn encodeFormData(allocator: std.mem.Allocator, fields: anytype) ![]u8 {
+    var form_data = try std.ArrayList(u8).initCapacity(allocator, 0);
+    defer form_data.deinit(allocator);
 
     for (fields, 0..) |field, i| {
         if (i > 0) {
-            try form_data.appendSlice("&");
+            try form_data.appendSlice(allocator, "&");
         }
 
         // URL encode key
-        const encoded_key = try std.Uri.percentEncode(allocator, field.key);
-        defer allocator.free(encoded_key);
-        try form_data.appendSlice(encoded_key);
+        var key_buf: [4096]u8 = undefined;
+        var key_fbs = std.Io.fixedBufferStream(&key_buf);
+        try std.Uri.Component.percentEncode(key_fbs.writer(), field.key, std.Uri.Component.form.isValidChar);
+        try form_data.appendSlice(allocator, key_fbs.getWritten());
 
-        try form_data.appendSlice("=");
+        try form_data.appendSlice(allocator, "=");
 
         // URL encode value
-        const encoded_value = try std.Uri.percentEncode(allocator, field.value);
-        defer allocator.free(encoded_value);
-        try form_data.appendSlice(encoded_value);
+        var value_buf: [4096]u8 = undefined;
+        var value_fbs = std.Io.fixedBufferStream(&value_buf);
+        try std.Uri.Component.percentEncode(value_fbs.writer(), field.value, std.Uri.Component.form.isValidChar);
+        try form_data.appendSlice(allocator, value_fbs.getWritten());
     }
 
-    return form_data.toOwnedSlice();
+    return form_data.toOwnedSlice(allocator);
 }
 
 /// Parse OAuth token response JSON
@@ -270,7 +272,7 @@ fn parseTokenResponse(allocator: std.mem.Allocator, json_response: []const u8) !
 }
 
 /// Exchange authorization code for tokens using PKCE flow
-pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorization_code: []const u8, pkce_params: PkceParams) !OAuthCredentials {
+pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorization_code: []const u8, pkce_params: Pkce) !OAuthCredentials {
     // Prepare form data for token exchange
     const fields = [_]struct { key: []const u8, value: []const u8 }{
         .{ .key = "grant_type", .value = "authorization_code" },
@@ -280,7 +282,7 @@ pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorization_code: [
         .{ .key = "client_id", .value = OAUTH_CLIENT_ID },
     };
 
-    const form_data = try encodeFormData(allocator, &fields);
+    const form_data = try encodeFormData(allocator, fields[0..]);
     defer allocator.free(form_data);
 
     // Initialize HTTP client
@@ -326,7 +328,7 @@ pub fn refreshTokens(allocator: std.mem.Allocator, refresh_token: []const u8) !O
         .{ .key = "client_id", .value = OAUTH_CLIENT_ID },
     };
 
-    const form_data = try encodeFormData(allocator, &fields);
+    const form_data = try encodeFormData(allocator, fields[0..]);
     defer allocator.free(form_data);
 
     // Initialize HTTP client

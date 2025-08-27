@@ -128,7 +128,7 @@ fn demoAnimatedLogo(allocator: std.mem.Allocator) !void {
         }
     }
 
-    try term.ansi.cursor.moveTo(22, 0);
+    try term.cursor.moveTo(22, 0);
 }
 
 fn demoStyledText(allocator: std.mem.Allocator) !void {
@@ -177,5 +177,5 @@ fn demoStyledText(allocator: std.mem.Allocator) !void {
         logo.draw();
     }
 
-    try term.ansi.cursor.moveTo(32, 0);
+    try term.cursor.moveTo(32, 0);
 }

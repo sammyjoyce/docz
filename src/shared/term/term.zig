@@ -7,7 +7,7 @@
 const std = @import("std");
 const caps_mod = @import("capabilities.zig");
 const ansi_color = @import("ansi/colors.zig");
-const ansi_cursor = @import("ansi/cursor.zig");
+const ansi_cursor = @import("control/cursor.zig");
 const ansi_mode = @import("ansi/mode.zig");
 const ansi_graphics = @import("ansi/ansi_graphics.zig");
 const ansi_clipboard = @import("ansi/clipboard.zig");
@@ -99,7 +99,7 @@ pub const Style = struct {
     }
 };
 
-/// Image data for advanced graphics rendering
+/// Image data for  graphics rendering
 pub const Image = struct {
     data: []const u8,
     width: u32,
@@ -138,14 +138,14 @@ pub const NotificationLevel = enum {
     debug,
 };
 
-/// Main terminal interface that provides unified access to all capabilities
+/// Main terminal interface that provides  access to all capabilities
 pub const Terminal = struct {
     const Self = @This();
 
     allocator: std.mem.Allocator,
     caps: TermCaps,
     writer: *std.Io.Writer,
-    stdout_buffer: [4096]u8,
+    stdoutBuffer: [4096]u8,
     buffer: std.ArrayListUnmanaged(u8),
 
     pub fn init(allocator: std.mem.Allocator) !Self {
@@ -180,15 +180,15 @@ pub const Terminal = struct {
             .widthMethod = .grapheme,
         };
 
-        var stdout_buffer: [4096]u8 = undefined;
-        var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
-        const writer = &stdout_writer.interface;
+        var stdoutBuffer: [4096]u8 = undefined;
+        var stdoutWriter = std.fs.File.stdout().writer(&stdoutBuffer);
+        const writer = &stdoutWriter.interface;
 
         return Self{
             .allocator = allocator,
             .caps = caps,
             .writer = writer,
-            .stdout_buffer = stdout_buffer,
+            .stdoutBuffer = stdoutBuffer,
             .buffer = std.ArrayListUnmanaged(u8){},
         };
     }
@@ -378,7 +378,7 @@ pub const Terminal = struct {
         // Simple color quantization to 16 colors for Sixel
         const palette_size = 16;
         var palette: [palette_size][3]u8 = undefined;
-        var color_count: u8 = 0;
+        var colorCount: u8 = 0;
 
         // Initialize basic color palette (simplified)
         const basic_colors = [_][3]u8{
@@ -406,10 +406,10 @@ pub const Terminal = struct {
             // Define color in Sixel format: #Pc;2;Pr;Pg;Pb
             try self.writer.print("#{d};2;{d};{d};{d}", .{ i, color[0] * 100 / 255, color[1] * 100 / 255, color[2] * 100 / 255 });
         }
-        color_count = basic_colors.len;
+        colorCount = basic_colors.len;
 
         // Convert image to indexed color and render
-        try self.encodeSixelIndexed(allocator, rgb_data, src_width, src_height, target_width, target_height, &palette, color_count);
+        try self.encodeSixelIndexed(allocator, rgb_data, src_width, src_height, target_width, target_height, &palette, colorCount);
     }
 
     /// Encode RGBA32 image data as Sixel
@@ -445,7 +445,7 @@ pub const Terminal = struct {
     }
 
     /// Core Sixel encoding for indexed color data
-    fn encodeSixelIndexed(self: *Self, allocator: std.mem.Allocator, rgb_data: []const u8, src_width: u32, src_height: u32, target_width: u32, target_height: u32, palette: *const [16][3]u8, color_count: u8) !void {
+    fn encodeSixelIndexed(self: *Self, allocator: std.mem.Allocator, rgb_data: []const u8, src_width: u32, src_height: u32, target_width: u32, target_height: u32, palette: *const [16][3]u8, colorCount: u8) !void {
         _ = target_width;
         _ = target_height;
 
@@ -461,22 +461,22 @@ pub const Terminal = struct {
                 const b = rgb_data[pixel_idx + 2];
 
                 // Find closest palette color
-                var best_color: u8 = 0;
-                var min_distance: u32 = std.math.maxInt(u32);
+                var bestColor: u8 = 0;
+                var minDistance: u32 = std.math.maxInt(u32);
 
-                for (0..color_count) |i| {
+                for (0..colorCount) |i| {
                     const dr = @as(i32, r) - @as(i32, palette[i][0]);
                     const dg = @as(i32, g) - @as(i32, palette[i][1]);
                     const db = @as(i32, b) - @as(i32, palette[i][2]);
                     const distance = @as(u32, @intCast(dr * dr + dg * dg + db * db));
 
-                    if (distance < min_distance) {
-                        min_distance = distance;
-                        best_color = @intCast(i);
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        bestColor = @intCast(i);
                     }
                 }
 
-                indexed_data[y * src_width + x] = best_color;
+                indexed_data[y * src_width + x] = bestColor;
             }
         }
 
@@ -489,32 +489,32 @@ pub const Terminal = struct {
             const band_end = @min(band_start + band_height, src_height);
 
             // For each color in the band
-            for (0..color_count) |color| {
-                var has_pixels = false;
-                var sixel_line = try std.ArrayList(u8).initCapacity(allocator, src_width + 10);
-                defer sixel_line.deinit();
+            for (0..colorCount) |color| {
+                var hasPixels = false;
+                var sixelLine = try std.ArrayList(u8).initCapacity(allocator, src_width + 10);
+                defer sixelLine.deinit();
 
                 // Color selection
-                try sixel_line.appendSlice(try std.fmt.allocPrint(allocator, "#{d}", .{color}));
+                try sixelLine.appendSlice(try std.fmt.allocPrint(allocator, "#{d}", .{color}));
 
                 for (0..src_width) |x| {
-                    var sixel_char: u8 = 0;
+                    var sixelChar: u8 = 0;
 
                     // Build sixel character from 6 vertical pixels
                     for (band_start..band_end) |y| {
                         const bit_pos = y - band_start;
                         if (indexed_data[y * src_width + x] == color) {
-                            sixel_char |= @as(u8, 1) << @intCast(bit_pos);
-                            has_pixels = true;
+                            sixelChar |= @as(u8, 1) << @intCast(bit_pos);
+                            hasPixels = true;
                         }
                     }
 
                     // Convert to Sixel character (add 63 to make printable)
-                    try sixel_line.append(sixel_char + 63);
+                    try sixelLine.append(sixelChar + 63);
                 }
 
-                if (has_pixels) {
-                    try self.writer.writeAll(sixel_line.items);
+                if (hasPixels) {
+                    try self.writer.writeAll(sixelLine.items);
                     if (allocator.alloc(u8, 0)) |s| allocator.free(s);
                 }
             }
@@ -613,7 +613,7 @@ pub const Colors = struct {
     pub const BRIGHT_WHITE = Color{ .ansi = 15 };
 };
 
-/// Dashboard-specific enhancements for the unified terminal interface
+/// Dashboard-specific enhancements for the  terminal interface
 /// These methods provide optimized support for dashboard widgets and data visualization
 /// Dashboard rendering modes based on terminal capabilities
 pub const DashboardMode = struct {
@@ -897,21 +897,21 @@ pub const DashboardTerminal = struct {
         const chart_width = @as(u32, @intCast(bounds.width)) - 4; // Leave space for Y axis labels
 
         // Find data range
-        var min_val = data[0];
-        var max_val = data[0];
+        var minVal = data[0];
+        var maxVal = data[0];
         for (data[1..]) |value| {
-            if (value < min_val) min_val = value;
-            if (value > max_val) max_val = value;
+            if (value < minVal) minVal = value;
+            if (value > maxVal) maxVal = value;
         }
 
-        const range = max_val - min_val;
+        const range = maxVal - minVal;
         if (range == 0) return;
 
         // Render chart using Unicode blocks
         for (0..chart_height) |row| {
             try self.terminal.moveTo(bounds.x, bounds.y + @as(i32, @intCast(row)));
 
-            const y_value = max_val - ((@as(f64, @floatFromInt(row)) / @as(f64, @floatFromInt(chart_height))) * range);
+            const y_value = maxVal - ((@as(f64, @floatFromInt(row)) / @as(f64, @floatFromInt(chart_height))) * range);
 
             for (0..chart_width) |col| {
                 const data_index = (col * data.len) / chart_width;
@@ -919,7 +919,7 @@ pub const DashboardTerminal = struct {
                     const value = data[data_index];
                     const block_char = if (value >= y_value) "█" else " ";
 
-                    const color = self.getColorForValue(value, min_val, max_val, style.color_scheme);
+                    const color = self.getColorForValue(value, minVal, maxVal, style.color_scheme);
                     try self.terminal.print(block_char, Style{ .fg_color = color });
                 } else {
                     try self.terminal.print(" ", null);
@@ -938,21 +938,21 @@ pub const DashboardTerminal = struct {
         const chart_width = @as(u32, @intCast(bounds.width)) - 4;
 
         // Find data range
-        var min_val = data[0];
-        var max_val = data[0];
+        var minVal = data[0];
+        var maxVal = data[0];
         for (data[1..]) |value| {
-            if (value < min_val) min_val = value;
-            if (value > max_val) max_val = value;
+            if (value < minVal) minVal = value;
+            if (value > maxVal) maxVal = value;
         }
 
-        const range = max_val - min_val;
+        const range = maxVal - minVal;
         if (range == 0) return;
 
         // Render ASCII chart
         for (0..chart_height) |row| {
             try self.terminal.moveTo(bounds.x, bounds.y + @as(i32, @intCast(row)));
 
-            const y_value = max_val - ((@as(f64, @floatFromInt(row)) / @as(f64, @floatFromInt(chart_height))) * range);
+            const y_value = maxVal - ((@as(f64, @floatFromInt(row)) / @as(f64, @floatFromInt(chart_height))) * range);
 
             for (0..chart_width) |col| {
                 const data_index = (col * data.len) / chart_width;
@@ -994,20 +994,20 @@ pub const DashboardTerminal = struct {
 
         // Simple line drawing (this is a basic implementation)
         if (data.len > 1) {
-            var min_val = data[0];
-            var max_val = data[0];
+            var minVal = data[0];
+            var maxVal = data[0];
             for (data[1..]) |value| {
-                if (value < min_val) min_val = value;
-                if (value > max_val) max_val = value;
+                if (value < minVal) minVal = value;
+                if (value > maxVal) maxVal = value;
             }
 
-            const range = max_val - min_val;
+            const range = maxVal - minVal;
             if (range > 0) {
                 for (0..data.len - 1) |i| {
                     const x1 = (i * width) / data.len;
-                    const y1 = height - @as(u32, @intFromFloat((data[i] - min_val) / range * @as(f64, @floatFromInt(height))));
+                    const y1 = height - @as(u32, @intFromFloat((data[i] - minVal) / range * @as(f64, @floatFromInt(height))));
                     const x2 = ((i + 1) * width) / data.len;
-                    const y2 = height - @as(u32, @intFromFloat((data[i + 1] - min_val) / range * @as(f64, @floatFromInt(height))));
+                    const y2 = height - @as(u32, @intFromFloat((data[i + 1] - minVal) / range * @as(f64, @floatFromInt(height))));
 
                     // Draw line (simplified Bresenham)
                     self.drawLine(image_data, width, height, x1, y1, x2, y2, style.color_scheme);
@@ -1049,10 +1049,10 @@ pub const DashboardTerminal = struct {
         }
     }
 
-    fn getColorForValue(self: *Self, value: f64, min_val: f64, max_val: f64, scheme: ChartStyle.ColorScheme) Color {
+    fn getColorForValue(self: *Self, value: f64, minVal: f64, maxVal: f64, scheme: ChartStyle.ColorScheme) Color {
         _ = self;
 
-        const normalized = if (max_val > min_val) (value - min_val) / (max_val - min_val) else 0.5;
+        const normalized = if (maxVal > minVal) (value - minVal) / (maxVal - minVal) else 0.5;
 
         return switch (scheme) {
             .default => Color{ .rgb = .{ .r = 100, .g = 149, .b = 237 } },

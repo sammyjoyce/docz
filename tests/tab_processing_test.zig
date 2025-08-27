@@ -107,7 +107,7 @@ pub fn displayWidth(text: []const u8, config: TabConfig) usize {
 }
 
 /// Tab stop manager for terminal emulation
-pub const TabStopManager = struct {
+pub const TabStop = struct {
     stops: std.ArrayList(usize),
     width: usize,
     allocator: std.mem.Allocator,
@@ -449,11 +449,11 @@ test "TabConfig.nextTabStop" {
 }
 
 // ============================================================================
-// TabStopManager Tests
+// TabStop Tests
 // ============================================================================
 
-test "TabStopManager initialization" {
-    var manager = try TabStopManager.init(allocator, 80);
+test "TabStop initialization" {
+    var manager = try TabStop.init(allocator, 80);
     defer manager.deinit();
 
     try expectEqual(@as(usize, 80), manager.width);
@@ -463,8 +463,8 @@ test "TabStopManager initialization" {
     try expectEqual(@as(usize, 24), manager.nextTabStop(16));
 }
 
-test "TabStopManager nextTabStop" {
-    var manager = try TabStopManager.init(allocator, 80);
+test "TabStop nextTabStop" {
+    var manager = try TabStop.init(allocator, 80);
     defer manager.deinit();
 
     // Default tab stops at 0, 8, 16, 24, 32, 40, 48, 56, 64, 72
@@ -476,8 +476,8 @@ test "TabStopManager nextTabStop" {
     try expectEqual(@as(usize, 79), manager.nextTabStop(79)); // At boundary
 }
 
-test "TabStopManager spacesToNextTabStop" {
-    var manager = try TabStopManager.init(allocator, 80);
+test "TabStop spacesToNextTabStop" {
+    var manager = try TabStop.init(allocator, 80);
     defer manager.deinit();
 
     try expectEqual(@as(u8, 8), manager.spacesToNextTabStop(0));
@@ -486,8 +486,8 @@ test "TabStopManager spacesToNextTabStop" {
     try expectEqual(@as(u8, 8), manager.spacesToNextTabStop(8));
 }
 
-test "TabStopManager setTabStop" {
-    var manager = try TabStopManager.init(allocator, 80);
+test "TabStop setTabStop" {
+    var manager = try TabStop.init(allocator, 80);
     defer manager.deinit();
 
     // Set custom tab stop
@@ -497,8 +497,8 @@ test "TabStopManager setTabStop" {
     try expectEqual(@as(usize, 16), manager.nextTabStop(12));
 }
 
-test "TabStopManager clearTabStop" {
-    var manager = try TabStopManager.init(allocator, 80);
+test "TabStop clearTabStop" {
+    var manager = try TabStop.init(allocator, 80);
     defer manager.deinit();
 
     // Set and then clear a tab stop
@@ -509,8 +509,8 @@ test "TabStopManager clearTabStop" {
     try expectEqual(@as(usize, 16), manager.nextTabStop(10)); // Should skip to next default
 }
 
-test "TabStopManager clearAllTabStops" {
-    var manager = try TabStopManager.init(allocator, 80);
+test "TabStop clearAllTabStops" {
+    var manager = try TabStop.init(allocator, 80);
     defer manager.deinit();
 
     manager.setTabStop(12);
@@ -521,8 +521,8 @@ test "TabStopManager clearAllTabStops" {
     try expectEqual(@as(usize, 16), manager.nextTabStop(10)); // Should skip to next default
 }
 
-test "TabStopManager resetToDefault" {
-    var manager = try TabStopManager.init(allocator, 80);
+test "TabStop resetToDefault" {
+    var manager = try TabStop.init(allocator, 80);
     defer manager.deinit();
 
     // Set custom tab stops
@@ -534,8 +534,8 @@ test "TabStopManager resetToDefault" {
     try expectEqual(@as(usize, 16), manager.nextTabStop(10)); // Should be back to default
 }
 
-test "TabStopManager boundary conditions" {
-    var manager = try TabStopManager.init(allocator, 20);
+test "TabStop boundary conditions" {
+    var manager = try TabStop.init(allocator, 20);
     defer manager.deinit();
 
     // Test at boundary
@@ -623,7 +623,7 @@ test "cursor positioning with tabs" {
 }
 
 test "cursor positioning in tab manager" {
-    var manager = try TabStopManager.init(allocator, 80);
+    var manager = try TabStop.init(allocator, 80);
     defer manager.deinit();
 
     // Test cursor positioning at various columns
@@ -712,7 +712,7 @@ test "tab processing with invalid UTF-8" {
 
 test "tab stop manager with zero width" {
     // This should work but with limited functionality
-    var manager = try TabStopManager.init(allocator, 0);
+    var manager = try TabStop.init(allocator, 0);
     defer manager.deinit();
 
     try expectEqual(@as(usize, 0), manager.width);

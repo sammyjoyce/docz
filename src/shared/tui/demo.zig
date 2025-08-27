@@ -76,7 +76,7 @@ pub fn main() !void {
 
         var y: i32 = 10;
         for (progress_styles, style_names) |style, name| {
-            const ctx = tui.RenderContext{
+            const ctx = tui.Render{
                 .bounds = .{
                     .x = 5,
                     .y = y,
@@ -123,7 +123,7 @@ pub fn main() !void {
             .padding = .{ .top = 1, .right = 2, .bottom = 1, .left = 2 },
         };
 
-        const box_ctx = tui.RenderContext{
+        const box_ctx = tui.Render{
             .bounds = .{
                 .x = x,
                 .y = 25,
@@ -146,7 +146,7 @@ pub fn main() !void {
         std.debug.print("--------------------------\n");
 
         try renderer.setHyperlink("https://github.com/zig-lang/zig");
-        const link_ctx = tui.RenderContext{
+        const link_ctx = tui.Render{
             .bounds = .{
                 .x = 5,
                 .y = 32,
@@ -189,7 +189,7 @@ fn demonstrateColors(renderer: *tui.Renderer) !void {
         std.debug.print("RGB Color Gradient:\n");
         var r: u8 = 0;
         while (r < 255) : (r += 32) {
-            const ctx = tui.RenderContext{
+            const ctx = tui.Render{
                 .bounds = .{
                     .x = @as(i32, @intCast(r / 32)) * 2,
                     .y = 35,
@@ -208,7 +208,7 @@ fn demonstrateColors(renderer: *tui.Renderer) !void {
         std.debug.print("256-Color Palette Sample:\n");
         var color: u8 = 16;
         while (color < 48) : (color += 1) {
-            const ctx = tui.RenderContext{
+            const ctx = tui.Render{
                 .bounds = .{
                     .x = @as(i32, @intCast(color - 16)) * 2,
                     .y = 35,

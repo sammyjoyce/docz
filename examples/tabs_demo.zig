@@ -39,7 +39,7 @@ pub fn main() !void {
     tabs.max_tab_width = 15;
 
     // Create demo data structures
-    var demo_data = DemoData.init(allocator);
+    var demo_data = Demo.init(allocator);
     defer demo_data.deinit();
 
     // Add tabs with different content types
@@ -157,15 +157,15 @@ pub fn main() !void {
     try stdout_writer.print("Tabs demo completed!\n", .{});
 }
 
-const DemoData = struct {
+const Demo = struct {
     allocator: std.mem.Allocator,
     editor_content: std.ArrayList(u8),
     log_entries: std.ArrayList([]const u8),
     settings: std.StringHashMap([]const u8),
     calendar: Calendar,
 
-    pub fn init(allocator: std.mem.Allocator) DemoData {
-        return DemoData{
+    pub fn init(allocator: std.mem.Allocator) Demo {
+        return Demo{
             .allocator = allocator,
             .editor_content = std.ArrayList(u8).init(allocator),
             .log_entries = std.ArrayList([]const u8).init(allocator),
@@ -174,7 +174,7 @@ const DemoData = struct {
         };
     }
 
-    pub fn deinit(self: *DemoData) void {
+    pub fn deinit(self: *Demo) void {
         self.editor_content.deinit();
         for (self.log_entries.items) |entry| {
             self.allocator.free(entry);
@@ -190,7 +190,7 @@ const DemoData = struct {
     }
 };
 
-fn initializeTabContent(demo_data: *DemoData, allocator: std.mem.Allocator, caps: term_caps.TerminalCapabilities) !void {
+fn initializeTabContent(demo_data: *Demo, allocator: std.mem.Allocator, caps: term_caps.TerminalCapabilities) !void {
     _ = caps; // Currently unused, but kept for future enhancement
     // Initialize editor content
     try demo_data.editor_content.appendSlice(
@@ -267,7 +267,7 @@ fn initializeTabContent(demo_data: *DemoData, allocator: std.mem.Allocator, caps
     );
 }
 
-fn drawActiveTabContent(demo_data: *DemoData, active_tab: *TabContainer.Tab, allocator: std.mem.Allocator, caps: term_caps.TerminalCapabilities) !void {
+fn drawActiveTabContent(demo_data: *Demo, active_tab: *TabContainer.Tab, allocator: std.mem.Allocator, caps: term_caps.TerminalCapabilities) !void {
     _ = caps; // Currently unused, but kept for future enhancement
     const stdout_writer = std.io.getStdOut().writer();
 
@@ -323,7 +323,7 @@ fn drawOverviewTab(allocator: std.mem.Allocator) !void {
     try section.render(stdout_writer);
 }
 
-fn drawEditorTab(demo_data: *DemoData, allocator: std.mem.Allocator) !void {
+fn drawEditorTab(demo_data: *Demo, allocator: std.mem.Allocator) !void {
     _ = allocator; // Currently unused, but kept for future enhancement
     const stdout_writer = std.io.getStdOut().writer();
 
@@ -398,7 +398,7 @@ fn drawCalendarTab(calendar: *Calendar, allocator: std.mem.Allocator) !void {
     try stdout_writer.print("Space: Select date, T: Today, ESC: Clear selection\n", .{});
 }
 
-fn drawSettingsTab(demo_data: *DemoData, allocator: std.mem.Allocator) !void {
+fn drawSettingsTab(demo_data: *Demo, allocator: std.mem.Allocator) !void {
     _ = allocator; // Currently unused, but kept for future enhancement
     const stdout_writer = std.io.getStdOut().writer();
 
@@ -414,7 +414,7 @@ fn drawSettingsTab(demo_data: *DemoData, allocator: std.mem.Allocator) !void {
     try stdout_writer.print("\nUse ↑↓ arrows to navigate, Enter to edit\n", .{});
 }
 
-fn drawLogsTab(demo_data: *DemoData, allocator: std.mem.Allocator) !void {
+fn drawLogsTab(demo_data: *Demo, allocator: std.mem.Allocator) !void {
     _ = allocator; // Currently unused, but kept for future enhancement
     const stdout_writer = std.io.getStdOut().writer();
 
@@ -468,7 +468,7 @@ fn drawHelpTab(allocator: std.mem.Allocator) !void {
     try stdout_writer.print("Logs tab       - ↑↓ to scroll through entries\n", .{});
 }
 
-fn drawStatusBar(demo_data: *DemoData, tabs: TabContainer, allocator: std.mem.Allocator) !void {
+fn drawStatusBar(demo_data: *Demo, tabs: TabContainer, allocator: std.mem.Allocator) !void {
     _ = demo_data; // Currently unused, but kept for future enhancement
     const stdout_writer = std.io.getStdOut().writer();
 

@@ -1,7 +1,7 @@
 //! Dashboard Framework for All Agents
 //!
 //! Provides a comprehensive dashboard system that integrates with:
-//! - src/shared/tui/components/dashboard/Dashboard.zig
+//! - src/shared/tui/components/dashboard/AdaptiveDashboard.zig
 //! - src/shared/tui/widgets/dashboard/
 //! - src/shared/cli/components/
 //! - src/shared/theme_manager/
@@ -25,7 +25,7 @@ const config = @import("../../core/config.zig");
 const session = @import("../../core/session.zig");
 
 // Shared infrastructure
-const tui_dashboard = @import("../dashboard/Dashboard.zig");
+const tui_dashboard = @import("../dashboard/AdaptiveDashboard.zig");
 const dashboard_widgets = @import("../widgets/dashboard/mod.zig");
 const theme_manager = @import("../../theme_manager/mod.zig");
 const cli_components = @import("../../cli/components/mod.zig");
@@ -391,7 +391,7 @@ pub const AgentDashboard = struct {
     data_store: DashboardDataStore,
 
     // Theme and styling
-    theme_manager: *theme_manager.ThemeManager,
+    theme_manager: *theme_manager.Theme,
     current_theme: *theme_manager.ColorScheme,
 
     // State
@@ -1570,7 +1570,7 @@ pub const DashboardDataStore = struct {
             // Free data based on type
             switch (entry.key_ptr.*) {
                 .activity_log => {
-                    const log_data = @as(*ActivityLogData, @ptrCast(entry.value_ptr.*));
+                    const log_data = @as(*ActivityLog, @ptrCast(entry.value_ptr.*));
                     log_data.entries.deinit();
                     self.allocator.destroy(log_data);
                 },
@@ -1588,7 +1588,7 @@ pub const DashboardDataStore = struct {
         if (self.data.fetchRemove(data_type)) |kv| {
             switch (data_type) {
                 .activity_log => {
-                    const log_data = @as(*ActivityLogData, @ptrCast(kv.value));
+                    const log_data = @as(*ActivityLog, @ptrCast(kv.value));
                     log_data.entries.deinit();
                     self.allocator.destroy(log_data);
                 },
@@ -1610,9 +1610,9 @@ pub const DashboardDataStore = struct {
 
     pub fn addLogEntry(self: *DashboardDataStore, entry: ActivityLogEntry) !void {
         var log_data = if (self.get(.activity_log)) |ptr| blk: {
-            break :blk @as(*ActivityLogData, @ptrCast(ptr));
+            break :blk @as(*ActivityLog, @ptrCast(ptr));
         } else blk: {
-            const new_log_data = try self.allocator.create(ActivityLogData);
+            const new_log_data = try self.allocator.create(ActivityLog);
             new_log_data.* = .{
                 .entries = std.ArrayList(ActivityLogEntry).init(self.allocator),
             };
@@ -1625,7 +1625,7 @@ pub const DashboardDataStore = struct {
 };
 
 /// Activity log data structure
-pub const ActivityLogData = struct {
+pub const ActivityLog = struct {
     entries: std.ArrayList(ActivityLogEntry),
 };
 

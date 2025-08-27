@@ -12,26 +12,23 @@
 //! - Multiple display styles (minimal, detailed, system)
 
 const std = @import("std");
-const shared = @import("../mod.zig");
-const components = shared.components;
 const term_shared = @import("term_shared");
 const unified = term_shared.unified;
 const terminal_bridge = @import("./core/terminal_bridge.zig");
-const components_shared = @import("./components/mod.zig");
-const notification = components_shared.notification;
+const components = @import("components_shared");
 const presenters = @import("presenters/mod.zig");
 
-// Re-export base types for convenience
-pub const NotificationType = notification.NotificationType;
-pub const NotificationConfig = notification.NotificationConfig;
-pub const NotificationAction = notification.NotificationAction;
-pub const BaseNotification = notification.BaseNotification;
-pub const NotificationUtils = notification.NotificationUtils;
-pub const ColorScheme = notification.ColorScheme;
-pub const SoundPattern = notification.SoundPattern;
+// Re-export base types for convenience (alias to shared components)
+pub const NotificationType = components.NotificationType;
+pub const NotificationConfig = components.NotificationConfiguration;
+pub const NotificationAction = components.NotificationAction;
+pub const BaseNotification = components.Notification;
+pub const NotificationUtils = components.NotificationUtils;
+pub const ColorScheme = components.ColorScheme;
+pub const SoundPattern = components.SoundPattern;
 
 /// Main CLI notification manager combining all CLI notification features
-pub const NotificationManager = struct {
+pub const Notification = struct {
     const Self = @This();
 
     bridge: *terminal_bridge.TerminalBridge,
@@ -80,7 +77,7 @@ pub const NotificationManager = struct {
 
         // Try system notification first if enabled and supported
         if (self.config.enableSystemNotifications and caps.supportsNotifyOsc9) {
-            try notification.SystemNotification.sendFromBase(
+            try components.SystemNotification.sendFromBase(
                 self.bridge.writer(),
                 self.bridge.allocator,
                 caps,
@@ -110,7 +107,7 @@ pub const NotificationManager = struct {
 
         // Try system notification first if enabled and supported
         if (self.config.enableSystemNotifications and caps.supportsNotifyOsc9) {
-            try notification.SystemNotification.sendFromBase(
+            try components.SystemNotification.sendFromBase(
                 self.bridge.writer(),
                 self.bridge.allocator,
                 caps,
@@ -147,7 +144,7 @@ pub const NotificationManager = struct {
                 try self.bridge.allocator.dupe(u8, title);
             defer self.bridge.allocator.free(combined_message);
 
-            try notification.SystemNotification.send(
+            try components.SystemNotification.send(
                 self.bridge.writer(),
                 self.bridge.allocator,
                 caps,
@@ -227,7 +224,7 @@ pub const NotificationManager = struct {
         const total_width = content_width + 4; // Account for borders
 
         // Save cursor position and render notification
-        var render_ctx = try self.bridge.createRenderContext();
+        var render_ctx = try self.bridge.createRender();
         defer render_ctx.deinit();
 
         try self.renderNotificationBox(base_notif, actions, box_style, content_width, total_width, strategy);
@@ -273,7 +270,7 @@ pub const NotificationManager = struct {
     fn createBoxStyle(self: *Self, notification_type: NotificationType, strategy: terminal_bridge.RenderStrategy) BoxStyle {
         _ = self;
 
-        const color_scheme = notification.ColorScheme.getStandard(notification_type);
+        const color_scheme = ColorScheme.getStandard(notification_type);
 
         return BoxStyle{
             .border_color = color_scheme.border,
@@ -585,15 +582,11 @@ pub const NotificationManager = struct {
 /// Thin wrapper: display a base notification via CLI presenter
 pub fn displaySimple(
     allocator: std.mem.Allocator,
-    n: *const notification.BaseNotification,
+    n: *const BaseNotification,
     use_unicode: bool,
 ) !void {
-    // Map BaseNotification to shared Notification structure if types are aligned
-    // The BaseNotification is compatible with components/notification.Notification fields
-    // We cast through pointer to avoid copy; safe if layout matches. Safer: reconstruct.
-    const SharedNotification = shared.components.Notification;
-
-    var reconstructed = SharedNotification{
+    // Reconstruct shared Notification value for the presenter
+    var reconstructed = BaseNotification{
         .title = n.title,
         .message = n.message,
         .notification_type = n.notification_type,
@@ -620,7 +613,7 @@ pub fn displaySimple(
 
 /// Thin wrapper: display progress using CLI presenter
 pub fn displayProgressSimple(
-    data: *const shared.components.ProgressData,
+    data: *const components.Progress,
     width: u32,
 ) !void {
     try presenters.progress.render(data, width);
@@ -665,6 +658,7 @@ pub const NotificationHandler = struct {
     allocator: std.mem.Allocator,
     caps: term_shared.caps.TermCaps,
     activeNotifications: std.ArrayList(BaseNotification),
+    ids: std.ArrayList(u64),
     notificationCounter: u64,
     enableDesktopNotifications: bool,
     enableInlineNotifications: bool,
@@ -676,6 +670,7 @@ pub const NotificationHandler = struct {
             .allocator = allocator,
             .caps = term_shared.caps.getTermCaps(),
             .activeNotifications = std.ArrayList(BaseNotification).init(allocator),
+            .ids = std.ArrayList(u64).init(allocator),
             .notificationCounter = 0,
             .enableDesktopNotifications = true,
             .enableInlineNotifications = true,
@@ -690,6 +685,7 @@ pub const NotificationHandler = struct {
             self.allocator.free(notif.message);
         }
         self.activeNotifications.deinit();
+        self.ids.deinit();
     }
 
     pub fn setWriter(self: *NotificationHandler, writer: *std.Io.Writer) void {
@@ -704,6 +700,7 @@ pub const NotificationHandler = struct {
         message: []const u8,
     ) !u64 {
         self.notificationCounter += 1;
+        const id = self.notificationCounter;
         const notif = BaseNotification.init(
             try self.allocator.dupe(u8, title),
             try self.allocator.dupe(u8, message),
@@ -712,6 +709,7 @@ pub const NotificationHandler = struct {
         );
 
         try self.activeNotifications.append(notif);
+        try self.ids.append(id);
 
         // Try desktop notification first if supported and enabled
         if (self.enableDesktopNotifications and self.caps.supportsNotifications()) {
@@ -723,7 +721,7 @@ pub const NotificationHandler = struct {
             try self.showInlineNotification(notif);
         }
 
-        return notif.id;
+        return id;
     }
 
     /// Send a progress notification
@@ -734,6 +732,7 @@ pub const NotificationHandler = struct {
         progress: f32,
     ) !u64 {
         self.notificationCounter += 1;
+        const id = self.notificationCounter;
         const progress_notification = BaseNotification.init(
             try self.allocator.dupe(u8, title),
             try self.allocator.dupe(u8, message),
@@ -753,190 +752,45 @@ pub const NotificationHandler = struct {
 
         if (!found) {
             try self.activeNotifications.append(progress_notification);
+            try self.ids.append(id);
         }
 
         // Show progress notification
         try self.showProgressNotification(progress_notification);
 
-        return notification.id;
+        // Return the handler's monotonically increasing counter as id
+        return id;
     }
 
-    /// Send desktop notification using OSC 9
+    /// Send desktop notification using shared components (OSC 9 under the hood)
     fn sendDesktopNotification(self: *NotificationHandler, notif: BaseNotification) !void {
         if (self.writer == null) return error.NoWriter;
-
-        const formatted_message = try std.fmt.allocPrint(
-            self.allocator,
-            "{s}: {s}",
-            .{ notif.title, notif.message },
-        );
-        defer self.allocator.free(formatted_message);
-
-        try term_shared.ansi.notification.writeNotification(
+        try components.SystemNotification.send(
             self.writer.?,
             self.allocator,
             self.caps,
-            formatted_message,
+            notif.title,
+            notif.message,
         );
     }
 
-    /// Show inline terminal notification with rich formatting
+    /// Show inline terminal notification using CLI presenter over shared model
     fn showInlineNotification(self: *NotificationHandler, notif: BaseNotification) !void {
-        if (self.writer == null) return;
-        const writer = self.writer.?;
-
-        // Save cursor position and create notification bar
-        try writer.writeAll("\n");
-
-        // Notification type indicator with colors
-        switch (notif.notification_type) {
-            .info => {
-                if (self.caps.supportsTrueColor()) {
-                    try term_shared.ansi.color.setForegroundRgb(writer.*, self.caps, 100, 149, 237);
-                } else {
-                    try term_shared.ansi.color.setForeground256(writer.*, self.caps, 12);
-                }
-                try writer.writeAll("ℹ ");
-            },
-            .success => {
-                if (self.caps.supportsTrueColor()) {
-                    try term_shared.ansi.color.setForegroundRgb(writer.*, self.caps, 50, 205, 50);
-                } else {
-                    try term_shared.ansi.color.setForeground256(writer.*, self.caps, 10);
-                }
-                try writer.writeAll("✓ ");
-            },
-            .warning => {
-                if (self.caps.supportsTrueColor()) {
-                    try term_shared.ansi.color.setForegroundRgb(writer.*, self.caps, 255, 165, 0);
-                } else {
-                    try term_shared.ansi.color.setForeground256(writer.*, self.caps, 11);
-                }
-                try writer.writeAll("⚠ ");
-            },
-            .@"error" => {
-                if (self.caps.supportsTrueColor()) {
-                    try term_shared.ansi.color.setForegroundRgb(writer.*, self.caps, 255, 69, 0);
-                } else {
-                    try term_shared.ansi.color.setForeground256(writer.*, self.caps, 9);
-                }
-                try writer.writeAll("✗ ");
-            },
-            .progress => {
-                if (self.caps.supportsTrueColor()) {
-                    try term_shared.ansi.color.setForegroundRgb(writer.*, self.caps, 255, 215, 0);
-                } else {
-                    try term_shared.ansi.color.setForeground256(writer.*, self.caps, 11);
-                }
-                try writer.writeAll("⧖ ");
-            },
-            .debug => {
-                if (self.caps.supportsTrueColor()) {
-                    try term_shared.ansi.color.setForegroundRgb(writer.*, self.caps, 155, 89, 182);
-                } else {
-                    try term_shared.ansi.color.setForeground256(writer.*, self.caps, 13);
-                }
-                try writer.writeAll("🐛 ");
-            },
-            .critical => {
-                if (self.caps.supportsTrueColor()) {
-                    try term_shared.ansi.color.setForegroundRgb(writer.*, self.caps, 192, 57, 43);
-                } else {
-                    try term_shared.ansi.color.setForeground256(writer.*, self.caps, 9);
-                }
-                try writer.writeAll("🚨 ");
-            },
-        }
-
-        // Title
-        if (self.caps.supportsTrueColor()) {
-            try term_shared.ansi.color.setForegroundRgb(writer.*, self.caps, 255, 255, 255);
-        } else {
-            try term_shared.ansi.color.setForeground256(writer.*, self.caps, 15);
-        }
-        try writer.writeAll(notif.title);
-
-        // Message
-        if (self.caps.supportsTrueColor()) {
-            try term_shared.ansi.color.setForegroundRgb(writer.*, self.caps, 200, 200, 200);
-        } else {
-            try term_shared.ansi.color.setForeground256(writer.*, self.caps, 7);
-        }
-        try writer.print(": {s}", .{notif.message});
-
-        try term_shared.ansi.color.resetStyle(writer.*, self.caps);
-        try writer.writeAll("\n");
+        const use_unicode = self.caps.supportsTrueColor();
+        try displaySimple(self.allocator, &notif, use_unicode);
     }
 
-    /// Show progress notification with progress bar
+    /// Show progress notification by delegating to CLI presenter
     fn showProgressNotification(self: *NotificationHandler, notif: BaseNotification) !void {
-        if (self.writer == null or notif.progress == null) return;
-        const writer = self.writer.?;
-        const progress = notif.progress.?;
-
-        try writer.writeAll("\n");
-
-        // Progress type indicator
-        if (self.caps.supportsTrueColor()) {
-            try term_shared.ansi.color.setForegroundRgb(writer.*, self.caps, 255, 215, 0);
-        } else {
-            try term_shared.ansi.color.setForeground256(writer.*, self.caps, 11);
-        }
-        try writer.writeAll("⧖ ");
-
-        // Title
-        if (self.caps.supportsTrueColor()) {
-            try term_shared.ansi.color.setForegroundRgb(writer.*, self.caps, 255, 255, 255);
-        } else {
-            try term_shared.ansi.color.setForeground256(writer.*, self.caps, 15);
-        }
-        try writer.writeAll(notif.title);
-
-        // Progress bar
-        const barWidth = 30;
-        const filledWidth = @as(usize, @intFromFloat(progress * @as(f32, @floatFromInt(barWidth))));
-
-        try writer.writeAll(" [");
-
-        // Filled portion
-        if (self.caps.supportsTrueColor()) {
-            try term_shared.ansi.color.setForegroundRgb(writer.*, self.caps, 50, 205, 50);
-        } else {
-            try term_shared.ansi.color.setForeground256(writer.*, self.caps, 10);
-        }
-        for (0..filledWidth) |_| {
-            try writer.writeAll("█");
-        }
-
-        // Empty portion
-        if (self.caps.supportsTrueColor()) {
-            try term_shared.ansi.color.setForegroundRgb(writer.*, self.caps, 100, 100, 100);
-        } else {
-            try term_shared.ansi.color.setForeground256(writer.*, self.caps, 8);
-        }
-        for (filledWidth..barWidth) |_| {
-            try writer.writeAll("░");
-        }
-
-        try term_shared.ansi.color.resetStyle(writer.*, self.caps);
-        try writer.print("] {d:.1}%", .{progress * 100.0});
-
-        // Message
-        if (self.caps.supportsTrueColor()) {
-            try term_shared.ansi.color.setForegroundRgb(writer.*, self.caps, 200, 200, 200);
-        } else {
-            try term_shared.ansi.color.setForeground256(writer.*, self.caps, 7);
-        }
-        try writer.print(" - {s}", .{notif.message});
-
-        try term_shared.ansi.color.resetStyle(writer.*, self.caps);
-        try writer.writeAll("\n");
+        if (notif.progress == null) return;
+        const use_unicode = self.caps.supportsTrueColor();
+        try displaySimple(self.allocator, &notif, use_unicode);
     }
 
     /// Update progress for an existing notification
     pub fn updateProgress(self: *NotificationHandler, notificationId: u64, progress_value: f32) !void {
-        for (self.activeNotifications.items, 0..) |*notif, i| {
-            if (notif.id == notificationId and notif.type == .progress) {
+        for (self.ids.items, 0..) |nid, i| {
+            if (nid == notificationId and self.activeNotifications.items[i].notification_type == .progress) {
                 self.activeNotifications.items[i].progress = std.math.clamp(progress_value, 0.0, 1.0);
                 try self.showProgressNotification(self.activeNotifications.items[i]);
                 break;
@@ -946,12 +800,13 @@ pub const NotificationHandler = struct {
 
     /// Complete a progress notification
     pub fn completeProgress(self: *NotificationHandler, notificationId: u64, final_message: []const u8) !void {
-        for (self.activeNotifications.items, 0..) |*notif, i| {
-            if (notif.id == notificationId and notif.type == .progress) {
-                // Convert to success notification
+        for (self.ids.items, 0..) |nid, i| {
+            if (nid == notificationId and self.activeNotifications.items[i].notification_type == .progress) {
+                const title_copy = try self.allocator.dupe(u8, self.activeNotifications.items[i].title);
+                const msg_copy = try self.allocator.dupe(u8, final_message);
                 const success_notification = BaseNotification.init(
-                    try self.allocator.dupe(u8, notif.title),
-                    try self.allocator.dupe(u8, final_message),
+                    title_copy,
+                    msg_copy,
                     .success,
                     .{},
                 );
@@ -959,7 +814,6 @@ pub const NotificationHandler = struct {
                 self.activeNotifications.items[i] = success_notification;
                 try self.showInlineNotification(success_notification);
 
-                // Send desktop notification for completion if enabled
                 if (self.enableDesktopNotifications and self.caps.supportsNotifications()) {
                     try self.sendDesktopNotification(success_notification);
                 }
@@ -970,9 +824,10 @@ pub const NotificationHandler = struct {
 
     /// Remove a notification
     pub fn dismiss(self: *NotificationHandler, notificationId: u64) void {
-        for (self.activeNotifications.items, 0..) |notif, i| {
-            if (notif.id == notificationId) {
+        for (self.ids.items, 0..) |nid, i| {
+            if (nid == notificationId) {
                 _ = self.activeNotifications.swapRemove(i);
+                _ = self.ids.swapRemove(i);
                 break;
             }
         }
@@ -1052,7 +907,7 @@ pub const OperationNotifier = struct {
 /// Convenient preset notification functions
 pub const NotificationPresets = struct {
     /// Show a success notification with copy action
-    pub fn success(notif: *NotificationManager, title: []const u8, message: []const u8, copy_text: ?[]const u8) !void {
+    pub fn success(notif: *Notification, title: []const u8, message: []const u8, copy_text: ?[]const u8) !void {
         if (copy_text) |text| {
             const actions = [_]NotificationAction{
                 .{
@@ -1067,7 +922,7 @@ pub const NotificationPresets = struct {
     }
 
     /// Show an error notification with support link
-    pub fn showError(notif: *NotificationManager, title: []const u8, message: []const u8, support_url: ?[]const u8) !void {
+    pub fn showError(notif: *Notification, title: []const u8, message: []const u8, support_url: ?[]const u8) !void {
         if (support_url) |url| {
             const actions = [_]NotificationAction{
                 .{
@@ -1082,7 +937,7 @@ pub const NotificationPresets = struct {
     }
 
     /// Show an info notification with a clickable link
-    pub fn infoWithLink(notif: *NotificationManager, title: []const u8, message: []const u8, link_text: []const u8, url: []const u8) !void {
+    pub fn infoWithLink(notif: *Notification, title: []const u8, message: []const u8, link_text: []const u8, url: []const u8) !void {
         const actions = [_]NotificationAction{
             .{
                 .label = link_text,
@@ -1093,12 +948,12 @@ pub const NotificationPresets = struct {
     }
 
     /// Show a progress notification
-    pub fn progress(notif: *NotificationManager, title: []const u8, message: []const u8, progress_value: f32) !void {
+    pub fn progress(notif: *Notification, title: []const u8, message: []const u8, progress_value: f32) !void {
         try notif.showProgress(title, message, progress_value);
     }
 
     /// Update progress for an existing notification
-    pub fn updateProgress(notif: *NotificationManager, title: []const u8, message: []const u8, progress_value: f32) !void {
+    pub fn updateProgress(notif: *Notification, title: []const u8, message: []const u8, progress_value: f32) !void {
         try notif.updateProgress(title, message, progress_value);
     }
 };
@@ -1150,7 +1005,7 @@ test "notification manager initialization" {
     defer bridge.deinit();
 
     const notification_config = NotificationConfig{};
-    var manager = try NotificationManager.init(allocator, &bridge, notification_config);
+    var manager = try Notification.init(allocator, &bridge, notification_config);
     defer manager.deinit();
 
     const stats = manager.getStats();

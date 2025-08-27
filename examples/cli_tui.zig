@@ -10,7 +10,7 @@ const demo_widget = @import("src/shared/tui/widgets/demo_widget.zig");
 
 const Allocator = std.mem.Allocator;
 const CLI = cli.CLI;
-const UnifiedRenderer = renderer_mod.UnifiedRenderer;
+const Renderer = renderer_mod.Renderer;
 const Theme = renderer_mod.Theme;
 const Rect = renderer_mod.Rect;
 const Size = renderer_mod.Size;
@@ -63,9 +63,9 @@ fn showUsage() !void {
         \\
         \\Features Demonstrated:
         \\• Progressive enhancement (Kitty → Sixel → Unicode → ASCII)
-        \\• Graphics-enhanced dashboard with real-time data
-        \\• Unified terminal capability detection
-        \\• Advanced progress bars and visualizations
+        \\• Graphics- dashboard with real-time data
+        \\•  terminal capability detection
+        \\•  progress bars and visualizations
         \\• Hyperlinks, clipboard, and notification integration
         \\• Theme system with automatic dark/light mode detection
         \\• Focus management and keyboard/mouse navigation
@@ -93,7 +93,7 @@ fn runCLIDemo(allocator: Allocator, args: [][]const u8) !void {
 fn runTUIDemo(allocator: Allocator) !void {
     // Initialize unified renderer with theme detection
     const theme = if (detectDarkMode()) Theme.defaultDark() else Theme.defaultLight();
-    var renderer = try UnifiedRenderer.init(allocator, theme);
+    var renderer = try Renderer.init(allocator, theme);
     defer renderer.deinit();
 
     // Create demo widgets
@@ -175,7 +175,7 @@ fn runTUIDemo(allocator: Allocator) !void {
     try w.writeAll("The TUI system demonstrated:\n");
     try w.writeAll("• Widget-based architecture with focus management\n");
     try w.writeAll("• Progressive enhancement based on terminal capabilities\n");
-    try w.writeAll("• Unified theme system with automatic detection\n");
+    try w.writeAll("•  theme system with automatic detection\n");
     try w.writeAll("• Layout engine for flexible component positioning\n");
     try terminal.flush();
 }
@@ -207,7 +207,7 @@ fn runIntegratedDemo(allocator: Allocator) !void {
     _ = try stdin.readByte();
 
     // Then run TUI demo to show widget system
-    try stdout.writeAll("\nPhase 2: Unified TUI System\n");
+    try stdout.writeAll("\nPhase 2:  TUI System\n");
     try stdout.writeAll("---------------------------\n");
 
     try runTUIDemo(allocator);
@@ -228,7 +228,7 @@ fn showTUIStartupMessage(terminal: *@import("src/shared/cli/core/unified_termina
 
     try terminal.clearScreen();
     try terminal.setForeground(Color.CYAN);
-    try w.writeAll("🎨 Unified TUI System Starting...\n\n");
+    try w.writeAll("🎨  TUI System Starting...\n\n");
     try terminal.resetStyles();
 
     try w.writeAll("Detected Capabilities:\n");
@@ -281,7 +281,7 @@ test "cli tui demo compilation" {
 
     // Test that our imports work
     const cli_type = @TypeOf(CLI);
-    const renderer_type = @TypeOf(UnifiedRenderer);
+    const renderer_type = @TypeOf(Renderer);
 
     try std.testing.expect(cli_type != void);
     try std.testing.expect(renderer_type != void);

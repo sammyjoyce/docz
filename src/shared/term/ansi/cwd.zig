@@ -32,10 +32,10 @@ fn percentEncodePath(alloc: std.mem.Allocator, path: []const u8) ![]u8 {
     return try out.toOwnedSlice();
 }
 
-fn appendDec(buf: *std.ArrayList(u8), n: u32) !void {
+fn appendDec(buf: *std.ArrayListUnmanaged(u8), alloc: std.mem.Allocator, n: u32) !void {
     var tmp: [10]u8 = undefined;
     const s = try std.fmt.bufPrint(&tmp, "{d}", .{n});
-    try buf.appendSlice(s);
+    try buf.appendSlice(alloc, s);
 }
 
 fn buildOsc7(
@@ -48,15 +48,15 @@ fn buildOsc7(
     defer alloc.free(enc);
     const host_use = if (host.len == 0) seqcfg.cwd.default_host else host;
 
-    var buf = std.ArrayList(u8).init(alloc);
-    errdefer buf.deinit();
-    try buf.appendSlice("\x1b]");
-    try appendDec(&buf, seqcfg.osc.ops.cwd);
-    try buf.appendSlice(";file://");
-    try buf.appendSlice(host_use);
-    try buf.appendSlice(enc);
-    try buf.appendSlice(st);
-    return try buf.toOwnedSlice();
+    var buf = std.ArrayListUnmanaged(u8){};
+    defer buf.deinit(alloc);
+    try buf.appendSlice(alloc, "\x1b]");
+    try appendDec(&buf, alloc, seqcfg.osc.ops.cwd);
+    try buf.appendSlice(alloc, ";file://");
+    try buf.appendSlice(alloc, host_use);
+    try buf.appendSlice(alloc, enc);
+    try buf.appendSlice(alloc, st);
+    return try buf.toOwnedSlice(alloc);
 }
 
 // Emits OSC 7;file://{host}{abs_path} with percent-encoded path.

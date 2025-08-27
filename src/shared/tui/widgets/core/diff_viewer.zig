@@ -11,7 +11,7 @@ const events_mod = @import("../../core/events.zig");
 const tui_mod = @import("../../mod.zig");
 
 const Renderer = renderer_mod.Renderer;
-const RenderContext = renderer_mod.RenderContext;
+const Render = renderer_mod.Render;
 const Bounds = bounds_mod.Bounds;
 const Point = bounds_mod.Point;
 const DiffOp = diff_mod.DiffOp;
@@ -149,7 +149,7 @@ pub const DiffViewer = struct {
     }
 
     /// Render the diff viewer
-    pub fn render(self: *Self, renderer: *Renderer, ctx: RenderContext) !void {
+    pub fn render(self: *Self, renderer: *Renderer, ctx: Render) !void {
         switch (self.config.mode) {
             .side_by_side => try self.renderSideBySide(renderer, ctx),
             .unified => try self.renderUnified(renderer, ctx),
@@ -157,7 +157,7 @@ pub const DiffViewer = struct {
     }
 
     /// Render in side-by-side mode
-    fn renderSideBySide(self: *Self, renderer: *Renderer, ctx: RenderContext) !void {
+    fn renderSideBySide(self: *Self, renderer: *Renderer, ctx: Render) !void {
         const bounds = ctx.bounds;
         const mid_x = bounds.x + bounds.width / 2;
 
@@ -181,7 +181,7 @@ pub const DiffViewer = struct {
         const divider_style = renderer_mod.Style{
             .fg_color = .{ .ansi = 8 }, // Gray divider
         };
-        const divider_ctx = RenderContext{
+        const divider_ctx = Render{
             .bounds = bounds,
             .style = divider_style,
         };
@@ -195,7 +195,7 @@ pub const DiffViewer = struct {
     }
 
     /// Render in unified mode
-    fn renderUnified(self: *Self, renderer: *Renderer, ctx: RenderContext) !void {
+    fn renderUnified(self: *Self, renderer: *Renderer, ctx: Render) !void {
         const bounds = ctx.bounds;
         var current_y = bounds.y;
         const scroll_y = self.state.scroll_offset.y;
@@ -232,7 +232,7 @@ pub const DiffViewer = struct {
                     const line_num_str = try std.fmt.allocPrint(self.allocator, "{d:>4} ", .{line_idx + 1});
                     defer self.allocator.free(line_num_str);
 
-                    const line_num_ctx = RenderContext{
+                    const line_num_ctx = Render{
                         .bounds = .{
                             .x = line_bounds.x,
                             .y = line_bounds.y,
@@ -261,7 +261,7 @@ pub const DiffViewer = struct {
                 const prefixed_line = try std.fmt.allocPrint(self.allocator, "{s}{s}", .{ prefix, line });
                 defer self.allocator.free(prefixed_line);
 
-                const line_ctx = RenderContext{
+                const line_ctx = Render{
                     .bounds = .{
                         .x = line_bounds.x + x_offset,
                         .y = line_bounds.y,
@@ -317,7 +317,7 @@ pub const DiffViewer = struct {
                 const line_num_str = try std.fmt.allocPrint(self.allocator, "{d:>4} ", .{line_idx + 1});
                 defer self.allocator.free(line_num_str);
 
-                const panel_line_num_ctx = RenderContext{
+                const panel_line_num_ctx = Render{
                     .bounds = .{
                         .x = line_bounds.x,
                         .y = line_bounds.y,
@@ -337,7 +337,7 @@ pub const DiffViewer = struct {
             const is_selected = self.state.selected_line != null and self.state.selected_line.? == line_idx;
             const bg_color = if (is_selected) tui_mod.term.unified.Color{ .ansi = 4 } else null; // Blue background for selection
 
-            const panel_line_ctx = RenderContext{
+            const panel_line_ctx = Render{
                 .bounds = .{
                     .x = line_bounds.x + x_offset,
                     .y = line_bounds.y,

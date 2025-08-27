@@ -7,7 +7,7 @@ const std = @import("std");
 const renderer_mod = @import("../renderer.zig");
 
 const Renderer = renderer_mod.Renderer;
-const RenderContext = renderer_mod.RenderContext;
+const Render = renderer_mod.Render;
 const Style = renderer_mod.Style;
 const BoxStyle = renderer_mod.BoxStyle;
 const Image = renderer_mod.Image;
@@ -108,7 +108,7 @@ pub const BasicRenderer = struct {
         }
     }
 
-    fn drawText(impl: *anyopaque, ctx: RenderContext, text: []const u8) anyerror!void {
+    fn drawText(impl: *anyopaque, ctx: Render, text: []const u8) anyerror!void {
         const self: *Self = @ptrCast(@alignCast(impl));
 
         // Apply basic styles
@@ -161,7 +161,7 @@ pub const BasicRenderer = struct {
         return Point{ .x = @as(i32, @intCast(max_width)), .y = @as(i32, @intCast(height)) };
     }
 
-    fn drawBox(impl: *anyopaque, ctx: RenderContext, box_style: BoxStyle) anyerror!void {
+    fn drawBox(impl: *anyopaque, ctx: Render, box_style: BoxStyle) anyerror!void {
         const self: *Self = @ptrCast(@alignCast(impl));
 
         // Fill background with spaces if specified
@@ -175,7 +175,7 @@ pub const BasicRenderer = struct {
         }
     }
 
-    fn drawLine(impl: *anyopaque, ctx: RenderContext, from: Point, to: Point) anyerror!void {
+    fn drawLine(impl: *anyopaque, ctx: Render, from: Point, to: Point) anyerror!void {
         const self: *Self = @ptrCast(@alignCast(impl));
 
         // Apply line style
@@ -215,13 +215,13 @@ pub const BasicRenderer = struct {
         }
     }
 
-    fn fillRect(impl: *anyopaque, ctx: RenderContext, color: Style.Color) anyerror!void {
+    fn fillRect(impl: *anyopaque, ctx: Render, color: Style.Color) anyerror!void {
         const self: *Self = @ptrCast(@alignCast(impl));
         _ = color; // Can't use color in basic mode
         try self.fillRectImpl(ctx);
     }
 
-    fn drawImage(impl: *anyopaque, ctx: RenderContext, image: Image) anyerror!void {
+    fn drawImage(impl: *anyopaque, ctx: Render, image: Image) anyerror!void {
         const self: *Self = @ptrCast(@alignCast(impl));
 
         switch (image.format) {
@@ -380,7 +380,7 @@ pub const BasicRenderer = struct {
         return color;
     }
 
-    fn fillRectImpl(self: *Self, ctx: RenderContext) !void {
+    fn fillRectImpl(self: *Self, ctx: Render) !void {
         var y = ctx.bounds.y;
         while (y < ctx.bounds.y + @as(i32, @intCast(ctx.bounds.height))) : (y += 1) {
             try self.setCursor(@intCast(y), @intCast(ctx.bounds.x));
@@ -392,7 +392,7 @@ pub const BasicRenderer = struct {
         }
     }
 
-    fn drawBasicBorder(self: *Self, ctx: RenderContext, border: BoxStyle.BorderStyle) !void {
+    fn drawBasicBorder(self: *Self, ctx: Render, border: BoxStyle.BorderStyle) !void {
         // Use simple ASCII characters for borders
         _ = border.style; // All styles look the same in basic mode
         _ = border.color; // Can't use color in basic mode

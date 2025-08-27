@@ -5,7 +5,7 @@ const std = @import("std");
 const print = std.debug.print;
 const tui = @import("../src/tui/mod.zig");
 
-/// Demo of enhanced CLI formatter capabilities
+/// Demo of  CLI formatter capabilities
 pub const CliFormatterDemo = struct {
     pub fn demonstrateEnhancements() void {
         print("\n");
@@ -60,7 +60,7 @@ pub const CliFormatterDemo = struct {
     fn showTerminalIntegration() void {
         print("\x1b[1m🔗 TERMINAL INTEGRATION FEATURES:\x1b[0m\n\n");
 
-        // Demonstrate advanced terminal features
+        // Demonstrate  terminal features
         print("  \x1b[38;2;108;117;125m📋 Clipboard Integration:\x1b[0m OSC 52 sequences for copy/paste\n");
         print("  \x1b[38;2;108;117;125m🔗 Hyperlink Support:\x1b[0m OSC 8 clickable links in help text\n");
         print("  \x1b[38;2;108;117;125m📢 Notifications:\x1b[0m OSC 9 desktop alerts for completion\n");
@@ -77,7 +77,7 @@ pub const CliFormatterDemo = struct {
 
         const features = [_][]const u8{
             "",
-            "✅ Created enhanced CLI formatter with terminal capability detection",
+            "✅ Created  CLI formatter with terminal capability detection",
             "✅ Added adaptive 24-bit RGB colors with ANSI fallbacks",
             "✅ Integrated TUI layout system for structured output",
             "✅ Added support for OSC sequences (clipboard, hyperlinks, notifications)",
@@ -87,7 +87,7 @@ pub const CliFormatterDemo = struct {
             "",
             "• Rich visual feedback improves user experience",
             "• Graceful degradation ensures compatibility",
-            "• Terminal integration enables advanced workflows",
+            "• Terminal integration enables  workflows",
             "• Structured layout makes information easier to parse",
             "",
         };

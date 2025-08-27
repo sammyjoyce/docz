@@ -5,7 +5,7 @@ const std = @import("std");
 const tui_mod = @import("../../mod.zig");
 const term_caps = tui_mod.term;
 const term_graphics = tui_mod.term.ansi.graphics;
-const term_cursor = tui_mod.term.ansi.cursor;
+const term_cursor = tui_mod.term.cursor;
 const bounds_mod = @import("../../core/bounds.zig");
 
 pub const GraphicsError = error{

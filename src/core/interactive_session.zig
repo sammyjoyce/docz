@@ -9,7 +9,7 @@ const term = @import("../shared/term/mod.zig");
 /// Main session browser interface with rich TUI features
 pub const SessionBrowser = struct {
     allocator: Allocator,
-    session_manager: *session.SessionManager,
+    session_manager: *session.Session,
     terminal: term.Terminal,
     current_view: ViewType = .list,
     selected_session: ?[]const u8 = null,
@@ -25,7 +25,7 @@ pub const SessionBrowser = struct {
     };
 
     /// Initialize the session browser
-    pub fn init(allocator: Allocator, session_manager: *session.SessionManager) !SessionBrowser {
+    pub fn init(allocator: Allocator, session_manager: *session.Session) !SessionBrowser {
         return SessionBrowser{
             .allocator = allocator,
             .session_manager = session_manager,
@@ -283,7 +283,7 @@ pub const SessionBrowser = struct {
 };
 
 /// Helper function to create and run session browser
-pub fn runSessionBrowser(allocator: Allocator, session_manager: *session.SessionManager) !void {
+pub fn runSessionBrowser(allocator: Allocator, session_manager: *session.Session) !void {
     var browser = try SessionBrowser.init(allocator, session_manager);
     defer browser.deinit();
     try browser.run();

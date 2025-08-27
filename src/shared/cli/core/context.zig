@@ -5,7 +5,8 @@
 const std = @import("std");
 const term = @import("term_shared");
 const ansi_clipboard = term.ansi.clipboard;
-const ansi_notification = term.ansi.notification;
+const components = @import("components_shared");
+const presenters = @import("../presenters/mod.zig");
 const ansi_graphics = term.ansi.graphics;
 const ansi_hyperlink = term.ansi.hyperlink;
 const types = @import("types.zig");
@@ -75,27 +76,41 @@ pub const Notification = struct {
         };
     }
 
-    pub fn send(self: *Notification, notification: NotificationData) !void {
+    pub fn send(self: *Notification, n: NotificationData) !void {
         if (!self.enabled) return;
 
-        if (self.capabilities.notifications) {
-            // Use system notifications via OSC sequences
-            try ansi_notification.writeNotification(self.terminal.writer, self.allocator, self.termCaps, notification.body orelse notification.title);
-        } else {
-            // Fallback to formatted terminal output
-            const level_prefix = switch (notification.level) {
-                .info => "ℹ",
-                .success => "✓",
-                .warning => "⚠",
-                .err => "✗",
-            };
+        // Build shared Notification model
+        const config = components.NotificationConfiguration{
+            .enableSystemNotifications = true,
+            .enableSound = n.sound,
+            .autoDismissMs = if (n.duration) |d| @as(u32, d * 1000) else null,
+            .showTimestamp = true,
+            .showIcons = true,
+        };
+        var model = components.Notification.init(
+            n.title,
+            n.body orelse n.title,
+            switch (n.level) {
+                .info => .info,
+                .success => .success,
+                .warning => .warning,
+                .err => .@"error",
+            },
+            config,
+        );
 
-            if (notification.body) |body| {
-                try self.terminal.printf("{s} {s}: {s}\n", .{ level_prefix, notification.title, body }, null);
-            } else {
-                try self.terminal.printf("{s} {s}\n", .{ level_prefix, notification.title }, null);
-            }
+        // Try system notification via components (OSC 9 under the hood)
+        if (self.capabilities.notifications) {
+            components.SystemNotification.sendFromBase(
+                self.terminal.writer,
+                self.allocator,
+                self.termCaps,
+                &model,
+            ) catch {};
         }
+
+        // Always display inline as a fallback
+        try presenters.notification.display(self.allocator, &model, self.capabilities.truecolor);
     }
 };
 
@@ -118,25 +133,11 @@ pub const Graphics = struct {
     }
 
     pub fn showProgress(self: *Graphics, progress: f32) !void {
-        if (self.capabilities.graphics) {
-            // Use advanced graphics for progress (charts, graphics)
-            // For now, fall back to ASCII since renderProgressBar doesn't exist
-            // TODO: Implement proper graphics progress bar
-        }
-
-        // ASCII progress bar
-        const width = 40;
-        const filled = @as(usize, @intFromFloat(progress * @as(f32, @floatFromInt(width))));
-
-        try self.terminal.printf("[", .{}, null);
-        for (0..width) |i| {
-            if (i < filled) {
-                try self.terminal.printf("█", .{}, null);
-            } else {
-                try self.terminal.printf("░", .{}, null);
-            }
-        }
-        try self.terminal.printf("] {d:.1}%\r", .{progress * 100}, null);
+        // Render via shared progress presenter
+        var data = components.Progress.init(self.allocator);
+        defer data.deinit();
+        try data.setProgress(std.math.clamp(progress, 0.0, 1.0));
+        try presenters.progress.render(&data, 40);
     }
 };
 

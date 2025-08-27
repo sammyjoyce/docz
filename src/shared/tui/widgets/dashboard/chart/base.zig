@@ -8,7 +8,7 @@ const bounds_mod = @import("../../../core/bounds.zig");
 
 pub const Bounds = bounds_mod.Bounds;
 pub const Point = bounds_mod.Point;
-pub const RenderContext = renderer_mod.RenderContext;
+pub const Render = renderer_mod.Render;
 pub const Renderer = renderer_mod.Renderer;
 
 pub const ChartError = error{

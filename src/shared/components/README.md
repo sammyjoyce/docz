@@ -11,7 +11,7 @@ This directory contains a progress bar implementation that eliminates duplicatio
 
 ### Key Features
 
-1. **Unified Data Model**: `ProgressData` struct handles all progress state
+1. **Unified Data Model**: `Progress` struct handles all progress state
 2. **Style Enumeration**: `ProgressStyle` enum for different visual styles
 3. **Adaptive Rendering**: Automatic fallback based on terminal capabilities
 4. **Extensible Design**: Easy to add new styles without modifying existing code
@@ -52,14 +52,13 @@ The following adapters maintain backward compatibility:
 
 ```zig
 const progress = @import("components/mod.zig");
-const ProgressData = progress.ProgressData;
+const Progress = progress.Progress;
 const StyleRenderer = progress.StyleRenderer;
 
 // Create progress data
-var data = ProgressData{
-    .label = "Processing",
-    .show_percentage = true,
-};
+var data = Progress.init(allocator);
+data.label = "Processing";
+data.show_percentage = true;
 
 // Update progress
 data.setProgress(0.75);

@@ -299,8 +299,8 @@ pub const PtyInstance = struct {
 
             // Close ConPTY handle on Windows
             if (builtin.target.os.tag == .windows) {
-                const conpty_handle = @as(HPCON, @ptrCast(proc.thread_handle));
-                ClosePseudoConsole(conpty_handle);
+                const conptyHandle = @as(HPCON, @ptrCast(proc.thread_handle));
+                ClosePseudoConsole(conptyHandle);
             }
         }
 
@@ -413,50 +413,50 @@ pub const PtyInstance = struct {
         }
 
         // Get the ConPTY handle from the stored process
-        const conpty_handle = @as(HPCON, @ptrCast(self.process.?.thread_handle));
+        const conptyHandle = @as(HPCON, @ptrCast(self.process.?.thread_handle));
 
         // Build command line
-        var cmd_line = std.ArrayList(u16).init(self.allocator);
-        defer cmd_line.deinit();
+        var cmdLine = std.ArrayList(u16).init(self.allocator);
+        defer cmdLine.deinit();
 
         for (argv, 0..) |arg, i| {
             if (i > 0) {
-                try cmd_line.append(' ');
+                try cmdLine.append(' ');
             }
             // Simple quoting - in a real implementation you'd want proper shell quoting
             if (std.mem.indexOfAny(u8, arg, " \t\"") != null) {
-                try cmd_line.append('"');
+                try cmdLine.append('"');
                 for (arg) |c| {
                     if (c == '"') {
-                        try cmd_line.appendSlice(&[_]u16{ '"', '"' });
+                        try cmdLine.appendSlice(&[_]u16{ '"', '"' });
                     } else {
-                        try cmd_line.append(c);
+                        try cmdLine.append(c);
                     }
                 }
-                try cmd_line.append('"');
+                try cmdLine.append('"');
             } else {
                 for (arg) |c| {
-                    try cmd_line.append(c);
+                    try cmdLine.append(c);
                 }
             }
         }
-        try cmd_line.append(0); // Null terminator
+        try cmdLine.append(0); // Null terminator
 
         // Prepare startup info
-        var startup_info: windows.STARTUPINFOW = undefined;
-        std.mem.set(u8, std.mem.asBytes(&startup_info), 0);
-        startup_info.cb = @sizeOf(windows.STARTUPINFOW);
-        startup_info.dwFlags |= windows.STARTF_USESTDHANDLES;
-        startup_info.hStdInput = self.slave_fd; // This should be the input pipe
-        startup_info.hStdOutput = self.master_fd; // This should be the output pipe
-        startup_info.hStdError = self.master_fd; // Same as stdout for now
-        startup_info.dwFlags |= windows.STARTF_USESHOWWINDOW;
-        startup_info.wShowWindow = windows.SW_HIDE;
+        var startupInfo: windows.STARTUPINFOW = undefined;
+        std.mem.set(u8, std.mem.asBytes(&startupInfo), 0);
+        startupInfo.cb = @sizeOf(windows.STARTUPINFOW);
+        startupInfo.dwFlags |= windows.STARTF_USESTDHANDLES;
+        startupInfo.hStdInput = self.slave_fd; // This should be the input pipe
+        startupInfo.hStdOutput = self.master_fd; // This should be the output pipe
+        startupInfo.hStdError = self.master_fd; // Same as stdout for now
+        startupInfo.dwFlags |= windows.STARTF_USESHOWWINDOW;
+        startupInfo.wShowWindow = windows.SW_HIDE;
 
         // Set up ConPTY in startup info
-        startup_info.lpAttributeList = @ptrCast(conpty_handle);
+        startupInfo.lpAttributeList = @ptrCast(conptyHandle);
 
-        var process_info: windows.PROCESS_INFORMATION = undefined;
+        var processInfo: windows.PROCESS_INFORMATION = undefined;
 
         // Create the process
         const cwd_utf16 = if (options.cwd) |cwd| blk: {
@@ -467,15 +467,15 @@ pub const PtyInstance = struct {
 
         const success = CreateProcessW(
             null, // lpApplicationName
-            cmd_line.items.ptr, // lpCommandLine
+            cmdLine.items.ptr, // lpCommandLine
             null, // lpProcessAttributes
             null, // lpThreadAttributes
             windows.TRUE, // bInheritHandles
             windows.CREATE_UNICODE_ENVIRONMENT | windows.EXTENDED_STARTUPINFO_PRESENT, // dwCreationFlags
             null, // lpEnvironment
             cwd_utf16, // lpCurrentDirectory
-            &startup_info, // lpStartupInfo
-            &process_info, // lpProcessInformation
+            &startupInfo, // lpStartupInfo
+            &processInfo, // lpProcessInformation
         );
 
         if (success == 0) {
@@ -484,7 +484,7 @@ pub const PtyInstance = struct {
 
         // Update process information
         self.process = std.process.Child{
-            .id = @intCast(process_info.dwProcessId),
+            .id = @intCast(processInfo.dwProcessId),
             .allocator = self.allocator,
             .argv = argv,
             .stdin_behavior = .Ignore,
@@ -493,7 +493,7 @@ pub const PtyInstance = struct {
             .stdin = null,
             .stdout = null,
             .stderr = null,
-            .thread_handle = process_info.hThread,
+            .thread_handle = processInfo.hThread,
             .err_pipe = null,
             .term = null,
             .cwd_dir = null,
@@ -507,7 +507,7 @@ pub const PtyInstance = struct {
         };
 
         // Close the process handle we don't need
-        kernel32.CloseHandle(process_info.hProcess);
+        kernel32.CloseHandle(processInfo.hProcess);
     }
 
     /// Read data from PTY master
@@ -569,11 +569,11 @@ pub const PtyInstance = struct {
     /// Resize Windows ConPTY window
     fn resizeWindows(self: *PtyInstance, rows: u16, cols: u16) PtyInstanceError!void {
         if (self.process) |proc| {
-            const conpty_handle = @as(HPCON, @ptrCast(proc.thread_handle));
+            const conptyHandle = @as(HPCON, @ptrCast(proc.thread_handle));
             var size: COORD = undefined;
             size.X = @as(i16, @intCast(cols));
             size.Y = @as(i16, @intCast(rows));
-            const hr = ResizePseudoConsole(conpty_handle, size);
+            const hr = ResizePseudoConsole(conptyHandle, size);
             if (hr < 0) {
                 return PtyInstanceError.SystemError;
             }
@@ -762,7 +762,7 @@ pub const WindowsPtyInstance = struct {
             .stdin = null,
             .stdout = null,
             .stderr = null,
-            .thread_handle = result.conpty_handle,
+            .thread_handle = result.conptyHandle,
             .err_pipe = null,
             .term = null,
             .cwd_dir = null,
@@ -851,27 +851,27 @@ fn createConPtyInstancePair(allocator: std.mem.Allocator, options: PtyInstanceOp
     master_fd: posix.fd_t,
     slave_fd: posix.fd_t,
     slave_path: []u8,
-    conpty_handle: HANDLE,
+    conptyHandle: HANDLE,
 } {
     // Create pipes for stdin, stdout, stderr
-    var input_read: HANDLE = undefined;
-    var input_write: HANDLE = undefined;
-    var output_read: HANDLE = undefined;
-    var output_write: HANDLE = undefined;
+    var inputRead: HANDLE = undefined;
+    var inputWrite: HANDLE = undefined;
+    var outputRead: HANDLE = undefined;
+    var outputWrite: HANDLE = undefined;
 
     // Create input pipe (stdin for child process)
-    if (CreatePipe(&input_read, &input_write, null, 0) == 0) {
+    if (CreatePipe(&inputRead, &inputWrite, null, 0) == 0) {
         return error.AccessDenied;
     }
-    errdefer kernel32.CloseHandle(input_read);
-    errdefer kernel32.CloseHandle(input_write);
+    errdefer kernel32.CloseHandle(inputRead);
+    errdefer kernel32.CloseHandle(inputWrite);
 
     // Create output pipe (stdout for child process)
-    if (CreatePipe(&output_read, &output_write, null, 0) == 0) {
+    if (CreatePipe(&outputRead, &outputWrite, null, 0) == 0) {
         return error.AccessDenied;
     }
-    errdefer kernel32.CloseHandle(output_read);
-    errdefer kernel32.CloseHandle(output_write);
+    errdefer kernel32.CloseHandle(outputRead);
+    errdefer kernel32.CloseHandle(outputWrite);
 
     // Create ConPTY
     const size = COORD{
@@ -879,18 +879,18 @@ fn createConPtyInstancePair(allocator: std.mem.Allocator, options: PtyInstanceOp
         .Y = @intCast(options.rows),
     };
 
-    var conpty_handle: HPCON = undefined;
-    const hr = CreatePseudoConsole(size, input_read, output_write, 0, &conpty_handle);
+    var conptyHandle: HPCON = undefined;
+    const hr = CreatePseudoConsole(size, inputRead, outputWrite, 0, &conptyHandle);
     if (hr < 0) {
         return error.CreateFailed;
     }
-    errdefer ClosePseudoConsole(conpty_handle);
+    errdefer ClosePseudoConsole(conptyHandle);
 
     // Convert Windows handles to file descriptors for compatibility
     // Note: This is a simplified approach. In a real implementation,
     // you might want to use different strategies for handle management
-    const master_fd = @as(posix.fd_t, @bitCast(@as(isize, @intFromPtr(output_read))));
-    const slave_fd = @as(posix.fd_t, @bitCast(@as(isize, @intFromPtr(input_write))));
+    const master_fd = @as(posix.fd_t, @bitCast(@as(isize, @intFromPtr(outputRead))));
+    const slave_fd = @as(posix.fd_t, @bitCast(@as(isize, @intFromPtr(inputWrite))));
 
     // Create a virtual slave path for compatibility
     const slave_path = try std.fmt.allocPrint(allocator, "\\\\.\\pipe\\conpty-{d}", .{std.crypto.random.int(u64)});
@@ -899,7 +899,7 @@ fn createConPtyInstancePair(allocator: std.mem.Allocator, options: PtyInstanceOp
         .master_fd = master_fd,
         .slave_fd = slave_fd,
         .slave_path = slave_path,
-        .conpty_handle = @as(HANDLE, @ptrCast(conpty_handle)),
+        .conptyHandle = @as(HANDLE, @ptrCast(conptyHandle)),
     };
 }
 

@@ -30,7 +30,7 @@ pub fn hardwrap(alloc: std.mem.Allocator, s: []const u8, limit: usize, preserve_
 
     var i: usize = 0;
     var linew: usize = 0;
-    var new_line_forced = false;
+    var newLineForced = false;
 
     while (i < s.len) {
         const esc = skipAnsiAt(s, i);
@@ -43,7 +43,7 @@ pub fn hardwrap(alloc: std.mem.Allocator, s: []const u8, limit: usize, preserve_
         if (s[i] == '\n') {
             try out.append('\n');
             linew = 0;
-            new_line_forced = false;
+            newLineForced = false;
             i += 1;
             continue;
         }
@@ -53,7 +53,7 @@ pub fn hardwrap(alloc: std.mem.Allocator, s: []const u8, limit: usize, preserve_
         if (linew + w > limit) {
             try out.append('\n');
             linew = 0;
-            new_line_forced = true;
+            newLineForced = true;
         }
         if (!preserve_space and linew == 0 and dec.n == 1) {
             const ch = s[i];
@@ -62,13 +62,13 @@ pub fn hardwrap(alloc: std.mem.Allocator, s: []const u8, limit: usize, preserve_
                 continue;
             }
         }
-        if (linew == 0 and new_line_forced and dec.n == 1) {
+        if (linew == 0 and newLineForced and dec.n == 1) {
             const ch = s[i];
             if (ch == ' ' or ch == '\t') {
                 i += 1;
                 continue;
             }
-            new_line_forced = false;
+            newLineForced = false;
         }
         try out.appendSlice(s[i .. i + dec.n]);
         linew += w;

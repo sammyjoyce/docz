@@ -3,6 +3,9 @@
 
 const std = @import("std");
 
+// Export hyperlink utilities
+pub const hyperlinks = @import("hyperlinks.zig");
+
 // For now, provide basic utilities
 pub fn printVersion() void {
     var stdout_buffer: [4096]u8 = undefined;

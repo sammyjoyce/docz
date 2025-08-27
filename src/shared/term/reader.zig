@@ -12,7 +12,7 @@ pub const Reader = struct {
     /// Initialize the global reader
     pub fn init() void {
         reader = Reader{
-            .stdin = std.io.getStdIn().reader(),
+            .stdin = std.io.getStdIn().deprecatedReader(),
         };
     }
 

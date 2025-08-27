@@ -1,6 +1,6 @@
 //! Improved Interactive Session for Markdown Agent
 //!
-//! An enhanced interactive session that provides a significantly improved user experience
+//! An interactive session that provides a significantly better user experience
 //! with progressive disclosure, interactive tool discovery, contextual help, and workflow automation.
 //!
 //! ## Key UX Improvements
@@ -38,7 +38,7 @@
 //! - **Batch operations**: Apply operations to multiple files or sections
 //! - **Workflow sharing**: Save and share custom workflows
 //!
-//! ### 6. Enhanced Visual Feedback
+//! ### 6. Visual Feedback
 //! - **Real-time previews**: See changes instantly as you type
 //! - **Progress indicators**: Clear feedback for long-running operations
 //! - **Status animations**: Smooth transitions and loading states
@@ -47,15 +47,15 @@
 //!
 //! ## Architecture
 //!
-//! The improved session builds upon the existing InteractiveSession and integrates
+//! The session builds upon the existing InteractiveSession and integrates
 //! with advanced TUI components, notification systems, and workflow automation.
 //!
 //! Key components:
-//! - **ImprovedInteractiveSession** - Main session controller with UX enhancements
+//! - **InteractiveSession** - Main session controller with UX enhancements
 //! - **OnboardingWizard** - Progressive disclosure onboarding system
 //! - **ToolDiscoveryGrid** - Visual tool discovery with grid layout
 //! - **ContextualHelpSystem** - Adaptive help that responds to user context
-//! - **UnifiedCommandPalette** - Advanced command palette with fuzzy search
+//! - **UnifiedCommandPalette** - Command palette with fuzzy search
 //! - **WorkflowAutomation** - Template and custom workflow management
 //! - **VisualFeedbackSystem** - Comprehensive visual feedback and animations
 
@@ -75,14 +75,14 @@ const theme_manager = @import("../../src/shared/theme_manager/mod.zig");
 const render = @import("render_shared");
 const components = @import("components_shared");
 
-// Advanced TUI components
+// TUI components
 const dashboard = @import("../../src/shared/tui/components/dashboard/mod.zig");
 const command_palette = @import("../../src/shared/tui/components/command_palette.zig");
 const notification_system = @import("../../src/shared/tui/notifications.zig");
 const progress_tracker = @import("../../src/shared/tui/components/progress_tracker.zig");
 const modal = @import("../../src/shared/tui/widgets/modal.zig");
 
-// Enhanced UI components
+// UI components
 const smart_input = @import("../../src/shared/components/smart_input.zig");
 const split_pane = @import("../../src/shared/tui/widgets/core/split_pane.zig");
 const file_tree = @import("../../src/shared/tui/widgets/core/file_tree.zig");
@@ -103,8 +103,8 @@ const table = @import("common/table.zig");
 const template = @import("common/template.zig");
 const text_utils = @import("common/text.zig");
 
-/// Improved Interactive Session Configuration
-pub const ImprovedSessionConfig = struct {
+/// Interactive Session Configuration
+pub const SessionConfig = struct {
     /// Base agent configuration
     base_config: agent_interface.Config,
 
@@ -139,7 +139,7 @@ pub const ImprovedSessionConfig = struct {
     metrics_config: MetricsConfig = .{},
 
     /// Session management
-    session_config: SessionConfig = .{},
+    session_config: SessionManagementConfig = .{},
 
     /// Input handling
     input_config: InputConfig = .{},
@@ -558,8 +558,8 @@ pub const MetricsConfig = struct {
     show_complexity: bool = true,
 };
 
-/// Session configuration
-pub const SessionConfig = struct {
+/// Session management configuration
+pub const SessionManagementConfig = struct {
     /// Enable session saving
     enable_session_save: bool = true,
 
@@ -713,8 +713,8 @@ pub const AccessibilityConfig = struct {
     skip_links: bool = true,
 };
 
-/// Improved Interactive Session
-pub const ImprovedInteractiveSession = struct {
+/// Interactive Session
+pub const InteractiveSession = struct {
     /// Memory allocator
     allocator: Allocator,
 
@@ -722,10 +722,10 @@ pub const ImprovedInteractiveSession = struct {
     agent: *agent_interface.Agent,
 
     /// Session configuration
-    config: ImprovedSessionConfig,
+    config: SessionConfig,
 
     /// Enhanced markdown editor
-    editor: *enhanced_editor.EnhancedMarkdownEditor,
+    editor: *enhanced_editor.MarkdownEditor,
 
     /// Dashboard instance
     dashboard: *dashboard.Dashboard,
@@ -780,17 +780,17 @@ pub const ImprovedInteractiveSession = struct {
 
     const Self = @This();
 
-    /// Initialize the improved interactive session
+    /// Initialize the interactive session
     pub fn init(
         allocator: Allocator,
         agent: *agent_interface.Agent,
-        session_config: ImprovedSessionConfig,
+        session_config: SessionConfig,
     ) !*Self {
         var self = try allocator.create(Self);
         errdefer allocator.destroy(self);
 
         // Initialize components
-        const editor = try enhanced_editor.EnhancedMarkdownEditor.init(allocator, agent, session_config.base_config);
+        const editor = try enhanced_editor.MarkdownEditor.init(allocator, agent, session_config.base_config);
         errdefer editor.deinit();
 
         const dashboard_instance = try dashboard.Dashboard.init(allocator, .{
@@ -1986,7 +1986,7 @@ pub const ToolInfo = struct {
     category: ToolCategory,
     icon: []const u8,
     usage_count: u64,
-    action: *const fn (*ImprovedInteractiveSession) anyerror!void,
+    action: *const fn (*InteractiveSession) anyerror!void,
 };
 
 /// Layout manager for multi-pane interface
@@ -2366,12 +2366,12 @@ pub const OutlineItem = struct {
 /// Version history viewer with diff capabilities
 pub const VersionHistoryViewer = struct {
     allocator: Allocator,
-    config: SessionConfig,
+    config: SessionManagementConfig,
     versions: std.ArrayList(DocumentVersion),
     last_version: u64 = 0,
     last_backup_time: i64 = 0,
 
-    pub fn init(allocator: Allocator, session_config: SessionConfig) !*VersionHistoryViewer {
+    pub fn init(allocator: Allocator, session_config: SessionManagementConfig) !*VersionHistoryViewer {
         const self = try allocator.create(VersionHistoryViewer);
         self.* = .{
             .allocator = allocator,
@@ -2452,13 +2452,13 @@ pub const OnboardingWizard = struct {
         self.allocator.destroy(self);
     }
 
-    pub fn startOnboarding(self: *OnboardingWizard, session: *ImprovedInteractiveSession) !void {
+    pub fn startOnboarding(self: *OnboardingWizard, session: *InteractiveSession) !void {
         // Implementation here...
         _ = self;
         _ = session;
     }
 
-    pub fn startTutorial(self: *OnboardingWizard, session: *ImprovedInteractiveSession) !void {
+    pub fn startTutorial(self: *OnboardingWizard, session: *InteractiveSession) !void {
         // Implementation here...
         _ = self;
         _ = session;
@@ -2812,34 +2812,34 @@ pub const ImprovedExitScreen = struct {
 };
 
 /// Tool action functions
-fn contentEditorAction(session: *ImprovedInteractiveSession) !void {
+fn contentEditorAction(session: *InteractiveSession) !void {
     // Implementation here...
     _ = session;
 }
 
-fn tableFormatterAction(session: *ImprovedInteractiveSession) !void {
+fn tableFormatterAction(session: *InteractiveSession) !void {
     // Implementation here...
     _ = session;
 }
 
-fn linkValidatorAction(session: *ImprovedInteractiveSession) !void {
+fn linkValidatorAction(session: *InteractiveSession) !void {
     // Implementation here...
     _ = session;
 }
 
-fn documentTransformerAction(session: *ImprovedInteractiveSession) !void {
+fn documentTransformerAction(session: *InteractiveSession) !void {
     // Implementation here...
     _ = session;
 }
 
-fn workflowRecorderAction(session: *ImprovedInteractiveSession) !void {
+fn workflowRecorderAction(session: *InteractiveSession) !void {
     // Implementation here...
     _ = session;
 }
 
-/// Public API for creating and running the improved interactive session
-pub fn runImprovedInteractiveSession(allocator: std.mem.Allocator, agent: *agent_interface.Agent) !void {
-    const session_config = ImprovedSessionConfig{
+/// Public API for creating and running the interactive session
+pub fn runInteractiveSession(allocator: std.mem.Allocator, agent: *agent_interface.Agent) !void {
+    const session_config = SessionConfig{
         .base_config = agent.config,
         .onboarding_config = .{},
         .tool_discovery_config = .{},
@@ -2860,7 +2860,7 @@ pub fn runImprovedInteractiveSession(allocator: std.mem.Allocator, agent: *agent
         .ux_config = .{},
     };
 
-    const session = try ImprovedInteractiveSession.init(allocator, agent, session_config);
+    const session = try InteractiveSession.init(allocator, agent, session_config);
     defer session.deinit();
 
     try session.run();

@@ -764,7 +764,7 @@ pub const OAuthFlow = struct {
 
         // Render modals if any are active
         if (self.modal_manager) |*modal_mgr| {
-            const render_ctx = adaptive_renderer.RenderContext{
+            const render_ctx = adaptive_renderer.Render{
                 .bounds = .{ .x = 0, .y = 0, .width = 80, .height = 24 },
                 .style = .{},
                 .zIndex = 0,
@@ -837,7 +837,7 @@ pub const OAuthFlow = struct {
                 .height = 3,
             };
 
-            const ctx = adaptive_renderer.RenderContext{
+            const ctx = adaptive_renderer.Render{
                 .bounds = progress_bounds,
                 .style = .{},
                 .zIndex = 0,

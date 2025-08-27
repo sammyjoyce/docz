@@ -1150,6 +1150,7 @@ const ModuleBuilder = struct {
         agent_main.addImport("config_shared", config);
         agent_main.addImport("engine_shared", engine);
         agent_main.addImport("tools_shared", tools);
+        agent_main.addImport("cli_shared", self.createModule(BUILD_CONFIG.PATHS.CLI_ZIG));
 
         const agent_base = self.createModule(BUILD_CONFIG.PATHS.AGENT_BASE_ZIG);
         agent_base.addImport("config_shared", config);
@@ -1357,26 +1358,33 @@ const ModuleBuilder = struct {
                     // Allow TUI code to import theme_manager by name
                     tui.addImport("theme_manager", modules.theme_manager.?);
                 }
+                if (modules.agent_main) |am| if (modules.cli) |cli_mod| am.addImport("cli_shared", cli_mod);
             } else {
+                // Basic CLI without full TUI stack; still include term for capabilities and OSC helpers
                 std.log.info("   🚫 Excluding advanced terminal modules (basic CLI only)", .{});
                 modules.cli = self.createModule(BUILD_CONFIG.PATHS.CLI_ZIG);
+                modules.term = self.createModule("src/shared/term/mod.zig");
+                if (modules.term) |term| {
+                    modules.cli.?.addImport("term_shared", term);
+                }
+                if (modules.agent_main) |am| if (modules.cli) |cli_mod| am.addImport("cli_shared", cli_mod);
             }
+
+            // Ensure components are available for CLI/TUI notifications and progress
+            if (modules.components == null) {
+                modules.components = self.createModule("src/shared/components/mod.zig");
+                if (modules.term) |term| modules.components.?.addImport("term_shared", term);
+                if (modules.theme_manager) |theme_manager| modules.components.?.addImport("theme_manager", theme_manager);
+            }
+            if (modules.cli) |cli| if (modules.components) |components| cli.addImport("components_shared", components);
+            // Do not include heavy render module unless media processing is enabled
 
             // Include render modules if media processing is needed
             if (m.capabilities.core_features.media_processing) {
                 std.log.info("   🎨 Including render modules (render, components)", .{});
                 modules.render = self.createModule("src/shared/render/mod.zig");
-                modules.components = self.createModule("src/shared/components/mod.zig");
-
-                // Add dependencies
-                if (modules.term) |term| {
-                    if (modules.render) |render| {
-                        render.addImport("term_shared", term);
-                    }
-                    if (modules.components) |components| {
-                        components.addImport("term_shared", term);
-                    }
-                }
+                // components may already be created above; ensure dependencies are present
+                if (modules.term) |term| if (modules.render) |render| render.addImport("term_shared", term);
 
                 // Components depend on theme_manager for themes
                 if (modules.components) |components| {
@@ -1504,7 +1512,7 @@ const ModuleBuilder = struct {
         if (shared.interactive_session) |session| entry.addImport("interactive_session", session);
         if (shared.agent_main) |agent_main| entry.addImport("agent_main", agent_main);
         if (shared.agent_base) |agent_base| entry.addImport("agent_base", agent_base);
-        if (shared.oauth_callback_server) |oauth| entry.addImport("oauth_callback_server", oauth);
+        // Skip oauth callback server in minimal builds
 
 
 

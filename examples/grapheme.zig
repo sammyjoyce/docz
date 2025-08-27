@@ -14,8 +14,8 @@ pub fn main() !void {
     defer term.writer.deinit();
     
     // Clear screen
-    try term.ansi.cursor.clearScreen();
-    try term.ansi.cursor.moveTo(0, 0);
+    try term.cursor.clearScreen();
+    try term.cursor.moveTo(0, 0);
     
     try term.writer.print("=== Grapheme Cluster Support Demo ===\n\n", .{});
     

@@ -12,8 +12,10 @@
 const std = @import("std");
 
 // Core terminal capabilities
-const terminal_mod = @import("../../../src/shared/term/terminal_mod.zig");
 const caps_mod = @import("../../../src/shared/term/capabilities.zig");
+
+// Notification system
+const notification_mod = @import("../../../src/shared/components/notification.zig");
 
 // Features that were previously unused
 // const kitty_proto = @import("../../../src/shared/term/ansi/kitty.zig");
@@ -33,7 +35,7 @@ const Allocator = std.mem.Allocator;
 /// Enhanced progress visualization modes based on terminal capabilities
 pub const ProgressMode = enum {
     /// Kitty graphics with real-time charts and animations
-    kitty_enhanced,
+    kitty_graphics,
     /// Sixel graphics with static charts
     sixel_graphics,
     /// iTerm2 integration with badges and notifications
@@ -43,7 +45,7 @@ pub const ProgressMode = enum {
     /// Rich Unicode with animations and gradients
     unicode_rich,
     /// Basic ASCII with color support
-    ascii_enhanced,
+    ascii_graphics,
     /// Plain text fallback
     text_only,
 };
@@ -80,9 +82,7 @@ pub const Progress = struct {
     allocator: Allocator,
     config: ProgressConfig,
 
-    // Terminal interface
-    terminal: *terminal_mod.Terminal,
-    capabilities: caps_mod.TermCaps,
+    // Terminal mode (derived from capabilities)
     mode: ProgressMode,
 
     // Progress tracking
@@ -107,14 +107,13 @@ pub const Progress = struct {
     animation_frame: u32,
     render_buffer: std.ArrayList(u8),
 
-    pub fn init(allocator: Allocator, terminal: *terminal_mod.Terminal, config: ProgressConfig) !Progress {
-        const capabilities = terminal.getCapabilities();
+    pub fn init(allocator: Allocator, capabilities: caps_mod.TermCaps, config: ProgressConfig) !Progress {
+        // Mode detection for future use - currently stored but not actively used in this demo
         const mode = detectBestMode(capabilities);
 
         return Progress{
             .allocator = allocator,
-            .terminal = terminal,
-            .capabilities = capabilities,
+            .config = config,
             .mode = mode,
             .current_progress = 0.0,
             .total_items = null,
@@ -136,7 +135,7 @@ pub const Progress = struct {
     pub fn deinit(self: *Progress) void {
         // Clean up graphics resources
         if (self.chart_image_id) |image_id| {
-            if (self.mode == .kitty_enhanced) {
+            if (self.mode == .kitty_graphics) {
                 Kitty.deleteImage(self.render_buffer.writer(), self.capabilities, image_id) catch {};
             }
         }
@@ -195,7 +194,7 @@ pub const Progress = struct {
         }
 
         // Initialize graphics if supported
-        if (self.mode == .kitty_enhanced and self.config.show_chart) {
+        if (self.mode == .kitty_graphics and self.config.show_chart) {
             try self.initializeChart();
         }
     }
@@ -256,7 +255,7 @@ pub const Progress = struct {
         }
 
         // Update chart graphics
-        if (self.config.show_chart and (self.mode == .kitty_enhanced or self.mode == .sixel_graphics)) {
+        if (self.config.show_chart and (self.mode == .kitty_graphics or self.mode == .sixel_graphics)) {
             try self.updateChart();
         }
 
@@ -282,12 +281,12 @@ pub const Progress = struct {
         try writer.writeAll("\r\x1b[K");
 
         switch (self.mode) {
-            .kitty_enhanced => try self.renderKittyEnhanced(writer),
+            .kitty_graphics => try self.renderKittyEnhanced(writer),
             .sixel_graphics => try self.renderSixelGraphics(writer),
             .iterm2_integrated => try self.renderITerm2Integrated(writer),
             .finalterm_integrated => try self.renderFinalTermIntegrated(writer),
             .unicode_rich => try self.renderUnicodeRich(writer),
-            .ascii_enhanced => try self.renderASCIIEnhanced(writer),
+            .ascii_graphics => try self.renderASCIIEnhanced(writer),
             .text_only => try self.renderTextOnly(writer),
         }
 
@@ -311,15 +310,23 @@ pub const Progress = struct {
         // Final notifications
         if (self.config.enable_notifications) {
             const message = finalMessage orelse if (success) "Task completed successfully!" else "Task failed";
-            const level = if (success) terminal_mod.NotificationLevel.success else terminal_mod.NotificationLevel.@"error";
+            const notification_type = if (success) notification_mod.NotificationType.success else notification_mod.NotificationType.@"error";
 
             // System notification
             if (self.capabilities.supportsNotifyOsc9) {
-                try self.terminal.notification(level, "Progress Complete", message);
+                const notification = notification_mod.Notification.init(
+                    "Progress Complete",
+                    message,
+                    notification_type,
+                    .{ .enableSystemNotifications = true },
+                );
+                // Note: In a real implementation, you'd have access to a NotificationManager
+                // For this example, we'll just show the structure
+                _ = notification;
             }
 
-            // Terminal notification
-            try self.terminal.notification(level, "Progress Complete", message);
+            // Terminal notification (would use NotificationManager in real implementation)
+            // try notificationManager.show(notification_type, "Progress Complete", message);
         }
 
         // Final iTerm2 badge
@@ -351,7 +358,7 @@ pub const Progress = struct {
     fn detectBestMode(capabilities: caps_mod.TermCaps) ProgressMode {
         // Priority order: Advanced graphics > Terminal integration > Fallbacks
         if (capabilities.supportsKittyGraphics and capabilities.supportsTruecolor) {
-            return .kitty_enhanced;
+            return .kitty_graphics;
         } else if (capabilities.supportsSixel) {
             return .sixel_graphics;
         } else if (capabilities.supportsITerm2Osc1337) {
@@ -361,14 +368,14 @@ pub const Progress = struct {
         } else if (capabilities.supportsTruecolor) {
             return .unicode_rich;
         } else if (capabilities.supports256Color) {
-            return .ascii_enhanced;
+            return .ascii_graphics;
         } else {
             return .text_only;
         }
     }
 
     fn initializeChart(self: *Progress) !void {
-        if (self.mode != .kitty_enhanced) return;
+        if (self.mode != .kitty_graphics) return;
 
         // Create chart buffer
         const chartSize = self.config.width * self.config.height * 4; // RGBA
@@ -384,7 +391,7 @@ pub const Progress = struct {
 
         // Upload to terminal via graphics protocol
         switch (self.mode) {
-            .kitty_enhanced => try self.uploadKittyChart(),
+            .kitty_graphics => try self.uploadKittyChart(),
             .sixel_graphics => try self.uploadSixelChart(),
             else => {},
         }

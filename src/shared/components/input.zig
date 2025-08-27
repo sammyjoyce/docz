@@ -9,8 +9,7 @@
 //!   term/input/ (primitives) → components/input.zig (interface) → cli/tui (implementations)
 
 const std = @import("std");
-const shared = @import("../mod.zig");
-const term_mod = shared.term;
+const term_mod = @import("term_shared");
 const parser = term_mod.input.parser;
 const types = term_mod.input.types;
 const caps = term_mod.caps;
@@ -24,13 +23,13 @@ pub const MouseButton = types.MouseButton;
 pub const MouseAction = types.MouseAction;
 
 // Re-export mouse types from low-level module
-const mouse_mod = shared.term.input.mouse;
+const mouse_mod = term_mod.input.mouse;
 pub const MouseMode = mouse_mod.MouseMode;
 pub const MouseModifiers = mouse_mod.MouseModifiers;
 pub const MouseParser = mouse_mod.MouseParser;
 pub const MouseSequences = mouse_mod.MouseSequences;
 
-/// Unified input event types that work across CLI and TUI
+/// Input event types that work across CLI and TUI
 pub const InputEvent = union(enum) {
     key_press: KeyPressEvent,
     key_release: KeyReleaseEvent,
@@ -202,7 +201,7 @@ pub const InputEvent = union(enum) {
     }
 };
 
-/// Unified mouse abstraction that wraps low-level mouse functionality
+/// Mouse abstraction that wraps low-level mouse functionality
 /// Provides a high-level interface for mouse input handling across CLI and TUI applications
 pub const Mouse = struct {
     const Self = @This();
@@ -423,7 +422,7 @@ pub const InputConfig = struct {
     enable_debug_logging: bool = false,
 };
 
-/// Unified input manager that provides consistent input handling across CLI and TUI
+/// Input manager that provides consistent input handling across CLI and TUI
 pub const Input = struct {
     const Self = @This();
 
@@ -549,7 +548,7 @@ pub const Input = struct {
 
             // Convert and queue events
             for (events) |event| {
-                const converted = try InputEvent.fromUnifiedEvent(self.allocator, event);
+                const converted = try InputEvent.fromEvent(self.allocator, event);
                 self.queue_mutex.lock();
                 try self.event_queue.append(converted);
                 self.queue_mutex.unlock();
@@ -753,7 +752,7 @@ pub const Input = struct {
 
         if (events.len > 0) {
             const event = events[0];
-            const converted = InputEvent.fromUnifiedEvent(self.allocator, event) catch return null;
+            const converted = InputEvent.fromEvent(self.allocator, event) catch return null;
 
             // Advance buffer position (simplified)
             self.buffer_pos += 1;

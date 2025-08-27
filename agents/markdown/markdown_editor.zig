@@ -535,10 +535,10 @@ pub const MarkdownEditor = struct {
     metrics_dashboard: *MetricsDashboard,
 
     /// Export manager
-    export_manager: *ExportManager,
+    export_manager: *Export,
 
     /// Session manager for drafts
-    session_manager: *EditorSessionManager,
+    session_manager: *EditorSession,
 
     /// Theme for syntax highlighting
     syntax_theme: *SyntaxTheme,
@@ -967,13 +967,13 @@ pub const MarkdownEditor = struct {
         self.metrics_dashboard = try MetricsDashboard.init(self.allocator);
 
         // Initialize export manager
-        self.export_manager = try ExportManager.init(
+        self.export_manager = try Export.init(
             self.allocator,
             self.config.export_settings,
         );
 
         // Initialize session manager
-        self.session_manager = try EditorSessionManager.init(
+        self.session_manager = try EditorSession.init(
             self.allocator,
             self.config.session_settings,
         );
@@ -2082,12 +2082,12 @@ const MetricsDashboard = struct {
     }
 };
 
-const ExportManager = struct {
+const Export = struct {
     allocator: Allocator,
     settings: ExportSettings,
 
-    pub fn init(allocator: Allocator, settings: ExportSettings) !*ExportManager {
-        const self = try allocator.create(ExportManager);
+    pub fn init(allocator: Allocator, settings: ExportSettings) !*Export {
+        const self = try allocator.create(Export);
         self.* = .{
             .allocator = allocator,
             .settings = settings,
@@ -2095,24 +2095,24 @@ const ExportManager = struct {
         return self;
     }
 
-    pub fn deinit(self: *ExportManager) void {
+    pub fn deinit(self: *Export) void {
         self.allocator.destroy(self);
     }
 
-    pub fn exportDocument(self: *ExportManager, document: *const Document, format: ExportFormat) !void {
+    pub fn exportDocument(self: *Export, document: *const Document, format: ExportFormat) !void {
         _ = self;
         _ = document;
         _ = format;
     }
 };
 
-const EditorSessionManager = struct {
+const EditorSession = struct {
     allocator: Allocator,
     settings: EditorSessionSettings,
     recent_files: std.ArrayList([]const u8),
 
-    pub fn init(allocator: Allocator, settings: EditorSessionSettings) !*EditorSessionManager {
-        const self = try allocator.create(EditorSessionManager);
+    pub fn init(allocator: Allocator, settings: EditorSessionSettings) !*EditorSession {
+        const self = try allocator.create(EditorSession);
         self.* = .{
             .allocator = allocator,
             .settings = settings,
@@ -2121,21 +2121,21 @@ const EditorSessionManager = struct {
         return self;
     }
 
-    pub fn deinit(self: *EditorSessionManager) void {
+    pub fn deinit(self: *EditorSession) void {
         self.recent_files.deinit();
         self.allocator.destroy(self);
     }
 
-    pub fn saveSession(self: *EditorSessionManager, state: *const EditorState) !void {
+    pub fn saveSession(self: *EditorSession, state: *const EditorState) !void {
         _ = self;
         _ = state;
     }
 
-    pub fn addRecentFile(self: *EditorSessionManager, path: []const u8) !void {
+    pub fn addRecentFile(self: *EditorSession, path: []const u8) !void {
         try self.recent_files.append(try self.allocator.dupe(u8, path));
     }
 
-    pub fn getRecentFiles(self: *EditorSessionManager) [][]const u8 {
+    pub fn getRecentFiles(self: *EditorSession) [][]const u8 {
         return self.recent_files.items;
     }
 };

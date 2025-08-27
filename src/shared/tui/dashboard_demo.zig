@@ -3,7 +3,7 @@
 //! This demo demonstrates:
 //! - Dashboard layout with multiple widgets
 //! - Chart visualization with Kitty graphics fallbacks
-//! - DataTable with clipboard integration
+//! - Table with clipboard integration
 //! - Sparklines for compact metrics
 //! - Enhanced status bar with live updates
 //! - Progressive enhancement based on terminal capabilities
@@ -341,7 +341,7 @@ pub const DashboardDemo = struct {
     }
 
     fn renderDashboard(self: *Self, terminal_size: tui.TerminalSize) !void {
-        const ctx = tui.RenderContext{
+        const ctx = tui.Render{
             .bounds = tui.Bounds.init(0, 1, terminal_size.width, terminal_size.height - 3),
         };
 

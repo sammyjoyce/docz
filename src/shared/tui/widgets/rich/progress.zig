@@ -10,10 +10,10 @@ const renderer_mod = @import("../../core/renderer.zig");
 const progress_mod = @import("../../components/progress.zig");
 
 const Renderer = renderer_mod.Renderer;
-const RenderContext = renderer_mod.RenderContext;
+const Render = renderer_mod.Render;
 const Style = renderer_mod.Style;
 const BoxStyle = renderer_mod.BoxStyle;
-const ProgressData = progress_mod.ProgressData;
+const Progress = progress_mod.Progress;
 const ProgressRenderer = progress_mod.ProgressRenderer;
 const ProgressStyle = progress_mod.ProgressStyle;
 
@@ -21,11 +21,11 @@ const ProgressStyle = progress_mod.ProgressStyle;
 pub const ProgressBar = struct {
     const Self = @This();
 
-    data: ProgressData,
+    data: Progress,
     style: ProgressStyle,
 
     pub fn init(allocator: std.mem.Allocator, label: ?[]const u8, style: ProgressStyle) !Self {
-        var data = ProgressData.init(allocator);
+        var data = Progress.init(allocator);
         if (label) |l| {
             data.label = try allocator.dupe(u8, l);
         }
@@ -46,7 +46,7 @@ pub const ProgressBar = struct {
         try self.data.setProgress(progress);
     }
 
-    pub fn render(self: *Self, renderer: *Renderer, ctx: RenderContext) !void {
+    pub fn render(self: *Self, renderer: *Renderer, ctx: Render) !void {
         var output = std.ArrayList(u8).init(renderer.allocator);
         defer output.deinit();
 
@@ -60,11 +60,11 @@ pub const ProgressBar = struct {
 /// Convenience function to create and render a simple progress bar
 pub fn renderProgress(
     renderer: *Renderer,
-    ctx: RenderContext,
+    ctx: Render,
     progress: f32,
     label: ?[]const u8,
 ) !void {
-    var progress_bar = try ProgressBar.init(renderer.allocator, label, .bar);
+    var progress_bar = try ProgressBar.init(renderer.allocator, label, .auto);
     defer progress_bar.deinit();
     try progress_bar.setProgress(progress);
     try progress_bar.render(renderer, ctx);

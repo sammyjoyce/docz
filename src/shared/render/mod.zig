@@ -34,7 +34,7 @@
 //!
 //! ## Render Modes
 //!
-//! - **Enhanced**: Full graphics, true color, animations, synchronized output
+//! - **Rich**: Full graphics, true color, animations, synchronized output
 //! - **Standard**: 256 colors, Unicode blocks, good compatibility
 //! - **Compatible**: 16 colors, ASCII art, wide compatibility
 //! - **Minimal**: Plain text only, maximum compatibility
@@ -53,15 +53,15 @@ const std = @import("std");
 const term_mod = @import("term_shared");
 
 // Core exports - Renderer System
-pub const Renderer = @import("renderer.zig").Renderer;
+pub const Renderer = @import("Renderer.zig").Renderer;
 pub const AdaptiveRenderer = Renderer.AdaptiveRenderer; // Backward compatibility
 pub const RenderTier = Renderer.RenderTier;
 pub const Theme = Renderer.Theme;
 pub const cacheKey = Renderer.cacheKey;
 pub const QualityTiers = @import("quality_tiers.zig").QualityTiers;
-pub const Settings = @import("quality_tiers.zig").Settings;
-pub const TableSettings = @import("quality_tiers.zig").TableSettings;
-pub const ChartSettings = @import("quality_tiers.zig").ChartSettings;
+pub const Config = @import("quality_tiers.zig").Config;
+pub const TableConfig = @import("quality_tiers.zig").TableConfig;
+pub const ChartConfig = @import("quality_tiers.zig").ChartConfig;
 
 // Widget system exports
 pub const Widget = Renderer.Widget;
@@ -74,7 +74,7 @@ pub const Bounds = Renderer.Bounds;
 pub const Point = Renderer.Point;
 pub const Size = Renderer.Size;
 pub const Rect = Renderer.Rect;
-pub const Context = Renderer.Context;
+pub const Render = Renderer.Render;
 pub const BoxStyle = Renderer.BoxStyle;
 pub const Constraints = Renderer.Constraints;
 pub const Layout = Renderer.Layout;
@@ -89,7 +89,7 @@ pub const diff = @import("diff.zig");
 pub const braille = @import("braille.zig");
 pub const BrailleCanvas = braille.BrailleCanvas;
 pub const BraillePatterns = braille.BraillePatterns;
-pub const BrailleUtils = braille.BrailleUtils;
+pub const Braille = braille.Braille;
 
 // Multi-resolution canvas module
 pub const multi_resolution_canvas = @import("multi_resolution_canvas.zig");
@@ -102,12 +102,11 @@ pub const LineStyle = multi_resolution_canvas.LineStyle;
 pub const FillPattern = multi_resolution_canvas.FillPattern;
 
 // Component modules
-const table_mod = @import("components/table.zig");
-const chart_mod = @import("components/chart.zig");
+const table_mod = @import("components/Table.zig");
+const chart_mod = @import("components/Chart.zig");
 
 // Progress exports from shared components (avoid cross-module duplication)
-const shared = @import("../mod.zig");
-const shared_components = shared.components;
+const shared_components = @import("components_shared");
 pub const Progress = shared_components.AdaptiveProgress;
 pub const renderProgress = shared_components.progress.renderProgress;
 pub const AnimatedProgress = shared_components.AnimatedProgress;
@@ -133,7 +132,7 @@ pub const renderChart = chart_mod.renderChart;
 // pub const highlightCode = syntax_highlighter.highlightCode;
 
 // Demo and utilities
-pub const runDemo = @import("../../examples/adaptive_demo.zig").runDemo;
+// pub const runDemo = @import("../../examples/adaptive_demo.zig").runDemo; // disabled in library builds
 
 /// Convenience function to create a renderer with automatic capability detection
 pub fn createRenderer(allocator: std.mem.Allocator) !*Renderer {
@@ -173,11 +172,11 @@ pub const RendererAPI = struct {
     }
 
     pub fn renderTable(self: *RendererAPI, table: Table) !void {
-        return @import("components/table.zig").renderTable(self.renderer, table);
+        return @import("components/Table.zig").renderTable(self.renderer, table);
     }
 
     pub fn renderChart(self: *RendererAPI, chart: Chart) !void {
-        return @import("components/chart.zig").renderChart(self.renderer, chart);
+        return @import("components/Chart.zig").renderChart(self.renderer, chart);
     }
 
     pub fn getRenderingInfo(self: *const RendererAPI) Renderer.Info {

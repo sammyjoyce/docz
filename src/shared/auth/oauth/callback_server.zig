@@ -79,7 +79,7 @@ pub const AuthorizationResult = struct {
 };
 
 /// OAuth callback server
-pub const CallbackServer = struct {
+pub const Callback = struct {
     const Self = @This();
 
     allocator: std.mem.Allocator,
@@ -101,7 +101,7 @@ pub const CallbackServer = struct {
     show_status: bool = true,
 
     const SessionInfo = struct {
-        pkce_params: oauth.PkceParams,
+        pkce_params: oauth.Pkce,
         created_at: i64,
         expires_at: i64,
     };
@@ -225,7 +225,7 @@ pub const CallbackServer = struct {
     }
 
     /// Register a new PKCE session
-    pub fn registerSession(self: *Self, pkce_params: oauth.PkceParams) !void {
+    pub fn registerSession(self: *Self, pkce_params: oauth.Pkce) !void {
         const now = std.time.timestamp();
         const session = SessionInfo{
             .pkce_params = pkce_params,
@@ -645,12 +645,12 @@ fn urlDecode(allocator: std.mem.Allocator, encoded: []const u8) ![]u8 {
 /// Create and run OAuth callback server for authorization flow
 pub fn runCallbackServer(
     allocator: std.mem.Allocator,
-    pkce_params: oauth.PkceParams,
+    pkce_params: oauth.Pkce,
     config: ?ServerConfig,
 ) !AuthorizationResult {
     const server_config = config orelse ServerConfig{};
 
-    var server = try CallbackServer.init(allocator, server_config);
+    var server = try Callback.init(allocator, server_config);
     defer server.deinit();
 
     // Register the session
@@ -690,7 +690,7 @@ pub fn runCallbackServer(
 /// Integration with enhanced OAuth wizard
 pub fn integrateWithWizard(
     allocator: std.mem.Allocator,
-    pkce_params: oauth.PkceParams,
+    pkce_params: oauth.Pkce,
 ) !oauth.OAuthCredentials {
     // Run callback server
     const auth_result = try runCallbackServer(allocator, pkce_params, null);
@@ -728,7 +728,7 @@ test "callback server initialization" {
         .verbose = false,
     };
 
-    var server = try CallbackServer.init(allocator, config);
+    var server = try Callback.init(allocator, config);
     defer server.deinit();
 
     try std.testing.expect(server.config.port == 8080);
@@ -748,7 +748,7 @@ test "URL decode" {
 test "parse callback request" {
     const allocator = std.testing.allocator;
 
-    var server = try CallbackServer.init(allocator, .{});
+    var server = try Callback.init(allocator, .{});
     defer server.deinit();
 
     const request = "GET /callback?code=test_code&state=test_state HTTP/1.1\r\n\r\n";

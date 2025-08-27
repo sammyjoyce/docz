@@ -17,7 +17,7 @@ const components_shared = shared.components;
 const notification = components_shared.notification;
 
 const Renderer = renderer_mod.Renderer;
-const RenderContext = renderer_mod.RenderContext;
+const Render = renderer_mod.Render;
 const Style = renderer_mod.Style;
 const BoxStyle = renderer_mod.BoxStyle;
 const Point = renderer_mod.Point;
@@ -198,7 +198,7 @@ pub const NotificationWidget = struct {
         const notification_bounds = self.getBounds(terminal_size);
 
         // Create render context
-        const ctx = RenderContext{
+        const ctx = Render{
             .bounds = notification_bounds,
             .style = self.getNotificationStyle(renderer.getCapabilities()),
             .zIndex = self.getPriorityZIndex(),
@@ -225,7 +225,7 @@ pub const NotificationWidget = struct {
         const notification_bounds = self.getBounds(terminal_size);
 
         // Create render context
-        const ctx = RenderContext{
+        const ctx = Render{
             .bounds = notification_bounds,
             .style = self.getNotificationStyle(renderer.getCapabilities()),
             .zIndex = self.getPriorityZIndex(),
@@ -239,7 +239,7 @@ pub const NotificationWidget = struct {
         }
     }
 
-    fn renderProgressNotification(self: *Self, renderer: *Renderer, ctx: RenderContext) !void {
+    fn renderProgressNotification(self: *Self, renderer: *Renderer, ctx: Render) !void {
         const caps = renderer.getCapabilities();
         const progress = self.base.progress orelse 0.0;
 
@@ -290,7 +290,7 @@ pub const NotificationWidget = struct {
         try renderer.drawTextBox(ctx, content, box_style);
     }
 
-    fn renderNotification(self: *Self, renderer: *Renderer, ctx: RenderContext) !void {
+    fn renderNotification(self: *Self, renderer: *Renderer, ctx: Render) !void {
         const caps = renderer.getCapabilities();
 
         // Create box style for the notification
@@ -320,7 +320,7 @@ pub const NotificationWidget = struct {
         try renderer.drawTextBox(ctx, content, box_style);
     }
 
-    fn animateIn(self: *Self, renderer: *Renderer, final_ctx: RenderContext) !void {
+    fn animateIn(self: *Self, renderer: *Renderer, final_ctx: Render) !void {
         const caps = renderer.getCapabilities();
 
         // Only animate if terminal supports it (has cursor positioning)
@@ -862,7 +862,7 @@ const MockRenderer = struct {
     pub fn clear(_: *MockRenderer, _: Bounds) !void {}
     pub fn beginFrame(_: *MockRenderer) !void {}
     pub fn endFrame(_: *MockRenderer) !void {}
-    pub fn drawTextBox(_: *MockRenderer, _: RenderContext, _: []const u8, _: BoxStyle) !void {}
+    pub fn drawTextBox(_: *MockRenderer, _: Render, _: []const u8, _: BoxStyle) !void {}
     pub fn writer(_: *MockRenderer) std.io.Writer(std.io.null_writer) {
         return std.io.null_writer;
     }

@@ -93,7 +93,7 @@ fn demoProgressBars(renderer: *tui.Renderer, terminal_size: bounds_mod.TerminalS
         // Render each progress style
         var y: i32 = 16;
         for (progress_styles, style_names) |style, name| {
-            const context = tui.RenderContext{
+            const context = tui.Render{
                 .bounds = .{
                     .x = 5,
                     .y = y,
@@ -142,7 +142,7 @@ fn demoBoxDrawing(renderer: *tui.Renderer, caps: tui.TermCaps) !void {
             .padding = .{ .top = 1, .right = 2, .bottom = 1, .left = 2 },
         };
 
-        const box_ctx = tui.RenderContext{
+        const box_ctx = tui.Render{
             .bounds = .{
                 .x = x,
                 .y = 35,
@@ -169,7 +169,7 @@ fn demoFeatures(renderer: *tui.Renderer, caps: tui.TermCaps) !void {
     // Hyperlink support
     if (caps.supportsHyperlinkOsc8) {
         try renderer.setHyperlink("https://github.com/zig-lang/zig");
-        const link_ctx = tui.RenderContext{
+        const link_ctx = tui.Render{
             .bounds = .{ .x = 5, .y = y, .width = 60, .height = 1 },
             .style = .{
                 .fg_color = .{ .ansi = 12 }, // Bright blue
@@ -186,7 +186,7 @@ fn demoFeatures(renderer: *tui.Renderer, caps: tui.TermCaps) !void {
         const clipboard_text = "Smart TUI with Progressive Enhancement - Zig Terminal Framework";
         try renderer.copyToClipboard(clipboard_text);
 
-        const clip_ctx = tui.RenderContext{
+        const clip_ctx = tui.Render{
             .bounds = .{ .x = 5, .y = y, .width = 60, .height = 1 },
             .style = .{ .fg_color = .{ .ansi = 10 } }, // Bright green
         };
@@ -197,7 +197,7 @@ fn demoFeatures(renderer: *tui.Renderer, caps: tui.TermCaps) !void {
 
     // Graphics support preview
     if (caps.supportsKittyGraphics or caps.supportsSixel) {
-        const gfx_ctx = tui.RenderContext{
+        const gfx_ctx = tui.Render{
             .bounds = .{ .x = 5, .y = y, .width = 60, .height = 1 },
             .style = .{ .fg_color = .{ .ansi = 13 } }, // Bright magenta
         };

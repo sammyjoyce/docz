@@ -420,7 +420,7 @@ pub const BrailleCanvas = struct {
 };
 
 /// Utility functions for Braille graphics
-pub const BrailleUtils = struct {
+pub const Braille = struct {
     /// Convert a series of points to Braille dots with interpolation
     pub fn plotDataPoints(canvas: *BrailleCanvas, points: []const struct { x: f64, y: f64 }, connect: bool) void {
         if (points.len == 0) return;

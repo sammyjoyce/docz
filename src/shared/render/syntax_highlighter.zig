@@ -89,7 +89,7 @@ pub const TokenType = enum {
 
 /// Quality tiers for rendering
 pub const QualityTier = enum {
-    enhanced, // Rich truecolor themes
+    rich, // Rich truecolor themes
     standard, // 256-color themes
     compatible, // 16-color themes
     minimal, // No highlighting
@@ -138,7 +138,7 @@ pub const ColorScheme = struct {
 /// Get color scheme for quality tier
 pub fn getColorScheme(quality: QualityTier) ColorScheme {
     return switch (quality) {
-        .enhanced => ColorScheme{
+        .rich => ColorScheme{
             // Rich truecolor theme (One Dark inspired)
             .keyword = "\x1b[38;2;198;120;221m", // Purple
             .string = "\x1b[38;2;152;195;121m", // Green
@@ -932,7 +932,7 @@ fn tokenizeGeneric(allocator: Allocator, code: []const u8) ![]Token {
     defer tokens.deinit();
 
     // For now, just return the whole code as text
-    // This could be enhanced with basic pattern matching
+    // This could be rich with basic pattern matching
     try tokens.append(.{ .type = .text, .text = code });
 
     return try tokens.toOwnedSlice();

@@ -5,7 +5,7 @@ const term = @import("src/shared/term/mod.zig");
 const sample_markdown =
     \\# Markdown Rendering Demo
     \\
-    \\Welcome to the **enhanced markdown renderer** with *syntax highlighting* support!
+    \\Welcome to the ** markdown renderer** with *syntax highlighting* support!
     \\
     \\## Features Overview
     \\
@@ -69,7 +69,7 @@ const sample_markdown =
     \\  "version": "2.0.0",
     \\  "features": {
     \\    "syntax_highlighting": true,
-    \\    "quality_tiers": ["minimal", "standard", "enhanced"],
+    \\    "quality_tiers": ["minimal", "standard", ""],
     \\    "supported_languages": ["zig", "python", "json", "javascript", "rust"]
     \\  },
     \\  "settings": {
@@ -117,7 +117,7 @@ const sample_markdown =
     \\> — Alan Kay
     \\
     \\> **Important**: Remember to check terminal capabilities before
-    \\> enabling advanced rendering features.
+    \\> enabling  rendering features.
     \\
     \\---
     \\
@@ -134,13 +134,13 @@ const technical_document =
     \\
     \\## Architecture Overview
     \\
-    \\The **AsyncTaskManager** implements a high-performance task scheduling system
+    \\The **AsyncTask** implements a high-performance task scheduling system
     \\with *concurrent execution* capabilities and `priority-based` queue management.
     \\
     \\### Core Components
     \\
     \\```zig
-    \\const TaskManager = struct {
+    \\const Task = struct {
     \\    allocator: std.mem.Allocator,
     \\    queue: std.PriorityQueue(Task, void, taskCompare),
     \\    workers: []Worker,
@@ -152,7 +152,7 @@ const technical_document =
     \\            worker.* = Worker.init(allocator);
     \\        }
     \\        
-    \\        return TaskManager{
+    \\        return Task{
     \\            .allocator = allocator,
     \\            .queue = std.PriorityQueue(Task, void, taskCompare).init(allocator, {}),
     \\            .workers = workers,
@@ -265,16 +265,16 @@ pub fn main() !void {
     // Demo 1: Basic markdown with auto-detected quality
     try stdout.print("--- Demo 1: Comprehensive Markdown Features ---\n\n", .{});
     
-    const options_enhanced = render.MarkdownOptions{
+    const options_ = render.MarkdownOptions{
         .max_width = 100,
         .color_enabled = true,
-        .quality_tier = .enhanced,
+        .quality_tier = .standard,
         .enable_hyperlinks = true,
         .enable_syntax_highlight = true,
         .show_line_numbers = false,
     };
 
-    const rendered_sample = try render.renderMarkdown(allocator, sample_markdown, options_enhanced);
+    const rendered_sample = try render.renderMarkdown(allocator, sample_markdown, options_);
     defer allocator.free(rendered_sample);
     try stdout.writeAll(rendered_sample);
 
@@ -440,7 +440,7 @@ pub fn main() !void {
     try stdout.print("\n=== Demo Complete ===\n", .{});
     try stdout.print("\nThis demo showcased:\n", .{});
     try stdout.print("  ✓ Markdown rendering with various elements\n", .{});
-    try stdout.print("  ✓ Quality tier adaptation (minimal, compatible, standard, enhanced)\n", .{});
+    try stdout.print("  ✓ Quality tier adaptation (minimal, compatible, standard, )\n", .{});
     try stdout.print("  ✓ Syntax highlighting for multiple languages\n", .{});
     try stdout.print("  ✓ Tables, lists, blockquotes, and links\n", .{});
     try stdout.print("  ✓ Technical documentation rendering\n", .{});
@@ -451,7 +451,7 @@ test "markdown demo compilation" {
     // Ensure the demo compiles correctly
     const allocator = std.testing.allocator;
     
-    const simple_md = "# Test\n**Bold** and *italic*";
+    const exampleMd = "# Test\n**Bold** and *italic*";
     
     const options = render.MarkdownOptions{
         .max_width = 80,
@@ -462,7 +462,7 @@ test "markdown demo compilation" {
         .show_line_numbers = false,
     };
     
-    const result = try render.renderMarkdown(allocator, simple_md, options);
+    const result = try render.renderMarkdown(allocator, exampleMd, options);
     defer allocator.free(result);
 
     try std.testing.expect(result.len > 0);

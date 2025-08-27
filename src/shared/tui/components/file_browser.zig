@@ -260,18 +260,18 @@ pub const FileBrowser = struct {
 
         try git_process.spawn();
 
-        const stdout = git_process.stdout.?.reader();
-        const stderr = git_process.stderr.?.reader();
+        const stdout = git_process.stdout.?.deprecatedReader();
+        const stderr = git_process.stderr.?.deprecatedReader();
 
-        var output_buf = std.ArrayList(u8).init(self.allocator);
-        defer output_buf.deinit();
+        var output_buf = std.ArrayListUnmanaged(u8){};
+        defer output_buf.deinit(self.allocator);
 
-        try stdout.readAllArrayList(&output_buf, 1024 * 1024);
+        try stdout.readAllArrayList(self.allocator, &output_buf, 1024 * 1024);
 
-        var error_buf = std.ArrayList(u8).init(self.allocator);
-        defer error_buf.deinit();
+        var error_buf = std.ArrayListUnmanaged(u8){};
+        defer error_buf.deinit(self.allocator);
 
-        try stderr.readAllArrayList(&error_buf, 1024 * 1024);
+        try stderr.readAllArrayList(self.allocator, &error_buf, 1024 * 1024);
 
         const result = try git_process.wait();
 

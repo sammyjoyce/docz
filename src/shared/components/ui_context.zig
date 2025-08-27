@@ -12,7 +12,7 @@ const progress = @import("progress.zig");
 
 const Component = base.Component;
 const ComponentRegistry = base.ComponentRegistry;
-const RenderContext = base.RenderContext;
+const Render = base.Render;
 const Event = base.Event;
 const Theme = base.Theme;
 const NotificationLevel = term.NotificationLevel;
@@ -63,8 +63,8 @@ pub const UI = struct {
     }
 
     /// Create a render context for components
-    pub fn createRenderContext(self: *Self, bounds: term.Rect) RenderContext {
-        return RenderContext{
+    pub fn createRender(self: *Self, bounds: term.Rect) Render {
+        return Render{
             .terminal = &self.terminal,
             .graphics = if (self.graphics) |*gfx| gfx else null,
             .parentBounds = bounds,
@@ -109,7 +109,7 @@ pub const UI = struct {
                 });
 
                 // Render immediately
-                const ctx = self.createRenderContext(term.Rect{ .x = 0, .y = 0, .width = 80, .height = 1 });
+                const ctx = self.createRender(term.Rect{ .x = 0, .y = 0, .width = 80, .height = 1 });
                 try progress_component.render(ctx);
                 try self.terminal.flush();
 
@@ -138,7 +138,7 @@ pub const UI = struct {
 
         if (self.mode == .cli) {
             // In CLI mode, re-render immediately
-            const ctx = self.createRenderContext(term.Rect{ .x = 0, .y = 0, .width = 80, .height = 1 });
+            const ctx = self.createRender(term.Rect{ .x = 0, .y = 0, .width = 80, .height = 1 });
             progress_component.render(ctx) catch {};
             self.terminal.flush() catch {};
         }
@@ -151,7 +151,7 @@ pub const UI = struct {
 
     /// Render all components (mainly for TUI mode)
     pub fn render(self: *Self, bounds: term.Rect) !void {
-        const ctx = self.createRenderContext(bounds);
+        const ctx = self.createRender(bounds);
         try self.componentManager.render(ctx);
     }
 
@@ -243,7 +243,7 @@ pub const NotificationComponent = struct {
         self.state = state;
     }
 
-    fn render(impl: *anyopaque, ctx: RenderContext) anyerror!void {
+    fn render(impl: *anyopaque, ctx: Render) anyerror!void {
         const self: *Self = @ptrCast(@alignCast(impl));
 
         // Get notification colors based on level

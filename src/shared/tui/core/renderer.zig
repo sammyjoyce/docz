@@ -413,9 +413,6 @@ pub fn createRenderer(allocator: std.mem.Allocator) !Renderer {
     }
 }
 
-/// Alias for backward compatibility
-pub const RenderContext = Render;
-
 // ============================================================================
 // WIDGET SYSTEM
 // ============================================================================

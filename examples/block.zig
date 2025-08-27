@@ -16,8 +16,8 @@ pub fn main() !void {
     defer term.writer.deinit();
     
     // Clear screen
-    try term.ansi.cursor.clearScreen();
-    try term.ansi.cursor.moveTo(0, 0);
+    try term.cursor.clearScreen();
+    try term.cursor.moveTo(0, 0);
     
     try term.writer.print("=== Block Widget Demo ===\n\n", .{});
     
@@ -91,7 +91,7 @@ fn demoBorderStyles() !void {
         block.draw();
     }
     
-    try term.ansi.cursor.moveTo(17, 0);
+    try term.cursor.moveTo(17, 0);
 }
 
 fn demoTitlePositions() !void {
@@ -165,7 +165,7 @@ fn demoTitlePositions() !void {
         block.draw();
     }
     
-    try term.ansi.cursor.moveTo(38, 0);
+    try term.cursor.moveTo(38, 0);
 }
 
 fn demoPaddingAndBackground() !void {
@@ -188,7 +188,7 @@ fn demoPaddingAndBackground() !void {
             .withContent(struct {
                 fn render(inner: Bounds) void {
                     // Draw some content to show padding effect
-                    term.ansi.cursor.moveTo(inner.y, inner.x) catch {};
+                    term.cursor.moveTo(inner.y, inner.x) catch {};
                     print("Content", .{}) catch {};
                 }
             }.render);
@@ -207,7 +207,7 @@ fn demoPaddingAndBackground() !void {
             .withBackground(Color.DARK_GREEN)
             .withContent(struct {
                 fn render(inner: Bounds) void {
-                    term.ansi.cursor.moveTo(inner.y, inner.x) catch {};
+                    term.cursor.moveTo(inner.y, inner.x) catch {};
                     print("Content", .{}) catch {};
                 }
             }.render);
@@ -226,7 +226,7 @@ fn demoPaddingAndBackground() !void {
             .withBackground(Color.DARK_RED)
             .withContent(struct {
                 fn render(inner: Bounds) void {
-                    term.ansi.cursor.moveTo(inner.y, inner.x) catch {};
+                    term.cursor.moveTo(inner.y, inner.x) catch {};
                     print("Content", .{}) catch {};
                 }
             }.render);
@@ -234,7 +234,7 @@ fn demoPaddingAndBackground() !void {
         block.draw();
     }
     
-    try term.ansi.cursor.moveTo(48, 0);
+    try term.cursor.moveTo(48, 0);
 }
 
 fn demoNestedBlocks() !void {
@@ -274,11 +274,11 @@ fn demoNestedBlocks() !void {
                     .withBorderColor(Color.YELLOW)
                     .withContent(struct {
                         fn renderLeft(b: Bounds) void {
-                            term.ansi.cursor.moveTo(b.y + 1, b.x + 1) catch {};
+                            term.cursor.moveTo(b.y + 1, b.x + 1) catch {};
                             print("• Item 1", .{}) catch {};
-                            term.ansi.cursor.moveTo(b.y + 2, b.x + 1) catch {};
+                            term.cursor.moveTo(b.y + 2, b.x + 1) catch {};
                             print("• Item 2", .{}) catch {};
-                            term.ansi.cursor.moveTo(b.y + 3, b.x + 1) catch {};
+                            term.cursor.moveTo(b.y + 3, b.x + 1) catch {};
                             print("• Item 3", .{}) catch {};
                         }
                     }.renderLeft);
@@ -300,11 +300,11 @@ fn demoNestedBlocks() !void {
                     .withBackground(Color.DARK_GRAY)
                     .withContent(struct {
                         fn renderRight(b: Bounds) void {
-                            term.ansi.cursor.moveTo(b.y + 1, b.x + 1) catch {};
+                            term.cursor.moveTo(b.y + 1, b.x + 1) catch {};
                             print("Status: OK", .{}) catch {};
-                            term.ansi.cursor.moveTo(b.y + 2, b.x + 1) catch {};
+                            term.cursor.moveTo(b.y + 2, b.x + 1) catch {};
                             print("CPU: 45%", .{}) catch {};
-                            term.ansi.cursor.moveTo(b.y + 3, b.x + 1) catch {};
+                            term.cursor.moveTo(b.y + 3, b.x + 1) catch {};
                             print("RAM: 2.3GB", .{}) catch {};
                         }
                     }.renderRight);
@@ -315,5 +315,5 @@ fn demoNestedBlocks() !void {
     
     outer_block.draw();
     
-    try term.ansi.cursor.moveTo(65, 0);
+    try term.cursor.moveTo(65, 0);
 }

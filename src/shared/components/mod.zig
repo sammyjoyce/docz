@@ -13,7 +13,7 @@ pub const base = @import("base.zig");
 pub const input = @import("input.zig");
 
 // Re-export main types for convenience
-pub const ProgressData = progress.ProgressData;
+pub const Progress = progress.Progress;
 pub const InputEvent = input.InputEvent;
 pub const Input = input.Input;
 pub const InputConfig = input.InputConfig;
@@ -26,7 +26,6 @@ pub const BarConfig = progress.BarConfig;
 pub const Animated = progress.Animated;
 pub const ProgressStyle = progress.ProgressStyle;
 pub const TermCaps = progress.TermCaps;
-pub const ProgressUtils = progress.ProgressUtils;
 pub const ProgressRenderer = progress.ProgressRenderer;
 
 // Re-export progress rendering functions
@@ -50,7 +49,6 @@ pub const ProgressNotification = struct {
 };
 
 // Additional progress system exports
-pub const Progress = progress.Progress;
 pub const renderProgressData = progress.renderProgressData;
 pub const AnimatedProgress = progress.AnimatedProgress;
 
@@ -83,11 +81,7 @@ pub const ProgressBar = progress.ProgressBar;
 // pub const SuggestionProvider = smart_input.SuggestionProvider;
 // pub const Validator = smart_input.Validator;
 
-// Terminal wrapper components
-pub const TerminalWriter = @import("terminal_writer.zig").TerminalWriter;
-
-pub const TerminalCursor = @import("terminal_cursor.zig").TerminalCursor;
-// pub const TerminalScreen = @import("terminal_screen.zig").TerminalScreen;
+// Terminal wrapper components removed (use term_shared directly or presenters)
 
 // Cell buffer types via named module to avoid duplicate module inclusion
 const term_shared = @import("term_shared");
@@ -100,12 +94,4 @@ pub const UnderlineStyle = term_shared.cellbuf.UnderlineStyle;
 pub const Link = term_shared.cellbuf.Link;
 pub const Rectangle = term_shared.cellbuf.Rectangle;
 
-// Convenience functions for terminal wrappers
-pub const print = TerminalWriter.print;
-pub const write = TerminalWriter.write;
-pub const writeLine = TerminalWriter.writeLine;
-pub const printLine = TerminalWriter.printLine;
-// pub const clearScreen = TerminalScreen.clear;
-pub const moveCursor = TerminalCursor.moveTo;
-pub const hideCursor = TerminalCursor.hide;
-pub const showCursor = TerminalCursor.show;
+// Terminal wrapper convenience functions removed (use std.io or term_shared)

@@ -12,7 +12,7 @@ const terminal_bridge = @import("core/terminal_bridge.zig");
 const components = @import("../components/mod.zig");
 const notification = @import("notifications.zig");
 const input_mod = shared.components.input;
-const demo = @import("demos/capabilities_demo.zig");
+const demo = @import("demos/capabilities_presenters_demo.zig");
 
 /// CLI Application that uses the terminal interface
 pub const CliApp = struct {

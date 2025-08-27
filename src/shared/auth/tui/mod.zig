@@ -36,7 +36,7 @@ const Tui = struct {
 
 // Re-export individual TUI components
 pub const oauth_wizard = @import("oauth_wizard.zig");
-pub const oauth_wizard_advanced = @import("oauth_wizard_advanced.zig");
+pub const oauth_wizard_advanced = @import("oauth_wizard_pro.zig");
 pub const oauth_flow = @import("oauth_flow.zig");
 pub const auth_status = @import("auth_status.zig");
 pub const code_input = @import("code_input.zig");

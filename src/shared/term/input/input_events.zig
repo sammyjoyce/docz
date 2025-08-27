@@ -2,7 +2,7 @@ const std = @import("std");
 const types = @import("types.zig");
 
 /// Input event system for managing various input types
-/// Provides unified event handling with color event support
+/// Provides  event handling with color event support
 pub const InputEventType = enum {
     key,
     mouse,

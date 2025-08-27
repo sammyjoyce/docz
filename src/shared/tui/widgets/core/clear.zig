@@ -6,7 +6,6 @@ const std = @import("std");
 const Bounds = @import("../../core/bounds.zig").Bounds;
 const Point = @import("../../core/bounds.zig").Point;
 const Color = @import("theme_manager").ColorScheme.Color;
-const terminal_writer = @import("../../components/terminal_writer.zig");
 const widget_interface = @import("../../core/widget_interface.zig");
 const renderer_mod = @import("../../core/renderer.zig");
 const Allocator = std.mem.Allocator;
@@ -345,18 +344,18 @@ pub const Clear = struct {
         if (!self.config.effects.shadow) return;
 
         // Draw shadow to the right and bottom
-        terminal_writer.terminal_writer.print("\x1b[{d}m", .{@intFromEnum(self.config.effects.shadow_color) + 10}); // Background
+        std.debug.print("\x1b[{d}m", .{@intFromEnum(self.config.effects.shadow_color) + 10}); // Background
 
         // Right shadow
         for (bounds.y + 1..bounds.y + bounds.height + 1) |y| {
             moveCursor(@intCast(y), @intCast(bounds.x + bounds.width));
-            terminal_writer.print(" ", .{});
+            std.debug.print(" ", .{});
         }
 
         // Bottom shadow
         moveCursor(@intCast(bounds.y + bounds.height), @intCast(bounds.x + 1));
         for (0..bounds.width) |_| {
-            terminal_writer.print(" ", .{});
+            std.debug.print(" ", .{});
         }
     }
 
@@ -373,31 +372,31 @@ pub const Clear = struct {
             .dashed => .{ .h = "╌", .v = "╎", .tl = "┌", .tr = "┐", .bl = "└", .br = "┘" },
         };
 
-        terminal_writer.print("\x1b[{d}m", .{@intFromEnum(border.color)});
+        std.debug.print("\x1b[{d}m", .{@intFromEnum(border.color)});
 
         // Top border
         moveCursor(@intCast(bounds.y), @intCast(bounds.x));
-        terminal_writer.print("{s}", .{chars.tl});
+        std.debug.print("{s}", .{chars.tl});
         for (1..bounds.width - 1) |_| {
-            terminal_writer.print("{s}", .{chars.h});
+            std.debug.print("{s}", .{chars.h});
         }
-        terminal_writer.print("{s}", .{chars.tr});
+        std.debug.print("{s}", .{chars.tr});
 
         // Side borders
         for (1..bounds.height - 1) |i| {
             moveCursor(@intCast(bounds.y + i), @intCast(bounds.x));
-            terminal_writer.print("{s}", .{chars.v});
+            std.debug.print("{s}", .{chars.v});
             moveCursor(@intCast(bounds.y + i), @intCast(bounds.x + bounds.width - 1));
-            terminal_writer.print("{s}", .{chars.v});
+            std.debug.print("{s}", .{chars.v});
         }
 
         // Bottom border
         moveCursor(@intCast(bounds.y + bounds.height - 1), @intCast(bounds.x));
-        terminal_writer.print("{s}", .{chars.bl});
+        std.debug.print("{s}", .{chars.bl});
         for (1..bounds.width - 1) |_| {
-            terminal_writer.print("{s}", .{chars.h});
+            std.debug.print("{s}", .{chars.h});
         }
-        terminal_writer.print("{s}", .{chars.br});
+        std.debug.print("{s}", .{chars.br});
     }
 
     /// Clear the area based on the configured mode
@@ -418,7 +417,7 @@ pub const Clear = struct {
         for (bounds.y..bounds.y + bounds.height) |y| {
             moveCursor(@intCast(y), @intCast(bounds.x));
             for (0..bounds.width) |_| {
-                terminal_writer.print(" ", .{});
+                std.debug.print(" ", .{});
             }
         }
     }
@@ -427,7 +426,7 @@ pub const Clear = struct {
         for (bounds.y..bounds.y + bounds.height) |y| {
             moveCursor(@intCast(y), @intCast(bounds.x));
             for (0..bounds.width) |_| {
-                terminal_writer.print("{c}", .{self.config.clear_char});
+                std.debug.print("{c}", .{self.config.clear_char});
             }
         }
     }
@@ -438,23 +437,23 @@ pub const Clear = struct {
         const char_index = @min(self.config.transparency / 51, 4); // 255/5 = 51
         const char = transparency_chars[char_index];
 
-        terminal_writer.print("\x1b[2m", .{}); // Dim text
+        std.debug.print("\x1b[2m", .{}); // Dim text
         for (bounds.y..bounds.y + bounds.height) |y| {
             moveCursor(@intCast(y), @intCast(bounds.x));
             for (0..bounds.width) |_| {
-                terminal_writer.print("{c}", .{char});
+                std.debug.print("{c}", .{char});
             }
         }
-        terminal_writer.print("\x1b[22m", .{}); // Reset dim
+        std.debug.print("\x1b[22m", .{}); // Reset dim
     }
 
     fn clearWithSolidColor(self: *const Clear, bounds: Bounds) void {
-        terminal_writer.print("\x1b[{d}m", .{@intFromEnum(self.config.background_color) + 10}); // Background
+        std.debug.print("\x1b[{d}m", .{@intFromEnum(self.config.background_color) + 10}); // Background
 
         for (bounds.y..bounds.y + bounds.height) |y| {
             moveCursor(@intCast(y), @intCast(bounds.x));
             for (0..bounds.width) |_| {
-                terminal_writer.print(" ", .{});
+                std.debug.print(" ", .{});
             }
         }
     }
@@ -477,14 +476,14 @@ pub const Clear = struct {
             },
         };
 
-        terminal_writer.print("\x1b[{d}m", .{@intFromEnum(self.config.foreground_color)});
-        terminal_writer.print("\x1b[{d}m", .{@intFromEnum(self.config.background_color) + 10});
+        std.debug.print("\x1b[{d}m", .{@intFromEnum(self.config.foreground_color)});
+        std.debug.print("\x1b[{d}m", .{@intFromEnum(self.config.background_color) + 10});
 
         for (bounds.y..bounds.y + bounds.height) |y| {
             moveCursor(@intCast(y), @intCast(bounds.x));
             for (0..bounds.width) |x| {
                 const pattern_index = (x + y) % patterns.len;
-                terminal_writer.print("{s}", .{patterns[pattern_index]});
+                std.debug.print("{s}", .{patterns[pattern_index]});
             }
         }
     }
@@ -493,29 +492,29 @@ pub const Clear = struct {
         const blur_chars = [_][]const u8{ " ", "░", "▒", "▓" };
         const char_index = @min(self.config.blur_intensity - 1, 3);
 
-        terminal_writer.print("\x1b[2m", .{}); // Dim
+        std.debug.print("\x1b[2m", .{}); // Dim
         for (bounds.y..bounds.y + bounds.height) |y| {
             moveCursor(@intCast(y), @intCast(bounds.x));
             for (0..bounds.width) |_| {
-                terminal_writer.print("{s}", .{blur_chars[char_index]});
+                std.debug.print("{s}", .{blur_chars[char_index]});
             }
         }
-        terminal_writer.print("\x1b[22m", .{}); // Reset dim
+        std.debug.print("\x1b[22m", .{}); // Reset dim
     }
 
     fn clearWithColorFilter(self: *const Clear, bounds: Bounds) void {
         // Apply color filter by setting foreground color
-        terminal_writer.print("\x1b[{d}m", .{@intFromEnum(self.config.color_filter)});
-        terminal_writer.print("\x1b[7m", .{}); // Reverse video for filter effect
+        std.debug.print("\x1b[{d}m", .{@intFromEnum(self.config.color_filter)});
+        std.debug.print("\x1b[7m", .{}); // Reverse video for filter effect
 
         for (bounds.y..bounds.y + bounds.height) |y| {
             moveCursor(@intCast(y), @intCast(bounds.x));
             for (0..bounds.width) |_| {
-                terminal_writer.print(" ", .{});
+                std.debug.print(" ", .{});
             }
         }
 
-        terminal_writer.print("\x1b[27m", .{}); // Reset reverse video
+        std.debug.print("\x1b[27m", .{}); // Reset reverse video
     }
 
     /// Main draw function
@@ -543,7 +542,7 @@ pub const Clear = struct {
         self.drawBorder(bounds);
 
         // Reset all attributes
-        terminal_writer.print("\x1b[0m", .{});
+        std.debug.print("\x1b[0m", .{});
 
         // Execute after callback
         if (self.after_clear) |callback| {
@@ -674,7 +673,7 @@ pub const Clear = struct {
 
 // Helper function to move cursor
 fn moveCursor(row: u32, col: u32) void {
-    terminal_writer.print("\x1b[{d};{d}H", .{ row + 1, col + 1 });
+    std.debug.print("\x1b[{d};{d}H", .{ row + 1, col + 1 });
 }
 
 // Tests

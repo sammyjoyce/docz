@@ -4,9 +4,9 @@
 // Base components (basic functionality)
 pub const Base = struct {
     pub const SelectMenu = @import("base/select_menu.zig").SelectMenu;
-    pub const NotificationManager = @import("../notifications.zig").NotificationManager;
+    pub const NotificationManager = @import("../notifications.zig").Notification;
     pub const Notification = @import("../core/context.zig").Notification;
-    pub const NotificationDisplay = @import("../notifications.zig").NotificationManager; // Alias for compatibility
+    pub const NotificationDisplay = @import("../notifications.zig").Notification; // Alias for compatibility
     pub const HyperlinkMenu = @import("base/hyperlink_menu.zig").HyperlinkMenu;
     pub const ClipboardInput = @import("base/clipboard_input.zig").ClipboardInput;
     pub const Panel = @import("base/info_panel.zig");
@@ -21,8 +21,7 @@ pub const Base = struct {
 pub const HyperlinkMenu = Base.HyperlinkMenu;
 pub const ClipboardInput = Base.ClipboardInput;
 pub const NotificationDisplay = Base.NotificationDisplay;
-pub const Notification = Base.Notification;
-pub const NotificationManager = Base.NotificationManager;
+pub const Notification = Base.NotificationManager;
 
 // Legacy compatibility
 pub const SelectMenu = Base.SelectMenu;

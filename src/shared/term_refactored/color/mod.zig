@@ -1,0 +1,1 @@
+// Namespace for color handling

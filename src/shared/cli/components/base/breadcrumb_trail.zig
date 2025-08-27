@@ -82,15 +82,15 @@ pub const BreadcrumbTrail = struct {
             // Item
             if (i == self.items.items.len - 1) {
                 // Current item (not clickable)
-                if (self.caps.supportsTrueColor()) {
+                if (self.caps.supportsTruecolor) {
                     try term_ansi.setForegroundRgb(writer, self.caps, 255, 255, 255);
                 } else {
                     try term_ansi.setForeground256(writer, self.caps, 15);
                 }
                 try term_ansi.setBold(writer, self.caps);
-            } else if (item.clickable and self.caps.supportsHyperlinks and item.path != null) {
+            } else if (item.clickable and self.caps.supportsHyperlinkOsc8 and item.path != null) {
                 // Clickable item with hyperlink
-                if (self.caps.supportsTrueColor()) {
+                if (self.caps.supportsTruecolor) {
                     try term_ansi.setForegroundRgb(writer, self.caps, 100, 149, 237);
                 } else {
                     try term_ansi.setForeground256(writer, self.caps, 12);
@@ -100,14 +100,14 @@ pub const BreadcrumbTrail = struct {
                 try writer.print("[{s}]", .{item.label});
             } else {
                 // Regular item
-                if (self.caps.supportsTrueColor()) {
+                if (self.caps.supportsTruecolor) {
                     try term_ansi.setForegroundRgb(writer, self.caps, 200, 200, 200);
                 } else {
                     try term_ansi.setForeground256(writer, self.caps, 7);
                 }
             }
 
-            if (!item.clickable or !self.caps.supportsHyperlinks or item.path == null) {
+            if (!item.clickable or !self.caps.supportsHyperlinkOsc8 or item.path == null) {
                 try writer.writeAll(item.label);
             }
 

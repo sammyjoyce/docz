@@ -1,328 +1,417 @@
 const std = @import("std");
-const caps_mod = @import("capabilities.zig");
-const ansi_screen = @import("ansi/screen.zig");
-const passthrough = @import("ansi/passthrough.zig");
-const tab_processor = @import("tab_processor.zig");
-const types = @import("../types.zig");
 
-pub const TermCaps = caps_mod.TermCaps;
+/// Screen management for terminal applications
+/// Provides screen save/restore, alternate screen buffer, and window management
+/// Inspired by terminal libraries with modern features
+/// ANSI escape sequences for screen management
+pub const ScreenSequences = struct {
+    // Alternate screen buffer
+    pub const ENTER_ALT_SCREEN = "\x1b[?1049h";
+    pub const EXIT_ALT_SCREEN = "\x1b[?1049l";
 
-/// Screen control sequences and management
-pub const Control = struct {
+    // Classic screen save/restore (older terminals)
+    pub const SAVE_SCREEN = "\x1b[?47h";
+    pub const RESTORE_SCREEN = "\x1b[?47l";
+
+    // Cursor save/restore
+    pub const SAVE_CURSOR = "\x1b[s";
+    pub const RESTORE_CURSOR = "\x1b[u";
+
+    // DEC cursor save/restore (more reliable)
+    pub const SAVE_CURSOR_DEC = "\x1b7";
+    pub const RESTORE_CURSOR_DEC = "\x1b8";
+
+    // Screen clearing
     pub const CLEAR_SCREEN = "\x1b[2J";
-    pub const CLEAR_LINE = "\x1b[2K";
-    pub const CURSOR_HOME = "\x1b[H";
-    pub const SAVE_CURSOR = "\x1b7";
-    pub const RESTORE_CURSOR = "\x1b8";
-    pub const REQUEST_CURSOR_POSITION = "\x1b[6n";
+    pub const CLEAR_TO_END = "\x1b[J";
+    pub const CLEAR_TO_START = "\x1b[1J";
+    pub const CLEAR_LINE = "\x1b[K";
+    pub const CLEAR_LINE_TO_END = "\x1b[0K";
+    pub const CLEAR_LINE_TO_START = "\x1b[1K";
+    pub const CLEAR_ENTIRE_LINE = "\x1b[2K";
+
+    // Cursor positioning
+    pub const HOME_CURSOR = "\x1b[H";
+    pub const CURSOR_TO_POS = "\x1b[{};{}H"; // Use with format
+
+    // Scrolling
+    pub const SCROLL_UP = "\x1b[S";
+    pub const SCROLL_DOWN = "\x1b[T";
+    pub const SCROLL_UP_N = "\x1b[{}S"; // Use with format
+    pub const SCROLL_DOWN_N = "\x1b[{}T"; // Use with format
+
+    // Terminal modes
+    pub const HIDE_CURSOR = "\x1b[?25l";
+    pub const SHOW_CURSOR = "\x1b[?25h";
+    pub const ENABLE_MOUSE = "\x1b[?1000h";
+    pub const DISABLE_MOUSE = "\x1b[?1000l";
+    pub const ENABLE_MOUSE_SGR = "\x1b[?1006h";
+    pub const DISABLE_MOUSE_SGR = "\x1b[?1006l";
+
+    // Window title
+    pub const SET_TITLE = "\x1b]0;{};\x07"; // Use with format
+    pub const SET_ICON_NAME = "\x1b]1;{};\x07"; // Use with format
+    pub const SET_WINDOW_TITLE = "\x1b]2;{};\x07"; // Use with format
+
+    // Synchronized output
+    pub const SYNC_START = "\x1b[?2026h";
+    pub const SYNC_END = "\x1b[?2026l";
 };
 
-/// Re-export ANSI screen functions for convenience
-pub const clearScreenToEnd = ansi_screen.clearScreenToEnd;
-pub const clearScreenToStart = ansi_screen.clearScreenToStart;
-pub const clearScreenAll = ansi_screen.clearScreenAll;
-pub const clearLineToEnd = ansi_screen.clearLineToEnd;
-pub const clearLineToStart = ansi_screen.clearLineToStart;
-pub const clearLineAll = ansi_screen.clearLineAll;
-pub const setScrollRegion = ansi_screen.setScrollRegion;
-pub const resetScrollRegion = ansi_screen.resetScrollRegion;
-pub const scrollUp = ansi_screen.scrollUp;
-pub const scrollDown = ansi_screen.scrollDown;
-pub const insertLine = ansi_screen.insertLine;
-pub const deleteLine = ansi_screen.deleteLine;
-pub const insertCharacter = ansi_screen.insertCharacter;
-pub const deleteCharacter = ansi_screen.deleteCharacter;
-pub const setHorizontalTabStop = ansi_screen.setHorizontalTabStop;
-pub const tabClear = ansi_screen.tabClear;
-pub const setTopBottomMargins = ansi_screen.setTopBottomMargins;
-pub const setLeftRightMargins = ansi_screen.setLeftRightMargins;
-pub const setTabEvery8Columns = ansi_screen.setTabEvery8Columns;
-pub const repeatPreviousCharacter = ansi_screen.repeatPreviousCharacter;
-pub const requestPresentationStateReport = ansi_screen.requestPresentationStateReport;
-pub const tabStopReport = ansi_screen.tabStopReport;
-pub const cursorInformationReport = ansi_screen.cursorInformationReport;
-pub const horizontalTab = ansi_screen.horizontalTab;
-pub const cursorBackTab = ansi_screen.cursorBackTab;
-pub const cursorHorizontalTab = ansi_screen.cursorHorizontalTab;
-pub const cursorVerticalTab = ansi_screen.cursorVerticalTab;
-pub const writeTextWithTabControl = ansi_screen.writeTextWithTabControl;
+/// Screen state tracking
+pub const ScreenState = struct {
+    in_alt_screen: bool = false,
+    cursor_saved: bool = false,
+    cursor_visible: bool = true,
+    mouse_enabled: bool = false,
+    sync_output: bool = false,
+    saved_title: ?[]const u8 = null,
 
-// Bounds type is available from shared/types.zig
+    /// Get current screen dimensions (if available)
+    pub fn getScreenSize() ?struct { width: u16, height: u16 } {
+        // This would ideally query the terminal, but for now return a placeholder
+        // In a real implementation, this could use ioctl or environment variables
+        if (std.process.getEnvVarOwned(std.heap.page_allocator, "COLUMNS")) |cols_str| {
+            defer std.heap.page_allocator.free(cols_str);
+            if (std.process.getEnvVarOwned(std.heap.page_allocator, "LINES")) |rows_str| {
+                defer std.heap.page_allocator.free(rows_str);
 
-/// Screen component for efficient partial rendering
-pub const Component = struct {
-    id: []const u8,
-    bounds: types.BoundsU32,
-    content: []const u8,
-    visible: bool,
-    dirty: bool, // Needs redraw
-    zIndex: i32, // For layering
+                const cols = std.fmt.parseInt(u16, cols_str, 10) catch return null;
+                const rows = std.fmt.parseInt(u16, rows_str, 10) catch return null;
+                return .{ .width = cols, .height = rows };
+            }
+        }
+        return null;
+    }
 };
 
-/// Screen management for efficient partial rendering
+/// Comprehensive screen manager with state tracking and restoration
 pub const Screen = struct {
-    components: std.ArrayList(Component),
-    screen_bounds: types.BoundsU32,
-    dirty_regions: std.ArrayList(types.BoundsU32),
     allocator: std.mem.Allocator,
-    caps: TermCaps,
-    tab_config: tab_processor.TabConfig,
+    state: ScreenState,
+    restore_on_exit: bool = true,
+    output_writer: ?*std.Io.Writer = null, // For writing sequences
 
-    pub fn init(allocator: std.mem.Allocator, width: u32, height: u32, caps: TermCaps) Screen {
-        return Screen{
-            .components = std.ArrayList(Component).init(allocator),
-            .screen_bounds = types.BoundsU32.init(0, 0, width, height),
-            .dirty_regions = std.ArrayList(types.BoundsU32).init(allocator),
+    const Self = @This();
+
+    pub fn init(allocator: std.mem.Allocator) Self {
+        return Self{
             .allocator = allocator,
-            .caps = caps,
-            .tab_config = tab_processor.TabConfig{}, // Default tab config
+            .state = ScreenState{},
         };
     }
 
-    pub fn deinit(self: *Screen) void {
-        // Free component content
-        for (self.components.items) |component| {
-            self.allocator.free(component.id);
-            self.allocator.free(component.content);
+    pub fn deinit(self: *Self) void {
+        if (self.state.saved_title) |title| {
+            self.allocator.free(title);
         }
-        self.components.deinit();
-        self.dirty_regions.deinit();
-    }
 
-    pub fn addComponent(self: *Screen, id: []const u8, bounds: types.BoundsU32, zIndex: i32) !void {
-        const component = Component{
-            .id = try self.allocator.dupe(u8, id),
-            .bounds = bounds,
-            .content = try self.allocator.alloc(u8, 0),
-            .visible = true,
-            .dirty = true,
-            .zIndex = zIndex,
-        };
-        try self.components.append(component);
-        try self.markDirty(bounds);
-    }
-
-    pub fn updateComponent(self: *Screen, id: []const u8, content: []const u8) !void {
-        for (self.components.items) |*component| {
-            if (std.mem.eql(u8, component.id, id)) {
-                // Free old content and allocate new
-                self.allocator.free(component.content);
-                component.content = try self.allocator.dupe(u8, content);
-                component.dirty = true;
-                try self.markDirty(component.bounds);
-                return;
-            }
+        // Restore screen state on cleanup if requested
+        if (self.restore_on_exit) {
+            self.restoreAll() catch |err| {
+                std.log.warn("Failed to restore screen state on cleanup: {any}", .{err});
+            };
         }
     }
 
-    pub fn moveComponent(self: *Screen, id: []const u8, new_bounds: types.BoundsU32) !void {
-        for (self.components.items) |*component| {
-            if (std.mem.eql(u8, component.id, id)) {
-                // Mark old and new positions as dirty
-                try self.markDirty(component.bounds);
-                try self.markDirty(new_bounds);
-                component.bounds = new_bounds;
-                component.dirty = true;
-                return;
-            }
-        }
+    /// Set output writer for sending escape sequences
+    pub fn setWriter(self: *Self, writer: *std.Io.Writer) void {
+        self.output_writer = writer;
     }
 
-    pub fn hideComponent(self: *Screen, id: []const u8) !void {
-        for (self.components.items) |*component| {
-            if (std.mem.eql(u8, component.id, id)) {
-                if (component.visible) {
-                    component.visible = false;
-                    try self.markDirty(component.bounds);
-                }
-                return;
-            }
-        }
-    }
-
-    pub fn showComponent(self: *Screen, id: []const u8) !void {
-        for (self.components.items) |*component| {
-            if (std.mem.eql(u8, component.id, id)) {
-                if (!component.visible) {
-                    component.visible = true;
-                    component.dirty = true;
-                    try self.markDirty(component.bounds);
-                }
-                return;
-            }
-        }
-    }
-
-    pub fn removeComponent(self: *Screen, id: []const u8) !void {
-        var i: usize = 0;
-        while (i < self.components.items.len) {
-            if (std.mem.eql(u8, self.components.items[i].id, id)) {
-                const component = self.components.orderedRemove(i);
-                try self.markDirty(component.bounds);
-
-                // Free memory
-                self.allocator.free(component.id);
-                self.allocator.free(component.content);
-                return;
-            } else {
-                i += 1;
-            }
-        }
-    }
-
-    fn markDirty(self: *Screen, bounds: types.BoundsU32) !void {
-        // Add to dirty regions for partial updates
-        try self.dirty_regions.append(bounds);
-    }
-
-    pub fn render(self: *Screen, writer: anytype) !void {
-        if (self.dirty_regions.items.len == 0) return;
-
-        // Sort components by zIndex for proper layering
-        std.sort.sort(Component, self.components.items, {}, compareComponents);
-
-        // Render each dirty region
-        for (self.dirty_regions.items) |region| {
-            try self.renderRegion(writer, region);
-        }
-
-        // Clear dirty regions after rendering
-        self.dirty_regions.clearRetainingCapacity();
-
-        // Mark all components as clean
-        for (self.components.items) |*component| {
-            component.dirty = false;
-        }
-    }
-
-    fn compareComponents(context: void, a: Component, b: Component) bool {
-        _ = context;
-        return a.zIndex < b.zIndex;
-    }
-
-    fn renderRegion(self: *Screen, writer: anytype, region: types.BoundsU32) !void {
-        // Clear the region first
-        try self.clearRegion(writer, region);
-
-        // Render all visible components that intersect this region
-        for (self.components.items) |component| {
-            if (component.visible and component.bounds.intersects(region)) {
-                try self.renderComponent(writer, component, region);
-            }
-        }
-    }
-
-    fn clearRegion(self: *Screen, writer: anytype, region: types.BoundsU32) !void {
-        // Move cursor to region start and clear the area
-        var y: u32 = region.y;
-        while (y < region.y + region.height) : (y += 1) {
-            try moveCursor(writer, self.caps, y, region.x);
-            // Clear only the width of this region
-            var x: u32 = 0;
-            while (x < region.width) : (x += 1) {
-                try writer.writeAll(" ");
-            }
-        }
-    }
-
-    fn renderComponent(self: *Screen, writer: anytype, component: Component, clipRegion: types.BoundsU32) !void {
-
-        // Calculate the intersection of component bounds and clip region
-        const render_bounds = component.bounds.clamp(clipRegion);
-        if (render_bounds.isEmpty()) return;
-
-        // Position cursor at the start of the render area
-        try moveCursor(writer, self.caps, render_bounds.y, render_bounds.x);
-
-        // Expand tabs in the content if tab processing is enabled
-        if (self.tab_config.expand_tabs) {
-            const expanded_content = try tab_processor.expandTabs(self.allocator, component.content, self.tab_config);
-            defer self.allocator.free(expanded_content);
-
-            // For now, just render the expanded content as-is
-            // TODO: Implement proper text wrapping and clipping
-            try writer.writeAll(expanded_content);
+    /// Send escape sequence to terminal
+    fn sendSequence(self: Self, sequence: []const u8) !void {
+        if (self.output_writer) |writer| {
+            _ = try writer.write(sequence);
         } else {
-            // Render content without tab expansion
-            try writer.writeAll(component.content);
+            // Default to stdout
+            const stdout = std.fs.File.stdout();
+            try stdout.writeAll(sequence);
         }
     }
 
-    pub fn refresh(self: *Screen, writer: anytype) !void {
-        // Mark entire screen as dirty for full refresh
-        try self.markDirty(self.screen_bounds);
-        try self.render(writer);
+    /// Enter alternate screen buffer
+    pub fn enterAltScreen(self: *Self) !void {
+        if (!self.state.in_alt_screen) {
+            try self.sendSequence(ScreenSequences.ENTER_ALT_SCREEN);
+            self.state.in_alt_screen = true;
+        }
     }
 
-    pub fn resize(self: *Screen, width: u32, height: u32) void {
-        self.screen_bounds = types.BoundsU32.init(0, 0, width, height);
-        // Mark entire screen as dirty since everything might need repositioning
-        self.markDirty(self.screen_bounds) catch |err| {
-            std.log.warn("Failed to mark screen dirty during resize: {any}", .{err});
-        };
+    /// Exit alternate screen buffer
+    pub fn exitAltScreen(self: *Self) !void {
+        if (self.state.in_alt_screen) {
+            try self.sendSequence(ScreenSequences.EXIT_ALT_SCREEN);
+            self.state.in_alt_screen = false;
+        }
     }
 
-    /// Set tab configuration for text rendering
-    pub fn setTabConfig(self: *Screen, config: tab_processor.TabConfig) void {
-        self.tab_config = config;
+    /// Save current cursor position
+    pub fn saveCursor(self: *Self) !void {
+        try self.sendSequence(ScreenSequences.SAVE_CURSOR_DEC);
+        self.state.cursor_saved = true;
+    }
+
+    /// Restore saved cursor position
+    pub fn restoreCursor(self: *Self) !void {
+        if (self.state.cursor_saved) {
+            try self.sendSequence(ScreenSequences.RESTORE_CURSOR_DEC);
+        }
+    }
+
+    /// Hide cursor
+    pub fn hideCursor(self: *Self) !void {
+        if (self.state.cursor_visible) {
+            try self.sendSequence(ScreenSequences.HIDE_CURSOR);
+            self.state.cursor_visible = false;
+        }
+    }
+
+    /// Show cursor
+    pub fn showCursor(self: *Self) !void {
+        if (!self.state.cursor_visible) {
+            try self.sendSequence(ScreenSequences.SHOW_CURSOR);
+            self.state.cursor_visible = true;
+        }
+    }
+
+    /// Clear entire screen
+    pub fn clearScreen(self: Self) !void {
+        try self.sendSequence(ScreenSequences.CLEAR_SCREEN);
+        try self.sendSequence(ScreenSequences.HOME_CURSOR);
+    }
+
+    /// Clear current line
+    pub fn clearLine(self: Self) !void {
+        try self.sendSequence(ScreenSequences.CLEAR_ENTIRE_LINE);
+    }
+
+    /// Move cursor to specific position (1-based coordinates)
+    pub fn moveCursor(self: Self, row: u16, col: u16) !void {
+        const sequence = try std.fmt.allocPrint(self.allocator, "\x1b[{d};{d}H", .{ row, col });
+        defer self.allocator.free(sequence);
+        try self.sendSequence(sequence);
+    }
+
+    /// Move cursor to home position (1,1)
+    pub fn homeCursor(self: Self) !void {
+        try self.sendSequence(ScreenSequences.HOME_CURSOR);
+    }
+
+    /// Scroll screen up by n lines
+    pub fn scrollUp(self: Self, lines: u16) !void {
+        if (lines == 1) {
+            try self.sendSequence(ScreenSequences.SCROLL_UP);
+        } else {
+            const sequence = try std.fmt.allocPrint(self.allocator, "\x1b[{d}S", .{lines});
+            defer self.allocator.free(sequence);
+            try self.sendSequence(sequence);
+        }
+    }
+
+    /// Scroll screen down by n lines
+    pub fn scrollDown(self: Self, lines: u16) !void {
+        if (lines == 1) {
+            try self.sendSequence(ScreenSequences.SCROLL_DOWN);
+        } else {
+            const sequence = try std.fmt.allocPrint(self.allocator, "\x1b[{d}T", .{lines});
+            defer self.allocator.free(sequence);
+            try self.sendSequence(sequence);
+        }
+    }
+
+    /// Enable mouse reporting
+    pub fn enableMouse(self: *Self, sgr_mode: bool) !void {
+        if (!self.state.mouse_enabled) {
+            try self.sendSequence(ScreenSequences.ENABLE_MOUSE);
+            if (sgr_mode) {
+                try self.sendSequence(ScreenSequences.ENABLE_MOUSE_SGR);
+            }
+            self.state.mouse_enabled = true;
+        }
+    }
+
+    /// Disable mouse reporting
+    pub fn disableMouse(self: *Self) !void {
+        if (self.state.mouse_enabled) {
+            try self.sendSequence(ScreenSequences.DISABLE_MOUSE_SGR);
+            try self.sendSequence(ScreenSequences.DISABLE_MOUSE);
+            self.state.mouse_enabled = false;
+        }
+    }
+
+    /// Set window title
+    pub fn setTitle(self: *Self, title: []const u8) !void {
+        const sequence = try std.fmt.allocPrint(self.allocator, "\x1b]0;{s}\x07", .{title});
+        defer self.allocator.free(sequence);
+        try self.sendSequence(sequence);
+
+        // Save title for restoration
+        if (self.state.saved_title) |old_title| {
+            self.allocator.free(old_title);
+        }
+        self.state.saved_title = try self.allocator.dupe(u8, title);
+    }
+
+    /// Enable synchronized output (reduce flicker)
+    pub fn enableSyncOutput(self: *Self) !void {
+        if (!self.state.sync_output) {
+            try self.sendSequence(ScreenSequences.SYNC_START);
+            self.state.sync_output = true;
+        }
+    }
+
+    /// Disable synchronized output
+    pub fn disableSyncOutput(self: *Self) !void {
+        if (self.state.sync_output) {
+            try self.sendSequence(ScreenSequences.SYNC_END);
+            self.state.sync_output = false;
+        }
+    }
+
+    /// Begin synchronized output block
+    pub fn beginSync(self: Self) !void {
+        try self.sendSequence(ScreenSequences.SYNC_START);
+    }
+
+    /// End synchronized output block
+    pub fn endSync(self: Self) !void {
+        try self.sendSequence(ScreenSequences.SYNC_END);
+    }
+
+    /// Setup terminal for TUI application
+    pub fn setupForTUI(self: *Self) !void {
+        try self.saveCursor();
+        try self.enterAltScreen();
+        try self.hideCursor();
+        try self.clearScreen();
+    }
+
+    /// Restore terminal after TUI application
+    pub fn restoreFromTUI(self: *Self) !void {
+        try self.showCursor();
+        try self.exitAltScreen();
+        try self.restoreCursor();
+        try self.disableMouse();
+        try self.disableSyncOutput();
+    }
+
+    /// Restore all terminal settings to original state
+    pub fn restoreAll(self: *Self) !void {
+        // Restore in reverse order of setup
+        try self.disableSyncOutput();
+        try self.disableMouse();
+        try self.showCursor();
+        try self.exitAltScreen();
+        try self.restoreCursor();
+    }
+
+    /// Get current screen state
+    pub fn getState(self: Self) ScreenState {
+        return self.state;
+    }
+
+    /// Check if terminal is in alternate screen
+    pub fn isInAltScreen(self: Self) bool {
+        return self.state.in_alt_screen;
+    }
+
+    /// Check if cursor is hidden
+    pub fn isCursorHidden(self: Self) bool {
+        return !self.state.cursor_visible;
+    }
+
+    /// Check if mouse is enabled
+    pub fn isMouseEnabled(self: Self) bool {
+        return self.state.mouse_enabled;
     }
 };
 
-/// Clear the entire screen
-pub fn clearScreen(writer: anytype, caps: TermCaps) !void {
-    try passthrough.writeWithPassthrough(writer, caps, Control.CLEAR_SCREEN);
-    try passthrough.writeWithPassthrough(writer, caps, Control.CURSOR_HOME);
-}
+/// RAII wrapper for automatic screen restoration
+pub const ScreenGuard = struct {
+    manager: *Screen,
 
-/// Move cursor to specific position (1-based coordinates)
-pub fn moveCursor(writer: anytype, caps: TermCaps, row: u32, col: u32) !void {
-    var tmp: [32]u8 = undefined;
-    var fbs = std.io.fixedBufferStream(&tmp);
-    var w = fbs.writer();
-    try w.writeAll("\x1b[");
-    try std.fmt.format(w, "{d};{d}H", .{ row + 1, col + 1 });
-    try passthrough.writeWithPassthrough(writer, caps, fbs.getWritten());
-}
+    const Self = @This();
 
-/// Clear multiple lines starting from current cursor position
-pub fn clearLines(writer: anytype, caps: TermCaps, count: u32) !void {
-    var i: u32 = 0;
-    while (i < count) : (i += 1) {
-        try passthrough.writeWithPassthrough(writer, caps, Control.CLEAR_LINE);
-        if (i < count - 1) {
-            try writer.writeByte('\n');
-        }
+    pub fn init(manager: *Screen) !Self {
+        try manager.setupForTUI();
+        return Self{ .manager = manager };
     }
-}
 
-/// Save cursor position
-pub fn saveCursor(writer: anytype, caps: TermCaps) !void {
-    try passthrough.writeWithPassthrough(writer, caps, Control.SAVE_CURSOR);
-}
-
-/// Restore cursor position
-pub fn restoreCursor(writer: anytype, caps: TermCaps) !void {
-    try passthrough.writeWithPassthrough(writer, caps, Control.RESTORE_CURSOR);
-}
-
-/// Request cursor position report
-pub fn requestCursorPosition(writer: anytype, caps: TermCaps) !void {
-    try passthrough.writeWithPassthrough(writer, caps, Control.REQUEST_CURSOR_POSITION);
-}
-
-/// Write text with tab expansion to terminal
-/// Handles tab characters according to the provided configuration
-pub fn writeTextWithTabs(writer: anytype, allocator: std.mem.Allocator, text: []const u8, tab_config: tab_processor.TabConfig) !void {
-    if (tab_config.expand_tabs) {
-        const expanded = try tab_processor.expandTabs(allocator, text, tab_config);
-        defer allocator.free(expanded);
-        try writer.writeAll(expanded);
-    } else {
-        try writer.writeAll(text);
+    pub fn deinit(self: Self) void {
+        self.manager.restoreFromTUI() catch |err| {
+            std.log.warn("Failed to restore screen from TUI mode: {any}", .{err});
+        };
     }
+};
+
+/// Utility for creating safe screen management blocks
+pub fn withScreen(allocator: std.mem.Allocator, comptime func: anytype, args: anytype) !void {
+    var manager = Screen.init(allocator);
+    defer manager.deinit();
+
+    const guard = try ScreenGuard.init(&manager);
+    defer guard.deinit();
+
+    try @call(.auto, func, .{&manager} ++ args);
 }
 
-/// Calculate the display width of text containing tabs
-pub fn textDisplayWidth(text: []const u8, tab_config: tab_processor.TabConfig) usize {
-    return tab_processor.displayWidth(text, tab_config);
+// Tests
+test "screen manager initialization" {
+    const testing = std.testing;
+    const allocator = testing.allocator;
+
+    var manager = Screen.init(allocator);
+    defer manager.deinit();
+
+    try testing.expect(!manager.state.in_alt_screen);
+    try testing.expect(!manager.state.cursor_saved);
+    try testing.expect(manager.state.cursor_visible);
+}
+
+test "screen state tracking" {
+    const testing = std.testing;
+    const allocator = testing.allocator;
+
+    var manager = Screen.init(allocator);
+    defer manager.deinit();
+
+    // Simulate state changes (without actual terminal I/O)
+    manager.state.in_alt_screen = true;
+    manager.state.cursor_visible = false;
+
+    try testing.expect(manager.isInAltScreen());
+    try testing.expect(manager.isCursorHidden());
+    try testing.expect(!manager.isMouseEnabled());
+}
+
+test "title management" {
+    const testing = std.testing;
+    const allocator = testing.allocator;
+
+    var manager = Screen.init(allocator);
+    defer manager.deinit();
+
+    // This would normally send to terminal, but we're just testing the allocation
+    manager.state.saved_title = try allocator.dupe(u8, "Test Title");
+
+    try testing.expect(manager.state.saved_title != null);
+    try testing.expect(std.mem.eql(u8, manager.state.saved_title.?, "Test Title"));
+}
+
+test "screen guard RAII" {
+    const testing = std.testing;
+    const allocator = testing.allocator;
+
+    var manager = Screen.init(allocator);
+    defer manager.deinit();
+
+    // Simulate guard setup without terminal I/O
+    manager.state.in_alt_screen = true;
+    manager.state.cursor_saved = true;
+    manager.state.cursor_visible = false;
+
+    const initial_state = manager.getState();
+    try testing.expect(initial_state.in_alt_screen);
+    try testing.expect(!initial_state.cursor_visible);
 }

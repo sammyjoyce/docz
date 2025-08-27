@@ -97,7 +97,7 @@ fn demoBasicDiff(allocator: std.mem.Allocator, renderer: *tui.Renderer, terminal
     }, "Use arrow keys to scroll, Tab to switch panels");
 
     // Render the diff viewer
-    const render_ctx = tui.RenderContext{
+    const render_ctx = tui.Render{
         .bounds = viewer_bounds,
         .style = .{},
     };
@@ -208,7 +208,7 @@ fn demoCodeDiff(allocator: std.mem.Allocator, renderer: *tui.Renderer, terminal_
     }, "Use arrow keys to scroll through the diff");
 
     // Render the diff viewer
-    const render_ctx2 = tui.RenderContext{
+    const render_ctx2 = tui.Render{
         .bounds = viewer_bounds,
         .style = .{},
     };
@@ -312,7 +312,7 @@ fn demoLargeFileDiff(allocator: std.mem.Allocator, renderer: *tui.Renderer, term
         }, "Green areas show additions, red areas show deletions");
 
         // Render the diff viewer
-        const render_ctx3 = tui.RenderContext{
+        const render_ctx3 = tui.Render{
             .bounds = viewer_bounds,
             .style = .{},
         };
@@ -453,7 +453,7 @@ fn demoInteractiveDiff(allocator: std.mem.Allocator, renderer: *tui.Renderer, te
         }, "Page Up/Down for faster scrolling");
 
         // Render the diff viewer
-        const render_ctx4 = tui.RenderContext{
+        const render_ctx4 = tui.Render{
             .bounds = viewer_bounds,
             .style = .{},
         };
@@ -496,7 +496,7 @@ fn demoInteractiveDiff(allocator: std.mem.Allocator, renderer: *tui.Renderer, te
     }, stats);
 
     // Render the final diff view
-    const render_ctx5 = tui.RenderContext{
+    const render_ctx5 = tui.Render{
         .bounds = viewer_bounds,
         .style = .{},
     };

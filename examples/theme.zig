@@ -83,7 +83,7 @@ pub fn main() !void {
 
     // Demo 7: Color blindness simulation
     try stdout.writeAll("═══ Color Blindness Simulation ═══\n");
-    const cb_adapter = theme_manager.ColorBlindnessAdapter.init(allocator);
+    const cb_adapter = theme_manager.ColorBlindness.init(allocator);
 
     const cb_types = [_]theme_manager.ColorBlindnessAdapter.ColorBlindnessType{
         .protanopia,
@@ -162,7 +162,7 @@ pub fn main() !void {
 
     // Demo 11: Platform adaptation
     try stdout.writeAll("═══ Platform Adaptation ═══\n");
-    const platform_adapter = try theme_manager.PlatformAdapter.init(allocator);
+    const platform_adapter = try theme_manager.Platform.init(allocator);
     defer platform_adapter.deinit();
 
     try stdout.print("Platform: {s}\n", .{@tagName(platform_adapter.platform)});

@@ -9,7 +9,7 @@ const events_mod = @import("../../core/events.zig");
 const terminal_mod = @import("../../../term/unified.zig");
 
 const Renderer = renderer_mod.Renderer;
-const RenderContext = renderer_mod.RenderContext;
+const Render = renderer_mod.Render;
 const Bounds = bounds_mod.Bounds;
 const Point = bounds_mod.Point;
 
@@ -169,7 +169,7 @@ pub const StatusBar = struct {
         }.lessThan);
     }
 
-    pub fn render(self: *Self, renderer: *Renderer, ctx: RenderContext) !void {
+    pub fn render(self: *Self, renderer: *Renderer, ctx: Render) !void {
         self.bounds = ctx.bounds;
 
         // Update live data if interval has passed
@@ -191,7 +191,7 @@ pub const StatusBar = struct {
         }
     }
 
-    fn clearStatusBar(self: *Self, renderer: *Renderer, ctx: RenderContext) !void {
+    fn clearStatusBar(self: *Self, renderer: *Renderer, ctx: Render) !void {
         for (0..self.config.height) |row| {
             const y = switch (self.config.position) {
                 .top => ctx.bounds.y + @as(u32, @intCast(row)),
@@ -213,7 +213,7 @@ pub const StatusBar = struct {
         }
     }
 
-    fn renderStatusItems(self: *Self, renderer: *Renderer, ctx: RenderContext) !void {
+    fn renderStatusItems(self: *Self, renderer: *Renderer, ctx: Render) !void {
         const status_y = switch (self.config.position) {
             .top => ctx.bounds.y,
             .bottom => ctx.bounds.y + ctx.bounds.height - 1,
@@ -389,7 +389,7 @@ pub const StatusBar = struct {
         try renderer.setStyleEx(style);
     }
 
-    fn renderShortcuts(self: *Self, renderer: *Renderer, ctx: RenderContext, start_x: u32, y: u32) !void {
+    fn renderShortcuts(self: *Self, renderer: *Renderer, ctx: Render, start_x: u32, y: u32) !void {
         const shortcuts = "F1:Help F10:Quit";
         const shortcuts_width = shortcuts.len;
 
@@ -406,7 +406,7 @@ pub const StatusBar = struct {
         }
     }
 
-    fn renderNotification(self: *Self, renderer: *Renderer, ctx: RenderContext, notification: StatusState.Notification) !void {
+    fn renderNotification(self: *Self, renderer: *Renderer, ctx: Render, notification: StatusState.Notification) !void {
 
         // Render notification in a special area (could be a popup or overlay)
         const notif_y = ctx.bounds.y + if (self.config.position == .top) 1 else ctx.bounds.height - 2;

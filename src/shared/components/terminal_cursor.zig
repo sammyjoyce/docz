@@ -3,7 +3,7 @@
 //! Wraps term/ansi/cursor.zig functionality with additional convenience methods
 
 const std = @import("std");
-const term_cursor = @import("term_shared").ansi.cursor;
+const term_cursor = @import("term_shared").cursor;
 
 /// Re-export cursor style for convenience
 pub const CursorStyle = term_cursor.CursorStyle;

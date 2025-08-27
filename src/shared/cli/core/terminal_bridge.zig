@@ -240,7 +240,7 @@ pub const TerminalBridge = struct {
     }
 
     /// Create a scoped context for complex rendering operations
-    pub fn createRenderContext(self: *Self) !Render {
+    pub fn createRender(self: *Self) !Render {
         return Render.init(self);
     }
 

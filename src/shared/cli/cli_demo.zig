@@ -3,6 +3,7 @@
 
 const std = @import("std");
 const term_mod = @import("term_shared");
+const components = @import("../components/mod.zig");
 
 // =============================================================================
 // Core Types (simplified versions)
@@ -102,14 +103,9 @@ pub const NotificationHandler = struct {
         var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
 
         if (caps.supportsNotifyOsc9) {
-            // Use system notification (OSC 9) via term module
-            const notification_text = if (message) |msg|
-                try std.fmt.allocPrint(std.heap.page_allocator, "{s}: {s}", .{ title, msg })
-            else
-                try std.fmt.allocPrint(std.heap.page_allocator, "{s}", .{title});
-            defer std.heap.page_allocator.free(notification_text);
-
-            try term_mod.ansi.notification.writeNotification(stdout_writer.any(), std.heap.page_allocator, caps, notification_text);
+            // Use system notification through components layer
+            const msg = message orelse "";
+            try components.SystemNotification.send(stdout_writer.any(), std.heap.page_allocator, caps, title, msg);
         } else {
             // Fallback to console output with proper formatting
             if (message) |msg| {

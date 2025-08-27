@@ -6,13 +6,13 @@ const ColorScheme = @import("color_scheme.zig").ColorScheme;
 const Color = @import("color_scheme.zig").Color;
 const RGB = @import("color_scheme.zig").RGB;
 const ThemeValidator = @import("theme_validator.zig").ThemeValidator;
-const AccessibilityManager = @import("accessibility.zig").AccessibilityManager;
+const Accessibility = @import("accessibility.zig").Accessibility;
 const ColorBlindnessAdapter = @import("color_blindness.zig").ColorBlindnessAdapter;
 
 pub const ThemeDevelopmentTools = struct {
     allocator: std.mem.Allocator,
     validator: *ThemeValidator,
-    accessibility: AccessibilityManager,
+    accessibility: Accessibility,
     cbAdapter: ColorBlindnessAdapter,
 
     const Self = @This();
@@ -22,7 +22,7 @@ pub const ThemeDevelopmentTools = struct {
         self.* = .{
             .allocator = allocator,
             .validator = try ThemeValidator.init(allocator),
-            .accessibility = AccessibilityManager.init(allocator),
+            .accessibility = Accessibility.init(allocator),
             .cbAdapter = ColorBlindnessAdapter.init(allocator),
         };
         return self;

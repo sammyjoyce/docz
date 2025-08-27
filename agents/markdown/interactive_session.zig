@@ -33,7 +33,7 @@
 //!
 //! ## Architecture
 //!
-//! The enhanced session builds upon the existing EnhancedMarkdownEditor and integrates
+//! The session builds upon the existing MarkdownEditor and integrates
 //! with the shared dashboard components, notification system, and command palette.
 //!
 //! Key components:
@@ -469,7 +469,7 @@ pub const InteractiveSession = struct {
     config: InteractiveSessionConfig,
 
     /// Enhanced markdown editor
-    editor: *enhanced_editor.EnhancedMarkdownEditor,
+    editor: *enhanced_editor.MarkdownEditor,
 
     /// Dashboard instance
     dashboard: *dashboard.Dashboard,
@@ -519,7 +519,7 @@ pub const InteractiveSession = struct {
         errdefer allocator.destroy(self);
 
         // Initialize components
-        const editor = try enhanced_editor.EnhancedMarkdownEditor.init(allocator, agent, session_config.base_config);
+        const editor = try enhanced_editor.MarkdownEditor.init(allocator, agent, session_config.base_config);
         errdefer editor.deinit();
 
         const dashboard_instance = try dashboard.Dashboard.init(allocator, .{

@@ -2,9 +2,9 @@ const std = @import("std");
 const adaptive_renderer = @import("../src/shared/render/mod.zig");
 const AdaptiveRenderer = adaptive_renderer.AdaptiveRenderer;
 const RenderMode = adaptive_renderer.RenderTier;
-const ProgressData = @import("../src/shared/components/progress.zig").ProgressData;
+const Progress = @import("../src/shared/components/progress.zig").Progress;
 const ProgressRenderer = @import("../src/shared/components/progress.zig").ProgressRenderer;
-const renderProgressData = @import("../src/shared/components/progress.zig").renderProgressData;
+const renderProgress = @import("../src/shared/components/progress.zig").renderProgress;
 const AnimatedProgress = @import("../src/shared/components/progress.zig").AnimatedProgress;
 const Table = @import("../src/shared/render/components/Table.zig").Table;
 const renderTable = @import("../src/shared/render/components/Table.zig").renderTable;
@@ -104,31 +104,31 @@ fn demoProgressBars(renderer: *AdaptiveRenderer) !void {
     try renderer.writeText("\n\n", null, false);
 
     // Create progress examples
-    var download_data = ProgressData.init(renderer.allocator);
+    var download_data = Progress.init(renderer.allocator);
     try download_data.setProgress(0.25);
     download_data.label = try renderer.allocator.dupe(u8, "Download");
     download_data.show_percentage = true;
 
-    var processing_data = ProgressData.init(renderer.allocator);
+    var processing_data = Progress.init(renderer.allocator);
     try processing_data.setProgress(0.67);
     processing_data.label = try renderer.allocator.dupe(u8, "Processing");
     processing_data.show_percentage = true;
     processing_data.show_eta = true;
 
-    var upload_data = ProgressData.init(renderer.allocator);
+    var upload_data = Progress.init(renderer.allocator);
     try upload_data.setProgress(0.89);
     upload_data.label = try renderer.allocator.dupe(u8, "Upload");
     upload_data.show_percentage = true;
 
-    var complete_data = ProgressData.init(renderer.allocator);
+    var complete_data = Progress.init(renderer.allocator);
     try complete_data.setProgress(1.0);
     complete_data.label = try renderer.allocator.dupe(u8, "Complete");
     complete_data.show_percentage = true;
 
-    const progress_examples = [_]*ProgressData{ &download_data, &processing_data, &upload_data, &complete_data };
+    const progress_examples = [_]*Progress{ &download_data, &processing_data, &upload_data, &complete_data };
 
     for (progress_examples) |progress| {
-        try renderProgressData(renderer, progress);
+        try renderProgress(renderer, progress);
         try renderer.writeText("\n", null, false);
     }
 
@@ -279,7 +279,7 @@ fn demoAnimatedProgress(renderer: *AdaptiveRenderer) !void {
     try renderer.writeText("=" ** 45, null, false);
     try renderer.writeText("\n\n", null, false);
 
-    var progress_data = ProgressData.init(renderer.allocator);
+    var progress_data = Progress.init(renderer.allocator);
     progress_data.label = try renderer.allocator.dupe(u8, "Processing files");
     progress_data.show_percentage = true;
     progress_data.show_eta = true;
@@ -326,11 +326,11 @@ fn demoRenderModeComparison(allocator: std.mem.Allocator) !void {
         try renderer.writeText("\n\n", null, false);
 
         // Sample progress bar
-        var progress_data = ProgressData.init(renderer.allocator);
+        var progress_data = Progress.init(renderer.allocator);
         try progress_data.setProgress(0.75);
         progress_data.label = try renderer.allocator.dupe(u8, "Sample Progress");
         progress_data.show_percentage = true;
-        try renderProgressData(renderer, &progress_data);
+        try renderProgress(renderer, &progress_data);
         try renderer.writeText("\n\n", null, false);
 
         // Sample table
@@ -371,11 +371,11 @@ test "adaptive demo" {
     const renderer = try AdaptiveRenderer.initWithMode(testing.allocator, .minimal);
     defer renderer.deinit();
 
-    var progress_data = ProgressData.init(testing.allocator);
+    var progress_data = Progress.init(testing.allocator);
     try progress_data.setProgress(0.5);
     progress_data.label = try testing.allocator.dupe(u8, "Test");
     progress_data.show_percentage = true;
-    try renderProgressData(renderer, &progress_data);
+    try renderProgress(renderer, &progress_data);
 
     const headers = [_][]const u8{ "A", "B" };
     const row = [_][]const u8{ "1", "2" };

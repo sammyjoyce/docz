@@ -3,8 +3,7 @@
 //! depending on low-level ANSI modules.
 
 const std = @import("std");
-const shared = @import("../../mod.zig");
-const notif_mod = shared.components;
+const notif_mod = @import("components_shared");
 
 const Notification = notif_mod.Notification;
 const NotificationType = notif_mod.NotificationType;

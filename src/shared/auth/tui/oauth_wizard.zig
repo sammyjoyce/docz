@@ -36,7 +36,7 @@ const NotificationController = notification_mod.NotificationController;
 const TextInput = text_input.TextInput;
 const StatusBar = status_bar.StatusBar;
 const Renderer = renderer_mod.Renderer;
-const RenderContext = renderer_mod.Render;
+
 const Bounds = tui_mod.Bounds;
 const Point = tui_mod.Point;
 
@@ -388,7 +388,7 @@ pub const OAuthWizard = struct {
             .height = 4,
         };
 
-        const ctx = RenderContext{
+        const ctx = renderer_mod.Render{
             .bounds = header_bounds,
             .style = .{},
             .zIndex = 0,
@@ -416,7 +416,7 @@ pub const OAuthWizard = struct {
             .height = 3,
         };
 
-        const ctx = RenderContext{
+        const ctx = renderer_mod.Render{
             .bounds = progress_bounds,
             .style = .{},
             .zIndex = 0,
@@ -446,7 +446,7 @@ pub const OAuthWizard = struct {
             .height = 2,
         };
 
-        const title_ctx = RenderContext{
+        const title_ctx = renderer_mod.Render{
             .bounds = title_bounds,
             .style = .{ .fg_color = metadata.color, .bold = true },
             .zIndex = 0,
@@ -466,7 +466,7 @@ pub const OAuthWizard = struct {
             .height = 2,
         };
 
-        const desc_ctx = RenderContext{
+        const desc_ctx = renderer_mod.Render{
             .bounds = desc_bounds,
             .style = .{ .fg_color = .{ .ansi = 7 } },
             .zIndex = 0,
@@ -504,7 +504,7 @@ pub const OAuthWizard = struct {
             .height = 8,
         };
 
-        const ctx = RenderContext{
+        const ctx = renderer_mod.Render{
             .bounds = input_bounds,
             .style = .{},
             .zIndex = 0,
@@ -537,7 +537,7 @@ pub const OAuthWizard = struct {
             .padding = .{ .top = 1, .right = 1, .bottom = 1, .left = 1 },
         };
 
-        const box_ctx = RenderContext{
+        const box_ctx = renderer_mod.Render{
             .bounds = input_box_bounds,
             .style = .{},
             .zIndex = 0,
@@ -554,7 +554,7 @@ pub const OAuthWizard = struct {
             .height = 1,
         };
 
-        const content_ctx = RenderContext{
+        const content_ctx = renderer_mod.Render{
             .bounds = content_bounds,
             .style = .{ .fg_color = .{ .ansi = 7 } },
             .zIndex = 0,
@@ -579,7 +579,7 @@ pub const OAuthWizard = struct {
             .height = 6,
         };
 
-        const ctx = RenderContext{
+        const ctx = renderer_mod.Render{
             .bounds = error_bounds,
             .style = .{ .fg_color = .{ .ansi = 9 }, .bold = true },
             .zIndex = 0,
@@ -610,7 +610,7 @@ pub const OAuthWizard = struct {
             .height = 6,
         };
 
-        const ctx = RenderContext{
+        const ctx = renderer_mod.Render{
             .bounds = complete_bounds,
             .style = .{ .fg_color = .{ .ansi = 10 }, .bold = true },
             .zIndex = 0,
@@ -647,7 +647,7 @@ pub const OAuthWizard = struct {
             const spinner_chars = [_][]const u8{ "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏" };
             const spinner_idx = self.animation_frame % spinner_chars.len;
 
-            const ctx = RenderContext{
+            const ctx = renderer_mod.Render{
                 .bounds = anim_bounds,
                 .style = .{ .fg_color = metadata.color },
                 .zIndex = 0,
@@ -661,7 +661,7 @@ pub const OAuthWizard = struct {
         }
 
         if (metadata.show_network_indicator and self.network_active) {
-            const ctx = RenderContext{
+            const ctx = renderer_mod.Render{
                 .bounds = Bounds{
                     .x = anim_bounds.x + anim_bounds.width - 10,
                     .y = anim_bounds.y,
@@ -687,7 +687,7 @@ pub const OAuthWizard = struct {
             .height = 1,
         };
 
-        const ctx = RenderContext{
+        const ctx = renderer_mod.Render{
             .bounds = status_bounds,
             .style = .{},
             .zIndex = 0,
@@ -707,7 +707,7 @@ pub const OAuthWizard = struct {
             .height = 1,
         };
 
-        const ctx = RenderContext{
+        const ctx = renderer_mod.Render{
             .bounds = shortcuts_bounds,
             .style = .{ .fg_color = .{ .ansi = 8 }, .bold = false },
             .zIndex = 0,

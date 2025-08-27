@@ -6,7 +6,7 @@ const ColorScheme = @import("color_scheme.zig").ColorScheme;
 const Color = @import("color_scheme.zig").Color;
 const RGB = @import("color_scheme.zig").RGB;
 
-pub const ColorBlindnessAdapter = struct {
+pub const ColorBlindness = struct {
     allocator: std.mem.Allocator,
 
     pub const ColorBlindnessType = enum {

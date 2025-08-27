@@ -7,7 +7,7 @@ const term_shared = @import("term_shared");
 
 pub const cellbuf = term_shared.cellbuf;
 // TODO: Implement advanced cursor optimizer
-// pub const cursor_optimizer = @import("ansi/cursor_optimizer.zig");
+// pub const cursor_optimizer = @import("../../term/control/cursor.zig").CursorOptimizer;
 // TODO: Implement enhanced input handler
 // pub const input_handler = @import("input/input_handler.zig");
 // TODO: Implement editor

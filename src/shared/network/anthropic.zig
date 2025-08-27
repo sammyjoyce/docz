@@ -40,20 +40,18 @@ pub const OAuthCredentials = struct {
 };
 
 // PKCE parameters for OAuth flow
-pub const PkceParams = struct {
+pub const Pkce = struct {
     code_verifier: []const u8,
     code_challenge: []const u8,
     state: []const u8,
 
     /// Clean up allocated memory
-    pub fn deinit(self: PkceParams, allocator: std.mem.Allocator) void {
+    pub fn deinit(self: Pkce, allocator: std.mem.Allocator) void {
         allocator.free(self.code_verifier);
         allocator.free(self.code_challenge);
         allocator.free(self.state);
     }
 };
-
-
 
 /// Authentication methods supported
 pub const AuthMethod = union(enum) {
@@ -69,7 +67,7 @@ pub const OAuthProvider = struct {
     redirect_uri: []const u8,
     scopes: []const []const u8,
 
-    pub fn buildAuthURL(self: OAuthProvider, allocator: std.mem.Allocator, pkce_params: PkceParams) ![]u8 {
+    pub fn buildAuthURL(self: OAuthProvider, allocator: std.mem.Allocator, pkce_params: Pkce) ![]u8 {
         const scopes_joined = try std.mem.join(allocator, " ", self.scopes);
         defer allocator.free(scopes_joined);
 
@@ -91,12 +89,12 @@ pub const RefreshState = struct {
 };
 
 /// Global refresh state for single-flight protection
-var global_refresh_state = RefreshState.init();
+var globalRefreshState = RefreshState.init();
 
 /// Global content collector for complete method (not thread-safe)
-var global_content_collector: std.ArrayList(u8) = undefined;
-var global_allocator: std.mem.Allocator = undefined;
-var global_usage_info: Usage = undefined;
+var globalContentCollector: std.ArrayList(u8) = undefined;
+var globalAllocator: std.mem.Allocator = undefined;
+var globalUsageInfo: Usage = undefined;
 
 /// Model pricing information (rates per million tokens)
 pub const ModelPricing = struct {
@@ -186,7 +184,7 @@ pub const Error = error{ MissingAPIKey, APIError, AuthError, TokenExpired, OutOf
     // Buffer errors
     NoSpaceLeft, StreamTooLong };
 
-pub const StreamParams = struct {
+pub const Stream = struct {
     model: []const u8,
     max_tokens: usize = 256,
     temperature: f32 = 0.7,
@@ -215,7 +213,7 @@ pub const Usage = struct {
 };
 
 /// Parameters for non-streaming completion
-pub const CompleteParams = struct {
+pub const Complete = struct {
     model: []const u8,
     max_tokens: usize = 256,
     temperature: f32 = 0.7,
@@ -276,18 +274,18 @@ pub const AnthropicClient = struct {
                 if (!oauth_creds.willExpireSoon(300)) return;
 
                 // Single-flight protection
-                global_refresh_state.mutex.lock();
-                defer global_refresh_state.mutex.unlock();
+                globalRefreshState.mutex.lock();
+                defer globalRefreshState.mutex.unlock();
 
                 // Check again in case another thread refreshed while we waited
                 if (!oauth_creds.willExpireSoon(300)) return;
 
-                if (global_refresh_state.in_progress) {
+                if (globalRefreshState.in_progress) {
                     return Error.RefreshInProgress;
                 }
 
-                global_refresh_state.in_progress = true;
-                defer global_refresh_state.in_progress = false;
+                globalRefreshState.in_progress = true;
+                defer globalRefreshState.in_progress = false;
 
                 // Perform the refresh
                 const new_creds = refreshTokens(self.allocator, oauth_creds.refresh_token) catch |err| {
@@ -314,20 +312,20 @@ pub const AnthropicClient = struct {
     }
 
     /// Streams completion via Server-Sent Events, invoking callback per data chunk.
-    pub fn stream(self: *AnthropicClient, params: StreamParams) Error!void {
+    pub fn stream(self: *AnthropicClient, params: Stream) Error!void {
         return self.streamWithRetry(params, false);
     }
 
     /// Complete method for non-streaming requests (collects streaming response)
-    pub fn complete(self: *AnthropicClient, params: CompleteParams) !CompletionResponse {
+    pub fn complete(self: *AnthropicClient, params: Complete) !CompletionResponse {
         // Set up global collector (not thread-safe, but ok for single-threaded use)
-        global_allocator = self.allocator;
-        global_content_collector = std.ArrayList(u8){};
-        defer global_content_collector.deinit(self.allocator);
-        global_usage_info = Usage{ .input_tokens = 0, .output_tokens = 0 };
+        globalAllocator = self.allocator;
+        globalContentCollector = std.ArrayList(u8){};
+        defer globalContentCollector.deinit(self.allocator);
+        globalUsageInfo = Usage{ .input_tokens = 0, .output_tokens = 0 };
 
         // Create stream params with our collector callback
-        const stream_params = StreamParams{
+        const stream_params = Stream{
             .model = params.model,
             .max_tokens = params.max_tokens,
             .temperature = params.temperature,
@@ -346,9 +344,9 @@ pub const AnthropicClient = struct {
                         type: ?[]const u8,
                     };
 
-                    const parsed = std.json.parseFromSlice(DeltaMessage, global_allocator, data, .{}) catch {
+                    const parsed = std.json.parseFromSlice(DeltaMessage, globalAllocator, data, .{}) catch {
                         // If not valid JSON, treat as raw text content
-                        global_content_collector.appendSlice(global_allocator, data) catch return;
+                        globalContentCollector.appendSlice(globalAllocator, data) catch return;
                         return;
                     };
                     defer parsed.deinit();
@@ -356,14 +354,14 @@ pub const AnthropicClient = struct {
                     // Extract content from delta if present
                     if (parsed.value.delta) |delta| {
                         if (delta.text) |text| {
-                            global_content_collector.appendSlice(global_allocator, text) catch return;
+                            globalContentCollector.appendSlice(globalAllocator, text) catch return;
                         }
                     }
 
                     // Extract usage if present
                     if (parsed.value.usage) |usage| {
-                        global_usage_info.input_tokens = usage.input_tokens;
-                        global_usage_info.output_tokens = usage.output_tokens;
+                        globalUsageInfo.input_tokens = usage.input_tokens;
+                        globalUsageInfo.output_tokens = usage.output_tokens;
                     }
                 }
             }.callback,
@@ -372,17 +370,17 @@ pub const AnthropicClient = struct {
         try self.stream(stream_params);
 
         // Create owned content copy
-        const owned_content = try self.allocator.dupe(u8, global_content_collector.items);
+        const owned_content = try self.allocator.dupe(u8, globalContentCollector.items);
 
         return CompletionResponse{
             .content = owned_content,
-            .usage = global_usage_info,
+            .usage = globalUsageInfo,
             .allocator = self.allocator,
         };
     }
 
     /// Internal method to handle streaming with automatic retry on 401
-    fn streamWithRetry(self: *AnthropicClient, params: StreamParams, isRetry: bool) Error!void {
+    fn streamWithRetry(self: *AnthropicClient, params: Stream, isRetry: bool) Error!void {
         // Refresh OAuth tokens if needed (unless this is already a retry)
         if (!isRetry) {
             try self.refreshOAuthIfNeeded();
@@ -491,7 +489,7 @@ pub const AnthropicClient = struct {
     }
 };
 
-fn buildBodyJson(allocator: std.mem.Allocator, params: StreamParams) ![]u8 {
+fn buildBodyJson(allocator: std.mem.Allocator, params: Stream) ![]u8 {
     var buffer = std.array_list.Managed(u8).init(allocator);
     defer buffer.deinit();
 
@@ -583,14 +581,14 @@ fn isChunkedEncoding(response_head: anytype) bool {
 }
 
 /// Chunk processing state for incremental parsing
-const ChunkState = struct {
+const Chunk = struct {
     size: usize = 0,
     bytes_read: usize = 0,
     reading_size: bool = true,
     trailers_started: bool = false,
     extensions: ?[]const u8 = null,
 
-    pub fn reset(self: *ChunkState) void {
+    pub fn reset(self: *Chunk) void {
         self.size = 0;
         self.bytes_read = 0;
         self.reading_size = true;
@@ -600,7 +598,7 @@ const ChunkState = struct {
 };
 
 /// Configuration for large payload processing
-const LargePayloadConfig = struct {
+const LargePayload = struct {
     large_chunk_threshold: usize = 1024 * 1024, // 1MB threshold for large chunk processing
     streaming_buffer_size: usize = 64 * 1024, // 64KB buffer for streaming large chunks
     max_accumulated_size: usize = 16 * 1024 * 1024, // 16MB max accumulated data before streaming
@@ -614,11 +612,11 @@ fn processChunkedStreamingResponse(allocator: std.mem.Allocator, reader: *std.Io
     var event_data = std.array_list.Managed(u8).init(allocator);
     defer event_data.deinit();
 
-    var chunk_state = ChunkState{};
+    var chunk_state = Chunk{};
     var chunk_buffer = std.array_list.Managed(u8).init(allocator);
     defer chunk_buffer.deinit();
 
-    const config = LargePayloadConfig{};
+    const config = LargePayload{};
 
     // Use adaptive initial capacity based on expected large payload handling
     try event_data.ensureTotalCapacity(16384); // 16KB initial capacity
@@ -1011,8 +1009,8 @@ fn processSSELines(chunk_data: []const u8, event_data: *std.array_list.Managed(u
 
 /// Process Server-Sent Events using Io.Reader with comprehensive event field handling and error recovery
 fn processStreamingResponse(allocator: std.mem.Allocator, reader: *std.Io.Reader, callback: *const fn ([]const u8) void) !void {
-    const sse_config = sse.SSEProcessingConfig{};
-    var event_state = sse.SSEEventState.init(allocator);
+    const sse_config = sse.SSEProcessing{};
+    var event_state = sse.SSEEvent.init(allocator);
     defer event_state.deinit();
 
     var lines_processed: usize = 0;
@@ -1120,14 +1118,12 @@ fn processStreamingResponse(allocator: std.mem.Allocator, reader: *std.Io.Reader
 }
 
 /// Process individual SSE line with comprehensive field support and validation
-fn processSSELine(line: []const u8, event_state: *sse.SSEEventState, sse_config: *const sse.SSEProcessingConfig) !void {
+fn processSSELine(line: []const u8, event_state: *sse.SSEEvent, sse_config: *const sse.SSEProcessing) !void {
     _ = try sse.processSSELine(line, event_state, sse_config);
 }
 
-
-
 /// Exchange authorization code for tokens
-pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorization_code: []const u8, pkce_params: PkceParams) !OAuthCredentials {
+pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorization_code: []const u8, pkce_params: Pkce) !OAuthCredentials {
     std.log.info("🔄 Exchanging authorization code for OAuth tokens...", .{});
 
     var client = curl.HTTPClient.init(allocator) catch |err| {

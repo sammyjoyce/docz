@@ -437,18 +437,16 @@ pub fn createJsonToolWrapper(jsonFunc: JSONToolFunction) ToolFn {
 
     return struct {
         fn wrapper(allocator: std.mem.Allocator, input: []const u8) ToolError![]u8 {
-            const params = std.json.parseFromSlice(std.json.Value, allocator, input, .{}) catch return ToolError.MalformedJSON;
-            defer params.deinit();
+            // Parse input JSON
+            const parsed = std.json.parseFromSlice(std.json.Value, allocator, input, .{}) catch return ToolError.MalformedJSON;
+            defer parsed.deinit();
 
-            const result = StoredFunction.func(allocator, params.value) catch |err| return err;
-            // JSON values don't need explicit deinitialization in newer Zig
+            // Call the JSON tool implementation
+            const value = StoredFunction.func(allocator, parsed.value) catch |err| return err;
 
-            // Properly serialize the JSON result
-            // Create JSON string using manual formatting for now
-            // This is a simplified approach - in production, use a proper JSON library
-            _ = result; // Result parameter not used in simplified implementation
-            const jsonString = try std.fmt.allocPrint(allocator, "{{ \"message\": \"result serialization not implemented\" }}", .{});
-            return jsonString;
+            // Serialize result to string
+            const out = std.json.stringifyAlloc(allocator, value, .{ .whitespace = false }) catch return ToolError.UnexpectedError;
+            return out;
         }
     }.wrapper;
 }
@@ -460,6 +458,51 @@ pub fn registerJsonTool(registry: *Registry, name: []const u8, description: []co
         .name = name,
         .description = description,
         .func = wrappedFunction,
+        .category = "agent",
+        .version = "1.0",
+        .agent = agentName,
+    };
+    try registry.registerWithMeta(metadata);
+}
+
+/// Optional variant with basic required-field validation hooks
+pub fn registerJsonToolWithRequiredFields(
+    registry: *Registry,
+    name: []const u8,
+    description: []const u8,
+    jsonFunc: JSONToolFunction,
+    agentName: []const u8,
+    required_fields: []const []const u8,
+) !void {
+    const Stored = struct {
+        var func: JSONToolFunction = undefined;
+        var req: []const []const u8 = &[_][]const u8{};
+    };
+    Stored.func = jsonFunc;
+    Stored.req = required_fields;
+
+    const wrapper = struct {
+        fn run(allocator: std.mem.Allocator, input: []const u8) ToolError![]u8 {
+            const parsed = std.json.parseFromSlice(std.json.Value, allocator, input, .{}) catch return ToolError.MalformedJSON;
+            defer parsed.deinit();
+            if (parsed.value != .object) return ToolError.InvalidInput;
+
+            // Validate required fields
+            const field_map = parsed.value.object;
+            // Reuse schema helper to validate fields
+            const schemas = @import("json_schemas.zig");
+            schemas.validateRequiredFields(field_map, Stored.req) catch return ToolError.MissingParameter;
+
+            const result = Stored.func(allocator, parsed.value) catch |err| return err;
+            const out = std.json.stringifyAlloc(allocator, result, .{ .whitespace = false }) catch return ToolError.UnexpectedError;
+            return out;
+        }
+    }.run;
+
+    const metadata = ToolMetadata{
+        .name = name,
+        .description = description,
+        .func = wrapper,
         .category = "agent",
         .version = "1.0",
         .agent = agentName,

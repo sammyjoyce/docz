@@ -315,7 +315,7 @@ pub const AgentRegistry = struct {
     }
 
     /// Helper to duplicate a string array.
-    fn dupeStringArray(self: *AgentRegistry, arr: [][]const u8) ![][]const u8 {
+    fn dupeStringArray(self: *AgentRegistry, arr: []const []const u8) ![][]const u8 {
         var duped = std.array_list.Managed([]const u8).init(self.allocator);
         errdefer {
             for (duped.items) |str| {

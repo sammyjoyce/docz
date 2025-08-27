@@ -13,11 +13,12 @@ const std = @import("std");
 const renderer_mod = @import("../renderer.zig");
 const term_mod = @import("term_shared");
 const term_caps = term_mod.caps;
+const components = @import("../../../components/mod.zig");
 
 // Import terminal capabilities modules
 const term_ansi_color = term_mod.ansi.color;
 const term_ansi_enhanced_color = term_mod.ansi.color;
-const term_ansi_cursor = term_mod.ansi.cursor;
+const term_ansi_cursor = term_mod.cursor;
 const term_ansi_mode = term_mod.ansi.mode;
 const term_ansi_screen = term_mod.ansi.screen;
 const term_ansi_hyperlink = term_mod.ansi.hyperlink;
@@ -26,7 +27,7 @@ const term_ansi_notification = term_mod.ansi.notification;
 const term_ansi_graphics = term_mod.ansi.graphics;
 
 const Renderer = renderer_mod.Renderer;
-const RenderContext = renderer_mod.RenderContext;
+const Render = renderer_mod.Render;
 const Style = renderer_mod.Style;
 const BoxStyle = renderer_mod.BoxStyle;
 const Image = renderer_mod.Image;
@@ -145,7 +146,7 @@ pub const RichRenderer = struct {
         }
     }
 
-    fn drawText(impl: *anyopaque, ctx: RenderContext, text: []const u8) anyerror!void {
+    fn drawText(impl: *anyopaque, ctx: Render, text: []const u8) anyerror!void {
         const self: *Self = @ptrCast(@alignCast(impl));
 
         // Apply styles if they've changed
@@ -199,7 +200,7 @@ pub const RichRenderer = struct {
         return Point{ .x = @intCast(max_width), .y = @intCast(height) };
     }
 
-    fn drawBox(impl: *anyopaque, ctx: RenderContext, box_style: BoxStyle) anyerror!void {
+    fn drawBox(impl: *anyopaque, ctx: Render, box_style: BoxStyle) anyerror!void {
         const self: *Self = @ptrCast(@alignCast(impl));
 
         // Fill background if specified
@@ -213,7 +214,7 @@ pub const RichRenderer = struct {
         }
     }
 
-    fn drawLine(impl: *anyopaque, ctx: RenderContext, from: Point, to: Point) anyerror!void {
+    fn drawLine(impl: *anyopaque, ctx: Render, from: Point, to: Point) anyerror!void {
         const self: *Self = @ptrCast(@alignCast(impl));
 
         // Apply line style
@@ -253,12 +254,12 @@ pub const RichRenderer = struct {
         }
     }
 
-    fn fillRect(impl: *anyopaque, ctx: RenderContext, color: Style.Color) anyerror!void {
+    fn fillRect(impl: *anyopaque, ctx: Render, color: Style.Color) anyerror!void {
         const self: *Self = @ptrCast(@alignCast(impl));
         try self.fillRectImpl(ctx, color);
     }
 
-    fn drawImage(impl: *anyopaque, ctx: RenderContext, image: Image) anyerror!void {
+    fn drawImage(impl: *anyopaque, ctx: Render, image: Image) anyerror!void {
         const self: *Self = @ptrCast(@alignCast(impl));
 
         switch (image.format) {
@@ -324,13 +325,8 @@ pub const RichRenderer = struct {
 
         if (!self.caps.supportsNotifyOsc9) return;
 
-        // Format notification message
-        var arena = std.heap.ArenaAllocator.init(self.allocator);
-        defer arena.deinit();
-        const temp_allocator = arena.allocator();
-
-        const notification_text = try std.fmt.allocPrint(temp_allocator, "{s}: {s}", .{ title, body });
-        try term_ansi_notification.writeNotification(self.writer, temp_allocator, self.caps, notification_text);
+        // Use system notification through components layer
+        try components.SystemNotification.send(self.writer, self.allocator, self.caps, title, body);
     }
 
     fn setCursorPosition(impl: *anyopaque, pos: Point) anyerror!void {
@@ -444,7 +440,7 @@ pub const RichRenderer = struct {
         }
     }
 
-    fn fillRectImpl(self: *Self, ctx: RenderContext, color: Style.Color) !void {
+    fn fillRectImpl(self: *Self, ctx: Render, color: Style.Color) !void {
         const fill_style = Style{ .bg_color = color };
         try self.applyStyle(fill_style);
 
@@ -459,7 +455,7 @@ pub const RichRenderer = struct {
         }
     }
 
-    fn drawBorder(self: *Self, ctx: RenderContext, border: BoxStyle.BorderStyle) !void {
+    fn drawBorder(self: *Self, ctx: Render, border: BoxStyle.BorderStyle) !void {
         const border_chars = getBorderChars(border.style);
 
         if (border.color) |color| {
@@ -506,7 +502,7 @@ pub const RichRenderer = struct {
         }
     }
 
-    fn drawKittyImage(self: *Self, ctx: RenderContext, image: Image) !void {
+    fn drawKittyImage(self: *Self, ctx: Render, image: Image) !void {
         // Position cursor
         try term_ansi_cursor.setCursor(self.writer, self.caps, @intCast(ctx.bounds.y), @intCast(ctx.bounds.x));
 
@@ -522,7 +518,7 @@ pub const RichRenderer = struct {
         );
     }
 
-    fn drawSixelImage(self: *Self, ctx: RenderContext, image: Image) !void {
+    fn drawSixelImage(self: *Self, ctx: Render, image: Image) !void {
         // Position cursor
         try term_ansi_cursor.setCursor(self.writer, self.caps, @intCast(ctx.bounds.y), @intCast(ctx.bounds.x));
 
@@ -530,7 +526,7 @@ pub const RichRenderer = struct {
         try self.output_buffer.appendSlice(image.data);
     }
 
-    fn drawFallbackImage(self: *Self, ctx: RenderContext, image: Image) !void {
+    fn drawFallbackImage(self: *Self, ctx: Render, image: Image) !void {
         // Fallback to ASCII representation
         _ = image;
         try term_ansi_cursor.setCursor(self.writer, self.caps, @intCast(ctx.bounds.y), @intCast(ctx.bounds.x));

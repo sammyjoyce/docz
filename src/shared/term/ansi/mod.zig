@@ -3,8 +3,7 @@
 
 // Core ANSI functionality
 pub const color = @import("colors.zig");
-pub const cursor = @import("cursor.zig");
-pub const screen = @import("screen.zig");
+pub const screen_control = @import("screen_control.zig");
 
 // Basic ANSI functionality
 pub const clipboard = @import("clipboard.zig");
@@ -43,17 +42,16 @@ pub const bidirectional_text = @import("bidirectional_text.zig");
 
 // Clipboard integration is now part of clipboard.zig
 
-pub const cursor_optimizer = @import("cursor_optimizer.zig");
 pub const cwd = @import("cwd.zig");
 pub const keys = @import("keys.zig");
 pub const kitty_graphics = @import("kitty_graphics.zig");
-pub const modern_features = @import("modern_features.zig");
+pub const advanced_features = @import("advanced_features.zig");
 pub const passthrough = @import("passthrough.zig");
-pub const precise_ansi_palette = @import("precise_ansi_palette.zig");
+pub const ansi_palette = @import("ansi_palette.zig");
 pub const queries = @import("queries.zig");
 pub const shell_integration = @import("shell_integration.zig");
-pub const structured_colors = @import("structured_colors.zig");
-pub const terminal_background = @import("terminal_background.zig");
-pub const terminal_color_control = @import("terminal_color_control.zig");
+pub const color_structures = @import("color_structures.zig");
+pub const background_control = @import("background_control.zig");
+pub const color_control = @import("color_control.zig");
 pub const truncate = @import("truncate.zig");
 pub const winop = @import("winop.zig");

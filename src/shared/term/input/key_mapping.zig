@@ -199,26 +199,26 @@ pub const KeyMapper = struct {
 };
 
 /// Enhanced input parser that integrates key mapping
-pub const EnhancedInputParser = struct {
+pub const InputParser = struct {
     allocator: std.mem.Allocator,
     base_parser: enhanced_keys.InputParser,
     key_mapper: KeyMapper,
 
-    pub fn init(allocator: std.mem.Allocator, mapper_config: KeyMapper.Config) !EnhancedInputParser {
-        return EnhancedInputParser{
+    pub fn init(allocator: std.mem.Allocator, mapper_config: KeyMapper.Config) !InputParser {
+        return InputParser{
             .allocator = allocator,
             .base_parser = enhanced_keys.InputParser.init(allocator),
             .key_mapper = try KeyMapper.init(allocator, mapper_config),
         };
     }
 
-    pub fn deinit(self: *EnhancedInputParser) void {
+    pub fn deinit(self: *InputParser) void {
         self.base_parser.deinit();
         self.key_mapper.deinit();
     }
 
     /// Parse input data with enhanced key mapping
-    pub fn parse(self: *EnhancedInputParser, data: []const u8) ![]enhanced_keys.InputEvent {
+    pub fn parse(self: *InputParser, data: []const u8) ![]enhanced_keys.InputEvent {
         // First try the base parser
         const events = try self.base_parser.parse(data);
         errdefer self.allocator.free(events);
@@ -242,12 +242,12 @@ pub const EnhancedInputParser = struct {
     }
 
     /// Add a custom key mapping
-    pub fn addCustomMapping(self: *EnhancedInputParser, sequence: []const u8, key: enhanced_keys.Key) !void {
+    pub fn addCustomMapping(self: *InputParser, sequence: []const u8, key: enhanced_keys.Key) !void {
         try self.key_mapper.addCustomMapping(sequence, key);
     }
 
     /// Get the key mapper for advanced operations
-    pub fn getKeyMapper(self: *EnhancedInputParser) *KeyMapper {
+    pub fn getKeyMapper(self: *InputParser) *KeyMapper {
         return &self.key_mapper;
     }
 };
@@ -422,7 +422,7 @@ test "enhanced input parser" {
         .enable_fallbacks = true,
     };
 
-    var parser = try EnhancedInputParser.init(allocator, config);
+    var parser = try InputParser.init(allocator, config);
     defer parser.deinit();
 
     // Test parsing with enhanced mapping

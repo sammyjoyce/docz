@@ -27,8 +27,8 @@ pub const Writer = struct {
     pub fn print(comptime fmt: []const u8, args: anytype) void {
         const formatted = std.fmt.bufPrint(&writer.buffer, fmt, args) catch {
             // If formatting fails, try direct write with a temporary buffer
-            var temp_buffer: [4096]u8 = undefined;
-            const temp_formatted = std.fmt.bufPrint(&temp_buffer, fmt, args) catch return;
+            var tempBuffer: [4096]u8 = undefined;
+            const temp_formatted = std.fmt.bufPrint(&tempBuffer, fmt, args) catch return;
             writer.stdout.writeAll(temp_formatted) catch {};
             return;
         };
@@ -62,8 +62,8 @@ pub fn print(comptime fmt: []const u8, args: anytype) void {
     var buffer: [4096]u8 = undefined;
     const formatted = std.fmt.bufPrint(&buffer, fmt, args) catch {
         // If formatting fails, write directly with a temporary buffer
-        var temp_buffer: [4096]u8 = undefined;
-        const temp_formatted = std.fmt.bufPrint(&temp_buffer, fmt, args) catch return;
+        var tempBuffer: [4096]u8 = undefined;
+        const temp_formatted = std.fmt.bufPrint(&tempBuffer, fmt, args) catch return;
         const stdout = std.io.getStdOut();
         stdout.writeAll(temp_formatted) catch {};
         return;

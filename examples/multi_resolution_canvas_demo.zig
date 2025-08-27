@@ -13,7 +13,7 @@ const Rect = render.Rect;
 
 // Terminal utilities
 const clear = term.ansi.clear;
-const cursor = term.ansi.cursor;
+const cursor = term.cursor;
 const style = term.ansi.style;
 
 pub fn main() !void {

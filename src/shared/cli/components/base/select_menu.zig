@@ -6,11 +6,10 @@ const std = @import("std");
 const input = term_shared.input;
 const term_shared = @import("term_shared");
 const term_ansi = term_shared.ansi.color;
-const term_cursor = term_shared.ansi.cursor;
+const term_cursor = term_shared.cursor;
 const term_screen = term_shared.ansi.screen;
 const term_caps = term_shared.caps;
 const graphics_manager = term_shared.graphics_manager;
-const hyperlinks = @import("../../utils/hyperlinks.zig");
 
 const Input = input.Input;
 const InputEvent = input.InputEvent;
@@ -162,7 +161,7 @@ pub const SelectMenu = struct {
             .menuStartCol = 0,
             .mouseEnabled = caps.supportsEnhancedMouse,
             .useGraphics = caps.supportsKittyGraphics or caps.supportsSixel,
-            .useHyperlinks = caps.supportsHyperlinks,
+            .useHyperlinks = caps.supportsHyperlinkOsc8,
         };
     }
 

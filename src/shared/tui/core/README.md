@@ -371,7 +371,7 @@ pub fn adaptLegacyWidget(legacy_widget: *LegacyWidget) !*Widget {
 See the following example implementations:
 
 - `button.zig` - Basic button widget
-- `text_input_widget.zig` - Text input with state management
+- `TextInputWidget.zig` - Text input with state management
 - `container_widget.zig` - Container for widget composition
 - `widget_composition_demo.zig` - Complete usage example
 

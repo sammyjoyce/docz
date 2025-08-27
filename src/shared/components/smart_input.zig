@@ -10,7 +10,7 @@ const term = @import("../term/term.zig");
 
 const Component = base.Component;
 const ComponentState = base.ComponentState;
-const RenderContext = base.RenderContext;
+const Render = base.Render;
 const Event = base.Event;
 const Theme = base.Theme;
 
@@ -185,7 +185,7 @@ pub const SmartInput = struct {
         self.state = state;
     }
 
-    fn render(impl: *anyopaque, ctx: RenderContext) anyerror!void {
+    fn render(impl: *anyopaque, ctx: Render) anyerror!void {
         const self: *Self = @ptrCast(@alignCast(impl));
 
         // Move to component position
@@ -290,7 +290,7 @@ pub const SmartInput = struct {
 
     // Rendering methods
 
-    fn renderInputField(self: *Self, ctx: RenderContext) !void {
+    fn renderInputField(self: *Self, ctx: Render) !void {
         const border_style = if (self.state.focused)
             Style{ .fg_color = ctx.theme.colors.focus, .bold = true }
         else
@@ -325,7 +325,7 @@ pub const SmartInput = struct {
         try ctx.terminal.print("│", border_style);
     }
 
-    fn renderContent(self: *Self, ctx: RenderContext) !void {
+    fn renderContent(self: *Self, ctx: Render) !void {
         // Move to content area
         try ctx.terminal.moveTo(self.state.bounds.x + 1, self.state.bounds.y + 1);
 
@@ -378,7 +378,7 @@ pub const SmartInput = struct {
         }
     }
 
-    fn renderCursor(self: *Self, ctx: RenderContext) !void {
+    fn renderCursor(self: *Self, ctx: Render) !void {
         // Calculate cursor position on screen
         const content_start_x = self.state.bounds.x + 1;
         const visible_cursor_pos = if (self.cursorPos >= self.scrollOffset)
@@ -412,7 +412,7 @@ pub const SmartInput = struct {
         }
     }
 
-    fn renderSuggestions(self: *Self, ctx: RenderContext) !void {
+    fn renderSuggestions(self: *Self, ctx: Render) !void {
         if (self.suggestions) |suggestions| {
             const suggestions_y = self.state.bounds.y + 3; // Below input field
             const max_suggestions = @min(suggestions.len, 5); // Show max 5 suggestions
@@ -446,7 +446,7 @@ pub const SmartInput = struct {
         }
     }
 
-    fn renderValidation(self: *Self, ctx: RenderContext, message: []const u8, color: Color) !void {
+    fn renderValidation(self: *Self, ctx: Render, message: []const u8, color: Color) !void {
         const validation_y = self.state.bounds.y + self.state.bounds.height;
         try ctx.terminal.moveTo(self.state.bounds.x, validation_y);
 
@@ -454,7 +454,7 @@ pub const SmartInput = struct {
         try ctx.terminal.print(message, validation_style);
     }
 
-    fn renderWithSyntaxHighlighting(self: *Self, ctx: RenderContext, text: []const u8) !void {
+    fn renderWithSyntaxHighlighting(self: *Self, ctx: Render, text: []const u8) !void {
         _ = self;
         // Simple syntax highlighting for demonstration
         // In a real implementation, this would use a proper tokenizer

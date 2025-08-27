@@ -5,12 +5,11 @@ const std = @import("std");
 const completion = @import("completion.zig");
 const term_shared = @import("term_shared");
 const term_ansi = term_shared.ansi.color;
-const term_cursor = term_shared.ansi.cursor;
+const term_cursor = term_shared.cursor;
 const term_screen = term_shared.ansi.screen;
 const term_hyperlink = term_shared.ansi.hyperlink;
 // Prefer presenter-based notifications over direct ANSI
 const presenters = @import("../presenters/mod.zig");
-const notif = @import("../notifications.zig");
 const term_clipboard = term_shared.ansi.clipboard;
 const term_graphics = term_shared.ansi.graphics;
 const term_caps = term_shared.caps;
@@ -202,12 +201,12 @@ pub const CommandPalette = struct {
         var capabilities = std.ArrayList([]const u8).init(self.allocator);
         defer capabilities.deinit();
 
-        if (self.caps.supportsTrueColor()) try capabilities.append("TrueColor");
-        if (self.caps.supportsHyperlinks()) try capabilities.append("Hyperlinks");
-        if (self.caps.supportsKittyGraphics()) try capabilities.append("KittyGraphics");
-        if (self.caps.supportsSixelGraphics()) try capabilities.append("Sixel");
-        if (self.caps.supportsClipboard()) try capabilities.append("Clipboard");
-        if (self.caps.supportsNotifications()) try capabilities.append("Notifications");
+        if (self.caps.supportsTruecolor) try capabilities.append("TrueColor");
+        if (self.caps.supportsHyperlinkOsc8) try capabilities.append("Hyperlinks");
+        if (self.caps.supportsKittyGraphics) try capabilities.append("KittyGraphics");
+        if (self.caps.supportsSixel) try capabilities.append("Sixel");
+        if (self.caps.supportsClipboardOsc52) try capabilities.append("Clipboard");
+        if (self.caps.supportsNotifyOsc9) try capabilities.append("Notifications");
 
         for (capabilities.items, 0..) |cap, i| {
             if (i > 0) try writer.writeAll(", ");
@@ -468,15 +467,15 @@ pub const CommandPalette = struct {
     }
 
     /// Send a test notification using the CLI presenter
-    fn sendTestNotification(self: *CommandPalette) !void {
-        var n = notif.Notification.init(
-            "DocZ Command Palette",
-            "Test Notification!",
-            .info,
-            notif.NotificationConfiguration{},
-        );
-        try presenters.notification.display(self.allocator, &n, true);
-    }
+    // fn sendTestNotification(self: *CommandPalette) !void {
+    //     var n = notif.Notification.init(
+    //         "DocZ Command Palette",
+    //         "Test Notification!",
+    //         .info,
+    //         notif.NotificationConfiguration{},
+    //     );
+    //     try presenters.notification.display(self.allocator, &n, true);
+    // }
 
     /// Run the enhanced command palette with advanced terminal features
     pub fn run(self: *CommandPalette, writer: anytype, reader: anytype) !CommandPaletteResult {

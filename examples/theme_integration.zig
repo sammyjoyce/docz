@@ -3,7 +3,7 @@
 const std = @import("std");
 const theme_manager = @import("theme.zig");
 
-/// Example agent that uses the enhanced theme management system
+/// Example agent that uses the  theme management system
 pub const ThemeAwareAgent = struct {
     allocator: std.mem.Allocator,
     manager: *theme_manager.Theme,

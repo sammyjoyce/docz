@@ -11,7 +11,7 @@ const caps_mod = @import("capabilities.zig");
 
 const Terminal = term.Terminal;
 const Image = term.Image;
-const Point = term.Point;
+const TermPoint = term.Point;
 const Color = term.Color;
 const TermCaps = term.TermCaps;
 
@@ -119,7 +119,7 @@ pub const Graphics = struct {
     }
 
     /// Render image at specified position with optional scaling
-    pub fn renderImage(self: *Self, image_id: u32, pos: Point, options: RenderOptions) !void {
+    pub fn renderImage(self: *Self, image_id: u32, pos: TermPoint, options: RenderOptions) !void {
         const cached_image = self.image_cache.get(image_id) orelse return error.ImageNotFound;
 
         const display_width = options.max_width orelse cached_image.width;
@@ -392,7 +392,7 @@ pub const Chart = struct {
     height: u32,
     chart_type: ChartType,
     title: ?[]const u8,
-    data_points: []const DataPoint,
+    data_points: []const Point,
     colors: []const Color,
 
     pub const ChartType = enum {
@@ -401,7 +401,7 @@ pub const Chart = struct {
         pie,
     };
 
-    pub const DataPoint = struct {
+    pub const Point = struct {
         value: f32,
         label: ?[]const u8,
     };

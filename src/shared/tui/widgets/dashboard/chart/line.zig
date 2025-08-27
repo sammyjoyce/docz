@@ -13,7 +13,7 @@ const ChartStyle = base.ChartStyle;
 const Bounds = base.Bounds;
 const DrawingContext = graphics.DrawingContext;
 const Renderer = renderer_mod.Renderer;
-const RenderContext = renderer_mod.RenderContext;
+const Render = renderer_mod.Render;
 
 /// Line chart renderer
 pub const LineChart = struct {
@@ -40,7 +40,7 @@ pub const LineChart = struct {
     }
 
     /// Render line chart using Unicode blocks
-    pub fn renderUnicode(data: ChartData, style: ChartStyle, renderer: *Renderer, ctx: RenderContext) !void {
+    pub fn renderUnicode(data: ChartData, style: ChartStyle, renderer: *Renderer, ctx: Render) !void {
         if (data.series.len == 0) return;
 
         const chart_width = ctx.bounds.width - 4;
@@ -99,7 +99,7 @@ pub const LineChart = struct {
         // Render the buffer
         const title_height = 2;
         for (buffer, 0..) |row, i| {
-            const render_ctx = RenderContext{
+            const render_ctx = Render{
                 .bounds = Bounds.init(ctx.bounds.x + 2, ctx.bounds.y + title_height + @as(i32, @intCast(i)), @intCast(row.len), 1),
                 .style = ctx.style,
                 .z_index = ctx.z_index,
@@ -110,7 +110,7 @@ pub const LineChart = struct {
     }
 
     /// Render line chart using ASCII characters
-    pub fn renderAscii(data: ChartData, style: ChartStyle, renderer: *Renderer, ctx: RenderContext) !void {
+    pub fn renderAscii(data: ChartData, style: ChartStyle, renderer: *Renderer, ctx: Render) !void {
         // Similar to Unicode but with ASCII characters only
         if (data.series.len == 0) return;
 
@@ -154,7 +154,7 @@ pub const LineChart = struct {
         // Render the buffer
         const title_height = 2;
         for (buffer, 0..) |row, i| {
-            const render_ctx = RenderContext{
+            const render_ctx = Render{
                 .bounds = Bounds.init(ctx.bounds.x + 2, ctx.bounds.y + title_height + @as(i32, @intCast(i)), @intCast(row.len), 1),
                 .style = ctx.style,
                 .z_index = ctx.z_index,

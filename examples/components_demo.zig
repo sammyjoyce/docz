@@ -83,11 +83,11 @@ pub const UIDemo = struct {
 
         // Show what will be demonstrated
         try self.uiContext.terminal.printf("This demo will showcase:\n", .{}, shared.createTextStyle(shared.Color{ .rgb = .{ .r = 0, .g = 255, .b = 255 } }, true));
-        try self.uiContext.terminal.printf("  • Unified terminal interface with capability detection\n", .{}, null);
+        try self.uiContext.terminal.printf("  •  terminal interface with capability detection\n", .{}, null);
         try self.uiContext.terminal.printf("  • Progressive enhancement based on your terminal\n", .{}, null);
         try self.uiContext.terminal.printf("  • Smart components that adapt automatically\n", .{}, null);
         try self.uiContext.terminal.printf("  • Graphics rendering\n", .{}, null);
-        try self.uiContext.terminal.printf("  • Unified CLI/TUI component architecture\n\n", .{}, null);
+        try self.uiContext.terminal.printf("  •  CLI/TUI component architecture\n\n", .{}, null);
 
         try self.uiContext.terminal.printf("Press Enter to continue...", .{}, shared.createTextStyle(shared.Color{ .rgb = .{ .r = 255, .g = 255, .b = 0 } }, false));
         try self.waitForEnter();
@@ -162,7 +162,7 @@ pub const UIDemo = struct {
                     .height = 2,
                 });
 
-                const ctx = self.uiContext.createRenderContext(shared.Rect{ .x = 0, .y = 0, .width = 80, .height = 24 });
+                const ctx = self.uiContext.createRender(shared.Rect{ .x = 0, .y = 0, .width = 80, .height = 24 });
                 try progress_component.render(ctx);
 
                 // Brief pause to show animation
@@ -177,7 +177,7 @@ pub const UIDemo = struct {
             // Show completed state
             const progress_bar_impl: *ProgressBar = @ptrCast(@alignCast(progress_component.impl));
             progress_bar_impl.setProgress(1.0);
-            const final_ctx = self.uiContext.createRenderContext(shared.Rect{ .x = 0, .y = 0, .width = 80, .height = 24 });
+            const final_ctx = self.uiContext.createRender(shared.Rect{ .x = 0, .y = 0, .width = 80, .height = 24 });
             try progress_component.render(final_ctx);
 
             try self.uiContext.terminal.printf("\n\n", .{}, null);
@@ -202,7 +202,7 @@ pub const UIDemo = struct {
         try self.uiContext.terminal.printf("  • Automatic suggestion system\n", .{}, null);
         try self.uiContext.terminal.printf("  • Live validation feedback\n", .{}, null);
         try self.uiContext.terminal.printf("  • Syntax highlighting (if supported)\n", .{}, null);
-        try self.uiContext.terminal.printf("  • Unified component architecture\n\n", .{}, null);
+        try self.uiContext.terminal.printf("  •  component architecture\n\n", .{}, null);
 
         const input_component = try SmartInput.create(self.allocator, .{
             .placeholder = "Type 'hello' or 'git' for suggestions...",
@@ -219,7 +219,7 @@ pub const UIDemo = struct {
         input_component.setBounds(shared.Rect{ .x = 2, .y = 8, .width = 60, .height = 5 });
 
         // Render the input component
-        const ctx = self.uiContext.createRenderContext(shared.Rect{ .x = 0, .y = 0, .width = 80, .height = 24 });
+        const ctx = self.uiContext.createRender(shared.Rect{ .x = 0, .y = 0, .width = 80, .height = 24 });
         try input_component.render(ctx);
 
         try self.uiContext.terminal.printf("\n\n(This is a visual demo - actual input handling requires event loop integration)\n", .{}, shared.createTextStyle(shared.Color{ .rgb = .{ .r = 255, .g = 255, .b = 0 } }, false));
@@ -269,7 +269,7 @@ pub const UIDemo = struct {
     fn showGraphicsDemo(self: *Self) !void {
         try self.uiContext.clear();
 
-        try self.uiContext.terminal.printf("═══ Enhanced Graphics Demo ═══\n\n", .{}, shared.createTextStyle(shared.Color{ .rgb = .{ .r = 255, .g = 0, .b = 255 } }, true));
+        try self.uiContext.terminal.printf("═══  Graphics Demo ═══\n\n", .{}, shared.createTextStyle(shared.Color{ .rgb = .{ .r = 255, .g = 0, .b = 255 } }, true));
 
         const caps = self.uiContext.getCapabilities();
 
@@ -347,7 +347,7 @@ pub const UIDemo = struct {
 
         try self.uiContext.terminal.printf("Key improvements demonstrated:\n\n", .{}, shared.createTextStyle(shared.Color{ .rgb = .{ .r = 255, .g = 255, .b = 255 } }, true));
 
-        try self.uiContext.terminal.printf("🔧 Unified Terminal Interface:\n", .{}, shared.createTextStyle(shared.Color{ .rgb = .{ .r = 0, .g = 255, .b = 255 } }, true));
+        try self.uiContext.terminal.printf("🔧  Terminal Interface:\n", .{}, shared.createTextStyle(shared.Color{ .rgb = .{ .r = 0, .g = 255, .b = 255 } }, true));
         try self.uiContext.terminal.printf("   • Single API for all terminal capabilities\n", .{}, null);
         try self.uiContext.terminal.printf("   • Automatic capability detection and adaptation\n", .{}, null);
         try self.uiContext.terminal.printf("   • Progressive enhancement based on your terminal\n\n", .{}, null);
@@ -364,7 +364,7 @@ pub const UIDemo = struct {
 
         try self.uiContext.terminal.printf("🔗 Shared Integration:\n", .{}, shared.createTextStyle(shared.Color{ .rgb = .{ .r = 255, .g = 255, .b = 0 } }, true));
         try self.uiContext.terminal.printf("   • Eliminated code duplication between CLI/TUI\n", .{}, null);
-        try self.uiContext.terminal.printf("   • Unified notification and progress systems\n", .{}, null);
+        try self.uiContext.terminal.printf("   •  notification and progress systems\n", .{}, null);
         try self.uiContext.terminal.printf("   • Better file organization and maintainability\n\n", .{}, null);
 
         try self.uiContext.terminal.printf("The codebase now provides a modern, capability-aware\n", .{}, shared.createTextStyle(shared.Color{ .rgb = .{ .r = 255, .g = 255, .b = 255 } }, false));

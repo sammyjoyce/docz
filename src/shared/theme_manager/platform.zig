@@ -7,13 +7,13 @@ const ColorScheme = @import("color_scheme.zig").ColorScheme;
 const Color = @import("color_scheme.zig").Color;
 const RGB = @import("color_scheme.zig").RGB;
 
-pub const PlatformAdapter = struct {
+pub const Platform = struct {
     allocator: std.mem.Allocator,
-    platform: Platform,
+    platform: PlatformEnum,
     terminal_type: TerminalType,
     color_support: ColorSupport,
 
-    pub const Platform = enum {
+    pub const PlatformEnum = enum {
         windows,
         macos,
         linux,
@@ -60,7 +60,7 @@ pub const PlatformAdapter = struct {
         self.allocator.destroy(self);
     }
 
-    fn detectPlatform() Platform {
+    fn detectPlatform() PlatformEnum {
         return switch (builtin.os.tag) {
             .windows => .windows,
             .macos => .macos,

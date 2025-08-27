@@ -7,8 +7,8 @@ const BrailleCanvas = @import("braille.zig").BrailleCanvas;
 // UnicodeImageRenderer is not implemented yet, so we'll handle block rendering directly
 // const UnicodeImageRenderer = @import("../term/unicode_image_renderer.zig");
 
-// Use the existing modules that are available
-const Color = @import("../term/ansi/colors.zig").Color;
+// Use the existing modules that are available via the term module
+const Color = @import("term_shared").ansi.color.Color;
 
 /// Resolution modes for the canvas, ordered from highest to lowest fidelity
 pub const ResolutionMode = enum {

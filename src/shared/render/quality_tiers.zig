@@ -7,7 +7,7 @@ const RenderTier = adaptive_renderer.RenderTier;
 pub const QualityTiers = struct {
     /// Progress bar rendering characteristics for each mode
     pub const ProgressBar = struct {
-        pub const high = Settings{
+        pub const high = Config{
             .use_gradient = true,
             .use_animations = true,
             .bar_chars = .{
@@ -21,7 +21,7 @@ pub const QualityTiers = struct {
             .width = 40,
         };
 
-        pub const medium = Settings{
+        pub const medium = Config{
             .use_gradient = false,
             .use_animations = false,
             .bar_chars = .{
@@ -35,7 +35,7 @@ pub const QualityTiers = struct {
             .width = 30,
         };
 
-        pub const low = Settings{
+        pub const low = Config{
             .use_gradient = false,
             .use_animations = false,
             .bar_chars = .{
@@ -49,7 +49,7 @@ pub const QualityTiers = struct {
             .width = 20,
         };
 
-        pub const basic = Settings{
+        pub const basic = Config{
             .use_gradient = false,
             .use_animations = false,
             .bar_chars = .{
@@ -63,7 +63,7 @@ pub const QualityTiers = struct {
             .width = 0,
         };
 
-        pub fn getConfig(mode: RenderTier) Settings {
+        pub fn getConfig(mode: RenderTier) Config {
             return switch (mode) {
                 .ultra => high, // Ultra gets high quality features
                 .rich => high,
@@ -75,7 +75,7 @@ pub const QualityTiers = struct {
 
     /// Table rendering characteristics for each mode
     pub const Table = struct {
-        pub const high = TableSettings{
+        pub const high = TableConfig{
             .use_box_drawing = true,
             .use_rounded_corners = true,
             .use_alternating_rows = true,
@@ -85,7 +85,7 @@ pub const QualityTiers = struct {
             .border_style = .rounded_heavy,
         };
 
-        pub const medium = TableSettings{
+        pub const medium = TableConfig{
             .use_box_drawing = true,
             .use_rounded_corners = false,
             .use_alternating_rows = true,
@@ -95,7 +95,7 @@ pub const QualityTiers = struct {
             .border_style = .double_line,
         };
 
-        pub const low = TableSettings{
+        pub const low = TableConfig{
             .use_box_drawing = false,
             .use_rounded_corners = false,
             .use_alternating_rows = false,
@@ -105,7 +105,7 @@ pub const QualityTiers = struct {
             .border_style = .ascii,
         };
 
-        pub const basic = TableSettings{
+        pub const basic = TableConfig{
             .use_box_drawing = false,
             .use_rounded_corners = false,
             .use_alternating_rows = false,
@@ -115,11 +115,11 @@ pub const QualityTiers = struct {
             .border_style = .none,
         };
 
-        pub fn getConfig(mode: RenderTier) TableSettings {
+        pub fn getConfig(mode: RenderTier) TableConfig {
             return switch (mode) {
                 .ultra => high, // Ultra gets high quality features
-                .rich => high,
-                .standard => medium,
+                .rich => medium,
+                .standard => low,
                 .minimal => basic,
             };
         }
@@ -127,7 +127,7 @@ pub const QualityTiers = struct {
 
     /// Chart rendering characteristics for each mode
     pub const Chart = struct {
-        pub const high = ChartSettings{
+        pub const high = ChartConfig{
             .use_graphics = true,
             .use_gradients = true,
             .use_animations = true,
@@ -138,7 +138,7 @@ pub const QualityTiers = struct {
             .render_style = .graphics,
         };
 
-        pub const medium = ChartSettings{
+        pub const medium = ChartConfig{
             .use_graphics = false,
             .use_gradients = false,
             .use_animations = false,
@@ -149,7 +149,7 @@ pub const QualityTiers = struct {
             .render_style = .unicode_blocks,
         };
 
-        pub const low = ChartSettings{
+        pub const low = ChartConfig{
             .use_graphics = false,
             .use_gradients = false,
             .use_animations = false,
@@ -160,7 +160,7 @@ pub const QualityTiers = struct {
             .render_style = .ascii_art,
         };
 
-        pub const basic = ChartSettings{
+        pub const basic = ChartConfig{
             .use_graphics = false,
             .use_gradients = false,
             .use_animations = false,
@@ -171,11 +171,11 @@ pub const QualityTiers = struct {
             .render_style = .text_summary,
         };
 
-        pub fn getConfig(mode: RenderTier) ChartSettings {
+        pub fn getConfig(mode: RenderTier) ChartConfig {
             return switch (mode) {
                 .ultra => high, // Ultra gets high quality features
-                .rich => high,
-                .standard => medium,
+                .rich => medium,
+                .standard => low,
                 .minimal => basic,
             };
         }
@@ -183,7 +183,7 @@ pub const QualityTiers = struct {
 };
 
 /// Configuration for progress bar rendering
-pub const Settings = struct {
+pub const Config = struct {
     use_gradient: bool,
     use_animations: bool,
     bar_chars: BarCharSet,
@@ -200,7 +200,7 @@ pub const Settings = struct {
 };
 
 /// Configuration for table rendering
-pub const TableSettings = struct {
+pub const TableConfig = struct {
     use_box_drawing: bool,
     use_rounded_corners: bool,
     use_alternating_rows: bool,
@@ -303,7 +303,7 @@ pub const TableSettings = struct {
 };
 
 /// Configuration for chart rendering
-pub const ChartSettings = struct {
+pub const ChartConfig = struct {
     use_graphics: bool,
     use_gradients: bool,
     use_animations: bool,

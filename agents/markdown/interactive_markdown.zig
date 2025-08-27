@@ -1,7 +1,7 @@
 //! Enhanced Interactive Markdown Editor
 //!
-//! A comprehensive markdown editing environment that integrates advanced TUI components
-//! for a rich, visual editing experience. This enhanced version builds upon the existing
+//! A comprehensive markdown editing environment that integrates TUI components
+//! for a rich, visual editing experience. This version builds upon the existing
 //! markdown editor by adding:
 //!
 //! ## New Features
@@ -10,7 +10,7 @@
 //! - **Split pane view** with real-time synchronization
 //! - **Syntax highlighting** in both editor and preview
 //! - **Scroll synchronization** between editor and preview panes
-//! - **Multiple preview modes** (basic, enhanced, print)
+//! - **Multiple preview modes** (basic, rich, print)
 //!
 //! ### 2. Rich Editor Features
 //! - **Auto-completion** for markdown syntax with snippets
@@ -87,7 +87,7 @@ const Mutex = Thread.Mutex;
 const agent_interface = @import("agent_interface");
 const config = @import("config_shared");
 const enhanced_editor = @import("markdown_editor.zig");
-const EnhancedMarkdownEditor = enhanced_editor.EnhancedMarkdownEditor;
+const MarkdownEditor = enhanced_editor.MarkdownEditor;
 const MarkdownEditorConfig = enhanced_editor.MarkdownEditorConfig;
 
 // Shared infrastructure
@@ -276,10 +276,10 @@ pub const InteractiveMarkdownEditor = struct {
     config: InteractiveConfig,
 
     /// Base markdown editor
-    base_editor: *EnhancedMarkdownEditor,
+    base_editor: *MarkdownEditor,
 
     /// Component manager for integrated widgets
-    component_manager: *ComponentManager,
+    component_manager: *Component,
 
     /// Layout manager for split panes
     layout_manager: *LayoutManager,
@@ -311,11 +311,11 @@ pub const InteractiveMarkdownEditor = struct {
         errdefer allocator.destroy(self);
 
         // Initialize base editor
-        const base_editor = try EnhancedMarkdownEditor.init(allocator, agent, editor_config.base_config);
+        const base_editor = try MarkdownEditor.init(allocator, agent, editor_config.base_config);
         errdefer base_editor.deinit();
 
         // Initialize component manager
-        const component_manager = try ComponentManager.init(allocator, agent, &editor_config);
+        const component_manager = try Component.init(allocator, agent, &editor_config);
         errdefer component_manager.deinit();
 
         // Initialize layout manager
@@ -831,7 +831,7 @@ pub const InteractiveMarkdownEditor = struct {
 };
 
 /// Component Manager for integrated widgets
-pub const ComponentManager = struct {
+pub const Component = struct {
     allocator: Allocator,
     agent: *agent_interface.Agent,
     config: *const InteractiveConfig,
@@ -1274,13 +1274,13 @@ pub const EventRouter = struct {
 /// State Synchronizer for keeping all components in sync
 pub const StateSynchronizer = struct {
     allocator: Allocator,
-    base_editor: *EnhancedMarkdownEditor,
-    component_manager: *ComponentManager,
+    base_editor: *MarkdownEditor,
+    component_manager: *Component,
 
     const Self = @This();
 
     /// Initialize state synchronizer
-    pub fn init(allocator: Allocator, base_editor: *EnhancedMarkdownEditor, component_manager: *ComponentManager) !*Self {
+    pub fn init(allocator: Allocator, base_editor: *MarkdownEditor, component_manager: *Component) !*Self {
         const self = try allocator.create(Self);
         self.* = Self{
             .allocator = allocator,
@@ -1386,10 +1386,10 @@ pub const PreviewEngine = struct {
 
 // Extension methods for existing components to support new functionality
 
-/// Extend ComponentManager with additional methods
-pub const ComponentManagerExtensions = struct {
+/// Extend Component with additional methods
+pub const ComponentExtensions = struct {
     /// Handle key event
-    pub fn handleKeyEvent(self: *ComponentManager, key: tui.KeyEvent) !bool {
+    pub fn handleKeyEvent(self: *Component, key: tui.KeyEvent) !bool {
         // Handle component-specific key events
         _ = self;
         _ = key;
@@ -1397,7 +1397,7 @@ pub const ComponentManagerExtensions = struct {
     }
 
     /// Handle mouse event
-    pub fn handleMouseEvent(self: *ComponentManager, mouse: tui.MouseEvent) !void {
+    pub fn handleMouseEvent(self: *Component, mouse: tui.MouseEvent) !void {
         // Handle component-specific mouse events
         _ = self;
         _ = mouse;

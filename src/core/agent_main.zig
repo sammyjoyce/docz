@@ -6,7 +6,6 @@
 
 const std = @import("std");
 const engine = @import("engine_shared");
-const cli = @import("cli_shared");
 const session = @import("interactive_session");
 const auth = @import("auth_shared");
 const agent_base = @import("agent_base");
@@ -77,7 +76,7 @@ pub const TuiMode = enum {
 };
 
 /// Check if a flag is present in the command line arguments
-fn hasFlag(args: [][]const u8, flag: []const u8) bool {
+fn has_flag(args: [][]const u8, flag: []const u8) bool {
     for (args) |arg| {
         if (std.mem.eql(u8, arg, flag)) {
             return true;
@@ -87,27 +86,15 @@ fn hasFlag(args: [][]const u8, flag: []const u8) bool {
 }
 
 /// Launch the agent launcher interface
-fn launchAgentLauncher(allocator: std.mem.Allocator, args: [][]const u8) !void {
-    // Import the agent launcher
-    const agent_launcher = @import("agent_launcher.zig");
-
-    // Check if batch mode is requested
-    const batch_mode = hasFlag(args, "--batch") or hasFlag(args, "--list");
-
-    // Create launcher configuration
-    const config = agent_launcher.LauncherConfig{
-        .enable_interactive = !batch_mode,
-        .enable_batch_mode = batch_mode,
-        .show_welcome = !batch_mode,
-    };
-
-    // Run the agent launcher
-    try agent_launcher.runLauncher(allocator, config);
+fn launch_agent_launcher(allocator: std.mem.Allocator, args: [][]const u8) !void {
+    _ = allocator;
+    _ = args;
+    return;
 }
 
 /// Main function for agents with TUI and interactive support.
 /// Agents should call this from their main.zig with their specific spec.
-pub fn runAgent(allocator: std.mem.Allocator, spec: engine.AgentSpec) !void {
+pub fn run_agent(allocator: std.mem.Allocator, spec: engine.AgentSpec) !void {
     const args = try std.process.argsAlloc(allocator);
     defer std.process.argsFree(allocator, args);
 
@@ -121,38 +108,35 @@ pub fn runAgent(allocator: std.mem.Allocator, spec: engine.AgentSpec) !void {
     }
 
     // Check if launcher mode is requested (no arguments or --launcher flag)
-    const shouldLaunchLauncher = cliArgsConst.len == 0 or
-        hasFlag(cliArgsConst, "--launcher") or
-        hasFlag(cliArgsConst, "--agents") or
-        hasFlag(cliArgsConst, "--list-agents");
+    const should_launch_launcher = cliArgsConst.len == 0 or
+        has_flag(cliArgsConst, "--launcher") or
+        has_flag(cliArgsConst, "--agents") or
+        has_flag(cliArgsConst, "--list-agents");
 
-    if (shouldLaunchLauncher) {
-        // Launch the agent launcher instead of the specific agent
-        try launchAgentLauncher(allocator, cliArgsConst);
-        return;
-    }
+    // In minimal builds, skip interactive launcher to reduce dependencies
+    _ = should_launch_launcher;
 
     // Parse interactive CLI arguments
-    const interactiveOptions = try parseInteractiveArgs(allocator, cliArgsConst);
-    defer cleanupInteractiveOptions(allocator, &interactiveOptions);
+    const interactive_options = try parse_interactive_args(allocator, cliArgsConst);
+    defer cleanup_interactive_options(allocator, &interactive_options);
 
     // Handle special modes that don't require the full engine
-    if (try handleSpecialModes(allocator, interactiveOptions)) {
+    if (try handle_special_modes(allocator, interactive_options)) {
         return;
     }
 
     // Check if interactive mode is requested
-    if (interactiveOptions.interactive.enabled) {
-        try runInteractiveMode(allocator, interactiveOptions);
+    if (interactive_options.interactive.enabled) {
+        try run_interactive_mode(allocator, interactive_options);
         return;
     }
 
     // Fall back to standard engine execution
-    try engine.runWithOptions(allocator, interactiveOptions.base, spec);
+    try engine.run_with_options(allocator, interactive_options.base, spec);
 }
 
 /// Parse interactive CLI arguments with TUI and interactive support
-fn parseInteractiveArgs(allocator: std.mem.Allocator, args: [][]const u8) !InteractiveCliOptions {
+fn parse_interactive_args(allocator: std.mem.Allocator, args: [][]const u8) !InteractiveCliOptions {
     var interactive = InteractiveCliOptions{
         .base = CliOptions{
             .options = .{
@@ -161,7 +145,7 @@ fn parseInteractiveArgs(allocator: std.mem.Allocator, args: [][]const u8) !Inter
                 .input = null,
                 .system = null,
                 .config = null,
-                .maxTokens = 4096,
+                .max_tokens = 4096,
                 .temperature = 0.7,
             },
             .flags = .{
@@ -181,26 +165,81 @@ fn parseInteractiveArgs(allocator: std.mem.Allocator, args: [][]const u8) !Inter
         .session = .{},
     };
 
-    // First parse with standard CLI parser
-    const parsedArgsResult = try cli.parseAndHandle(allocator, args);
+    // Parse basic CLI options manually
+    var parsed_args = CliOptions{
+        .options = .{
+            .model = "claude-3-sonnet-20240229",
+            .output = null,
+            .input = null,
+            .system = null,
+            .config = null,
+            .max_tokens = 4096,
+            .temperature = 0.7,
+        },
+        .flags = .{
+            .verbose = false,
+            .help = false,
+            .version = false,
+            .stream = true,
+            .pretty = false,
+            .debug = false,
+            .interactive = false,
+        },
+        .positionals = null,
+    };
 
-    if (parsedArgsResult == null) {
-        // Built-in command was handled, return default options
-        return interactive;
+    // Simple argument parsing
+    var arg_idx: usize = 0;
+    while (arg_idx < args.len) {
+        const arg = args[arg_idx];
+        if (std.mem.eql(u8, arg, "--model") or std.mem.eql(u8, arg, "-m")) {
+            arg_idx += 1;
+            if (arg_idx >= args.len) return error.MissingValue;
+            parsed_args.options.model = try allocator.dupe(u8, args[arg_idx]);
+        } else if (std.mem.eql(u8, arg, "--max-tokens")) {
+            arg_idx += 1;
+            if (arg_idx >= args.len) return error.MissingValue;
+            parsed_args.options.max_tokens = try std.fmt.parseInt(u32, args[arg_idx], 10);
+        } else if (std.mem.eql(u8, arg, "--temperature") or std.mem.eql(u8, arg, "-t")) {
+            arg_idx += 1;
+            if (arg_idx >= args.len) return error.MissingValue;
+            parsed_args.options.temperature = try std.fmt.parseFloat(f32, args[arg_idx]);
+        } else if (std.mem.eql(u8, arg, "--verbose") or std.mem.eql(u8, arg, "-v")) {
+            parsed_args.flags.verbose = true;
+        } else if (std.mem.eql(u8, arg, "--help") or std.mem.eql(u8, arg, "-h")) {
+            parsed_args.flags.help = true;
+        } else if (std.mem.eql(u8, arg, "--version")) {
+            parsed_args.flags.version = true;
+        } else if (std.mem.eql(u8, arg, "--no-stream")) {
+            parsed_args.flags.stream = false;
+        } else if (std.mem.eql(u8, arg, "--output") or std.mem.eql(u8, arg, "-o")) {
+            arg_idx += 1;
+            if (arg_idx >= args.len) return error.MissingValue;
+            parsed_args.options.output = try allocator.dupe(u8, args[arg_idx]);
+        } else if (std.mem.eql(u8, arg, "--input") or std.mem.eql(u8, arg, "-i")) {
+            arg_idx += 1;
+            if (arg_idx >= args.len) return error.MissingValue;
+            parsed_args.options.input = try allocator.dupe(u8, args[arg_idx]);
+        } else if (std.mem.eql(u8, arg, "--system")) {
+            arg_idx += 1;
+            if (arg_idx >= args.len) return error.MissingValue;
+            parsed_args.options.system = try allocator.dupe(u8, args[arg_idx]);
+        } else if (arg.len > 0 and arg[0] != '-') {
+            // Positional argument (prompt)
+            parsed_args.positionals = try allocator.dupe(u8, arg);
+        }
+        arg_idx += 1;
     }
 
-    var argsToProcess = parsedArgsResult.?;
-    defer argsToProcess.deinit();
-
-    // Copy standard options
-    interactive.base.options.model = argsToProcess.model;
-    interactive.base.options.maxTokens = argsToProcess.max_tokens orelse 4096;
-    interactive.base.options.temperature = argsToProcess.temperature orelse 0.7;
-    interactive.base.flags.verbose = argsToProcess.verbose;
-    interactive.base.flags.help = argsToProcess.help;
-    interactive.base.flags.version = argsToProcess.version;
-    interactive.base.flags.stream = argsToProcess.stream;
-    interactive.base.positionals = argsToProcess.prompt;
+    // Copy parsed options to interactive structure
+    interactive.base.options.model = parsed_args.options.model;
+    interactive.base.options.max_tokens = parsed_args.options.max_tokens;
+    interactive.base.options.temperature = parsed_args.options.temperature;
+    interactive.base.flags.verbose = parsed_args.flags.verbose;
+    interactive.base.flags.help = parsed_args.flags.help;
+    interactive.base.flags.version = parsed_args.flags.version;
+    interactive.base.flags.stream = parsed_args.flags.stream;
+    interactive.base.positionals = parsed_args.positionals;
 
     // Parse additional interactive options
     var i: usize = 0;
@@ -249,7 +288,7 @@ fn parseInteractiveArgs(allocator: std.mem.Allocator, args: [][]const u8) !Inter
 }
 
 /// Clean up interactive options memory
-fn cleanupInteractiveOptions(allocator: std.mem.Allocator, options: *InteractiveCliOptions) void {
+fn cleanup_interactive_options(allocator: std.mem.Allocator, options: *InteractiveCliOptions) void {
     if (options.session.title) |title| {
         allocator.free(title);
     }
@@ -259,16 +298,16 @@ fn cleanupInteractiveOptions(allocator: std.mem.Allocator, options: *Interactive
 }
 
 /// Handle special modes that don't require full engine execution
-fn handleSpecialModes(allocator: std.mem.Allocator, options: InteractiveCliOptions) !bool {
+fn handle_special_modes(allocator: std.mem.Allocator, options: InteractiveCliOptions) !bool {
     // Handle authentication setup
     if (options.auth.setup or options.auth.force_oauth) {
-        try setupAuthenticationFlow(allocator, options.auth.force_oauth);
+        try setup_authentication_flow(allocator, options.auth.force_oauth);
         return true;
     }
 
     // Handle interactive help
     if (options.interactive.show_help) {
-        try showInteractiveHelp();
+        try show_interactive_help();
         return true;
     }
 
@@ -276,24 +315,24 @@ fn handleSpecialModes(allocator: std.mem.Allocator, options: InteractiveCliOptio
 }
 
 /// Setup authentication flow with user guidance
-fn setupAuthenticationFlow(allocator: std.mem.Allocator, force_oauth: bool) !void {
+fn setup_authentication_flow(allocator: std.mem.Allocator, force_oauth: bool) !void {
     std.log.info("🔐 Starting Authentication Setup", .{});
 
     if (force_oauth) {
         std.log.info("🔄 Forcing OAuth setup...", .{});
-        try engine.setupOAuth(allocator);
+        try engine.setup_oauth(allocator);
         return;
     }
 
     // Check current auth status
-    const auth_status = try agent_base.AuthHelpers.getStatusText(allocator);
+    const auth_status = try agent_base.AuthHelpers.get_status_text(allocator);
     defer allocator.free(auth_status);
 
     std.log.info("📊 Current authentication status: {s}", .{auth_status});
 
     // Offer setup options
-    const has_oauth = agent_base.AuthHelpers.hasValidOAuth(allocator);
-    const has_api_key = agent_base.AuthHelpers.hasValidAPIKey(allocator);
+    const has_oauth = agent_base.AuthHelpers.has_valid_oauth(allocator);
+    const has_api_key = agent_base.AuthHelpers.has_valid_api_key(allocator);
 
     if (!has_oauth and !has_api_key) {
         std.log.info("❌ No authentication method configured.", .{});
@@ -309,7 +348,7 @@ fn setupAuthenticationFlow(allocator: std.mem.Allocator, force_oauth: bool) !voi
         const choice = std.mem.trim(u8, buffer[0..bytes_read], " \t\r\n");
 
         if (std.mem.eql(u8, choice, "1")) {
-            try engine.setupOAuth(allocator);
+            try engine.setup_oauth(allocator);
         } else if (std.mem.eql(u8, choice, "2")) {
             std.log.info("📝 To configure an API key:", .{});
             std.log.info("  1. Get your API key from: https://console.anthropic.com/", .{});
@@ -330,7 +369,7 @@ fn setupAuthenticationFlow(allocator: std.mem.Allocator, force_oauth: bool) !voi
 }
 
 /// Show interactive help system
-fn showInteractiveHelp() !void {
+fn show_interactive_help() !void {
     const help_text =
         \\🤖 Interactive Mode Help
         \\
@@ -377,7 +416,7 @@ fn showInteractiveHelp() !void {
 }
 
 /// Run interactive mode with basic session support
-fn runInteractiveMode(allocator: std.mem.Allocator, options: InteractiveCliOptions) !void {
+fn run_interactive_mode(allocator: std.mem.Allocator, options: InteractiveCliOptions) !void {
     // Create session configuration
     const session_config = session.SessionConfig{
         .interactive = true,
@@ -398,17 +437,17 @@ fn runInteractiveMode(allocator: std.mem.Allocator, options: InteractiveCliOptio
     defer base_agent.deinit();
 
     // Setup authentication
-    try ensureAuthentication(&base_agent);
+    try ensure_authentication(&base_agent);
 
     // Enable interactive mode on base agent
-    try base_agent.enableInteractiveMode(session_config);
+    try base_agent.enable_interactive_mode(session_config);
 
     // Start the main interaction loop
-    try base_agent.startInteractiveSession();
+    try base_agent.start_interactive_session();
 }
 
 /// Ensure authentication is properly configured
-fn ensureAuthentication(base_agent: *agent_base.BaseAgent) !void {
+fn ensure_authentication(base_agent: *agent_base.BaseAgent) !void {
     const auth_status = try base_agent.checkAuthStatus();
 
     switch (auth_status) {

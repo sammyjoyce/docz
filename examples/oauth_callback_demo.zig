@@ -79,7 +79,7 @@ fn runCustomServer(allocator: std.mem.Allocator) !void {
     std.debug.print("\nCredentials saved to oauth_demo_creds.json\n", .{});
 }
 
-/// Integration with enhanced OAuth wizard
+/// Integration with  OAuth wizard
 fn runWithWizard(allocator: std.mem.Allocator) !void {
     std.debug.print("Starting OAuth wizard with callback server integration...\n\n", .{});
 
@@ -88,7 +88,7 @@ fn runWithWizard(allocator: std.mem.Allocator) !void {
     defer pkce_params.deinit(allocator);
 
     // Create callback server with default config
-    var server = try oauth.CallbackServer.init(allocator, .{});
+    var server = try oauth.Callback.init(allocator, .{});
     defer server.deinit();
 
     // Register session
@@ -137,7 +137,7 @@ fn testRequestParsing() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    var server = try oauth.CallbackServer.init(allocator, .{});
+    var server = try oauth.Callback.init(allocator, .{});
     defer server.deinit();
 
     // Test successful callback

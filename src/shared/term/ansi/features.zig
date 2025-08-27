@@ -4,7 +4,7 @@
 const std = @import("std");
 
 pub const color = @import("color.zig");
-pub const cursor = @import("cursor.zig");
+pub const cursor = @import("../control/cursor.zig");
 
 // Re-export main types for convenience
 pub const RgbColor = color.RgbColor;

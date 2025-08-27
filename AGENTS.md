@@ -1,817 +1,687 @@
-# AGENTS Guide - Multi-Agent Terminal AI System
+Multi‑Agent Terminal AI System — Code Review Cheat Sheet
+Purpose
+	•	Build independent terminal agents on shared infra with minimal duplication.
+	•	Enforce consistent structure, names, errors, config, and build rules.
+Assumptions & Risks
+	•	Targeting Zig 0.15.1 semantics (IO, formatting, containers). If compiling with 0.14.x, expect breakage.
+	•	Agents compile independently; unused modules must not leak in.
+	•	ZON at comptime, JSON at runtime; avoid mixing concerns.
 
-## Overview
+Directory & Build Layout (must match)
+	•	agents/<name>/: main.zig (CLI entry), spec.zig (prompt+tools), agent.zig (impl); optional: config.zon, system_prompt.txt, tools.zon, tools/, common/, examples/, README.md.
+	•	src/core/: engine.zig, config.zig, agent_base.zig, agent_main.zig.
+	•	src/shared/: cli/, tui/, render/, components/, network/, tools/, auth/, json_reflection/, term/ (each with mod.zig barrel).
+	•	examples/, tests/.
+	•	Build commands:
+	◦	zig build -Dagent=<name> [run|run-agent|install-agent|test]
+	◦	zig build list-agents | validate-agents | scaffold-agent -- <name>
+	◦	Multi: zig build -Dagents=a,b ; Release: -Drelease-safe ; Size: -Doptimize-binary.
 
-Framework for building multiple independent terminal-based AI agents. Each agent is built individually with specialized toolsets, prompts, and implementation while sharing common infrastructure for terminal handling, API communication, and UI components. The improved architecture significantly reduces code duplication through standardized base classes, shared configuration patterns, and modular infrastructure components.
+Architecture Principles (enforced)
+	•	Independence: only selected agent compiles.
+	•	Shared infra via src/core + src/shared/*.
+	•	Barrel exports: every shared dir exposes clean API via mod.zig.
+	•	Compile‑time agent interface: static verification + dead‑code elimination.
+	•	Build‑generated registry: scan agents/, validate required files, fail loud.
+	•	Selective inclusion: feature flags gate shared modules.
+	•	Clean error sets: no anyerror; use AgentError, ConfigError, ToolError.
+	•	Service interfaces: network/terminal/config/tools are swappable/testable.
 
-### Directory Structure
+Input System Layering (don’t break)
+shared/term/input (primitives) → shared/components/input.zig (abstraction) → shared/tui/core/input (TUI features). No cross‑layer shortcuts.
 
-- **`agents/`** - Individual terminal agents (built independently)
-  - **`agents/<name>/main.zig`** - Agent CLI entry point (required)
-  - **`agents/<name>/spec.zig`** - Agent specification (required)
-  - **`agents/<name>/agent.zig`** - Main agent implementation (required, standardized name)
-  - **`agents/<name>/config.zon`** - Agent configuration (optional)
-  - **`agents/<name>/system_prompt.txt`** - System prompt template (optional)
-  - **`agents/<name>/tools.zon`** - Tool definitions (optional)
-  - **`agents/<name>/README.md`** - Agent documentation (recommended)
-  - **`agents/<name>/tools/`** - Agent-specific tools (optional)
-    - `tools/mod.zig` - Tools module export (if tools/ exists)
-    - `tools/*.zig` - Individual tool implementations
-  - **`agents/<name>/common/`** - Agent-specific shared utilities (optional)
-  - **`agents/<name>/examples/`** - Usage examples (optional)
-- **`src/core/`** - Core engine and configuration utilities
-  - `src/core/engine.zig` - Main engine used by all agents
-  - `src/core/config.zig` - Standardized configuration management
-  - `src/core/agent_base.zig` - Base agent functionality with common lifecycle methods and template variable processing
-  - `src/core/agent_main.zig` - Standardized main entry point for all agents with common CLI parsing
-- **`src/shared/`** - Shared infrastructure modules organized by category
-  - **`src/shared/cli/`** - Command-line interface components
-  - **`src/shared/tui/`** - Terminal user interface
-  - **`src/shared/render/`** - Rendering and graphics
-  - **`src/shared/components/`** - Shared UI components
-  - **`src/shared/network/`** - Network and API clients
-  - **`src/shared/tools/`** - Shared tools registry
-  - **`src/shared/auth/`** - Authentication system
-  - **`src/shared/json_reflection/`** - Compile-time JSON processing utilities
-  - **`src/shared/term/`** - Terminal capabilities and low-level terminal handling
-- **`examples/`** - Demo and example files
-- **`tests/`** - Test files organized by category
+Config & Prompts
+	•	ZON for static config & tool schemas (agents/<name>/config.zon, tools.zon).
+	•	Load with @embedFile + std.zig.parseFromSlice.
+	•	Template vars in prompts auto‑filled from config: {agent_name}, {agent_version}, {current_date}, feature flags, limits, model settings.
+	•	Pattern: ZON templates → JSON at runtime for API payloads.
 
-### Key Architecture Principles
+Tools Registration (pick one, be consistent)
+	•	ZON‑defined tools: define schema/metadata in ZON; validate runtime params.
 
-- **Independence**: Agents are built individually, only the selected agent is compiled
-- **Shared Infrastructure**: Common functionality through organized shared modules
-- **Standardized Structure**: All agents follow same directory conventions and patterns
-- **Flexible Tools**: Each agent can register own tools while inheriting shared built-ins
-- **Configuration-Driven**: Agents use standardized `.zon` files for structured configuration
-- **Organized Shared Code**: Shared modules logically grouped by functionality (CLI, TUI, network, etc.)
-- **Reduced Code Duplication**: Base agent classes and standardized main entry points eliminate repetitive boilerplate
-- **Modular Design**: Clean separation between core functionality, shared infrastructure, and agent-specific code
+Naming & Style (reviewers will reject violations)
+	•	Dirs/files: snake_case; mod.zig for barrels; single‑type files use PascalCase.zig.
+	•	Types: PascalCase; func/vars: camelCase; consts: ALL_CAPS; errors: PascalCase.
+	•	Modules: no redundant suffixes (“Module/Lib/Utils”).
+	•	Follow Zig Style Guide; run zig fmt.
 
-## Modern Architecture Patterns
+Core Modules (know where things live)
+	•	core/engine.zig: run loop, tool calls, API comms.
+	•	core/config.zig: AgentConfig + validation/defaults.
+	•	core/agent_base.zig: lifecycle, template vars, config helpers.
+	•	core/agent_main.zig: standardized CLI parsing + engine delegation.
 
-### Directory Modules with Barrel Exports
-Each shared module directory contains a `mod.zig` file that serves as a barrel export, providing a clean public API while keeping internal implementation details organized in subdirectories. This pattern enables:
-- Clean import statements: `@import("shared/cli")`
-- Internal organization without exposing implementation details
-- Easy refactoring of internal structure
-- Consistent module boundaries
+Shared Modules (feature‑gated)
+	•	cli/ (args, routing, color/output, multi‑step flows)
+	•	tui/ (canvas, renderer, widgets, layouts)
+	•	render/ (charts/tables/progress, quality levels)
+	•	components/ (shared UI incl. unified input)
+	•	network/ (HTTP clients, Anthropic/Claude, SSE)
+	•	tools/ (registry, metadata, agent attribution)
+	•	auth/ (OAuth + API keys; TUI flows; CLI commands)
+	•	json_reflection/ (schema validation, typed JSON)
+	•	term/ (terminal caps, low‑level input/mouse)
 
-### Compile-time Agent Interface
-Agents are defined at compile-time through comptime interfaces, enabling:
-- Static verification of agent structure
-- Compile-time optimization of unused code paths
-- Type-safe agent registration and discovery
-- Zero runtime overhead for agent selection
+Error Handling (hard rules)
+	•	Define specific error sets; do not export anyerror.
+	•	Public APIs return typed errors; handle locally when appropriate.
+	•	Use try; catch |e| to attach context; prefer error chaining for debugging.
+	•	No panics except unrecoverable invariants (documented).
 
-### Build-Generated Registry
-The build system automatically generates agent registries by:
-- Scanning the `agents/` directory at build time
-- Validating required files (`main.zig`, `spec.zig`, `agent.zig`)
-- Creating compile-time maps of available agents
-- Providing clear error messages for missing or malformed agents
+Resource & Memory
+	•	Use defer for cleanup; clarify ownership.
+	•	Prefer stack; use arena allocators for short‑lived bursts.
+	•	Avoid leaks in long‑running TUI loops; free after tool invocations.
+	•	Keep stdout buffering global if reused; don’t forget flush.
 
-### Selective Module Inclusion
-Modules are included based on agent capabilities:
-- Core modules always included (engine, config)
-- Shared modules conditionally included based on feature flags
-- Agent-specific modules only compiled for selected agent
-- Minimizes binary size and compile time
+Zig 0.15.1 Key Changes You Must Observe
+	•	usingnamespace, async/await, @frameSize: removed.
+	•	IO: new std.Io.Reader/Writer concrete types; caller‑owned buffers; ring buffers.
+	•	Formatting: {} no longer auto‑calls format; use {f} or {any}; new {t}, {b64}, {d} behavior.
+	•	Containers: std.ArrayList is unmanaged; use std.array_list.Managed if needed.
+	•	FS: fs.File.reader()/writer() now .deprecatedReader/.deprecatedWriter; prefer new Reader/Writer.
+	•	Build: use root_module; UBSan enum (.full|.trap|.off).
+	•	Deleted: LinearFifo, RingBuffer, BoundedArray (use ArrayListUnmanaged.initBuffer or fixed slices).
 
-### Clean Error Sets
-Precise error handling with defined error sets:
-- `AgentError` for agent-specific failures
-- `ConfigError` for configuration issues
-- `ToolError` for tool execution problems
-- Eliminates `anyerror` usage for better error handling
+Build & Validation Expectations
+	•	CI must run:
+	◦	zig build list-agents (registry OK)
+	◦	zig build validate-agents (required files present)
+	◦	zig build -Dagent=<each> test
+	◦	zig build fmt (lint) + zig fmt src/**/*.zig build.zig build.zig.zon
+	•	Examples moved to examples/cli_demo/ (don’t assume old path).
 
-### Service-Based Architecture
-Clean separation of concerns through service interfaces:
-- Network service for API communication
-- Terminal service for UI interactions
-- Configuration service for settings management
-- Tool service for capability registration
-- Enables testing, mocking, and future extensibility
+Testing Strategy (min bar)
+	•	Unit test core services & tools.
+	•	Integration test agent E2E (engine ↔ tools ↔ network).
+	•	Test error cases (config invalid, tool failure, network timeouts).
+	•	Consider fuzzing parsers and terminal input.
 
-### Important Changes
+Agent Implementation Skeleton (reviewer‑approved)
+	•	main.zig: delegate to agent_main.runAgent(); no bespoke CLI parsing.
+	•	spec.zig: define system prompt (with template vars) + register tools.
+	•	agent.zig: pub const <Name>Agent = struct { config: Config, allocator: Allocator, ... }; implement lifecycle and service usage.
+	•	config.zon: extend AgentConfig; set limits, features, model, defaults.
 
-- **CLI Demo Relocation**: The CLI demo directory has been moved from the root to `examples/cli_demo/` for better organization
-- **New Core Modules**: Added `agent_base.zig` and `agent_main.zig` to provide standardized base functionality and entry points
-- **Enhanced Build System**: Improved validation and support for individual agent builds with comprehensive error reporting
+Performance & Binary Size
+	•	Feature‑gate shared modules; avoid accidental imports.
+	•	Use compile‑time interfaces to prune code paths.
+	•	Prefer streaming IO; avoid large heap JSON when not required.
+	•	Rendering: use quality levels; avoid overdraw in TUI.
 
-## Core Modules
+Code Review Pass Checklist
+	•	 Directory structure & filenames match conventions.
+	•	 No anyerror; specific error sets exported.
+	•	 Uses agent_main for CLI; no duplicated parsers.
+	•	 Tools registered via registry with agent attribution.
+	•	 ZON config loads, validates, and drives template vars.
+	•	 JSON only for runtime API payloads; ZON at comptime.
+	•	 Barrel exports present; no deep imports into subfiles.
+	•	 Memory ownership clear; all defer paths covered; no leaks.
+	•	 IO updated to new std.Io APIs; formatting uses {f}/{any} as needed.
+	•	 Feature flags gate module inclusion; binary size reasonable.
+	•	 Tests cover success + failure; CI commands included.
+	•	 zig fmt clean; imports alphabetical (std first).
 
-- **Engine Module** (`src/core/engine.zig`): Main agent engine that orchestrates agent execution, tool calling, and API communication
-- **Config Module** (`src/core/config.zig`): Standardized configuration management with validation, defaults, and ZON file support
-- **Agent Base Module** (`src/core/agent_base.zig`): Base agent functionality providing common lifecycle methods, template variable processing, and configuration helpers that all agents can inherit from
-- **Agent Main Module** (`src/core/agent_main.zig`): Standardized main entry point with common CLI parsing, argument handling, and engine delegation to reduce boilerplate code
+Common Pitfalls (preempt them)
+	•	Mixing 0.14 and 0.15 IO/formatting APIs.
+	•	Leaking agent‑specific code into shared modules.
+	•	Circular deps across term/ ↔ components/ ↔ tui/.
+	•	Tool names with redundant prefixes/snake_case fns.
+	•	Prompt templates missing required vars (unreplaced {...}).
+	•	Pulling in tui/ or render/ without feature‑gating.
 
-## Shared Modules Organization
+# Zig Idioms and Patterns — updated for Zig 0.15.1
 
-- **CLI Module** (`src/shared/cli/`): Complete command-line interface system with argument parsing, command routing, context management, reusable UI elements, color schemes, output formatting, multi-step operations, advanced CLI features, and helper functions
-- **TUI Module** (`src/shared/tui/`): Terminal user interface components with canvas engine, unified renderer, dashboard, graphics, adaptive layouts, TUI-specific styling, specialized UI widgets, and example TUI applications
-- **Network Module** (`src/shared/network/`): API clients and network utilities including Anthropic/Claude API client, HTTP client utilities, and server-sent events handling
-- **Tools Module** (`src/shared/tools/`): Enhanced tools registry with metadata support, categorization, agent attribution, JSON tools, automatic registration, and clean integration between shared and agent-specific tools
-- **Auth Module** (`src/shared/auth/`): Authentication system providing OAuth and API key support with core authentication logic, OAuth 2.0 implementation, terminal UI for authentication flows, and command-line authentication commands
-- **JSON Reflection Module** (`src/shared/json_reflection/`): Compile-time JSON processing utilities providing schema validation, type-safe JSON parsing, and reflection-based JSON manipulation for enhanced tool and agent capabilities
-- **Render Module** (`src/shared/render/`): Rendering and graphics capabilities with chart/table/progress bar rendering, quality-aware rendering system, and rendering optimization levels
-- **Components Module** (`src/shared/components/`): Shared UI components that work across CLI and TUI contexts, including the unified input system that provides high-level input abstraction
-- **Term Module** (`src/shared/term/`): Terminal capabilities and low-level terminal handling, including primitive input parsing and protocol handling
+> Notes for 0.15.1:
+> - `usingnamespace` is removed. Prefer explicit re-exports (as shown below). :contentReference[oaicite:0]{index=0}
+> - I/O APIs changed (Writergate). These examples avoid the old `std.io.*` surface. :contentReference[oaicite:1]{index=1}
+> - Build system fields like `root_source_file` are gone; use the newer `root_module`‑based APIs in `build.zig`. (Not shown here.) :contentReference[oaicite:2]{index=2}
 
-### Input System Layering
-
-The input system follows a clear three-layer architecture:
-
-- **Low-level Primitives** (`src/shared/term/input/`): Raw input parsing, key definitions, mouse protocol handling, and terminal capability detection
-- **Unified Abstraction** (`src/shared/components/input.zig`): High-level InputManager with consistent API, event buffering, feature management, and cross-platform compatibility
-- **TUI Features** (`src/shared/tui/core/input/`): TUI-specific functionality including focus management, widget input routing, advanced mouse interactions, and event dispatching
-
-**Dependency Flow**: `term/input/` → `components/input.zig` → `tui/core/input/`
-
-This layered approach ensures:
-- Clean separation of concerns between primitive parsing and high-level features
-- Reusable input handling across CLI and TUI applications
-- Easy testing and maintenance of input functionality
-- No duplication between layers
-
-## Module Architecture
-
-The framework uses a layered module architecture that optimizes build times and enables flexible agent capabilities:
-
-### ConfigModules (static .zon files)
-Static configuration loaded at compile-time:
-- Agent-specific settings in `agents/<name>/config.zon`
-- Tool definitions in `agents/<name>/tools.zon`
-- Shared configuration templates
-- Environment-specific overrides
-- Loaded using `@embedFile` + `std.zig.parseFromSlice`
-
-### SharedModules (always included)
-Core infrastructure always available to all agents:
-- `src/core/` - Engine, configuration, base classes
-- `src/shared/network/` - API communication
-- `src/shared/tools/` - Tool registry and execution
-- `src/shared/term/` - Terminal capabilities
-- Provides foundation for all agent functionality
-
-### ConditionalSharedModules (capability-based)
-Modules included based on agent feature flags:
-- `src/shared/cli/` - When CLI interface is enabled
-- `src/shared/tui/` - When terminal UI is enabled
-- `src/shared/render/` - When graphics rendering is needed
-- `src/shared/auth/` - When authentication is required
-- `src/shared/components/` - When shared UI components are used
-- Reduces binary size for minimal agents
-
-### AgentModules (agent-specific)
-Compiled only for the selected agent:
-- `agents/<name>/` - Agent implementation and tools
-- Custom tools in `agents/<name>/tools/`
-- Agent-specific shared utilities in `agents/<name>/common/`
-- Examples and documentation
-- Enables independent agent development
-
-### Module Dependency Graph
-```
-ConfigModules (comptime)
-    ↓
-SharedModules (always)
-    ↓
-ConditionalSharedModules (feature-gated)
-    ↓
-AgentModules (selected agent only)
-```
-
-This architecture ensures:
-- Fast incremental builds
-- Minimal binary sizes
-- Clear dependency boundaries
-- Flexible agent capabilities
-- Easy testing and maintenance
-
-## Naming Conventions
-
-Following the [Zig Style Guide](https://ziglang.org/documentation/master/#Style-Guide) and framework patterns, this section outlines naming conventions for consistent code organization. These conventions ensure readability, prevent naming conflicts, and maintain clear module boundaries.
-
-### Agent Naming
-Agent directories use **snake_case** while internal types use **PascalCase**:
 ```zig
-// Good: Agent directory structure
-agents/markdown_processor/      // snake_case directory
-agents/test_agent/              // snake_case directory
-agents/api_client/              // snake_case directory
-
-// Good: Agent type definitions
-pub const MarkdownAgent = struct { ... };  // PascalCase type
-pub const TestAgent = struct { ... };      // PascalCase type
-pub const ApiClient = struct { ... };      // PascalCase type
-
-// Bad: Avoid these patterns
-agents/MarkdownProcessor/       // Wrong: PascalCase directory
-agents/markdown-processor/      // Wrong: kebab-case directory
-pub const MARKDOWN_AGENT = struct { ... }; // Correct: ALL_CAPS constant
+const std = @import("std");
+const Allocator = std.mem.Allocator;
 ```
 
-### Module Naming Patterns
-Modules should have clear, descriptive names without redundant suffixes:
+## Resource Management
+
+### RAII (init/deinit with `defer` / `errdefer`)
+
 ```zig
-// Good: Clean module exports in mod.zig
-pub const auth = @import("auth.zig");
-pub const network = @import("network.zig");
-pub const tools = @import("tools.zig");
+const Resource = struct {
+    handle: Handle,
+    allocator: Allocator,
 
-// Good: Barrel exports without redundancy
-// In src/shared/cli/mod.zig
-pub const Command = @import("command.zig").Command;
-pub const Context = @import("context.zig").Context;
-pub const Parser = @import("parser.zig").Parser;
-
-// Bad: Redundant suffixes
-pub const AuthModule = @import("auth_module.zig");  // Redundant "Module"
-pub const NetworkLib = @import("network_lib.zig");  // Redundant "Lib"
-pub const ToolsUtils = @import("tools_utils.zig");  // Redundant "Utils"
-```
-
-### Tool Naming Guidelines
-Tools use **camelCase** for functions with descriptive names that avoid redundant prefixes:
-```zig
-// Good: Clear, action-oriented tool names
-pub fn readFile(allocator: Allocator, path: []const u8) ![]u8 { ... }
-pub fn parseMarkdown(allocator: Allocator, content: []const u8) !Document { ... }
-pub fn validateSchema(data: JsonValue) !bool { ... }
-
-// Good: JSON tool registration
-try tools_mod.registerJsonTool(registry, "format_document", "Formats a document", formatDocument);
-try tools_mod.registerJsonTool(registry, "validate_links", "Validates URLs", validateLinks);
-
-// Bad: Redundant prefixes and poor naming
-pub fn toolReadFile(...) { ... }        // Redundant "tool" prefix
-pub fn markdown_parse(...) { ... }      // Wrong: snake_case function
-pub fn DoValidation(...) { ... }        // Wrong: PascalCase function
-```
-
-### Configuration Field Naming
-Configuration uses **snake_case** for fields with clear, meaningful names:
-```zon
-// Good: Clear configuration structure in config.zon
-.{
-    .agent_config = .{
-        .max_concurrent_operations = 10,
-        .default_timeout_ms = 30000,
-        .enable_debug_logging = false,
-    },
-    .custom_settings = .{
-        .markdown_flavor = "github",
-        .auto_save_interval_ms = 5000,
-        .preserve_whitespace = true,
+    pub fn init(allocator: Allocator) !Resource {
+        // acquireHandle/releaseHandle are placeholders for your real resource ops
+        const handle = try acquireHandle();
+        return .{
+            .handle = handle,
+            .allocator = allocator,
+        };
     }
-}
 
-// Bad: Inconsistent or unclear naming
-.{
-    .agentConfig = .{ ... },           // Wrong: camelCase field
-    .MaxOperations = 10,                // Wrong: PascalCase field
-    .tmout = 30000,                     // Bad: Unclear abbreviation
-    .dbg = false,                       // Bad: Cryptic abbreviation
-}
-```
-
-### File Naming Rules
-Files follow specific patterns based on their content:
-```zig
-// Good: Namespace modules (snake_case.zig)
-agent_base.zig          // Multiple related items
-config_helpers.zig      // Collection of utilities
-tool_registry.zig       // Registry implementation
-
-// Good: Single type files (PascalCase.zig)
-agent.zig              // Contains: pub const Agent = struct { ... }
-command.zig            // Contains: pub const Command = struct { ... }
-parser.zig             // Contains: pub const Parser = struct { ... }
-
-// Good: Barrel exports
-mod.zig                // Module entry point, always lowercase
-
-// Bad: Incorrect patterns
-AgentBase.zig          // Wrong: Should be agent_base.zig for namespace
-parser.zig             // Wrong: Should be Parser.zig for single type
-Module.zig             // Wrong: Should be mod.zig for barrel export
-```
-
-### Constant and Error Naming
-Constants use **ALL_CAPS** with underscores, errors use **PascalCase**:
-```zig
-// Good: Constants
-pub const MAX_BUFFER_SIZE = 4096;
-pub const DEFAULT_TIMEOUT = 30;
-pub const API_VERSION = "v1";
-
-// Good: Error sets
-pub const ConfigError = error{
-    InvalidFormat,
-    MissingRequired,
-    ValidationFailed,
-};
-
-// Bad: Incorrect patterns
-pub const maxBufferSize = 4096;        // Wrong: Should be ALL_CAPS
-pub const config_error = error{ ... }; // Wrong: Should be PascalCase
-pub const CONFIGERROR = error{ ... };  // Wrong: Should be PascalCase
-```
-
-### Examples: Good vs Bad Patterns
-
-#### Complete Agent Structure (Good)
-```zig
-// agents/markdown_processor/agent.zig
-pub const MarkdownAgent = struct {
-    config: Config,
-    allocator: std.mem.Allocator,
-    
-    pub fn processDocument(self: *MarkdownAgent, content: []const u8) !Document {
-        // Implementation
+    pub fn deinit(self: *Resource) void {
+        releaseHandle(self.handle);
     }
 };
 
-// agents/markdown_processor/tools/mod.zig
-pub fn formatTable(allocator: Allocator, params: JsonValue) ![]u8 { ... }
-pub fn validateLinks(allocator: Allocator, params: JsonValue) ![]u8 { ... }
+// Usage
+var resource = try Resource.init(allocator);
+defer resource.deinit();
 
-// agents/markdown_processor/config.zon
-.{
-    .enable_auto_format = true,
-    .max_heading_depth = 6,
-    .preserve_line_breaks = false,
+// --- placeholders to make the snippet self-contained
+const Handle = usize;
+fn acquireHandle() !Handle { return 1; }
+fn releaseHandle(handle: Handle) void { _ = handle; }
+```
+
+**Pitfalls / 0.15.1 notes**
+
+* Keep `deinit` infallible; pair fallible acquires with `errdefer` to clean up partially acquired state.
+* If you expose this across module boundaries, document ownership and allocator used (callers may switch allocators per 0.15.1 std guidance on “unmanaged by default” containers). ([Zig Programming Language][1])
+
+---
+
+### Builder Pattern (value‑chaining that compiles)
+
+> Chaining on a temporary with `self: *Builder` fails because rvalues aren’t addressable. Use value‑semantics: each call returns a new `Builder`.
+
+```zig
+const ServerConfig = struct {
+    port: u16 = 8080,
+    host: []const u8 = "localhost",
+    max_connections: usize = 100,
+    timeout_ms: u64 = 30_000,
+
+    pub fn builder() Builder {
+        return .{};
+    }
+
+    const Builder = struct {
+        config: ServerConfig = .{},
+
+        pub fn port(self: Builder, p: u16) Builder {
+            var next = self;
+            next.config.port = p;
+            return next;
+        }
+
+        pub fn host(self: Builder, h: []const u8) Builder {
+            var next = self;
+            next.config.host = h;
+            return next;
+        }
+
+        pub fn maxConnections(self: Builder, n: usize) Builder {
+            var next = self;
+            next.config.max_connections = n;
+            return next;
+        }
+
+        pub fn timeoutMs(self: Builder, ms: u64) Builder {
+            var next = self;
+            next.config.timeout_ms = ms;
+            return next;
+        }
+
+        pub fn build(self: Builder) ServerConfig {
+            return self.config;
+        }
+    };
+};
+
+// Usage (chains cleanly)
+const config = ServerConfig.builder()
+    .port(3000)
+    .host("0.0.0.0")
+    .maxConnections(500)
+    .timeoutMs(45_000)
+    .build();
+```
+
+**Trade‑offs**
+
+* Value‑builders copy; for fat configs, prefer a `var b = ServerConfig.builder();` + pointer receiver mutators, then `b.build()`. Keep mutators returning `*Builder` in that variant.
+
+---
+
+## Error Handling Patterns
+
+### Result Type (when you *really* want a Rust‑like result)
+
+```zig
+fn Result(comptime T: type, comptime E: type) type {
+    return union(enum) {
+        ok: T,
+        err: E,
+
+        pub fn isOk(self: @This()) bool {
+            return self == .ok;
+        }
+
+        pub fn unwrap(self: @This()) T {
+            return switch (self) {
+                .ok => |value| value,
+                .err => @panic("unwrap on error"), // fine in 0.15.1
+            };
+        }
+    };
 }
 ```
 
-#### Common Mistakes to Avoid (Bad)
+> Zig’s idiom remains `!T` and `try`; use a bespoke `Result` only for non‑error‑union cases (e.g., domain errors that you don’t want in the error set). The builtin `@panic` remains available. ([Zig Programming Language][2])
+
+---
+
+### Error Context
+
 ```zig
-// Wrong: Mixed naming conventions
-pub const markdown_processor = struct { ... };  // Should be MarkdownProcessor
-pub fn ProcessDocument(...) { ... }             // Should be processDocument
-pub const max_size = 100;                       // Should be MAX_SIZE
+const ErrorContext = struct {
+    message: []const u8,
+    file: [:0]const u8,
+    line: u32,
+    column: u32,
 
-// Wrong: Redundant naming
-pub const MarkdownProcessorAgent = struct { ... };  // Redundant "Agent"
-pub fn toolFormatTable(...) { ... }                 // Redundant "tool"
-pub const ConfigModule = @import("config_module.zig"); // Redundant "Module"
-
-// Wrong: Inconsistent configuration
-.{
-    .enableAutoFormat = true,    // Should be snake_case
-    .MaxHeadingDepth = 6,        // Should be snake_case
-    .preserve_line_breaks = false, // Inconsistent with others
-}
+    pub fn init(message: []const u8) ErrorContext {
+        const src = @src(); // builtin present in 0.15.1
+        return .{
+            .message = message,
+            .file = src.file,
+            .line = src.line,
+            .column = src.column,
+        };
+    }
+};
 ```
 
-These conventions ensure consistency across the codebase while maintaining Zig's idiomatic style. When in doubt, follow the pattern established in the standard library and refer to the official Zig Style Guide.
+---
 
-For comprehensive style guide details including philosophy, safety practices, and performance considerations, see @docs/STYLE.md
+## State Management
 
-## Build / Run
-
-### Enhanced Build System
-- **Build specific agent**: `zig build -Dagent=markdown`
-- **Run specific agent**: `zig build -Dagent=markdown run -- <args>`
-- **Install agent binary**: `zig build -Dagent=markdown install-agent`
-- **Run agent directly**: `zig build -Dagent=markdown run-agent -- <args>`
-- **Test agent**: `zig build -Dagent=markdown test`
-- **List available agents**: `zig build list-agents`
-- **Validate all agents**: `zig build validate-agents`
-- **Build all agents**: `zig build -Dagents=all`
-- **Scaffold new agent**: `zig build scaffold-agent -- <agent-name>`
-- **Multiple agent builds**: `zig build -Dagents=markdown,test-agent`
-- **Binary optimization**: `zig build -Dagent=markdown -Doptimize-binary`
-- **Release builds**: `zig build -Dagent=markdown -Drelease-safe`
-
-### Build Validation
-Automatically validates agents: checks directory exists, verifies required files (`main.zig`, `spec.zig`, `agent.zig`), lists available agents on failure, provides clear error messages.
-
-### Available Agents
-- **`markdown`** - CLI agent for writing and refining markdown documents with comprehensive markdown processing tools
-- **`test_agent`** - Example agent demonstrating enhanced tool integration, JSON tools, and basic functionality
-- **`_template`** - Template for creating new agents with standardized structure and patterns
-
-## Tests
-- All: `zig build test --summary all`
-- Single file: `zig test src/<file>.zig`
-- Filter: `zig test src/<file>.zig --test-filter <regex>`
-
-## Lint / Format
-- Check: `zig build fmt`
-- Fix: `zig fmt src/**/*.zig build.zig build.zig.zon`
-
-## Style
-- Imports alphabetical; std first; no Cursor/Copilot overrides.
-- camelCase fn/vars, PascalCase types, ALL_CAPS consts.
-- Return `!Error`; wrap calls with `try`; avoid panics.
-- 4-space indent; run `zig fmt` before commit.
-
-## Data Organization
-- Keep data separated in `.zon` files (use like JSON files in Node ecosystem).
-- Use `.zon` files for configuration, static data, templates, and environment-specific settings.
-- Co-locate `.zon` files with relevant modules (e.g., `config.zon`, `tools.zon`).
-- Load `.zon` data at comptime with `@embedFile` + `std.zig.parseFromSlice`.
-
-## Creating a New Agent
-
-### Quick Start
-
-1. **Scaffold new agent**: `zig build scaffold-agent -- my-agent`
-   - Or manually copy the template: `cp -r agents/_template agents/my-agent`
-2. **Customize the agent implementation** (`agents/my-agent/agent.zig`): Extend the base agent class, define configuration structure, and add agent-specific logic
-3. **Update the spec** (`agents/my-agent/spec.zig`): Register agent-specific tools and define the system prompt
-4. **Configure your agent** (`agents/my-agent/config.zon`): Set default values and agent-specific settings
-5. **Build and test**: `zig build -Dagent=my-agent run -- "Hello from my new agent!"`
-
-### Leveraging Base Functionality
-
-The new architecture provides significant improvements for agent development:
-
-- **Base Agent Class**: All agents can inherit from `BaseAgent` to get common functionality like template variable processing, date formatting, and configuration helpers
-- **Standardized Main Entry**: Use `agent_main.runAgent()` to eliminate boilerplate CLI parsing and argument handling
-- **Configuration Helpers**: Use `ConfigHelpers` for standardized configuration loading and validation
-- **Template Processing**: Built-in support for variable substitution in system prompts with common variables
-
-This dramatically reduces code duplication and ensures consistency across all agents.
-
-### Standardized Agent Structure
-
-Each agent **must** have:
-- **`main.zig`** - CLI entry point (parses arguments, calls engine)
-- **`spec.zig`** - Agent specification (system prompt + tools registration)
-- **`agent.zig`** - Main implementation (standardized name)
-
-Each agent **may** have:
-- **`config.zon`** - Structured configuration in ZON format
-- **`system_prompt.txt`** - System prompt template with variable substitution
-- **`tools.zon`** - Tool definitions and metadata
-- **`README.md`** - Agent-specific documentation
-- **`tools/`** - Agent-specific tool implementations
-- **`common/`** - Agent-specific shared utilities
-- **`examples/`** - Usage examples and test cases
-
-### Tool Registration
-
-Agents can register custom tools using the enhanced system with metadata support:
-
-**Option 1: Automatic Module Registration** (recommended)
-```zig
-// In spec.zig
-fn registerToolsImpl(registry: *tools_mod.Registry) !void {
-    const tools = @import("tools/mod.zig");
-    try registry.registerFromModule(tools, "my-agent");
-}
-```
-
-**Option 2: Individual Tool Registration with Metadata**
-```zig
-// In spec.zig
-fn registerToolsImpl(registry: *tools_mod.Registry) !void {
-    try tools_mod.registerJsonTool(registry, "my_tool", "Description", myToolFunction, "my-agent");
-}
-```
-
-**Option 3: ZON-Based Tools** (for structured data)
-ZON is ideal for compile-time configuration and structured data definition, while JSON handles runtime API communication and tool parameters.
+### State Machine
 
 ```zig
-// In tools/payloads.zon - Define API payloads at compile-time
-.{
-    .tool_config = .{
-        .name = "my_tool",
-        .description = "A structured tool with ZON-defined parameters",
-        .parameters = .{
-            .type = "object",
-            .properties = .{
-                .filename = .{ .type = "string", .description = "File to process" },
-                .options = .{
-                    .type = "object",
-                    .properties = .{
-                        .format = .{ .type = "string", .enum = .{"json", "xml", "csv"} },
-                        .validate = .{ .type = "boolean", .default = true }
-                    }
-                }
+const Event = enum { start, stop, pause };
+
+const State = enum {
+    idle,
+    running,
+    stopped,
+
+    pub fn transition(self: State, event: Event) State {
+        return switch (self) {
+            .idle => switch (event) {
+                .start => .running,
+                else => self,
             },
-            .required = .{"filename"}
+            .running => switch (event) {
+                .stop => .stopped,
+                .pause => .idle,
+                else => self,
+            },
+            .stopped => self,
+        };
+    }
+};
+```
+
+### Tagged Union Pattern
+
+```zig
+const Message = union(enum) {
+    text: []const u8,
+    number: i32,
+    data: []const u8, // use a slice; len is already part of it
+
+    pub fn process(self: Message) void {
+        switch (self) {
+            .text => |t| processText(t),
+            .number => |n| processNumber(n),
+            .data => |bytes| processData(bytes),
         }
     }
-}
-
-// In tools/mod.zig - Load ZON at compile-time, convert to JSON at runtime
-const tool_payloads = @import("payloads.zon");
-
-pub fn myJsonTool(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.ToolError![]u8 {
-    // Access compile-time ZON data
-    const config = tool_payloads.tool_config;
-
-    // Validate parameters against ZON schema at runtime
-    const filename = params.object.get("filename").?.string;
-    const options = params.object.get("options").?.object;
-
-    // Process the request...
-    const result = try processWithConfig(allocator, filename, options, config);
-
-    // Convert result back to JSON for API response
-    const response = .{
-        .success = true,
-        .result = result,
-    };
-    return try std.json.Stringify.valueAlloc(allocator, response, .{});
-}
-
-// Helper to convert ZON data to JSON when needed for API calls
-fn convertZonToJson(allocator: std.mem.Allocator, zon_data: anytype) ![]u8 {
-    return try std.json.Stringify.valueAlloc(allocator, zon_data, .{});
-}
-```
-
-### Configuration Management
-
-Agents use a standardized configuration system that provides both common settings and agent-specific customization.
-
-#### Standard Agent Configuration
-
-All agents should extend the standard `AgentConfig` structure defined in `src/core/config.zig`. The new `ConfigHelpers` in `agent_base.zig` provide convenient methods for configuration management:
-
-```zig
-// In agent.zig
-pub const Config = struct {
-    agent_config: @import("../../src/core/config.zig").AgentConfig,
-    custom_feature_enabled: bool = false,
-    max_custom_operations: u32 = 50,
 };
 
-// Use ConfigHelpers for simplified configuration loading
-const config = ConfigHelpers.loadConfig(Config, allocator, "my-agent", Config{
-    .agent_config = ConfigHelpers.createAgentConfig("My Agent", "Description", "Author"),
-    .custom_feature_enabled = false,
-    .max_custom_operations = 50,
-});
-defer allocator.free(config); // If loaded from file
+// placeholders
+fn processText(_: []const u8) void {}
+fn processNumber(_: i32) void {}
+fn processData(_: []const u8) void {}
 ```
 
-#### Standard Configuration Fields
+---
 
-The `AgentConfig` includes:
-- **Agent Info**: `name`, `version`, `description`, `author`
-- **Defaults**: `max_concurrent_operations`, `default_timeout_ms`, `enable_debug_logging`, `enable_verbose_output`
-- **Features**: Enable/disable flags for `custom_tools`, `file_operations`, `network_access`, `system_commands`
-- **Limits**: Resource constraints like `max_input_size`, `max_output_size`, `max_processing_time_ms`
-- **Model**: AI model settings including `default_model`, `max_tokens`, `temperature`, `stream_responses`
+## Iterator Pattern (function‑pointer + anyopaque ctx)
 
-#### Configuration File Format
+```zig
+fn Iterator(comptime T: type) type {
+    return struct {
+        nextFn: *const fn (*anyopaque) ?T,
+        context: *anyopaque,
 
-Configuration is stored in ZON format. Example `config.zon`:
+        pub fn next(self: @This()) ?T {
+            return self.nextFn(self.context);
+        }
+    };
+}
 
-```zon
-.{
-    .agent_config = .{
-        .agent_info = .{
-            .name = "My Agent",
-            .version = "1.0.0",
-            .description = "A custom AI agent",
-            .author = "Your Name",
-        },
-        .defaults = .{
-            .max_concurrent_operations = 10,
-            .default_timeout_ms = 30000,
-            .enable_debug_logging = false,
-            .enable_verbose_output = false,
-        },
-        .features = .{
-            .enable_custom_tools = true,
-            .enable_file_operations = true,
-            .enable_network_access = false,
-            .enable_system_commands = false,
-        },
-        .limits = .{
-            .max_input_size = 1048576,
-            .max_output_size = 1048576,
-            .max_processing_time_ms = 60000,
-        },
-        .model = .{
-            .default_model = "claude-3-sonnet-20240229",
-            .max_tokens = 4096,
-            .temperature = 0.7,
-            .stream_responses = true,
-        },
-    },
-    .custom_feature_enabled = false,
-    .max_custom_operations = 50,
+const RangeIterator = struct {
+    current: i32,
+    end: i32,
+
+    pub fn init(start: i32, end: i32) RangeIterator {
+        return .{ .current = start, .end = end };
+    }
+
+    pub fn iterator(self: *RangeIterator) Iterator(i32) {
+        return .{
+            .nextFn = nextFn,
+            .context = self,
+        };
+    }
+
+    fn nextFn(ctx: *anyopaque) ?i32 {
+        // Correct casting pattern in modern Zig: alignCast + ptrCast
+        const self: *RangeIterator = @ptrCast(@alignCast(ctx));
+        if (self.current >= self.end) return null;
+        defer self.current += 1;
+        return self.current;
+    }
+};
+```
+
+> `@alignCast` infers alignment from the result type; pairing it with `@ptrCast` is the standard “interface” trick around `anyopaque` in current Zig. See builtins in the 0.15.1 reference. ([Zig Programming Language][2])
+
+---
+
+## Visitor Pattern (with context so handlers can carry state)
+
+```zig
+const Visitor = struct {
+    ctx: *anyopaque,
+    visitIntFn:   *const fn (*anyopaque, i32) void,
+    visitFloatFn: *const fn (*anyopaque, f64) void,
+    visitStrFn:   *const fn (*anyopaque, []const u8) void,
+
+    pub fn visitInt(self: Visitor, v: i32) void    { self.visitIntFn(self.ctx, v); }
+    pub fn visitFloat(self: Visitor, v: f64) void  { self.visitFloatFn(self.ctx, v); }
+    pub fn visitString(self: Visitor, v: []const u8) void { self.visitStrFn(self.ctx, v); }
+};
+```
+
+> Pattern mirrors `std.mem.Allocator`’s interface style (`*anyopaque` + vtable) and is future‑proof. (Allocator remains a `*anyopaque` + vtable design.) ([Reddit][3])
+
+---
+
+## Option Type
+
+```zig
+fn Option(comptime T: type) type {
+    return union(enum) {
+        some: T,
+        none,
+
+        pub fn isSome(self: @This()) bool {
+            return self == .some;
+        }
+
+        pub fn unwrapOr(self: @This(), default: T) T {
+            return switch (self) {
+                .some => |value| value,
+                .none => default,
+            };
+        }
+
+        pub fn map(self: @This(), comptime f: fn (T) T) @This() {
+            return switch (self) {
+                .some => |value| .{ .some = f(value) },
+                .none => .none,
+            };
+        }
+    };
 }
 ```
 
-#### Enhanced Configuration Features
+---
 
-- **Validation**: Automatic validation of configuration values with helpful error messages
-- **Template Generation**: Generate standardized configuration files for new agents
-- **Configuration Saving**: Save validated configurations back to files
+## Defer Pattern Extensions
 
-#### Template Variables in System Prompts
-
-System prompts support template variables automatically replaced with configuration values:
-- `{agent_name}`, `{agent_version}`, `{agent_description}`, `{agent_author}`
-- `{debug_enabled}`, `{verbose_enabled}`, `{custom_tools_enabled}`, `{file_operations_enabled}`
-- `{network_access_enabled}`, `{system_commands_enabled}`, `{max_input_size}`, `{max_output_size}`
-- `{max_processing_time}`, `{current_date}`
-
-### ZON to JSON Pattern for API Communication
-
-Following Zig 0.15.1 best practices, use ZON for compile-time configuration and JSON for runtime API communication:
-
-#### Defining API Payloads in ZON
+### Multiple Resource Cleanup with `errdefer`
 
 ```zig
-// payloads.zon - Compile-time API payload definitions
-.{
-    .anthropic_request = .{
-        .model = "claude-3-sonnet-20240229",
-        .max_tokens = 4096,
-        .temperature = 0.7,
-        .system = "You are a helpful assistant.",
-        .messages = .{
-            .{ .role = "user", .content = "{user_message}" }
-        },
-        .stream = true
-    },
-
-    .tool_response_schema = .{
-        .type = "object",
-        .properties = .{
-            .success = .{ .type = "boolean" },
-            .result = .{ .type = "string" },
-            .error = .{ .type = "string" }
-        },
-        .required = .{"success"}
+var resources_acquired: usize = 0;
+errdefer {
+    var i: usize = 0;
+    while (i < resources_acquired) : (i += 1) {
+        releaseResource(i);
     }
 }
+
+const r1 = try acquireResource();
+resources_acquired = 1;
+
+const r2 = try acquireResource();
+resources_acquired = 2;
+
+// placeholders
+fn acquireResource() !usize { return 0; }
+fn releaseResource(_: usize) void {}
 ```
 
-#### Converting ZON to JSON at Runtime
+---
+
+## Compile‑Time Interface (duck‑typed “trait”)
 
 ```zig
-const payloads = @import("payloads.zon");
+fn Drawable(comptime T: type) type {
+    return struct {
+        ptr: *T,
 
-pub fn sendApiRequest(allocator: std.mem.Allocator, user_message: []const u8) ![]u8 {
-    // Load ZON template at compile-time
-    const template = payloads.anthropic_request;
-
-    // Replace template variables
-    const system_prompt = try std.fmt.allocPrint(allocator, template.system, .{});
-    defer allocator.free(system_prompt);
-
-    // Convert ZON structure to JSON for API call
-    const request_data = .{
-        .model = template.model,
-        .max_tokens = template.max_tokens,
-        .temperature = template.temperature,
-        .system = system_prompt,
-        .messages = &[_].{
-            .{
-                .role = "user",
-                .content = user_message,
-            },
-        },
-        .stream = template.stream,
+        pub fn draw(self: @This()) void {
+            // If T doesn't implement `pub fn draw(self: *T)`, this fails at comptime.
+            self.ptr.draw();
+        }
     };
-    return try std.json.Stringify.valueAlloc(allocator, request_data, .{});
+}
+
+// Any type with a draw() method can be used
+const Circle = struct {
+    radius: f32,
+    pub fn draw(self: *Circle) void {
+        _ = self; // Draw circle...
+    }
+};
+```
+
+---
+
+## Module Organization Patterns (post‑`usingnamespace`)
+
+These nine patterns still hold. The big change in 0.15.1 is: do *not* use `usingnamespace`; re‑export explicitly. The examples already do that.
+
+### 1. Re‑export Pattern for Main Module Files
+
+```zig
+// main.zig
+pub const Config = @import("config.zig").Config;
+pub const Server = @import("server.zig").Server;
+pub const Client = @import("client.zig");
+
+// Re-export commonly used types
+pub const Error = @import("errors.zig").Error;
+pub const Result = @import("types.zig").Result;
+```
+
+### 2. Single File Modules with Self‑Reference
+
+```zig
+const Parser = struct {
+    input: []const u8,
+    pos: usize = 0,
+
+    pub fn init(input: []const u8) @This() {
+        return .{ .input = input };
+    }
+
+    pub fn parse(self: *@This()) !Result {
+        // Implementation uses @This() for self-reference
+        return @This().Result.success;
+    }
+
+    const Result = enum { success, failure };
+};
+```
+
+### 3. Directory‑based Module Organization
+
+```
+src/
+├── network/
+│   ├── main.zig        # Re-exports http.zig, tcp.zig, websocket.zig
+│   ├── http.zig        # HTTP implementation
+│   ├── tcp.zig         # TCP implementation
+│   └── websocket.zig   # WebSocket implementation
+└── storage/
+    ├── main.zig        # Re-exports database.zig, cache.zig
+    ├── database.zig
+    └── cache.zig
+```
+
+### 4. Self‑contained Modules in Subdirectories
+
+```zig
+// network/http.zig
+const std = @import("std");
+const net = @import("../network.zig");
+
+const HttpClient = struct {
+    allocator: std.mem.Allocator,
+
+    pub fn init(allocator: std.mem.Allocator) @This() {
+        return .{ .allocator = allocator };
+    }
+};
+```
+
+### 5. Hierarchical Namespacing with Nested Structs
+
+```zig
+pub const crypto = struct {
+    pub const hash = struct {
+        pub const sha256 = @import("crypto/hash/sha256.zig");
+        pub const blake3 = @import("crypto/hash/blake3.zig");
+    };
+
+    pub const cipher = struct {
+        pub const aes = @import("crypto/cipher/aes.zig");
+        pub const chacha = @import("crypto/cipher/chacha.zig");
+    };
+};
+```
+
+### 6. Simple Re‑export Modules
+
+```zig
+// types.zig
+pub const User = @import("models/user.zig").User;
+pub const Session = @import("models/session.zig").Session;
+pub const Token = @import("models/token.zig").Token;
+
+// Common type aliases
+pub const UserId = u64;
+pub const SessionId = [32]u8;
+```
+
+### 7. Generic Type Modules
+
+```zig
+/// Generic container that holds a value of type T
+pub fn Container(comptime T: type) type {
+    return struct {
+        value: T,
+
+        pub fn init(value: T) @This() {
+            return .{ .value = value };
+        }
+
+        pub fn get(self: @This()) T {
+            return self.value;
+        }
+    };
+}
+
+// Usage
+const IntContainer = Container(i32);
+```
+
+### 8. Built‑in Test Integration
+
+```zig
+const std = @import("std");
+const testing = std.testing;
+
+const Calculator = struct {
+    pub fn add(a: i32, b: i32) i32 {
+        return a + b;
+    }
+
+    test "add function" {
+        try testing.expect(add(2, 3) == 5);
+    }
+};
+
+test "refAllDecls (top-level only)" {
+    testing.refAllDecls(@This());
+    // If you want nested containers too (and your stdlib provides it),
+    // prefer: testing.refAllDeclsRecursive(@This());
+    // See community notes on recursive variant. 
 }
 ```
 
-#### Benefits of This Pattern
+*(Community context: `refAllDecls` is a testing convenience and might change; some use a recursive variant to pull in nested symbols.)* ([Ziggit][4])
 
-- **Type Safety**: ZON provides compile-time validation of structure
-- **Performance**: No runtime JSON parsing for static configuration
-- **Maintainability**: Clear separation between static config and dynamic data
-- **Flexibility**: Easy to convert ZON data to JSON when needed for APIs
+### 9. Configuration and Options Pattern
 
-This pattern ensures optimal performance while maintaining type safety and clear separation of concerns between compile-time configuration and runtime data handling.
+```zig
+pub const Config = struct {
+    max_connections: u32 = 1000,
+    timeout_ms: u64 = 5000,
+    buffer_size: usize = 4096,
 
-## Best Practices
+    // Allow compile-time override from root.zig:
+    pub const default = if (@hasDecl(@import("root"), "AppConfig"))
+        @import("root").AppConfig
+    else
+        @This(){};
+};
+```
 
-### Module Boundary Management
-- Keep modules focused on single responsibilities
-- Use barrel exports (`mod.zig`) to maintain clean public APIs
-- Avoid circular dependencies between modules
-- Document module interfaces clearly
-- Test modules in isolation when possible
+> With `usingnamespace` gone, some `@hasDecl`‑based feature detection idioms were rethought. If you need robust feature detection, the release notes suggest using a sentinel value (e.g., `void {}`) rather than relying on `@hasDecl`. For a root‑config override like this, `@hasDecl` is still an ergonomic choice. ([GitHub][5])
 
-### Error Handling Patterns
-- Define specific error sets instead of using `anyerror`
-- Use `try` for recoverable errors, `catch` for error handling
-- Return errors from public APIs, handle internally when appropriate
-- Provide meaningful error messages with context
-- Consider error chaining for debugging
+---
 
-### Resource Management
-- Use defer statements for cleanup
-- Prefer stack allocation when possible
-- Use arena allocators for short-lived allocations
-- Implement proper cleanup in destructors
-- Document resource ownership clearly
+## Best Practices (still good in 0.15.1)
 
-### Configuration Patterns
-- Use `.zon` files for static configuration
-- Validate configuration at load time
-- Provide sensible defaults
-- Support environment-specific overrides
-- Document all configuration options
+1. Use tagged unions for polymorphic data
+2. Implement `init`/`deinit` pairs for resources and make `deinit` infallible
+3. Use a value‑chaining builder for clean call sites (or pointer‑builder with a `var`)
+4. Prefer error unions (`!T`) + `try` for fallible ops; use custom `Result` only when needed
+5. Lean on `comptime` for generics and interface‑like adapters
+6. Provide iterators with `{nextFn, context}`; cast via `@alignCast` + `@ptrCast`
+7. Use `defer`/`errdefer` for cleanup, especially across multiple acquisitions
+8. Prefer composition over inheritance; make invalid states unrepresentable
+9. Use optionals (`?T`) when nullable makes sense; custom `Option(T)` when ergonomics demand it
+10. Explicit, explicit, explicit—no `usingnamespace`. Re‑export via `pub const` facades. ([Zig Programming Language][1])
+11. Organize modules by directories + explicit re‑exports; keep submodules self‑contained
+12. Integrate tests in every module; pull in decls (`refAllDecls`/recursive) as needed
+13. Provide compile‑time configuration overrides with clear defaults
+14. For I/O in 0.15.1+, learn the new `std.Io` Writer/Reader surface before extending these patterns to streams. ([Zig Programming Language][1])
 
-### Testing Strategies
-- Unit test individual functions and modules
-- Integration test agent functionality end-to-end
-- Use test fixtures for complex setup
-- Test error conditions and edge cases
-- Run tests in CI/CD pipelines
-- Consider fuzz testing for parsing and network code
+---
 
-## Zig 0.15.1 Migration Checklist (contributors)
+### Quick 0.15.1 migration pointers (what might bite you)
 
-### Language
-- `usingnamespace` removed – replace with explicit namespaces or const declarations
-- `async`, `await`, `@frameSize` removed – refactor coroutines to new std.Io async APIs
-- Non-exhaustive `enum` switch rules changed – audit `switch` arms that mix `_` and `else`
+* **`usingnamespace` removed** → replace mixins with zero‑bit fields + `@fieldParentPtr`, and do explicit re‑exports. Examples in the release notes show how. ([Zig Programming Language][1])
+* **Std I/O redesign (“Writergate”)** → `std.io.BufferedWriter`, `CountingWriter`, etc., have been removed or replaced; prefer the new `std.Io.Writer` surface and concrete file/memory adapters. ([Zig Programming Language][1])
+* **Build system** → use `root_module` instead of deprecated fields like `root_source_file`. ([Zig Programming Language][1])
 
-### Standard Library ("Writergate")
-- Buffer now in interface, not implementation (caller-owned ring buffers)
-- Concrete types instead of generics (eliminates `anytype` poisoning)
-- Defined error sets (precise, actionable errors instead of `anyerror`)
-- High-level concepts: vectors, splatting, direct file-to-file transfer
-- Peek functionality (buffer awareness for convenience and performance)
-- Optimizer friendly (particularly for debug mode with buffer in interface)
-
-### New std.Io.Writer and std.Io.Reader API
-- Ring buffers with convenient APIs
-- std.fs.File.Reader/Writer memoize key file information (size, seek position, etc.)
-- Most code should migrate from file handles to File.Reader/Writer APIs
-
-### Deleted APIs & Replacements
-- `BufferedWriter` → caller-owned buffers in new interface
-- `CountingWriter` → `std.Io.Writer.Discarding` or `std.Io.Writer.fixed`
-- `GenericReader/Writer`, `AnyReader/Writer` → concrete `std.Io.Reader/Writer`
-- `SeekableStream` → `*std.fs.File.Reader/*std.fs.File.Writer` or `std.ArrayListUnmanaged`
-- `LimitedReader`, `BitReader/Writer` deleted
-- `std.fifo.LinearFifo`, `std.RingBuffer` removed
-- `BoundedArray` → `ArrayListUnmanaged.initBuffer` or fixed-slice buffers
-- `std.fs.File.reader()/.writer()` → `.deprecatedReader/.deprecatedWriter`
-
-### Usage Notes
-- Use buffering and don't forget to flush (crucial for performance)
-- Consider making stdout buffer global for reuse
-- HTTP Server/Client no longer depend on `std.net` - operate only on streams
-- Legacy streams can use `.adaptToNewApi()` as temporary bridge
-- New interface supports high-level concepts like vectors that reduce syscall overhead
-- Ring buffers are more optimizer-friendly, particularly in debug mode
-
-### Printing / Formatting
-- `{}` no longer calls `format` implicitly. Use `{f}` to invoke `format`, `{any}` to bypass
-- `FormatOptions` removed; new signature: `fn format(self, writer: *std.Io.Writer) !void`
-- New specifiers `{t}`, `{b64}`, integer `{d}` for custom types
-
-### Containers & Memory
-- `std.ArrayList` is now unmanaged; managed version at `std.array_list.Managed`
-- `BoundedArray` deleted – migrate to `ArrayListUnmanaged.initBuffer` or fixed-slice buffers
-
-### Files & FS
-- `fs.File.reader()` / `writer()` renamed to `.deprecatedReader` / `.deprecatedWriter`
-- `fs.Dir.copyFile` can't fail with `error.OutOfMemory`; `Dir.atomicFile` needs `write_buffer`
-
-### Build System
-- `root_source_file` et al. removed; use `root_module` in `build.zig`
-- UBSan mode now enum (`.full`, `.trap`, `.off`); update `sanitize_c` field
-
-### Tooling Tips
-- Run `zig fmt` to auto-upgrade inline assembly clobbers and other minor syntax
-- Use `-freference-trace` to locate ambiguous `{}` format strings
-- Compile with `-fllvm` if self-hosted backend blocks you
-
-## Current State & Migration Notes
-
-### Reorganization Status
-✅ **Completed:**
-- Reorganized `src/` directory with clear separation of shared infrastructure
-- Created logical groupings: `cli/`, `tui/`, `network/`, `tools/`, `render/`, `components/`, `auth/`, `term/`
-- Added new core modules: `agent_base.zig` and `agent_main.zig` for standardized base functionality
-- Standardized agent configuration patterns (markdown and test_agent updated as examples)
-- Updated build system to support individual agent builds with enhanced validation
-- Comprehensive documentation of new structure and architecture improvements
-- Moved CLI demo to `examples/cli_demo/` for better organization
-- Implemented base agent classes to reduce code duplication across agents
-- Verified build system works correctly for individual agents
-
-### Directory Structure Summary
-- **`agents/`** - Individual terminal agents (built independently)
-- **`src/core/`** - Core engine and configuration utilities
-- **`src/shared/`** - Shared infrastructure modules organized by category
-- **`examples/`** - Demo and example files
-- **`tests/`** - Test files organized by category
-
-### Building and Running
-- Build specific agent: `zig build -Dagent=markdown`
-- Run specific agent: `zig build -Dagent=markdown run -- <args>`
-- Install agent binary: `zig build -Dagent=markdown install-agent`
-- Run agent directly: `zig build -Dagent=markdown run-agent -- <args>`
-
-All agents share the same infrastructure but are built independently, ensuring clean separation and efficient builds.

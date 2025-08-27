@@ -24,12 +24,7 @@ pub const Heatmap = struct {
     }
 };
 
-pub const DataGrid = struct {
-    pub fn init(allocator: std.mem.Allocator) !@This() {
-        _ = allocator;
-        return .{};
-    }
-};
+pub const DataGrid = @import("grid.zig").Grid;
 
 pub const Gauge = struct {
     pub fn init(allocator: std.mem.Allocator) !@This() {

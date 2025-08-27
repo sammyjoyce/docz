@@ -4,7 +4,7 @@
 const std = @import("std");
 const term_shared = @import("term_shared");
 const term_ansi = term_shared.ansi.color;
-const term_cursor = term_shared.ansi.cursor;
+const term_cursor = term_shared.cursor;
 const term_screen = term_shared.ansi.screen;
 const term_hyperlink = term_shared.ansi.hyperlink;
 const term_caps = term_shared.caps;
@@ -328,9 +328,9 @@ pub const CompletionEngine = struct {
 
         // Add capability indicators
         const indicators = [_]struct { bool, []const u8 }{
-            .{ self.caps.supportsKittyGraphics(), "🖼" },
-            .{ self.caps.supportsHyperlinks(), "🔗" },
-            .{ self.caps.supportsClipboard(), "📋" },
+            .{ self.caps.supportsKittyGraphics, "🖼" },
+            .{ self.caps.supportsHyperlinkOsc8, "🔗" },
+            .{ self.caps.supportsClipboardOsc52, "📋" },
         };
 
         for (indicators) |indicator| {

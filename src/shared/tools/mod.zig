@@ -7,6 +7,7 @@ pub const ToolError = @import("tools.zig").ToolError;
 pub const ToolMetadata = @import("tools.zig").ToolMetadata;
 pub const JSONToolFunction = @import("tools.zig").JSONToolFunction;
 pub const registerJsonTool = @import("tools.zig").registerJsonTool;
+pub const registerJsonToolWithRequiredFields = @import("tools.zig").registerJsonToolWithRequiredFields;
 
 // JSON schema definitions for tool request/response handling
 pub const json_schemas = @import("json_schemas.zig");

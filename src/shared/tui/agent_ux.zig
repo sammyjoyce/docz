@@ -53,7 +53,7 @@ const bounds_mod = @import("../tui/core/bounds.zig");
 // Component modules
 const notifications = @import("../tui/notifications.zig");
 const command_palette_mod = @import("../tui/components/command_palette.zig");
-const session_manager_mod = @import("../tui/components/session_manager.zig");
+const session_manager_mod = @import("../tui/components/Session.zig");
 const welcome_screen_mod = @import("../tui/components/welcome_screen.zig");
 
 // Shared infrastructure
@@ -315,7 +315,7 @@ pub const AgentUX = struct {
     event_system: *tui.EventSystem,
 
     /// Session manager
-    session_mgr: *session_manager_mod.SessionManager,
+    session_mgr: *session_manager_mod.Session,
 
     /// Notification system
     notifier: *notifications.NotificationSystem,
@@ -441,7 +441,7 @@ pub const AgentUX = struct {
         self.event_system = try tui.EventSystem.init(allocator);
 
         // Initialize session manager
-        self.session_mgr = try session_manager_mod.SessionManager.init(
+        self.session_mgr = try session_manager_mod.Session.init(
             allocator,
             self.config.session_settings,
         );

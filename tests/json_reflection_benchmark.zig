@@ -2,13 +2,13 @@ const std = @import("std");
 const testing = std.testing;
 
 // Test data structures of varying complexity
-const SimpleStruct = struct {
+const SimpleData = struct {
     id: u32,
     name: []const u8,
     active: bool,
 };
 
-const MediumStruct = struct {
+const MediumData = struct {
     id: u32,
     name: []const u8,
     email: []const u8,
@@ -19,7 +19,7 @@ const MediumStruct = struct {
     metadata: std.json.Value,
 };
 
-const ComplexStruct = struct {
+const Data = struct {
     id: u64,
     user: struct {
         name: []const u8,
@@ -88,7 +88,7 @@ fn measurePerformance(
         // Consume the result to avoid unused variable warnings
         if (@TypeOf(result) == []const u8) {
             allocator.free(result);
-        } else if (@TypeOf(result) == SimpleStruct or @TypeOf(result) == MediumStruct) {
+        } else if (@TypeOf(result) == SimpleData or @TypeOf(result) == MediumData) {
             // For structs, we don't need to free anything
         }
     }
@@ -102,7 +102,7 @@ fn measurePerformance(
         // Consume the result to avoid unused variable warnings
         if (@TypeOf(result) == []const u8) {
             allocator.free(result);
-        } else if (@TypeOf(result) == SimpleStruct or @TypeOf(result) == MediumStruct) {
+        } else if (@TypeOf(result) == SimpleData or @TypeOf(result) == MediumData) {
             // For structs, we don't need to free anything
         }
     }
@@ -119,7 +119,7 @@ fn measurePerformance(
 }
 
 // Approach 1: Manual ObjectMap building
-fn manualSerializeSimple(value: SimpleStruct, allocator: std.mem.Allocator) ![]const u8 {
+fn manualSerializeSimple(value: SimpleData, allocator: std.mem.Allocator) ![]const u8 {
     return std.fmt.allocPrint(allocator, "{{\"id\":{d},\"name\":\"{s}\",\"active\":{s}}}", .{
         value.id,
         value.name,
@@ -127,7 +127,7 @@ fn manualSerializeSimple(value: SimpleStruct, allocator: std.mem.Allocator) ![]c
     });
 }
 
-fn manualDeserializeSimple(json_str: []const u8, allocator: std.mem.Allocator) !SimpleStruct {
+fn manualDeserializeSimple(json_str: []const u8, allocator: std.mem.Allocator) !SimpleData {
     // Simple manual parsing for benchmark purposes
     var id: u32 = 0;
     var name_start: usize = 0;
@@ -156,14 +156,14 @@ fn manualDeserializeSimple(json_str: []const u8, allocator: std.mem.Allocator) !
         active = std.mem.eql(u8, value_str, "true");
     }
 
-    return SimpleStruct{
+    return SimpleData{
         .id = id,
         .name = try allocator.dupe(u8, json_str[name_start..name_end]),
         .active = active,
     };
 }
 
-fn manualSerializeMedium(value: MediumStruct, allocator: std.mem.Allocator) ![]const u8 {
+fn manualSerializeMedium(value: MediumData, allocator: std.mem.Allocator) ![]const u8 {
     var buffer: [2048]u8 = undefined;
     var fbs = std.io.fixedBufferStream(&buffer);
     const writer = fbs.writer();
@@ -189,10 +189,10 @@ fn manualSerializeMedium(value: MediumStruct, allocator: std.mem.Allocator) ![]c
     return allocator.dupe(u8, buffer[0..fbs.pos]);
 }
 
-fn manualDeserializeMedium(json_str: []const u8, allocator: std.mem.Allocator) !MediumStruct {
+fn manualDeserializeMedium(json_str: []const u8, allocator: std.mem.Allocator) !MediumData {
     _ = allocator; // Mark as used
     // Simplified parsing for benchmark
-    var result = MediumStruct{
+    var result = MediumData{
         .id = 0,
         .name = "",
         .email = "",
@@ -389,7 +389,7 @@ const BenchmarkResults = struct {
 };
 
 fn benchmarkSimpleStruct(allocator: std.mem.Allocator, config: BenchmarkConfig) !BenchmarkResults {
-    const test_data = SimpleStruct{
+    const test_data = SimpleData{
         .id = 123,
         .name = "test_user",
         .active = true,
@@ -415,7 +415,7 @@ fn benchmarkSimpleStruct(allocator: std.mem.Allocator, config: BenchmarkConfig) 
 }
 
 fn benchmarkMediumStruct(allocator: std.mem.Allocator, config: BenchmarkConfig) !BenchmarkResults {
-    const test_data = MediumStruct{
+    const test_data = MediumData{
         .id = 456,
         .name = "john_doe",
         .email = "john@example.com",
@@ -458,15 +458,15 @@ fn generateReport(
         \\
         \\## Test Data Structures
         \\
-        \\### SimpleStruct
-        \\- 3 fields: id (u32), name ([]const u8), active (bool)
-        \\
-        \\### MediumStruct
-        \\- 8 fields including arrays, nested objects, and mixed types
+        \\\\### SimpleData
+        \\\\- 3 fields: id (u32), name ([]const u8), active (bool)
+        \\\\
+        \\\\### MediumData
+        \\\\- 8 fields including arrays, nested objects, and mixed types
         \\
         \\## Performance Results
         \\
-        \\### SimpleStruct Serialization Performance (nanoseconds per operation)
+        \\\\### SimpleData Serialization Performance (nanoseconds per operation)
         \\
         \\| Approach | Time (ns) | Memory (bytes) | Allocations |
         \\|----------|-----------|----------------|-------------|
@@ -474,7 +474,7 @@ fn generateReport(
         \\| Reflection | {} | {} | {} |
         \\| Stdlib stringify | {} | {} | {} |
         \\
-        \\### MediumStruct Serialization Performance (nanoseconds per operation)
+        \\\\### MediumData Serialization Performance (nanoseconds per operation)
         \\
         \\| Approach | Time (ns) | Memory (bytes) | Allocations |
         \\|----------|-----------|----------------|-------------|
@@ -486,11 +486,11 @@ fn generateReport(
         \\
         \\### Performance Comparison
         \\
-        \\1. **Reflection vs Manual**: The reflection approach shows {}x performance compared to manual ObjectMap building for SimpleStruct and {}x for MediumStruct.
+        \\\\1. **Reflection vs Manual**: The reflection approach shows {}x performance compared to manual ObjectMap building for SimpleData and {}x for MediumData.
         \\
-        \\2. **Reflection vs Stdlib**: The reflection approach is {}% of stdlib performance for SimpleStruct and {}% for MediumStruct.
+        \\\\2. **Reflection vs Stdlib**: The reflection approach is {}% of stdlib performance for SimpleData and {}% for MediumData.
         \\
-        \\3. **Memory Efficiency**: Reflection uses {}% of manual memory for SimpleStruct and {}% for MediumStruct.
+        \\\\3. **Memory Efficiency**: Reflection uses {}% of manual memory for SimpleData and {}% for MediumData.
         \\
         \\### Benefits of Reflection Approach
         \\
@@ -560,7 +560,7 @@ test "json reflection benchmark" {
     std.debug.print("{s}\n", .{report});
 
     // Verify that reflection approach works correctly
-    const test_data = SimpleStruct{
+    const test_data = SimpleData{
         .id = 999,
         .name = "benchmark_test",
         .active = false,
@@ -571,7 +571,7 @@ test "json reflection benchmark" {
     defer allocator.free(json_str);
 
     // Test deserialization
-    const deserialized = try reflectionDeserialize(SimpleStruct, json_str, allocator);
+    const deserialized = try reflectionDeserialize(SimpleData, json_str, allocator);
     defer allocator.free(deserialized.name);
 
     try testing.expectEqual(test_data.id, deserialized.id);

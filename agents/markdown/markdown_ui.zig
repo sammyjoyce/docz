@@ -19,7 +19,7 @@ const OAuthIntegration = agent_ui_framework.OAuthIntegration;
 const KeyboardShortcuts = agent_ui_framework.KeyboardShortcuts;
 const NotificationType = agent_ui_framework.NotificationType;
 const Renderer = renderer_mod.Renderer;
-const RenderContext = renderer_mod.RenderContext;
+const Render = renderer_mod.Render;
 const Style = renderer_mod.Style;
 const Bounds = renderer_mod.Bounds;
 const ThemeManager = theme_manager_mod.ThemeManager;
@@ -147,7 +147,7 @@ pub const EnhancedMarkdownSession = struct {
     editor: MarkdownEditor,
     preview_renderer: PreviewRenderer,
     outline_navigator: OutlineNavigator,
-    snippet_manager: SnippetManager,
+    snippet_manager: Snippet,
     diff_viewer_instance: ?*diff_viewer.DiffViewer = null,
 
     /// State management
@@ -183,7 +183,7 @@ pub const EnhancedMarkdownSession = struct {
         const outline_navigator = try OutlineNavigator.init(allocator);
 
         // Initialize snippet manager
-        const snippet_manager = try SnippetManager.init(allocator);
+        const snippet_manager = try Snippet.init(allocator);
 
         session.* = .{
             .allocator = allocator,
@@ -488,7 +488,7 @@ pub const EnhancedMarkdownSession = struct {
         });
         defer self.allocator.free(status_text);
 
-        const status_ctx = RenderContext{
+        const status_ctx = Render{
             .bounds = status_bounds,
             .style = .{ .fg_color = theme.background, .bg_color = theme.primary },
             .zIndex = 0,
@@ -526,7 +526,7 @@ pub const EnhancedMarkdownSession = struct {
             .height = 1,
         };
 
-        const title_ctx = RenderContext{
+        const title_ctx = Render{
             .bounds = title_bounds,
             .style = .{ .fg_color = theme.primary, .bold = true },
             .zIndex = 0,
@@ -634,7 +634,7 @@ pub const PreviewRenderer = struct {
             .height = 1,
         };
 
-        const title_ctx = RenderContext{
+        const title_ctx = Render{
             .bounds = title_bounds,
             .style = .{ .fg_color = theme.primary, .bold = true },
             .zIndex = 0,
@@ -652,7 +652,7 @@ pub const PreviewRenderer = struct {
         };
 
         // Render markdown content (simplified)
-        const content_ctx = RenderContext{
+        const content_ctx = Render{
             .bounds = content_bounds,
             .style = .{ .fg_color = theme.foreground },
             .zIndex = 0,
@@ -742,11 +742,11 @@ pub const OutlineNavigator = struct {
 };
 
 /// Snippet manager for code snippets and templates
-pub const SnippetManager = struct {
+pub const Snippet = struct {
     allocator: std.mem.Allocator,
-    snippets: std.StringHashMap(Snippet),
+    snippets: std.StringHashMap(SnippetItem),
 
-    pub const Snippet = struct {
+    pub const SnippetItem = struct {
         name: []const u8,
         description: []const u8,
         content: []const u8,
@@ -754,14 +754,14 @@ pub const SnippetManager = struct {
         language: []const u8,
     };
 
-    pub fn init(allocator: std.mem.Allocator) !SnippetManager {
-        return SnippetManager{
+    pub fn init(allocator: std.mem.Allocator) !Snippet {
+        return Snippet{
             .allocator = allocator,
-            .snippets = std.StringHashMap(Snippet).init(allocator),
+            .snippets = std.StringHashMap(SnippetItem).init(allocator),
         };
     }
 
-    pub fn deinit(self: *SnippetManager) void {
+    pub fn deinit(self: *Snippet) void {
         var it = self.snippets.iterator();
         while (it.next()) |entry| {
             self.allocator.free(entry.key_ptr.*);
@@ -775,13 +775,13 @@ pub const SnippetManager = struct {
     }
 
     /// Add a snippet
-    pub fn addSnippet(self: *SnippetManager, snippet: Snippet) !void {
+    pub fn addSnippet(self: *Snippet, snippet: Snippet) !void {
         const key_dup = try self.allocator.dupe(u8, snippet.trigger);
         try self.snippets.put(key_dup, snippet);
     }
 
     /// Get snippet by trigger
-    pub fn getSnippet(self: *SnippetManager, trigger: []const u8) ?Snippet {
+    pub fn getSnippet(self: *Snippet, trigger: []const u8) ?Snippet {
         return self.snippets.get(trigger);
     }
 };

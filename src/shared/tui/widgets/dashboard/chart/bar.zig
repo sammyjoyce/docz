@@ -13,7 +13,7 @@ const ChartStyle = base.ChartStyle;
 const Bounds = base.Bounds;
 const DrawingContext = graphics.DrawingContext;
 const Renderer = renderer_mod.Renderer;
-const RenderContext = renderer_mod.RenderContext;
+const Render = renderer_mod.Render;
 
 /// Bar chart renderer
 pub const BarChart = struct {
@@ -60,7 +60,7 @@ pub const BarChart = struct {
     }
 
     /// Render bar chart using Unicode blocks
-    pub fn renderUnicode(data: ChartData, style: ChartStyle, renderer: *Renderer, ctx: RenderContext) !void {
+    pub fn renderUnicode(data: ChartData, style: ChartStyle, renderer: *Renderer, ctx: Render) !void {
         if (data.series.len == 0) return;
 
         const series = data.series[0];
@@ -69,7 +69,7 @@ pub const BarChart = struct {
         const chart_width = ctx.bounds.width - 4;
 
         // Render title
-        const title_ctx = RenderContext{
+        const title_ctx = Render{
             .bounds = Bounds.init(ctx.bounds.x, ctx.bounds.y, ctx.bounds.width, 1),
             .style = ctx.style,
             .z_index = ctx.z_index,
@@ -93,7 +93,7 @@ pub const BarChart = struct {
                     const x = ctx.bounds.x + @as(i32, @intCast(i * bar_width + k)) + 2;
 
                     if (x < ctx.bounds.x + ctx.bounds.width and y >= ctx.bounds.y) {
-                        const block_ctx = RenderContext{
+                        const block_ctx = Render{
                             .bounds = Bounds.init(x, y, 1, 1),
                             .style = ctx.style,
                             .z_index = ctx.z_index,
@@ -114,7 +114,7 @@ pub const BarChart = struct {
                     const x = ctx.bounds.x + @as(i32, @intCast(i * bar_width + k)) + 2;
 
                     if (x < ctx.bounds.x + ctx.bounds.width and partial_y >= ctx.bounds.y) {
-                        const partial_ctx = RenderContext{
+                        const partial_ctx = Render{
                             .bounds = Bounds.init(x, partial_y, 1, 1),
                             .style = ctx.style,
                             .z_index = ctx.z_index,
@@ -128,7 +128,7 @@ pub const BarChart = struct {
     }
 
     /// Render bar chart using ASCII characters
-    pub fn renderAscii(data: ChartData, style: ChartStyle, renderer: *Renderer, ctx: RenderContext) !void {
+    pub fn renderAscii(data: ChartData, style: ChartStyle, renderer: *Renderer, ctx: Render) !void {
         if (data.series.len == 0) return;
 
         const series = data.series[0];
@@ -137,7 +137,7 @@ pub const BarChart = struct {
         const chart_width = ctx.bounds.width - 4;
 
         // Render title
-        const title_ctx = RenderContext{
+        const title_ctx = Render{
             .bounds = Bounds.init(ctx.bounds.x, ctx.bounds.y, ctx.bounds.width, 1),
             .style = ctx.style,
             .z_index = ctx.z_index,
@@ -161,7 +161,7 @@ pub const BarChart = struct {
                     const x = ctx.bounds.x + @as(i32, @intCast(i * bar_width + k)) + 2;
 
                     if (x < ctx.bounds.x + ctx.bounds.width and y >= ctx.bounds.y) {
-                        const block_ctx = RenderContext{
+                        const block_ctx = Render{
                             .bounds = Bounds.init(x, y, 1, 1),
                             .style = ctx.style,
                             .z_index = ctx.z_index,

@@ -13,7 +13,7 @@
 //!
 //! This layer serves as the foundation for higher-level input abstraction
 //! and should not be used directly by applications. Instead, use the
-//! unified input system from src/shared/components/input.zig.
+//!  input system from src/shared/components/input.zig.
 
 const std = @import("std");
 
@@ -39,7 +39,7 @@ pub const InputParser = parser.InputParser;
 pub const key_mapping = @import("key_mapping.zig");
 pub const kitty_keyboard = @import("kitty_keyboard.zig");
 
-pub const cursor = @import("cursor.zig");
+pub const cursor = @import("../control/cursor.zig");
 pub const color_events = @import("color_events.zig");
 pub const focus = @import("focus.zig");
 pub const paste = @import("paste.zig");

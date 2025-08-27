@@ -74,7 +74,7 @@ const Registry = struct {
 };
 
 // Test data structures for JSON reflection
-const TestStruct = struct {
+const TestData = struct {
     message: []const u8,
     count: i32,
     enabled: bool,
@@ -236,7 +236,7 @@ fn valueToJsonValue(value: anytype, allocator: std.mem.Allocator) !std.json.Valu
 
 // Mock tool for testing
 fn mockJsonTool(allocator: std.mem.Allocator, params: std.json.Value) ToolError!std.json.Value {
-    const request = try parseToolRequest(TestStruct, params);
+    const request = try parseToolRequest(TestData, params);
 
     var result = std.json.ObjectMap.init(allocator);
     try result.put("processed_message", std.json.Value{ .string = request.message });
@@ -279,7 +279,7 @@ test "JSON reflection system basic serialization and deserialization" {
     const allocator = testing.allocator;
 
     // Test basic struct serialization/deserialization
-    const original = TestStruct{
+    const original = TestData{
         .message = "Hello, World!",
         .count = 42,
         .enabled = true,
@@ -298,7 +298,7 @@ test "JSON reflection system basic serialization and deserialization" {
     const json_value = std.json.Value{ .object = json_obj };
 
     // Test deserialization
-    const deserialized = try std.json.parseFromValue(TestStruct, allocator, json_value, .{});
+    const deserialized = try std.json.parseFromValue(TestData, allocator, json_value, .{});
     defer deserialized.deinit();
 
     // Verify round trip
@@ -324,7 +324,7 @@ test "JSON helpers integration with tool system" {
     const json_value = try std.json.parseFromSlice(std.json.Value, allocator, json_string, .{});
     defer json_value.deinit();
 
-    const request = try parseToolRequest(TestStruct, json_value.value);
+    const request = try parseToolRequest(TestData, json_value.value);
 
     try testing.expectEqualStrings("Test message", request.message);
     try testing.expectEqual(@as(i32, 100), request.count);

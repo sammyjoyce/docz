@@ -981,7 +981,7 @@ pub const PerformanceMetrics = struct {
 };
 
 /// Session manager for persistence and lifecycle management
-pub const SessionManager = struct {
+pub const Session = struct {
     allocator: Allocator,
     sessions_dir: []const u8,
     checkpoints_dir: []const u8,
@@ -994,9 +994,9 @@ pub const SessionManager = struct {
     compression_enabled: bool = true,
 
     /// Initialize session manager
-    pub fn init(allocator: Allocator, sessions_dir: []const u8, enable_encryption: bool) !*SessionManager {
-        const manager = try allocator.create(SessionManager);
-        manager.* = SessionManager{
+    pub fn init(allocator: Allocator, sessions_dir: []const u8, enable_encryption: bool) !*Session {
+        const manager = try allocator.create(Session);
+        manager.* = Session{
             .allocator = allocator,
             .sessions_dir = try allocator.dupe(u8, sessions_dir),
             .checkpoints_dir = try fmt.allocPrint(allocator, "{s}/checkpoints", .{sessions_dir}),
@@ -1020,7 +1020,7 @@ pub const SessionManager = struct {
     }
 
     /// Deinitialize session manager
-    pub fn deinit(self: *SessionManager) void {
+    pub fn deinit(self: *Session) void {
         self.allocator.free(self.sessions_dir);
         self.allocator.free(self.checkpoints_dir);
         self.allocator.free(self.history_dir);
@@ -1035,7 +1035,7 @@ pub const SessionManager = struct {
     }
 
     /// Create a new session
-    pub fn createSession(self: *SessionManager, session_id: []const u8, config: SessionConfig) !*SessionData {
+    pub fn createSession(self: *Session, session_id: []const u8, config: SessionConfig) !*SessionData {
         const session = try self.allocator.create(SessionData);
         session.* = try SessionData.init(self.allocator, session_id, config);
 
@@ -1053,12 +1053,12 @@ pub const SessionManager = struct {
     }
 
     /// Get existing session
-    pub fn getSession(self: *SessionManager, session_id: []const u8) ?*SessionData {
+    pub fn getSession(self: *Session, session_id: []const u8) ?*SessionData {
         return self.active_sessions.get(session_id);
     }
 
     /// Save session to disk
-    pub fn saveSession(self: *SessionManager, session: *SessionData) !void {
+    pub fn saveSession(self: *Session, session: *SessionData) !void {
         if (!session.config.enable_persistence) return;
 
         const filename = try fmt.allocPrint(self.allocator, "{s}/{s}.json", .{ self.sessions_dir, session.session_id });
@@ -1105,7 +1105,7 @@ pub const SessionManager = struct {
     }
 
     /// Create checkpoint
-    pub fn createCheckpoint(self: *SessionManager, session: *SessionData, description: []const u8) !void {
+    pub fn createCheckpoint(self: *Session, session: *SessionData, description: []const u8) !void {
         if (!session.config.enable_checkpoints) return;
 
         const timestamp = time.timestamp();
@@ -1144,7 +1144,7 @@ pub const SessionManager = struct {
     }
 
     /// End a session
-    pub fn endSession(self: *SessionManager, session_id: []const u8) !void {
+    pub fn endSession(self: *Session, session_id: []const u8) !void {
         if (self.active_sessions.getEntry(session_id)) |entry| {
             entry.value_ptr.*.endSession();
 
@@ -1159,12 +1159,12 @@ pub const SessionManager = struct {
     }
 
     /// Get session statistics
-    pub fn getStats(self: *SessionManager) SessionStats {
+    pub fn getStats(self: *Session) SessionStats {
         return self.stats;
     }
 
     /// Clean up old sessions and checkpoints
-    pub fn cleanupOldSessions(self: *SessionManager, max_age_days: u32) !void {
+    pub fn cleanupOldSessions(self: *Session, max_age_days: u32) !void {
         const cutoff_time = time.timestamp() - (@as(i64, max_age_days) * 24 * 60 * 60);
 
         // Clean sessions
@@ -1176,7 +1176,7 @@ pub const SessionManager = struct {
     }
 
     /// List available sessions
-    pub fn listSessions(self: *SessionManager) ![]const []const u8 {
+    pub fn listSessions(self: *Session) ![]const []const u8 {
         var sessions = std.ArrayList([]const u8).init(self.allocator);
         defer sessions.deinit();
 
@@ -1197,7 +1197,7 @@ pub const SessionManager = struct {
     }
 
     /// Helper functions for data processing
-    fn compressData(self: *SessionManager, data: []const u8) ![]const u8 {
+    fn compressData(self: *Session, data: []const u8) ![]const u8 {
         // Simple RLE compression for demonstration
         // In a real implementation, you'd use a proper compression library
         var compressed = std.ArrayList(u8).init(self.allocator);
@@ -1221,7 +1221,7 @@ pub const SessionManager = struct {
         return compressed.toOwnedSlice();
     }
 
-    fn decompressData(self: *SessionManager, data: []const u8) ![]const u8 {
+    fn decompressData(self: *Session, data: []const u8) ![]const u8 {
         var decompressed = std.ArrayList(u8).init(self.allocator);
         defer decompressed.deinit();
 
@@ -1241,7 +1241,7 @@ pub const SessionManager = struct {
         return decompressed.toOwnedSlice();
     }
 
-    fn encryptData(self: *SessionManager, data: []const u8, key: [32]u8) ![]const u8 {
+    fn encryptData(self: *Session, data: []const u8, key: [32]u8) ![]const u8 {
         // Simple XOR encryption for demonstration
         // In a real implementation, you'd use proper encryption
         var encrypted = try self.allocator.alloc(u8, data.len);
@@ -1251,12 +1251,12 @@ pub const SessionManager = struct {
         return encrypted;
     }
 
-    fn decryptData(self: *SessionManager, data: []const u8, key: [32]u8) ![]const u8 {
+    fn decryptData(self: *Session, data: []const u8, key: [32]u8) ![]const u8 {
         // XOR is symmetric
         return self.encryptData(data, key);
     }
 
-    fn createSessionJson(self: *SessionManager, session: *SessionData) !json.Value {
+    fn createSessionJson(self: *Session, session: *SessionData) !json.Value {
         return json.Value{
             .object = .{
                 .session_id = json.Value{ .string = session.session_id },
@@ -1267,7 +1267,7 @@ pub const SessionManager = struct {
         };
     }
 
-    fn cleanupDirectory(self: *SessionManager, dir_path: []const u8, cutoff_time: i64) !void {
+    fn cleanupDirectory(self: *Session, dir_path: []const u8, cutoff_time: i64) !void {
         var dir = fs.cwd().openDir(dir_path, .{ .iterate = true }) catch return;
         defer dir.close();
 

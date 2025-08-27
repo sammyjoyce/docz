@@ -12,10 +12,10 @@ fn oscTerminator() []const u8 {
         seqcfg.osc.st;
 }
 
-fn appendDec(buf: *std.ArrayList(u8), n: u32) !void {
+fn appendDec(buf: *std.ArrayListUnmanaged(u8), alloc: std.mem.Allocator, n: u32) !void {
     var tmp: [10]u8 = undefined;
     const s = try std.fmt.bufPrint(&tmp, "{d}", .{n});
-    try buf.appendSlice(s);
+    try buf.appendSlice(alloc, s);
 }
 
 /// Common pointer/cursor shapes that are widely supported
@@ -106,13 +106,13 @@ pub const PointerShape = enum {
 pub fn setPointerShape(writer: anytype, caps: TermCaps, shape: []const u8) !void {
     const st = oscTerminator();
 
-    var buf = std.ArrayList(u8).init(std.heap.page_allocator);
-    defer buf.deinit();
-    try buf.appendSlice("\x1b]");
-    try appendDec(&buf, seqcfg.osc.ops.pointer);
-    try buf.append(';');
-    try buf.appendSlice(shape);
-    try buf.appendSlice(st);
+    var buf = std.ArrayListUnmanaged(u8){};
+    defer buf.deinit(std.heap.page_allocator);
+    try buf.appendSlice(std.heap.page_allocator, "\x1b]");
+    try appendDec(&buf, std.heap.page_allocator, seqcfg.osc.ops.pointer);
+    try buf.append(std.heap.page_allocator, ';');
+    try buf.appendSlice(std.heap.page_allocator, shape);
+    try buf.appendSlice(std.heap.page_allocator, st);
     try passthrough.writeWithPassthrough(writer, caps, buf.items);
 }
 

@@ -9,8 +9,9 @@ const std = @import("std");
 // Core HTTP client functionality
 pub const curl = @import("curl.zig");
 
-// Anthropic API client
+// Anthropic API client (legacy + split)
 pub const anthropic = @import("anthropic.zig");
+pub const anthropic_sub = @import("anthropic/mod.zig");
 
 // Server-Sent Events (SSE) parsing
 pub const sse = @import("sse.zig");
@@ -24,19 +25,20 @@ pub const Header = curl.Header;
 pub const HTTPRequest = curl.HTTPRequest;
 pub const HTTPResponse = curl.HTTPResponse;
 
-// Anthropic API types
-pub const MessageRole = anthropic.MessageRole;
-pub const Message = anthropic.Message;
+// Anthropic API types (prefer new split module models; legacy remains available)
+pub const MessageRole = anthropic_sub.models.MessageRole;
+pub const Message = anthropic_sub.models.Message;
 
-// OAuth types (defined in anthropic module to avoid circular dependencies)
-pub const OAuthCredentials = anthropic.OAuthCredentials;
-pub const PkceParams = anthropic.PkceParams;
+// OAuth types
+pub const OAuthCredentials = anthropic_sub.models.OAuthCredentials;
+pub const Pkce = anthropic_sub.models.Pkce;
 
 // SSE types
 pub const SSEError = sse.SSEError;
 pub const SSEField = sse.SSEField;
 pub const SSEEvent = sse.SSEEvent;
-pub const SSEParser = sse.SSEParser;
+pub const SSEEventFinal = sse.SSEEventFinal;
+pub const SSEProcessing = sse.SSEProcessing;
 
 /// Initialize the network module
 pub fn init() void {
