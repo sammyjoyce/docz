@@ -496,7 +496,7 @@ fn runInteractiveMode(allocator: std.mem.Allocator, options: InteractiveCliOptio
 
 /// Ensure authentication is properly configured
 fn ensureAuthentication(baseAgent: *agent_base.Agent) !void {
-    const authStatus = try baseAgent.checkAuthStatus();
+    const authStatus = try baseAgent.authStatus();
 
     switch (authStatus) {
         .none => {

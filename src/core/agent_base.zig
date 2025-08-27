@@ -48,7 +48,7 @@ pub const Agent = struct {
     }
 
     /// Get current date in YYYY-MM-DD format
-    pub fn getCurrentDate(self: *Self) ![]const u8 {
+    pub fn currentDate(self: *Self) ![]const u8 {
         const now = std.time.timestamp();
         const epochSeconds = std.time.epoch.EpochSeconds{ .secs = @intCast(now) };
         const epochDay = epochSeconds.getEpochDay();
@@ -99,7 +99,7 @@ pub const Agent = struct {
 
                 if (std.mem.indexOf(u8, template[i..], "}")) |end| {
                     const varName = template[i + 1 .. i + end];
-                    const replacement = try self.getTemplateVariableValue(varName);
+                    const replacement = try self.templateVariableValue(varName);
                     defer self.allocator.free(replacement);
                     try result.appendSlice(self.allocator, replacement);
                     i += end + 1;
@@ -120,15 +120,15 @@ pub const Agent = struct {
 
     /// Get value for template variable
     /// Agents should override this to provide agent-specific variables
-    /// This base implementation provides common variables that work with AgentConfig
-    pub fn getTemplateVariableValue(self: *Self, varName: []const u8) ![]const u8 {
+    /// This base implementation provides common variables that work with Config
+    pub fn templateVariableValue(self: *Self, varName: []const u8) ![]const u8 {
         // This is a base implementation that doesn't have access to config
         // Agents should override this method to provide their specific config values
 
         if (std.mem.eql(u8, varName, "current_date")) {
-            return self.getCurrentDate();
+            return self.currentDate();
         } else if (std.mem.eql(u8, varName, "auth_status")) {
-            return self.getAuthStatusText();
+            return self.authStatusText();
         } else if (std.mem.eql(u8, varName, "session_count")) {
             return try std.fmt.allocPrint(self.allocator, "{d}", .{self.sessionStats.messagesProcessed});
         } else if (std.mem.eql(u8, varName, "total_messages")) {
@@ -189,7 +189,7 @@ pub const Agent = struct {
     }
 
     /// Get current session statistics
-    pub fn getSessionStats(self: *Self) session.SessionStats {
+    pub fn currentSessionStats(self: *Self) session.SessionStats {
         // Update with current session manager stats
         if (self.sessionManager) |sessMgr| {
             self.sessionStats = sessMgr.getStats();
@@ -215,7 +215,7 @@ pub const Agent = struct {
     }
 
     /// Check authentication status
-    pub fn checkAuthStatus(self: *Self) !auth.AuthMethod {
+    pub fn authStatus(self: *Self) !auth.AuthMethod {
         if (self.authClient) |client| {
             if (client.credentials.isValid()) {
                 return client.credentials.getMethod();
@@ -236,12 +236,12 @@ pub const Agent = struct {
             self.initAuthentication() catch {
                 return .none;
             };
-            return self.checkAuthStatus();
+            return self.authStatus();
         }
     }
 
     /// Get authentication status as text for templates
-    pub fn getAuthStatusText(self: *Self) ![]const u8 {
+    pub fn authStatusText(self: *Self) ![]const u8 {
         const status = try self.checkAuthStatus();
         return switch (status) {
             .oauth => try self.allocator.dupe(u8, "OAuth (Claude Pro/Max)"),
@@ -281,14 +281,14 @@ pub const Agent = struct {
 
     /// Get the current authentication client
     /// Returns null if authentication is not initialized
-    pub fn getAuthClient(self: *Self) ?*auth.AuthClient {
+    pub fn currentAuthClient(self: *Self) ?*auth.AuthClient {
         return if (self.authClient) |*client| client else null;
     }
 
     /// Create an Anthropic client using current authentication
     /// This is a convenience method for agents that need to make API calls
     pub fn createAnthropicClient(self: *Self) !*anthropic.AnthropicClient {
-        const client = self.getAuthClient() orelse return error.AuthNotInitialized;
+        const client = self.currentAuthClient() orelse return error.AuthNotInitialized;
         // Initialize the proper network client based on auth method
         switch (client.credentials) {
             .api_key => |key| {
@@ -331,14 +331,14 @@ pub const Agent = struct {
 
     /// Get the current active theme
     /// This provides easy access to theme colors for agents
-    pub fn getCurrentTheme(self: *Self) ?*agent_main.theme.ColorScheme {
+    pub fn currentTheme(self: *Self) ?*agent_main.theme.ColorScheme {
         _ = self; // Not currently used but available for future per-agent theme customization
         return agent_main.getCurrentTheme();
     }
 
     /// Get theme-aware color for UI elements
     /// Convenience method that wraps agent_main.getThemeColor
-    pub fn getThemeColor(self: *Self, colorType: anytype) []const u8 {
+    pub fn themeColor(self: *Self, colorType: anytype) []const u8 {
         _ = self; // Not currently used but available for future per-agent customization
         _ = colorType; // TODO: Implement proper color type enum
         return agent_main.getThemeColor(.primary);
@@ -346,7 +346,7 @@ pub const Agent = struct {
 
     /// Get accessibility information about the current theme
     /// Useful for agents that need to adapt their UI based on accessibility settings
-    pub fn getThemeAccessibilityInfo(self: *Self) @TypeOf(agent_main.getThemeAccessibilityInfo()) {
+    pub fn themeAccessibilityInfo(self: *Self) @TypeOf(agent_main.getThemeAccessibilityInfo()) {
         _ = self; // Not currently used but available for future per-agent customization
         return agent_main.getThemeAccessibilityInfo();
     }
@@ -354,13 +354,13 @@ pub const Agent = struct {
     /// Check if the current theme is dark mode
     /// Useful for agents that need to adapt content based on theme brightness
     pub fn isDarkTheme(self: *Self) bool {
-        const theme = self.getCurrentTheme() orelse return false;
+        const theme = self.currentTheme() orelse return false;
         return theme.isDark;
     }
 
     /// Get theme-aware progress indicator
     /// Convenience method for consistent progress display across agents
-    pub fn getProgressIndicator(self: *Self, completed: bool) []const u8 {
+    pub fn progressIndicator(self: *Self, completed: bool) []const u8 {
         _ = self; // Not currently used but available for future per-agent customization
         return agent_main.styleProgressIndicator(completed);
     }
@@ -481,9 +481,9 @@ pub const ConfigHelpers = struct {
     }
 
     /// Get standard agent config path
-    pub fn getConfigPath(allocator: Allocator, agentName: []const u8) ![]const u8 {
+    pub fn agentConfigPath(allocator: Allocator, agentName: []const u8) ![]const u8 {
         const configUtils = @import("config_shared");
-        return configUtils.getAgentConfigPath(allocator, agentName);
+        return configUtils.agentConfigPath(allocator, agentName);
     }
 
     /// Create validated agent config with standard defaults
@@ -528,7 +528,7 @@ pub const ConfigHelpers = struct {
 /// This provides the standard template variables that work with the AgentConfig structure
 pub const TemplateProcessor = struct {
     /// Process template variables using an AgentConfig
-    pub fn getTemplateVariableValue(
+    pub fn templateVariableValue(
         allocator: Allocator,
         varName: []const u8,
         config: @import("config_shared").AgentConfig,

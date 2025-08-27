@@ -134,7 +134,7 @@ pub const ConfigError = error{
 };
 
 /// Get the standard config path for an agent
-pub fn getAgentConfigPath(allocator: Allocator, agentName: []const u8) ![]const u8 {
+pub fn agentConfigPath(allocator: Allocator, agentName: []const u8) ![]const u8 {
     return try std.fmt.allocPrint(allocator, "agents/{s}/config.zon", .{agentName});
 }
 
@@ -185,7 +185,7 @@ pub const AgentConfig = struct {
 
 /// Load agent configuration with standardized defaults
 pub fn loadAgentConfig(allocator: Allocator, agentName: []const u8, comptime ExtendedConfig: type) ExtendedConfig {
-    const configPath = getAgentConfigPath(allocator, agentName) catch {
+    const configPath = agentConfigPath(allocator, agentName) catch {
         std.log.info("Using default configuration for agent: {s}", .{agentName});
         // Create a default instance using reflection
         return std.mem.zeroes(ExtendedConfig);
@@ -246,7 +246,7 @@ pub fn generateConfigTemplate(allocator: Allocator, agentName: []const u8, descr
 
 /// Validate and save agent configuration
 pub fn saveAgentConfig(allocator: Allocator, agentName: []const u8, config: anytype) !void {
-    const configPath = try getAgentConfigPath(allocator, agentName);
+    const configPath = try agentConfigPath(allocator, agentName);
     defer allocator.free(configPath);
 
     // Validate configuration before saving
