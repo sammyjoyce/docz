@@ -1,12 +1,12 @@
 //! Styled widgets that integrate with the Stylize trait system
-//! Provides enhanced versions of common widgets with fluent styling APIs
+//! Provides styled versions of common widgets with fluent styling APIs
 
 const std = @import("std");
 const stylize = @import("../core/stylize.zig");
 const renderer = @import("../core/renderer.zig");
 const widget_interface = @import("../core/widget_interface.zig");
 
-/// Enhanced Button widget with fluent styling APIs
+/// Styled Button widget with fluent styling APIs
 pub const StyledButton = struct {
     label: []const u8,
     bounds: widget_interface.Rect,
@@ -119,16 +119,16 @@ pub const StyledButton = struct {
         return self.fg(stylize.Style.Color{ .ansi = 8 });
     }
 
-    pub fn on_red(self: *StyledButton) *StyledButton {
+    pub fn onRed(self: *StyledButton) *StyledButton {
         return self.bg(stylize.Style.Color{ .ansi = 1 });
     }
-    pub fn on_green(self: *StyledButton) *StyledButton {
+    pub fn onGreen(self: *StyledButton) *StyledButton {
         return self.bg(stylize.Style.Color{ .ansi = 2 });
     }
-    pub fn on_blue(self: *StyledButton) *StyledButton {
+    pub fn onBlue(self: *StyledButton) *StyledButton {
         return self.bg(stylize.Style.Color{ .ansi = 4 });
     }
-    pub fn on_white(self: *StyledButton) *StyledButton {
+    pub fn onWhite(self: *StyledButton) *StyledButton {
         return self.bg(stylize.Style.Color{ .ansi = 7 });
     }
 

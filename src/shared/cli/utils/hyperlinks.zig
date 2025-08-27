@@ -113,7 +113,7 @@ pub const CommonLinks = struct {
         try builder.writeLink(writer, text, "https://docs.anthropic.com/claude/docs/oauth");
     }
 
-    pub fn writeModelInfo(writer: anytype, allocator: Allocator, text: []const u8, model: []const u8) !void {
+    pub fn writeModel(writer: anytype, allocator: Allocator, text: []const u8, model: []const u8) !void {
         const builder = HyperlinkBuilder.init(allocator);
         const url = try std.fmt.allocPrint(allocator, "https://docs.anthropic.com/claude/docs/models#{s}", .{model});
         defer allocator.free(url);

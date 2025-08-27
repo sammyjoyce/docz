@@ -5,7 +5,7 @@ const std = @import("std");
 const term_shared = @import("term_shared");
 const term_ansi = term_shared.ansi.color;
 const term_caps = term_shared.caps;
-const notification_manager = @import("../notifications.zig");
+const notifications = @import("../notifications.zig");
 const ProgressBar = @import("../components/mod.zig").ProgressBar;
 const WorkflowStep = @import("workflow_step.zig");
 const Allocator = std.mem.Allocator;
@@ -29,7 +29,7 @@ pub const WorkflowResult = struct {
 pub const WorkflowRunner = struct {
     allocator: Allocator,
     caps: term_caps.TermCaps,
-    notificationManager: *notification_manager.NotificationHandler,
+    notificationManager: *notifications.NotificationHandler,
     steps: std.ArrayList(WorkflowStep.Step),
     currentStep: u32,
     status: WorkflowStatus,
@@ -41,7 +41,7 @@ pub const WorkflowRunner = struct {
 
     pub fn init(
         allocator: Allocator,
-        notificationMgr: *notification_manager.NotificationHandler,
+        notificationMgr: *notifications.NotificationHandler,
     ) WorkflowRunner {
         return .{
             .allocator = allocator,
@@ -67,7 +67,7 @@ pub const WorkflowRunner = struct {
 
     pub fn setWriter(self: *WorkflowRunner, writer: *std.Io.Writer) void {
         self.writer = writer;
-        self.notification_manager.setWriter(writer);
+        self.notificationManager.setWriter(writer);
     }
 
     pub fn configure(
@@ -148,7 +148,7 @@ pub const WorkflowRunner = struct {
 
                 try self.renderStepError(step, error_msg);
 
-                _ = try self.notification_manager.notify(
+                _ = try self.notificationManager.notify(
                     .err,
                     "Workflow Failed",
                     error_msg,
@@ -168,7 +168,7 @@ pub const WorkflowRunner = struct {
 
                 try self.renderStepError(step, step_result.error_message);
 
-                _ = try self.notification_manager.notify(
+                _ = try self.notificationManager.notify(
                     .err,
                     "Workflow Failed",
                     step_result.error_message orelse "Unknown error",
@@ -201,7 +201,7 @@ pub const WorkflowRunner = struct {
 
         try self.renderWorkflowComplete();
 
-        _ = try self.notification_manager.notify(
+        _ = try self.notificationManager.notify(
             .success,
             "Workflow Completed",
             workflow_name,
@@ -329,7 +329,7 @@ pub const WorkflowRunner = struct {
     pub fn cancel(self: *WorkflowRunner) !void {
         self.status = .cancelled;
 
-        _ = try self.notification_manager.notify(
+        _ = try self.notificationManager.notify(
             .warning,
             "Workflow Cancelled",
             "Workflow execution was cancelled by user",

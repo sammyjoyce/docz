@@ -2,11 +2,11 @@ const std = @import("std");
 const term_shared = @import("term_shared");
 const caps_mod = term_shared;
 const QualityTiers = @import("quality_tiers.zig").QualityTiers;
-const adaptive_renderer = @import("mod.zig");
-const AdaptiveRenderer = adaptive_renderer.AdaptiveRenderer;
-const RenderMode = adaptive_renderer.RenderTier;
-const Color = term_shared.ansi.color.Color;
-const BasicColor = term_shared.ansi.color.BasicColor;
+const render_mod = @import("mod.zig");
+const Renderer = render_mod.Renderer;
+const RenderMode = render_mod.RenderTier;
+const ColorUnion = term_shared.ansi.color.Color;
+const Color = term_shared.ansi.color.BasicColor;
 const RGBColor = term_shared.ansi.color.RGBColor;
 const hyperlink = term_shared.ansi.hyperlink;
 
@@ -83,59 +83,59 @@ const MarkdownElement = union(enum) {
 
 /// Color scheme for different markdown elements based on quality tier
 const ColorScheme = struct {
-    heading_colors: [6]Color,
-    bold_color: ?Color,
-    italic_color: ?Color,
-    code_bg: ?Color,
-    code_fg: ?Color,
-    link_color: ?Color,
-    blockquote_color: ?Color,
-    table_border_color: ?Color,
+    heading_colors: [6]ColorUnion,
+    bold_color: ?ColorUnion,
+    italic_color: ?ColorUnion,
+    code_bg: ?ColorUnion,
+    code_fg: ?ColorUnion,
+    link_color: ?ColorUnion,
+    blockquote_color: ?ColorUnion,
+    table_border_color: ?ColorUnion,
 
     pub fn getForTier(tier: RenderMode) ColorScheme {
         return switch (tier) {
             .rich => ColorScheme{
-                .heading_colors = [_]Color{
-                    Color{ .rgb = RGBColor{ .r = 255, .g = 107, .b = 107 } }, // H1 - bright red
-                    Color{ .rgb = RGBColor{ .r = 255, .g = 193, .b = 107 } }, // H2 - bright orange
-                    Color{ .rgb = RGBColor{ .r = 255, .g = 255, .b = 107 } }, // H3 - bright yellow
-                    Color{ .rgb = RGBColor{ .r = 107, .g = 255, .b = 107 } }, // H4 - bright green
-                    Color{ .rgb = RGBColor{ .r = 107, .g = 193, .b = 255 } }, // H5 - bright cyan
-                    Color{ .rgb = RGBColor{ .r = 193, .g = 107, .b = 255 } }, // H6 - bright purple
+                .heading_colors = [_]ColorUnion{
+                    ColorUnion{ .rgb = RGBColor{ .r = 255, .g = 107, .b = 107 } }, // H1 - bright red
+                    ColorUnion{ .rgb = RGBColor{ .r = 255, .g = 193, .b = 107 } }, // H2 - bright orange
+                    ColorUnion{ .rgb = RGBColor{ .r = 255, .g = 255, .b = 107 } }, // H3 - bright yellow
+                    ColorUnion{ .rgb = RGBColor{ .r = 107, .g = 255, .b = 107 } }, // H4 - bright green
+                    ColorUnion{ .rgb = RGBColor{ .r = 107, .g = 193, .b = 255 } }, // H5 - bright cyan
+                    ColorUnion{ .rgb = RGBColor{ .r = 193, .g = 107, .b = 255 } }, // H6 - bright purple
                 },
-                .bold_color = Color{ .basic = .bright_white },
-                .italic_color = Color{ .basic = .bright_cyan },
-                .code_bg = Color{ .rgb = RGBColor{ .r = 40, .g = 40, .b = 40 } },
-                .code_fg = Color{ .rgb = RGBColor{ .r = 107, .g = 255, .b = 107 } },
-                .link_color = Color{ .rgb = RGBColor{ .r = 107, .g = 193, .b = 255 } },
-                .blockquote_color = Color{ .basic = .bright_black },
-                .table_border_color = Color{ .basic = .bright_blue },
+                .bold_color = ColorUnion{ .basic = .bright_white },
+                .italic_color = ColorUnion{ .basic = .bright_cyan },
+                .code_bg = ColorUnion{ .rgb = RGBColor{ .r = 40, .g = 40, .b = 40 } },
+                .code_fg = ColorUnion{ .rgb = RGBColor{ .r = 107, .g = 255, .b = 107 } },
+                .link_color = ColorUnion{ .rgb = RGBColor{ .r = 107, .g = 193, .b = 255 } },
+                .blockquote_color = ColorUnion{ .basic = .bright_black },
+                .table_border_color = ColorUnion{ .basic = .bright_blue },
             },
             .standard => ColorScheme{
-                .heading_colors = [_]Color{
-                    Color{ .basic = .bright_red },
-                    Color{ .basic = .bright_yellow },
-                    Color{ .basic = .bright_green },
-                    Color{ .basic = .bright_cyan },
-                    Color{ .basic = .bright_blue },
-                    Color{ .basic = .bright_magenta },
+                .heading_colors = [_]ColorUnion{
+                    ColorUnion{ .basic = .bright_red },
+                    ColorUnion{ .basic = .bright_yellow },
+                    ColorUnion{ .basic = .bright_green },
+                    ColorUnion{ .basic = .bright_cyan },
+                    ColorUnion{ .basic = .bright_blue },
+                    ColorUnion{ .basic = .bright_magenta },
                 },
-                .bold_color = Color{ .basic = .bright_white },
-                .italic_color = Color{ .basic = .cyan },
+                .bold_color = ColorUnion{ .basic = .bright_white },
+                .italic_color = ColorUnion{ .basic = .cyan },
                 .code_bg = null,
-                .code_fg = Color{ .basic = .green },
-                .link_color = Color{ .basic = .blue },
-                .blockquote_color = Color{ .basic = .bright_black },
-                .table_border_color = Color{ .basic = .blue },
+                .code_fg = ColorUnion{ .basic = .green },
+                .link_color = ColorUnion{ .basic = .blue },
+                .blockquote_color = ColorUnion{ .basic = .bright_black },
+                .table_border_color = ColorUnion{ .basic = .blue },
             },
             .compatible => ColorScheme{
-                .heading_colors = [_]Color{
-                    Color{ .basic = .red },
-                    Color{ .basic = .yellow },
-                    Color{ .basic = .green },
-                    Color{ .basic = .cyan },
-                    Color{ .basic = .blue },
-                    Color{ .basic = .magenta },
+                .heading_colors = [_]ColorUnion{
+                    ColorUnion{ .basic = .red },
+                    ColorUnion{ .basic = .yellow },
+                    ColorUnion{ .basic = .green },
+                    ColorUnion{ .basic = .cyan },
+                    ColorUnion{ .basic = .blue },
+                    ColorUnion{ .basic = .magenta },
                 },
                 .bold_color = null,
                 .italic_color = null,
@@ -146,13 +146,13 @@ const ColorScheme = struct {
                 .table_border_color = null,
             },
             .minimal => ColorScheme{
-                .heading_colors = [_]Color{
-                    Color{ .basic = .white },
-                    Color{ .basic = .white },
-                    Color{ .basic = .white },
-                    Color{ .basic = .white },
-                    Color{ .basic = .white },
-                    Color{ .basic = .white },
+                .heading_colors = [_]ColorUnion{
+                    ColorUnion{ .basic = .white },
+                    ColorUnion{ .basic = .white },
+                    ColorUnion{ .basic = .white },
+                    ColorUnion{ .basic = .white },
+                    ColorUnion{ .basic = .white },
+                    ColorUnion{ .basic = .white },
                 },
                 .bold_color = null,
                 .italic_color = null,
@@ -725,7 +725,7 @@ pub const Markdown = struct {
     }
 
     // ANSI escape sequence helpers
-    fn applyColor(self: *Markdown, color: Color) !void {
+    fn applyColor(self: *Markdown, color: ColorUnion) !void {
         const ansi_code = switch (color) {
             .basic => |c| switch (c) {
                 .black => "30",
@@ -762,7 +762,7 @@ pub const Markdown = struct {
         try self.output.append('m');
     }
 
-    fn applyBackgroundColor(self: *Markdown, color: Color) !void {
+    fn applyBackgroundColor(self: *Markdown, color: ColorUnion) !void {
         const ansi_code = switch (color) {
             .basic => |c| switch (c) {
                 .black => "40",

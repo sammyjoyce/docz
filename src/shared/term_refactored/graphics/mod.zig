@@ -1,1 +1,0 @@
-// Namespace for graphics rendering

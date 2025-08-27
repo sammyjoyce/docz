@@ -1,5 +1,5 @@
 //! Event handling system for TUI components
-//! This module provides legacy compatibility while using the unified input system internally
+//! This module provides legacy compatibility while using the shared input system internally
 const std = @import("std");
 const shared = @import("../../mod.zig");
 const input_mod = shared.components.input;

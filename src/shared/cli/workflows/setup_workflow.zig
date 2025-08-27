@@ -122,7 +122,7 @@ pub const SetupWorkflow = struct {
     fn checkSystemRequirements(allocator: std.mem.Allocator, context: ?WorkflowStep.Step) !WorkflowStep.StepResult {
         _ = context;
 
-        // Check OS version and basic system info
+        // Check OS version and system info
         const os_info = try std.fs.selfExePathAlloc(allocator);
         defer allocator.free(os_info);
 

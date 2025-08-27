@@ -3,7 +3,7 @@
 
 // Core system
 pub const Core = struct {
-    pub const app = @import("core/App.zig");
+    pub const app = @import("core/app.zig");
     pub const state = @import("core/state.zig");
     pub const router = @import("core/Router.zig");
     pub const types = @import("core/types.zig");

@@ -13,7 +13,7 @@ pub const ClipboardError = error{
     NotSupported,
     AccessDenied,
     TooLarge,
-    InvalidData,
+    Invalid,
 };
 
 pub const ClipboardEntry = struct {
@@ -35,7 +35,7 @@ pub const ClipboardEntry = struct {
 pub const Clipboard = struct {
     allocator: Allocator,
     caps: term_caps.TermCaps,
-    notificationManager: ?*notification.NotificationHandler,
+    notification: ?*notification.NotificationHandler,
     history: std.ArrayList(ClipboardEntry),
     maxHistorySize: usize,
     autoTrimLargeContent: bool,
@@ -75,7 +75,7 @@ pub const Clipboard = struct {
                 .screenChunkLimit = 4096,
                 .widthMethod = .grapheme,
             },
-            .notificationManager = null,
+            .notification = null,
             .history = std.ArrayList(ClipboardEntry).init(allocator),
             .maxHistorySize = 50,
             .autoTrimLargeContent = true,
@@ -97,7 +97,7 @@ pub const Clipboard = struct {
     }
 
     pub fn setNotificationManager(self: *Clipboard, manager: *notification.NotificationHandler) void {
-        self.notificationManager = manager;
+        self.notification = manager;
     }
 
     pub fn configure(
@@ -135,7 +135,7 @@ pub const Clipboard = struct {
                 @memcpy(owned_content.?[self.maxContentSize - 3 ..], "...");
                 final_content = owned_content.?;
 
-                if (self.notificationManager) |mgr| {
+                if (self.notification) |mgr| {
                     _ = try mgr.notify(.warning, "Clipboard", "Content was truncated due to size limit");
                 }
             } else {
@@ -150,7 +150,7 @@ pub const Clipboard = struct {
         try self.addToHistory(final_content, content_type, source);
 
         // Send notification
-        if (self.notificationManager) |mgr| {
+        if (self.notification) |mgr| {
             const notification_msg = try std.fmt.allocPrint(
                 self.allocator,
                 "Copied {d} characters to clipboard",
@@ -199,7 +199,7 @@ pub const Clipboard = struct {
     pub fn copyURL(self: *Clipboard, url: []const u8, source: []const u8) !void {
         // Basic URL validation
         if (!std.mem.startsWith(u8, url, "http://") and !std.mem.startsWith(u8, url, "https://")) {
-            return ClipboardError.InvalidData;
+            return ClipboardError.Invalid;
         }
 
         try self.copy(url, "url", source);
@@ -251,7 +251,7 @@ pub const Clipboard = struct {
         }
         self.history.clearRetainingCapacity();
 
-        if (self.notificationManager) |mgr| {
+        if (self.notification) |mgr| {
             _ = try mgr.notify(.info, "Clipboard", "History cleared");
         }
     }
@@ -281,7 +281,7 @@ pub const Clipboard = struct {
             try writer.writeAll("\n```\n\n");
         }
 
-        if (self.notificationManager) |mgr| {
+        if (self.notification) |mgr| {
             _ = try mgr.notify(.success, "Clipboard", "History exported successfully");
         }
     }

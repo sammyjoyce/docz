@@ -1,0 +1,1029 @@
+info: ✅ Agent 'markdown' validated successfully
+info:    📋 Name: markdown
+info:    📝 Description: Enterprise-grade markdown systems architect & quality guardian
+info:    🔖 Version: 2.0.0
+info:    👤 Author: AI Assistant
+info: ⚡ Binary optimization enabled - only required modules will be included
+info: 🔧 Building with manifest-driven modules for agent 'Markdown Architect Pro'
+info:    📋 Capabilities: file=true, network=true, terminal=false, media=false
+info:    🌐 Including auth module (network access enabled)
+info:    🚫 Excluding advanced terminal modules (basic CLI only)
+info:    🚫 Excluding render modules (no media processing)
+info:    🔧 JSON tools enabled
+info:    🔗 Chainable tools enabled
+info: ⚡ Feature flags for 'Markdown Architect Pro':
+info:    ✓ Network access enabled
+info:    ✓ File processing enabled
+info:    ✓ System commands enabled
+info:    ✓ Streaming responses enabled
+info:    ✓ JSON tools enabled
+info:    ✓ Chainable tools enabled
+info: ⚡ Feature flags for 'Markdown Architect Pro':
+info:    ✓ Network access enabled
+info:    ✓ File processing enabled
+info:    ✓ System commands enabled
+info:    ✓ Streaming responses enabled
+info:    ✓ JSON tools enabled
+info:    ✓ Chainable tools enabled
+info: 🔧 Building with manifest-driven modules for agent 'Markdown Architect Pro'
+info:    📋 Capabilities: file=true, network=true, terminal=false, media=false
+info:    🌐 Including auth module (network access enabled)
+info:    🚫 Excluding advanced terminal modules (basic CLI only)
+info:    🚫 Excluding render modules (no media processing)
+info:    🔧 JSON tools enabled
+info:    🔗 Chainable tools enabled
+info: ⚡ Feature flags for 'Markdown Architect Pro':
+info:    ✓ Network access enabled
+info:    ✓ File processing enabled
+info:    ✓ System commands enabled
+info:    ✓ Streaming responses enabled
+info:    ✓ JSON tools enabled
+info:    ✓ Chainable tools enabled
+info: 🔧 Building with manifest-driven modules for agent 'Markdown Architect Pro'
+info:    📋 Capabilities: file=true, network=true, terminal=false, media=false
+info:    🌐 Including auth module (network access enabled)
+info:    🚫 Excluding advanced terminal modules (basic CLI only)
+info:    🚫 Excluding render modules (no media processing)
+info:    🔧 JSON tools enabled
+info:    🔗 Chainable tools enabled
+info: ⚡ Feature flags for 'Markdown Architect Pro':
+info:    ✓ Network access enabled
+info:    ✓ File processing enabled
+info:    ✓ System commands enabled
+info:    ✓ Streaming responses enabled
+info:    ✓ JSON tools enabled
+info:    ✓ Chainable tools enabled
+info: 🔧 Building with manifest-driven modules for agent 'Markdown Architect Pro'
+info:    📋 Capabilities: file=true, network=true, terminal=false, media=false
+info:    🌐 Including auth module (network access enabled)
+info:    🚫 Excluding advanced terminal modules (basic CLI only)
+info:    🚫 Excluding render modules (no media processing)
+info:    🔧 JSON tools enabled
+info:    🔗 Chainable tools enabled
+info: ⚡ Feature flags for 'Markdown Architect Pro':
+info:    ✓ Network access enabled
+info:    ✓ File processing enabled
+info:    ✓ System commands enabled
+info:    ✓ Streaming responses enabled
+info:    ✓ JSON tools enabled
+info:    ✓ Chainable tools enabled
+info: ✅ Build configured for agent 'Markdown Architect Pro' v2.0.0
+info:    📦 Binary size optimized based on manifest capabilities
+[import-check] Checking module import boundaries...
+[import-check] PASS
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/render/renderer_term.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 4/7 steps succeeded; 1 failed
+install transitive failure
++- fmt transitive failure
+|  +- zig fmt --check failure
++- check-imports success
+   +- run bash success 40ms MaxRSS:6M
+
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 4/7 steps succeeded; 1 failed
+install transitive failure
++- install docz success
+|  +- compile exe docz Debug native success 2s MaxRSS:454M
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 4/7 steps succeeded; 1 failed
+install transitive failure
++- install docz success
+|  +- compile exe docz Debug native success 2s MaxRSS:441M
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 4/7 steps succeeded; 1 failed
+install transitive failure
++- install docz success
+|  +- compile exe docz Debug native success 2s MaxRSS:455M
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 4/7 steps succeeded; 1 failed
+install transitive failure
++- install docz success
+|  +- compile exe docz Debug native success 2s MaxRSS:454M
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 4/7 steps succeeded; 1 failed
+install transitive failure
++- install docz success
+|  +- compile exe docz Debug native success 2s MaxRSS:454M
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 4/7 steps succeeded; 1 failed
+install transitive failure
++- install docz success
+|  +- compile exe docz Debug native success 2s MaxRSS:456M
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 4/7 steps succeeded; 1 failed
+install transitive failure
++- install docz success
+|  +- compile exe docz Debug native success 2s MaxRSS:441M
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 4/7 steps succeeded; 1 failed
+install transitive failure
++- install docz success
+|  +- compile exe docz Debug native success 2s MaxRSS:454M
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 4/7 steps succeeded; 1 failed
+install transitive failure
++- install docz success
+|  +- compile exe docz Debug native success 2s MaxRSS:456M
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 4/7 steps succeeded; 1 failed
+install transitive failure
++- install docz success
+|  +- compile exe docz Debug native success 2s MaxRSS:454M
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+install
++- install docz
+   +- compile exe docz Debug native 1 errors
+src/shared/tools/json_helpers.zig:40:35: error: use of undeclared identifier 'fieldName'
+        const jsonField = obj.get(fieldName) orelse {
+                                  ^~~~~~~~~
+error: the following command failed with 1 compilation errors:
+/Users/sam/.zvm/0.15.1/zig build-exe -lcurl -ODebug --dep core_engine=engine_shared --dep cli_shared --dep tools_shared --dep config_shared --dep json_reflection --dep auth_shared --dep components_shared --dep agent_interface --dep interactive_session --dep agent_main --dep agent_base -Mroot=/Users/sam/code/docz/agents/markdown/main.zig -ODebug --dep anthropic_shared --dep tools_shared --dep auth_shared -Mengine_shared=/Users/sam/code/docz/src/core/engine.zig -ODebug --dep term_shared --dep components_shared -Mcli_shared=/Users/sam/code/docz/src/shared/cli/mod.zig -ODebug --dep anthropic_shared -Mtools_shared=/Users/sam/code/docz/src/shared/tools/mod.zig -ODebug -Mconfig_shared=/Users/sam/code/docz/src/core/config.zig -ODebug -Mjson_reflection=/Users/sam/code/docz/src/shared/json_reflection/mod.zig -ODebug --dep anthropic_shared -Mauth_shared=/Users/sam/code/docz/src/shared/auth/mod.zig -ODebug --dep term_shared -Mcomponents_shared=/Users/sam/code/docz/src/shared/components/mod.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared -Magent_interface=/Users/sam/code/docz/src/shared/tui/agent_interface.zig -ODebug --dep engine_shared --dep config_shared --dep auth_shared --dep anthropic_shared -Minteractive_session=/Users/sam/code/docz/src/core/interactive_session.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep agent_base --dep auth_shared --dep cli_shared -Magent_main=/Users/sam/code/docz/src/core/agent_main.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep anthropic_shared --dep auth_shared -Magent_base=/Users/sam/code/docz/src/core/agent_base.zig -ODebug --dep curl_shared --dep sse_shared -Manthropic_shared=/Users/sam/code/docz/src/shared/network/anthropic/mod.zig -ODebug -Mterm_shared=/Users/sam/code/docz/src/shared/term/mod.zig -ODebug -Mcurl_shared=/Users/sam/code/docz/src/shared/network/curl.zig -ODebug -Msse_shared=/Users/sam/code/docz/src/shared/network/sse.zig -lc --cache-dir .zig-cache --global-cache-dir /Users/sam/.cache/zig --name docz --zig-lib-dir /Users/sam/.zvm/0.15.1/lib/ --listen=-
+
+Build Summary: 2/7 steps succeeded; 2 failed
+install transitive failure
++- install docz transitive failure
+|  +- compile exe docz Debug native 1 errors
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+install
++- install docz
+   +- compile exe docz Debug native 1 errors
+src/core/agent_base.zig:1:1: error: file exists in modules 'agent_main' and 'agent_base'
+src/core/agent_base.zig:1:1: note: files must belong to only one module
+src/core/agent_main.zig:9:25: note: file is imported here by the root of module 'agent_main'
+const session = @import("InteractiveSession.zig");
+                        ^~~~~~~~~~~~~~~~~~~~~~~~
+src/core/agent_base.zig:10:25: note: file is imported here by the root of module 'agent_base'
+const session = @import("InteractiveSession.zig");
+                        ^~~~~~~~~~~~~~~~~~~~~~~~
+error: the following command failed with 1 compilation errors:
+/Users/sam/.zvm/0.15.1/zig build-exe -lcurl -ODebug --dep core_engine=engine_shared --dep cli_shared --dep tools_shared --dep config_shared --dep json_reflection --dep auth_shared --dep components_shared --dep agent_interface --dep interactive_session --dep agent_main --dep agent_base -Mroot=/Users/sam/code/docz/agents/markdown/main.zig -ODebug --dep anthropic_shared --dep tools_shared --dep auth_shared -Mengine_shared=/Users/sam/code/docz/src/core/engine.zig -ODebug --dep term_shared --dep components_shared -Mcli_shared=/Users/sam/code/docz/src/shared/cli/mod.zig -ODebug --dep anthropic_shared -Mtools_shared=/Users/sam/code/docz/src/shared/tools/mod.zig -ODebug -Mconfig_shared=/Users/sam/code/docz/src/core/config.zig -ODebug -Mjson_reflection=/Users/sam/code/docz/src/shared/json_reflection/mod.zig -ODebug --dep anthropic_shared -Mauth_shared=/Users/sam/code/docz/src/shared/auth/mod.zig -ODebug --dep term_shared -Mcomponents_shared=/Users/sam/code/docz/src/shared/components/mod.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared -Magent_interface=/Users/sam/code/docz/src/shared/tui/agent_interface.zig -ODebug --dep engine_shared --dep config_shared --dep auth_shared --dep anthropic_shared -Minteractive_session=/Users/sam/code/docz/src/core/interactive_session.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep agent_base --dep auth_shared --dep cli_shared -Magent_main=/Users/sam/code/docz/src/core/agent_main.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep anthropic_shared --dep auth_shared -Magent_base=/Users/sam/code/docz/src/core/agent_base.zig -ODebug --dep curl_shared --dep sse_shared -Manthropic_shared=/Users/sam/code/docz/src/shared/network/anthropic/mod.zig -ODebug -Mterm_shared=/Users/sam/code/docz/src/shared/term/mod.zig -ODebug -Mcurl_shared=/Users/sam/code/docz/src/shared/network/curl.zig -ODebug -Msse_shared=/Users/sam/code/docz/src/shared/network/sse.zig -lc --cache-dir .zig-cache --global-cache-dir /Users/sam/.cache/zig --name docz --zig-lib-dir /Users/sam/.zvm/0.15.1/lib/ --listen=-
+
+Build Summary: 2/7 steps succeeded; 2 failed
+install transitive failure
++- install docz transitive failure
+|  +- compile exe docz Debug native 1 errors
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- install docz
+   +- compile exe docz Debug native 1 errors
+src/core/agent_base.zig:1:1: error: file exists in modules 'agent_main' and 'agent_base'
+src/core/agent_base.zig:1:1: note: files must belong to only one module
+src/core/agent_main.zig:9:25: note: file is imported here by the root of module 'agent_main'
+const session = @import("InteractiveSession.zig");
+                        ^~~~~~~~~~~~~~~~~~~~~~~~
+src/core/agent_base.zig:10:25: note: file is imported here by the root of module 'agent_base'
+const session = @import("InteractiveSession.zig");
+                        ^~~~~~~~~~~~~~~~~~~~~~~~
+error: the following command failed with 1 compilation errors:
+/Users/sam/.zvm/0.15.1/zig build-exe -lcurl -ODebug --dep core_engine=engine_shared --dep cli_shared --dep tools_shared --dep config_shared --dep json_reflection --dep auth_shared --dep components_shared --dep agent_interface --dep interactive_session --dep agent_main --dep agent_base -Mroot=/Users/sam/code/docz/agents/markdown/main.zig -ODebug --dep anthropic_shared --dep tools_shared --dep auth_shared -Mengine_shared=/Users/sam/code/docz/src/core/engine.zig -ODebug --dep term_shared --dep components_shared -Mcli_shared=/Users/sam/code/docz/src/shared/cli/mod.zig -ODebug --dep anthropic_shared -Mtools_shared=/Users/sam/code/docz/src/shared/tools/mod.zig -ODebug -Mconfig_shared=/Users/sam/code/docz/src/core/config.zig -ODebug -Mjson_reflection=/Users/sam/code/docz/src/shared/json_reflection/mod.zig -ODebug --dep anthropic_shared -Mauth_shared=/Users/sam/code/docz/src/shared/auth/mod.zig -ODebug --dep term_shared -Mcomponents_shared=/Users/sam/code/docz/src/shared/components/mod.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared -Magent_interface=/Users/sam/code/docz/src/shared/tui/agent_interface.zig -ODebug --dep engine_shared --dep config_shared --dep auth_shared --dep anthropic_shared -Minteractive_session=/Users/sam/code/docz/src/core/interactive_session.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep agent_base --dep auth_shared --dep cli_shared -Magent_main=/Users/sam/code/docz/src/core/agent_main.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep anthropic_shared --dep auth_shared -Magent_base=/Users/sam/code/docz/src/core/agent_base.zig -ODebug --dep curl_shared --dep sse_shared -Manthropic_shared=/Users/sam/code/docz/src/shared/network/anthropic/mod.zig -ODebug -Mterm_shared=/Users/sam/code/docz/src/shared/term/mod.zig -ODebug -Mcurl_shared=/Users/sam/code/docz/src/shared/network/curl.zig -ODebug -Msse_shared=/Users/sam/code/docz/src/shared/network/sse.zig -lc --cache-dir .zig-cache --global-cache-dir /Users/sam/.cache/zig --name docz --zig-lib-dir /Users/sam/.zvm/0.15.1/lib/ --listen=-
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 2/7 steps succeeded; 2 failed
+install transitive failure
++- install docz transitive failure
+|  +- compile exe docz Debug native 1 errors
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- install docz
+   +- compile exe docz Debug native 1 errors
+error: failed to check cache: 'src/core/interactive_session.zig' file_hash FileNotFound
+error: the following command failed with 1 compilation errors:
+/Users/sam/.zvm/0.15.1/zig build-exe -lcurl -ODebug --dep core_engine=engine_shared --dep cli_shared --dep tools_shared --dep config_shared --dep json_reflection --dep auth_shared --dep components_shared --dep agent_interface --dep interactive_session --dep agent_main --dep agent_base -Mroot=/Users/sam/code/docz/agents/markdown/main.zig -ODebug --dep anthropic_shared --dep tools_shared --dep auth_shared -Mengine_shared=/Users/sam/code/docz/src/core/engine.zig -ODebug --dep term_shared --dep components_shared -Mcli_shared=/Users/sam/code/docz/src/shared/cli/mod.zig -ODebug --dep anthropic_shared -Mtools_shared=/Users/sam/code/docz/src/shared/tools/mod.zig -ODebug -Mconfig_shared=/Users/sam/code/docz/src/core/config.zig -ODebug -Mjson_reflection=/Users/sam/code/docz/src/shared/json_reflection/mod.zig -ODebug --dep anthropic_shared -Mauth_shared=/Users/sam/code/docz/src/shared/auth/mod.zig -ODebug --dep term_shared -Mcomponents_shared=/Users/sam/code/docz/src/shared/components/mod.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared -Magent_interface=/Users/sam/code/docz/src/shared/tui/agent_interface.zig -ODebug --dep engine_shared --dep config_shared --dep auth_shared --dep anthropic_shared -Minteractive_session=/Users/sam/code/docz/src/core/interactive_session.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep agent_base --dep auth_shared --dep cli_shared -Magent_main=/Users/sam/code/docz/src/core/agent_main.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep anthropic_shared --dep auth_shared -Magent_base=/Users/sam/code/docz/src/core/agent_base.zig -ODebug --dep curl_shared --dep sse_shared -Manthropic_shared=/Users/sam/code/docz/src/shared/network/anthropic/mod.zig -ODebug -Mterm_shared=/Users/sam/code/docz/src/shared/term/mod.zig -ODebug -Mcurl_shared=/Users/sam/code/docz/src/shared/network/curl.zig -ODebug -Msse_shared=/Users/sam/code/docz/src/shared/network/sse.zig -lc --cache-dir .zig-cache --global-cache-dir /Users/sam/.cache/zig --name docz --zig-lib-dir /Users/sam/.zvm/0.15.1/lib/ --listen=-
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 2/7 steps succeeded; 2 failed
+install transitive failure
++- install docz transitive failure
+|  +- compile exe docz Debug native 1 errors
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- install docz
+   +- compile exe docz Debug native 1 errors
+error: failed to check cache: 'src/core/interactive_session.zig' file_hash FileNotFound
+error: the following command failed with 1 compilation errors:
+/Users/sam/.zvm/0.15.1/zig build-exe -lcurl -ODebug --dep core_engine=engine_shared --dep cli_shared --dep tools_shared --dep config_shared --dep json_reflection --dep auth_shared --dep components_shared --dep agent_interface --dep interactive_session --dep agent_main --dep agent_base -Mroot=/Users/sam/code/docz/agents/markdown/main.zig -ODebug --dep anthropic_shared --dep tools_shared --dep auth_shared -Mengine_shared=/Users/sam/code/docz/src/core/engine.zig -ODebug --dep term_shared --dep components_shared -Mcli_shared=/Users/sam/code/docz/src/shared/cli/mod.zig -ODebug --dep anthropic_shared -Mtools_shared=/Users/sam/code/docz/src/shared/tools/mod.zig -ODebug -Mconfig_shared=/Users/sam/code/docz/src/core/config.zig -ODebug -Mjson_reflection=/Users/sam/code/docz/src/shared/json_reflection/mod.zig -ODebug --dep anthropic_shared -Mauth_shared=/Users/sam/code/docz/src/shared/auth/mod.zig -ODebug --dep term_shared -Mcomponents_shared=/Users/sam/code/docz/src/shared/components/mod.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared -Magent_interface=/Users/sam/code/docz/src/shared/tui/agent_interface.zig -ODebug --dep engine_shared --dep config_shared --dep auth_shared --dep anthropic_shared -Minteractive_session=/Users/sam/code/docz/src/core/interactive_session.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep agent_base --dep auth_shared --dep cli_shared -Magent_main=/Users/sam/code/docz/src/core/agent_main.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep anthropic_shared --dep auth_shared -Magent_base=/Users/sam/code/docz/src/core/agent_base.zig -ODebug --dep curl_shared --dep sse_shared -Manthropic_shared=/Users/sam/code/docz/src/shared/network/anthropic/mod.zig -ODebug -Mterm_shared=/Users/sam/code/docz/src/shared/term/mod.zig -ODebug -Mcurl_shared=/Users/sam/code/docz/src/shared/network/curl.zig -ODebug -Msse_shared=/Users/sam/code/docz/src/shared/network/sse.zig -lc --cache-dir .zig-cache --global-cache-dir /Users/sam/.cache/zig --name docz --zig-lib-dir /Users/sam/.zvm/0.15.1/lib/ --listen=-
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 2/7 steps succeeded; 2 failed
+install transitive failure
++- install docz transitive failure
+|  +- compile exe docz Debug native 1 errors
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- install docz
+   +- compile exe docz Debug native 1 errors
+error: failed to check cache: 'src/core/interactive_session.zig' file_hash FileNotFound
+error: the following command failed with 1 compilation errors:
+/Users/sam/.zvm/0.15.1/zig build-exe -lcurl -ODebug --dep core_engine=engine_shared --dep cli_shared --dep tools_shared --dep config_shared --dep json_reflection --dep auth_shared --dep components_shared --dep agent_interface --dep interactive_session --dep agent_main --dep agent_base -Mroot=/Users/sam/code/docz/agents/markdown/main.zig -ODebug --dep anthropic_shared --dep tools_shared --dep auth_shared -Mengine_shared=/Users/sam/code/docz/src/core/engine.zig -ODebug --dep term_shared --dep components_shared -Mcli_shared=/Users/sam/code/docz/src/shared/cli/mod.zig -ODebug --dep anthropic_shared -Mtools_shared=/Users/sam/code/docz/src/shared/tools/mod.zig -ODebug -Mconfig_shared=/Users/sam/code/docz/src/core/config.zig -ODebug -Mjson_reflection=/Users/sam/code/docz/src/shared/json_reflection/mod.zig -ODebug --dep anthropic_shared -Mauth_shared=/Users/sam/code/docz/src/shared/auth/mod.zig -ODebug --dep term_shared -Mcomponents_shared=/Users/sam/code/docz/src/shared/components/mod.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared -Magent_interface=/Users/sam/code/docz/src/shared/tui/agent_interface.zig -ODebug --dep engine_shared --dep config_shared --dep auth_shared --dep anthropic_shared -Minteractive_session=/Users/sam/code/docz/src/core/interactive_session.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep agent_base --dep auth_shared --dep cli_shared -Magent_main=/Users/sam/code/docz/src/core/agent_main.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep anthropic_shared --dep auth_shared -Magent_base=/Users/sam/code/docz/src/core/agent_base.zig -ODebug --dep curl_shared --dep sse_shared -Manthropic_shared=/Users/sam/code/docz/src/shared/network/anthropic/mod.zig -ODebug -Mterm_shared=/Users/sam/code/docz/src/shared/term/mod.zig -ODebug -Mcurl_shared=/Users/sam/code/docz/src/shared/network/curl.zig -ODebug -Msse_shared=/Users/sam/code/docz/src/shared/network/sse.zig -lc --cache-dir .zig-cache --global-cache-dir /Users/sam/.cache/zig --name docz --zig-lib-dir /Users/sam/.zvm/0.15.1/lib/ --listen=-
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 2/7 steps succeeded; 2 failed
+install transitive failure
++- install docz transitive failure
+|  +- compile exe docz Debug native 1 errors
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- install docz
+   +- compile exe docz Debug native 1 errors
+error: failed to check cache: 'src/core/interactive_session.zig' file_hash FileNotFound
+error: the following command failed with 1 compilation errors:
+/Users/sam/.zvm/0.15.1/zig build-exe -lcurl -ODebug --dep core_engine=engine_shared --dep cli_shared --dep tools_shared --dep config_shared --dep json_reflection --dep auth_shared --dep components_shared --dep agent_interface --dep interactive_session --dep agent_main --dep agent_base -Mroot=/Users/sam/code/docz/agents/markdown/main.zig -ODebug --dep anthropic_shared --dep tools_shared --dep auth_shared -Mengine_shared=/Users/sam/code/docz/src/core/engine.zig -ODebug --dep term_shared --dep components_shared -Mcli_shared=/Users/sam/code/docz/src/shared/cli/mod.zig -ODebug --dep anthropic_shared -Mtools_shared=/Users/sam/code/docz/src/shared/tools/mod.zig -ODebug -Mconfig_shared=/Users/sam/code/docz/src/core/config.zig -ODebug -Mjson_reflection=/Users/sam/code/docz/src/shared/json_reflection/mod.zig -ODebug --dep anthropic_shared -Mauth_shared=/Users/sam/code/docz/src/shared/auth/mod.zig -ODebug --dep term_shared -Mcomponents_shared=/Users/sam/code/docz/src/shared/components/mod.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared -Magent_interface=/Users/sam/code/docz/src/shared/tui/agent_interface.zig -ODebug --dep engine_shared --dep config_shared --dep auth_shared --dep anthropic_shared -Minteractive_session=/Users/sam/code/docz/src/core/interactive_session.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep agent_base --dep auth_shared --dep cli_shared -Magent_main=/Users/sam/code/docz/src/core/agent_main.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep anthropic_shared --dep auth_shared -Magent_base=/Users/sam/code/docz/src/core/agent_base.zig -ODebug --dep curl_shared --dep sse_shared -Manthropic_shared=/Users/sam/code/docz/src/shared/network/anthropic/mod.zig -ODebug -Mterm_shared=/Users/sam/code/docz/src/shared/term/mod.zig -ODebug -Mcurl_shared=/Users/sam/code/docz/src/shared/network/curl.zig -ODebug -Msse_shared=/Users/sam/code/docz/src/shared/network/sse.zig -lc --cache-dir .zig-cache --global-cache-dir /Users/sam/.cache/zig --name docz --zig-lib-dir /Users/sam/.zvm/0.15.1/lib/ --listen=-
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 2/7 steps succeeded; 2 failed
+install transitive failure
++- install docz transitive failure
+|  +- compile exe docz Debug native 1 errors
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- install docz
+   +- compile exe docz Debug native 1 errors
+error: failed to check cache: 'src/core/interactive_session.zig' file_hash FileNotFound
+error: the following command failed with 1 compilation errors:
+/Users/sam/.zvm/0.15.1/zig build-exe -lcurl -ODebug --dep core_engine=engine_shared --dep cli_shared --dep tools_shared --dep config_shared --dep json_reflection --dep auth_shared --dep components_shared --dep agent_interface --dep interactive_session --dep agent_main --dep agent_base -Mroot=/Users/sam/code/docz/agents/markdown/main.zig -ODebug --dep anthropic_shared --dep tools_shared --dep auth_shared -Mengine_shared=/Users/sam/code/docz/src/core/engine.zig -ODebug --dep term_shared --dep components_shared -Mcli_shared=/Users/sam/code/docz/src/shared/cli/mod.zig -ODebug --dep anthropic_shared -Mtools_shared=/Users/sam/code/docz/src/shared/tools/mod.zig -ODebug -Mconfig_shared=/Users/sam/code/docz/src/core/config.zig -ODebug -Mjson_reflection=/Users/sam/code/docz/src/shared/json_reflection/mod.zig -ODebug --dep anthropic_shared -Mauth_shared=/Users/sam/code/docz/src/shared/auth/mod.zig -ODebug --dep term_shared -Mcomponents_shared=/Users/sam/code/docz/src/shared/components/mod.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared -Magent_interface=/Users/sam/code/docz/src/shared/tui/agent_interface.zig -ODebug --dep engine_shared --dep config_shared --dep auth_shared --dep anthropic_shared -Minteractive_session=/Users/sam/code/docz/src/core/interactive_session.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep agent_base --dep auth_shared --dep cli_shared -Magent_main=/Users/sam/code/docz/src/core/agent_main.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep anthropic_shared --dep auth_shared -Magent_base=/Users/sam/code/docz/src/core/agent_base.zig -ODebug --dep curl_shared --dep sse_shared -Manthropic_shared=/Users/sam/code/docz/src/shared/network/anthropic/mod.zig -ODebug -Mterm_shared=/Users/sam/code/docz/src/shared/term/mod.zig -ODebug -Mcurl_shared=/Users/sam/code/docz/src/shared/network/curl.zig -ODebug -Msse_shared=/Users/sam/code/docz/src/shared/network/sse.zig -lc --cache-dir .zig-cache --global-cache-dir /Users/sam/.cache/zig --name docz --zig-lib-dir /Users/sam/.zvm/0.15.1/lib/ --listen=-
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/cli/core/types.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 2/7 steps succeeded; 2 failed
+install transitive failure
++- install docz transitive failure
+|  +- compile exe docz Debug native 1 errors
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- install docz
+   +- compile exe docz Debug native 1 errors
+error: failed to check cache: 'src/core/interactive_session.zig' file_hash FileNotFound
+error: the following command failed with 1 compilation errors:
+/Users/sam/.zvm/0.15.1/zig build-exe -lcurl -ODebug --dep core_engine=engine_shared --dep cli_shared --dep tools_shared --dep config_shared --dep json_reflection --dep auth_shared --dep components_shared --dep agent_interface --dep interactive_session --dep agent_main --dep agent_base -Mroot=/Users/sam/code/docz/agents/markdown/main.zig -ODebug --dep anthropic_shared --dep tools_shared --dep auth_shared -Mengine_shared=/Users/sam/code/docz/src/core/engine.zig -ODebug --dep term_shared --dep components_shared -Mcli_shared=/Users/sam/code/docz/src/shared/cli/mod.zig -ODebug --dep anthropic_shared -Mtools_shared=/Users/sam/code/docz/src/shared/tools/mod.zig -ODebug -Mconfig_shared=/Users/sam/code/docz/src/core/config.zig -ODebug -Mjson_reflection=/Users/sam/code/docz/src/shared/json_reflection/mod.zig -ODebug --dep anthropic_shared -Mauth_shared=/Users/sam/code/docz/src/shared/auth/mod.zig -ODebug --dep term_shared -Mcomponents_shared=/Users/sam/code/docz/src/shared/components/mod.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared -Magent_interface=/Users/sam/code/docz/src/shared/tui/agent_interface.zig -ODebug --dep engine_shared --dep config_shared --dep auth_shared --dep anthropic_shared -Minteractive_session=/Users/sam/code/docz/src/core/interactive_session.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep agent_base --dep auth_shared --dep cli_shared -Magent_main=/Users/sam/code/docz/src/core/agent_main.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep anthropic_shared --dep auth_shared -Magent_base=/Users/sam/code/docz/src/core/agent_base.zig -ODebug --dep curl_shared --dep sse_shared -Manthropic_shared=/Users/sam/code/docz/src/shared/network/anthropic/mod.zig -ODebug -Mterm_shared=/Users/sam/code/docz/src/shared/term/mod.zig -ODebug -Mcurl_shared=/Users/sam/code/docz/src/shared/network/curl.zig -ODebug -Msse_shared=/Users/sam/code/docz/src/shared/network/sse.zig -lc --cache-dir .zig-cache --global-cache-dir /Users/sam/.cache/zig --name docz --zig-lib-dir /Users/sam/.zvm/0.15.1/lib/ --listen=-
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/network/anthropic.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/network/anthropic/oauth.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/multi_resolution_canvas.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/cli/core/types.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 2/7 steps succeeded; 2 failed
+install transitive failure
++- install docz transitive failure
+|  +- compile exe docz Debug native 1 errors
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- install docz
+   +- compile exe docz Debug native 1 errors
+error: failed to check cache: 'src/core/interactive_session.zig' file_hash FileNotFound
+error: the following command failed with 1 compilation errors:
+/Users/sam/.zvm/0.15.1/zig build-exe -lcurl -ODebug --dep core_engine=engine_shared --dep cli_shared --dep tools_shared --dep config_shared --dep json_reflection --dep auth_shared --dep components_shared --dep agent_interface --dep interactive_session --dep agent_main --dep agent_base -Mroot=/Users/sam/code/docz/agents/markdown/main.zig -ODebug --dep anthropic_shared --dep tools_shared --dep auth_shared -Mengine_shared=/Users/sam/code/docz/src/core/engine.zig -ODebug --dep term_shared --dep components_shared -Mcli_shared=/Users/sam/code/docz/src/shared/cli/mod.zig -ODebug --dep anthropic_shared -Mtools_shared=/Users/sam/code/docz/src/shared/tools/mod.zig -ODebug -Mconfig_shared=/Users/sam/code/docz/src/core/config.zig -ODebug -Mjson_reflection=/Users/sam/code/docz/src/shared/json_reflection/mod.zig -ODebug --dep anthropic_shared -Mauth_shared=/Users/sam/code/docz/src/shared/auth/mod.zig -ODebug --dep term_shared -Mcomponents_shared=/Users/sam/code/docz/src/shared/components/mod.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared -Magent_interface=/Users/sam/code/docz/src/shared/tui/agent_interface.zig -ODebug --dep engine_shared --dep config_shared --dep auth_shared --dep anthropic_shared -Minteractive_session=/Users/sam/code/docz/src/core/interactive_session.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep agent_base --dep auth_shared --dep cli_shared -Magent_main=/Users/sam/code/docz/src/core/agent_main.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep anthropic_shared --dep auth_shared -Magent_base=/Users/sam/code/docz/src/core/agent_base.zig -ODebug --dep curl_shared --dep sse_shared -Manthropic_shared=/Users/sam/code/docz/src/shared/network/anthropic/mod.zig -ODebug -Mterm_shared=/Users/sam/code/docz/src/shared/term/mod.zig -ODebug -Mcurl_shared=/Users/sam/code/docz/src/shared/network/curl.zig -ODebug -Msse_shared=/Users/sam/code/docz/src/shared/network/sse.zig -lc --cache-dir .zig-cache --global-cache-dir /Users/sam/.cache/zig --name docz --zig-lib-dir /Users/sam/.zvm/0.15.1/lib/ --listen=-
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/network/anthropic.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/network/anthropic/oauth.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/multi_resolution_canvas.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/cli/core/types.zig: non-conforming formatting
+error: /Users/sam/code/docz/agents/markdown/markdown_editor.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 2/7 steps succeeded; 2 failed
+install transitive failure
++- install docz transitive failure
+|  +- compile exe docz Debug native 1 errors
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- install docz
+   +- compile exe docz Debug native 1 errors
+error: failed to check cache: 'src/core/interactive_session.zig' file_hash FileNotFound
+error: the following command failed with 1 compilation errors:
+/Users/sam/.zvm/0.15.1/zig build-exe -lcurl -ODebug --dep core_engine=engine_shared --dep cli_shared --dep tools_shared --dep config_shared --dep json_reflection --dep auth_shared --dep components_shared --dep agent_interface --dep interactive_session --dep agent_main --dep agent_base -Mroot=/Users/sam/code/docz/agents/markdown/main.zig -ODebug --dep anthropic_shared --dep tools_shared --dep auth_shared -Mengine_shared=/Users/sam/code/docz/src/core/engine.zig -ODebug --dep term_shared --dep components_shared -Mcli_shared=/Users/sam/code/docz/src/shared/cli/mod.zig -ODebug --dep anthropic_shared -Mtools_shared=/Users/sam/code/docz/src/shared/tools/mod.zig -ODebug -Mconfig_shared=/Users/sam/code/docz/src/core/config.zig -ODebug -Mjson_reflection=/Users/sam/code/docz/src/shared/json_reflection/mod.zig -ODebug --dep anthropic_shared -Mauth_shared=/Users/sam/code/docz/src/shared/auth/mod.zig -ODebug --dep term_shared -Mcomponents_shared=/Users/sam/code/docz/src/shared/components/mod.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared -Magent_interface=/Users/sam/code/docz/src/shared/tui/agent_interface.zig -ODebug --dep engine_shared --dep config_shared --dep auth_shared --dep anthropic_shared -Minteractive_session=/Users/sam/code/docz/src/core/interactive_session.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep agent_base --dep auth_shared --dep cli_shared -Magent_main=/Users/sam/code/docz/src/core/agent_main.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep anthropic_shared --dep auth_shared -Magent_base=/Users/sam/code/docz/src/core/agent_base.zig -ODebug --dep curl_shared --dep sse_shared -Manthropic_shared=/Users/sam/code/docz/src/shared/network/anthropic/mod.zig -ODebug -Mterm_shared=/Users/sam/code/docz/src/shared/term/mod.zig -ODebug -Mcurl_shared=/Users/sam/code/docz/src/shared/network/curl.zig -ODebug -Msse_shared=/Users/sam/code/docz/src/shared/network/sse.zig -lc --cache-dir .zig-cache --global-cache-dir /Users/sam/.cache/zig --name docz --zig-lib-dir /Users/sam/.zvm/0.15.1/lib/ --listen=-
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/network/anthropic.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/network/anthropic/oauth.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/multi_resolution_canvas.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/cli/core/types.zig: non-conforming formatting
+error: /Users/sam/code/docz/agents/markdown/markdown_editor.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 2/7 steps succeeded; 2 failed
+install transitive failure
++- install docz transitive failure
+|  +- compile exe docz Debug native 1 errors
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- install docz
+   +- compile exe docz Debug native 1 errors
+error: failed to check cache: 'src/core/interactive_session.zig' file_hash FileNotFound
+error: the following command failed with 1 compilation errors:
+/Users/sam/.zvm/0.15.1/zig build-exe -lcurl -ODebug --dep core_engine=engine_shared --dep cli_shared --dep tools_shared --dep config_shared --dep json_reflection --dep auth_shared --dep components_shared --dep agent_interface --dep interactive_session --dep agent_main --dep agent_base -Mroot=/Users/sam/code/docz/agents/markdown/main.zig -ODebug --dep anthropic_shared --dep tools_shared --dep auth_shared -Mengine_shared=/Users/sam/code/docz/src/core/engine.zig -ODebug --dep term_shared --dep components_shared -Mcli_shared=/Users/sam/code/docz/src/shared/cli/mod.zig -ODebug --dep anthropic_shared -Mtools_shared=/Users/sam/code/docz/src/shared/tools/mod.zig -ODebug -Mconfig_shared=/Users/sam/code/docz/src/core/config.zig -ODebug -Mjson_reflection=/Users/sam/code/docz/src/shared/json_reflection/mod.zig -ODebug --dep anthropic_shared -Mauth_shared=/Users/sam/code/docz/src/shared/auth/mod.zig -ODebug --dep term_shared -Mcomponents_shared=/Users/sam/code/docz/src/shared/components/mod.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared -Magent_interface=/Users/sam/code/docz/src/shared/tui/agent_interface.zig -ODebug --dep engine_shared --dep config_shared --dep auth_shared --dep anthropic_shared -Minteractive_session=/Users/sam/code/docz/src/core/interactive_session.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep agent_base --dep auth_shared --dep cli_shared -Magent_main=/Users/sam/code/docz/src/core/agent_main.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep anthropic_shared --dep auth_shared -Magent_base=/Users/sam/code/docz/src/core/agent_base.zig -ODebug --dep curl_shared --dep sse_shared -Manthropic_shared=/Users/sam/code/docz/src/shared/network/anthropic/mod.zig -ODebug -Mterm_shared=/Users/sam/code/docz/src/shared/term/mod.zig -ODebug -Mcurl_shared=/Users/sam/code/docz/src/shared/network/curl.zig -ODebug -Msse_shared=/Users/sam/code/docz/src/shared/network/sse.zig -lc --cache-dir .zig-cache --global-cache-dir /Users/sam/.cache/zig --name docz --zig-lib-dir /Users/sam/.zvm/0.15.1/lib/ --listen=-
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/network/anthropic.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/network/anthropic/oauth.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/multi_resolution_canvas.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/cli/core/types.zig: non-conforming formatting
+error: /Users/sam/code/docz/agents/markdown/markdown_editor.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 2/7 steps succeeded; 2 failed
+install transitive failure
++- install docz transitive failure
+|  +- compile exe docz Debug native 1 errors
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- install docz
+   +- compile exe docz Debug native 1 errors
+error: failed to check cache: 'src/core/interactive_session.zig' file_hash FileNotFound
+error: the following command failed with 1 compilation errors:
+/Users/sam/.zvm/0.15.1/zig build-exe -lcurl -ODebug --dep core_engine=engine_shared --dep cli_shared --dep tools_shared --dep config_shared --dep json_reflection --dep auth_shared --dep components_shared --dep agent_interface --dep interactive_session --dep agent_main --dep agent_base -Mroot=/Users/sam/code/docz/agents/markdown/main.zig -ODebug --dep anthropic_shared --dep tools_shared --dep auth_shared -Mengine_shared=/Users/sam/code/docz/src/core/engine.zig -ODebug --dep term_shared --dep components_shared -Mcli_shared=/Users/sam/code/docz/src/shared/cli/mod.zig -ODebug --dep anthropic_shared -Mtools_shared=/Users/sam/code/docz/src/shared/tools/mod.zig -ODebug -Mconfig_shared=/Users/sam/code/docz/src/core/config.zig -ODebug -Mjson_reflection=/Users/sam/code/docz/src/shared/json_reflection/mod.zig -ODebug --dep anthropic_shared -Mauth_shared=/Users/sam/code/docz/src/shared/auth/mod.zig -ODebug --dep term_shared -Mcomponents_shared=/Users/sam/code/docz/src/shared/components/mod.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared -Magent_interface=/Users/sam/code/docz/src/shared/tui/agent_interface.zig -ODebug --dep engine_shared --dep config_shared --dep auth_shared --dep anthropic_shared -Minteractive_session=/Users/sam/code/docz/src/core/interactive_session.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep agent_base --dep auth_shared --dep cli_shared -Magent_main=/Users/sam/code/docz/src/core/agent_main.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep anthropic_shared --dep auth_shared -Magent_base=/Users/sam/code/docz/src/core/agent_base.zig -ODebug --dep curl_shared --dep sse_shared -Manthropic_shared=/Users/sam/code/docz/src/shared/network/anthropic/mod.zig -ODebug -Mterm_shared=/Users/sam/code/docz/src/shared/term/mod.zig -ODebug -Mcurl_shared=/Users/sam/code/docz/src/shared/network/curl.zig -ODebug -Msse_shared=/Users/sam/code/docz/src/shared/network/sse.zig -lc --cache-dir .zig-cache --global-cache-dir /Users/sam/.cache/zig --name docz --zig-lib-dir /Users/sam/.zvm/0.15.1/lib/ --listen=-
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/network/anthropic.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/network/anthropic/oauth.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/multi_resolution_canvas.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/cli/core/types.zig: non-conforming formatting
+error: /Users/sam/code/docz/agents/markdown/markdown_editor.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 2/7 steps succeeded; 2 failed
+install transitive failure
++- install docz transitive failure
+|  +- compile exe docz Debug native 1 errors
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- install docz
+   +- compile exe docz Debug native 1 errors
+error: failed to check cache: 'src/core/interactive_session.zig' file_hash FileNotFound
+error: the following command failed with 1 compilation errors:
+/Users/sam/.zvm/0.15.1/zig build-exe -lcurl -ODebug --dep core_engine=engine_shared --dep cli_shared --dep tools_shared --dep config_shared --dep json_reflection --dep auth_shared --dep components_shared --dep agent_interface --dep interactive_session --dep agent_main --dep agent_base -Mroot=/Users/sam/code/docz/agents/markdown/main.zig -ODebug --dep anthropic_shared --dep tools_shared --dep auth_shared -Mengine_shared=/Users/sam/code/docz/src/core/engine.zig -ODebug --dep term_shared --dep components_shared -Mcli_shared=/Users/sam/code/docz/src/shared/cli/mod.zig -ODebug --dep anthropic_shared -Mtools_shared=/Users/sam/code/docz/src/shared/tools/mod.zig -ODebug -Mconfig_shared=/Users/sam/code/docz/src/core/config.zig -ODebug -Mjson_reflection=/Users/sam/code/docz/src/shared/json_reflection/mod.zig -ODebug --dep anthropic_shared -Mauth_shared=/Users/sam/code/docz/src/shared/auth/mod.zig -ODebug --dep term_shared -Mcomponents_shared=/Users/sam/code/docz/src/shared/components/mod.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared -Magent_interface=/Users/sam/code/docz/src/shared/tui/agent_interface.zig -ODebug --dep engine_shared --dep config_shared --dep auth_shared --dep anthropic_shared -Minteractive_session=/Users/sam/code/docz/src/core/interactive_session.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep agent_base --dep auth_shared --dep cli_shared -Magent_main=/Users/sam/code/docz/src/core/agent_main.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep anthropic_shared --dep auth_shared -Magent_base=/Users/sam/code/docz/src/core/agent_base.zig -ODebug --dep curl_shared --dep sse_shared -Manthropic_shared=/Users/sam/code/docz/src/shared/network/anthropic/mod.zig -ODebug -Mterm_shared=/Users/sam/code/docz/src/shared/term/mod.zig -ODebug -Mcurl_shared=/Users/sam/code/docz/src/shared/network/curl.zig -ODebug -Msse_shared=/Users/sam/code/docz/src/shared/network/sse.zig -lc --cache-dir .zig-cache --global-cache-dir /Users/sam/.cache/zig --name docz --zig-lib-dir /Users/sam/.zvm/0.15.1/lib/ --listen=-
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/network/anthropic.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/network/anthropic/oauth.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/multi_resolution_canvas.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/cli/core/types.zig: non-conforming formatting
+error: /Users/sam/code/docz/agents/markdown/markdown_editor.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 2/7 steps succeeded; 2 failed
+install transitive failure
++- install docz transitive failure
+|  +- compile exe docz Debug native 1 errors
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- install docz
+   +- compile exe docz Debug native 1 errors
+error: failed to check cache: 'src/core/interactive_session.zig' file_hash FileNotFound
+error: the following command failed with 1 compilation errors:
+/Users/sam/.zvm/0.15.1/zig build-exe -lcurl -ODebug --dep core_engine=engine_shared --dep cli_shared --dep tools_shared --dep config_shared --dep json_reflection --dep auth_shared --dep components_shared --dep agent_interface --dep interactive_session --dep agent_main --dep agent_base -Mroot=/Users/sam/code/docz/agents/markdown/main.zig -ODebug --dep anthropic_shared --dep tools_shared --dep auth_shared -Mengine_shared=/Users/sam/code/docz/src/core/engine.zig -ODebug --dep term_shared --dep components_shared -Mcli_shared=/Users/sam/code/docz/src/shared/cli/mod.zig -ODebug --dep anthropic_shared -Mtools_shared=/Users/sam/code/docz/src/shared/tools/mod.zig -ODebug -Mconfig_shared=/Users/sam/code/docz/src/core/config.zig -ODebug -Mjson_reflection=/Users/sam/code/docz/src/shared/json_reflection/mod.zig -ODebug --dep anthropic_shared -Mauth_shared=/Users/sam/code/docz/src/shared/auth/mod.zig -ODebug --dep term_shared -Mcomponents_shared=/Users/sam/code/docz/src/shared/components/mod.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared -Magent_interface=/Users/sam/code/docz/src/shared/tui/agent_interface.zig -ODebug --dep engine_shared --dep config_shared --dep auth_shared --dep anthropic_shared -Minteractive_session=/Users/sam/code/docz/src/core/interactive_session.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep agent_base --dep auth_shared --dep cli_shared -Magent_main=/Users/sam/code/docz/src/core/agent_main.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep anthropic_shared --dep auth_shared -Magent_base=/Users/sam/code/docz/src/core/agent_base.zig -ODebug --dep curl_shared --dep sse_shared -Manthropic_shared=/Users/sam/code/docz/src/shared/network/anthropic/mod.zig -ODebug -Mterm_shared=/Users/sam/code/docz/src/shared/term/mod.zig -ODebug -Mcurl_shared=/Users/sam/code/docz/src/shared/network/curl.zig -ODebug -Msse_shared=/Users/sam/code/docz/src/shared/network/sse.zig -lc --cache-dir .zig-cache --global-cache-dir /Users/sam/.cache/zig --name docz --zig-lib-dir /Users/sam/.zvm/0.15.1/lib/ --listen=-
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/network/anthropic.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/network/anthropic/oauth.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/canvas.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/cli/core/types.zig: non-conforming formatting
+error: /Users/sam/code/docz/agents/markdown/markdown_editor.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 2/7 steps succeeded; 2 failed
+install transitive failure
++- install docz transitive failure
+|  +- compile exe docz Debug native 1 errors
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- install docz
+   +- compile exe docz Debug native 1 errors
+error: failed to check cache: 'src/core/interactive_session.zig' file_hash FileNotFound
+error: the following command failed with 1 compilation errors:
+/Users/sam/.zvm/0.15.1/zig build-exe -lcurl -ODebug --dep core_engine=engine_shared --dep cli_shared --dep tools_shared --dep config_shared --dep json_reflection --dep auth_shared --dep components_shared --dep agent_interface --dep interactive_session --dep agent_main --dep agent_base -Mroot=/Users/sam/code/docz/agents/markdown/main.zig -ODebug --dep anthropic_shared --dep tools_shared --dep auth_shared -Mengine_shared=/Users/sam/code/docz/src/core/engine.zig -ODebug --dep term_shared --dep components_shared -Mcli_shared=/Users/sam/code/docz/src/shared/cli/mod.zig -ODebug --dep anthropic_shared -Mtools_shared=/Users/sam/code/docz/src/shared/tools/mod.zig -ODebug -Mconfig_shared=/Users/sam/code/docz/src/core/config.zig -ODebug -Mjson_reflection=/Users/sam/code/docz/src/shared/json_reflection/mod.zig -ODebug --dep anthropic_shared -Mauth_shared=/Users/sam/code/docz/src/shared/auth/mod.zig -ODebug --dep term_shared -Mcomponents_shared=/Users/sam/code/docz/src/shared/components/mod.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared -Magent_interface=/Users/sam/code/docz/src/shared/tui/agent_interface.zig -ODebug --dep engine_shared --dep config_shared --dep auth_shared --dep anthropic_shared -Minteractive_session=/Users/sam/code/docz/src/core/interactive_session.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep agent_base --dep auth_shared --dep cli_shared -Magent_main=/Users/sam/code/docz/src/core/agent_main.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep anthropic_shared --dep auth_shared -Magent_base=/Users/sam/code/docz/src/core/agent_base.zig -ODebug --dep curl_shared --dep sse_shared -Manthropic_shared=/Users/sam/code/docz/src/shared/network/anthropic/mod.zig -ODebug -Mterm_shared=/Users/sam/code/docz/src/shared/term/mod.zig -ODebug -Mcurl_shared=/Users/sam/code/docz/src/shared/network/curl.zig -ODebug -Msse_shared=/Users/sam/code/docz/src/shared/network/sse.zig -lc --cache-dir .zig-cache --global-cache-dir /Users/sam/.cache/zig --name docz --zig-lib-dir /Users/sam/.zvm/0.15.1/lib/ --listen=-
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/network/anthropic.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/network/anthropic/oauth.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/canvas.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/cli/core/types.zig: non-conforming formatting
+error: /Users/sam/code/docz/agents/markdown/markdown_editor.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 2/7 steps succeeded; 2 failed
+install transitive failure
++- install docz transitive failure
+|  +- compile exe docz Debug native 1 errors
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- install docz
+   +- compile exe docz Debug native 1 errors
+error: failed to check cache: 'src/core/interactive_session.zig' file_hash FileNotFound
+error: the following command failed with 1 compilation errors:
+/Users/sam/.zvm/0.15.1/zig build-exe -lcurl -ODebug --dep core_engine=engine_shared --dep cli_shared --dep tools_shared --dep config_shared --dep json_reflection --dep auth_shared --dep components_shared --dep agent_interface --dep interactive_session --dep agent_main --dep agent_base -Mroot=/Users/sam/code/docz/agents/markdown/main.zig -ODebug --dep anthropic_shared --dep tools_shared --dep auth_shared -Mengine_shared=/Users/sam/code/docz/src/core/engine.zig -ODebug --dep term_shared --dep components_shared -Mcli_shared=/Users/sam/code/docz/src/shared/cli/mod.zig -ODebug --dep anthropic_shared -Mtools_shared=/Users/sam/code/docz/src/shared/tools/mod.zig -ODebug -Mconfig_shared=/Users/sam/code/docz/src/core/config.zig -ODebug -Mjson_reflection=/Users/sam/code/docz/src/shared/json_reflection/mod.zig -ODebug --dep anthropic_shared -Mauth_shared=/Users/sam/code/docz/src/shared/auth/mod.zig -ODebug --dep term_shared -Mcomponents_shared=/Users/sam/code/docz/src/shared/components/mod.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared -Magent_interface=/Users/sam/code/docz/src/shared/tui/agent_interface.zig -ODebug --dep engine_shared --dep config_shared --dep auth_shared --dep anthropic_shared -Minteractive_session=/Users/sam/code/docz/src/core/interactive_session.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep agent_base --dep auth_shared --dep cli_shared -Magent_main=/Users/sam/code/docz/src/core/agent_main.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep anthropic_shared --dep auth_shared -Magent_base=/Users/sam/code/docz/src/core/agent_base.zig -ODebug --dep curl_shared --dep sse_shared -Manthropic_shared=/Users/sam/code/docz/src/shared/network/anthropic/mod.zig -ODebug -Mterm_shared=/Users/sam/code/docz/src/shared/term/mod.zig -ODebug -Mcurl_shared=/Users/sam/code/docz/src/shared/network/curl.zig -ODebug -Msse_shared=/Users/sam/code/docz/src/shared/network/sse.zig -lc --cache-dir .zig-cache --global-cache-dir /Users/sam/.cache/zig --name docz --zig-lib-dir /Users/sam/.zvm/0.15.1/lib/ --listen=-
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/network/anthropic.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/network/anthropic/oauth.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/canvas.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/cli/core/types.zig: non-conforming formatting
+error: /Users/sam/code/docz/agents/markdown/markdown_editor.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 2/7 steps succeeded; 2 failed
+install transitive failure
++- install docz transitive failure
+|  +- compile exe docz Debug native 1 errors
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- install docz
+   +- compile exe docz Debug native 1 errors
+error: failed to check cache: 'src/core/interactive_session.zig' file_hash FileNotFound
+error: the following command failed with 1 compilation errors:
+/Users/sam/.zvm/0.15.1/zig build-exe -lcurl -ODebug --dep core_engine=engine_shared --dep cli_shared --dep tools_shared --dep config_shared --dep json_reflection --dep auth_shared --dep components_shared --dep agent_interface --dep interactive_session --dep agent_main --dep agent_base -Mroot=/Users/sam/code/docz/agents/markdown/main.zig -ODebug --dep anthropic_shared --dep tools_shared --dep auth_shared -Mengine_shared=/Users/sam/code/docz/src/core/engine.zig -ODebug --dep term_shared --dep components_shared -Mcli_shared=/Users/sam/code/docz/src/shared/cli/mod.zig -ODebug --dep anthropic_shared -Mtools_shared=/Users/sam/code/docz/src/shared/tools/mod.zig -ODebug -Mconfig_shared=/Users/sam/code/docz/src/core/config.zig -ODebug -Mjson_reflection=/Users/sam/code/docz/src/shared/json_reflection/mod.zig -ODebug --dep anthropic_shared -Mauth_shared=/Users/sam/code/docz/src/shared/auth/mod.zig -ODebug --dep term_shared -Mcomponents_shared=/Users/sam/code/docz/src/shared/components/mod.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared -Magent_interface=/Users/sam/code/docz/src/shared/tui/agent_interface.zig -ODebug --dep engine_shared --dep config_shared --dep auth_shared --dep anthropic_shared -Minteractive_session=/Users/sam/code/docz/src/core/interactive_session.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep agent_base --dep auth_shared --dep cli_shared -Magent_main=/Users/sam/code/docz/src/core/agent_main.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep anthropic_shared --dep auth_shared -Magent_base=/Users/sam/code/docz/src/core/agent_base.zig -ODebug --dep curl_shared --dep sse_shared -Manthropic_shared=/Users/sam/code/docz/src/shared/network/anthropic/mod.zig -ODebug -Mterm_shared=/Users/sam/code/docz/src/shared/term/mod.zig -ODebug -Mcurl_shared=/Users/sam/code/docz/src/shared/network/curl.zig -ODebug -Msse_shared=/Users/sam/code/docz/src/shared/network/sse.zig -lc --cache-dir .zig-cache --global-cache-dir /Users/sam/.cache/zig --name docz --zig-lib-dir /Users/sam/.zvm/0.15.1/lib/ --listen=-
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/network/anthropic.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/network/anthropic/oauth.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/canvas.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/cli/core/types.zig: non-conforming formatting
+error: /Users/sam/code/docz/agents/markdown/markdown_editor.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 2/7 steps succeeded; 2 failed
+install transitive failure
++- install docz transitive failure
+|  +- compile exe docz Debug native 1 errors
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- install docz
+   +- compile exe docz Debug native 1 errors
+error: failed to check cache: 'src/core/interactive_session.zig' file_hash FileNotFound
+error: the following command failed with 1 compilation errors:
+/Users/sam/.zvm/0.15.1/zig build-exe -lcurl -ODebug --dep core_engine=engine_shared --dep cli_shared --dep tools_shared --dep config_shared --dep json_reflection --dep auth_shared --dep components_shared --dep agent_interface --dep interactive_session --dep agent_main --dep agent_base -Mroot=/Users/sam/code/docz/agents/markdown/main.zig -ODebug --dep anthropic_shared --dep tools_shared --dep auth_shared -Mengine_shared=/Users/sam/code/docz/src/core/engine.zig -ODebug --dep term_shared --dep components_shared -Mcli_shared=/Users/sam/code/docz/src/shared/cli/mod.zig -ODebug --dep anthropic_shared -Mtools_shared=/Users/sam/code/docz/src/shared/tools/mod.zig -ODebug -Mconfig_shared=/Users/sam/code/docz/src/core/config.zig -ODebug -Mjson_reflection=/Users/sam/code/docz/src/shared/json_reflection/mod.zig -ODebug --dep anthropic_shared -Mauth_shared=/Users/sam/code/docz/src/shared/auth/mod.zig -ODebug --dep term_shared -Mcomponents_shared=/Users/sam/code/docz/src/shared/components/mod.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared -Magent_interface=/Users/sam/code/docz/src/shared/tui/agent_interface.zig -ODebug --dep engine_shared --dep config_shared --dep auth_shared --dep anthropic_shared -Minteractive_session=/Users/sam/code/docz/src/core/interactive_session.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep agent_base --dep auth_shared --dep cli_shared -Magent_main=/Users/sam/code/docz/src/core/agent_main.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep anthropic_shared --dep auth_shared -Magent_base=/Users/sam/code/docz/src/core/agent_base.zig -ODebug --dep curl_shared --dep sse_shared -Manthropic_shared=/Users/sam/code/docz/src/shared/network/anthropic/mod.zig -ODebug -Mterm_shared=/Users/sam/code/docz/src/shared/term/mod.zig -ODebug -Mcurl_shared=/Users/sam/code/docz/src/shared/network/curl.zig -ODebug -Msse_shared=/Users/sam/code/docz/src/shared/network/sse.zig -lc --cache-dir .zig-cache --global-cache-dir /Users/sam/.cache/zig --name docz --zig-lib-dir /Users/sam/.zvm/0.15.1/lib/ --listen=-
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/network/anthropic.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/network/anthropic/oauth.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/canvas.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/cli/core/types.zig: non-conforming formatting
+error: /Users/sam/code/docz/agents/markdown/markdown_editor.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 2/7 steps succeeded; 2 failed
+install transitive failure
++- install docz transitive failure
+|  +- compile exe docz Debug native 1 errors
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- install docz
+   +- compile exe docz Debug native 1 errors
+error: failed to check cache: 'src/core/interactive_session.zig' file_hash FileNotFound
+error: the following command failed with 1 compilation errors:
+/Users/sam/.zvm/0.15.1/zig build-exe -lcurl -ODebug --dep core_engine=engine_shared --dep cli_shared --dep tools_shared --dep config_shared --dep json_reflection --dep auth_shared --dep components_shared --dep agent_interface --dep interactive_session --dep agent_main --dep agent_base -Mroot=/Users/sam/code/docz/agents/markdown/main.zig -ODebug --dep anthropic_shared --dep tools_shared --dep auth_shared -Mengine_shared=/Users/sam/code/docz/src/core/engine.zig -ODebug --dep term_shared --dep components_shared -Mcli_shared=/Users/sam/code/docz/src/shared/cli/mod.zig -ODebug --dep anthropic_shared -Mtools_shared=/Users/sam/code/docz/src/shared/tools/mod.zig -ODebug -Mconfig_shared=/Users/sam/code/docz/src/core/config.zig -ODebug -Mjson_reflection=/Users/sam/code/docz/src/shared/json_reflection/mod.zig -ODebug --dep anthropic_shared -Mauth_shared=/Users/sam/code/docz/src/shared/auth/mod.zig -ODebug --dep term_shared -Mcomponents_shared=/Users/sam/code/docz/src/shared/components/mod.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared -Magent_interface=/Users/sam/code/docz/src/shared/tui/agent_interface.zig -ODebug --dep engine_shared --dep config_shared --dep auth_shared --dep anthropic_shared -Minteractive_session=/Users/sam/code/docz/src/core/interactive_session.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep agent_base --dep auth_shared --dep cli_shared -Magent_main=/Users/sam/code/docz/src/core/agent_main.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep anthropic_shared --dep auth_shared -Magent_base=/Users/sam/code/docz/src/core/agent_base.zig -ODebug --dep curl_shared --dep sse_shared -Manthropic_shared=/Users/sam/code/docz/src/shared/network/anthropic/mod.zig -ODebug -Mterm_shared=/Users/sam/code/docz/src/shared/term/mod.zig -ODebug -Mcurl_shared=/Users/sam/code/docz/src/shared/network/curl.zig -ODebug -Msse_shared=/Users/sam/code/docz/src/shared/network/sse.zig -lc --cache-dir .zig-cache --global-cache-dir /Users/sam/.cache/zig --name docz --zig-lib-dir /Users/sam/.zvm/0.15.1/lib/ --listen=-
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/tools/json.zig:45:10: error: expected statement, found ';'
+        };
+         ^
+
+error: /Users/sam/code/docz/src/shared/network/anthropic.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/network/anthropic/oauth.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/canvas.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/cli/core/types.zig: non-conforming formatting
+error: /Users/sam/code/docz/agents/markdown/markdown_editor.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 2/7 steps succeeded; 2 failed
+install transitive failure
++- install docz transitive failure
+|  +- compile exe docz Debug native 1 errors
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- install docz
+   +- compile exe docz Debug native 1 errors
+error: failed to check cache: 'src/core/interactive_session.zig' file_hash FileNotFound
+error: the following command failed with 1 compilation errors:
+/Users/sam/.zvm/0.15.1/zig build-exe -lcurl -ODebug --dep core_engine=engine_shared --dep cli_shared --dep tools_shared --dep config_shared --dep json_reflection --dep auth_shared --dep components_shared --dep agent_interface --dep interactive_session --dep agent_main --dep agent_base -Mroot=/Users/sam/code/docz/agents/markdown/main.zig -ODebug --dep anthropic_shared --dep tools_shared --dep auth_shared -Mengine_shared=/Users/sam/code/docz/src/core/engine.zig -ODebug --dep term_shared --dep components_shared -Mcli_shared=/Users/sam/code/docz/src/shared/cli/mod.zig -ODebug --dep anthropic_shared -Mtools_shared=/Users/sam/code/docz/src/shared/tools/mod.zig -ODebug -Mconfig_shared=/Users/sam/code/docz/src/core/config.zig -ODebug -Mjson_reflection=/Users/sam/code/docz/src/shared/json_reflection/mod.zig -ODebug --dep anthropic_shared -Mauth_shared=/Users/sam/code/docz/src/shared/auth/mod.zig -ODebug --dep term_shared -Mcomponents_shared=/Users/sam/code/docz/src/shared/components/mod.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared -Magent_interface=/Users/sam/code/docz/src/shared/tui/agent_interface.zig -ODebug --dep engine_shared --dep config_shared --dep auth_shared --dep anthropic_shared -Minteractive_session=/Users/sam/code/docz/src/core/interactive_session.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep agent_base --dep auth_shared --dep cli_shared -Magent_main=/Users/sam/code/docz/src/core/agent_main.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep anthropic_shared --dep auth_shared -Magent_base=/Users/sam/code/docz/src/core/agent_base.zig -ODebug --dep curl_shared --dep sse_shared -Manthropic_shared=/Users/sam/code/docz/src/shared/network/anthropic/mod.zig -ODebug -Mterm_shared=/Users/sam/code/docz/src/shared/term/mod.zig -ODebug -Mcurl_shared=/Users/sam/code/docz/src/shared/network/curl.zig -ODebug -Msse_shared=/Users/sam/code/docz/src/shared/network/sse.zig -lc --cache-dir .zig-cache --global-cache-dir /Users/sam/.cache/zig --name docz --zig-lib-dir /Users/sam/.zvm/0.15.1/lib/ --listen=-
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/tools/json.zig:45:10: error: expected statement, found ';'
+        };
+         ^
+
+error: /Users/sam/code/docz/src/shared/network/anthropic.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/network/anthropic/oauth.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/canvas.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/cli/core/types.zig: non-conforming formatting
+error: /Users/sam/code/docz/agents/markdown/markdown_editor.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 2/7 steps succeeded; 2 failed
+install transitive failure
++- install docz transitive failure
+|  +- compile exe docz Debug native 1 errors
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- install docz
+   +- compile exe docz Debug native 1 errors
+error: failed to check cache: 'src/core/interactive_session.zig' file_hash FileNotFound
+error: the following command failed with 1 compilation errors:
+/Users/sam/.zvm/0.15.1/zig build-exe -lcurl -ODebug --dep core_engine=engine_shared --dep cli_shared --dep tools_shared --dep config_shared --dep json_reflection --dep auth_shared --dep components_shared --dep agent_interface --dep interactive_session --dep agent_main --dep agent_base -Mroot=/Users/sam/code/docz/agents/markdown/main.zig -ODebug --dep anthropic_shared --dep tools_shared --dep auth_shared -Mengine_shared=/Users/sam/code/docz/src/core/engine.zig -ODebug --dep term_shared --dep components_shared -Mcli_shared=/Users/sam/code/docz/src/shared/cli/mod.zig -ODebug --dep anthropic_shared -Mtools_shared=/Users/sam/code/docz/src/shared/tools/mod.zig -ODebug -Mconfig_shared=/Users/sam/code/docz/src/core/config.zig -ODebug -Mjson_reflection=/Users/sam/code/docz/src/shared/json_reflection/mod.zig -ODebug --dep anthropic_shared -Mauth_shared=/Users/sam/code/docz/src/shared/auth/mod.zig -ODebug --dep term_shared -Mcomponents_shared=/Users/sam/code/docz/src/shared/components/mod.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared -Magent_interface=/Users/sam/code/docz/src/shared/tui/agent_interface.zig -ODebug --dep engine_shared --dep config_shared --dep auth_shared --dep anthropic_shared -Minteractive_session=/Users/sam/code/docz/src/core/interactive_session.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep agent_base --dep auth_shared --dep cli_shared -Magent_main=/Users/sam/code/docz/src/core/agent_main.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep anthropic_shared --dep auth_shared -Magent_base=/Users/sam/code/docz/src/core/agent_base.zig -ODebug --dep curl_shared --dep sse_shared -Manthropic_shared=/Users/sam/code/docz/src/shared/network/anthropic/mod.zig -ODebug -Mterm_shared=/Users/sam/code/docz/src/shared/term/mod.zig -ODebug -Mcurl_shared=/Users/sam/code/docz/src/shared/network/curl.zig -ODebug -Msse_shared=/Users/sam/code/docz/src/shared/network/sse.zig -lc --cache-dir .zig-cache --global-cache-dir /Users/sam/.cache/zig --name docz --zig-lib-dir /Users/sam/.zvm/0.15.1/lib/ --listen=-
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/auth/tui/OAuthFlow.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/network/anthropic.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/network/anthropic/oauth.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/canvas.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/cli/core/types.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/widgets/table/Draw.zig: non-conforming formatting
+error: /Users/sam/code/docz/agents/markdown/markdown_editor.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 2/7 steps succeeded; 2 failed
+install transitive failure
++- install docz transitive failure
+|  +- compile exe docz Debug native 1 errors
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- install docz
+   +- compile exe docz Debug native 1 errors
+error: failed to check cache: 'src/core/interactive_session.zig' file_hash FileNotFound
+error: the following command failed with 1 compilation errors:
+/Users/sam/.zvm/0.15.1/zig build-exe -lcurl -ODebug --dep core_engine=engine_shared --dep cli_shared --dep tools_shared --dep config_shared --dep json_reflection --dep auth_shared --dep components_shared --dep agent_interface --dep interactive_session --dep agent_main --dep agent_base -Mroot=/Users/sam/code/docz/agents/markdown/main.zig -ODebug --dep anthropic_shared --dep tools_shared --dep auth_shared -Mengine_shared=/Users/sam/code/docz/src/core/engine.zig -ODebug --dep term_shared --dep components_shared -Mcli_shared=/Users/sam/code/docz/src/shared/cli/mod.zig -ODebug --dep anthropic_shared -Mtools_shared=/Users/sam/code/docz/src/shared/tools/mod.zig -ODebug -Mconfig_shared=/Users/sam/code/docz/src/core/config.zig -ODebug -Mjson_reflection=/Users/sam/code/docz/src/shared/json_reflection/mod.zig -ODebug --dep anthropic_shared -Mauth_shared=/Users/sam/code/docz/src/shared/auth/mod.zig -ODebug --dep term_shared -Mcomponents_shared=/Users/sam/code/docz/src/shared/components/mod.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared -Magent_interface=/Users/sam/code/docz/src/shared/tui/agent_interface.zig -ODebug --dep engine_shared --dep config_shared --dep auth_shared --dep anthropic_shared -Minteractive_session=/Users/sam/code/docz/src/core/interactive_session.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep agent_base --dep auth_shared --dep cli_shared -Magent_main=/Users/sam/code/docz/src/core/agent_main.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep anthropic_shared --dep auth_shared -Magent_base=/Users/sam/code/docz/src/core/agent_base.zig -ODebug --dep curl_shared --dep sse_shared -Manthropic_shared=/Users/sam/code/docz/src/shared/network/anthropic/mod.zig -ODebug -Mterm_shared=/Users/sam/code/docz/src/shared/term/mod.zig -ODebug -Mcurl_shared=/Users/sam/code/docz/src/shared/network/curl.zig -ODebug -Msse_shared=/Users/sam/code/docz/src/shared/network/sse.zig -lc --cache-dir .zig-cache --global-cache-dir /Users/sam/.cache/zig --name docz --zig-lib-dir /Users/sam/.zvm/0.15.1/lib/ --listen=-
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/auth/tui/OAuthFlow.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/network/anthropic.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/network/anthropic/oauth.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/canvas.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/cli/core/types.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/widgets/table/Draw.zig: non-conforming formatting
+error: /Users/sam/code/docz/agents/markdown/markdown_editor.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 2/7 steps succeeded; 2 failed
+install transitive failure
++- install docz transitive failure
+|  +- compile exe docz Debug native 1 errors
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- install docz
+   +- compile exe docz Debug native 1 errors
+error: failed to check cache: 'src/core/interactive_session.zig' file_hash FileNotFound
+error: the following command failed with 1 compilation errors:
+/Users/sam/.zvm/0.15.1/zig build-exe -lcurl -ODebug --dep core_engine=engine_shared --dep cli_shared --dep tools_shared --dep config_shared --dep json_reflection --dep auth_shared --dep components_shared --dep agent_interface --dep interactive_session --dep agent_main --dep agent_base -Mroot=/Users/sam/code/docz/agents/markdown/main.zig -ODebug --dep anthropic_shared --dep tools_shared --dep auth_shared -Mengine_shared=/Users/sam/code/docz/src/core/engine.zig -ODebug --dep term_shared --dep components_shared -Mcli_shared=/Users/sam/code/docz/src/shared/cli/mod.zig -ODebug --dep anthropic_shared -Mtools_shared=/Users/sam/code/docz/src/shared/tools/mod.zig -ODebug -Mconfig_shared=/Users/sam/code/docz/src/core/config.zig -ODebug -Mjson_reflection=/Users/sam/code/docz/src/shared/json_reflection/mod.zig -ODebug --dep anthropic_shared -Mauth_shared=/Users/sam/code/docz/src/shared/auth/mod.zig -ODebug --dep term_shared -Mcomponents_shared=/Users/sam/code/docz/src/shared/components/mod.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared -Magent_interface=/Users/sam/code/docz/src/shared/tui/agent_interface.zig -ODebug --dep engine_shared --dep config_shared --dep auth_shared --dep anthropic_shared -Minteractive_session=/Users/sam/code/docz/src/core/interactive_session.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep agent_base --dep auth_shared --dep cli_shared -Magent_main=/Users/sam/code/docz/src/core/agent_main.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep anthropic_shared --dep auth_shared -Magent_base=/Users/sam/code/docz/src/core/agent_base.zig -ODebug --dep curl_shared --dep sse_shared -Manthropic_shared=/Users/sam/code/docz/src/shared/network/anthropic/mod.zig -ODebug -Mterm_shared=/Users/sam/code/docz/src/shared/term/mod.zig -ODebug -Mcurl_shared=/Users/sam/code/docz/src/shared/network/curl.zig -ODebug -Msse_shared=/Users/sam/code/docz/src/shared/network/sse.zig -lc --cache-dir .zig-cache --global-cache-dir /Users/sam/.cache/zig --name docz --zig-lib-dir /Users/sam/.zvm/0.15.1/lib/ --listen=-
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/auth/tui/OAuthFlow.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/network/anthropic.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/network/anthropic/oauth.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/canvas.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/cli/core/types.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/widgets/table/Draw.zig: non-conforming formatting
+error: /Users/sam/code/docz/agents/markdown/markdown_editor.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 2/7 steps succeeded; 2 failed
+install transitive failure
++- install docz transitive failure
+|  +- compile exe docz Debug native 1 errors
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- install docz
+   +- compile exe docz Debug native 1 errors
+error: failed to check cache: 'src/core/interactive_session.zig' file_hash FileNotFound
+error: the following command failed with 1 compilation errors:
+/Users/sam/.zvm/0.15.1/zig build-exe -lcurl -ODebug --dep core_engine=engine_shared --dep cli_shared --dep tools_shared --dep config_shared --dep json_reflection --dep auth_shared --dep components_shared --dep agent_interface --dep interactive_session --dep agent_main --dep agent_base -Mroot=/Users/sam/code/docz/agents/markdown/main.zig -ODebug --dep anthropic_shared --dep tools_shared --dep auth_shared -Mengine_shared=/Users/sam/code/docz/src/core/engine.zig -ODebug --dep term_shared --dep components_shared -Mcli_shared=/Users/sam/code/docz/src/shared/cli/mod.zig -ODebug --dep anthropic_shared -Mtools_shared=/Users/sam/code/docz/src/shared/tools/mod.zig -ODebug -Mconfig_shared=/Users/sam/code/docz/src/core/config.zig -ODebug -Mjson_reflection=/Users/sam/code/docz/src/shared/json_reflection/mod.zig -ODebug --dep anthropic_shared -Mauth_shared=/Users/sam/code/docz/src/shared/auth/mod.zig -ODebug --dep term_shared -Mcomponents_shared=/Users/sam/code/docz/src/shared/components/mod.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared -Magent_interface=/Users/sam/code/docz/src/shared/tui/agent_interface.zig -ODebug --dep engine_shared --dep config_shared --dep auth_shared --dep anthropic_shared -Minteractive_session=/Users/sam/code/docz/src/core/interactive_session.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep agent_base --dep auth_shared --dep cli_shared -Magent_main=/Users/sam/code/docz/src/core/agent_main.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep anthropic_shared --dep auth_shared -Magent_base=/Users/sam/code/docz/src/core/agent_base.zig -ODebug --dep curl_shared --dep sse_shared -Manthropic_shared=/Users/sam/code/docz/src/shared/network/anthropic/mod.zig -ODebug -Mterm_shared=/Users/sam/code/docz/src/shared/term/mod.zig -ODebug -Mcurl_shared=/Users/sam/code/docz/src/shared/network/curl.zig -ODebug -Msse_shared=/Users/sam/code/docz/src/shared/network/sse.zig -lc --cache-dir .zig-cache --global-cache-dir /Users/sam/.cache/zig --name docz --zig-lib-dir /Users/sam/.zvm/0.15.1/lib/ --listen=-
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/auth/tui/OAuthFlow.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/network/anthropic.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/network/anthropic/oauth.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/canvas.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/cli/core/types.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/widgets/table/Draw.zig: non-conforming formatting
+error: /Users/sam/code/docz/agents/markdown/markdown_editor.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 2/7 steps succeeded; 2 failed
+install transitive failure
++- install docz transitive failure
+|  +- compile exe docz Debug native 1 errors
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- install docz
+   +- compile exe docz Debug native 1 errors
+error: failed to check cache: 'src/core/interactive_session.zig' file_hash FileNotFound
+error: the following command failed with 1 compilation errors:
+/Users/sam/.zvm/0.15.1/zig build-exe -lcurl -ODebug --dep core_engine=engine_shared --dep cli_shared --dep tools_shared --dep config_shared --dep json_reflection --dep auth_shared --dep components_shared --dep agent_interface --dep interactive_session --dep agent_main --dep agent_base -Mroot=/Users/sam/code/docz/agents/markdown/main.zig -ODebug --dep anthropic_shared --dep tools_shared --dep auth_shared -Mengine_shared=/Users/sam/code/docz/src/core/engine.zig -ODebug --dep term_shared --dep components_shared -Mcli_shared=/Users/sam/code/docz/src/shared/cli/mod.zig -ODebug --dep anthropic_shared -Mtools_shared=/Users/sam/code/docz/src/shared/tools/mod.zig -ODebug -Mconfig_shared=/Users/sam/code/docz/src/core/config.zig -ODebug -Mjson_reflection=/Users/sam/code/docz/src/shared/json_reflection/mod.zig -ODebug --dep anthropic_shared -Mauth_shared=/Users/sam/code/docz/src/shared/auth/mod.zig -ODebug --dep term_shared -Mcomponents_shared=/Users/sam/code/docz/src/shared/components/mod.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared -Magent_interface=/Users/sam/code/docz/src/shared/tui/agent_interface.zig -ODebug --dep engine_shared --dep config_shared --dep auth_shared --dep anthropic_shared -Minteractive_session=/Users/sam/code/docz/src/core/interactive_session.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep agent_base --dep auth_shared --dep cli_shared -Magent_main=/Users/sam/code/docz/src/core/agent_main.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep anthropic_shared --dep auth_shared -Magent_base=/Users/sam/code/docz/src/core/agent_base.zig -ODebug --dep curl_shared --dep sse_shared -Manthropic_shared=/Users/sam/code/docz/src/shared/network/anthropic/mod.zig -ODebug -Mterm_shared=/Users/sam/code/docz/src/shared/term/mod.zig -ODebug -Mcurl_shared=/Users/sam/code/docz/src/shared/network/curl.zig -ODebug -Msse_shared=/Users/sam/code/docz/src/shared/network/sse.zig -lc --cache-dir .zig-cache --global-cache-dir /Users/sam/.cache/zig --name docz --zig-lib-dir /Users/sam/.zvm/0.15.1/lib/ --listen=-
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/auth/tui/OAuthFlow.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/network/anthropic.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/network/anthropic/oauth.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/canvas.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/cli/core/types.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/widgets/table/Draw.zig: non-conforming formatting
+error: /Users/sam/code/docz/agents/markdown/markdown_editor.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 2/7 steps succeeded; 2 failed
+install transitive failure
++- install docz transitive failure
+|  +- compile exe docz Debug native 1 errors
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- install docz
+   +- compile exe docz Debug native 1 errors
+error: failed to check cache: 'src/core/interactive_session.zig' file_hash FileNotFound
+error: the following command failed with 1 compilation errors:
+/Users/sam/.zvm/0.15.1/zig build-exe -lcurl -ODebug --dep core_engine=engine_shared --dep cli_shared --dep tools_shared --dep config_shared --dep json_reflection --dep auth_shared --dep components_shared --dep agent_interface --dep interactive_session --dep agent_main --dep agent_base -Mroot=/Users/sam/code/docz/agents/markdown/main.zig -ODebug --dep anthropic_shared --dep tools_shared --dep auth_shared -Mengine_shared=/Users/sam/code/docz/src/core/engine.zig -ODebug --dep term_shared --dep components_shared -Mcli_shared=/Users/sam/code/docz/src/shared/cli/mod.zig -ODebug --dep anthropic_shared -Mtools_shared=/Users/sam/code/docz/src/shared/tools/mod.zig -ODebug -Mconfig_shared=/Users/sam/code/docz/src/core/config.zig -ODebug -Mjson_reflection=/Users/sam/code/docz/src/shared/json_reflection/mod.zig -ODebug --dep anthropic_shared -Mauth_shared=/Users/sam/code/docz/src/shared/auth/mod.zig -ODebug --dep term_shared -Mcomponents_shared=/Users/sam/code/docz/src/shared/components/mod.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared -Magent_interface=/Users/sam/code/docz/src/shared/tui/agent_interface.zig -ODebug --dep engine_shared --dep config_shared --dep auth_shared --dep anthropic_shared -Minteractive_session=/Users/sam/code/docz/src/core/interactive_session.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep agent_base --dep auth_shared --dep cli_shared -Magent_main=/Users/sam/code/docz/src/core/agent_main.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep anthropic_shared --dep auth_shared -Magent_base=/Users/sam/code/docz/src/core/agent_base.zig -ODebug --dep curl_shared --dep sse_shared -Manthropic_shared=/Users/sam/code/docz/src/shared/network/anthropic/mod.zig -ODebug -Mterm_shared=/Users/sam/code/docz/src/shared/term/mod.zig -ODebug -Mcurl_shared=/Users/sam/code/docz/src/shared/network/curl.zig -ODebug -Msse_shared=/Users/sam/code/docz/src/shared/network/sse.zig -lc --cache-dir .zig-cache --global-cache-dir /Users/sam/.cache/zig --name docz --zig-lib-dir /Users/sam/.zvm/0.15.1/lib/ --listen=-
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/auth/tui/OAuthFlow.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/network/anthropic.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/network/anthropic/oauth.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/canvas.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/cli/core/types.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/widgets/table/Draw.zig: non-conforming formatting
+error: /Users/sam/code/docz/agents/markdown/markdown_editor.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 2/7 steps succeeded; 2 failed
+install transitive failure
++- install docz transitive failure
+|  +- compile exe docz Debug native 1 errors
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- install docz
+   +- compile exe docz Debug native 1 errors
+error: failed to check cache: 'src/core/interactive_session.zig' file_hash FileNotFound
+error: the following command failed with 1 compilation errors:
+/Users/sam/.zvm/0.15.1/zig build-exe -lcurl -ODebug --dep core_engine=engine_shared --dep cli_shared --dep tools_shared --dep config_shared --dep json_reflection --dep auth_shared --dep components_shared --dep agent_interface --dep interactive_session --dep agent_main --dep agent_base -Mroot=/Users/sam/code/docz/agents/markdown/main.zig -ODebug --dep anthropic_shared --dep tools_shared --dep auth_shared -Mengine_shared=/Users/sam/code/docz/src/core/engine.zig -ODebug --dep term_shared --dep components_shared -Mcli_shared=/Users/sam/code/docz/src/shared/cli/mod.zig -ODebug --dep anthropic_shared -Mtools_shared=/Users/sam/code/docz/src/shared/tools/mod.zig -ODebug -Mconfig_shared=/Users/sam/code/docz/src/core/config.zig -ODebug -Mjson_reflection=/Users/sam/code/docz/src/shared/json_reflection/mod.zig -ODebug --dep anthropic_shared -Mauth_shared=/Users/sam/code/docz/src/shared/auth/mod.zig -ODebug --dep term_shared -Mcomponents_shared=/Users/sam/code/docz/src/shared/components/mod.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared -Magent_interface=/Users/sam/code/docz/src/shared/tui/agent_interface.zig -ODebug --dep engine_shared --dep config_shared --dep auth_shared --dep anthropic_shared -Minteractive_session=/Users/sam/code/docz/src/core/interactive_session.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep agent_base --dep auth_shared --dep cli_shared -Magent_main=/Users/sam/code/docz/src/core/agent_main.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep anthropic_shared --dep auth_shared -Magent_base=/Users/sam/code/docz/src/core/agent_base.zig -ODebug --dep curl_shared --dep sse_shared -Manthropic_shared=/Users/sam/code/docz/src/shared/network/anthropic/mod.zig -ODebug -Mterm_shared=/Users/sam/code/docz/src/shared/term/mod.zig -ODebug -Mcurl_shared=/Users/sam/code/docz/src/shared/network/curl.zig -ODebug -Msse_shared=/Users/sam/code/docz/src/shared/network/sse.zig -lc --cache-dir .zig-cache --global-cache-dir /Users/sam/.cache/zig --name docz --zig-lib-dir /Users/sam/.zvm/0.15.1/lib/ --listen=-
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/auth/tui/OAuthFlow.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/network/anthropic.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/network/anthropic/oauth.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/canvas.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/cli/core/types.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/widgets/table/Draw.zig: non-conforming formatting
+error: /Users/sam/code/docz/agents/markdown/markdown_editor.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 2/7 steps succeeded; 2 failed
+install transitive failure
++- install docz transitive failure
+|  +- compile exe docz Debug native 1 errors
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- install docz
+   +- compile exe docz Debug native 1 errors
+error: failed to check cache: 'src/core/interactive_session.zig' file_hash FileNotFound
+error: the following command failed with 1 compilation errors:
+/Users/sam/.zvm/0.15.1/zig build-exe -lcurl -ODebug --dep core_engine=engine_shared --dep cli_shared --dep tools_shared --dep config_shared --dep json_reflection --dep auth_shared --dep components_shared --dep agent_interface --dep interactive_session --dep agent_main --dep agent_base -Mroot=/Users/sam/code/docz/agents/markdown/main.zig -ODebug --dep anthropic_shared --dep tools_shared --dep auth_shared -Mengine_shared=/Users/sam/code/docz/src/core/engine.zig -ODebug --dep term_shared --dep components_shared -Mcli_shared=/Users/sam/code/docz/src/shared/cli/mod.zig -ODebug --dep anthropic_shared -Mtools_shared=/Users/sam/code/docz/src/shared/tools/mod.zig -ODebug -Mconfig_shared=/Users/sam/code/docz/src/core/config.zig -ODebug -Mjson_reflection=/Users/sam/code/docz/src/shared/json_reflection/mod.zig -ODebug --dep anthropic_shared -Mauth_shared=/Users/sam/code/docz/src/shared/auth/mod.zig -ODebug --dep term_shared -Mcomponents_shared=/Users/sam/code/docz/src/shared/components/mod.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared -Magent_interface=/Users/sam/code/docz/src/shared/tui/agent_interface.zig -ODebug --dep engine_shared --dep config_shared --dep auth_shared --dep anthropic_shared -Minteractive_session=/Users/sam/code/docz/src/core/interactive_session.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep agent_base --dep auth_shared --dep cli_shared -Magent_main=/Users/sam/code/docz/src/core/agent_main.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep anthropic_shared --dep auth_shared -Magent_base=/Users/sam/code/docz/src/core/agent_base.zig -ODebug --dep curl_shared --dep sse_shared -Manthropic_shared=/Users/sam/code/docz/src/shared/network/anthropic/mod.zig -ODebug -Mterm_shared=/Users/sam/code/docz/src/shared/term/mod.zig -ODebug -Mcurl_shared=/Users/sam/code/docz/src/shared/network/curl.zig -ODebug -Msse_shared=/Users/sam/code/docz/src/shared/network/sse.zig -lc --cache-dir .zig-cache --global-cache-dir /Users/sam/.cache/zig --name docz --zig-lib-dir /Users/sam/.zvm/0.15.1/lib/ --listen=-
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/auth/tui/OAuthFlow.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/network/anthropic.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/network/anthropic/oauth.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/canvas.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/cli/core/types.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/widgets/table/Draw.zig: non-conforming formatting
+error: /Users/sam/code/docz/agents/markdown/markdown_editor.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 2/7 steps succeeded; 2 failed
+install transitive failure
++- install docz transitive failure
+|  +- compile exe docz Debug native 1 errors
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- install docz
+   +- compile exe docz Debug native 1 errors
+error: failed to check cache: 'src/core/interactive_session.zig' file_hash FileNotFound
+error: the following command failed with 1 compilation errors:
+/Users/sam/.zvm/0.15.1/zig build-exe -lcurl -ODebug --dep core_engine=engine_shared --dep cli_shared --dep tools_shared --dep config_shared --dep json_reflection --dep auth_shared --dep components_shared --dep agent_interface --dep interactive_session --dep agent_main --dep agent_base -Mroot=/Users/sam/code/docz/agents/markdown/main.zig -ODebug --dep anthropic_shared --dep tools_shared --dep auth_shared -Mengine_shared=/Users/sam/code/docz/src/core/engine.zig -ODebug --dep term_shared --dep components_shared -Mcli_shared=/Users/sam/code/docz/src/shared/cli/mod.zig -ODebug --dep anthropic_shared -Mtools_shared=/Users/sam/code/docz/src/shared/tools/mod.zig -ODebug -Mconfig_shared=/Users/sam/code/docz/src/core/config.zig -ODebug -Mjson_reflection=/Users/sam/code/docz/src/shared/json_reflection/mod.zig -ODebug --dep anthropic_shared -Mauth_shared=/Users/sam/code/docz/src/shared/auth/mod.zig -ODebug --dep term_shared -Mcomponents_shared=/Users/sam/code/docz/src/shared/components/mod.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared -Magent_interface=/Users/sam/code/docz/src/shared/tui/agent_interface.zig -ODebug --dep engine_shared --dep config_shared --dep auth_shared --dep anthropic_shared -Minteractive_session=/Users/sam/code/docz/src/core/interactive_session.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep agent_base --dep auth_shared --dep cli_shared -Magent_main=/Users/sam/code/docz/src/core/agent_main.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep anthropic_shared --dep auth_shared -Magent_base=/Users/sam/code/docz/src/core/agent_base.zig -ODebug --dep curl_shared --dep sse_shared -Manthropic_shared=/Users/sam/code/docz/src/shared/network/anthropic/mod.zig -ODebug -Mterm_shared=/Users/sam/code/docz/src/shared/term/mod.zig -ODebug -Mcurl_shared=/Users/sam/code/docz/src/shared/network/curl.zig -ODebug -Msse_shared=/Users/sam/code/docz/src/shared/network/sse.zig -lc --cache-dir .zig-cache --global-cache-dir /Users/sam/.cache/zig --name docz --zig-lib-dir /Users/sam/.zvm/0.15.1/lib/ --listen=-
+install
++- fmt
+   +- zig fmt --check failure
+error: /Users/sam/code/docz/src/shared/auth/tui/OAuthFlow.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/network/anthropic.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/network/anthropic/oauth.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/canvas.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/render/scheduler.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/cli/core/types.zig: non-conforming formatting
+error: /Users/sam/code/docz/src/shared/widgets/table/Draw.zig: non-conforming formatting
+error: /Users/sam/code/docz/agents/markdown/markdown_editor.zig: non-conforming formatting
+error: the following command exited with error code 1:
+/Users/sam/.zvm/0.15.1/zig fmt --check /Users/sam/code/docz/src /Users/sam/code/docz/agents
+
+Build Summary: 2/7 steps succeeded; 2 failed
+install transitive failure
++- install docz transitive failure
+|  +- compile exe docz Debug native 1 errors
++- fmt transitive failure
+   +- zig fmt --check failure
+
+install
++- install docz
+   +- compile exe docz Debug native 1 errors
+error: failed to check cache: 'src/core/interactive_session.zig' file_hash FileNotFound
+error: the following command failed with 1 compilation errors:
+/Users/sam/.zvm/0.15.1/zig build-exe -lcurl -ODebug --dep core_engine=engine_shared --dep cli_shared --dep tools_shared --dep config_shared --dep json_reflection --dep auth_shared --dep components_shared --dep agent_interface --dep interactive_session --dep agent_main --dep agent_base -Mroot=/Users/sam/code/docz/agents/markdown/main.zig -ODebug --dep anthropic_shared --dep tools_shared --dep auth_shared -Mengine_shared=/Users/sam/code/docz/src/core/engine.zig -ODebug --dep term_shared --dep components_shared -Mcli_shared=/Users/sam/code/docz/src/shared/cli/mod.zig -ODebug --dep anthropic_shared -Mtools_shared=/Users/sam/code/docz/src/shared/tools/mod.zig -ODebug -Mconfig_shared=/Users/sam/code/docz/src/core/config.zig -ODebug -Mjson_reflection=/Users/sam/code/docz/src/shared/json_reflection/mod.zig -ODebug --dep anthropic_shared -Mauth_shared=/Users/sam/code/docz/src/shared/auth/mod.zig -ODebug --dep term_shared -Mcomponents_shared=/Users/sam/code/docz/src/shared/components/mod.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared -Magent_interface=/Users/sam/code/docz/src/shared/tui/agent_interface.zig -ODebug --dep engine_shared --dep config_shared --dep auth_shared --dep anthropic_shared -Minteractive_session=/Users/sam/code/docz/src/core/interactive_session.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep agent_base --dep auth_shared --dep cli_shared -Magent_main=/Users/sam/code/docz/src/core/agent_main.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep anthropic_shared --dep auth_shared -Magent_base=/Users/sam/code/docz/src/core/agent_base.zig -ODebug --dep curl_shared --dep sse_shared -Manthropic_shared=/Users/sam/code/docz/src/shared/network/anthropic/mod.zig -ODebug -Mterm_shared=/Users/sam/code/docz/src/shared/term/mod.zig -ODebug -Mcurl_shared=/Users/sam/code/docz/src/shared/network/curl.zig -ODebug -Msse_shared=/Users/sam/code/docz/src/shared/network/sse.zig -lc --cache-dir .zig-cache --global-cache-dir /Users/sam/.cache/zig --name docz --zig-lib-dir /Users/sam/.zvm/0.15.1/lib/ --listen=-
+
+Build Summary: 4/7 steps succeeded; 1 failed
+install transitive failure
++- install docz transitive failure
+|  +- compile exe docz Debug native 1 errors
++- fmt success
+   +- zig fmt --check success
+
+install
++- install docz
+   +- compile exe docz Debug native 1 errors
+error: failed to check cache: 'src/core/interactive_session.zig' file_hash FileNotFound
+error: the following command failed with 1 compilation errors:
+/Users/sam/.zvm/0.15.1/zig build-exe -lcurl -ODebug --dep core_engine=engine_shared --dep cli_shared --dep tools_shared --dep config_shared --dep json_reflection --dep auth_shared --dep components_shared --dep agent_interface --dep interactive_session --dep agent_main --dep agent_base -Mroot=/Users/sam/code/docz/agents/markdown/main.zig -ODebug --dep anthropic_shared --dep tools_shared --dep auth_shared -Mengine_shared=/Users/sam/code/docz/src/core/engine.zig -ODebug --dep term_shared --dep components_shared -Mcli_shared=/Users/sam/code/docz/src/shared/cli/mod.zig -ODebug --dep anthropic_shared -Mtools_shared=/Users/sam/code/docz/src/shared/tools/mod.zig -ODebug -Mconfig_shared=/Users/sam/code/docz/src/core/config.zig -ODebug -Mjson_reflection=/Users/sam/code/docz/src/shared/json_reflection/mod.zig -ODebug --dep anthropic_shared -Mauth_shared=/Users/sam/code/docz/src/shared/auth/mod.zig -ODebug --dep term_shared -Mcomponents_shared=/Users/sam/code/docz/src/shared/components/mod.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared -Magent_interface=/Users/sam/code/docz/src/shared/tui/agent_interface.zig -ODebug --dep engine_shared --dep config_shared --dep auth_shared --dep anthropic_shared -Minteractive_session=/Users/sam/code/docz/src/core/interactive_session.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep agent_base --dep auth_shared --dep cli_shared -Magent_main=/Users/sam/code/docz/src/core/agent_main.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep anthropic_shared --dep auth_shared -Magent_base=/Users/sam/code/docz/src/core/agent_base.zig -ODebug --dep curl_shared --dep sse_shared -Manthropic_shared=/Users/sam/code/docz/src/shared/network/anthropic/mod.zig -ODebug -Mterm_shared=/Users/sam/code/docz/src/shared/term/mod.zig -ODebug -Mcurl_shared=/Users/sam/code/docz/src/shared/network/curl.zig -ODebug -Msse_shared=/Users/sam/code/docz/src/shared/network/sse.zig -lc --cache-dir .zig-cache --global-cache-dir /Users/sam/.cache/zig --name docz --zig-lib-dir /Users/sam/.zvm/0.15.1/lib/ --listen=-
+
+Build Summary: 4/7 steps succeeded; 1 failed
+install transitive failure
++- install docz transitive failure
+   +- compile exe docz Debug native 1 errors
+
+install
++- install docz
+   +- compile exe docz Debug native 1 errors
+error: failed to check cache: 'src/core/interactive_session.zig' file_hash FileNotFound
+error: the following command failed with 1 compilation errors:
+/Users/sam/.zvm/0.15.1/zig build-exe -lcurl -ODebug --dep core_engine=engine_shared --dep cli_shared --dep tools_shared --dep config_shared --dep json_reflection --dep auth_shared --dep components_shared --dep agent_interface --dep interactive_session --dep agent_main --dep agent_base -Mroot=/Users/sam/code/docz/agents/markdown/main.zig -ODebug --dep anthropic_shared --dep tools_shared --dep auth_shared -Mengine_shared=/Users/sam/code/docz/src/core/engine.zig -ODebug --dep term_shared --dep components_shared -Mcli_shared=/Users/sam/code/docz/src/shared/cli/mod.zig -ODebug --dep anthropic_shared -Mtools_shared=/Users/sam/code/docz/src/shared/tools/mod.zig -ODebug -Mconfig_shared=/Users/sam/code/docz/src/core/config.zig -ODebug -Mjson_reflection=/Users/sam/code/docz/src/shared/json_reflection/mod.zig -ODebug --dep anthropic_shared -Mauth_shared=/Users/sam/code/docz/src/shared/auth/mod.zig -ODebug --dep term_shared -Mcomponents_shared=/Users/sam/code/docz/src/shared/components/mod.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared -Magent_interface=/Users/sam/code/docz/src/shared/tui/agent_interface.zig -ODebug --dep engine_shared --dep config_shared --dep auth_shared --dep anthropic_shared -Minteractive_session=/Users/sam/code/docz/src/core/interactive_session.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep agent_base --dep auth_shared --dep cli_shared -Magent_main=/Users/sam/code/docz/src/core/agent_main.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep anthropic_shared --dep auth_shared -Magent_base=/Users/sam/code/docz/src/core/agent_base.zig -ODebug --dep curl_shared --dep sse_shared -Manthropic_shared=/Users/sam/code/docz/src/shared/network/anthropic/mod.zig -ODebug -Mterm_shared=/Users/sam/code/docz/src/shared/term/mod.zig -ODebug -Mcurl_shared=/Users/sam/code/docz/src/shared/network/curl.zig -ODebug -Msse_shared=/Users/sam/code/docz/src/shared/network/sse.zig -lc --cache-dir .zig-cache --global-cache-dir /Users/sam/.cache/zig --name docz --zig-lib-dir /Users/sam/.zvm/0.15.1/lib/ --listen=-
+
+Build Summary: 4/7 steps succeeded; 1 failed
+install transitive failure
++- install docz transitive failure
+   +- compile exe docz Debug native 1 errors
+
+install
++- install docz
+   +- compile exe docz Debug native 1 errors
+error: failed to check cache: 'src/core/interactive_session.zig' file_hash FileNotFound
+error: the following command failed with 1 compilation errors:
+/Users/sam/.zvm/0.15.1/zig build-exe -lcurl -ODebug --dep core_engine=engine_shared --dep cli_shared --dep tools_shared --dep config_shared --dep json_reflection --dep auth_shared --dep components_shared --dep agent_interface --dep interactive_session --dep agent_main --dep agent_base -Mroot=/Users/sam/code/docz/agents/markdown/main.zig -ODebug --dep anthropic_shared --dep tools_shared --dep auth_shared -Mengine_shared=/Users/sam/code/docz/src/core/engine.zig -ODebug --dep term_shared --dep components_shared -Mcli_shared=/Users/sam/code/docz/src/shared/cli/mod.zig -ODebug --dep anthropic_shared -Mtools_shared=/Users/sam/code/docz/src/shared/tools/mod.zig -ODebug -Mconfig_shared=/Users/sam/code/docz/src/core/config.zig -ODebug -Mjson_reflection=/Users/sam/code/docz/src/shared/json_reflection/mod.zig -ODebug --dep anthropic_shared -Mauth_shared=/Users/sam/code/docz/src/shared/auth/mod.zig -ODebug --dep term_shared -Mcomponents_shared=/Users/sam/code/docz/src/shared/components/mod.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared -Magent_interface=/Users/sam/code/docz/src/shared/tui/agent_interface.zig -ODebug --dep engine_shared --dep config_shared --dep auth_shared --dep anthropic_shared -Minteractive_session=/Users/sam/code/docz/src/core/interactive_session.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep agent_base --dep auth_shared --dep cli_shared -Magent_main=/Users/sam/code/docz/src/core/agent_main.zig -ODebug --dep config_shared --dep engine_shared --dep tools_shared --dep interactive_session --dep anthropic_shared --dep auth_shared -Magent_base=/Users/sam/code/docz/src/core/agent_base.zig -ODebug --dep curl_shared --dep sse_shared -Manthropic_shared=/Users/sam/code/docz/src/shared/network/anthropic/mod.zig -ODebug -Mterm_shared=/Users/sam/code/docz/src/shared/term/mod.zig -ODebug -Mcurl_shared=/Users/sam/code/docz/src/shared/network/curl.zig -ODebug -Msse_shared=/Users/sam/code/docz/src/shared/network/sse.zig -lc --cache-dir .zig-cache --global-cache-dir /Users/sam/.cache/zig --name docz --zig-lib-dir /Users/sam/.zvm/0.15.1/lib/ --listen=-
+
+Build Summary: 4/7 steps succeeded; 1 failed
+install transitive failure
++- install docz transitive failure
+   +- compile exe docz Debug native 1 errors
+

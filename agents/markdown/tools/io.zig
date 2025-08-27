@@ -62,9 +62,9 @@
 const std = @import("std");
 const json = std.json;
 const json_reflection = @import("../../../src/shared/json_reflection/mod.zig");
-const fs = @import("../common/fs.zig");
-const text = @import("../common/text.zig");
-const link = @import("../common/link.zig");
+const fs = @import("../lib/fs.zig");
+const text = @import("../lib/text.zig");
+const link = @import("../lib/link.zig");
 
 pub const Error = fs.Error || text.Error || link.Error || error{
     InvalidSection,

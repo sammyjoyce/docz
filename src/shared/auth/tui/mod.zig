@@ -7,7 +7,7 @@ const std = @import("std");
 const oauth = @import("../oauth/mod.zig");
 const core = @import("../core/mod.zig");
 
-// Minimal TUI interface with basic ANSI escape codes
+// Minimal TUI interface with ANSI escape codes
 const Tui = struct {
     fn getTerminalSize() struct { width: u16, height: u16 } {
         // Use a reasonable default since we don't have access to full TUI
@@ -35,9 +35,8 @@ const Tui = struct {
 };
 
 // Re-export individual TUI components
-pub const oauth_wizard = @import("oauth_wizard.zig");
-pub const oauth_wizard_advanced = @import("oauth_wizard_pro.zig");
-pub const oauth_flow = @import("oauth_flow.zig");
+pub const oauth_wizard = @import("OAuthWizard.zig");
+pub const oauth_flow = @import("OAuthFlow.zig");
 pub const auth_status = @import("auth_status.zig");
 pub const code_input = @import("code_input.zig");
 
@@ -45,8 +44,6 @@ pub const code_input = @import("code_input.zig");
 pub const runAuthTUI = runTUI;
 pub const setupOAuthWithTUI = oauth_wizard.setupOAuthWithTUI;
 pub const runOAuthWizard = oauth_wizard.runOAuthWizard;
-pub const setupOAuthWithAdvancedTUI = oauth_wizard_advanced.setupOAuthWithTUI;
-pub const runOAuthWizardPro = oauth_wizard_advanced.runOAuthWizard;
 pub const setupOAuthFlowWithTUI = oauth_flow.setupOAuthWithTUI;
 pub const runOAuthFlowWizard = oauth_flow.runOAuthWizard;
 pub const showAuthStatus = auth_status.display;
@@ -56,8 +53,8 @@ pub const inputAuthCode = code_input.input;
 pub fn runTUI(allocator: std.mem.Allocator, auth_type: AuthTUIType) !void {
     switch (auth_type) {
         .oauth_setup => try oauth_wizard.run(allocator),
-        .oauth_unified => {
-            // For unified OAuth, we need renderer and theme manager
+        .oauth_flow => {
+            // For OAuth flow, we need renderer and theme manager
             // This would be provided by the calling application
             return error.NotImplemented; // Placeholder - needs proper integration
         },
@@ -69,7 +66,7 @@ pub fn runTUI(allocator: std.mem.Allocator, auth_type: AuthTUIType) !void {
 /// Types of authentication TUI interfaces
 pub const AuthTUIType = enum {
     oauth_setup,
-    oauth_unified,
+    oauth_flow,
     status,
     refresh,
 };

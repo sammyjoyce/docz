@@ -17,21 +17,21 @@ const Rect = term.Rect;
 const GraphicsManager = graphics.Graphics;
 
 /// Unique identifier for components
-pub const ComponentId = u32;
+pub const Id = u32;
 
 /// Event types that components can handle
 pub const Event = union(enum) {
-    key: KeyEvent,
-    mouse: MouseEvent,
-    resize: ResizeEvent,
-    focus: FocusEvent,
-    custom: CustomEvent,
+    key: Key,
+    mouse: Mouse,
+    resize: Resize,
+    focus: Focus,
+    custom: Custom,
 
-    pub const KeyEvent = struct {
-        key: Key,
-        modifiers: KeyModifiers,
+    pub const Key = struct {
+        key: KeyType,
+        modifiers: Modifiers,
 
-        pub const Key = enum {
+        pub const KeyType = enum {
             char,
             enter,
             escape,
@@ -42,67 +42,67 @@ pub const Event = union(enum) {
             down,
             left,
             right,
-            PAGE_UP,
-            PAGE_DOWN,
-            HOME,
-            END,
-            F1,
-            F2,
-            F3,
-            F4,
-            F5,
-            F6,
-            F7,
-            F8,
-            F9,
-            F10,
-            F11,
-            F12,
+            page_up,
+            page_down,
+            home,
+            end,
+            f1,
+            f2,
+            f3,
+            f4,
+            f5,
+            f6,
+            f7,
+            f8,
+            f9,
+            f10,
+            f11,
+            f12,
         };
 
-        pub const KeyModifiers = packed struct {
+        pub const Modifiers = packed struct {
             ctrl: bool = false,
             alt: bool = false,
             shift: bool = false,
         };
     };
 
-    pub const MouseEvent = struct {
+    pub const Mouse = struct {
         pos: Point,
-        button: MouseButton,
-        action: MouseAction,
+        button: Button,
+        action: Action,
 
-        pub const MouseButton = enum {
+        pub const Button = enum {
             left,
             right,
             middle,
-            WHEEL_UP,
-            WHEEL_DOWN,
+            wheel_up,
+            wheel_down,
         };
 
-        pub const MouseAction = enum {
-            PRESS,
-            RELEASE,
-            MOVE,
+        pub const Action = enum {
+            press,
+            release,
+            move,
         };
     };
 
-    pub const ResizeEvent = struct {
-        newSize: Rect,
+    pub const Resize = struct {
+        size: Rect,
     };
 
-    pub const FocusEvent = struct {
+    pub const Focus = struct {
         gained: bool,
     };
 
-    pub const CustomEvent = struct {
+    pub const Custom = struct {
         name: []const u8,
         data: ?*anyopaque,
     };
 };
 
 /// Component state management
-pub const ComponentState = struct {
+pub const State = struct {
     visible: bool = true,
     enabled: bool = true,
     focused: bool = false,
@@ -110,11 +110,11 @@ pub const ComponentState = struct {
     bounds: Rect = .{ .x = 0, .y = 0, .width = 0, .height = 0 },
     zIndex: i32 = 0,
 
-    pub fn markDirty(self: *ComponentState) void {
+    pub fn markDirty(self: *State) void {
         self.dirty = true;
     }
 
-    pub fn clearDirty(self: *ComponentState) void {
+    pub fn clearDirty(self: *State) void {
         self.dirty = false;
     }
 };
@@ -159,8 +159,8 @@ pub const Component = struct {
         deinit: *const fn (impl: *anyopaque) void,
 
         // State management
-        getState: *const fn (impl: *anyopaque) *ComponentState,
-        setState: *const fn (impl: *anyopaque, state: ComponentState) void,
+        getState: *const fn (impl: *anyopaque) *State,
+        setState: *const fn (impl: *anyopaque, state: State) void,
 
         // Rendering
         render: *const fn (impl: *anyopaque, ctx: Render) anyerror!void,
@@ -180,7 +180,7 @@ pub const Component = struct {
 
     vtable: *const VTable,
     impl: *anyopaque,
-    id: ComponentId,
+    id: Id,
 
     // Public interface methods
     pub inline fn init(self: *Self, allocator: std.mem.Allocator) !void {
@@ -191,11 +191,11 @@ pub const Component = struct {
         return self.vtable.deinit(self.impl);
     }
 
-    pub inline fn getState(self: *Self) *ComponentState {
+    pub inline fn getState(self: *Self) *State {
         return self.vtable.getState(self.impl);
     }
 
-    pub inline fn setState(self: *Self, state: ComponentState) void {
+    pub inline fn setState(self: *Self, state: State) void {
         return self.vtable.setState(self.impl, state);
     }
 
@@ -273,13 +273,13 @@ pub const Component = struct {
 };
 
 /// Component registry for handling component lifecycle and events
-pub const ComponentRegistry = struct {
+pub const Registry = struct {
     const Self = @This();
 
     allocator: std.mem.Allocator,
     components: std.ArrayList(*Component),
     focusedComponent: ?*Component,
-    nextId: ComponentId,
+    nextId: Id,
     theme: *Theme,
 
     pub fn init(allocator: std.mem.Allocator, theme: *Theme) Self {
@@ -438,7 +438,7 @@ pub const Animation = struct {
 };
 
 test "component state" {
-    var state = ComponentState{};
+    var state = State{};
     try std.testing.expect(state.dirty);
 
     state.clearDirty();

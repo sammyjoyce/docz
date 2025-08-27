@@ -6,7 +6,7 @@ const std = @import("std");
 // Export hyperlink utilities
 pub const hyperlinks = @import("hyperlinks.zig");
 
-// For now, provide basic utilities
+// For now, provide utilities
 pub fn printVersion() void {
     var stdout_buffer: [4096]u8 = undefined;
     var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);

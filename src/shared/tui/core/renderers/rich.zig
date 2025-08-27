@@ -17,7 +17,6 @@ const components = @import("../../../components/mod.zig");
 
 // Import terminal capabilities modules
 const term_ansi_color = term_mod.ansi.color;
-const term_ansi_enhanced_color = term_mod.ansi.color;
 const term_ansi_cursor = term_mod.cursor;
 const term_ansi_mode = term_mod.ansi.mode;
 const term_ansi_screen = term_mod.ansi.screen;
@@ -423,9 +422,9 @@ pub const RichRenderer = struct {
             .rgb => |rgb| {
                 if (self.caps.supportsTruecolor) {
                     if (is_foreground) {
-                        try term_ansi_enhanced_color.setForegroundColorRgb(self.writer, self.allocator, self.caps, rgb.r, rgb.g, rgb.b);
+                        try term_ansi_color.setForegroundColorRgb(self.writer, self.allocator, self.caps, rgb.r, rgb.g, rgb.b);
                     } else {
-                        try term_ansi_enhanced_color.setBackgroundColorRgb(self.writer, self.allocator, self.caps, rgb.r, rgb.g, rgb.b);
+                        try term_ansi_color.setBackgroundColorRgb(self.writer, self.allocator, self.caps, rgb.r, rgb.g, rgb.b);
                     }
                 } else {
                     // Fallback to closest 256-color palette color

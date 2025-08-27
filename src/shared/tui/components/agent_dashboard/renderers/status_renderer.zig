@@ -9,16 +9,16 @@ const Allocator = std.mem.Allocator;
 // Import dependencies
 const state = @import("../state.zig");
 const layout = @import("../layout.zig");
-const theme_manager = @import("../../../../theme_manager/mod.zig");
-const term_mod = @import("../../../../term_refactored/mod.zig");
+const theme_manager = @import("../../../../theme/mod.zig");
+const term_mod = @import("../../../../term/mod.zig");
 const render_mod = @import("../../../../render/mod.zig");
 
 // Import specific term modules for drawing functions
 const cursor = term_mod.term.control.cursor.CursorController;
-const sgr = term_mod.term.color.sgr;
+const sgr = term_mod.term.ansi.sgr;
 
 // Type aliases
-const DashboardDataStore = state.DashboardDataStore;
+const DashboardStore = state.DashboardStore;
 const Rect = layout.Rect;
 
 /// Agent health status
@@ -112,7 +112,7 @@ pub const ConnectionStatus = enum {
 };
 
 /// Session information
-pub const SessionInfo = struct {
+pub const Session = struct {
     id: []const u8 = "none",
     start_time: i64 = 0,
     duration_seconds: u64 = 0,
@@ -128,7 +128,7 @@ pub const AgentStatus = struct {
     health: HealthStatus = .unknown,
     auth: AuthStatus = .unauthenticated,
     connection: ConnectionStatus = .disconnected,
-    session: SessionInfo = .{},
+    session: Session = .{},
     agent_name: []const u8 = "Unknown Agent",
     agent_version: []const u8 = "0.0.0",
     last_activity: i64 = 0,
@@ -202,7 +202,7 @@ pub const StatusRenderer = struct {
         self: *Self,
         writer: anytype,
         bounds: Rect,
-        data_store: *const DashboardDataStore,
+        data_store: *const DashboardStore,
         theme: *const theme_manager.ColorScheme,
     ) !void {
         _ = data_store; // Status is typically updated separately
@@ -374,7 +374,7 @@ pub const StatusRenderer = struct {
         // Session info
         if (self.config.show_session and y_offset + 1 < bounds.height) {
             y_offset += 1; // Add spacing
-            try self.renderSessionInfo(writer, bounds, y_offset, theme);
+            try self.renderSession(writer, bounds, y_offset, theme);
             y_offset += 2;
         }
 
@@ -495,7 +495,7 @@ pub const StatusRenderer = struct {
     }
 
     /// Render session information
-    fn renderSessionInfo(
+    fn renderSession(
         self: *const Self,
         writer: anytype,
         bounds: Rect,

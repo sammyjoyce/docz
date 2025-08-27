@@ -34,8 +34,8 @@ pub const ToolError = error{
 /// Input and output are arbitrary JSON encoded strings for flexibility.
 pub const ToolFn = *const fn (allocator: std.mem.Allocator, input: []const u8) ToolError![]u8;
 
-/// Tool metadata for comptime reflection
-pub const ToolMetadata = struct {
+/// Tool definition for comptime reflection
+pub const Tool = struct {
     name: []const u8,
     description: []const u8,
     func: ToolFn,
@@ -44,8 +44,8 @@ pub const ToolMetadata = struct {
     agent: []const u8 = "shared", // Which agent this tool belongs to
 };
 
-/// JSON-based tool function signature for more structured tools
-pub const JsonToolFunction = *const fn (allocator: std.mem.Allocator, params: std.json.Value) ToolError!std.json.Value;
+/// JSON-based function signature for more structured tools
+pub const JsonFunction = *const fn (allocator: std.mem.Allocator, params: std.json.Value) ToolError!std.json.Value;
 
 /// Comptime reflection utilities for tool registration
 pub const ToolReflection = struct {
@@ -93,13 +93,13 @@ pub const ToolReflection = struct {
             }
 
             /// Get tool metadata using comptime reflection
-            pub fn getToolMeta(comptime toolName: []const u8) ?ToolMetadata {
+            pub fn getToolMeta(comptime toolName: []const u8) ?Tool {
                 const info = @typeInfo(ModuleType).@"struct";
 
                 inline for (info.decls) |decl| {
                     if (decl.is_pub and std.mem.eql(u8, decl.name, toolName)) {
                         const func = @field(ModuleType, decl.name);
-                        return ToolMetadata{
+                        return Tool{
                             .name = toolName,
                             .description = "Tool function: " ++ toolName,
                             .func = func,
@@ -134,13 +134,13 @@ pub const ToolReflection = struct {
 pub const Registry = struct {
     allocator: std.mem.Allocator,
     map: std.StringHashMap(ToolFn),
-    metadata: std.StringHashMap(ToolMetadata),
+    metadata: std.StringHashMap(Tool),
 
     pub fn init(allocator: std.mem.Allocator) Registry {
         return .{
             .allocator = allocator,
             .map = std.StringHashMap(ToolFn).init(allocator),
-            .metadata = std.StringHashMap(ToolMetadata).init(allocator),
+            .metadata = std.StringHashMap(Tool).init(allocator),
         };
     }
 
@@ -156,7 +156,7 @@ pub const Registry = struct {
         try self.map.put(ownedName, func);
 
         // Create default metadata
-        const meta = ToolMetadata{
+        const meta = Tool{
             .name = ownedName,
             .description = "Tool function",
             .func = func,
@@ -168,7 +168,7 @@ pub const Registry = struct {
     }
 
     /// Register a tool with full metadata
-    pub fn registerWithMeta(self: *Registry, meta: ToolMetadata) !void {
+    pub fn registerWithMeta(self: *Registry, meta: Tool) !void {
         const ownedName = try self.allocator.dupe(u8, meta.name);
         errdefer self.allocator.free(ownedName);
 
@@ -186,7 +186,7 @@ pub const Registry = struct {
 
         try self.map.put(ownedName, meta.func);
 
-        const ownedMeta = ToolMetadata{
+        const ownedMeta = Tool{
             .name = ownedName,
             .description = ownedDesc,
             .func = meta.func,
@@ -230,7 +230,7 @@ pub const Registry = struct {
                         break :blk nameBuf[0..nameLen];
                     };
 
-                    const meta = ToolMetadata{
+                    const meta = Tool{
                         .name = toolName,
                         .description = "Tool function: " ++ toolName,
                         .func = func,
@@ -250,13 +250,13 @@ pub const Registry = struct {
     }
 
     /// Get tool metadata
-    pub fn getMeta(self: *Registry, name: []const u8) ?ToolMetadata {
+    pub fn getMeta(self: *Registry, name: []const u8) ?Tool {
         return self.metadata.get(name);
     }
 
     /// List all registered tools
-    pub fn listTools(self: *Registry, allocator: std.mem.Allocator) ![]ToolMetadata {
-        var tools = std.ArrayList(ToolMetadata).init(allocator);
+    pub fn listTools(self: *Registry, allocator: std.mem.Allocator) ![]Tool {
+        var tools = std.ArrayList(Tool).init(allocator);
         defer tools.deinit();
 
         var iterator = self.metadata.iterator();
@@ -268,8 +268,8 @@ pub const Registry = struct {
     }
 
     /// List tools by agent
-    pub fn listToolsByAgent(self: *Registry, allocator: std.mem.Allocator, agentName: []const u8) ![]ToolMetadata {
-        var tools = std.ArrayList(ToolMetadata).init(allocator);
+    pub fn listToolsByAgent(self: *Registry, allocator: std.mem.Allocator, agentName: []const u8) ![]Tool {
+        var tools = std.ArrayList(Tool).init(allocator);
         defer tools.deinit();
 
         var iterator = self.metadata.iterator();
@@ -415,7 +415,7 @@ fn oracleTool(allocator: std.mem.Allocator, input: []const u8) ToolError![]u8 {
             .{ .role = .system, .content = systemPrompt },
             .{ .role = .user, .content = promptText },
         },
-        .on_token = tokenCallback,
+        .onToken = tokenCallback,
     }) catch |err| switch (err) {
         anthropic.Error.NetworkError => return ToolError.NetworkError,
         anthropic.Error.APIError => return ToolError.APIError,
@@ -428,10 +428,10 @@ fn oracleTool(allocator: std.mem.Allocator, input: []const u8) ToolError![]u8 {
 }
 
 /// Helper to create a ToolFn wrapper for JSON-based tools
-pub fn createJsonToolWrapper(jsonFunc: JsonToolFunction) ToolFn {
+pub fn createJsonToolWrapper(jsonFunc: JsonFunction) ToolFn {
     // Store the function in a global variable to avoid lifetime issues
     const StoredFunction = struct {
-        var func: JsonToolFunction = undefined;
+        var func: JsonFunction = undefined;
     };
     StoredFunction.func = jsonFunc;
 
@@ -452,9 +452,9 @@ pub fn createJsonToolWrapper(jsonFunc: JsonToolFunction) ToolFn {
 }
 
 /// Helper to register a JSON-based tool
-pub fn registerJsonTool(registry: *Registry, name: []const u8, description: []const u8, jsonFunc: JsonToolFunction, agentName: []const u8) !void {
+pub fn registerJsonTool(registry: *Registry, name: []const u8, description: []const u8, jsonFunc: JsonFunction, agentName: []const u8) !void {
     const wrappedFunction = createJsonToolWrapper(jsonFunc);
-    const metadata = ToolMetadata{
+    const metadata = Tool{
         .name = name,
         .description = description,
         .func = wrappedFunction,
@@ -470,16 +470,16 @@ pub fn registerJsonToolWithRequiredFields(
     registry: *Registry,
     name: []const u8,
     description: []const u8,
-    jsonFunc: JsonToolFunction,
+    jsonFunc: JsonFunction,
     agentName: []const u8,
-    required_fields: []const []const u8,
+    requiredFields: []const []const u8,
 ) !void {
     const Stored = struct {
-        var func: JsonToolFunction = undefined;
+        var func: JsonFunction = undefined;
         var req: []const []const u8 = &[_][]const u8{};
     };
     Stored.func = jsonFunc;
-    Stored.req = required_fields;
+    Stored.req = requiredFields;
 
     const wrapper = struct {
         fn run(allocator: std.mem.Allocator, input: []const u8) ToolError![]u8 {
@@ -499,7 +499,7 @@ pub fn registerJsonToolWithRequiredFields(
         }
     }.run;
 
-    const metadata = ToolMetadata{
+    const metadata = Tool{
         .name = name,
         .description = description,
         .func = wrapper,

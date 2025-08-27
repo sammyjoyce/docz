@@ -23,8 +23,8 @@ pub fn main() !void {
     try stdout.writeAll("🎉 Enhanced CLI Components Demo\n");
     try stdout.writeAll("=====================================\n\n");
 
-    // Test InfoPanel
-    try demonstrateInfoPanel(allocator, stdout);
+    // Test Panel
+    try demonstratePanel(allocator, stdout);
 
     // Test StatusIndicator
     // try demonstrateStatusIndicator(stdout); // Disabled - StatusIndicator not available in CLI module
@@ -44,13 +44,13 @@ pub fn main() !void {
     try stdout.writeAll("✨ Demo completed successfully! All components compiled and work.\n");
 }
 
-fn demonstrateInfoPanel(allocator: std.mem.Allocator, writer: anytype) !void {
+fn demonstratePanel(allocator: std.mem.Allocator, writer: anytype) !void {
     try writer.writeAll("📋 InfoPanel Demo:\n");
 
     var panel = Panel.init(allocator, "System Status");
     defer panel.deinit();
 
-    try panel.addInfo("Version", "1.0.0");
+    try panel.add("Version", "1.0.0");
     try panel.addSuccess("Connection", "Connected to API");
     try panel.addWarning("Storage", "Disk space low (15% remaining)");
     try panel.addError("Network", "Failed to reach backup server");
@@ -97,9 +97,9 @@ fn demonstrateProgressBar(allocator: std.mem.Allocator, writer: anytype) !void {
     try writer.writeAll("📊 ProgressBar Demo:\n");
 
     // Demonstrate different progress bar styles
-    const styles = [_]components.ProgressBar.ProgressStyle{ .simple, .unicode, .gradient, .animated, .sparkline, .circular };
+    const styles = [_]components.ProgressBar.ProgressStyle{ .minimal, .unicode, .gradient, .animated, .sparkline, .circular };
 
-    const style_names = [_][]const u8{ "Simple", "Unicode", "Gradient", "Animated", "Sparkline", "Circular" };
+    const style_names = [_][]const u8{ "Minimal", "Unicode", "Gradient", "Animated", "Sparkline", "Circular" };
 
     for (styles, style_names) |style, name| {
         var progress = ProgressBar.init(allocator, style, 30, name);

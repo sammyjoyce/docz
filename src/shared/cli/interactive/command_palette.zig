@@ -15,7 +15,7 @@ const term_graphics = term_shared.ansi.graphics;
 const term_caps = term_shared.caps;
 const term_mode = term_shared.ansi.mode;
 const term_input = term_shared.input.types;
-const enhanced_keys = term_shared.input.keys;
+const keys = term_shared.input.keys;
 const Allocator = std.mem.Allocator;
 
 pub const CommandPaletteAction = enum {
@@ -55,7 +55,7 @@ pub const KeyEvent = struct {
     }
 };
 
-/// Enhanced command palette with VS Code-style search and advanced terminal features
+/// Command palette with VS Code-style search and terminal features
 pub const CommandPalette = struct {
     completion_engine: completion.CompletionEngine,
     input_buffer: std.ArrayList(u8),
@@ -80,20 +80,20 @@ pub const CommandPalette = struct {
             .last_notification = null,
         };
 
-        // Initialize with common commands plus new enhanced commands
-        try palette.addEnhancedCommands();
+        // Initialize with common commands plus new commands
+        try palette.addCommands();
 
         return palette;
     }
 
-    /// Add enhanced commands that showcase terminal capabilities
-    fn addEnhancedCommands(self: *CommandPalette) !void {
+    /// Add commands that showcase terminal capabilities
+    fn addCommands(self: *CommandPalette) !void {
         const commands = try completion.CompletionSets.getCliCommands(self.allocator);
         defer self.allocator.free(commands);
         try self.completion_engine.addItems(commands);
 
-        // Add enhanced demo commands
-        const enhanced_commands = [_]completion.CompletionItem{
+        // Add demo commands
+        const demo_commands = [_]completion.CompletionItem{
             completion.CompletionItem.init("demo:graphics")
                 .withDescription("Show graphics capabilities demo")
                 .withCategory("demo")
@@ -118,7 +118,7 @@ pub const CommandPalette = struct {
                 .withCategory("demo"),
         };
 
-        try self.completion_engine.addItems(&enhanced_commands);
+        try self.completion_engine.addItems(&demo_commands);
     }
 
     pub fn deinit(self: *CommandPalette) void {
@@ -131,7 +131,7 @@ pub const CommandPalette = struct {
         try self.completion_engine.addItems(items);
     }
 
-    /// Render the command palette interface with advanced terminal features
+    /// Render the command palette interface with terminal features
     fn renderInterface(self: *CommandPalette, writer: anytype) !void {
         self.animation_frame +%= 1;
 
@@ -142,13 +142,13 @@ pub const CommandPalette = struct {
         try term_screen.clearScreenAll(writer, self.caps);
         try term_cursor.setCursorPosition(writer, self.caps, 1, 1);
 
-        // Enhanced animated header with gradient
+        // Animated header with gradient
         try self.renderAnimatedHeader(writer);
 
         // Terminal capabilities status line
         try self.renderCapabilitiesStatus(writer);
 
-        // Input field with enhanced styling
+        // Input field with styling
         try self.renderInputField(writer);
 
         // Graphics preview if enabled
@@ -159,8 +159,8 @@ pub const CommandPalette = struct {
         // Completion list
         try self.completion_engine.render(writer);
 
-        // Enhanced footer with more shortcuts
-        try self.renderEnhancedFooter(writer);
+        // Footer with shortcuts
+        try self.renderFooter(writer);
 
         // Show last notification if any
         if (self.last_notification) |notification| {
@@ -183,7 +183,7 @@ pub const CommandPalette = struct {
             try term_ansi.setForeground256(writer, self.caps, 15);
         }
 
-        const header = "  🚀 Enhanced DocZ Command Palette - Powered by @src/term        ";
+        const header = "  🚀 DocZ Command Palette - Powered by @src/term        ";
         try writer.writeAll(header);
         try term_ansi.resetStyle(writer, self.caps);
         try writer.writeAll("\n");
@@ -218,7 +218,7 @@ pub const CommandPalette = struct {
     }
 
     fn renderInputField(self: *CommandPalette, writer: anytype) !void {
-        // Enhanced input field with better styling
+        // Input field with styling
         if (self.caps.supportsTrueColor()) {
             try term_ansi.setForegroundRgb(writer, self.caps, 100, 149, 237);
         } else {
@@ -241,7 +241,7 @@ pub const CommandPalette = struct {
 
         try writer.writeAll(self.input_buffer.items);
 
-        // Enhanced animated cursor
+        // Animated cursor
         const cursor_visible = (self.animation_frame % 30) < 15;
         if (cursor_visible) {
             if (self.caps.supportsTrueColor()) {
@@ -295,7 +295,7 @@ pub const CommandPalette = struct {
         try writer.writeAll("\n\n");
     }
 
-    fn renderEnhancedFooter(self: *CommandPalette, writer: anytype) !void {
+    fn renderFooter(self: *CommandPalette, writer: anytype) !void {
         if (self.caps.supportsTrueColor()) {
             try term_ansi.setForegroundRgb(writer, self.caps, 150, 150, 150);
         } else {
@@ -338,7 +338,7 @@ pub const CommandPalette = struct {
         try term_ansi.resetStyle(writer, self.caps);
     }
 
-    /// Enhanced keyboard input handling with escape sequences and advanced features
+    /// Keyboard input handling with escape sequences and terminal features
     fn handleInput(self: *CommandPalette, input_bytes: []const u8) !CommandPaletteAction {
         if (input_bytes.len == 0) return .help;
 
@@ -477,11 +477,11 @@ pub const CommandPalette = struct {
     //     try presenters.notification.display(self.allocator, &n, true);
     // }
 
-    /// Run the enhanced command palette with advanced terminal features
+    /// Run the command palette with terminal features
     pub fn run(self: *CommandPalette, writer: anytype, reader: anytype) !CommandPaletteResult {
         self.is_active = true;
 
-        // Enhanced input handling would be enabled here in a full implementation
+        // Input handling would be enabled here in a full implementation
 
         // Initial filter with empty query
         try self.completion_engine.filter("");
@@ -560,7 +560,7 @@ pub const CommandPalette = struct {
         };
     }
 
-    /// Enhanced prompt with autocomplete for simpler use cases
+    /// Prompt with autocomplete for use cases
     pub fn promptWithCompletion(
         allocator: Allocator,
         prompt_text: []const u8,
@@ -594,7 +594,7 @@ pub const CommandPalette = struct {
         }
     }
 
-    /// Input with basic completion
+    /// Input with completion
     pub fn input(
         allocator: Allocator,
         prompt_text: []const u8,

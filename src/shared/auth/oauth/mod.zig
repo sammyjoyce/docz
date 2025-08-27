@@ -5,7 +5,7 @@
 //! authorization codes and refreshing access tokens.
 //!
 //! Features:
-//! - PKCE (Proof Key for Code Exchange) for enhanced security
+//! - PKCE (Proof Key for Code Exchange) for security
 //! - Real HTTP POST requests to OAuth token endpoint
 //! - Proper JSON response parsing and error handling
 //! - Token expiration management
@@ -161,16 +161,16 @@ fn generateCodeChallenge(allocator: std.mem.Allocator, codeVerifier: []const u8)
 /// Generate a cryptographically secure random state parameter
 fn generateRandomState(allocator: std.mem.Allocator, length: usize) ![]u8 {
     // Generate random bytes
-    const random_bytes = try allocator.alloc(u8, length);
-    defer allocator.free(random_bytes);
-    std.crypto.random.bytes(random_bytes);
+    const randomBytes = try allocator.alloc(u8, length);
+    defer allocator.free(randomBytes);
+    std.crypto.random.bytes(randomBytes);
 
     // Convert to URL-safe characters
-    const valid_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    const validChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
     const state = try allocator.alloc(u8, length);
 
-    for (random_bytes, 0..) |byte, i| {
-        state[i] = valid_chars[byte % valid_chars.len];
+    for (randomBytes, 0..) |byte, i| {
+        state[i] = validChars[byte % validChars.len];
     }
 
     return state;
@@ -218,22 +218,22 @@ fn urlEncode(allocator: std.mem.Allocator, input: []const u8) ![]u8 {
 }
 
 fn encodeFormData(allocator: std.mem.Allocator, fields: anytype) ![]u8 {
-    var form_data = std.ArrayListUnmanaged(u8){};
-    defer form_data.deinit(allocator);
+    var formData = std.ArrayListUnmanaged(u8){};
+    defer formData.deinit(allocator);
 
     for (fields, 0..) |field, i| {
-        if (i > 0) try form_data.appendSlice(allocator, "&");
+        if (i > 0) try formData.appendSlice(allocator, "&");
 
-        const key_enc = try urlEncode(allocator, field.key);
-        defer allocator.free(key_enc);
-        try form_data.appendSlice(allocator, key_enc);
-        try form_data.appendSlice(allocator, "=");
+        const keyEnc = try urlEncode(allocator, field.key);
+        defer allocator.free(keyEnc);
+        try formData.appendSlice(allocator, keyEnc);
+        try formData.appendSlice(allocator, "=");
 
-        const val_enc = try urlEncode(allocator, field.value);
-        defer allocator.free(val_enc);
-        try form_data.appendSlice(allocator, val_enc);
+        const valEnc = try urlEncode(allocator, field.value);
+        defer allocator.free(valEnc);
+        try formData.appendSlice(allocator, valEnc);
     }
-    return form_data.toOwnedSlice(allocator);
+    return formData.toOwnedSlice(allocator);
 }
 
 /// Parse OAuth token response JSON

@@ -1,19 +1,18 @@
-//! Enhanced mouse event handling for TUI applications
+//! Mouse event handling for TUI applications
 //! Provides pixel-precise mouse tracking and rich interaction support
 const std = @import("std");
 const shared = @import("../../../mod.zig");
-const unified_input = @import("term_shared").input;
-const term_mouse = unified_input;
+const shared_input = @import("term_shared").input;
+const term_mouse = shared_input;
 const caps_mod = @import("term_shared").capabilities;
 
-// Re-export unified mouse types
-pub const MouseButton = unified_input.MouseButton;
-pub const MouseMode = unified_input.mouse.MouseMode;
-pub const UnifiedMouse = unified_input.mouse.Mouse;
+// Re-export shared mouse types
+pub const MouseButton = shared_input.MouseButton;
+pub const MouseMode = shared_input.mouse.MouseMode;
 
 // Re-export legacy mouse types for backward compatibility
-pub const MouseEvent = unified_input.MouseEvent;
-pub const MouseAction = unified_input.MouseAction;
+pub const MouseEvent = shared_input.MouseEvent;
+pub const MouseAction = shared_input.MouseAction;
 pub const MouseProtocol = caps_mod.MouseProtocol;
 
 /// Rich mouse controller with pixel precision support
@@ -72,7 +71,7 @@ pub const TUIMouse = struct {
     }
 
     /// Process mouse event and dispatch to appropriate handlers
-    pub fn processMouseEvent(self: *TUIMouse, event: unified_input.InputEvent) !void {
+    pub fn processMouseEvent(self: *TUIMouse, event: shared_input.InputEvent) !void {
         const now = std.time.milliTimestamp();
 
         // Dispatch to general handlers first
@@ -92,7 +91,7 @@ pub const TUIMouse = struct {
         }
     }
 
-    fn processMouseClick(self: *TUIMouse, event: unified_input.MouseEvent, now: i64) !void {
+    fn processMouseClick(self: *TUIMouse, event: shared_input.MouseEvent, now: i64) !void {
         const position = Position{ .x = @as(i32, @intCast(event.x)), .y = @as(i32, @intCast(event.y)) };
         const button = event.button;
         const modifiers = event.mods;
@@ -180,7 +179,7 @@ pub const TUIMouse = struct {
         }
     }
 
-    fn processMouseScroll(self: *TUIMouse, mouse_event: unified_input.MouseEvent, now: i64) !void {
+    fn processMouseScroll(self: *TUIMouse, mouse_event: shared_input.MouseEvent, now: i64) !void {
         _ = now; // Not used for scroll events
         const direction = switch (mouse_event.action) {
             .scroll_up => ScrollEvent.Direction.up,
@@ -249,7 +248,7 @@ pub const Position = struct {
 pub const ClickEvent = struct {
     position: Position,
     button: MouseButton,
-    modifiers: unified_input.Modifiers,
+    modifiers: shared_input.Modifiers,
     is_double_click: bool,
 };
 
@@ -259,7 +258,7 @@ pub const DragEvent = struct {
     end_pos: Position,
     current_pos: Position,
     button: MouseButton,
-    modifiers: unified_input.Modifiers,
+    modifiers: shared_input.Modifiers,
     action: Action,
 
     pub const Action = enum { start, drag, end };
@@ -269,14 +268,14 @@ pub const DragEvent = struct {
 pub const ScrollEvent = struct {
     position: Position,
     direction: Direction,
-    modifiers: unified_input.Modifiers,
+    modifiers: shared_input.Modifiers,
 
     pub const Direction = enum { up, down };
 };
 
 /// Handler function types
 pub const MouseHandler = struct {
-    func: *const fn (event: unified_input.MouseEvent) bool, // Returns true if handled
+    func: *const fn (event: shared_input.MouseEvent) bool, // Returns true if handled
 };
 
 pub const ClickHandler = struct {

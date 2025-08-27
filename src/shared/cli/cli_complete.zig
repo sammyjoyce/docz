@@ -1,5 +1,5 @@
 //! Enhanced CLI with new modular architecture
-//! Main interface for CLI functionality with all advanced features
+//! Main interface for CLI functionality with all features
 
 const std = @import("std");
 const components = @import("../components/mod.zig");

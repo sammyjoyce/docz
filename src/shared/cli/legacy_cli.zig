@@ -10,7 +10,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const cli_config = @import("cli.zon");
-const CliFormatter = @import("cli/formatters/basic.zig").CliFormatter;
+const CliFormatter = @import("formatters/formatter.zig").CliFormatter;
 
 pub const CliError = error{
     UnknownOption,
@@ -154,8 +154,8 @@ pub fn parseArgs(allocator: Allocator, args: []const []const u8) !ParsedArgs {
     // Set default values from cli.zon using comptime reflection
     const cfg = cli_config;
     const OptsT = @TypeOf(cfg.options);
-    const OptsInfo = @typeInfo(OptsT).@"struct";
-    inline for (OptsInfo.fields) |opt_field| {
+    const Opts = @typeInfo(OptsT).@"struct";
+    inline for (Opts.fields) |opt_field| {
         const opt = @field(cfg.options, opt_field.name);
         if (@hasField(@TypeOf(opt), "default")) {
             const field_name = opt.long;
@@ -173,8 +173,8 @@ pub fn parseArgs(allocator: Allocator, args: []const []const u8) !ParsedArgs {
 
     // Set flag defaults
     const FlagsT = @TypeOf(cfg.flags);
-    const FlagsInfo = @typeInfo(FlagsT).@"struct";
-    inline for (FlagsInfo.fields) |flag_field| {
+    const Flags = @typeInfo(FlagsT).@"struct";
+    inline for (Flags.fields) |flag_field| {
         const flag = @field(cfg.flags, flag_field.name);
         if (@hasField(@TypeOf(flag), "default")) {
             const field_name = flag.long;
@@ -190,7 +190,7 @@ pub fn parseArgs(allocator: Allocator, args: []const []const u8) !ParsedArgs {
 
         // Try to match options using comptime reflection
         var option_matched = false;
-        inline for (OptsInfo.fields) |opt_field| {
+        inline for (Opts.fields) |opt_field| {
             const opt = @field(cfg.options, opt_field.name);
             if (!option_matched and matchesOption(opt, arg)) {
                 option_matched = true;
@@ -225,7 +225,7 @@ pub fn parseArgs(allocator: Allocator, args: []const []const u8) !ParsedArgs {
         // Try to match flags using comptime reflection
         if (!option_matched) {
             var flag_matched = false;
-            inline for (FlagsInfo.fields) |flag_field| {
+            inline for (Flags.fields) |flag_field| {
                 const flag = @field(cfg.flags, flag_field.name);
                 if (!flag_matched and matchesFlag(flag, arg)) {
                     flag_matched = true;
@@ -255,7 +255,7 @@ pub fn parseArgs(allocator: Allocator, args: []const []const u8) !ParsedArgs {
                 if (std.mem.startsWith(u8, arg, "-")) {
                     return CliError.UnknownOption;
                 } else {
-                    // Positional argument - handle commands and subcommands
+                    // Positional argument - handle commands and typeInfo
                     switch (result.positionals.command) {
                         .chat => {
                             // For chat command, check if this is actually a command
@@ -386,13 +386,13 @@ fn printFlag(flag: anytype, max_width: usize) void {
     stdout.print("\n", .{}) catch {};
 }
 
-fn printSubcommands(subcommands: anytype) void {
+fn printSubcommands(typeInfo: anytype) void {
     const stdout = std.fs.File.stdout().writer();
-    const SubcommandsT = @TypeOf(subcommands);
-    const subcommands_info = @typeInfo(SubcommandsT).@"struct";
+    const SubcommandsT = @TypeOf(typeInfo);
+    const typeInfo = @typeInfo(SubcommandsT).@"struct";
 
-    inline for (subcommands_info.fields) |cmd_field| {
-        const command = @field(subcommands, cmd_field.name);
+    inline for (typeInfo.fields) |cmd_field| {
+        const command = @field(typeInfo, cmd_field.name);
 
         // Convert command name to uppercase for display
         var cmd_name_upper: [cmd_field.name.len]u8 = undefined;
@@ -402,8 +402,8 @@ fn printSubcommands(subcommands: anytype) void {
 
         stdout.print("{s} COMMANDS:\n", .{cmd_name_upper}) catch {};
 
-        if (@hasField(@TypeOf(command), "subcommands")) {
-            const SubT = @TypeOf(command.subcommands);
+        if (@hasField(@TypeOf(command), "typeInfo")) {
+            const SubT = @TypeOf(command.typeInfo);
             const sub_info = @typeInfo(SubT).@"struct";
 
             // Calculate max width for alignment
@@ -415,7 +415,7 @@ fn printSubcommands(subcommands: anytype) void {
             }
 
             inline for (sub_info.fields) |sub_field| {
-                const subcmd_desc = @field(command.subcommands, sub_field.name);
+                const subcmd_desc = @field(command.typeInfo, sub_field.name);
                 stdout.print("    {s}", .{sub_field.name}) catch {};
                 const pad = if (max_subcmd_width > sub_field.name.len)
                     (max_subcmd_width - sub_field.name.len + 4)
@@ -430,7 +430,7 @@ fn printSubcommands(subcommands: anytype) void {
 }
 
 pub fn printHelp(allocator: Allocator) !void {
-    // For now, use a basic approach
+    // For now, use an approach
     var formatter = try CliFormatter.init(allocator);
     defer formatter.deinit();
     try formatter.printEnhancedHelp(cli_config);

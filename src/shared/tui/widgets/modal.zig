@@ -1495,13 +1495,13 @@ pub fn createNotification(allocator: std.mem.Allocator, message: []const u8, dur
 }
 
 /// Modal Manager for handling multiple modals and z-ordering
-pub const ModalManager = struct {
+pub const ModalController = struct {
     allocator: std.mem.Allocator,
     modals: std.ArrayList(*Modal),
     active_modal: ?*Modal = null,
     renderer: *Renderer,
 
-    pub fn init(allocator: std.mem.Allocator, renderer: *Renderer) ModalManager {
+    pub fn init(allocator: std.mem.Allocator, renderer: *Renderer) ModalController {
         return .{
             .allocator = allocator,
             .modals = std.ArrayList(*Modal).init(allocator),
@@ -1509,19 +1509,19 @@ pub const ModalManager = struct {
         };
     }
 
-    pub fn deinit(self: *ModalManager) void {
+    pub fn deinit(self: *ModalController) void {
         for (self.modals.items) |modal| {
             modal.deinit();
         }
         self.modals.deinit();
     }
 
-    pub fn addModal(self: *ModalManager, modal: *Modal) !void {
+    pub fn addModal(self: *ModalController, modal: *Modal) !void {
         try self.modals.append(modal);
         self.sortModalsByZIndex();
     }
 
-    pub fn removeModal(self: *ModalManager, modal: *Modal) void {
+    pub fn removeModal(self: *ModalController, modal: *Modal) void {
         for (self.modals.items, 0..) |m, i| {
             if (m == modal) {
                 _ = self.modals.swapRemove(i);
@@ -1533,12 +1533,12 @@ pub const ModalManager = struct {
         }
     }
 
-    pub fn showModal(self: *ModalManager, modal: *Modal) !void {
+    pub fn showModal(self: *ModalController, modal: *Modal) !void {
         try modal.show();
         self.active_modal = modal;
     }
 
-    pub fn hideModal(self: *ModalManager, modal: *Modal) !void {
+    pub fn hideModal(self: *ModalController, modal: *Modal) !void {
         try modal.hide();
         if (self.active_modal == modal) {
             // Find next visible modal
@@ -1552,7 +1552,7 @@ pub const ModalManager = struct {
         }
     }
 
-    pub fn handleInput(self: *ModalManager, event: InputEvent) !bool {
+    pub fn handleInput(self: *ModalController, event: InputEvent) !bool {
         // Only the active modal handles input
         if (self.active_modal) |modal| {
             return try modal.handleInput(event);
@@ -1560,7 +1560,7 @@ pub const ModalManager = struct {
         return false;
     }
 
-    pub fn render(self: *ModalManager, ctx: Render) !void {
+    pub fn render(self: *ModalController, ctx: Render) !void {
         // Render all visible modals in z-order
         for (self.modals.items) |modal| {
             if (modal.state != .hidden) {
@@ -1569,7 +1569,7 @@ pub const ModalManager = struct {
         }
     }
 
-    fn sortModalsByZIndex(self: *ModalManager) void {
+    fn sortModalsByZIndex(self: *ModalController) void {
         std.sort.sort(*Modal, self.modals.items, {}, struct {
             fn lessThan(_: void, a: *Modal, b: *Modal) bool {
                 return a.options.z_index < b.options.z_index;
@@ -1605,7 +1605,7 @@ test "Modal creation and basic operations" {
 //     };
 //     var mock_renderer = MockRenderer{};
 
-//     var manager = ModalManager.init(allocator, &mock_renderer);
+//     var manager = ModalController.init(allocator, &mock_renderer);
 //     defer manager.deinit();
 
 //     const modal1 = try createDialog(allocator, "Dialog 1", "First dialog");

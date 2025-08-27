@@ -141,8 +141,8 @@ pub fn tool(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.Tool
 pub fn fileTool(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.ToolError![]const u8 {
     const Request = struct {
         path: []const u8,
-        include_size: bool = true,
-        include_modified: bool = true,
+        includeSize: bool = true,
+        includeModified: bool = true,
     };
 
     const parsed = std.json.parseFromValue(Request, allocator, params, .{}) catch
@@ -158,11 +158,11 @@ pub fn fileTool(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.
 
     const response = .{
         .success = true,
-        .file_info = .{
+        .fileInfo = .{
             .path = request.path,
-            .size = if (request.include_size) stat.size else null,
-            .modified = if (request.include_modified) stat.mtime else null,
-            .is_directory = stat.kind == .directory,
+            .size = if (request.includeSize) stat.size else null,
+            .modified = if (request.includeModified) stat.mtime else null,
+            .isDirectory = stat.kind == .directory,
         },
     };
 
@@ -174,19 +174,19 @@ pub fn fileTool(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.
 pub fn configTool(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.ToolError![]const u8 {
     // This would typically access the agent config
     // For demonstration, we'll show the pattern
-    const config_info = .{
-        .agent_name = "_template",
+    const configInfo = .{
+        .agentName = "_template",
         .version = "1.0.0",
-        .features_enabled = .{
-            .custom_tools = true,
-            .file_operations = true,
+        .featuresEnabled = .{
+            .customTools = true,
+            .fileOperations = true,
         },
     };
 
     const response = .{
         .success = true,
-        .configuration = config_info,
-        .params_received = params,
+        .configuration = configInfo,
+        .paramsReceived = params,
     };
 
     return try std.json.stringifyAlloc(allocator, response, .{});
@@ -230,10 +230,10 @@ pub fn registerAll(registry: *tools_mod.Registry) !void {
     // - Build-time feature flags
     // - Runtime capabilities
 
-    // Example: Only register advanced tools if enabled
-    // const enable_advanced_tools = true; // This would come from config
-    // if (enable_advanced_tools) {
-    //     try tools_mod.registerJsonTool(registry, "advanced_tool", "...", advancedTool, "_template");
+    // Example: Only register professional tools if enabled
+    // const enable_professional_tools = true; // This would come from config
+    // if (enable_professional_tools) {
+    //     try tools_mod.registerJsonTool(registry, "professional_tool", "...", professionalTool, "_template");
     // }
 
     // ============================================================================

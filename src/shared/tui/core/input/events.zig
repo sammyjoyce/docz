@@ -1,18 +1,18 @@
-//! Enhanced event handling system for TUI components
-//! Uses the unified input system from @src/shared/input for comprehensive input support
+//! Event handling system for TUI components
+//! Uses the shared input system from @src/shared/input for comprehensive input support
 const std = @import("std");
 const shared = @import("../../../mod.zig");
-const unified_input = shared.components.input;
+const shared_input = shared.components.input;
 
-// Re-export unified input types
-pub const InputEvent = unified_input.Event;
-pub const InputManager = unified_input.InputManager;
-pub const InputConfig = unified_input.InputConfig;
-pub const InputFeatures = unified_input.InputFeatures;
-pub const Key = unified_input.Key;
-pub const Modifiers = unified_input.Modifiers;
+// Re-export shared input types
+pub const InputEvent = shared_input.Event;
+pub const InputManager = shared_input.InputManager;
+pub const InputConfig = shared_input.InputConfig;
+pub const InputFeatures = shared_input.InputFeatures;
+pub const Key = shared_input.Key;
+pub const Modifiers = shared_input.Modifiers;
 
-/// Enhanced TUI event system with comprehensive input support
+/// TUI event system with comprehensive input support
 pub const EventSystem = struct {
     allocator: std.mem.Allocator,
     input_manager: InputManager,
@@ -153,8 +153,8 @@ pub const EventSystem = struct {
 
 /// Rich event types for handlers
 pub const RichKeyEvent = union(enum) {
-    key_press: unified_input.Event.KeyPressEvent,
-    key_release: unified_input.Event.KeyReleaseEvent,
+    key_press: shared_input.Event.KeyPressEvent,
+    key_release: shared_input.Event.KeyReleaseEvent,
 };
 
 /// Handler function types
@@ -180,11 +180,11 @@ pub const MouseHandler = struct {
 
 /// Utility functions for backward compatibility with existing TUI widgets
 pub const Compat = struct {
-    /// Convert enhanced key event to legacy key event (for backward compatibility)
-    pub fn toLegacyKeyEvent(enhanced: unified_input.Event.KeyPressEvent) ?@import("../events.zig").KeyEvent {
+    /// Convert key event to legacy key event (for backward compatibility)
+    pub fn toLegacyKeyEvent(event: shared_input.Event.KeyPressEvent) ?@import("../events.zig").KeyEvent {
         const legacy_events = @import("../events.zig");
 
-        const key: legacy_events.KeyEvent.Key = switch (enhanced.code) {
+        const key: legacy_events.KeyEvent.Key = switch (event.code) {
             .escape => .escape,
             .enter => .enter,
             .tab => .tab,
@@ -213,15 +213,15 @@ pub const Compat = struct {
             .insert_key => .insert,
             else => {
                 // Try to extract character from text
-                if (enhanced.text.len == 1) {
+                if (event.text.len == 1) {
                     return legacy_events.KeyEvent{
                         .key = .character,
-                        .character = enhanced.text[0],
+                        .character = event.text[0],
                         .modifiers = .{
-                            .ctrl = enhanced.mod.ctrl,
-                            .shift = enhanced.mod.shift,
-                            .alt = enhanced.mod.alt,
-                            .super = enhanced.mod.super,
+                            .ctrl = event.mod.ctrl,
+                            .shift = event.mod.shift,
+                            .alt = event.mod.alt,
+                            .super = event.mod.super,
                         },
                     };
                 }
@@ -232,19 +232,19 @@ pub const Compat = struct {
         return legacy_events.KeyEvent{
             .key = key,
             .modifiers = .{
-                .ctrl = enhanced.mod.ctrl,
-                .shift = enhanced.mod.shift,
-                .alt = enhanced.mod.alt,
-                .super = enhanced.mod.super,
+                .ctrl = event.mod.ctrl,
+                .shift = event.mod.shift,
+                .alt = event.mod.alt,
+                .super = event.mod.super,
             },
         };
     }
 
-    /// Convert enhanced mouse event to legacy mouse event (for backward compatibility)
-    pub fn toLegacyMouseEvent(enhanced: unified_input.Event) ?@import("../events.zig").MouseEvent {
+    /// Convert mouse event to legacy mouse event (for backward compatibility)
+    pub fn toLegacyMouseEvent(event: shared_input.Event) ?@import("../events.zig").MouseEvent {
         const legacy_events = @import("../events.zig");
 
-        const button: legacy_events.MouseEvent.Button = switch (enhanced) {
+        const button: legacy_events.MouseEvent.Button = switch (event) {
             .mouse_press => |m| switch (m.button) {
                 .left => .left,
                 .right => .right,
@@ -261,7 +261,7 @@ pub const Compat = struct {
             else => return null,
         };
 
-        const action: legacy_events.MouseEvent.Action = switch (enhanced) {
+        const action: legacy_events.MouseEvent.Action = switch (event) {
             .mouse_press => .press,
             .mouse_release => .release,
             .mouse_move => .drag,
@@ -269,8 +269,8 @@ pub const Compat = struct {
             else => return null,
         };
 
-        // Extract position and modifiers from the unified event
-        const x, const y, const modifiers = switch (enhanced) {
+        // Extract position and modifiers from the shared event
+        const x, const y, const modifiers = switch (event) {
             .mouse_press => |m| .{ m.x, m.y, m.modifiers },
             .mouse_release => |m| .{ m.x, m.y, m.modifiers },
             .mouse_move => |m| .{ m.x, m.y, m.modifiers },

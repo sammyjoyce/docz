@@ -92,9 +92,9 @@ pub const Server = struct {
     shutdownRequested: std.atomic.Value(bool),
 
     // Status tracking
-    startTime: i64,
+    startTimeMs: i64,
     requestsHandled: u32 = 0,
-    lastActivity: i64,
+    lastActivityMs: i64,
 
     // Terminal status display
     statusThread: ?std.Thread = null,
@@ -170,8 +170,8 @@ pub const Server = struct {
             .activeSessions = std.array_list.Managed(Session).init(allocator),
             .resultChannel = Channel.Channel(Result).init(),
             .shutdownRequested = std.atomic.Value(bool).init(false),
-            .startTime = std.time.timestamp(),
-            .lastActivity = std.time.timestamp(),
+            .startTimeMs = std.time.timestamp(),
+            .lastActivityMs = std.time.timestamp(),
         };
     }
 
@@ -303,7 +303,7 @@ pub const Server = struct {
         defer connection.stream.close();
 
         self.requestsHandled += 1;
-        self.lastActivity = std.time.timestamp();
+        self.lastActivityMs = std.time.timestamp();
 
         // Read request
         var buffer: [4096]u8 = undefined;
@@ -578,9 +578,9 @@ pub const Server = struct {
 
         while (!self.shutdownRequested.load(.seq_cst)) {
             const now = std.time.timestamp();
-            const elapsed = now - self.startTime;
-            const minutes: i64 = @divTrunc(elapsed, 60);
-            const seconds: i64 = @mod(elapsed, 60);
+            const elapsedMs = now - self.startTimeMs;
+            const minutes: i64 = @divTrunc(elapsedMs, 60);
+            const seconds: i64 = @mod(elapsedMs, 60);
 
             // Move to status line and clear it
             print("{s}{s}", .{ ansi.cursor.restore, ansi.erase.toEndOfLine });
@@ -687,7 +687,7 @@ pub fn runCallbackServer(
     return try server.waitForCallback(pkceParams.state, null);
 }
 
-/// Integration with enhanced OAuth wizard
+/// Integration with OAuth wizard
 pub fn integrateWithWizard(
     allocator: std.mem.Allocator,
     pkceParams: oauth.Pkce,

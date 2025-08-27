@@ -106,22 +106,22 @@ pub const SSEEvent = struct {
 /// Configuration for SSE processing with memory and performance limits
 pub const SSEConfig = struct {
     /// Maximum size per SSE event (default: 32MB)
-    max_event_size: usize = 32 * 1024 * 1024,
+    maxEventSize: usize = 32 * 1024 * 1024,
 
     /// Threshold for logging large event warnings (default: 1MB)
-    large_event_threshold: usize = 1024 * 1024,
+    largeEventThreshold: usize = 1024 * 1024,
 
     /// Threshold for streaming callback optimization (default: 4MB)
-    streaming_callback_threshold: usize = 4 * 1024 * 1024,
+    streamingCallbackThreshold: usize = 4 * 1024 * 1024,
 
     /// Batch size for line processing optimization (default: 1000)
-    line_processing_batch_size: usize = 1000,
+    lineProcessingBatchSize: usize = 1000,
 
     /// Minimum retry interval in seconds (default: 1)
-    min_retry_interval: u32 = 1,
+    minRetryInterval: u32 = 1,
 
     /// Maximum retry interval in seconds (default: 300)
-    max_retry_interval: u32 = 300,
+    maxRetryInterval: u32 = 300,
 };
 
 /// SSE event state management for building events from parsed lines
@@ -136,21 +136,21 @@ pub const SSEEventBuilder = struct {
     retry_interval: ?u32 = null,
 
     /// Data buffer for accumulating multi-line data
-    data_buffer: std.array_list.Managed(u8),
+    dataBuffer: std.array_list.Managed(u8),
 
     /// Whether any data has been added to current event
-    has_data: bool = false,
+    hasData: bool = false,
 
     /// Initialize new event state with allocator
     pub fn init(allocator: std.mem.Allocator) SSEEventBuilder {
         return SSEEventBuilder{
-            .data_buffer = std.array_list.Managed(u8).init(allocator),
+            .dataBuffer = std.array_list.Managed(u8).init(allocator),
         };
     }
 
     /// Free allocated resources
     pub fn deinit(self: *SSEEventBuilder) void {
-        self.data_buffer.deinit();
+        self.dataBuffer.deinit();
     }
 
     /// Reset event state for next event (preserves retry_interval)
@@ -158,17 +158,17 @@ pub const SSEEventBuilder = struct {
         self.event_type = null;
         self.event_id = null;
         // Keep retry_interval as it persists across events
-        self.data_buffer.clearRetainingCapacity();
-        self.has_data = false;
+        self.dataBuffer.clearRetainingCapacity();
+        self.hasData = false;
     }
 
     /// Add data line to current event with newline handling
-    pub fn addDataLine(self: *SSEEventBuilder, data_line: []const u8) SSEError!void {
-        if (self.has_data) {
-            try self.data_buffer.append('\n'); // Multi-line data separator
+    pub fn addDataLine(self: *SSEEventBuilder, dataLine: []const u8) SSEError!void {
+        if (self.hasData) {
+            try self.dataBuffer.append('\n'); // Multi-line data separator
         }
-        try self.data_buffer.appendSlice(data_line);
-        self.has_data = true;
+        try self.dataBuffer.appendSlice(dataLine);
+        self.hasData = true;
     }
 
     /// Set retry interval with validation
@@ -178,8 +178,8 @@ pub const SSEEventBuilder = struct {
             return SSEError.InvalidRetryInterval;
         };
 
-        if (retry_value < config.min_retry_interval or retry_value > config.max_retry_interval) {
-            std.log.warn("Retry interval {} seconds out of range ({}-{}), ignoring", .{ retry_value, config.min_retry_interval, config.max_retry_interval });
+        if (retry_value < config.minRetryInterval or retry_value > config.maxRetryInterval) {
+            std.log.warn("Retry interval {} seconds out of range ({}-{}), ignoring", .{ retry_value, config.minRetryInterval, config.maxRetryInterval });
             return SSEError.InvalidRetryInterval;
         }
 
@@ -192,15 +192,15 @@ pub const SSEEventBuilder = struct {
         return SSEEvent{
             .event_type = self.event_type,
             .event_id = self.event_id,
-            .data = self.data_buffer.items,
+            .data = self.dataBuffer.items,
             .retry_interval = self.retry_interval,
-            .has_data = self.has_data,
+            .has_data = self.hasData,
         };
     }
 
     /// Check if event has any content and is ready to be dispatched
     pub fn hasEventContent(self: *const SSEEventBuilder) bool {
-        return self.has_data or self.event_type != null or self.event_id != null;
+        return self.hasData or self.event_type != null or self.event_id != null;
     }
 };
 
@@ -241,14 +241,14 @@ pub fn processSseLine(line: []const u8, eventState: *SSEEventBuilder, config: *c
     // Process SSE fields according to specification
     switch (fieldType) {
         .data => {
-            // Enhanced data field processing with capacity management
-            if (fieldValue.len > config.large_event_threshold) {
+            // Data field processing with capacity management
+            if (fieldValue.len > config.largeEventThreshold) {
                 std.log.warn("Very large SSE data line: {} bytes - consider streaming optimization", .{fieldValue.len});
             }
 
-            // Enhanced capacity management with overflow protection
-            const requiredCapacity = eventState.data_buffer.items.len + fieldValue.len + 1; // +1 for potential newline
-            if (requiredCapacity > config.max_event_size) {
+            // Capacity management with overflow protection
+            const requiredCapacity = eventState.dataBuffer.items.len + fieldValue.len + 1; // +1 for potential newline
+            if (requiredCapacity > config.maxEventSize) {
                 std.log.warn("SSE data would exceed maximum event size, truncating to prevent memory issues", .{});
                 return SSEError.EventTooLarge;
             }
@@ -314,7 +314,7 @@ pub fn processSseLines(
         }
 
         // Batch processing optimization for large chunks
-        if (lineCount % config.line_processing_batch_size == 0) {
+        if (lineCount % config.lineProcessingBatchSize == 0) {
             std.log.debug("Processed {} SSE lines", .{lineCount});
         }
     }
@@ -359,12 +359,12 @@ pub fn freeSseEvents(events: []SSEEvent, allocator: std.mem.Allocator) void {
 /// Create a test SSE configuration with smaller limits for testing
 pub fn createTestConfig() SSEConfig {
     return SSEConfig{
-        .max_event_size = 1024,
-        .large_event_threshold = 100,
-        .streaming_callback_threshold = 500,
-        .line_processing_batch_size = 10,
-        .min_retry_interval = 1,
-        .max_retry_interval = 60,
+        .maxEventSize = 1024,
+        .largeEventThreshold = 100,
+        .streamingCallbackThreshold = 500,
+        .lineProcessingBatchSize = 10,
+        .minRetryInterval = 1,
+        .maxRetryInterval = 60,
     };
 }
 
@@ -390,8 +390,8 @@ test "SSE event state management" {
     try event_state.addDataLine("Hello");
     try event_state.addDataLine("World");
 
-    try std.testing.expect(event_state.has_data);
-    try std.testing.expectEqualStrings("Hello\nWorld", event_state.data_buffer.items);
+    try std.testing.expect(event_state.hasData);
+    try std.testing.expectEqualStrings("Hello\nWorld", event_state.dataBuffer.items);
 
     // Test event building
     event_state.event_type = "message";
@@ -404,10 +404,10 @@ test "SSE event state management" {
 
     // Test reset
     event_state.reset();
-    try std.testing.expect(!event_state.has_data);
+    try std.testing.expect(!event_state.hasData);
     try std.testing.expect(event_state.event_type == null);
     try std.testing.expect(event_state.event_id == null);
-    try std.testing.expectEqual(@as(usize, 0), event_state.data_buffer.items.len);
+    try std.testing.expectEqual(@as(usize, 0), event_state.dataBuffer.items.len);
 }
 
 test "SSE line processing" {
@@ -423,7 +423,7 @@ test "SSE line processing" {
     // Test data line
     const dataField = try processSseLine("data: Hello World", &eventState, &config);
     try std.testing.expectEqual(SSEField.data, dataField.?);
-    try std.testing.expectEqualStrings("Hello World", eventState.data_buffer.items);
+    try std.testing.expectEqualStrings("Hello World", eventState.dataBuffer.items);
 
     // Test event line
     const eventField = try processSseLine("event: message", &eventState, &config);

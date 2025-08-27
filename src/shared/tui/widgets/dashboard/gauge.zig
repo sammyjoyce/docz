@@ -1,6 +1,6 @@
 //! Gauge Widget - Radial and Linear Gauges with Progressive Enhancement
 //!
-//! Demonstrates advanced rendering with different visual modes based on terminal capabilities.
+//! Demonstrates rendering with different visual modes based on terminal capabilities.
 
 const std = @import("std");
 const engine_mod = @import("engine.zig");
@@ -70,7 +70,7 @@ pub const Gauge = struct {
             .thresholds = std.ArrayList(Threshold).init(allocator),
             .style = .radial,
             .render_mode = switch (capability_tier) {
-                .ultra_enhanced, .enhanced => .{ .graphics = .{} },
+                .high, .rich => .{ .graphics = .{} },
                 .standard => .{ .unicode = .{} },
                 .minimal => .{ .ascii = .{} },
             },

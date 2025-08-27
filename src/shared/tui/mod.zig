@@ -6,22 +6,22 @@
 const std = @import("std");
 const term_shared = @import("term_shared");
 
-// Core system components
-pub const core = @import("core/mod.zig");
-pub const events = core.events;
-pub const bounds = core.bounds;
-pub const renderer = core.renderer;
-pub const canvas = core.canvas;
+// Base system components
+pub const base = @import("core/mod.zig");
+pub const events = base.events;
+pub const bounds = base.bounds;
+pub const renderer = base.renderer;
+pub const canvas = base.canvas;
 // Backward compatibility alias
-pub const canvas_engine = core.canvas;
-pub const easing = core.easing;
-pub const typing_animation = core.typing_animation;
+pub const canvas_engine = base.canvas;
+pub const easing = base.easing;
+pub const typing_animation = base.typing_animation;
 
 // Widget system - organized by category
 pub const widgets = @import("widgets/mod.zig");
 
 // Themes and styling
-pub const themes = @import("../theme_manager/mod.zig");
+pub const themes = @import("../theme/mod.zig");
 
 // Utilities
 pub const utils = @import("utils/mod.zig");
@@ -100,13 +100,13 @@ pub const createDashboard = dashboard.createDashboard;
 
 // Global initialization functions
 pub fn initTUI(allocator: std.mem.Allocator) !void {
-    try core.init(allocator);
+    try base.init(allocator);
     try dashboard.init(allocator);
 }
 
 pub fn deinitTUI() void {
     dashboard.deinit();
-    core.deinit();
+    base.deinit();
 }
 
 // Progressive enhancement detection
@@ -115,7 +115,7 @@ pub fn detectCapabilities() term_shared.caps.TermCaps {
 }
 
 // Convenience functions for quick setup
-pub fn createSimpleDashboard(allocator: std.mem.Allocator, title: []const u8) !*Dashboard {
+pub fn createDashboardWithDefaults(allocator: std.mem.Allocator, title: []const u8) !*Dashboard {
     const caps = detectCapabilities();
     return try dashboard.DashboardBuilder.init(allocator)
         .withTitle(title)
@@ -123,7 +123,7 @@ pub fn createSimpleDashboard(allocator: std.mem.Allocator, title: []const u8) !*
         .build();
 }
 
-pub fn createFullDashboard(allocator: std.mem.Allocator, title: []const u8) !*Dashboard {
+pub fn createInteractiveDashboard(allocator: std.mem.Allocator, title: []const u8) !*Dashboard {
     const caps = detectCapabilities();
     return try dashboard.DashboardBuilder.init(allocator)
         .withTitle(title)

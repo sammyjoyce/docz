@@ -1,5 +1,5 @@
 //! CLI Notification Presenter
-//! Renders shared Notification model to simple terminal output without
+//! Renders shared Notification model to terminal output without
 //! depending on low-level ANSI modules.
 
 const std = @import("std");

@@ -9,12 +9,12 @@ const Allocator = std.mem.Allocator;
 // Import dependencies
 const state = @import("../state.zig");
 const layout = @import("../layout.zig");
-const theme_manager = @import("../../../../theme_manager/mod.zig");
-const term_mod = @import("../../../../term_refactored/mod.zig");
+const theme_manager = @import("../../../../theme/mod.zig");
+const term_mod = @import("../../../../term/mod.zig");
 const render_mod = @import("../../../../render/mod.zig");
 
 // Type aliases
-const DashboardDataStore = state.DashboardDataStore;
+const DashboardStore = state.DashboardStore;
 const Rect = layout.Rect;
 
 /// Resource usage data
@@ -117,7 +117,7 @@ pub const ResourceRenderer = struct {
         self: *Self,
         writer: anytype,
         bounds: Rect,
-        data_store: *const DashboardDataStore,
+        data_store: *const DashboardStore,
         theme: *const theme_manager.ColorScheme,
     ) !void {
         // Update resources from data store if available

@@ -1,5 +1,5 @@
 //! CLI Progress Presenter
-//! Uses shared ProgressRenderer to write a simple progress bar to stdout.
+//! Uses shared ProgressRenderer to write a progress bar to stdout.
 
 const std = @import("std");
 const progress_mod = @import("components_shared");
@@ -8,7 +8,7 @@ const Progress = progress_mod.Progress;
 const ProgressRenderer = progress_mod.ProgressRenderer;
 const ProgressStyle = progress_mod.ProgressStyle;
 
-/// Render a simple ASCII progress bar to stdout. Width defaults to 40.
+/// Render an ASCII progress bar to stdout. Width defaults to 40.
 pub fn render(data: *const Progress, width: u32) !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();

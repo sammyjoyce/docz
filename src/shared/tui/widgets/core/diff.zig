@@ -59,8 +59,8 @@ pub const DiffViewer = struct {
         pub const DisplayMode = enum {
             /// Show differences side by side
             side_by_side,
-            /// Show unified diff format
-            unified,
+            /// Show combined diff format
+            combined,
         };
 
         pub const ColorScheme = struct {
@@ -152,7 +152,7 @@ pub const DiffViewer = struct {
     pub fn render(self: *Self, renderer: *Renderer, ctx: Render) !void {
         switch (self.config.mode) {
             .side_by_side => try self.renderSideBySide(renderer, ctx),
-            .unified => try self.renderUnified(renderer, ctx),
+            .combined => try self.renderCombined(renderer, ctx),
         }
     }
 
@@ -194,8 +194,8 @@ pub const DiffViewer = struct {
         try self.renderPanel(renderer, right_bounds, .right, self.modified_text);
     }
 
-    /// Render in unified mode
-    fn renderUnified(self: *Self, renderer: *Renderer, ctx: Render) !void {
+    /// Render in combined mode
+    fn renderCombined(self: *Self, renderer: *Renderer, ctx: Render) !void {
         const bounds = ctx.bounds;
         var current_y = bounds.y;
         const scroll_y = self.state.scroll_offset.y;

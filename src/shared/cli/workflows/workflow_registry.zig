@@ -1,5 +1,5 @@
 //! Workflow Registry
-//! Integrated workflow system for the unified CLI
+//! Integrated workflow system for the CLI
 
 const std = @import("std");
 const state = @import("../core/state.zig");
@@ -238,7 +238,7 @@ fn createInitialConfigStep() WorkflowStep.WorkflowStep {
         fn execute(allocator: std.mem.Allocator, ctx: ?WorkflowStep.WorkflowStep) anyerror!WorkflowStep.WorkflowStepResult {
             _ = ctx;
 
-            // Create basic configuration if it doesn't exist
+            // Create configuration if it doesn't exist
             const config_content =
                 \\.{
                 \\    .model = "claude-3-5-sonnet-20241022",
@@ -267,5 +267,5 @@ fn createInitialConfigStep() WorkflowStep.WorkflowStep {
     };
 
     return WorkflowStep.WorkflowStep.init("Create Initial Configuration", InitConfigImpl.execute)
-        .withDescription("Create basic configuration file if needed");
+        .withDescription("Create configuration file if needed");
 }

@@ -9,23 +9,23 @@ const workflows = @import("../workflows/workflow_registry.zig");
 pub const CommandRouter = struct {
     allocator: std.mem.Allocator,
     state: *const state.Cli,
-    workflow_registry: workflows.WorkflowRegistry,
+    workflowRegistry: workflows.WorkflowRegistry,
 
     pub fn init(allocator: std.mem.Allocator, ctx: *const state.Cli) !CommandRouter {
-        var workflow_registry = workflows.WorkflowRegistry.init(allocator, ctx);
+        var workflowRegistry = workflows.WorkflowRegistry.init(allocator, ctx);
 
         // Register common workflows
-        try workflow_registry.registerCommonWorkflows();
+        try workflowRegistry.registerCommonWorkflows();
 
         return CommandRouter{
             .allocator = allocator,
             .state = ctx,
-            .workflow_registry = workflow_registry,
+            .workflowRegistry = workflowRegistry,
         };
     }
 
     pub fn deinit(self: *CommandRouter) void {
-        self.workflow_registry.deinit();
+        self.workflowRegistry.deinit();
     }
 
     /// Execute a parsed command with pipeline support
@@ -40,8 +40,8 @@ pub const CommandRouter = struct {
         // Check for workflow execution
         if (args.rawMessage) |msg| {
             if (std.mem.startsWith(u8, msg, "workflow ")) {
-                const workflow_name = msg[9..]; // Skip "workflow "
-                return self.executeWorkflow(workflow_name);
+                const workflowName = msg[9..]; // Skip "workflow "
+                return self.executeWorkflow(workflowName);
             }
         }
 
@@ -64,20 +64,20 @@ pub const CommandRouter = struct {
     fn executePipeline(self: *CommandRouter, args: types.Args) !types.CommandResult {
         if (args.rawMessage) |msg| {
             const stages = std.mem.split(u8, msg, "|");
-            var current_output: ?[]const u8 = null;
+            var currentOutput: ?[]const u8 = null;
 
             // Execute each stage of the pipeline
-            var stage_iter = stages;
-            while (stage_iter.next()) |stage| {
-                const trimmed_stage = std.mem.trim(u8, stage, " \t");
+            var stageIter = stages;
+            while (stageIter.next()) |stage| {
+                const trimmedStage = std.mem.trim(u8, stage, " \t");
 
                 if (self.state.verbose) {
-                    self.state.verboseLog("Pipeline stage: {s}", .{trimmed_stage});
+                    self.state.verboseLog("Pipeline stage: {s}", .{trimmedStage});
                 }
 
                 // Execute the stage (simplified - would need more sophisticated parsing)
-                if (std.mem.eql(u8, trimmed_stage, "clipboard")) {
-                    if (current_output) |output| {
+                if (std.mem.eql(u8, trimmedStage, "clipboard")) {
+                    if (currentOutput) |output| {
                         if (self.state.hasFeature(.clipboard)) {
                             try self.state.clipboard.copy(output);
                             try self.state.notification.send(.{
@@ -87,22 +87,22 @@ pub const CommandRouter = struct {
                             });
                         }
                     }
-                } else if (std.mem.eql(u8, trimmed_stage, "format json")) {
-                    if (current_output) |output| {
+                } else if (std.mem.eql(u8, trimmedStage, "format json")) {
+                    if (currentOutput) |output| {
                         // Format as JSON (simplified)
-                        const json_output = try std.fmt.allocPrint(self.allocator, "{{\"result\": \"{s}\"}}", .{output});
-                        if (current_output != args.rawMessage) {
-                            self.allocator.free(current_output.?);
+                        const jsonOutput = try std.fmt.allocPrint(self.allocator, "{{\"result\": \"{s}\"}}", .{output});
+                        if (currentOutput != args.rawMessage) {
+                            self.allocator.free(currentOutput.?);
                         }
-                        current_output = json_output;
+                        currentOutput = jsonOutput;
                     }
                 } else {
                     // Execute as regular command
-                    const result = try self.executeBasicCommand(trimmed_stage);
-                    if (current_output and current_output != args.rawMessage) {
-                        self.allocator.free(current_output.?);
+                    const result = try self.executeCommand(trimmedStage);
+                    if (currentOutput and currentOutput != args.rawMessage) {
+                        self.allocator.free(currentOutput.?);
                     }
-                    current_output = result.output;
+                    currentOutput = result.output;
 
                     if (!result.success) {
                         return result;
@@ -110,25 +110,25 @@ pub const CommandRouter = struct {
                 }
             }
 
-            return types.CommandResult.ok(current_output);
+            return types.CommandResult.ok(currentOutput);
         }
 
         return types.CommandResult.err("Invalid pipeline command", 1);
     }
 
     /// Execute a workflow
-    fn executeWorkflow(self: *CommandRouter, workflow_name: []const u8) !types.CommandResult {
-        return self.workflow_registry.execute(workflow_name);
+    fn executeWorkflow(self: *CommandRouter, workflowName: []const u8) !types.CommandResult {
+        return self.workflowRegistry.execute(workflowName);
     }
 
-    /// Execute a basic command (for pipeline stages)
-    fn executeBasicCommand(self: *CommandRouter, command: []const u8) !types.CommandResult {
+    /// Execute a command (for pipeline stages)
+    fn executeCommand(self: *CommandRouter, command: []const u8) !types.CommandResult {
         if (std.mem.startsWith(u8, command, "auth")) {
             // Parse auth subcommand
             if (std.mem.indexOf(u8, command, " ")) |space_idx| {
                 const subcmd = command[space_idx + 1 ..];
                 if (std.mem.eql(u8, subcmd, "status")) {
-                    return self.executeAuthStatusBasic();
+                    return self.executeAuthStatusShort();
                 }
             }
         }
@@ -179,12 +179,12 @@ pub const CommandRouter = struct {
         _ = args;
 
         // Show auth status with formatting
-        const status_text = if (self.state.hasFeature(.hyperlinks))
+        const statusText = if (self.state.hasFeature(.hyperlinks))
             "Status: ✓ Authenticated (click to refresh)"
         else
             "Status: ✓ Authenticated";
 
-        return types.CommandResult.ok(status_text);
+        return types.CommandResult.ok(statusText);
     }
 
     fn executeAuthRefresh(self: *CommandRouter, args: types.Args) !types.CommandResult {
@@ -208,9 +208,9 @@ pub const CommandRouter = struct {
                 .body = "Terminal features available",
                 .level = .success,
             });
-            return types.CommandResult.ok("Interactive mode with enhanced features");
+            return types.CommandResult.ok("Interactive mode with features");
         } else {
-            return types.CommandResult.ok("Interactive mode (basic terminal)");
+            return types.CommandResult.ok("Interactive mode (terminal)");
         }
     }
 
@@ -236,12 +236,12 @@ pub const CommandRouter = struct {
             \\  command | format json | clipboard
             \\  auth status | clipboard
             \\
-            \\Enhanced Features:
+            \\Terminal Features:
         ;
 
-        var help_buffer = std.ArrayList(u8).init(self.allocator);
-        defer help_buffer.deinit();
-        const writer = help_buffer.writer();
+        var helpBuffer = std.ArrayList(u8).init(self.allocator);
+        defer helpBuffer.deinit();
+        const writer = helpBuffer.writer();
 
         try writer.writeAll(help_text);
 
@@ -256,10 +256,10 @@ pub const CommandRouter = struct {
             try writer.writeAll("  ✓ System notifications\n");
         }
         if (self.state.hasFeature(.graphics)) {
-            try writer.writeAll("  ✓ Enhanced graphics\n");
+            try writer.writeAll("  ✓ Graphics\n");
         }
 
-        const output = try self.allocator.dupe(u8, help_buffer.items);
+        const output = try self.allocator.dupe(u8, helpBuffer.items);
         return types.CommandResult.ok(output);
     }
 
@@ -267,7 +267,7 @@ pub const CommandRouter = struct {
         _ = args;
 
         const capabilities = self.state.capabilities;
-        const version_info = try std.fmt.allocPrint(self.allocator,
+        const versionInfo = try std.fmt.allocPrint(self.allocator,
             \\docz 1.0.0 - CLI
             \\Terminal: {s}
             \\Features:
@@ -287,16 +287,16 @@ pub const CommandRouter = struct {
             if (capabilities.mouse) "✓" else "✗",
         });
 
-        return types.CommandResult.ok(version_info);
+        return types.CommandResult.ok(versionInfo);
     }
 
-    fn executeAuthStatusBasic(self: *CommandRouter) !types.CommandResult {
-        const status_text = if (self.state.hasFeature(.hyperlinks))
+    fn executeAuthStatusShort(self: *CommandRouter) !types.CommandResult {
+        const statusText = if (self.state.hasFeature(.hyperlinks))
             "✓ Authenticated (terminal)"
         else
             "✓ Authenticated";
 
-        const output = try self.allocator.dupe(u8, status_text);
+        const output = try self.allocator.dupe(u8, statusText);
         return types.CommandResult.ok(output);
     }
 };

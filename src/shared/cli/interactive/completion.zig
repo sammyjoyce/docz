@@ -532,7 +532,7 @@ pub const CompletionEngine = struct {
             }
             try writer.writeAll("│\n");
         } else {
-            // Show enhanced info
+            // Show info
             try writer.writeAll("│ ");
 
             var info_parts = std.ArrayList([]const u8).init(self.allocator);
@@ -659,7 +659,7 @@ pub const CompletionSets = struct {
                 .withDescription("Enhanced completion features demo")
                 .withCategory("demo")
                 .withIcon("✨")
-                .withPreview("Showcase advanced completion with previews and hyperlinks"),
+                .withPreview("Showcase completion with previews and hyperlinks"),
         };
 
         const result = try allocator.alloc(CompletionItem, commands.len);

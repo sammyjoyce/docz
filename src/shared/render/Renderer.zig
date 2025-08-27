@@ -1,13 +1,13 @@
-//! Adaptive Renderer System
+//! Renderer System
 //!
 //! This module provides a single interface for all rendering needs
 //! in the terminal UI system. It uses a strategy pattern to adapt rendering
 //! based on terminal capabilities and provides progressive enhancement.
 //!
 //! The renderer consolidates functionality from:
-//! - AdaptiveRenderer (text rendering with capability detection)
+//! - Renderer (text rendering with capability detection)
 //! - Renderer (widget-based TUI rendering)
-//! - Graphics Renderer (advanced graphics rendering)
+//! - Graphics Renderer (graphics rendering)
 
 const std = @import("std");
 const term_mod = @import("term_shared");
@@ -17,11 +17,11 @@ const canvas = @import("tui_shared").core.canvas;
 // Backward compatibility alias
 const canvas_engine = canvas;
 const term_sgr = term_mod.ansi.sgr;
-const theme_manager = @import("theme_manager");
+const theme_manager = @import("theme/mod.zig");
 const Allocator = std.mem.Allocator;
-const UnifiedTerminal = term_mod.term.Terminal;
+const Terminal = term_mod.term.Terminal;
 const Color = terminal.Color;
-const GraphicsManager = term_graphics.Graphics;
+const Graphics = term_graphics.Graphics;
 const TermCaps = term_mod.capabilities.TermCaps;
 
 /// Unified renderer that adapts to terminal capabilities and provides
@@ -30,21 +30,21 @@ pub const Renderer = struct {
     const Self = @This();
 
     allocator: Allocator,
-    terminal: UnifiedTerminal,
+    terminal: Terminal,
     capabilities: term_mod.caps.TermCaps,
-    render_tier: RenderTier,
-    graphics_manager: ?*GraphicsManager,
+    renderTier: RenderTier,
+    graphics: ?*Graphics,
     cache: Cache,
     theme: Theme,
 
     // Widget system support
     widgets: std.array_list.Managed(*Widget),
-    focused_widget: ?*Widget,
-    needs_redraw: bool,
+    focusedWidget: ?*Widget,
+    needsRedraw: bool,
 
     /// Rendering tier based on terminal capabilities
     pub const RenderTier = enum {
-        /// Full graphics, true color, animations, advanced features
+        /// Full graphics, true color, animations, features
         ultra,
         /// 256 colors, Unicode blocks, basic graphics
         rich,
@@ -81,7 +81,7 @@ pub const Renderer = struct {
         const CacheEntry = struct {
             content: []u8,
             timestamp: i64,
-            render_tier: RenderTier,
+            renderTier: RenderTier,
         };
 
         pub fn init(allocator: Allocator) Cache {
@@ -101,7 +101,7 @@ pub const Renderer = struct {
 
         pub fn get(self: *const Cache, key: u64, render_tier: RenderTier) ?[]const u8 {
             const entry = self.entries.get(key) orelse return null;
-            if (entry.render_tier != render_tier) return null;
+            if (entry.renderTier != render_tier) return null;
             return entry.content;
         }
 
@@ -117,7 +117,7 @@ pub const Renderer = struct {
             result.value_ptr.* = CacheEntry{
                 .content = owned_content,
                 .timestamp = now,
-                .render_tier = render_tier,
+                .renderTier = render_tier,
             };
         }
     };
@@ -182,8 +182,8 @@ pub const Renderer = struct {
 
     /// Style information for rendering
     pub const Style = struct {
-        fg_color: ?Style.Color = null,
-        bg_color: ?Style.Color = null,
+        fgColor: ?Style.Color = null,
+        bgColor: ?Style.Color = null,
         bold: bool = false,
         italic: bool = false,
         underline: bool = false,
@@ -292,24 +292,24 @@ pub const Renderer = struct {
 
     /// Widget constraints for layout
     pub const Constraints = struct {
-        min_width: u16 = 0,
-        max_width: u16 = std.math.maxInt(u16),
-        min_height: u16 = 0,
-        max_height: u16 = std.math.maxInt(u16),
+        minWidth: u16 = 0,
+        maxWidth: u16 = std.math.maxInt(u16),
+        minHeight: u16 = 0,
+        maxHeight: u16 = std.math.maxInt(u16),
 
         pub fn fixed(width: u16, height: u16) Constraints {
             return .{
-                .min_width = width,
-                .max_width = width,
-                .min_height = height,
-                .max_height = height,
+                .minWidth = width,
+                .maxWidth = width,
+                .minHeight = height,
+                .maxHeight = height,
             };
         }
 
         pub fn loose(min_width: u16, min_height: u16) Constraints {
             return .{
-                .min_width = min_width,
-                .max_height = min_height,
+                .minWidth = min_width,
+                .maxHeight = min_height,
             };
         }
     };
@@ -327,13 +327,13 @@ pub const Renderer = struct {
         render: *const fn (ctx: *anyopaque, renderer: *Renderer, area: Rect) anyerror!void,
 
         /// Handle input events
-        handle_input: *const fn (ctx: *anyopaque, event: InputEvent, area: Rect) anyerror!bool,
+        handleInput: *const fn (ctx: *anyopaque, event: InputEvent, area: Rect) anyerror!bool,
 
         /// Calculate the widget's desired size
         measure: *const fn (ctx: *anyopaque, constraints: Constraints) Size,
 
         /// Get widget type name for debugging
-        get_type_name: *const fn (ctx: *anyopaque) []const u8,
+        getTypeName: *const fn (ctx: *anyopaque) []const u8,
     };
 
     /// Core Widget interface - all widgets implement this
@@ -357,10 +357,10 @@ pub const Renderer = struct {
         focused: bool = false,
 
         /// User data associated with the widget
-        user_data: ?*anyopaque = null,
+        userData: ?*anyopaque = null,
 
         /// Layout information
-        layout_info: Layout,
+        layout: Layout,
 
         pub fn init(
             ptr: *anyopaque,
@@ -373,7 +373,7 @@ pub const Renderer = struct {
                 .vtable = vtable,
                 .id = id,
                 .bounds = bounds,
-                .layout_info = .{
+                .layout = .{
                     .size = .{ .width = bounds.width, .height = bounds.height },
                     .position = .{ .x = bounds.x, .y = bounds.y },
                     .constraints = .{},
@@ -392,7 +392,7 @@ pub const Renderer = struct {
         pub fn handleInput(self: *Widget, event: InputEvent) !bool {
             if (!self.visible) return false;
 
-            return try self.vtable.handle_input(self.ptr, event, self.bounds);
+            return try self.vtable.handleInput(self.ptr, event, self.bounds);
         }
 
         /// Measure the widget's desired size
@@ -403,8 +403,8 @@ pub const Renderer = struct {
         /// Set widget bounds
         pub fn setBounds(self: *Widget, bounds: Rect) void {
             self.bounds = bounds;
-            self.layout_info.size = .{ .width = bounds.width, .height = bounds.height };
-            self.layout_info.position = .{ .x = bounds.x, .y = bounds.y };
+            self.layout.size = .{ .width = bounds.width, .height = bounds.height };
+            self.layout.position = .{ .x = bounds.x, .y = bounds.y };
         }
 
         /// Set focus state
@@ -419,7 +419,7 @@ pub const Renderer = struct {
 
         /// Get widget type name
         pub fn getTypeName(self: Widget) []const u8 {
-            return self.vtable.get_type_name(self.ptr);
+            return self.vtable.getTypeName(self.ptr);
         }
     };
 
@@ -620,8 +620,8 @@ pub const Renderer = struct {
             total_height += self.padding.top + self.padding.bottom;
 
             return .{
-                .width = std.math.clamp(total_width, constraints.min_width, constraints.max_width),
-                .height = std.math.clamp(total_height, constraints.min_height, constraints.max_height),
+                .width = std.math.clamp(total_width, constraints.minWidth, constraints.maxWidth),
+                .height = std.math.clamp(total_height, constraints.minHeight, constraints.maxHeight),
             };
         }
     };
@@ -653,11 +653,11 @@ pub const Renderer = struct {
         };
     };
 
-    /// Set color based on renderer capabilities (enhanced from adaptive_renderer)
+    /// Set color based on renderer capabilities (from adaptive_renderer)
     pub fn setRendererColor(self: *Renderer, color: theme_manager.Color, writer: anytype) !void {
         const term_caps = self.capabilities;
 
-        switch (self.render_tier) {
+        switch (self.renderTier) {
             .ultra, .rich => {
                 if (term_caps.supportsTruecolor) {
                     try term_sgr.setForegroundRgb(writer, term_caps, color.rgb.r, color.rgb.g, color.rgb.b);
@@ -682,17 +682,17 @@ pub const Renderer = struct {
 
     /// Initialize renderer with automatic capability detection
     pub fn init(allocator: Allocator) !*Renderer {
-        const unified_terminal = try UnifiedTerminal.init(allocator);
-        const capabilities = unified_terminal.caps;
+        const term = try Terminal.init(allocator);
+        const capabilities = term.caps;
         const render_tier = RenderTier.fromCapabilities(capabilities);
 
         const renderer = try allocator.create(Renderer);
         renderer.* = Renderer{
             .allocator = allocator,
-            .terminal = unified_terminal,
+            .terminal = term,
             .capabilities = capabilities,
             .render_tier = render_tier,
-            .graphics_manager = null, // Initialize on demand
+            .graphics = null, // Initialize on demand
             .cache = Cache.init(allocator),
             .theme = try theme_manager.ColorScheme.createDark(allocator),
             .widgets = std.array_list.Managed(*Widget).init(allocator),
@@ -705,16 +705,16 @@ pub const Renderer = struct {
 
     /// Initialize with explicit render tier (for testing or forced modes)
     pub fn initWithTier(allocator: Allocator, tier: RenderTier) !*Renderer {
-        const unified_terminal = try UnifiedTerminal.init(allocator);
-        const capabilities = unified_terminal.caps;
+        const term = try Terminal.init(allocator);
+        const capabilities = term.caps;
 
         const renderer = try allocator.create(Renderer);
         renderer.* = Renderer{
             .allocator = allocator,
-            .terminal = unified_terminal,
+            .terminal = term,
             .capabilities = capabilities,
             .render_tier = tier,
-            .graphics_manager = null,
+            .graphics = null,
             .cache = Cache.init(allocator),
             .theme = try theme_manager.ColorScheme.createDark(allocator),
             .widgets = std.array_list.Managed(*Widget).init(allocator),
@@ -727,17 +727,17 @@ pub const Renderer = struct {
 
     /// Initialize with custom theme
     pub fn initWithTheme(allocator: Allocator, theme: *Theme) !*Renderer {
-        const unified_terminal = try UnifiedTerminal.init(allocator);
-        const capabilities = unified_terminal.caps;
+        const term = try Terminal.init(allocator);
+        const capabilities = term.caps;
         const render_tier = RenderTier.fromCapabilities(capabilities);
 
         const renderer = try allocator.create(Renderer);
         renderer.* = Renderer{
             .allocator = allocator,
-            .terminal = unified_terminal,
+            .terminal = term,
             .capabilities = capabilities,
             .render_tier = render_tier,
-            .graphics_manager = null,
+            .graphics = null,
             .cache = Cache.init(allocator),
             .theme = theme,
             .widgets = std.array_list.Managed(*Widget).init(allocator),
@@ -749,7 +749,7 @@ pub const Renderer = struct {
     }
 
     pub fn deinit(self: *Renderer) void {
-        if (self.graphics_manager) |gm| {
+        if (self.graphics) |gm| {
             gm.deinit();
             self.allocator.destroy(gm);
         }
@@ -790,13 +790,13 @@ pub const Renderer = struct {
             try self.terminal.setForegroundColor(c);
         }
 
-        if (bold and self.render_tier != .minimal) {
+        if (bold and self.renderTier != .minimal) {
             try self.terminal.setBold(true);
         }
 
         try self.terminal.writeText(text);
 
-        if (bold and self.render_tier != .minimal) {
+        if (bold and self.renderTier != .minimal) {
             try self.terminal.setBold(false);
         }
 
@@ -807,14 +807,14 @@ pub const Renderer = struct {
 
     /// Start synchronized output for flicker-free updates (if supported)
     pub fn beginSynchronized(self: *Renderer) !void {
-        if (self.render_tier == .ultra) {
+        if (self.renderTier == .ultra) {
             try self.terminal.beginSynchronizedOutput();
         }
     }
 
     /// End synchronized output
     pub fn endSynchronized(self: *Renderer) !void {
-        if (self.render_tier == .ultra) {
+        if (self.renderTier == .ultra) {
             try self.terminal.endSynchronizedOutput();
         }
     }
@@ -825,52 +825,52 @@ pub const Renderer = struct {
     }
 
     /// Get information about current rendering capabilities
-    pub fn getRenderingInfo(self: *const Renderer) Capabilities {
+    pub fn getCapabilities(self: *const Renderer) Capabilities {
         return Capabilities{
-            .tier = self.render_tier,
-            .supports_truecolor = self.capabilities.supportsTruecolor,
-            .supports_256_color = self.capabilities.supportsTruecolor, // Use truecolor as proxy for 256 color
-            .supports_unicode = self.capabilities.supportsUnicode,
-            .supports_graphics = self.capabilities.supportsKittyGraphics or self.capabilities.supportsSixel,
-            .supports_mouse = self.capabilities.supportsSgrMouse,
-            .supports_synchronized = self.capabilities.supportsSynchronizedOutput(),
-            .terminal_name = "detected", // Would need to be detected separately
+            .tier = self.renderTier,
+            .supportsTruecolor = self.capabilities.supportsTruecolor,
+            .supports256Color = self.capabilities.supportsTruecolor, // Use truecolor as proxy for 256 color
+            .supportsUnicode = self.capabilities.supportsUnicode,
+            .supportsGraphics = self.capabilities.supportsKittyGraphics or self.capabilities.supportsSixel,
+            .supportsMouse = self.capabilities.supportsSgrMouse,
+            .supportsSynchronized = self.capabilities.supportsSynchronizedOutput(),
+            .terminalName = "detected", // Would need to be detected separately
         };
     }
 
     pub const Capabilities = struct {
         tier: RenderTier,
-        supports_truecolor: bool,
-        supports_256_color: bool,
-        supports_unicode: bool,
-        supports_graphics: bool,
-        supports_mouse: bool,
-        supports_synchronized: bool,
-        terminal_name: []const u8,
+        supportsTruecolor: bool,
+        supports256Color: bool,
+        supportsUnicode: bool,
+        supportsGraphics: bool,
+        supportsMouse: bool,
+        supportsSynchronized: bool,
+        terminalName: []const u8,
 
         pub fn print(self: Capabilities, writer: anytype) !void {
             try writer.print("Rendering Tier: {s}\n", .{self.tier.description()});
-            try writer.print("Terminal: {s}\n", .{self.terminal_name});
+            try writer.print("Terminal: {s}\n", .{self.terminalName});
             try writer.print("Features:\n");
-            try writer.print("  True Color: {any}\n", .{self.supports_truecolor});
-            try writer.print("  256 Colors: {any}\n", .{self.supports_256_color});
-            try writer.print("  Unicode: {any}\n", .{self.supports_unicode});
-            try writer.print("  Graphics: {any}\n", .{self.supports_graphics});
-            try writer.print("  Mouse: {any}\n", .{self.supports_mouse});
-            try writer.print("  Synchronized: {any}\n", .{self.supports_synchronized});
+            try writer.print("  True Color: {any}\n", .{self.supportsTruecolor});
+            try writer.print("  256 Colors: {any}\n", .{self.supports256Color});
+            try writer.print("  Unicode: {any}\n", .{self.supportsUnicode});
+            try writer.print("  Graphics: {any}\n", .{self.supportsGraphics});
+            try writer.print("  Mouse: {any}\n", .{self.supportsMouse});
+            try writer.print("  Synchronized: {any}\n", .{self.supportsSynchronized});
         }
     };
 
-    /// Get or create graphics manager for advanced rendering
-    pub fn getGraphicsManager(self: *Renderer) !*GraphicsManager {
-        if (self.graphics_manager) |gm| {
-            return gm;
+    /// Get or create graphics instance for rendering
+    pub fn getGraphics(self: *Renderer) !*Graphics {
+        if (self.graphics) |g| {
+            return g;
         }
 
-        const gm = try self.allocator.create(GraphicsManager);
-        gm.* = GraphicsManager.init(self.allocator, &self.terminal);
-        self.graphics_manager = gm;
-        return gm;
+        const g = try self.allocator.create(Graphics);
+        g.* = Graphics.init(self.allocator, &self.terminal);
+        self.graphics = g;
+        return g;
     }
 
     /// Set current theme
@@ -883,12 +883,12 @@ pub const Renderer = struct {
         return self.theme;
     }
 
-    /// Get terminal for direct access (for advanced use cases)
+    /// Get terminal for direct access (for use cases)
     pub fn getTerminal(self: *Renderer) *term_mod.term.Terminal {
         return &self.terminal;
     }
 
-    /// Get cache for direct access (for advanced caching)
+    /// Get cache for direct access (for caching)
     pub fn getCache(self: *Renderer) *Cache {
         return &self.cache;
     }
@@ -911,11 +911,11 @@ pub const Renderer = struct {
         try self.widgets.append(widget);
 
         // Focus the first widget if none is focused
-        if (self.focused_widget == null) {
+        if (self.focusedWidget == null) {
             self.setFocus(widget);
         }
 
-        self.needs_redraw = true;
+        self.needsRedraw = true;
     }
 
     /// Remove a widget from the renderer
@@ -925,15 +925,15 @@ pub const Renderer = struct {
                 _ = self.widgets.orderedRemove(i);
 
                 // Update focus if removing focused widget
-                if (self.focused_widget == widget) {
+                if (self.focusedWidget == widget) {
                     if (self.widgets.items.len > 0) {
                         self.setFocus(self.widgets.items[0]);
                     } else {
-                        self.focused_widget = null;
+                        self.focusedWidget = null;
                     }
                 }
 
-                self.needs_redraw = true;
+                self.needsRedraw = true;
                 break;
             }
         }
@@ -941,19 +941,19 @@ pub const Renderer = struct {
 
     /// Set focus to a specific widget
     pub fn setFocus(self: *Renderer, widget: *Widget) void {
-        if (self.focused_widget) |old_focus| {
+        if (self.focusedWidget) |old_focus| {
             old_focus.focused = false;
         }
 
         widget.focused = true;
-        self.focused_widget = widget;
-        self.needs_redraw = true;
+        self.focusedWidget = widget;
+        self.needsRedraw = true;
     }
 
     /// Handle input events
     pub fn handleInput(self: *Renderer, event: InputEvent) !bool {
         // Try focused widget first
-        if (self.focused_widget) |widget| {
+        if (self.focusedWidget) |widget| {
             if (try widget.handleInput(event)) {
                 return true;
             }
@@ -964,7 +964,7 @@ pub const Renderer = struct {
         while (i > 0) {
             i -= 1;
             const widget = self.widgets.items[i];
-            if (widget != self.focused_widget) {
+            if (widget != self.focusedWidget) {
                 if (try widget.handleInput(event)) {
                     self.setFocus(widget);
                     return true;
@@ -990,7 +990,7 @@ pub const Renderer = struct {
     fn handleResize(self: *Renderer, size: Size) void {
         _ = size;
         // Trigger layout recalculation
-        self.needs_redraw = true;
+        self.needsRedraw = true;
     }
 
     fn handleSystemKey(self: *Renderer, key_event: InputEvent.KeyEvent) bool {
@@ -1000,7 +1000,7 @@ pub const Renderer = struct {
                 if (self.widgets.items.len > 1) {
                     var next_index: usize = 0;
 
-                    if (self.focused_widget) |current| {
+                    if (self.focusedWidget) |current| {
                         for (self.widgets.items, 0..) |widget, i| {
                             if (widget == current) {
                                 next_index = (i + 1) % self.widgets.items.len;
@@ -1021,7 +1021,7 @@ pub const Renderer = struct {
 
     /// Render all widgets to the terminal
     pub fn renderWidgets(self: *Renderer) !void {
-        if (!self.needs_redraw) return;
+        if (!self.needsRedraw) return;
 
         try self.beginSynchronized();
         defer self.endSynchronized() catch {};
@@ -1037,15 +1037,15 @@ pub const Renderer = struct {
             }
         }
 
-        self.needs_redraw = false;
+        self.needsRedraw = false;
     }
 
     /// Force a redraw on the next render cycle
     pub fn invalidate(self: *Renderer) void {
-        self.needs_redraw = true;
+        self.needsRedraw = true;
     }
 
-    /// Get the underlying renderer for advanced operations
+    /// Get the underlying renderer for operations
     pub fn getRenderer(self: *Renderer) *Renderer {
         return self;
     }
@@ -1060,7 +1060,7 @@ pub const Renderer = struct {
         try self.moveCursor(@intCast(ctx.bounds.x), @intCast(ctx.bounds.y));
 
         // Apply style
-        if (ctx.style.fg_color) |color| {
+        if (ctx.style.fgColor) |color| {
             try self.applyStyleColor(color);
         }
         if (ctx.style.bold) {
@@ -1197,7 +1197,7 @@ pub fn cacheKey(comptime fmt: []const u8, args: anytype) u64 {
     return Renderer.cacheKey(fmt, args);
 }
 
-/// Legacy AdaptiveRenderer type alias for backward compatibility
+/// Legacy type alias for backward compatibility
 pub const AdaptiveRenderer = Renderer;
 
 /// Convenience functions for backward compatibility

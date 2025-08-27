@@ -22,7 +22,7 @@ pub const PerformanceMetrics = struct {
 };
 
 /// Central data store for dashboard panels
-pub const DashboardDataStore = struct {
+pub const DashboardStore = struct {
     const Self = @This();
 
     allocator: std.mem.Allocator,

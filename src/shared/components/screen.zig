@@ -1,4 +1,4 @@
-//! Terminal Screen Component - High-level wrapper for terminal screen functionality
+//! Screen Component - High-level wrapper for terminal screen functionality
 //! Provides a clean, higher-level API for screen management operations
 //! Wraps term/screen.zig functionality with additional convenience methods
 
@@ -14,9 +14,9 @@ pub const TermCaps = term_screen.TermCaps;
 
 // ANSI-specific helpers removed from components to avoid direct dependency.
 
-/// TerminalScreen provides high-level terminal screen functionality
+/// Terminal provides high-level terminal screen functionality
 /// Wraps the low-level term/screen.zig with additional convenience methods
-pub const TerminalScreen = struct {
+pub const Terminal = struct {
     /// Clear the entire screen
     pub fn clear() void {
         writeControlSequence(Control.CLEAR_SCREEN);
@@ -87,8 +87,8 @@ pub const TerminalScreen = struct {
 
     /// Clear screen and move cursor to home (convenience function)
     pub fn clearAndHome() void {
-        TerminalScreen.clear();
-        TerminalScreen.home();
+        Terminal.clear();
+        Terminal.home();
     }
 
     /// Clear from cursor to end of screen
@@ -152,7 +152,7 @@ pub const TerminalScreen = struct {
     /// Move cursor to specific position
     pub fn moveCursor(row: u32, col: u32) void {
         if (row == 1 and col == 1) {
-            TerminalScreen.home();
+            Terminal.home();
         } else {
             writeFormattedSequence("\x1b[{d};{d}H", .{ row, col });
         }
@@ -293,97 +293,97 @@ pub const TerminalScreen = struct {
 };
 
 // Convenience functions for global screen operations
-pub const clear = TerminalScreen.clear;
-pub const clearLine = TerminalScreen.clearLine;
-pub const home = TerminalScreen.home;
-pub const saveCursor = TerminalScreen.saveCursor;
-pub const restoreCursor = TerminalScreen.restoreCursor;
-pub const requestCursorPosition = TerminalScreen.requestCursorPosition;
-pub const createBounds = TerminalScreen.createBounds;
-pub const isBoundsEmpty = TerminalScreen.isBoundsEmpty;
-pub const boundsIntersect = TerminalScreen.boundsIntersect;
-pub const clampBounds = TerminalScreen.clampBounds;
-pub const createComponent = TerminalScreen.createComponent;
-pub const createScreen = TerminalScreen.createScreen;
-pub const clearAndHome = TerminalScreen.clearAndHome;
-pub const clearToEnd = TerminalScreen.clearToEnd;
-pub const clearToStart = TerminalScreen.clearToStart;
-pub const clearAll = TerminalScreen.clearAll;
-pub const clearLineToEnd = TerminalScreen.clearLineToEnd;
-pub const clearLineToStart = TerminalScreen.clearLineToStart;
-pub const clearEntireLine = TerminalScreen.clearEntireLine;
-pub const scrollUp = TerminalScreen.scrollUp;
-pub const scrollDown = TerminalScreen.scrollDown;
-pub const setScrollRegion = TerminalScreen.setScrollRegion;
-pub const resetScrollRegion = TerminalScreen.resetScrollRegion;
-pub const moveCursor = TerminalScreen.moveCursor;
-pub const moveCursorUp = TerminalScreen.moveCursorUp;
-pub const moveCursorDown = TerminalScreen.moveCursorDown;
-pub const moveCursorRight = TerminalScreen.moveCursorRight;
-pub const moveCursorLeft = TerminalScreen.moveCursorLeft;
-pub const hideCursor = TerminalScreen.hideCursor;
-pub const showCursor = TerminalScreen.showCursor;
-pub const saveScreen = TerminalScreen.saveScreen;
-pub const restoreScreen = TerminalScreen.restoreScreen;
-pub const enableAltScreen = TerminalScreen.enableAltScreen;
-pub const disableAltScreen = TerminalScreen.disableAltScreen;
-pub const setTitle = TerminalScreen.setTitle;
-pub const setBackgroundColor = TerminalScreen.setBackgroundColor;
-pub const setForegroundColor = TerminalScreen.setForegroundColor;
-pub const resetAttributes = TerminalScreen.resetAttributes;
-pub const enableBold = TerminalScreen.enableBold;
-pub const disableBold = TerminalScreen.disableBold;
-pub const enableUnderline = TerminalScreen.enableUnderline;
-pub const disableUnderline = TerminalScreen.disableUnderline;
-pub const enableReverse = TerminalScreen.enableReverse;
-pub const disableReverse = TerminalScreen.disableReverse;
+pub const clear = Terminal.clear;
+pub const clearLine = Terminal.clearLine;
+pub const home = Terminal.home;
+pub const saveCursor = Terminal.saveCursor;
+pub const restoreCursor = Terminal.restoreCursor;
+pub const requestCursorPosition = Terminal.requestCursorPosition;
+pub const createBounds = Terminal.createBounds;
+pub const isBoundsEmpty = Terminal.isBoundsEmpty;
+pub const boundsIntersect = Terminal.boundsIntersect;
+pub const clampBounds = Terminal.clampBounds;
+pub const createComponent = Terminal.createComponent;
+pub const createScreen = Terminal.createScreen;
+pub const clearAndHome = Terminal.clearAndHome;
+pub const clearToEnd = Terminal.clearToEnd;
+pub const clearToStart = Terminal.clearToStart;
+pub const clearAll = Terminal.clearAll;
+pub const clearLineToEnd = Terminal.clearLineToEnd;
+pub const clearLineToStart = Terminal.clearLineToStart;
+pub const clearEntireLine = Terminal.clearEntireLine;
+pub const scrollUp = Terminal.scrollUp;
+pub const scrollDown = Terminal.scrollDown;
+pub const setScrollRegion = Terminal.setScrollRegion;
+pub const resetScrollRegion = Terminal.resetScrollRegion;
+pub const moveCursor = Terminal.moveCursor;
+pub const moveCursorUp = Terminal.moveCursorUp;
+pub const moveCursorDown = Terminal.moveCursorDown;
+pub const moveCursorRight = Terminal.moveCursorRight;
+pub const moveCursorLeft = Terminal.moveCursorLeft;
+pub const hideCursor = Terminal.hideCursor;
+pub const showCursor = Terminal.showCursor;
+pub const saveScreen = Terminal.saveScreen;
+pub const restoreScreen = Terminal.restoreScreen;
+pub const enableAltScreen = Terminal.enableAltScreen;
+pub const disableAltScreen = Terminal.disableAltScreen;
+pub const setTitle = Terminal.setTitle;
+pub const setBackgroundColor = Terminal.setBackgroundColor;
+pub const setForegroundColor = Terminal.setForegroundColor;
+pub const resetAttributes = Terminal.resetAttributes;
+pub const enableBold = Terminal.enableBold;
+pub const disableBold = Terminal.disableBold;
+pub const enableUnderline = Terminal.enableUnderline;
+pub const disableUnderline = Terminal.disableUnderline;
+pub const enableReverse = Terminal.enableReverse;
+pub const disableReverse = Terminal.disableReverse;
 
 // Tests
-test "TerminalScreen basic functionality" {
+test "Terminal basic functionality" {
     // Test screen clearing
-    TerminalScreen.clear();
-    TerminalScreen.clearLine();
-    TerminalScreen.clearAndHome();
+    Terminal.clear();
+    Terminal.clearLine();
+    Terminal.clearAndHome();
 
     // Test cursor movement
-    TerminalScreen.home();
-    TerminalScreen.moveCursor(5, 10);
-    TerminalScreen.moveCursorUp(2);
-    TerminalScreen.moveCursorDown(1);
-    TerminalScreen.moveCursorLeft(3);
-    TerminalScreen.moveCursorRight(4);
+    Terminal.home();
+    Terminal.moveCursor(5, 10);
+    Terminal.moveCursorUp(2);
+    Terminal.moveCursorDown(1);
+    Terminal.moveCursorLeft(3);
+    Terminal.moveCursorRight(4);
 
     // Test cursor visibility
-    TerminalScreen.hideCursor();
-    TerminalScreen.showCursor();
+    Terminal.hideCursor();
+    Terminal.showCursor();
 
     // Test cursor position management
-    TerminalScreen.saveCursor();
-    TerminalScreen.restoreCursor();
+    Terminal.saveCursor();
+    Terminal.restoreCursor();
 
     // Test scrolling
-    TerminalScreen.scrollUp(1);
-    TerminalScreen.scrollDown(2);
+    Terminal.scrollUp(1);
+    Terminal.scrollDown(2);
 
     // Test scroll region
-    TerminalScreen.setScrollRegion(1, 10);
-    TerminalScreen.resetScrollRegion();
+    Terminal.setScrollRegion(1, 10);
+    Terminal.resetScrollRegion();
 
     // Test bounds operations
-    const bounds1 = TerminalScreen.createBounds(0, 0, 10, 10);
-    const bounds2 = TerminalScreen.createBounds(5, 5, 10, 10);
-    _ = TerminalScreen.isBoundsEmpty(bounds1);
-    _ = TerminalScreen.boundsIntersect(bounds1, bounds2);
-    _ = TerminalScreen.clampBounds(bounds1, bounds2);
+    const bounds1 = Terminal.createBounds(0, 0, 10, 10);
+    const bounds2 = Terminal.createBounds(5, 5, 10, 10);
+    _ = Terminal.isBoundsEmpty(bounds1);
+    _ = Terminal.boundsIntersect(bounds1, bounds2);
+    _ = Terminal.clampBounds(bounds1, bounds2);
 
     // Test text attributes
-    TerminalScreen.setForegroundColor(31); // Red
-    TerminalScreen.setBackgroundColor(44); // Blue background
-    TerminalScreen.resetAttributes();
-    TerminalScreen.enableBold();
-    TerminalScreen.disableBold();
-    TerminalScreen.enableUnderline();
-    TerminalScreen.disableUnderline();
-    TerminalScreen.enableReverse();
-    TerminalScreen.disableReverse();
+    Terminal.setForegroundColor(31); // Red
+    Terminal.setBackgroundColor(44); // Blue background
+    Terminal.resetAttributes();
+    Terminal.enableBold();
+    Terminal.disableBold();
+    Terminal.enableUnderline();
+    Terminal.disableUnderline();
+    Terminal.enableReverse();
+    Terminal.disableReverse();
 }

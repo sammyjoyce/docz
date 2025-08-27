@@ -1,7 +1,7 @@
-//! Unified CLI Components
+//! CLI Components
 //! Organized component system with smart terminal integration
 
-// Base components (basic functionality)
+// Base components (core functionality)
 pub const Base = struct {
     pub const SelectMenu = @import("base/select_menu.zig").SelectMenu;
     pub const Notification = @import("../notifications.zig").Notification;

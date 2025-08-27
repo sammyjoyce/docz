@@ -5,5 +5,5 @@ const spec = @import("spec.zig");
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
-    try agent_main.run_agent(gpa.allocator(), spec.SPEC);
+    try agent_main.runAgent(gpa.allocator(), spec.SPEC);
 }

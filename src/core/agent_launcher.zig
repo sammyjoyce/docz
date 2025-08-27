@@ -1,7 +1,7 @@
 //! Interactive Agent Launcher - Core launcher functionality
 //!
 //! Provides a comprehensive launcher interface with agent discovery, interactive
-//! selection, session management, and simple stats persistence.
+//! selection, session management, and stats persistence.
 //!
 //! Zig: 0.15.1
 
@@ -29,17 +29,17 @@ pub const SessionType = enum {
 /// Launch options for agent execution
 pub const LaunchOptions = struct {
     /// Agent name to launch
-    agent_name: []const u8,
+    agentName: []const u8,
     /// Session type
-    session_type: SessionType = .interactive,
+    sessionType: SessionType = .interactive,
     /// Custom configuration overrides
-    config_overrides: ?std.StringHashMap([]const u8) = null,
+    configOverrides: ?std.StringHashMap([]const u8) = null,
     /// Environment variables
     environment: ?std.StringHashMap([]const u8) = null,
     /// API keys for authentication
-    api_keys: ?std.StringHashMap([]const u8) = null,
+    apiKeys: ?std.StringHashMap([]const u8) = null,
     /// Working directory
-    working_dir: ?[]const u8 = null,
+    workingDir: ?[]const u8 = null,
     /// Command line arguments
     args: ?[][]const u8 = null,
     /// Enable debug mode
@@ -47,80 +47,80 @@ pub const LaunchOptions = struct {
     /// Enable verbose output
     verbose: bool = false,
     /// Session timeout in seconds
-    timeout_seconds: ?u32 = null,
+    timeoutSeconds: ?u32 = null,
 };
 
 /// Agent statistics for usage tracking
 pub const AgentStats = struct {
     /// Total launches
-    total_launches: u64 = 0,
+    totalLaunches: u64 = 0,
     /// Successful launches
-    successful_launches: u64 = 0,
+    successfulLaunches: u64 = 0,
     /// Failed launches
-    failed_launches: u64 = 0,
+    failedLaunches: u64 = 0,
     /// Average session duration
-    average_duration_seconds: f64 = 0,
+    averageDurationSeconds: f64 = 0,
     /// Last launch timestamp
-    last_launch: ?i64 = null,
+    lastLaunch: ?i64 = null,
     /// Favorite status
-    is_favorite: bool = false,
+    isFavorite: bool = false,
     /// Launch history
-    launch_history: std.array_list.Managed(AgentStats.LaunchRecord),
+    launchHistory: std.array_list.Managed(AgentStats.LaunchRecord),
 
     /// Individual launch record
     pub const LaunchRecord = struct {
         timestamp: i64,
         success: bool,
-        duration_seconds: u32,
-        session_type: SessionType,
-        error_message: ?[]const u8 = null,
+        durationSeconds: u32,
+        sessionType: SessionType,
+        errorMessage: ?[]const u8 = null,
     };
 };
 
 /// Launcher configuration with comprehensive options
 pub const LauncherConfig = struct {
     /// Enable interactive mode with full TUI
-    enable_interactive: bool = true,
+    enableInteractive: bool = true,
     /// Enable batch mode for scripting
-    enable_batch_mode: bool = false,
+    enableBatchMode: bool = false,
     /// Show agent previews and details
-    show_previews: bool = true,
+    showPreviews: bool = true,
     /// Enable search and filtering
-    enable_search: bool = true,
+    enableSearch: bool = true,
     /// Enable category-based organization
-    enable_categories: bool = true,
+    enableCategories: bool = true,
     /// Enable favorites system
-    enable_favorites: bool = true,
+    enableFavorites: bool = true,
     /// Enable recent agents tracking
-    enable_recent: bool = true,
+    enableRecent: bool = true,
     /// Enable visual features (icons, colors, animations)
-    enable_visual_features: bool = true,
+    enableVisualFeatures: bool = true,
     /// Enable mouse support
-    enable_mouse: bool = true,
+    enableMouse: bool = true,
     /// Enable keyboard shortcuts
-    enable_shortcuts: bool = true,
+    enableShortcuts: bool = true,
     /// Default session type
-    default_session_type: SessionType = .interactive,
+    defaultSessionType: SessionType = .interactive,
     /// Session persistence directory
-    session_dir: []const u8 = ".agent_sessions",
+    sessionDir: []const u8 = ".agent_sessions",
     /// Favorites file path
-    favorites_file: []const u8 = ".agent_favorites.json",
+    favoritesFile: []const u8 = ".agent_favorites.json",
     /// Recent agents file path
-    recent_file: []const u8 = ".agent_recent.json",
+    recentFile: []const u8 = ".agent_recent.json",
     /// Statistics file path
-    stats_file: []const u8 = ".agent_stats.json",
+    statsFile: []const u8 = ".agent_stats.json",
     /// Show welcome screen
-    show_welcome: bool = true,
+    showWelcome: bool = true,
     /// Welcome message
-    welcome_message: []const u8 = "Welcome to the Multi-Agent Terminal AI System",
+    welcomeMessage: []const u8 = "Welcome to the Multi-Agent Terminal AI System",
     /// Enable help system
-    enable_help: bool = true,
+    enableHelp: bool = true,
     /// Enable tutorial mode
-    enable_tutorial: bool = false,
+    enableTutorial: bool = false,
     /// Theme name
-    theme_name: []const u8 = "dark",
+    themeName: []const u8 = "dark",
     /// Refresh rate for interactive mode
-    refresh_rate_ms: u64 = 100,
+    refreshRateMs: u64 = 100,
 };
 
 /// Main interactive agent launcher
@@ -133,16 +133,16 @@ pub const AgentLauncher = struct {
 
     // State management
     favorites: std.StringHashMap(void),
-    recent_agents: std.array_list.Managed([]const u8),
-    agent_stats: std.StringHashMap(AgentStats),
-    search_query: []const u8 = "",
-    selected_category: ?[]const u8 = null,
-    selected_index: usize = 0,
+    recentAgents: std.array_list.Managed([]const u8),
+    agentStats: std.StringHashMap(AgentStats),
+    searchQuery: []const u8 = "",
+    selectedCategory: ?[]const u8 = null,
+    selectedIndex: usize = 0,
 
     // UI state
-    is_running: bool = false,
-    needs_redraw: bool = true,
-    last_input_time: i64 = 0,
+    isRunning: bool = false,
+    needsRedraw: bool = true,
+    lastInputTime: i64 = 0,
 
     /// Initialize the agent launcher
     pub fn init(allocator: Allocator, config: LauncherConfig) !Self {
@@ -152,25 +152,25 @@ pub const AgentLauncher = struct {
 
         // Load persistent data
         var favorites = std.StringHashMap(void).init(allocator);
-        var recent_agents = std.array_list.Managed([]const u8).init(allocator);
-        var agent_stats = std.StringHashMap(AgentStats).init(allocator);
+        var recentAgents = std.array_list.Managed([]const u8).init(allocator);
+        var agentStats = std.StringHashMap(AgentStats).init(allocator);
 
         // Load favorites
-        try load_favorites(allocator, config.favorites_file, &favorites);
+        try loadFavorites(allocator, config.favoritesFile, &favorites);
 
         // Load recent agents
-        try load_recent_agents(allocator, config.recent_file, &recent_agents);
+        try loadRecentAgents(allocator, config.recentFile, &recentAgents);
 
         // Load statistics
-        try load_agent_stats(allocator, config.stats_file, &agent_stats);
+        try loadAgentStats(allocator, config.statsFile, &agentStats);
 
         return Self{
             .allocator = allocator,
             .config = config,
             .registry = registry,
             .favorites = favorites,
-            .recent_agents = recent_agents,
-            .agent_stats = agent_stats,
+            .recentAgents = recentAgents,
+            .agentStats = agentStats,
         };
     }
 
@@ -180,75 +180,75 @@ pub const AgentLauncher = struct {
         self.registry.deinit();
 
         // Clean up favorites
-        var fav_it = self.favorites.iterator();
-        while (fav_it.next()) |entry| {
+        var favIt = self.favorites.iterator();
+        while (favIt.next()) |entry| {
             self.allocator.free(entry.key_ptr.*);
         }
         self.favorites.deinit();
 
         // Clean up recent agents
-        for (self.recent_agents.items) |agent| {
+        for (self.recentAgents.items) |agent| {
             self.allocator.free(agent);
         }
-        self.recent_agents.deinit();
+        self.recentAgents.deinit();
 
         // Clean up stats
-        var stats_it = self.agent_stats.iterator();
-        while (stats_it.next()) |entry| {
+        var statsIt = self.agentStats.iterator();
+        while (statsIt.next()) |entry| {
             self.allocator.free(entry.key_ptr.*);
             var stats = entry.value_ptr.*;
-            for (stats.launch_history.items) |*record| {
-                if (record.error_message) |msg| {
+            for (stats.launchHistory.items) |*record| {
+                if (record.errorMessage) |msg| {
                     self.allocator.free(msg);
                 }
             }
-            stats.launch_history.deinit();
+            stats.launchHistory.deinit();
         }
-        self.agent_stats.deinit();
+        self.agentStats.deinit();
 
         // Clean up search query
-        if (self.search_query.len > 0) {
-            self.allocator.free(self.search_query);
+        if (self.searchQuery.len > 0) {
+            self.allocator.free(self.searchQuery);
         }
 
         // Clean up selected category
-        if (self.selected_category) |cat| {
+        if (self.selectedCategory) |cat| {
             self.allocator.free(cat);
         }
     }
 
     /// Run the launcher
     pub fn run(self: *Self) !void {
-        if (self.config.enable_interactive and !self.config.enable_batch_mode) {
-            try self.run_interactive();
+        if (self.config.enableInteractive and !self.config.enableBatchMode) {
+            try self.runInteractive();
         } else {
-            try self.run_batch();
+            try self.runBatch();
         }
     }
 
-    /// Run interactive launcher (simple terminal UI)
-    pub fn run_interactive(self: *Self) !void {
-        self.is_running = true;
-        defer self.is_running = false;
+    /// Run interactive launcher (terminal UI)
+    pub fn runInteractive(self: *Self) !void {
+        self.isRunning = true;
+        defer self.isRunning = false;
 
         // Show welcome screen
-        if (self.config.show_welcome) {
-            try self.show_welcome_screen();
+        if (self.config.showWelcome) {
+            try self.showWelcomeScreen();
         }
 
         // Get available agents
         const agents = try self.registry.getAllAgents();
         defer self.allocator.free(agents); // Borrowed view; registry owns inner fields
 
-        // Display agents in simple interactive mode
-        try self.display_agent_menu(agents);
+        // Display agents in interactive mode
+        try self.displayAgentMenu(agents);
 
         // Save persistent data
-        try self.save_persistent_data();
+        try self.savePersistentData();
     }
 
     /// Run batch mode launcher (list to stdout)
-    pub fn run_batch(self: *Self) !void {
+    pub fn runBatch(self: *Self) !void {
         const agents = try self.registry.getAllAgents();
         defer self.allocator.free(agents); // Borrowed view; registry owns inner fields
 
@@ -273,18 +273,18 @@ pub const AgentLauncher = struct {
     }
 
     /// Show welcome screen
-    pub fn show_welcome_screen(self: *Self) !void {
+    pub fn showWelcomeScreen(self: *Self) !void {
         std.debug.print("\n", .{});
         std.debug.print("╔══════════════════════════════════════════════════════════════════════════════╗\n", .{});
         std.debug.print("║                        Multi-Agent Terminal AI System                       ║\n", .{});
         std.debug.print("╚══════════════════════════════════════════════════════════════════════════════╝\n", .{});
         std.debug.print("\n", .{});
-        std.debug.print("{s}\n\n", .{self.config.welcome_message});
+        std.debug.print("{s}\n\n", .{self.config.welcomeMessage});
 
         // Display recent agents
-        if (self.recent_agents.items.len > 0) {
+        if (self.recentAgents.items.len > 0) {
             std.debug.print("Recent agents:\n", .{});
-            for (self.recent_agents.items, 0..) |agent, i| {
+            for (self.recentAgents.items, 0..) |agent, i| {
                 if (i >= 3) break; // Show max 3
                 std.debug.print("  • {s}\n", .{agent});
             }
@@ -298,14 +298,14 @@ pub const AgentLauncher = struct {
         std.debug.print("\n\n", .{});
     }
 
-    /// Display simple interactive agent menu
-    pub fn display_agent_menu(self: *Self, agents: []@import("agent_registry.zig").Agent) !void {
+    /// Display interactive agent menu
+    pub fn displayAgentMenu(self: *Self, agents: []@import("agent_registry.zig").Agent) !void {
         while (true) {
             std.debug.print("\nAvailable Agents:\n", .{});
             std.debug.print("================\n", .{});
 
             for (agents, 0..) |agent, i| {
-                const marker = if (i == self.selected_index) "▶" else " ";
+                const marker = if (i == self.selectedIndex) "▶" else " ";
                 const favorite = if (self.favorites.contains(agent.name)) "★" else " ";
                 std.debug.print("{s} {s} [{d}] {s} v{s}\n", .{ marker, favorite, i + 1, agent.name, agent.version });
                 std.debug.print("      {s}\n", .{agent.description});
@@ -342,24 +342,24 @@ pub const AgentLauncher = struct {
                 if (mem.eql(u8, trimmed, "q") or mem.eql(u8, trimmed, "quit")) {
                     break;
                 } else if (mem.eql(u8, trimmed, "f")) {
-                    if (self.selected_index < agents.len) {
-                        try self.toggle_favorite(agents[self.selected_index].name);
+                    if (self.selectedIndex < agents.len) {
+                        try self.toggleFavorite(agents[self.selectedIndex].name);
                     }
                 } else if (trimmed.len == 0) {
                     // Launch selected agent
-                    if (self.selected_index < agents.len) {
+                    if (self.selectedIndex < agents.len) {
                         const options = LaunchOptions{
-                            .agent_name = agents[self.selected_index].name,
-                            .session_type = self.config.default_session_type,
+                            .agentName = agents[self.selectedIndex].name,
+                            .sessionType = self.config.defaultSessionType,
                         };
-                        try self.launch_agent(options);
-                        try self.add_recent_agent(agents[self.selected_index].name);
+                        try self.launchAgent(options);
+                        try self.addRecentAgent(agents[self.selectedIndex].name);
                     }
                 } else {
-                    const maybe_index = std.fmt.parseInt(usize, trimmed, 10) catch null;
-                    if (maybe_index) |idx1| {
+                    const maybeIndex = std.fmt.parseInt(usize, trimmed, 10) catch null;
+                    if (maybeIndex) |idx1| {
                         if (idx1 > 0 and idx1 <= agents.len) {
-                            self.selected_index = idx1 - 1;
+                            self.selectedIndex = idx1 - 1;
                         }
                     }
                 }
@@ -368,39 +368,39 @@ pub const AgentLauncher = struct {
     }
 
     /// Launch an agent with specified options
-    pub fn launch_agent(self: *Self, options: LaunchOptions) !void {
+    pub fn launchAgent(self: *Self, options: LaunchOptions) !void {
         // Validate agent exists
-        const agent_info = (try self.registry.getAgent(options.agent_name)) orelse {
+        const agentInfo = (try self.registry.getAgent(options.agentName)) orelse {
             return error.AgentNotFound;
         };
 
         // Update statistics (start)
-        try self.update_agent_stats(options.agent_name, true, 0, options.session_type, null);
+        try self.updateAgentStats(options.agentName, true, 0, options.sessionType, null);
 
         // Add to recent agents
-        try self.add_recent_agent(options.agent_name);
+        try self.addRecentAgent(options.agentName);
 
         // Execute agent (placeholder)
-        try self.execute_agent(agent_info, options);
+        try self.executeAgent(agentInfo, options);
 
         // Update statistics (completion)
-        try self.update_agent_stats(options.agent_name, false, 0, options.session_type, null);
+        try self.updateAgentStats(options.agentName, false, 0, options.sessionType, null);
     }
 
     /// Execute the actual agent
-    pub fn execute_agent(self: *Self, agent_info: @import("agent_registry.zig").Agent, options: LaunchOptions) !void {
+    pub fn executeAgent(self: *Self, agentInfo: @import("agent_registry.zig").Agent, options: LaunchOptions) !void {
         _ = self;
 
-        std.debug.print("Launching agent: {s} v{s}\n", .{ agent_info.name, agent_info.version });
-        std.debug.print("Description: {s}\n", .{agent_info.description});
-        std.debug.print("Author: {s}\n", .{agent_info.author});
+        std.debug.print("Launching agent: {s} v{s}\n", .{ agentInfo.name, agentInfo.version });
+        std.debug.print("Description: {s}\n", .{agentInfo.description});
+        std.debug.print("Author: {s}\n", .{agentInfo.author});
 
         if (options.debug) std.debug.print("Debug mode enabled\n", .{});
 
         if (options.verbose) {
             std.debug.print("Verbose output enabled\n", .{});
-            std.debug.print("Session type: {}\n", .{options.session_type});
-            std.debug.print("Working directory: {s}\n", .{options.working_dir orelse "current"});
+            std.debug.print("Session type: {}\n", .{options.sessionType});
+            std.debug.print("Working directory: {s}\n", .{options.workingDir orelse "current"});
         }
 
         // TODO: integrate with actual agent execution system:
@@ -411,12 +411,12 @@ pub const AgentLauncher = struct {
     }
 
     /// Add agent to recent list
-    pub fn add_recent_agent(self: *Self, agent_name: []const u8) !void {
+    pub fn addRecentAgent(self: *Self, agentName: []const u8) !void {
         // Remove if already exists
         var i: usize = 0;
-        while (i < self.recent_agents.items.len) {
-            if (mem.eql(u8, self.recent_agents.items[i], agent_name)) {
-                const removed = self.recent_agents.orderedRemove(i);
+        while (i < self.recentAgents.items.len) {
+            if (mem.eql(u8, self.recentAgents.items[i], agentName)) {
+                const removed = self.recentAgents.orderedRemove(i);
                 self.allocator.free(removed);
                 break;
             }
@@ -424,115 +424,115 @@ pub const AgentLauncher = struct {
         }
 
         // Add to front
-        const name_copy = try self.allocator.dupe(u8, agent_name);
-        try self.recent_agents.insert(0, name_copy);
+        const nameCopy = try self.allocator.dupe(u8, agentName);
+        try self.recentAgents.insert(0, nameCopy);
 
         // Limit to 10 recent agents
-        while (self.recent_agents.items.len > 10) {
-            const removed = self.recent_agents.pop();
+        while (self.recentAgents.items.len > 10) {
+            const removed = self.recentAgents.pop();
             self.allocator.free(removed);
         }
     }
 
     /// Toggle favorite status for an agent
-    pub fn toggle_favorite(self: *Self, agent_name: []const u8) !void {
-        if (self.favorites.contains(agent_name)) {
+    pub fn toggleFavorite(self: *Self, agentName: []const u8) !void {
+        if (self.favorites.contains(agentName)) {
             // Remove from favorites
-            const key = self.favorites.getKey(agent_name).?;
+            const key = self.favorites.getKey(agentName).?;
             _ = self.favorites.remove(key);
             self.allocator.free(key);
 
             // Update stats
-            if (self.agent_stats.getPtr(agent_name)) |stats| {
-                stats.is_favorite = false;
+            if (self.agentStats.getPtr(agentName)) |stats| {
+                stats.isFavorite = false;
             }
         } else {
             // Add to favorites
-            const name_copy = try self.allocator.dupe(u8, agent_name);
-            try self.favorites.put(name_copy, {});
+            const nameCopy = try self.allocator.dupe(u8, agentName);
+            try self.favorites.put(nameCopy, {});
 
             // Update stats
-            var stats = self.agent_stats.getPtr(agent_name) orelse blk: {
-                const new_stats = AgentStats{
-                    .launch_history = std.array_list.Managed(AgentStats.LaunchRecord).init(self.allocator),
+            var stats = self.agentStats.getPtr(agentName) orelse blk: {
+                const newStats = AgentStats{
+                    .launchHistory = std.array_list.Managed(AgentStats.LaunchRecord).init(self.allocator),
                 };
-                const key_copy = try self.allocator.dupe(u8, agent_name);
-                try self.agent_stats.put(key_copy, new_stats);
-                break :blk self.agent_stats.getPtr(agent_name).?;
+                const keyCopy = try self.allocator.dupe(u8, agentName);
+                try self.agentStats.put(keyCopy, newStats);
+                break :blk self.agentStats.getPtr(agentName).?;
             };
-            stats.is_favorite = true;
+            stats.isFavorite = true;
         }
 
-        self.needs_redraw = true;
+        self.needsRedraw = true;
     }
 
     /// Update agent statistics
-    pub fn update_agent_stats(
+    pub fn updateAgentStats(
         self: *Self,
-        agent_name: []const u8,
-        is_start: bool,
-        duration_seconds: u32,
-        session_type: SessionType,
-        error_message: ?[]const u8,
+        agentName: []const u8,
+        isStart: bool,
+        durationSeconds: u32,
+        sessionType: SessionType,
+        errorMessage: ?[]const u8,
     ) !void {
-        const name_copy = try self.allocator.dupe(u8, agent_name);
-        defer self.allocator.free(name_copy);
+        const nameCopy = try self.allocator.dupe(u8, agentName);
+        defer self.allocator.free(nameCopy);
 
-        var stats = self.agent_stats.getPtr(name_copy) orelse blk: {
-            const new_stats = AgentStats{
-                .launch_history = std.array_list.Managed(AgentStats.LaunchRecord).init(self.allocator),
+        var stats = self.agentStats.getPtr(nameCopy) orelse blk: {
+            const newStats = AgentStats{
+                .launchHistory = std.array_list.Managed(AgentStats.LaunchRecord).init(self.allocator),
             };
-            try self.agent_stats.put(name_copy, new_stats);
-            break :blk self.agent_stats.getPtr(name_copy).?;
+            try self.agentStats.put(nameCopy, newStats);
+            break :blk self.agentStats.getPtr(nameCopy).?;
         };
 
-        if (is_start) {
-            stats.total_launches += 1;
-            stats.last_launch = time.timestamp();
+        if (isStart) {
+            stats.totalLaunches += 1;
+            stats.lastLaunch = time.timestamp();
         } else {
-            if (error_message) |_| {
-                stats.failed_launches += 1;
+            if (errorMessage) |_| {
+                stats.failedLaunches += 1;
             } else {
-                stats.successful_launches += 1;
+                stats.successfulLaunches += 1;
             }
 
             // Add launch record
             const record = AgentStats.LaunchRecord{
-                .timestamp = stats.last_launch orelse time.timestamp(),
-                .success = error_message == null,
-                .duration_seconds = duration_seconds,
-                .session_type = session_type,
-                .error_message = if (error_message) |msg| try self.allocator.dupe(u8, msg) else null,
+                .timestamp = stats.lastLaunch orelse time.timestamp(),
+                .success = errorMessage == null,
+                .durationSeconds = durationSeconds,
+                .sessionType = sessionType,
+                .errorMessage = if (errorMessage) |msg| try self.allocator.dupe(u8, msg) else null,
             };
-            try stats.launch_history.append(record);
+            try stats.launchHistory.append(record);
 
             // Update average duration
             var sum: u64 = 0;
-            for (stats.launch_history.items) |rec| sum += rec.duration_seconds;
-            stats.average_duration_seconds = @as(f64, @floatFromInt(sum)) /
-                @as(f64, @floatFromInt(stats.launch_history.items.len));
+            for (stats.launchHistory.items) |rec| sum += rec.durationSeconds;
+            stats.averageDurationSeconds = @as(f64, @floatFromInt(sum)) /
+                @as(f64, @floatFromInt(stats.launchHistory.items.len));
         }
     }
 
     /// Save persistent data to disk
-    pub fn save_persistent_data(self: *Self) !void {
-        try save_favorites(self.allocator, self.config.favorites_file, &self.favorites);
-        try save_recent_agents(self.allocator, self.config.recent_file, &self.recent_agents);
-        try save_agent_stats(self.allocator, self.config.stats_file, &self.agent_stats);
+    pub fn savePersistentData(self: *Self) !void {
+        try saveFavorites(self.allocator, self.config.favoritesFile, &self.favorites);
+        try saveRecentAgents(self.allocator, self.config.recentFile, &self.recentAgents);
+        try saveAgentStats(self.allocator, self.config.statsFile, &self.agentStats);
     }
 };
 
 /// ---------- Helper functions for persistent data management ----------
-fn parse_session_type(type_str: []const u8) SessionType {
-    if (mem.eql(u8, type_str, "interactive")) return .interactive;
-    if (mem.eql(u8, type_str, "batch")) return .batch;
-    if (mem.eql(u8, type_str, "temporary")) return .temporary;
-    if (mem.eql(u8, type_str, "shared")) return .shared;
-    if (mem.eql(u8, type_str, "read_only")) return .read_only;
+fn parseSessionType(typeStr: []const u8) SessionType {
+    if (mem.eql(u8, typeStr, "interactive")) return .interactive;
+    if (mem.eql(u8, typeStr, "batch")) return .batch;
+    if (mem.eql(u8, typeStr, "temporary")) return .temporary;
+    if (mem.eql(u8, typeStr, "shared")) return .shared;
+    if (mem.eql(u8, typeStr, "read_only")) return .readOnly;
     return .interactive; // default
 }
 
-fn load_favorites(allocator: Allocator, filepath: []const u8, favorites: *std.StringHashMap(void)) !void {
+fn loadFavorites(allocator: Allocator, filepath: []const u8, favorites: *std.StringHashMap(void)) !void {
     const file = fs.cwd().openFile(filepath, .{}) catch return;
     defer file.close();
 
@@ -546,32 +546,32 @@ fn load_favorites(allocator: Allocator, filepath: []const u8, favorites: *std.St
 
     for (parsed.value.array.items) |item| {
         if (item == .string) {
-            const name_copy = try allocator.dupe(u8, item.string);
-            try favorites.put(name_copy, {});
+            const nameCopy = try allocator.dupe(u8, item.string);
+            try favorites.put(nameCopy, {});
         }
     }
 }
 
-fn save_favorites(allocator: Allocator, filepath: []const u8, favorites: *std.StringHashMap(void)) !void {
+fn saveFavorites(allocator: Allocator, filepath: []const u8, favorites: *std.StringHashMap(void)) !void {
     const file = try fs.cwd().createFile(filepath, .{});
     defer file.close();
 
-    var json_list = std.array_list.Managed(json.Value).init(allocator);
-    defer json_list.deinit();
+    var jsonList = std.array_list.Managed(json.Value).init(allocator);
+    defer jsonList.deinit();
 
     var it = favorites.iterator();
     while (it.next()) |entry| {
-        try json_list.append(json.Value{ .string = entry.key_ptr.* });
+        try jsonList.append(json.Value{ .string = entry.key_ptr.* });
     }
 
-    const json_value = json.Value{ .array = json_list };
-    const serialized = try json.stringifyAlloc(allocator, json_value, .{ .whitespace = true });
+    const jsonValue = json.Value{ .array = jsonList };
+    const serialized = try json.stringifyAlloc(allocator, jsonValue, .{ .whitespace = true });
     defer allocator.free(serialized);
 
     try file.writeAll(serialized);
 }
 
-fn load_recent_agents(allocator: Allocator, filepath: []const u8, recent: *std.array_list.Managed([]const u8)) !void {
+fn loadRecentAgents(allocator: Allocator, filepath: []const u8, recent: *std.array_list.Managed([]const u8)) !void {
     const file = fs.cwd().openFile(filepath, .{}) catch return;
     defer file.close();
 
@@ -585,31 +585,31 @@ fn load_recent_agents(allocator: Allocator, filepath: []const u8, recent: *std.a
 
     for (parsed.value.array.items) |item| {
         if (item == .string) {
-            const name_copy = try allocator.dupe(u8, item.string);
-            try recent.append(name_copy);
+            const nameCopy = try allocator.dupe(u8, item.string);
+            try recent.append(nameCopy);
         }
     }
 }
 
-fn save_recent_agents(allocator: Allocator, filepath: []const u8, recent: *std.array_list.Managed([]const u8)) !void {
+fn saveRecentAgents(allocator: Allocator, filepath: []const u8, recent: *std.array_list.Managed([]const u8)) !void {
     const file = try fs.cwd().createFile(filepath, .{});
     defer file.close();
 
-    var json_list = std.array_list.Managed(json.Value).init(allocator);
-    defer json_list.deinit();
+    var jsonList = std.array_list.Managed(json.Value).init(allocator);
+    defer jsonList.deinit();
 
     for (recent.items) |agent| {
-        try json_list.append(json.Value{ .string = agent });
+        try jsonList.append(json.Value{ .string = agent });
     }
 
-    const json_value = json.Value{ .array = json_list };
-    const serialized = try json.stringifyAlloc(allocator, json_value, .{ .whitespace = true });
+    const jsonValue = json.Value{ .array = jsonList };
+    const serialized = try json.stringifyAlloc(allocator, jsonValue, .{ .whitespace = true });
     defer allocator.free(serialized);
 
     try file.writeAll(serialized);
 }
 
-fn load_agent_stats(allocator: Allocator, filepath: []const u8, stats: *std.StringHashMap(AgentStats)) !void {
+fn loadAgentStats(allocator: Allocator, filepath: []const u8, stats: *std.StringHashMap(AgentStats)) !void {
     const file = fs.cwd().openFile(filepath, .{}) catch return;
     defer file.close();
 
@@ -625,129 +625,129 @@ fn load_agent_stats(allocator: Allocator, filepath: []const u8, stats: *std.Stri
     while (it.next()) |entry| {
         if (entry.value_ptr.* != .object) continue;
 
-        const agent_name = try allocator.dupe(u8, entry.key_ptr.*);
-        var agent_stats = AgentStats{
-            .launch_history = std.array_list.Managed(AgentStats.LaunchRecord).init(allocator),
+        const agentName = try allocator.dupe(u8, entry.key_ptr.*);
+        var agentStats = AgentStats{
+            .launchHistory = std.array_list.Managed(AgentStats.LaunchRecord).init(allocator),
         };
 
         const obj = entry.value_ptr.*.object;
 
-        // Load basic stats
-        if (obj.get("total_launches")) |v| agent_stats.total_launches = @intCast(v.integer);
-        if (obj.get("successful_launches")) |v| agent_stats.successful_launches = @intCast(v.integer);
-        if (obj.get("failed_launches")) |v| agent_stats.failed_launches = @intCast(v.integer);
-        if (obj.get("average_duration_seconds")) |v| agent_stats.average_duration_seconds = v.float;
-        if (obj.get("last_launch")) |v| agent_stats.last_launch = v.integer;
-        if (obj.get("is_favorite")) |v| agent_stats.is_favorite = v.bool;
+        // Load stats
+        if (obj.get("total_launches")) |v| agentStats.totalLaunches = @intCast(v.integer);
+        if (obj.get("successful_launches")) |v| agentStats.successfulLaunches = @intCast(v.integer);
+        if (obj.get("failed_launches")) |v| agentStats.failedLaunches = @intCast(v.integer);
+        if (obj.get("average_duration_seconds")) |v| agentStats.averageDurationSeconds = v.float;
+        if (obj.get("last_launch")) |v| agentStats.lastLaunch = v.integer;
+        if (obj.get("is_favorite")) |v| agentStats.isFavorite = v.bool;
 
         // Load launch history
         if (obj.get("launch_history")) |history| {
             if (history == .array) {
-                for (history.array.items) |record_val| {
-                    if (record_val == .object) {
-                        const record_obj = record_val.object;
+                for (history.array.items) |recordVal| {
+                    if (recordVal == .object) {
+                        const recordObj = recordVal.object;
                         const record = AgentStats.LaunchRecord{
-                            .timestamp = record_obj.get("timestamp").?.integer,
-                            .success = record_obj.get("success").?.bool,
-                            .duration_seconds = @intCast(record_obj.get("duration_seconds").?.integer),
-                            .session_type = parse_session_type(record_obj.get("session_type").?.string),
-                            .error_message = if (record_obj.get("error_message")) |msg| try allocator.dupe(u8, msg.string) else null,
+                            .timestamp = recordObj.get("timestamp").?.integer,
+                            .success = recordObj.get("success").?.bool,
+                            .durationSeconds = @intCast(recordObj.get("duration_seconds").?.integer),
+                            .sessionType = parseSessionType(recordObj.get("session_type").?.string),
+                            .errorMessage = if (recordObj.get("error_message")) |msg| try allocator.dupe(u8, msg.string) else null,
                         };
-                        try agent_stats.launch_history.append(record);
+                        try agentStats.launchHistory.append(record);
                     }
                 }
             }
         }
 
-        try stats.put(agent_name, agent_stats);
+        try stats.put(agentName, agentStats);
     }
 }
 
-fn save_agent_stats(allocator: Allocator, filepath: []const u8, stats: *std.StringHashMap(AgentStats)) !void {
+fn saveAgentStats(allocator: Allocator, filepath: []const u8, stats: *std.StringHashMap(AgentStats)) !void {
     const file = try fs.cwd().createFile(filepath, .{});
     defer file.close();
 
-    var json_obj = std.StringHashMap(json.Value).init(allocator);
-    defer json_obj.deinit();
+    var jsonObj = std.StringHashMap(json.Value).init(allocator);
+    defer jsonObj.deinit();
 
     var it = stats.iterator();
     while (it.next()) |entry| {
-        var agent_obj = std.StringHashMap(json.Value).init(allocator);
-        defer agent_obj.deinit();
+        var agentObj = std.StringHashMap(json.Value).init(allocator);
+        defer agentObj.deinit();
 
-        const agent_stats = entry.value_ptr.*;
+        const agentStats = entry.value_ptr.*;
 
-        try agent_obj.put(try allocator.dupe(u8, "total_launches"), json.Value{ .integer = @intCast(agent_stats.total_launches) });
-        try agent_obj.put(try allocator.dupe(u8, "successful_launches"), json.Value{ .integer = @intCast(agent_stats.successful_launches) });
-        try agent_obj.put(try allocator.dupe(u8, "failed_launches"), json.Value{ .integer = @intCast(agent_stats.failed_launches) });
-        try agent_obj.put(try allocator.dupe(u8, "average_duration_seconds"), json.Value{ .float = agent_stats.average_duration_seconds });
-        if (agent_stats.last_launch) |ts| {
-            try agent_obj.put(try allocator.dupe(u8, "last_launch"), json.Value{ .integer = ts });
+        try agentObj.put(try allocator.dupe(u8, "total_launches"), json.Value{ .integer = @intCast(agentStats.totalLaunches) });
+        try agentObj.put(try allocator.dupe(u8, "successful_launches"), json.Value{ .integer = @intCast(agentStats.successfulLaunches) });
+        try agentObj.put(try allocator.dupe(u8, "failed_launches"), json.Value{ .integer = @intCast(agentStats.failedLaunches) });
+        try agentObj.put(try allocator.dupe(u8, "average_duration_seconds"), json.Value{ .float = agentStats.averageDurationSeconds });
+        if (agentStats.lastLaunch) |ts| {
+            try agentObj.put(try allocator.dupe(u8, "last_launch"), json.Value{ .integer = ts });
         }
-        try agent_obj.put(try allocator.dupe(u8, "is_favorite"), json.Value{ .bool = agent_stats.is_favorite });
+        try agentObj.put(try allocator.dupe(u8, "is_favorite"), json.Value{ .bool = agentStats.isFavorite });
 
         // Save launch history
-        var history_arr = std.array_list.Managed(json.Value).init(allocator);
-        defer history_arr.deinit();
+        var historyArr = std.array_list.Managed(json.Value).init(allocator);
+        defer historyArr.deinit();
 
-        for (agent_stats.launch_history.items) |record| {
-            var record_obj = std.StringHashMap(json.Value).init(allocator);
-            defer record_obj.deinit();
+        for (agentStats.launchHistory.items) |record| {
+            var recordObj = std.StringHashMap(json.Value).init(allocator);
+            defer recordObj.deinit();
 
-            try record_obj.put(try allocator.dupe(u8, "timestamp"), json.Value{ .integer = record.timestamp });
-            try record_obj.put(try allocator.dupe(u8, "success"), json.Value{ .bool = record.success });
-            try record_obj.put(try allocator.dupe(u8, "duration_seconds"), json.Value{ .integer = record.duration_seconds });
-            try record_obj.put(try allocator.dupe(u8, "session_type"), json.Value{ .string = @tagName(record.session_type) });
-            if (record.error_message) |msg| {
-                try record_obj.put(try allocator.dupe(u8, "error_message"), json.Value{ .string = msg });
+            try recordObj.put(try allocator.dupe(u8, "timestamp"), json.Value{ .integer = record.timestamp });
+            try recordObj.put(try allocator.dupe(u8, "success"), json.Value{ .bool = record.success });
+            try recordObj.put(try allocator.dupe(u8, "duration_seconds"), json.Value{ .integer = record.durationSeconds });
+            try recordObj.put(try allocator.dupe(u8, "session_type"), json.Value{ .string = @tagName(record.sessionType) });
+            if (record.errorMessage) |msg| {
+                try recordObj.put(try allocator.dupe(u8, "error_message"), json.Value{ .string = msg });
             }
 
-            try history_arr.append(json.Value{ .object = record_obj });
+            try historyArr.append(json.Value{ .object = recordObj });
         }
 
-        try agent_obj.put(try allocator.dupe(u8, "launch_history"), json.Value{ .array = history_arr });
+        try agentObj.put(try allocator.dupe(u8, "launch_history"), json.Value{ .array = historyArr });
 
-        try json_obj.put(try allocator.dupe(u8, entry.key_ptr.*), json.Value{ .object = agent_obj });
+        try jsonObj.put(try allocator.dupe(u8, entry.key_ptr.*), json.Value{ .object = agentObj });
     }
 
-    const json_value = json.Value{ .object = json_obj };
-    const serialized = try json.stringifyAlloc(allocator, json_value, .{ .whitespace = true });
+    const jsonValue = json.Value{ .object = jsonObj };
+    const serialized = try json.stringifyAlloc(allocator, jsonValue, .{ .whitespace = true });
     defer allocator.free(serialized);
 
     try file.writeAll(serialized);
 }
 
 /// Create a default launcher configuration
-pub fn create_default_config(_: Allocator) LauncherConfig {
+pub fn createDefaultConfig(_: Allocator) LauncherConfig {
     return LauncherConfig{
-        .enable_interactive = true,
-        .enable_batch_mode = false,
-        .show_previews = true,
-        .enable_search = true,
-        .enable_categories = true,
-        .enable_favorites = true,
-        .enable_recent = true,
-        .enable_visual_features = true,
-        .enable_mouse = true,
-        .enable_shortcuts = true,
-        .default_session_type = .interactive,
-        .session_dir = ".agent_sessions",
-        .favorites_file = ".agent_favorites.json",
-        .recent_file = ".agent_recent.json",
-        .stats_file = ".agent_stats.json",
-        .show_welcome = true,
-        .welcome_message = "Welcome to the Multi-Agent Terminal AI System",
-        .enable_help = true,
-        .enable_tutorial = false,
-        .theme_name = "dark",
-        .refresh_rate_ms = 100,
+        .enableInteractive = true,
+        .enableBatchMode = false,
+        .showPreviews = true,
+        .enableSearch = true,
+        .enableCategories = true,
+        .enableFavorites = true,
+        .enableRecent = true,
+        .enableVisualFeatures = true,
+        .enableMouse = true,
+        .enableShortcuts = true,
+        .defaultSessionType = .interactive,
+        .sessionDir = ".agent_sessions",
+        .favoritesFile = ".agent_favorites.json",
+        .recentFile = ".agent_recent.json",
+        .statsFile = ".agent_stats.json",
+        .showWelcome = true,
+        .welcomeMessage = "Welcome to the Multi-Agent Terminal AI System",
+        .enableHelp = true,
+        .enableTutorial = false,
+        .themeName = "dark",
+        .refreshRateMs = 100,
     };
 }
 
 /// Launch the agent launcher as the default entry point
-pub fn run_launcher(allocator: Allocator, config: ?LauncherConfig) !void {
-    const launcher_config = config orelse create_default_config(allocator);
-    var launcher = try AgentLauncher.init(allocator, launcher_config);
+pub fn runLauncher(allocator: Allocator, config: ?LauncherConfig) !void {
+    const launcherConfig = config orelse createDefaultConfig(allocator);
+    var launcher = try AgentLauncher.init(allocator, launcherConfig);
     defer launcher.deinit();
 
     try launcher.run();

@@ -7,8 +7,8 @@ const std = @import("std");
 const term_shared = @import("term_shared");
 const term_caps = term_shared.caps;
 const graphics_manager = term_shared.graphics_manager;
-const color_palette = term_shared.color_palette;
-const enhanced_mouse = term_shared.input.mouse;
+const color_palette = term_shared.color.palettes;
+const mouse = term_shared.input.mouse;
 const terminal_graphics = term_shared.unicode.image_renderer;
 
 // Import widget types
@@ -30,7 +30,7 @@ const Point = @import("../../core/bounds.zig").Point;
 
 // Import terminal types
 const tui_mod = @import("../../mod.zig");
-const terminal_mod = tui_mod.term.unified;
+const terminal = tui_mod.term.unified;
 
 /// Main dashboard engine coordinating all dashboard functionality
 pub const DashboardEngine = struct {
@@ -47,7 +47,7 @@ pub const DashboardEngine = struct {
     /// Terminal capability tiers for progressive enhancement
     pub const CapabilityTier = enum {
         /// Kitty graphics, Sixel, 24-bit color, pixel mouse, synchronized output
-        premium,
+        high,
         /// Unicode blocks, 256 colors, SGR mouse, double buffering
         rich,
         /// ASCII art, 16 colors, basic mouse, partial redraws
@@ -62,7 +62,7 @@ pub const DashboardEngine = struct {
             const has_mouse = caps.supportsMouseTracking() catch false;
 
             if (has_kitty and has_truecolor and has_mouse) {
-                return .premium;
+                return .high;
             } else if (has_sixel or (has_truecolor and has_mouse)) {
                 return .rich;
             } else if (caps.supports256Color() catch false and has_mouse) {
@@ -214,7 +214,7 @@ pub const Compositor = struct {
     output_buffer: *OutputBuffer,
 
     const CompositorMode = enum {
-        premium, // Alpha blending with Kitty graphics
+        high, // Alpha blending with Kitty graphics
         rich, // Dithering with Sixel/Unicode
         standard, // Simple alpha simulation
         minimal, // Plain text overlay
@@ -225,7 +225,7 @@ pub const Compositor = struct {
         compositor.* = .{
             .allocator = allocator,
             .mode = switch (tier) {
-                .premium => .premium,
+                .high => .high,
                 .rich => .rich,
                 .standard => .standard,
                 .minimal => .minimal,
@@ -242,7 +242,7 @@ pub const Compositor = struct {
 
     pub fn composite(self: *Compositor, layers: []RenderPipeline.RenderLayer) !void {
         switch (self.mode) {
-            .premium => try self.compositeWithAlphaBlending(layers),
+            .high => try self.compositeWithAlphaBlending(layers),
             .rich => try self.compositeWithDithering(layers),
             .standard => try self.compositeSimple(layers),
             .minimal => try self.compositePlainText(layers),
@@ -502,12 +502,12 @@ pub const AdaptiveRenderer = struct {
         renderer.* = .{
             .allocator = allocator,
             .strategy = switch (tier) {
-                .premium => .{ .kitty_graphics = try KittyRenderer.init(allocator) },
+                .high => .{ .kitty_graphics = try KittyRenderer.init(allocator) },
                 .rich => .{ .sixel_graphics = try SixelRenderer.init(allocator) },
                 .standard => .{ .unicode_blocks = try UnicodeRenderer.init(allocator) },
                 .minimal => .{ .ascii_art = try AsciiRenderer.init(allocator) },
             },
-            .graphics_manager = if (tier == .premium or tier == .rich)
+            .graphics_manager = if (tier == .high or tier == .rich)
                 try allocator.create(graphics_manager.GraphicsManager)
             else
                 null,
@@ -761,13 +761,13 @@ pub const WidgetFactory = struct {
             row.*[2] = DataGrid.Cell{
                 .value = if (i % 2 == 0) try self.allocator.dupe(u8, "Active") else try self.allocator.dupe(u8, "Inactive"),
                 .style = if (i % 2 == 0) &DataGrid.Cell.CellStyle{
-                    .foregroundColor = &terminal_mod.Color.green,
+                    .foregroundColor = &terminal.Color.green,
                     .backgroundColor = null,
                     .bold = false,
                     .italic = false,
                     .alignment = .left,
                 } else &DataGrid.Cell.CellStyle{
-                    .foregroundColor = &terminal_mod.Color.red,
+                    .foregroundColor = &terminal.Color.red,
                     .backgroundColor = null,
                     .bold = false,
                     .italic = false,

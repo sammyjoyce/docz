@@ -17,7 +17,7 @@ const BUILD_CONFIG = struct {
         const CONFIG_ZIG = "src/core/config.zig";
         const AGENT_INTERFACE_ZIG = "src/shared/tui/agent_interface.zig";
         const AGENT_DASHBOARD_ZIG = "src/shared/tui/components/agent_dashboard.zig";
-        const INTERACTIVE_SESSION_ZIG = "src/core/interactive_session.zig";
+        const INTERACTIVE_SESSION_ZIG = "src/core/InteractiveSession.zig";
         const AGENT_MAIN_ZIG = "src/core/agent_main.zig";
         const AGENT_BASE_ZIG = "src/core/agent_base.zig";
         const CLI_ZIG = "src/shared/cli/mod.zig";
@@ -42,7 +42,7 @@ const BUILD_CONFIG = struct {
 };
 
 // ============================================================================
-// IMPROVED AGENT REGISTRY SYSTEM
+// AGENT REGISTRY SYSTEM
 // ============================================================================
 
 /// Agent registry for managing available agents and their metadata
@@ -616,17 +616,17 @@ const BuildContext = struct {
     optimize: std.builtin.OptimizeMode,
     selected_agent: []const u8,
     agent_paths: AgentPaths,
-
+    theme_dev: bool,
     const AgentPaths = struct {
         dir: []const u8,
         main: []const u8,
         spec: []const u8,
     };
-
-    fn init(b: *std.Build) !BuildContext {
+    pub fn init(b: *std.Build) !BuildContext {
         // Check if we're running tests - if so, use a dummy agent
         const is_test = b.args != null and b.args.?.len > 0 and std.mem.eql(u8, b.args.?[0], "test");
         const selected_agent = if (is_test) "test_agent" else b.option([]const u8, "agent", "Agent to build (e.g. 'markdown')") orelse BUILD_CONFIG.DEFAULT_AGENT;
+        const theme_dev = b.option(bool, "theme-dev", "Enable theme development tools") orelse false;
         const agent_dir = try std.fmt.allocPrint(b.allocator, "agents/{s}", .{selected_agent});
 
         return BuildContext{
@@ -639,6 +639,7 @@ const BuildContext = struct {
                 .main = try std.fmt.allocPrint(b.allocator, "{s}/main.zig", .{agent_dir}),
                 .spec = try std.fmt.allocPrint(b.allocator, "{s}/spec.zig", .{agent_dir}),
             },
+            .theme_dev = theme_dev,
         };
     }
 };
@@ -678,10 +679,10 @@ const ValidationResult = struct {
 };
 
 // ============================================================================
-// IMPROVED MODULE BUILDER WITH HELPER FUNCTIONS
+// MODULE BUILDER WITH HELPER FUNCTIONS
 // ============================================================================
 
-/// Enhanced module builder with reduced code duplication and better organization
+/// Module builder with reduced code duplication and better organization
 const ModuleBuilder = struct {
     ctx: BuildContext,
     registry: *AgentRegistry,
@@ -2000,7 +2001,6 @@ fn applyFeatureFlagsToExecutable(_: *std.Build.Step.Compile, manifest: AgentMani
 
 pub fn build(b: *std.Build) !void {
 
-
     // Initialize agent registry
     var registry = AgentRegistry.init(b.allocator);
     defer registry.deinit();
@@ -2061,8 +2061,6 @@ pub fn build(b: *std.Build) !void {
         }
     }.make;
 
-
-
     // Note: scaffold-agent is handled via command line options in the main build function
 
     // Normal single agent build
@@ -2105,11 +2103,6 @@ pub fn build(b: *std.Build) !void {
         std.log.info("✅ Build configured for agent '{s}' v{s}", .{ m.agent.name, m.agent.version });
         std.log.info("   📦 Binary size optimized based on manifest capabilities", .{});
     }
-
-
-
-
-
 }
 
 // ============================================================================
@@ -2235,7 +2228,7 @@ const AllAgentsAction = struct {
 };
 
 // ============================================================================
-// IMPROVED SCAFFOLD-AGENT FUNCTIONALITY
+// SCAFFOLD-AGENT FUNCTIONALITY
 // ============================================================================
 
 /// Scaffold a new agent from template with proper file replacement
@@ -2457,7 +2450,7 @@ fn processTemplatePlaceholders(allocator: std.mem.Allocator, content: []const u8
 }
 
 // ============================================================================
-// IMPROVED MULTI-AGENT BUILD FUNCTIONALITY
+// MULTI-AGENT BUILD FUNCTIONALITY
 // ============================================================================
 
 /// Build multiple agents with actual compilation
@@ -2513,6 +2506,7 @@ fn buildMultipleAgents(b: *std.Build, all_agents: bool, agents_list: []const u8)
                 .main = try std.fmt.allocPrint(b.allocator, "agents/{s}/main.zig", .{agent_name}),
                 .spec = try std.fmt.allocPrint(b.allocator, "agents/{s}/spec.zig", .{agent_name}),
             },
+            .theme_dev = false,
         };
         defer b.allocator.free(agent_ctx.agent_paths.dir);
         defer b.allocator.free(agent_ctx.agent_paths.main);
@@ -2655,7 +2649,7 @@ fn printHelp() void {
     std.log.info("  zig build demo-dashboard           # Run agent dashboard demo", .{});
     std.log.info("  zig build demo-interactive         # Run interactive session demo", .{});
     std.log.info("  zig build demo-oauth               # Run OAuth callback server demo", .{});
-    std.log.info("  zig build demo-markdown-editor     # Run enhanced markdown editor demo", .{});
+        std.log.info("  zig build demo-markdown-editor     # Run markdown editor demo", .{});
     std.log.info("", .{});
     std.log.info("📚 EXAMPLES:", .{});
     std.log.info("  zig build example-stylize          # Run stylize trait system demo", .{});
@@ -2752,7 +2746,7 @@ fn setupDemoTargets(ctx: BuildContext, shared_modules: ConditionalSharedModules)
         oauth_demo_step.dependOn(&oauth_run.step);
     }
 
-    // Enhanced markdown editor demo (if markdown agent is selected)
+    // Markdown editor demo (if markdown agent is selected)
     if (std.mem.eql(u8, ctx.selected_agent, "markdown")) {
         const editor_demo_step = ctx.b.step("demo-markdown-editor", "Run enhanced markdown editor demo");
         const editor_module = ctx.b.addModule("markdown_editor_demo", .{
@@ -2838,9 +2832,9 @@ fn setupExampleTargets(ctx: BuildContext, shared_modules: ConditionalSharedModul
     typing_demo_step.dependOn(&typing_run.step);
 
     // Multi-resolution canvas demo - demonstrates the unified canvas API
-    const canvas_demo_step = ctx.b.step("example-multi-resolution-canvas", "Run multi-resolution canvas demo");
-    const canvas_module = ctx.b.addModule("multi_resolution_canvas_demo", .{
-        .root_source_file = ctx.b.path("examples/multi_resolution_canvas.zig"),
+    const canvas_demo_step = ctx.b.step("example-canvas", "Run canvas demo");
+    const canvas_module = ctx.b.addModule("canvas_demo", .{
+        .root_source_file = ctx.b.path("examples/canvas.zig"),
         .target = ctx.target,
         .optimize = ctx.optimize,
     });
@@ -2914,7 +2908,7 @@ fn setupReleaseBuilds(ctx: BuildContext, manifest: ?AgentManifest) !void {
 fn linkSystemDependencies(exe: *std.Build.Step.Compile) void {
     exe.linkSystemLibrary("curl");
     exe.linkLibC();
-    // Additional dependencies for enhanced features
+    // Additional dependencies for features
     // OAuth server may need additional network capabilities
     // Dashboard may need terminal handling libraries (handled by termios/ioctl through libc)
 }
@@ -2936,6 +2930,7 @@ fn buildReleaseForTarget(
         .optimize = .ReleaseSafe,
         .selected_agent = ctx.selected_agent,
         .agent_paths = ctx.agent_paths,
+        .theme_dev = ctx.theme_dev,
     };
 
     // Create registry for release build

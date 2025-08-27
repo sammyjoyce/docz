@@ -14,7 +14,7 @@ pub const CliError = cli_types.CliError;
 pub const parseArgs = cli_mod.parser.parseArgs;
 pub const parseAndHandle = cli_mod.parser.parseAndHandle;
 
-// Re-export modules for advanced usage
+// Re-export modules for usage
 pub const core = cli_mod.core;
 pub const legacy = cli_mod.parser;
 pub const types = cli_mod.types;

@@ -1,6 +1,6 @@
-//! Enhanced Interactive Session for Markdown Agent
+//! Interactive Session for Markdown Agent
 //!
-//! A comprehensive dashboard-style interface that provides an advanced markdown editing
+//! A comprehensive dashboard-style interface that provides markdown editing
 //! experience with multiple panes, rich input handling, visual feedback, and interactive features.
 //!
 //! ## Features
@@ -66,8 +66,8 @@ const command_palette = @import("../../src/shared/tui/components/command_palette
 const notification_system = @import("../../src/shared/tui/components/notification_system.zig");
 const progress_tracker = @import("../../src/shared/tui/components/progress_tracker.zig");
 
-// Advanced UI components
-const input_enhanced = @import("../../src/shared/components/input_enhanced.zig");
+// UI components
+const input_component = @import("../../src/shared/components/input.zig");
 const split_pane = @import("../../src/shared/tui/widgets/core/split_pane.zig");
 const file_tree = @import("../../src/shared/tui/widgets/core/file_tree.zig");
 const modal = @import("../../src/shared/tui/widgets/modal.zig");
@@ -80,17 +80,17 @@ const markdown_tools = @import("tools/mod.zig");
 const ContentEditor = @import("tools/ContentEditor.zig");
 const Validate = @import("tools/validate.zig");
 const document_tool = @import("tools/document.zig");
-const enhanced_editor = @import("markdown_editor.zig");
+const markdown_editor = @import("markdown_editor.zig");
 
 // Common utilities
-const fs = @import("common/fs.zig");
-const link = @import("common/link.zig");
-const meta = @import("common/meta.zig");
-const table = @import("common/table.zig");
-const template = @import("common/template.zig");
-const text_utils = @import("common/text.zig");
+const fs = @import("lib/fs.zig");
+const link = @import("lib/link.zig");
+const meta = @import("lib/meta.zig");
+const table = @import("lib/table.zig");
+const template = @import("lib/template.zig");
+const text_utils = @import("lib/text.zig");
 
-/// Enhanced Interactive Session Configuration
+/// Interactive Session Configuration
 pub const InteractiveSessionConfig = struct {
     /// Base agent configuration
     base_config: agent_interface.Config,
@@ -239,7 +239,7 @@ pub const PreviewConfig = struct {
     adaptive_rendering: bool = true,
 
     /// Preview render mode
-    render_mode: PreviewRenderMode = .enhanced,
+    render_mode: PreviewRenderMode = .full,
 
     /// Enable syntax highlighting in preview
     syntax_highlighting: bool = true,
@@ -265,11 +265,11 @@ pub const PreviewRenderMode = enum {
     /// Plain text
     plain,
 
-    /// Basic markdown formatting
-    basic,
+    /// Text-only markdown formatting
+    text,
 
-    /// Enhanced rendering with graphics
-    enhanced,
+    /// Full rendering with graphics
+    full,
 
     /// Print-optimized layout
     print,
@@ -469,7 +469,7 @@ pub const InteractiveSession = struct {
     config: InteractiveSessionConfig,
 
     /// Enhanced markdown editor
-    editor: *enhanced_editor.MarkdownEditor,
+    editor: *markdown_editor.MarkdownEditor,
 
     /// Dashboard instance
     dashboard: *dashboard.Dashboard,
@@ -519,7 +519,7 @@ pub const InteractiveSession = struct {
         errdefer allocator.destroy(self);
 
         // Initialize components
-        const editor = try enhanced_editor.MarkdownEditor.init(allocator, agent, session_config.base_config);
+        const editor = try markdown_editor.MarkdownEditor.init(allocator, agent, session_config.base_config);
         errdefer editor.deinit();
 
         const dashboard_instance = try dashboard.Dashboard.init(allocator, .{
@@ -1505,7 +1505,7 @@ pub const MetricsCollector = struct {
         self.allocator.destroy(self);
     }
 
-    pub fn updateDocumentMetrics(self: *MetricsCollector, metrics: *const enhanced_editor.DocumentMetrics) !void {
+    pub fn updateDocumentMetrics(self: *MetricsCollector, metrics: *const markdown_editor.DocumentMetrics) !void {
         const snapshot = DocumentMetricsSnapshot{
             .timestamp = std.time.timestamp(),
             .word_count = metrics.word_count,
@@ -1618,14 +1618,14 @@ pub const PreviewRenderer = struct {
         self.allocator.destroy(self);
     }
 
-    pub fn updatePreview(self: *PreviewRenderer, document: *const enhanced_editor.Document) !void {
+    pub fn updatePreview(self: *PreviewRenderer, document: *const markdown_editor.Document) !void {
         // Generate preview based on configuration
         // Implementation here...
         _ = self;
         _ = document;
     }
 
-    pub fn renderAdaptivePreview(self: *PreviewRenderer, renderer: *anyopaque, x: u16, y: u16, width: u16, height: u16, document: *const enhanced_editor.Document) !void {
+    pub fn renderAdaptivePreview(self: *PreviewRenderer, renderer: *anyopaque, x: u16, y: u16, width: u16, height: u16, document: *const markdown_editor.Document) !void {
         // Render preview with adaptive quality
         // Implementation here...
         _ = self;
@@ -1657,14 +1657,14 @@ pub const OutlineNavigator = struct {
         self.allocator.destroy(self);
     }
 
-    pub fn updateOutline(self: *OutlineNavigator, document: *const enhanced_editor.Document) !void {
+    pub fn updateOutline(self: *OutlineNavigator, document: *const markdown_editor.Document) !void {
         // Clear existing outline
         self.outline_items.clearRetainingCapacity();
 
         // Parse document and build outline
         for (document.lines.items, 0..) |line, idx| {
             if (std.mem.startsWith(u8, line, "#")) {
-                const level = enhanced_editor.countHeadingLevel(line);
+                const level = markdown_editor.countHeadingLevel(line);
                 const title = if (level > 0 and level <= line.len) line[level + 1 ..] else line;
 
                 try self.outline_items.append(.{
@@ -1713,7 +1713,7 @@ pub const VersionHistoryViewer = struct {
         self.allocator.destroy(self);
     }
 
-    pub fn addVersion(self: *VersionHistoryViewer, document: *const enhanced_editor.Document) !void {
+    pub fn addVersion(self: *VersionHistoryViewer, document: *const markdown_editor.Document) !void {
         // Create snapshot of current document
         var content = std.ArrayList(u8).init(self.allocator);
         defer content.deinit();

@@ -6,7 +6,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
-// Use unified session and auth modules
+// Use session and auth modules
 const session = @import("interactive_session");
 const auth = @import("auth_shared");
 const anthropic = @import("anthropic_shared");
@@ -39,8 +39,9 @@ pub const BaseAgent = struct {
         }
 
         // Clean up auth client
-        if (self.authClient) |*client| {
-            client.deinit();
+        if (self.authClient) |client_ptr| {
+            client_ptr.deinit();
+            self.allocator.destroy(client_ptr);
         }
 
         // Agents should override this if they have additional cleanup
@@ -142,17 +143,19 @@ pub const BaseAgent = struct {
 
     /// Enable interactive mode for this agent
     /// This creates a session manager that agents can use for rich terminal experiences
-    pub fn enableInteractiveMode(self: *Self, config: session.SessionConfig) !void {
+    pub fn enableInteractiveMode(self: *Self, config: anytype) !void {
         _ = config; // Configuration stored but not currently used in session manager
         if (self.sessionManager != null) {
             return error.AlreadyEnabled;
         }
 
         // Create session manager with default directory
-        const sessionsDir = try std.fmt.allocPrint(self.allocator, "{s}/.docz/sessions", .{std.fs.selfExePathAlloc(self.allocator)});
+        var exePathBuf: [4096]u8 = undefined;
+        const exePath = try std.fs.selfExePath(exePathBuf[0..]);
+        const sessionsDir = try std.fmt.allocPrint(self.allocator, "{s}/.docz/sessions", .{exePath});
         defer self.allocator.free(sessionsDir);
 
-        self.sessionManager = try session.SessionManager.init(self.allocator, sessionsDir);
+        self.sessionManager = try session.SessionManager.init(self.allocator, sessionsDir, false);
         self.sessionStats.lastSessionStart = std.time.timestamp();
         self.sessionStats.totalSessions += 1;
 
@@ -165,7 +168,8 @@ pub const BaseAgent = struct {
         if (self.sessionManager) |sessMgr| {
             // Create a new session
             const sessionId = try session.generateSessionId(self.allocator);
-            _ = try sessMgr.createSession(sessionId);
+            const config = try self.createSessionConfig("Interactive Session");
+            _ = try sessMgr.createSession(sessionId, config);
 
             self.sessionStats.lastSessionEnd = std.time.timestamp();
 
@@ -202,7 +206,9 @@ pub const BaseAgent = struct {
             return error.AlreadyInitialized;
         }
 
-        self.authClient = try auth.createClient(self.allocator);
+        const client_ptr = try self.allocator.create(auth.AuthClient);
+        client_ptr.* = try auth.createClient(self.allocator);
+        self.authClient = client_ptr;
         self.sessionStats.authAttempts += 1;
 
         std.log.info("🔐 Authentication initialized", .{});
@@ -252,11 +258,13 @@ pub const BaseAgent = struct {
         const credentials = try auth.oauth.setupOAuth(self.allocator);
 
         // Create new auth client with the credentials
-        if (self.authClient) |*client| {
-            client.deinit();
+        if (self.authClient) |client_ptr| {
+            client_ptr.deinit();
         }
 
-        self.authClient = auth.AuthClient.init(self.allocator, auth.AuthCredentials{ .oauth = credentials });
+        const client_ptr = try self.allocator.create(auth.AuthClient);
+        client_ptr.* = auth.AuthClient.init(self.allocator, auth.AuthCredentials{ .oauth = credentials });
+        self.authClient = client_ptr;
 
         std.log.info("✅ OAuth setup completed successfully!", .{});
     }
@@ -281,31 +289,42 @@ pub const BaseAgent = struct {
     /// This is a convenience method for agents that need to make API calls
     pub fn createAnthropicClient(self: *Self) !*anthropic.AnthropicClient {
         const client = self.getAuthClient() orelse return error.AuthNotInitialized;
-
-        const apiKey = switch (client.credentials) {
-            .api_key => |key| key,
-            .oauth => |oauthCreds| oauthCreds.accessToken,
+        // Initialize the proper network client based on auth method
+        switch (client.credentials) {
+            .api_key => |key| {
+                return try anthropic.AnthropicClient.init(self.allocator, key);
+            },
+            .oauth => |oauthCreds| {
+                // Map auth.oauth.Credentials to anthropic.Credentials and use OAuth-aware init
+                const creds = anthropic.Credentials{
+                    .type = oauthCreds.type,
+                    .accessToken = oauthCreds.accessToken,
+                    .refreshToken = oauthCreds.refreshToken,
+                    .expiresAt = oauthCreds.expiresAt,
+                };
+                // Persist path used by auth core for refreshed tokens
+                const path: []const u8 = "claude_oauth_creds.json";
+                return try anthropic.AnthropicClient.initWithOAuth(self.allocator, creds, path);
+            },
             .none => return error.NoCredentials,
-        };
-
-        return try anthropic.AnthropicClient.init(self.allocator, apiKey);
+        }
     }
 
     // ===== CONVENIENCE METHODS =====
 
-    /// Create a basic session configuration
-    pub fn createBasicSessionConfig(title: []const u8) session.SessionConfig {
-        return session.SessionHelpers.createBasicConfig(title);
+    /// Create a session configuration
+    pub fn createSessionConfig(self: *Self, title: []const u8) anyerror!session.SessionConfig {
+        return try session.SessionHelpers.createConfig(self.allocator, title, "agent");
     }
 
     /// Create a rich session configuration with TUI support
-    pub fn createRichSessionConfig(title: []const u8) session.SessionConfig {
-        return session.SessionHelpers.createRichConfig(title);
+    pub fn createRichSessionConfig(self: *Self, title: []const u8) session.SessionConfig {
+        return session.SessionHelpers.createRichConfig(self.allocator, title, "agent");
     }
 
     /// Create a CLI-only session configuration
-    pub fn createCliSessionConfig(title: []const u8) session.SessionConfig {
-        return session.SessionHelpers.createCliConfig(title);
+    pub fn createCliSessionConfig(self: *Self, title: []const u8) session.SessionConfig {
+        return session.SessionHelpers.createCliConfig(self.allocator, title, "agent");
     }
 
     // ===== THEME SUPPORT METHODS =====
@@ -408,7 +427,7 @@ pub const AuthHelpers = struct {
     pub fn hasValidApiKey(allocator: Allocator) bool {
         var client = auth.createClient(allocator) catch return false;
         defer client.deinit();
-        return client.credentials.getMethod() == .apiKey and client.credentials.isValid();
+        return client.credentials.getMethod() == .api_key and client.credentials.isValid();
     }
 
     /// Get current authentication status as a formatted string
@@ -424,7 +443,7 @@ pub const AuthHelpers = struct {
                     return try allocator.dupe(u8, "OAuth (Claude Pro/Max)");
                 }
             },
-            .apiKey => try allocator.dupe(u8, "API Key"),
+            .api_key => try allocator.dupe(u8, "API Key"),
             .none => try allocator.dupe(u8, "Not authenticated"),
         };
     }

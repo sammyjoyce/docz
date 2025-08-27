@@ -397,7 +397,7 @@ pub fn computeLines(
     return operations;
 }
 
-/// Convenience function for simple character-based diff with default config
+/// Convenience function for character-based diff with default config
 pub fn diffChars(
     allocator: std.mem.Allocator,
     a: []const u8,
@@ -406,7 +406,7 @@ pub fn diffChars(
     return try computeChars(allocator, a, b, DiffConfig{});
 }
 
-/// Convenience function for simple line-based diff with default config
+/// Convenience function for line-based diff with default config
 pub fn diffLines(
     allocator: std.mem.Allocator,
     a: []const u8,
@@ -432,8 +432,8 @@ pub fn splitLines(
     return try lines.toOwnedSlice();
 }
 
-/// Format diff operations as a unified diff format string
-pub fn formatUnified(
+/// Format diff operations as a diff format string
+pub fn formatDiff(
     allocator: std.mem.Allocator,
     operations: []const DiffOperation,
     context_lines: usize,
@@ -513,7 +513,7 @@ pub fn freeOperations(allocator: std.mem.Allocator, operations: []DiffOperation)
     allocator.free(operations);
 }
 
-test "basic diff functionality" {
+test "minimal diff functionality" {
     const testing = std.testing;
 
     // Test identical sequences
@@ -530,7 +530,7 @@ test "basic diff functionality" {
         }
     }
 
-    // Test simple insertion
+    // Test insertion
     {
         const a = &[_][]const u8{ "line1", "line2" };
         const b = &[_][]const u8{ "line1", "inserted", "line2" };
@@ -544,7 +544,7 @@ test "basic diff functionality" {
         try testing.expectEqual(DiffOp.equal, ops[2].op);
     }
 
-    // Test simple deletion
+    // Test deletion
     {
         const a = &[_][]const u8{ "line1", "deleted", "line2" };
         const b = &[_][]const u8{ "line1", "line2" };
@@ -588,7 +588,7 @@ test "line diff" {
     try testing.expectEqual(DiffOp.equal, ops[3].op); // "line3"
 }
 
-test "unified diff format" {
+test "diff format" {
     const testing = std.testing;
 
     const operations = [_]DiffOperation{
@@ -599,11 +599,11 @@ test "unified diff format" {
         DiffOperation.init(.equal, "line3"),
     };
 
-    const unified = try formatUnified(testing.allocator, &operations, 3);
-    defer testing.allocator.free(unified);
+    const diff = try formatDiff(testing.allocator, &operations, 3);
+    defer testing.allocator.free(diff);
 
-    // Check that it contains expected unified diff format elements
-    try testing.expect(std.mem.indexOf(u8, unified, "@@") != null);
-    try testing.expect(std.mem.indexOf(u8, unified, "+inserted") != null);
-    try testing.expect(std.mem.indexOf(u8, unified, "-deleted") != null);
+    // Check that it contains expected diff format elements
+    try testing.expect(std.mem.indexOf(u8, diff, "@@") != null);
+    try testing.expect(std.mem.indexOf(u8, diff, "+inserted") != null);
+    try testing.expect(std.mem.indexOf(u8, diff, "-deleted") != null);
 }

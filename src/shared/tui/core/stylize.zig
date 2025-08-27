@@ -303,28 +303,28 @@ pub fn Stylize(comptime T: type) type {
             return self.fg(Style.Color{ .ansi = 8 });
         }
 
-        pub fn on_black(self: *T) *T {
+        pub fn onBlack(self: *T) *T {
             return self.bg(Style.Color{ .ansi = 0 });
         }
-        pub fn on_red(self: *T) *T {
+        pub fn onRed(self: *T) *T {
             return self.bg(Style.Color{ .ansi = 1 });
         }
-        pub fn on_green(self: *T) *T {
+        pub fn onGreen(self: *T) *T {
             return self.bg(Style.Color{ .ansi = 2 });
         }
-        pub fn on_yellow(self: *T) *T {
+        pub fn onYellow(self: *T) *T {
             return self.bg(Style.Color{ .ansi = 3 });
         }
-        pub fn on_blue(self: *T) *T {
+        pub fn onBlue(self: *T) *T {
             return self.bg(Style.Color{ .ansi = 4 });
         }
-        pub fn on_magenta(self: *T) *T {
+        pub fn onMagenta(self: *T) *T {
             return self.bg(Style.Color{ .ansi = 5 });
         }
-        pub fn on_cyan(self: *T) *T {
+        pub fn onCyan(self: *T) *T {
             return self.bg(Style.Color{ .ansi = 6 });
         }
-        pub fn on_white(self: *T) *T {
+        pub fn onWhite(self: *T) *T {
             return self.bg(Style.Color{ .ansi = 7 });
         }
 
@@ -426,28 +426,28 @@ pub const StyleBuilder = struct {
         return self.fg(Style.Color{ .ansi = 7 });
     }
 
-    pub fn on_black(self: *StyleBuilder) *StyleBuilder {
+    pub fn onBlack(self: *StyleBuilder) *StyleBuilder {
         return self.bg(Style.Color{ .ansi = 0 });
     }
-    pub fn on_red(self: *StyleBuilder) *StyleBuilder {
+    pub fn onRed(self: *StyleBuilder) *StyleBuilder {
         return self.bg(Style.Color{ .ansi = 1 });
     }
-    pub fn on_green(self: *StyleBuilder) *StyleBuilder {
+    pub fn onGreen(self: *StyleBuilder) *StyleBuilder {
         return self.bg(Style.Color{ .ansi = 2 });
     }
-    pub fn on_yellow(self: *StyleBuilder) *StyleBuilder {
+    pub fn onYellow(self: *StyleBuilder) *StyleBuilder {
         return self.bg(Style.Color{ .ansi = 3 });
     }
-    pub fn on_blue(self: *StyleBuilder) *StyleBuilder {
+    pub fn onBlue(self: *StyleBuilder) *StyleBuilder {
         return self.bg(Style.Color{ .ansi = 4 });
     }
-    pub fn on_magenta(self: *StyleBuilder) *StyleBuilder {
+    pub fn onMagenta(self: *StyleBuilder) *StyleBuilder {
         return self.bg(Style.Color{ .ansi = 5 });
     }
-    pub fn on_cyan(self: *StyleBuilder) *StyleBuilder {
+    pub fn onCyan(self: *StyleBuilder) *StyleBuilder {
         return self.bg(Style.Color{ .ansi = 6 });
     }
-    pub fn on_white(self: *StyleBuilder) *StyleBuilder {
+    pub fn onWhite(self: *StyleBuilder) *StyleBuilder {
         return self.bg(Style.Color{ .ansi = 7 });
     }
 };
@@ -560,28 +560,28 @@ pub const StyledText = struct {
         return self.fg(Style.Color{ .ansi = 8 });
     }
 
-    pub fn on_black(self: *StyledText) *StyledText {
+    pub fn onBlack(self: *StyledText) *StyledText {
         return self.bg(Style.Color{ .ansi = 0 });
     }
-    pub fn on_red(self: *StyledText) *StyledText {
+    pub fn onRed(self: *StyledText) *StyledText {
         return self.bg(Style.Color{ .ansi = 1 });
     }
-    pub fn on_green(self: *StyledText) *StyledText {
+    pub fn onGreen(self: *StyledText) *StyledText {
         return self.bg(Style.Color{ .ansi = 2 });
     }
-    pub fn on_yellow(self: *StyledText) *StyledText {
+    pub fn onYellow(self: *StyledText) *StyledText {
         return self.bg(Style.Color{ .ansi = 3 });
     }
-    pub fn on_blue(self: *StyledText) *StyledText {
+    pub fn onBlue(self: *StyledText) *StyledText {
         return self.bg(Style.Color{ .ansi = 4 });
     }
-    pub fn on_magenta(self: *StyledText) *StyledText {
+    pub fn onMagenta(self: *StyledText) *StyledText {
         return self.bg(Style.Color{ .ansi = 5 });
     }
-    pub fn on_cyan(self: *StyledText) *StyledText {
+    pub fn onCyan(self: *StyledText) *StyledText {
         return self.bg(Style.Color{ .ansi = 6 });
     }
-    pub fn on_white(self: *StyledText) *StyledText {
+    pub fn onWhite(self: *StyledText) *StyledText {
         return self.bg(Style.Color{ .ansi = 7 });
     }
 

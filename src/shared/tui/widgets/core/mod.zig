@@ -63,7 +63,7 @@ pub const VirtualList = virtual_list.VirtualList;
 pub const DataSource = virtual_list.DataSource;
 pub const Item = virtual_list.Item;
 pub const Config = virtual_list.Config;
-pub const ArrayDataSource = virtual_list.ArrayDataSource;
+pub const ArraySource = virtual_list.ArraySource;
 
 // ScrollableTextArea widget exports
 pub const ScrollableTextArea = scrollable_text_area.ScrollableTextArea;

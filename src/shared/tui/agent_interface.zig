@@ -45,7 +45,7 @@ const cli = @import("cli_shared");
 const term = @import("term_shared");
 const auth = @import("auth_shared");
 const render = @import("render_shared");
-const theme_manager = @import("../theme_manager/mod.zig");
+const theme_manager = @import("../theme/mod.zig");
 const shared = @import("../mod.zig");
 const network = shared.Network;
 const tools_mod = @import("tools_shared");
@@ -59,9 +59,10 @@ const input_components = shared.components;
 const mouse_mod = input_components.input.Mouse;
 
 // File tree widget
-const file_tree_mod = @import("tui_shared").widgets.core.file_tree;
-const focus_mod = @import("tui_shared").core.input;
-const term_ansi = @import("term_shared").ansi.color;
+const file_tree_mod = @import("tui_shared").widgets.base.file_tree;
+const focus_mod = @import("tui_shared").base.input;
+const term_shared = @import("term_shared");
+const term_ansi = term_shared.term.color;
 
 // Component imports
 // const components_mod = @import("../components/mod.zig");
@@ -274,7 +275,7 @@ pub const AgentState = struct {
     metrics: PerformanceMetrics = .{},
 
     /// Error state
-    last_error: ?ErrorInfo = null,
+    last_error: ?Error = null,
 
     /// File browser state
     file_browser: FileBrowserState = .{},
@@ -327,7 +328,7 @@ pub const PerformanceMetrics = struct {
 };
 
 /// Error information
-pub const ErrorInfo = struct {
+pub const Error = struct {
     code: []const u8,
     message: []const u8,
     timestamp: i64,
@@ -531,7 +532,7 @@ pub const Agent = struct {
         return self;
     }
 
-    /// Deinitialize enhanced agent
+    /// Deinitialize agent
     pub fn deinit(self: *Self) void {
         // Save session before cleanup
         self.saveSession() catch {};
@@ -601,7 +602,7 @@ pub const Agent = struct {
         try self.showGoodbyeScreen();
     }
 
-    /// Process a message with enhanced UI feedback
+    /// Process a message with UI feedback
     pub fn processMessage(self: *Self, message: []const u8) ![]const u8 {
         self.mutex.lock();
         defer self.mutex.unlock();
@@ -638,10 +639,10 @@ pub const Agent = struct {
         return response;
     }
 
-    /// Handle authentication with enhanced OAuth wizard
+    /// Handle authentication with OAuth wizard
     pub fn authenticateWithWizard(self: *Self) !void {
         if (self.config.ui_settings.enable_dashboard) {
-            // Use enhanced OAuth wizard UI
+            // Use OAuth wizard UI
             const wizard = try AuthenticationWizard.init(self.allocator);
             defer wizard.deinit();
 

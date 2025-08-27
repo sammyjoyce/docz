@@ -9,13 +9,13 @@ const Allocator = std.mem.Allocator;
 // Import dependencies
 const state = @import("../state.zig");
 const layout = @import("../layout.zig");
-const theme_manager = @import("../../../../theme_manager/mod.zig");
+const theme_manager = @import("../../../../theme/mod.zig");
 const term_mod = @import("../../../../term/mod.zig");
 const render_mod = @import("../../../../render/mod.zig");
 
 // Type aliases
 const PerformanceMetrics = state.PerformanceMetrics;
-const DashboardDataStore = state.DashboardDataStore;
+const DashboardStore = state.DashboardStore;
 const Rect = layout.Rect;
 
 /// Configuration for metrics rendering
@@ -83,7 +83,7 @@ pub const MetricsRenderer = struct {
         self: *Self,
         writer: anytype,
         bounds: Rect,
-        data_store: *const DashboardDataStore,
+        data_store: *const DashboardStore,
         theme: *const theme_manager.ColorScheme,
     ) !void {
         // Update history with current metrics

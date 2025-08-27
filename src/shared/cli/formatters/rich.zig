@@ -3,8 +3,8 @@
 
 const std = @import("std");
 // const components = @import("../../components/mod.zig");
-const term_mod = @import("term_shared");
-const unified = term_mod.unified;
+const termMod = @import("term_shared");
+const term = termMod.term;
 
 // Minimal TUI replacements
 const BasicTui = struct {
@@ -17,30 +17,30 @@ const BasicTui = struct {
 
 const tui = BasicTui;
 
-/// Enhanced CLI formatter with terminal capability awareness
+/// CLI formatter with terminal capability awareness
 pub const CliFormatter = struct {
     allocator: std.mem.Allocator,
-    caps: term_mod.caps.TermCaps,
+    caps: termMod.caps.TermCaps,
     terminalSize: tui.TerminalSize,
-    terminal: unified.Terminal,
+    terminal: term.Terminal,
 
     // Color scheme adapted to terminal capabilities
     styles: StyleScheme,
 
     pub const StyleScheme = struct {
-        primary: unified.Style,
-        secondary: unified.Style,
-        accent: unified.Style,
-        success: unified.Style,
-        warning: unified.Style,
-        errColor: unified.Style,
-        muted: unified.Style,
-        bold: unified.Style,
-        dim: unified.Style,
+        primary: term.Style,
+        secondary: term.Style,
+        accent: term.Style,
+        success: term.Style,
+        warning: term.Style,
+        errColor: term.Style,
+        muted: term.Style,
+        bold: term.Style,
+        dim: term.Style,
     };
 
     pub fn init(allocator: std.mem.Allocator) !CliFormatter {
-        const terminal = try unified.Terminal.init(allocator);
+        const terminal = try term.Terminal.init(allocator);
         const terminalSize = BasicTui.TerminalSize{ .width = 80, .height = 24 };
 
         // Adaptive style scheme based on terminal capabilities
@@ -80,19 +80,19 @@ pub const CliFormatter = struct {
         };
     }
 
-    /// Enhanced help display with structured layout and hyperlinks
+    /// Help display with structured layout and hyperlinks
     pub fn printHelp(self: *CliFormatter, cli_config: anytype) !void {
         const width = @min(self.terminalSize.width, 80);
 
-        // Header section with enhanced styling
-        try self.terminal.printf("{s}DocZ{s}", .{ self.styles.bold, unified.Style{} }, self.styles.primary);
+        // Header section with styling
+        try self.terminal.printf("{s}DocZ{s}", .{ self.styles.bold, term.Style{} }, self.styles.primary);
         if (@hasField(@TypeOf(cli_config), "version")) {
-            try self.terminal.printf(" {s}v{s}{s}", .{ self.styles.muted, cli_config.version, unified.Style{} }, null);
+            try self.terminal.printf(" {s}v{s}{s}", .{ self.styles.muted, cli_config.version, term.Style{} }, null);
         }
-        try self.terminal.printf(" - {s}{s}{s}\n\n", .{ self.styles.secondary, cli_config.description, unified.Style{} }, null);
+        try self.terminal.printf(" - {s}{s}{s}\n\n", .{ self.styles.secondary, cli_config.description, term.Style{} }, null);
 
         // Usage section with structured layout
-        const usage_content = [_][]const u8{
+        const usageContent = [_][]const u8{
             "",
             "Basic usage patterns:",
             "",
@@ -104,12 +104,12 @@ pub const CliFormatter = struct {
         // Print usage section manually
         try self.terminal.printf("🚀 USAGE\n", .{}, self.styles.bold);
         try self.terminal.printf("\n", .{}, self.styles.dim);
-        for (usage_content) |line| {
+        for (usageContent) |line| {
             try self.terminal.printf("  {s}\n", .{line}, null);
         }
-        try self.terminal.printf("\n", .{}, unified.Style{});
+        try self.terminal.printf("\n", .{}, term.Style{});
 
-        // Options section with enhanced formatting
+        // Options section with formatting
         try self.printOptionsSection(cli_config, @intCast(width));
 
         // Examples section with copy-to-clipboard integration
@@ -119,47 +119,47 @@ pub const CliFormatter = struct {
         try self.printLinksSection(width);
     }
 
-    /// Enhanced error display with structured formatting
+    /// Error display with structured formatting
     pub fn printError(self: *CliFormatter, err: anytype, context: ?[]const u8) !void {
         // Error header with icon and color
         try self.terminal.printf("\n❌ Error\n", .{}, self.styles.errColor);
 
         // Error message with context-aware handling
-        var error_msg: []const u8 = undefined;
-        var show_auth_help = false;
+        var errorMsg: []const u8 = undefined;
+        var showAuthHelp = false;
 
         switch (err) {
-            error.InvalidArgument => error_msg = "Invalid argument provided",
-            error.MissingValue => error_msg = "Missing value for option",
-            error.UnknownOption => error_msg = "Unknown option",
-            error.InvalidValue => error_msg = "Invalid value for option",
-            error.MutuallyExclusiveOptions => error_msg = "Mutually exclusive options provided",
-            error.OutOfMemory => error_msg = "Out of memory",
-            error.UnknownCommand => error_msg = "Unknown command",
+            error.InvalidArgument => errorMsg = "Invalid argument provided",
+            error.MissingValue => errorMsg = "Missing value for option",
+            error.UnknownOption => errorMsg = "Unknown option",
+            error.InvalidValue => errorMsg = "Invalid value for option",
+            error.MutuallyExclusiveOptions => errorMsg = "Mutually exclusive options provided",
+            error.OutOfMemory => errorMsg = "Out of memory",
+            error.UnknownCommand => errorMsg = "Unknown command",
             error.UnknownSubcommand => {
                 // Check if this is an auth-related error
                 if (context) |ctx| {
                     if (std.mem.eql(u8, ctx, "auth") or std.mem.startsWith(u8, ctx, "auth ")) {
-                        error_msg = "Missing or invalid subcommand for 'auth'";
-                        show_auth_help = true;
+                        errorMsg = "Missing or invalid subcommand for 'auth'";
+                        showAuthHelp = true;
                     } else {
-                        error_msg = "Unknown subcommand";
+                        errorMsg = "Unknown subcommand";
                     }
                 } else {
-                    error_msg = "Unknown subcommand";
+                    errorMsg = "Unknown subcommand";
                 }
             },
-            else => error_msg = "An unexpected error occurred",
+            else => errorMsg = "An unexpected error occurred",
         }
 
-        var error_content = std.array_list.Managed([]const u8).init(self.allocator);
-        defer error_content.deinit();
+        var errorContent = std.array_list.Managed([]const u8).init(self.allocator);
+        defer errorContent.deinit();
 
-        try error_content.append("");
-        try error_content.append(error_msg);
-        try error_content.append("");
-        try error_content.append("💡 Use --help for usage information");
-        try error_content.append("");
+        try errorContent.append("");
+        try errorContent.append(errorMsg);
+        try errorContent.append("");
+        try errorContent.append("💡 Use --help for usage information");
+        try errorContent.append("");
 
         // Print error section manually
         try self.terminal.printf("Error Details\n", .{}, self.styles.errColor);
@@ -167,20 +167,20 @@ pub const CliFormatter = struct {
 
         // Print context if available
         if (context) |ctx| {
-            const ctx_line = try std.fmt.allocPrint(self.allocator, "Context: {s}", .{ctx});
-            defer self.allocator.free(ctx_line);
-            try self.terminal.printf("  {s}\n", .{ctx_line}, null);
+            const ctxLine = try std.fmt.allocPrint(self.allocator, "Context: {s}", .{ctx});
+            defer self.allocator.free(ctxLine);
+            try self.terminal.printf("  {s}\n", .{ctxLine}, null);
         }
 
         // Print auth-specific help if needed
-        if (show_auth_help) {
+        if (showAuthHelp) {
             try self.terminal.printf("\n", .{}, null);
             const title = try std.fmt.allocPrint(self.allocator, "Available auth subcommands:", .{});
             defer self.allocator.free(title);
             try self.terminal.printf("  {s}\n", .{title}, null);
 
             // Use comptime reflection to generate subcommand list
-            const auth_subcommands = comptime blk: {
+            const authSubcommands = comptime blk: {
                 const AuthSubcommand = @import("../../cli/core/types.zig").AuthSubcommand;
                 const info = @typeInfo(AuthSubcommand).@"enum";
                 var cmds: [info.fields.len][]const u8 = undefined;
@@ -193,7 +193,7 @@ pub const CliFormatter = struct {
             };
 
             // Generate descriptions for each subcommand
-            inline for (auth_subcommands) |cmd| {
+            inline for (authSubcommands) |cmd| {
                 const description = comptime blk: {
                     if (std.mem.eql(u8, cmd, "login")) {
                         break :blk "Start authentication process";
@@ -217,56 +217,56 @@ pub const CliFormatter = struct {
             try self.terminal.printf("  {s}\n", .{example}, null);
         }
 
-        for (error_content.items) |line| {
+        for (errorContent.items) |line| {
             try self.terminal.printf("  {s}\n", .{line}, null);
         }
-        try self.terminal.printf("\n", .{}, unified.Style{});
+        try self.terminal.printf("\n", .{}, term.Style{});
     }
 
-    /// Enhanced version display with system info
+    /// Version display with system info
     pub fn printVersion(self: *CliFormatter, cli_config: anytype) !void {
-        try self.terminal.printf("{s}DocZ{s}", .{ self.styles.bold, unified.Style{} }, self.styles.primary);
+        try self.terminal.printf("{s}DocZ{s}", .{ self.styles.bold, term.Style{} }, self.styles.primary);
         if (@hasField(@TypeOf(cli_config), "version")) {
-            try self.terminal.printf(" version {s}{s}{s}\n", .{ self.styles.accent, cli_config.version, unified.Style{} }, null);
+            try self.terminal.printf(" version {s}{s}{s}\n", .{ self.styles.accent, cli_config.version, term.Style{} }, null);
         } else {
-            try self.terminal.printf(" version {s}0.1.0{s}\n", .{ self.styles.accent, unified.Style{} }, null);
+            try self.terminal.printf(" version {s}0.1.0{s}\n", .{ self.styles.accent, term.Style{} }, null);
         }
 
         // Terminal capabilities info
-        var caps_content = std.array_list.Managed([]const u8).init(self.allocator);
-        defer caps_content.deinit();
+        var capsContent = std.array_list.Managed([]const u8).init(self.allocator);
+        defer capsContent.deinit();
 
-        try caps_content.append("");
-        try caps_content.append("🖥️  Terminal Capabilities:");
-        try caps_content.append("");
+        try capsContent.append("");
+        try capsContent.append("🖥️  Terminal Capabilities:");
+        try capsContent.append("");
 
-        const size_info = try std.fmt.allocPrint(self.allocator, "   Size: {}×{} characters", .{ self.terminalSize.width, self.terminalSize.height });
-        try caps_content.append(size_info);
+        const sizeInfo = try std.fmt.allocPrint(self.allocator, "   Size: {}×{} characters", .{ self.terminalSize.width, self.terminalSize.height });
+        try capsContent.append(sizeInfo);
 
         const truecolorStatus = if (self.caps.supportsTruecolor) "✅ Supported" else "❌ Not supported";
         const truecolorLine = try std.fmt.allocPrint(self.allocator, "   Truecolor: {s}", .{truecolorStatus});
-        try caps_content.append(truecolorLine);
+        try capsContent.append(truecolorLine);
 
         const hyperlinksStatus = if (self.caps.supportsHyperlinkOsc8) "✅ Supported" else "❌ Not supported";
         const hyperlinksLine = try std.fmt.allocPrint(self.allocator, "   Hyperlinks: {s}", .{hyperlinksStatus});
-        try caps_content.append(hyperlinksLine);
+        try capsContent.append(hyperlinksLine);
 
         const clipboardStatus = if (self.caps.supportsClipboardOsc52) "✅ Supported" else "❌ Not supported";
         const clipboardLine = try std.fmt.allocPrint(self.allocator, "   Clipboard: {s}", .{clipboardStatus});
-        try caps_content.append(clipboardLine);
+        try capsContent.append(clipboardLine);
 
-        try caps_content.append("");
+        try capsContent.append("");
 
         // Print system information section manually
         try self.terminal.printf("System Information\n", .{}, self.styles.bold);
         try self.terminal.printf("\n", .{}, self.styles.dim);
-        for (caps_content.items) |line| {
+        for (capsContent.items) |line| {
             try self.terminal.printf("  {s}\n", .{line}, null);
         }
-        try self.terminal.printf("\n", .{}, unified.Style{});
+        try self.terminal.printf("\n", .{}, term.Style{});
 
         // Free allocated strings
-        self.allocator.free(size_info);
+        self.allocator.free(sizeInfo);
         self.allocator.free(truecolorLine);
         self.allocator.free(hyperlinksLine);
         self.allocator.free(clipboardLine);
@@ -285,16 +285,16 @@ pub const CliFormatter = struct {
         return true;
     }
 
-    /// Enhanced progress indicator
+    /// Progress indicator
     pub fn showProgress(self: *CliFormatter, message: []const u8, current: u32, total: u32) !void {
         const percent = if (total > 0) (current * 100) / total else 0;
-        const bar_width = @min(40, self.terminalSize.width - 20);
-        const filled = (percent * bar_width) / 100;
+        const barWidth = @min(40, self.terminalSize.width - 20);
+        const filled = (percent * barWidth) / 100;
 
         try self.terminal.printf("\r{s} [", .{message}, self.styles.primary);
 
         var i: u32 = 0;
-        while (i < bar_width) : (i += 1) {
+        while (i < barWidth) : (i += 1) {
             if (i < filled) {
                 try self.terminal.printf("█", .{}, self.styles.accent);
             } else {
@@ -325,8 +325,8 @@ pub const CliFormatter = struct {
 
             // Simple formatted output
             if (@hasField(@TypeOf(opt), "short")) {
-                const short_char: u8 = @intCast(opt.short);
-                try self.terminal.printf("  -{c}, --{s} <{s}>    {s}", .{ short_char, opt.long, opt.type, opt.description }, self.styles.accent);
+                const shortChar: u8 = @intCast(opt.short);
+                try self.terminal.printf("  -{c}, --{s} <{s}>    {s}", .{ shortChar, opt.long, opt.type, opt.description }, self.styles.accent);
             } else {
                 try self.terminal.printf("      --{s} <{s}>    {s}", .{ opt.long, opt.type, opt.description }, self.styles.accent);
             }

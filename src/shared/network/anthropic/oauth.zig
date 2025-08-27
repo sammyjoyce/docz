@@ -4,11 +4,11 @@ const std = @import("std");
 const curl = @import("curl_shared");
 const models = @import("models.zig");
 
-pub const OAUTH_CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e";
-pub const OAUTH_AUTHORIZATION_URL = "https://claude.ai/oauth/authorize";
-pub const OAUTH_TOKEN_ENDPOINT = "https://console.anthropic.com/v1/oauth/token";
-pub const OAUTH_REDIRECT_URI = "https://console.anthropic.com/oauth/code/callback";
-pub const OAUTH_SCOPES = "org:create_api_key user:profile user:inference";
+pub const oauth_client_id = "9d1c250a-e61b-44d9-88ed-5944d1962f5e";
+pub const oauth_authorization_url = "https://claude.ai/oauth/authorize";
+pub const oauth_token_endpoint = "https://console.anthropic.com/v1/oauth/token";
+pub const oauth_redirect_uri = "https://console.anthropic.com/oauth/code/callback";
+pub const oauth_scopes = "org:create_api_key user:profile user:inference";
 
 const Credentials = models.Credentials;
 const Pkce = models.Pkce;
@@ -36,7 +36,7 @@ pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorizationCode: []
         \\  "redirect_uri": "{s}",
         \\  "code_verifier": "{s}"
         \\}}
-    , .{ code, state, OAUTH_CLIENT_ID, OAUTH_REDIRECT_URI, pkceParams.codeVerifier });
+    , .{ code, state, oauth_client_id, oauth_redirect_uri, pkceParams.codeVerifier });
     defer allocator.free(body);
 
     std.log.debug("Sending OAuth token request with JSON body: {s}", .{body});
@@ -49,7 +49,7 @@ pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorizationCode: []
 
     const req = curl.HTTPRequest{
         .method = .POST,
-        .url = OAUTH_TOKEN_ENDPOINT,
+        .url = oauth_token_endpoint,
         .headers = &headers,
         .body = body,
         .timeout_ms = 30000,
@@ -132,7 +132,7 @@ pub fn refreshTokens(allocator: std.mem.Allocator, refreshToken: []const u8) !Cr
         \\  "refresh_token": "{s}",
         \\  "client_id": "{s}"
         \\}}
-    , .{ refreshToken, OAUTH_CLIENT_ID });
+    , .{ refreshToken, oauth_client_id });
     defer allocator.free(body);
 
     const headers = [_]curl.Header{
@@ -143,7 +143,7 @@ pub fn refreshTokens(allocator: std.mem.Allocator, refreshToken: []const u8) !Cr
 
     const req = curl.HTTPRequest{
         .method = .POST,
-        .url = OAUTH_TOKEN_ENDPOINT,
+        .url = oauth_token_endpoint,
         .headers = &headers,
         .body = body,
         .timeout_ms = 30000,
@@ -213,7 +213,12 @@ pub fn loadOAuthCredentials(allocator: std.mem.Allocator, filePath: []const u8) 
     const contents = try file.readToEndAlloc(allocator, 16 * 1024);
     defer allocator.free(contents);
 
-    const parsed = try std.json.parseFromSlice(Credentials, allocator, contents, .{});
+    const parsed = try std.json.parseFromSlice(struct {
+        type: []const u8,
+        access_token: []const u8,
+        refresh_token: []const u8,
+        expires_at: i64,
+    }, allocator, contents, .{});
     defer parsed.deinit();
 
     return Credentials{
@@ -225,7 +230,7 @@ pub fn loadOAuthCredentials(allocator: std.mem.Allocator, filePath: []const u8) 
 }
 
 pub fn saveOAuthCredentials(allocator: std.mem.Allocator, filePath: []const u8, creds: Credentials) !void {
-    const jsonContent = try std.fmt.allocPrint(allocator, "{\"type\":\"{s}\",\"access_token\":\"{s}\",\"refresh_token\":\"{s}\",\"expires_at\":{}}", .{ creds.type, creds.access_token, creds.refresh_token, creds.expires_at });
+    const jsonContent = try std.fmt.allocPrint(allocator, "{{\"type\":\"{s}\",\"access_token\":\"{s}\",\"refresh_token\":\"{s}\",\"expires_at\":{}}}", .{ creds.type, creds.accessToken, creds.refreshToken, creds.expiresAt });
     defer allocator.free(jsonContent);
 
     const file = try std.fs.cwd().createFile(filePath, .{ .mode = 0o600 });

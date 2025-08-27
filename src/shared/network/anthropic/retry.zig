@@ -1,4 +1,4 @@
-//! Simple retry policy utilities for Anthropic client
+//! Retry policy utilities for Anthropic client
 
 const std = @import("std");
 

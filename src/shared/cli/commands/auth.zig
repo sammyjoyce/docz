@@ -35,7 +35,7 @@ pub const AuthStatus = struct {
 pub const AuthCommands = struct {
     allocator: Allocator,
     caps: term_caps.TermCaps,
-    notificationManager: *notification_manager.NotificationHandler,
+    notification: *notification_manager.NotificationHandler,
     writer: *std.Io.Writer,
 
     pub fn init(
@@ -46,7 +46,7 @@ pub const AuthCommands = struct {
         return .{
             .allocator = allocator,
             .caps = term_caps.getTermCaps(),
-            .notificationManager = notificationMgr,
+            .notification = notificationMgr,
             .writer = writer,
         };
     }
@@ -58,7 +58,7 @@ pub const AuthCommands = struct {
         // Create OAuth workflow
         var workflow = workflow_runner.WorkflowRunner.init(
             self.allocator,
-            self.notificationManager,
+            self.notification,
         );
         defer workflow.deinit();
 
@@ -162,7 +162,7 @@ pub const AuthCommands = struct {
             progress.setProgress(step[0]);
             try progress.render(self.writer);
 
-            _ = try self.notificationManager.notifyProgress(
+            _ = try self.notification.notifyProgress(
                 "Token Refresh",
                 step[1],
                 step[0],
@@ -174,7 +174,7 @@ pub const AuthCommands = struct {
         try progress.clear(self.writer);
 
         try self.renderSuccessMessage("Token refreshed successfully!");
-        _ = try self.notificationManager.notify(.success, "Authentication", "Token refreshed successfully");
+        _ = try self.notification.notify(.success, "Authentication", "Token refreshed successfully");
     }
 
     /// Logout and clear credentials
@@ -208,7 +208,7 @@ pub const AuthCommands = struct {
 
         try self.clearCredentials();
         try self.renderSuccessMessage("Successfully logged out!");
-        _ = try self.notificationManager.notify(.info, "Authentication", "Logged out successfully");
+        _ = try self.notification.notify(.info, "Authentication", "Logged out successfully");
     }
 
     /// Interactive authentication setup wizard
@@ -236,7 +236,7 @@ pub const AuthCommands = struct {
         // For demo purposes, simulate OAuth selection
         std.time.sleep(1000 * std.time.ns_per_ms);
 
-        try self.renderInfoMessage("OAuth selected", "Proceeding with OAuth setup...");
+        try self.renderMessage("OAuth selected", "Proceeding with OAuth setup...");
 
         // Proceed with OAuth setup
         try self.oauthLogin();
@@ -324,7 +324,7 @@ pub const AuthCommands = struct {
         try term_ansi.resetStyle(self.writer, self.caps);
     }
 
-    fn renderInfoMessage(self: *AuthCommands, title: []const u8, message: []const u8) !void {
+    fn renderMessage(self: *AuthCommands, title: []const u8, message: []const u8) !void {
         try colors.default_colors.info.setForeground(self.writer, self.caps);
         try self.writer.print("ℹ️  {s}: {s}\n\n", .{ title, message });
         try term_ansi.resetStyle(self.writer, self.caps);

@@ -2,7 +2,7 @@ const std = @import("std");
 const testing = std.testing;
 
 // Test data structures of varying complexity
-const SimpleData = struct {
+const Data = struct {
     id: u32,
     name: []const u8,
     active: bool,
@@ -19,7 +19,7 @@ const MediumData = struct {
     metadata: std.json.Value,
 };
 
-const Data = struct {
+const ComplexData = struct {
     id: u64,
     user: struct {
         name: []const u8,
@@ -62,13 +62,13 @@ const Data = struct {
 };
 
 // Benchmark configuration
-const BenchmarkConfig = struct {
+const Benchmark = struct {
     iterations: usize = 1000,
     warmup_iterations: usize = 100,
 };
 
 // Performance measurement utilities
-const PerformanceMetrics = struct {
+const Performance = struct {
     serialization_time_ns: u64,
     deserialization_time_ns: u64,
     memory_used_bytes: usize,
@@ -79,8 +79,8 @@ fn measurePerformance(
     comptime func: anytype,
     args: anytype,
     allocator: std.mem.Allocator,
-    config: BenchmarkConfig,
-) !PerformanceMetrics {
+    config: Benchmark,
+) !Performance {
     // Warmup
     var i: usize = 0;
     while (i < config.warmup_iterations) : (i += 1) {
@@ -88,7 +88,7 @@ fn measurePerformance(
         // Consume the result to avoid unused variable warnings
         if (@TypeOf(result) == []const u8) {
             allocator.free(result);
-        } else if (@TypeOf(result) == SimpleData or @TypeOf(result) == MediumData) {
+        } else if (@TypeOf(result) == Data or @TypeOf(result) == MediumData) {
             // For structs, we don't need to free anything
         }
     }
@@ -102,7 +102,7 @@ fn measurePerformance(
         // Consume the result to avoid unused variable warnings
         if (@TypeOf(result) == []const u8) {
             allocator.free(result);
-        } else if (@TypeOf(result) == SimpleData or @TypeOf(result) == MediumData) {
+        } else if (@TypeOf(result) == Data or @TypeOf(result) == MediumData) {
             // For structs, we don't need to free anything
         }
     }
@@ -110,7 +110,7 @@ fn measurePerformance(
     const end_time = std.time.nanoTimestamp();
     const total_time = @as(u64, @intCast(end_time - start_time));
 
-    return PerformanceMetrics{
+    return Performance{
         .serialization_time_ns = total_time / config.iterations,
         .deserialization_time_ns = 0, // Will be set by caller if applicable
         .memory_used_bytes = 0, // Simplified for benchmark
@@ -119,7 +119,7 @@ fn measurePerformance(
 }
 
 // Approach 1: Manual ObjectMap building
-fn manualSerializeSimple(value: SimpleData, allocator: std.mem.Allocator) ![]const u8 {
+fn manualSerialize(value: Data, allocator: std.mem.Allocator) ![]const u8 {
     return std.fmt.allocPrint(allocator, "{{\"id\":{d},\"name\":\"{s}\",\"active\":{s}}}", .{
         value.id,
         value.name,
@@ -127,7 +127,7 @@ fn manualSerializeSimple(value: SimpleData, allocator: std.mem.Allocator) ![]con
     });
 }
 
-fn manualDeserializeSimple(json_str: []const u8, allocator: std.mem.Allocator) !SimpleData {
+fn manualDeserialize(json_str: []const u8, allocator: std.mem.Allocator) !Data {
     // Simple manual parsing for benchmark purposes
     var id: u32 = 0;
     var name_start: usize = 0;
@@ -156,7 +156,7 @@ fn manualDeserializeSimple(json_str: []const u8, allocator: std.mem.Allocator) !
         active = std.mem.eql(u8, value_str, "true");
     }
 
-    return SimpleData{
+    return Data{
         .id = id,
         .name = try allocator.dupe(u8, json_str[name_start..name_end]),
         .active = active,
@@ -346,76 +346,47 @@ fn stdlibSerialize(value: anytype, allocator: std.mem.Allocator) ![]const u8 {
     return allocator.dupe(u8, buffer[0..fbs.pos]);
 }
 
-fn stdlibDeserializeSimple(comptime T: type, json_str: []const u8, allocator: std.mem.Allocator) !T {
-    // Simplified deserialization for benchmark
-    var result: T = undefined;
 
-    // Parse id field
-    if (std.mem.indexOf(u8, json_str, "\"id\":")) |pos| {
-        const value_start = pos + 5;
-        const value_end = std.mem.indexOf(u8, json_str[value_start..], ",").? + value_start;
-        result.id = try std.fmt.parseInt(u32, json_str[value_start..value_end], 10);
-    }
-
-    // Parse name field (stdlib uses original field names)
-    if (std.mem.indexOf(u8, json_str, "\"name\":")) |pos| {
-        const value_start = pos + 7; // position after "name":
-        const value_end = std.mem.indexOf(u8, json_str[value_start + 1..], "\"").? + value_start + 1;
-        const name_slice = json_str[value_start + 1..value_end];
-        result.name = try allocator.dupe(u8, name_slice);
-    } else {
-        result.name = "";
-    }
-
-    // Parse active field
-    if (std.mem.indexOf(u8, json_str, "\"active\":")) |pos| {
-        const value_start = pos + 9;
-        const value_str = json_str[value_start..value_start + 4];
-        result.active = std.mem.eql(u8, value_str, "true");
-    }
-
-    return result;
-}
 
 fn stdlibDeserialize(comptime T: type, json_str: []const u8, allocator: std.mem.Allocator) !T {
     return std.json.parseFromSlice(T, allocator, json_str, .{});
 }
 
 // Benchmark functions
-const BenchmarkResults = struct {
-    manual: PerformanceMetrics,
-    reflection: PerformanceMetrics,
-    stdlib: PerformanceMetrics,
+const Results = struct {
+    manual: Performance,
+    reflection: Performance,
+    stdlib: Performance,
 };
 
-fn benchmarkSimpleStruct(allocator: std.mem.Allocator, config: BenchmarkConfig) !BenchmarkResults {
-    const test_data = SimpleData{
+fn benchmarkStruct(allocator: std.mem.Allocator, config: Benchmark) !Results {
+    const testData = Data{
         .id = 123,
         .name = "test_user",
         .active = true,
     };
 
     // Manual approach
-    const manual_metrics = try measurePerformance(manualSerializeSimple, .{ test_data, allocator }, allocator, config);
+    const manual_metrics = try measurePerformance(manualSerialize, .{ testData, allocator }, allocator, config);
     std.debug.assert(manual_metrics.serialization_time_ns > 0); // Use the variable
 
     // Reflection approach
-    const reflection_metrics = try measurePerformance(reflectionSerialize, .{ test_data, allocator }, allocator, config);
+    const reflection_metrics = try measurePerformance(reflectionSerialize, .{ testData, allocator }, allocator, config);
     std.debug.assert(reflection_metrics.serialization_time_ns > 0); // Use the variable
 
     // Stdlib approach
-    const stdlib_metrics = try measurePerformance(stdlibSerialize, .{ test_data, allocator }, allocator, config);
+    const stdlib_metrics = try measurePerformance(stdlibSerialize, .{ testData, allocator }, allocator, config);
     std.debug.assert(stdlib_metrics.serialization_time_ns > 0); // Use the variable
 
-    return BenchmarkResults{
+    return Results{
         .manual = manual_metrics,
         .reflection = reflection_metrics,
         .stdlib = stdlib_metrics,
     };
 }
 
-fn benchmarkMediumStruct(allocator: std.mem.Allocator, config: BenchmarkConfig) !BenchmarkResults {
-    const test_data = MediumData{
+fn benchmarkMediumStruct(allocator: std.mem.Allocator, config: Benchmark) !Results {
+    const testData = MediumData{
         .id = 456,
         .name = "john_doe",
         .email = "john@example.com",
@@ -427,18 +398,18 @@ fn benchmarkMediumStruct(allocator: std.mem.Allocator, config: BenchmarkConfig) 
     };
 
     // Manual approach
-    const manual_metrics = try measurePerformance(manualSerializeMedium, .{ test_data, allocator }, allocator, config);
+    const manual_metrics = try measurePerformance(manualSerializeMedium, .{ testData, allocator }, allocator, config);
     std.debug.assert(manual_metrics.serialization_time_ns > 0); // Use the variable
 
     // Reflection approach
-    const reflection_metrics = try measurePerformance(reflectionSerialize, .{ test_data, allocator }, allocator, config);
+    const reflection_metrics = try measurePerformance(reflectionSerialize, .{ testData, allocator }, allocator, config);
     std.debug.assert(reflection_metrics.serialization_time_ns > 0); // Use the variable
 
     // Stdlib approach
-    const stdlib_metrics = try measurePerformance(stdlibSerialize, .{ test_data, allocator }, allocator, config);
+    const stdlib_metrics = try measurePerformance(stdlibSerialize, .{ testData, allocator }, allocator, config);
     std.debug.assert(stdlib_metrics.serialization_time_ns > 0); // Use the variable
 
-    return BenchmarkResults{
+    return Results{
         .manual = manual_metrics,
         .reflection = reflection_metrics,
         .stdlib = stdlib_metrics,
@@ -446,8 +417,8 @@ fn benchmarkMediumStruct(allocator: std.mem.Allocator, config: BenchmarkConfig) 
 }
 
 fn generateReport(
-    simple_results: BenchmarkResults,
-    medium_results: BenchmarkResults,
+    results: Results,
+    mediumResults: Results,
 ) []const u8 {
     var buffer: [4096]u8 = undefined;
     var fbs = std.io.fixedBufferStream(&buffer);
@@ -458,15 +429,15 @@ fn generateReport(
         \\
         \\## Test Data Structures
         \\
-        \\\\### SimpleData
+        \\\\### Data
         \\\\- 3 fields: id (u32), name ([]const u8), active (bool)
         \\\\
-        \\\\### MediumData
+        \\\\### ComplexData
         \\\\- 8 fields including arrays, nested objects, and mixed types
         \\
         \\## Performance Results
         \\
-        \\\\### SimpleData Serialization Performance (nanoseconds per operation)
+        \\\\### Data Serialization Performance (nanoseconds per operation)
         \\
         \\| Approach | Time (ns) | Memory (bytes) | Allocations |
         \\|----------|-----------|----------------|-------------|
@@ -486,11 +457,11 @@ fn generateReport(
         \\
         \\### Performance Comparison
         \\
-        \\\\1. **Reflection vs Manual**: The reflection approach shows {}x performance compared to manual ObjectMap building for SimpleData and {}x for MediumData.
+        \\\\1. **Reflection vs Manual**: The reflection approach shows {}x performance compared to manual ObjectMap building for Data and {}x for ComplexData.
         \\
-        \\\\2. **Reflection vs Stdlib**: The reflection approach is {}% of stdlib performance for SimpleData and {}% for MediumData.
+        \\\\2. **Reflection vs Stdlib**: The reflection approach is {}% of stdlib performance for Data and {}% for ComplexData.
         \\
-        \\\\3. **Memory Efficiency**: Reflection uses {}% of manual memory for SimpleData and {}% for MediumData.
+        \\\\3. **Memory Efficiency**: Reflection uses {}% of manual memory for Data and {}% for ComplexData.
         \\
         \\### Benefits of Reflection Approach
         \\
@@ -507,35 +478,35 @@ fn generateReport(
         \\- Avoid **manual ObjectMap** for new development due to high maintenance overhead
         \\
     , .{
-        // SimpleStruct results
-        simple_results.manual.serialization_time_ns,
-        simple_results.manual.memory_used_bytes,
-        simple_results.manual.allocations_count,
-        simple_results.reflection.serialization_time_ns,
-        simple_results.reflection.memory_used_bytes,
-        simple_results.reflection.allocations_count,
-        simple_results.stdlib.serialization_time_ns,
-        simple_results.stdlib.memory_used_bytes,
-        simple_results.stdlib.allocations_count,
+        // Struct results
+        results.manual.serialization_time_ns,
+        results.manual.memory_used_bytes,
+        results.manual.allocations_count,
+        results.reflection.serialization_time_ns,
+        results.reflection.memory_used_bytes,
+        results.reflection.allocations_count,
+        results.stdlib.serialization_time_ns,
+        results.stdlib.memory_used_bytes,
+        results.stdlib.allocations_count,
 
-        // MediumStruct results
-        medium_results.manual.serialization_time_ns,
-        medium_results.manual.memory_used_bytes,
-        medium_results.manual.allocations_count,
-        medium_results.reflection.serialization_time_ns,
-        medium_results.reflection.memory_used_bytes,
-        medium_results.reflection.allocations_count,
-        medium_results.stdlib.serialization_time_ns,
-        medium_results.stdlib.memory_used_bytes,
-        medium_results.stdlib.allocations_count,
+        // ComplexStruct results
+        mediumResults.manual.serialization_time_ns,
+        mediumResults.manual.memory_used_bytes,
+        mediumResults.manual.allocations_count,
+        mediumResults.reflection.serialization_time_ns,
+        mediumResults.reflection.memory_used_bytes,
+        mediumResults.reflection.allocations_count,
+        mediumResults.stdlib.serialization_time_ns,
+        mediumResults.stdlib.memory_used_bytes,
+        mediumResults.stdlib.allocations_count,
 
         // Analysis calculations
-        @as(f64, @floatFromInt(simple_results.manual.serialization_time_ns)) / @as(f64, @floatFromInt(simple_results.reflection.serialization_time_ns)),
-        @as(f64, @floatFromInt(medium_results.manual.serialization_time_ns)) / @as(f64, @floatFromInt(medium_results.reflection.serialization_time_ns)),
-        @as(f64, @floatFromInt(simple_results.reflection.serialization_time_ns * 100)) / @as(f64, @floatFromInt(simple_results.stdlib.serialization_time_ns)),
-        @as(f64, @floatFromInt(medium_results.reflection.serialization_time_ns * 100)) / @as(f64, @floatFromInt(medium_results.stdlib.serialization_time_ns)),
-        @as(f64, @floatFromInt(simple_results.reflection.memory_used_bytes * 100)) / @as(f64, @floatFromInt(simple_results.manual.memory_used_bytes)),
-        @as(f64, @floatFromInt(medium_results.reflection.memory_used_bytes * 100)) / @as(f64, @floatFromInt(medium_results.manual.memory_used_bytes)),
+        @as(f64, @floatFromInt(results.manual.serialization_time_ns)) / @as(f64, @floatFromInt(results.reflection.serialization_time_ns)),
+        @as(f64, @floatFromInt(mediumResults.manual.serialization_time_ns)) / @as(f64, @floatFromInt(mediumResults.reflection.serialization_time_ns)),
+        @as(f64, @floatFromInt(results.reflection.serialization_time_ns * 100)) / @as(f64, @floatFromInt(results.stdlib.serialization_time_ns)),
+        @as(f64, @floatFromInt(mediumResults.reflection.serialization_time_ns * 100)) / @as(f64, @floatFromInt(mediumResults.stdlib.serialization_time_ns)),
+        @as(f64, @floatFromInt(results.reflection.memory_used_bytes * 100)) / @as(f64, @floatFromInt(results.manual.memory_used_bytes)),
+        @as(f64, @floatFromInt(mediumResults.reflection.memory_used_bytes * 100)) / @as(f64, @floatFromInt(mediumResults.manual.memory_used_bytes)),
     }) catch unreachable;
 
     return buffer[0..fbs.pos];
@@ -546,37 +517,37 @@ test "json reflection benchmark" {
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    const config = BenchmarkConfig{
+    const config = Benchmark{
         .iterations = 100,
         .warmup_iterations = 10,
     };
 
     // Run benchmarks
-    const simple_results = try benchmarkSimpleStruct(allocator, config);
-    const medium_results = try benchmarkMediumStruct(allocator, config);
+    const results = try benchmarkStruct(allocator, config);
+    const mediumResults = try benchmarkMediumStruct(allocator, config);
 
     // Generate and print report
-    const report = generateReport(simple_results, medium_results);
+    const report = generateReport(results, mediumResults);
     std.debug.print("{s}\n", .{report});
 
     // Verify that reflection approach works correctly
-    const test_data = SimpleData{
+    const testData = Data{
         .id = 999,
         .name = "benchmark_test",
         .active = false,
     };
 
     // Test serialization
-    const json_str = try reflectionSerialize(test_data, allocator);
-    defer allocator.free(json_str);
+    const jsonStr = try reflectionSerialize(testData, allocator);
+    defer allocator.free(jsonStr);
 
     // Test deserialization
-    const deserialized = try reflectionDeserialize(SimpleData, json_str, allocator);
+    const deserialized = try reflectionDeserialize(Data, jsonStr, allocator);
     defer allocator.free(deserialized.name);
 
-    try testing.expectEqual(test_data.id, deserialized.id);
-    try testing.expectEqualStrings(test_data.name, deserialized.name);
-    try testing.expectEqual(test_data.active, deserialized.active);
+    try testing.expectEqual(testData.id, deserialized.id);
+    try testing.expectEqualStrings(testData.name, deserialized.name);
+    try testing.expectEqual(testData.active, deserialized.active);
 }
 
 test "reflection field name conversion" {

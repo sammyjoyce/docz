@@ -9,6 +9,6 @@ pub fn main() !void {
         std.log.err("Memory leak detected", .{});
     };
 
-    // Use the standardized agent_main.run_agent() which handles CLI parsing and orchestration
-    try agent_main.run_agent(gpa, spec.SPEC);
+    // Use the standardized agent_main.runAgent() which handles CLI parsing and orchestration
+    try agent_main.runAgent(gpa, spec.SPEC);
 }

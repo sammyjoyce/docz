@@ -88,10 +88,10 @@ fn registerToolsImpl(registry: *tools_mod.Registry) !void {
     // You can conditionally register tools based on configuration
     // This demonstrates how to respect feature flags
 
-    // Example: Only register advanced tools if custom features are enabled
+    // Example: Only register professional tools if custom features are enabled
     // const config = try impl.Config.loadFromFile(allocator, "agents/_template/config.zon");
     // if (config.customFeatureEnabled) {
-    //     try tools_mod.registerJsonTool(registry, "advanced_tool", "Advanced feature tool", tools.advancedTool, "_template");
+    //     try tools_mod.registerJsonTool(registry, "professional_tool", "Professional feature tool", tools.professionalTool, "_template");
     // }
 
     // ============================================================================

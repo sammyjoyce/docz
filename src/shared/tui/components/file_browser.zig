@@ -12,7 +12,8 @@ const focus_mod = @import("tui_shared").core.input;
 const shared = @import("../../mod.zig");
 const components = shared.components;
 const mouse_mod = components.input.Mouse;
-const term_ansi = @import("term_shared").ansi.color;
+const term_shared = @import("term_shared");
+const term_ansi = term_shared.term.color;
 
 /// Enhanced file browser component with Git integration
 pub const FileBrowser = struct {

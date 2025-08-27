@@ -79,7 +79,7 @@ pub const Sparkline = struct {
             .show_trend = false,
             .fill_area = false,
             .render_mode = switch (capability_tier) {
-                .ultra_enhanced, .enhanced => .{ .graphics = .{} },
+                .high, .rich => .{ .graphics = .{} },
                 .standard => .{ .unicode = .{} },
                 .minimal => .{ .ascii = .{} },
             },

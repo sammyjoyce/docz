@@ -10,7 +10,7 @@ const bounds_mod = @import("../core/bounds.zig");
 const notification_mod = @import("../notifications.zig");
 const progress_mod = @import("../widgets/rich/progress.zig");
 const text_input_mod = @import("../widgets/rich/text_input.zig");
-const theme_manager_mod = @import("../../theme_manager/mod.zig");
+const theme_manager_mod = @import("../../theme/mod.zig");
 const input_system = @import("../../components/input.zig");
 const oauth_mod = @import("../../auth/oauth/mod.zig");
 const markdown_renderer = @import("../../render/markdown.zig");
@@ -82,7 +82,7 @@ pub const StandardUIPatterns = struct {
         // Draw dialog border
         const border_style = Style{
             .bg_color = theme.background,
-            .fg_color = theme.primary,
+            .fg_color = theme.focus,
             .bold = true,
         };
 
@@ -98,7 +98,7 @@ pub const StandardUIPatterns = struct {
 
         const title_ctx = Render{
             .bounds = title_bounds,
-            .style = .{ .fg_color = theme.primary, .bold = true },
+            .style = .{ .fg_color = theme.focus, .bold = true },
             .zIndex = 0,
             .clipRegion = null,
         };
@@ -332,7 +332,7 @@ pub const OAuthIntegration = struct {
 
         const prompt_ctx = Render{
             .bounds = prompt_bounds,
-            .style = .{ .fg_color = theme.primary, .bold = true },
+            .style = .{ .fg_color = theme.focus, .bold = true },
             .zIndex = 0,
             .clipRegion = null,
         };
@@ -474,7 +474,7 @@ pub const MarkdownEditor = struct {
         // Draw editor border
         const border_style = Style{
             .bg_color = theme.background,
-            .fg_color = theme.primary,
+            .fg_color = theme.focus,
             .bold = true,
         };
 

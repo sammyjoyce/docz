@@ -42,7 +42,7 @@ pub const InputConfig = input.InputConfig;
 pub const InputFeatures = input.InputFeatures;
 pub const InputUtils = input.InputUtils;
 
-// Legacy TUI-specific types (for enhanced TUI features)
+// Legacy TUI-specific types (for TUI features)
 pub const EventSystem = events.EventSystem;
 pub const TuiInputEvent = events.InputEvent; // Legacy TUI event type
 pub const InputEvent = TuiInputEvent; // TUI-specific input event

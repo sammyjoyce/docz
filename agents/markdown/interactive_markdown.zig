@@ -1,4 +1,4 @@
-//! Enhanced Interactive Markdown Editor
+//! Interactive Markdown Editor
 //!
 //! A comprehensive markdown editing environment that integrates TUI components
 //! for a rich, visual editing experience. This version builds upon the existing
@@ -50,7 +50,7 @@
 //!
 //! ## Integration Points
 //!
-//! This enhanced editor integrates with:
+//! This editor integrates with:
 //! - `src/shared/tui/widgets/core/diff_viewer.zig` - Document diff viewing
 //! - `src/shared/tui/widgets/core/file_tree.zig` - File navigation
 //! - `src/shared/tui/widgets/core/tabs.zig` - Multi-document management
@@ -60,19 +60,19 @@
 //!
 //! ## Architecture
 //!
-//! The enhanced editor extends the existing `EnhancedMarkdownEditor` with:
+//! The editor extends the existing `MarkdownEditor` with:
 //! - **Component Manager**: Coordinates all integrated widgets
 //! - **Layout Manager**: Handles split panes and responsive layout
 //! - **Event Router**: Manages input events across all components
 //! - **State Synchronizer**: Keeps all views in sync with document changes
-//! - **Preview Engine**: Renders markdown with advanced features
+//! - **Preview Engine**: Renders markdown with rich features
 //!
 //! ## Usage
 //!
 //! ```zig
-//! const enhanced_editor = @import("interactive_markdown.zig");
+//! const interactive_editor = @import("interactive_markdown.zig");
 //!
-//! const editor = try enhanced_editor.InteractiveMarkdownEditor.init(allocator, agent, config);
+//! const editor = try interactive_editor.InteractiveMarkdownEditor.init(allocator, agent, config);
 //! defer editor.deinit();
 //!
 //! try editor.run();
@@ -86,9 +86,9 @@ const Mutex = Thread.Mutex;
 // Core modules
 const agent_interface = @import("agent_interface");
 const config = @import("config_shared");
-const enhanced_editor = @import("markdown_editor.zig");
-const MarkdownEditor = enhanced_editor.MarkdownEditor;
-const MarkdownEditorConfig = enhanced_editor.MarkdownEditorConfig;
+const markdown_editor = @import("markdown_editor.zig");
+const MarkdownEditor = markdown_editor.MarkdownEditor;
+const MarkdownEditorConfig = markdown_editor.MarkdownEditorConfig;
 
 // Shared infrastructure
 const tui = @import("tui_shared");
@@ -97,7 +97,7 @@ const theme_manager = @import("../../src/shared/theme_manager/mod.zig");
 const render = @import("render_shared");
 const components = @import("components_shared");
 
-// Advanced UI components
+// Rich UI components
 const diff_viewer = @import("../../src/shared/tui/widgets/core/diff_viewer.zig");
 const file_tree = @import("../../src/shared/tui/widgets/core/file_tree.zig");
 const tabs = @import("../../src/shared/tui/widgets/core/tabs.zig");
@@ -112,12 +112,12 @@ const Validate = @import("tools/validate.zig");
 const document_tool = @import("tools/document.zig");
 
 // Common utilities
-const fs = @import("common/fs.zig");
-const link = @import("common/link.zig");
-const meta = @import("common/meta.zig");
-const table = @import("common/table.zig");
-const template = @import("common/template.zig");
-const text_utils = @import("common/text.zig");
+const fs = @import("lib/fs.zig");
+const link = @import("lib/link.zig");
+const meta = @import("lib/meta.zig");
+const table = @import("lib/table.zig");
+const template = @import("lib/template.zig");
+const text_utils = @import("lib/text.zig");
 
 /// Interactive Markdown Editor Configuration
 pub const InteractiveConfig = struct {
@@ -301,7 +301,7 @@ pub const InteractiveMarkdownEditor = struct {
 
     const Self = @This();
 
-    /// Initialize the enhanced interactive markdown editor
+    /// Initialize the interactive markdown editor
     pub fn init(
         allocator: Allocator,
         agent: *agent_interface.Agent,
@@ -376,7 +376,7 @@ pub const InteractiveMarkdownEditor = struct {
         self.allocator.destroy(self);
     }
 
-    /// Run the enhanced interactive editor
+    /// Run the interactive editor
     pub fn run(self: *Self) !void {
         // Setup terminal
         try self.setupTerminal();
@@ -721,7 +721,7 @@ pub const InteractiveMarkdownEditor = struct {
         try self.component_manager.renderOverlays(renderer);
     }
 
-    /// Setup terminal for enhanced editing
+    /// Setup terminal for interactive editing
     fn setupTerminal(self: *Self) !void {
         _ = self;
         // Enhanced terminal setup with mouse support, alternate screen, etc.
@@ -844,8 +844,8 @@ pub const Component = struct {
     breadcrumb_trail: *breadcrumb_trail.BreadcrumbTrail,
 
     // Other managers
-    command_palette: *enhanced_editor.MarkdownCommandPalette,
-    auto_completer: *enhanced_editor.AutoCompletionEngine,
+    command_palette: *markdown_editor.MarkdownCommandPalette,
+    auto_completer: *markdown_editor.AutoCompletionEngine,
 
     const Self = @This();
 
@@ -858,11 +858,11 @@ pub const Component = struct {
         const breadcrumb = breadcrumb_trail.BreadcrumbTrail.init(allocator);
 
         // Initialize command palette and auto-completer from base editor
-        const cmd_palette = try allocator.create(enhanced_editor.MarkdownCommandPalette);
-        cmd_palette.* = enhanced_editor.MarkdownCommandPalette.init(allocator);
+        const cmd_palette = try allocator.create(markdown_editor.MarkdownCommandPalette);
+        cmd_palette.* = markdown_editor.MarkdownCommandPalette.init(allocator);
 
-        const auto_comp = try allocator.create(enhanced_editor.AutoCompletionEngine);
-        auto_comp.* = try enhanced_editor.AutoCompletionEngine.init(allocator);
+        const auto_comp = try allocator.create(markdown_editor.AutoCompletionEngine);
+        auto_comp.* = try markdown_editor.AutoCompletionEngine.init(allocator);
 
         self.* = Self{
             .allocator = allocator,
@@ -1024,7 +1024,7 @@ pub const Component = struct {
     }
 
     /// Update document outline
-    pub fn updateOutline(self: *Self, document: *const enhanced_editor.Document) !void {
+    pub fn updateOutline(self: *Self, document: *const markdown_editor.Document) !void {
         // Update outline based on document headings
         _ = self;
         _ = document;
@@ -1336,7 +1336,7 @@ pub const PreviewEngine = struct {
     }
 
     /// Update preview with debouncing
-    pub fn updatePreviewDebounced(self: *Self, document: *const enhanced_editor.Document) !void {
+    pub fn updatePreviewDebounced(self: *Self, document: *const markdown_editor.Document) !void {
         const current_time = std.time.milliTimestamp();
         if (current_time - self.last_update_time > @as(i64, @intCast(self.config.sync_delay_ms))) {
             try self.updatePreview(document);
@@ -1345,7 +1345,7 @@ pub const PreviewEngine = struct {
     }
 
     /// Update preview immediately
-    pub fn updatePreview(self: *Self, document: *const enhanced_editor.Document) !void {
+    pub fn updatePreview(self: *Self, document: *const markdown_editor.Document) !void {
         // Clear previous content
         self.preview_content.clearRetainingCapacity();
 
@@ -1404,20 +1404,19 @@ pub const ComponentExtensions = struct {
     }
 };
 
-/// Extend EnhancedMarkdownEditor with additional methods
-pub const EnhancedMarkdownEditorExtensions = struct {
-    /// Handle key event
-    pub fn handleKeyEvent(self: *enhanced_editor.EnhancedMarkdownEditor, key: tui.KeyEvent) !bool {
+/// Extend MarkdownEditor with additional methods
+pub const MarkdownEditorExtensions = struct {
+    pub fn handleKeyEvent(self: *markdown_editor.MarkdownEditor, key: tui.KeyEvent) !bool {
         return try self.handleKeyEvent(key);
     }
 
     /// Handle mouse event
-    pub fn handleMouseEvent(self: *enhanced_editor.EnhancedMarkdownEditor, mouse: tui.MouseEvent) !void {
+    pub fn handleMouseEvent(self: *markdown_editor.MarkdownEditor, mouse: tui.MouseEvent) !void {
         try self.handleMouseEvent(mouse);
     }
 };
 
-/// Public API for creating and running the enhanced editor
+/// Public API for creating and running the interactive editor
 pub fn runInteractiveEditor(
     allocator: std.mem.Allocator,
     agent: *agent_interface.Agent,
@@ -1432,12 +1431,12 @@ pub fn runInteractiveEditor(
 /// Create a default interactive configuration
 pub fn createDefaultConfig() InteractiveConfig {
     return InteractiveConfig{
-        .base_config = enhanced_editor.MarkdownEditorConfig{
+        .base_config = markdown_editor.MarkdownEditorConfig{
             .base_config = .{
                 .agent_info = .{
-                    .name = "Enhanced Markdown Editor",
-                    .version = "2.0.0",
-                    .description = "Advanced markdown editing with live preview and rich features",
+                    .name = "Interactive Markdown Editor",
+                    .version = "1.0.0",
+                    .description = "Interactive markdown editing with live preview and rich features",
                     .author = "DocZ",
                 },
                 .defaults = .{

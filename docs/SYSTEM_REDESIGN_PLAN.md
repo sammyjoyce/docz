@@ -152,6 +152,38 @@ Phase 4 has been successfully completed, focusing on terminal primitives unifica
 - Raw ANSI emissions in TUI replaced with proper abstractions
 - Phase 4 acceptance criteria fully met
 
+### Phase 5 - COMPLETED (Aug 28 2025)
+Phase 5 has been successfully completed, focusing on hyperlinks and color pipeline consolidation.
+
+**Completed Tasks:**
+- ✅ Hyperlinks already properly consolidated
+- ✅ Created term/ansi/color/* directory structure with comprehensive mod.zig barrel
+- ✅ Migrated all color files from term/color/ to term/ansi/color/
+- ✅ Integrated theme_manager color functionality into consolidated structure
+- ✅ Updated all consumers to use unified color API through term_shared.ansi.color or term.color
+- ✅ Maintained backward compatibility with re-exports
+- ✅ Fixed all build issues and verified markdown agent builds successfully
+
+### Phase 6 - COMPLETED (Aug 28 2025)
+Phase 6 has been successfully completed, achieving the major objectives of auth/network service separation and proper modularization.
+
+**Completed Tasks:**
+- ✅ Created auth/core/Service.zig with UI-free auth service methods (loadCredentials, saveCredentials, loginUrl, exchangeCode, refresh, status)
+- ✅ Network/Service.zig already had proper service methods (request, stream, sse, download)
+- ✅ Auth/cli already properly separated as presenter layer
+- ✅ Auth/tui refactored to remove stubbed business logic and use service layer
+- ✅ All service interfaces properly exported through barrel files
+- ✅ Anthropic client already properly modularized under network/anthropic/
+- ✅ Integration test created at tests/phase6_integration_test.zig
+- ✅ All acceptance criteria met
+
+**Summary:**
+- All UI-free services have been successfully extracted and modularized
+- Auth and network layers are properly separated with clean service interfaces
+- Presenters now orchestrate services without direct business logic
+- Integration testing validates the service separation architecture
+- The system is ready for Phase 7 with a solid foundation of modular services
+
 ## Key Findings (from codebase_brief + tree scan)
 - Duplicate dashboards:
   - `src/shared/tui/components/Dashboard.zig` (older, uses render/EnhancedRenderer)
@@ -296,19 +328,20 @@ Phase 3 — COMPLETED (Aug 28 2025) - Sub‑modules + Services
 - Decide on canonical dashboard and move the other into examples or delete.
 
 ## Next Steps
-Phase 4 has been completed successfully, with terminal primitives unified and all usage consolidated under term/* modules.
+Phase 6 has been completed successfully, with auth/network service separation fully implemented.
 
-**Phase 4 - COMPLETED (Aug 28 2025):**
-- Removed orphaned components/writer.zig and components/cursor.zig files
-- Verified all terminal primitives usage goes through term/* modules
-- Fixed raw ANSI sequences in split_pane.zig to use proper term/ansi abstractions
-- Validated that no references to components/terminal_writer or components/terminal_cursor remain
-- Ensured CLI/TUI code uses proper term/* primitives
+**Phase 6 - COMPLETED (Aug 28 2025):**
+- Created auth/core/Service.zig with UI-free auth service methods (loadCredentials, saveCredentials, loginUrl, exchangeCode, refresh, status)
+- Network/Service.zig already had proper service methods (request, stream, sse, download)
+- Auth/cli already properly separated as presenter layer
+- Auth/tui refactored to remove stubbed business logic and use service layer
+- All service interfaces properly exported through barrel files
+- Anthropic client already properly modularized under network/anthropic/
+- Integration test created at tests/phase6_integration_test.zig
+- All acceptance criteria met
 
-**Phase 5 - IN PROGRESS (Aug 28 2025):**
-- Hyperlinks: centralize OSC-8 creation in `term/ansi/hyperlink.zig`; migrate `cli/utils/hyperlinks.zig` to call into it.
-- Color: consolidate all conversion/distance/palette logic under `term/ansi/color/*` with a `mod.zig` barrel; deprecate strays such as `color_conversion*.zig`, `color_converter.zig`, `structured_colors.zig`, `palette.zig`, `color_distance.zig`.
-- Update renderers and TUI widgets to consume the unified color API.
+**Phase 7 - IN PROGRESS (Aug 28 2025):**
+- Theme Consolidation: Merge theme_manager/* into theme/* with a clear split between runtime and dev tools, update all imports and delete old theme_manager/* after migration.
 
 **Acceptance Criteria for Phase 2:**
 - ✅ Grep shows no direct OSC-8 implementations outside `term/ansi/hyperlink.zig`
@@ -335,10 +368,10 @@ Phase 4 — Terminal Primitives Unification
 - Keep temporary re-exports for one milestone; remove duplicate component files after cutover.
 - Ensure CLI/TUI never emit raw ANSI directly; go through `term/*` primitives.
 
-Phase 5 — Hyperlinks and Color Pipeline
-- Hyperlinks: centralize OSC-8 creation in `term/ansi/hyperlink.zig`; migrate `cli/utils/hyperlinks.zig` to call into it.
-- Color: consolidate all conversion/distance/palette logic under `term/ansi/color/*` with a `mod.zig` barrel; deprecate strays such as `color_conversion*.zig`, `color_converter.zig`, `structured_colors.zig`, `palette.zig`, `color_distance.zig`.
-- Update renderers and TUI widgets to consume the unified color API.
+Phase 5 — COMPLETED (Aug 28 2025) - Hyperlinks and Color Pipeline
+- ✅ Hyperlinks: centralize OSC-8 creation in `term/ansi/hyperlink.zig`; migrate `cli/utils/hyperlinks.zig` to call into it.
+- ✅ Color: consolidate all conversion/distance/palette logic under `term/ansi/color/*` with a `mod.zig` barrel; deprecate strays such as `color_conversion*.zig`, `color_converter.zig`, `structured_colors.zig`, `palette.zig`, `color_distance.zig`.
+- ✅ Update renderers and TUI widgets to consume the unified color API.
 
 Phase 6 — Auth/Network Service Separation
 - Extract UI-free services:
@@ -363,8 +396,8 @@ Phase 8 — Cleanup and Documentation
   - `rg -n "components/terminal_(writer|cursor)"` returns no matches in non-legacy code.
   - CLI/TUI build only against `term/writer.zig` and `term/cursor.zig`.
 - Phase 5
-  - All hyperlinks are produced via `term/ansi/hyperlink.zig` (no custom OSC-8 builders elsewhere).
-  - Single consolidated color API under `term/ansi/color/*`; duplicate color files removed.
+  - ✅ All hyperlinks are produced via `term/ansi/hyperlink.zig` (no custom OSC-8 builders elsewhere).
+  - ✅ Single consolidated color API under `term/ansi/color/*`; duplicate color files removed.
 - Phase 6
   - `auth/core` and `network/*` compile with no UI imports; presenters call services through typed interfaces.
   - Network and auth errors use precise error sets (`NetworkError`, `AuthError`).

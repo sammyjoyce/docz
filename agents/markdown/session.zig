@@ -6,7 +6,7 @@
 //! ## Key UX Improvements
 //!
 //! ### 1. Simplified Onboarding Experience
-//! - **Progressive disclosure**: Start with essential features, reveal advanced options gradually
+//! - **Progressive disclosure**: Start with essential features, reveal more options gradually
 //! - **Interactive tutorial**: Context-sensitive guidance for new users
 //! - **Welcome wizard**: Personalized setup based on user preferences
 //! - **Quick start templates**: Pre-configured workflows for common use cases
@@ -48,14 +48,14 @@
 //! ## Architecture
 //!
 //! The session builds upon the existing InteractiveSession and integrates
-//! with advanced TUI components, notification systems, and workflow automation.
+//! with TUI components, notification systems, and workflow automation.
 //!
 //! Key components:
 //! - **InteractiveSession** - Main session controller with UX enhancements
 //! - **OnboardingWizard** - Progressive disclosure onboarding system
 //! - **ToolDiscoveryGrid** - Visual tool discovery with grid layout
 //! - **ContextualHelpSystem** - Adaptive help that responds to user context
-//! - **UnifiedCommandPalette** - Command palette with fuzzy search
+//! - **CommandPalette** - Command palette with fuzzy search
 //! - **WorkflowAutomation** - Template and custom workflow management
 //! - **VisualFeedbackSystem** - Comprehensive visual feedback and animations
 
@@ -83,7 +83,7 @@ const progress_tracker = @import("../../src/shared/tui/components/progress_track
 const modal = @import("../../src/shared/tui/widgets/modal.zig");
 
 // UI components
-const input_enhanced = @import("../../src/shared/components/input_enhanced.zig");
+const input_component = @import("../../src/shared/components/input.zig");
 const split_pane = @import("../../src/shared/tui/widgets/core/split_pane.zig");
 const file_tree = @import("../../src/shared/tui/widgets/core/file_tree.zig");
 const canvas_mod = @import("../../src/shared/tui/core/canvas.zig");
@@ -93,15 +93,15 @@ const markdown_tools = @import("tools/mod.zig");
 const ContentEditor = @import("tools/ContentEditor.zig");
 const Validate = @import("tools/validate.zig");
 const document_tool = @import("tools/document.zig");
-const enhanced_editor = @import("markdown_editor.zig");
+const markdown_editor = @import("markdown_editor.zig");
 
 // Common utilities
-const fs = @import("common/fs.zig");
-const link = @import("common/link.zig");
-const meta = @import("common/meta.zig");
-const table = @import("common/table.zig");
-const template = @import("common/template.zig");
-const text_utils = @import("common/text.zig");
+const fs = @import("lib/fs.zig");
+const link = @import("lib/link.zig");
+const meta = @import("lib/meta.zig");
+const table = @import("lib/table.zig");
+const template = @import("lib/template.zig");
+const text_utils = @import("lib/text.zig");
 
 /// Interactive Session Configuration
 pub const SessionConfig = struct {
@@ -495,7 +495,7 @@ pub const PreviewConfig = struct {
     adaptive_rendering: bool = true,
 
     /// Preview render mode
-    render_mode: PreviewRenderMode = .enhanced,
+    render_mode: PreviewRenderMode = .full,
 
     /// Enable syntax highlighting in preview
     syntax_highlighting: bool = true,
@@ -521,11 +521,11 @@ pub const PreviewRenderMode = enum {
     /// Plain text
     plain,
 
-    /// Basic markdown formatting
-    basic,
+    /// Text-only markdown formatting
+    text,
 
-    /// Enhanced rendering with graphics
-    enhanced,
+    /// Full rendering with graphics
+    full,
 
     /// Print-optimized layout
     print,
@@ -725,13 +725,13 @@ pub const InteractiveSession = struct {
     config: SessionConfig,
 
     /// Enhanced markdown editor
-    editor: *enhanced_editor.MarkdownEditor,
+    editor: *markdown_editor.MarkdownEditor,
 
     /// Dashboard instance
     dashboard: *dashboard.Dashboard,
 
-    /// Unified command palette
-    command_palette: *UnifiedCommandPalette,
+    /// Command palette
+    command_palette: *CommandPalette,
 
     /// Notification system
     notification_system: *notification_system.NotificationController,
@@ -790,7 +790,7 @@ pub const InteractiveSession = struct {
         errdefer allocator.destroy(self);
 
         // Initialize components
-        const editor = try enhanced_editor.MarkdownEditor.init(allocator, agent, session_config.base_config);
+        const editor = try markdown_editor.MarkdownEditor.init(allocator, agent, session_config.base_config);
         errdefer editor.deinit();
 
         const dashboard_instance = try dashboard.Dashboard.init(allocator, .{
@@ -803,7 +803,7 @@ pub const InteractiveSession = struct {
         });
         errdefer dashboard_instance.deinit();
 
-        const cmd_palette = try UnifiedCommandPalette.init(allocator, session_config.command_palette_config);
+        const cmd_palette = try CommandPalette.init(allocator, session_config.command_palette_config);
         errdefer cmd_palette.deinit();
 
         const notifications = try notification_system.NotificationController.init(allocator, undefined); // TODO: Pass renderer
@@ -1172,7 +1172,7 @@ pub const InteractiveSession = struct {
         const tools = [_]ToolInfo{
             .{
                 .name = "Content Editor",
-                .description = "Advanced markdown editing with AI assistance",
+                .description = "Markdown editing with AI assistance",
                 .category = .editing,
                 .icon = "✏️",
                 .usage_count = 0,
@@ -1290,8 +1290,8 @@ pub const InteractiveSession = struct {
                 "🔍 Interactive Tool Discovery",
                 "💡 Contextual Help System",
                 "⚡ Workflow Automation",
-                "✨ Enhanced Visual Feedback",
-                "🎯 Unified Command Palette",
+                "✨ Visual Feedback",
+                "🎯 Command Palette",
             },
             .shortcuts = &[_][]const u8{
                 "Ctrl+P - Command Palette",
@@ -2184,7 +2184,7 @@ pub const MetricsCollector = struct {
         self.allocator.destroy(self);
     }
 
-    pub fn updateDocumentMetrics(self: *MetricsCollector, metrics: *const enhanced_editor.DocumentMetrics) !void {
+    pub fn updateDocumentMetrics(self: *MetricsCollector, metrics: *const markdown_editor.DocumentMetrics) !void {
         const snapshot = DocumentMetricsSnapshot{
             .timestamp = std.time.timestamp(),
             .word_count = metrics.word_count,
@@ -2297,14 +2297,14 @@ pub const PreviewRenderer = struct {
         self.allocator.destroy(self);
     }
 
-    pub fn updatePreview(self: *PreviewRenderer, document: *const enhanced_editor.Document) !void {
+    pub fn updatePreview(self: *PreviewRenderer, document: *const markdown_editor.Document) !void {
         // Generate preview based on configuration
         // Implementation here...
         _ = self;
         _ = document;
     }
 
-    pub fn renderAdaptivePreview(self: *PreviewRenderer, renderer: *anyopaque, x: u16, y: u16, width: u16, height: u16, document: *const enhanced_editor.Document) !void {
+    pub fn renderAdaptivePreview(self: *PreviewRenderer, renderer: *anyopaque, x: u16, y: u16, width: u16, height: u16, document: *const markdown_editor.Document) !void {
         // Render preview with adaptive quality
         // Implementation here...
         _ = self;
@@ -2336,14 +2336,14 @@ pub const OutlineNavigator = struct {
         self.allocator.destroy(self);
     }
 
-    pub fn updateOutline(self: *OutlineNavigator, document: *const enhanced_editor.Document) !void {
+    pub fn updateOutline(self: *OutlineNavigator, document: *const markdown_editor.Document) !void {
         // Clear existing outline
         self.outline_items.clearRetainingCapacity();
 
         // Parse document and build outline
         for (document.lines.items, 0..) |line, idx| {
             if (std.mem.startsWith(u8, line, "#")) {
-                const level = enhanced_editor.countHeadingLevel(line);
+                const level = markdown_editor.countHeadingLevel(line);
                 const title = if (level > 0 and level <= line.len) line[level + 1 ..] else line;
 
                 try self.outline_items.append(.{
@@ -2392,7 +2392,7 @@ pub const VersionHistoryViewer = struct {
         self.allocator.destroy(self);
     }
 
-    pub fn addVersion(self: *VersionHistoryViewer, document: *const enhanced_editor.Document) !void {
+    pub fn addVersion(self: *VersionHistoryViewer, document: *const markdown_editor.Document) !void {
         // Create snapshot of current document
         var content = std.ArrayList(u8).init(self.allocator);
         defer content.deinit();
@@ -2684,8 +2684,8 @@ pub const AnimationType = enum {
     fade_out,
 };
 
-/// Unified command palette with fuzzy search
-pub const UnifiedCommandPalette = struct {
+/// Command palette with fuzzy search
+pub const CommandPalette = struct {
     allocator: Allocator,
     config: CommandPaletteConfig,
     commands: std.ArrayList(Command),
@@ -2713,8 +2713,8 @@ pub const UnifiedCommandPalette = struct {
         help,
     };
 
-    pub fn init(allocator: Allocator, palette_config: CommandPaletteConfig) !*UnifiedCommandPalette {
-        const self = try allocator.create(UnifiedCommandPalette);
+    pub fn init(allocator: Allocator, palette_config: CommandPaletteConfig) !*CommandPalette {
+        const self = try allocator.create(CommandPalette);
         self.* = .{
             .allocator = allocator,
             .config = palette_config,
@@ -2724,17 +2724,17 @@ pub const UnifiedCommandPalette = struct {
         return self;
     }
 
-    pub fn deinit(self: *UnifiedCommandPalette) void {
+    pub fn deinit(self: *CommandPalette) void {
         self.commands.deinit();
         self.filtered_commands.deinit();
         self.allocator.destroy(self);
     }
 
-    pub fn registerCommand(self: *UnifiedCommandPalette, command: Command) !void {
+    pub fn registerCommand(self: *CommandPalette, command: Command) !void {
         try self.commands.append(command);
     }
 
-    pub fn toggle(self: *UnifiedCommandPalette) !void {
+    pub fn toggle(self: *CommandPalette) !void {
         self.visible = !self.visible;
         if (self.visible) {
             self.search_query = "";
@@ -2742,24 +2742,24 @@ pub const UnifiedCommandPalette = struct {
         }
     }
 
-    pub fn isVisible(self: *UnifiedCommandPalette) bool {
+    pub fn isVisible(self: *CommandPalette) bool {
         return self.visible;
     }
 
-    pub fn render(self: *UnifiedCommandPalette, renderer: *anyopaque) !void {
+    pub fn render(self: *CommandPalette, renderer: *anyopaque) !void {
         // Implementation here...
         _ = self;
         _ = renderer;
     }
 
-    pub fn handleInput(self: *UnifiedCommandPalette, key: tui.KeyEvent) !bool {
+    pub fn handleInput(self: *CommandPalette, key: tui.KeyEvent) !bool {
         // Implementation here...
         _ = self;
         _ = key;
         return false;
     }
 
-    fn updateFilteredCommands(self: *UnifiedCommandPalette) !void {
+    fn updateFilteredCommands(self: *CommandPalette) !void {
         // Implementation here...
         _ = self;
     }

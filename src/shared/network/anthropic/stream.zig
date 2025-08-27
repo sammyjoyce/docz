@@ -26,20 +26,20 @@ pub const StreamError = error{
 
 /// Configuration for large payload processing
 pub const LargePayloadCfg = struct {
-    large_chunk_threshold: usize = 1024 * 1024, // 1MB threshold for large chunk processing
-    streaming_buffer_size: usize = 64 * 1024, // 64KB buffer for streaming large chunks
-    max_accumulated_size: usize = 16 * 1024 * 1024, // 16MB max accumulated data before streaming
-    progress_reporting_interval: usize = 1024 * 1024, // Report progress every 1MB
-    adaptive_buffer_min: usize = 8 * 1024, // Minimum adaptive buffer size: 8KB
-    adaptive_buffer_max: usize = 512 * 1024, // Maximum adaptive buffer size: 512KB
+    largeChunkThreshold: usize = 1024 * 1024, // 1MB threshold for large chunk processing
+    streamingBufferSize: usize = 64 * 1024, // 64KB buffer for streaming large chunks
+    maxAccumulatedSize: usize = 16 * 1024 * 1024, // 16MB max accumulated data before streaming
+    progressReportingInterval: usize = 1024 * 1024, // Report progress every 1MB
+    adaptiveBufferMin: usize = 8 * 1024, // Minimum adaptive buffer size: 8KB
+    adaptiveBufferMax: usize = 512 * 1024, // Maximum adaptive buffer size: 512KB
 };
 
 /// Chunk size validation thresholds for large payload processing
 pub const ChunkSizeLimits = struct {
-    max_chunk_size: usize = 512 * 1024 * 1024, // 512MB absolute maximum per chunk
-    large_chunk_threshold: usize = 1024 * 1024, // 1MB threshold for special handling
-    warning_threshold: usize = 64 * 1024 * 1024, // 64MB threshold for warnings
-    streaming_threshold: usize = 16 * 1024 * 1024, // 16MB threshold for mandatory streaming
+    maxChunkSize: usize = 512 * 1024 * 1024, // 512MB absolute maximum per chunk
+    largeChunkThreshold: usize = 1024 * 1024, // 1MB threshold for special handling
+    warningThreshold: usize = 64 * 1024 * 1024, // 64MB threshold for warnings
+    streamingThreshold: usize = 16 * 1024 * 1024, // 16MB threshold for mandatory streaming
 };
 
 /// Chunk processing state for incremental parsing
@@ -127,11 +127,11 @@ pub fn processSseChunk(stream_ctx: *StreamingCtx, chunk: []const u8) !void {
 pub fn isChunkedEncoding(response_head: anytype) bool {
     _ = response_head;
     // For now, assume non-chunked as std.http.Client handles chunked encoding internally
-    // This allows us to keep the enhanced processing logic for future use
+    // This allows us to keep the processing logic for future use
     return false;
 }
 
-/// Parse chunk size and extensions from chunk size line with enhanced large payload support
+/// Parse chunk size and extensions from chunk size line with large payload support
 pub fn parseChunkSize(size_line: []const u8) !struct { size: usize, extensions: ?[]const u8 } {
     const validation = ChunkSizeLimits{};
 
@@ -165,17 +165,17 @@ pub fn parseChunkSize(size_line: []const u8) !struct { size: usize, extensions: 
     };
 
     // Chunk size validation with multiple thresholds
-    if (size > validation.max_chunk_size) {
-        std.log.err("Chunk size {} exceeds absolute maximum allowed size ({})", .{ size, validation.max_chunk_size });
+    if (size > validation.maxChunkSize) {
+        std.log.err("Chunk size {} exceeds absolute maximum allowed size ({})", .{ size, validation.maxChunkSize });
         return StreamError.PayloadTooLarge;
     }
 
     // Warning thresholds for large payload awareness
-    if (size >= validation.warning_threshold) {
+    if (size >= validation.warningThreshold) {
         std.log.warn("Very large chunk detected: {} bytes ({}MB) - processing enabled", .{ size, size / (1024 * 1024) });
-    } else if (size >= validation.streaming_threshold) {
+    } else if (size >= validation.streamingThreshold) {
         std.log.info("Large chunk detected: {} bytes ({}MB) - streaming processing enabled", .{ size, size / (1024 * 1024) });
-    } else if (size >= validation.large_chunk_threshold) {
+    } else if (size >= validation.largeChunkThreshold) {
         std.log.debug("Medium chunk detected: {} bytes ({}KB)", .{ size, size / 1024 });
     }
 
@@ -222,7 +222,7 @@ pub fn processSSELines(
     event_data: *std.array_list.Managed(u8),
     callback: *const fn ([]const u8) void,
 ) !void {
-    const sse_config = sse.SSEProcessing{};
+    const sse_config = sse.SSEConfig{};
     var line_iter = std.mem.splitSequence(u8, chunk_data, "\n");
     var lines_processed: usize = 0;
     var total_data_processed: usize = 0;
@@ -235,14 +235,14 @@ pub fn processSSELines(
             // Empty line indicates end of SSE event
             if (event_data.items.len > 0) {
                 // Event size validation for large payloads
-                if (event_data.items.len >= sse_config.large_event_threshold) {
+                if (event_data.items.len >= sse_config.largeEventThreshold) {
                     std.log.debug("Processing large SSE event: {} bytes", .{event_data.items.len});
                 }
 
-                if (event_data.items.len > sse_config.max_event_size) {
-                    std.log.warn("SSE event exceeds maximum size ({} > {}), truncating", .{ event_data.items.len, sse_config.max_event_size });
+                if (event_data.items.len > sse_config.maxEventSize) {
+                    std.log.warn("SSE event exceeds maximum size ({} > {}), truncating", .{ event_data.items.len, sse_config.maxEventSize });
                     // Truncate to maximum size to prevent memory issues
-                    const truncated_event = event_data.items[0..sse_config.max_event_size];
+                    const truncated_event = event_data.items[0..sse_config.maxEventSize];
                     callback(truncated_event);
                 } else {
                     callback(event_data.items);
@@ -256,7 +256,7 @@ pub fn processSSELines(
             const data_content = line[6..]; // Skip "data: "
 
             // Validation for extremely large data lines
-            if (data_content.len > sse_config.max_event_size / 2) { // More than half max event size per line
+            if (data_content.len > sse_config.maxEventSize / 2) { // More than half max event size per line
                 std.log.warn("Very large SSE data line: {} bytes - consider streaming optimization", .{data_content.len});
             }
 
@@ -266,7 +266,7 @@ pub fn processSSELines(
 
             // Capacity management with overflow protection
             const required_capacity = event_data.items.len + data_content.len;
-            if (required_capacity > sse_config.max_event_size) {
+            if (required_capacity > sse_config.maxEventSize) {
                 std.log.warn("SSE event would exceed maximum size, triggering early callback", .{});
                 // Trigger callback with current data before adding more
                 if (event_data.items.len > 0) {
@@ -280,7 +280,7 @@ pub fn processSSELines(
             try event_data.appendSlice(data_content);
 
             // Streaming: trigger callback for very large events before completion
-            if (event_data.items.len >= sse_config.streaming_callback_threshold) {
+            if (event_data.items.len >= sse_config.streamingCallbackThreshold) {
                 std.log.debug("Large SSE event streaming: triggering early callback for {} bytes", .{event_data.items.len});
                 callback(event_data.items);
                 event_data.clearRetainingCapacity();
@@ -290,21 +290,21 @@ pub fn processSSELines(
             std.mem.startsWith(u8, line, "retry: "))
         {
             // Logging for other SSE fields in large payload scenarios
-            if (chunk_data.len >= sse_config.large_event_threshold) {
+            if (chunk_data.len >= sse_config.largeEventThreshold) {
                 std.log.debug("SSE field in large payload: {s}", .{line[0..@min(line.len, 50)]});
             }
         }
 
         // Periodic progress reporting for very large chunk processing
-        if (lines_processed % sse_config.line_processing_batch_size == 0 and
-            chunk_data.len >= sse_config.large_event_threshold)
+        if (lines_processed % sse_config.lineProcessingBatchSize == 0 and
+            chunk_data.len >= sse_config.largeEventThreshold)
         {
             std.log.debug("SSE line processing progress: {} lines, {} bytes total", .{ lines_processed, total_data_processed });
         }
     }
 
     // Final logging for large payload processing
-    if (chunk_data.len >= sse_config.large_event_threshold) {
+    if (chunk_data.len >= sse_config.largeEventThreshold) {
         std.log.debug("SSE processing complete: {} lines, {} bytes processed", .{ lines_processed, total_data_processed });
     }
 }
@@ -312,10 +312,13 @@ pub fn processSSELines(
 /// Process a single SSE line and update event state
 pub fn processSSELine(
     line: []const u8,
-    event_state: *sse.SSEEvent,
-    sse_config: *const sse.SSEProcessing,
+    event_state: *sse.SSEEventBuilder,
+    sse_config: *const sse.SSEConfig,
 ) !void {
-    _ = try sse.processSseLine(line, event_state, sse_config);
+    _ = sse.processSseLine(line, event_state, sse_config) catch |err| {
+        std.log.warn("Error processing SSE line: {}", .{err});
+        return err;
+    };
 }
 
 // ============================== Main Streaming Functions ==============================
@@ -337,7 +340,7 @@ pub fn processChunkedStreamingResponse(
 
     // Use adaptive initial capacity based on expected large payload handling
     try event_data.ensureTotalCapacity(16384); // 16KB initial capacity
-    try chunk_buffer.ensureTotalCapacity(config.adaptive_buffer_min);
+    try chunk_buffer.ensureTotalCapacity(config.adaptiveBufferMin);
 
     var recovery_attempts: u8 = 0;
     const max_recovery_attempts = 3;
@@ -393,8 +396,8 @@ pub fn processChunkedStreamingResponse(
             chunk_state.extensions = chunk_info.extensions;
             recovery_attempts = 0; // Reset on successful parse
 
-            // Enhanced logging for large chunk detection
-            if (chunk_state.size >= config.large_chunk_threshold) {
+            // Logging for large chunk detection
+            if (chunk_state.size >= config.largeChunkThreshold) {
                 std.log.info("Processing large chunk: {} bytes (using streaming mode)", .{chunk_state.size});
                 large_chunks_processed += 1;
             } else if (chunk_state.size > 64 * 1024) {
@@ -419,10 +422,10 @@ pub fn processChunkedStreamingResponse(
             chunk_buffer.clearRetainingCapacity();
 
             // Adaptive buffer sizing based on chunk size for memory efficiency
-            const optimal_buffer_size = if (chunk_state.size >= config.large_chunk_threshold)
-                @min(config.adaptive_buffer_max, @max(config.adaptive_buffer_min, chunk_state.size / 8))
+            const optimal_buffer_size = if (chunk_state.size >= config.largeChunkThreshold)
+                @min(config.adaptiveBufferMax, @max(config.adaptiveBufferMin, chunk_state.size / 8))
             else
-                config.adaptive_buffer_min;
+                config.adaptiveBufferMin;
 
             try chunk_buffer.ensureTotalCapacity(optimal_buffer_size);
         } else {
@@ -452,10 +455,10 @@ pub fn processChunkedStreamingResponse(
                 continue;
             }
 
-            // Enhanced adaptive read sizing for large payloads
-            const is_large_chunk = chunk_state.size >= config.large_chunk_threshold;
+            // Adaptive read sizing for large payloads
+            const is_large_chunk = chunk_state.size >= config.largeChunkThreshold;
             const adaptive_read_size = if (is_large_chunk)
-                @min(remaining, config.streaming_buffer_size) // Use larger buffer for large chunks
+                @min(remaining, config.streamingBufferSize) // Use larger buffer for large chunks
             else
                 @min(remaining, 4096); // Use smaller buffer for normal chunks
 
@@ -514,8 +517,8 @@ pub fn processChunkedStreamingResponse(
                 continue;
             }
 
-            // Enhanced memory management: streaming processing for very large chunks
-            if (is_large_chunk and chunk_buffer.items.len + bytes_read > config.max_accumulated_size) {
+            // Memory management: streaming processing for very large chunks
+            if (is_large_chunk and chunk_buffer.items.len + bytes_read > config.maxAccumulatedSize) {
                 // Process accumulated data before adding more to prevent excessive memory usage
                 std.log.debug("Triggering streaming processing to prevent memory overflow (current: {}, adding: {})", .{ chunk_buffer.items.len, bytes_read });
                 if (chunk_buffer.items.len > 0) {
@@ -526,15 +529,15 @@ pub fn processChunkedStreamingResponse(
                 }
             }
 
-            // Accumulate chunk data with enhanced capacity management
+            // Accumulate chunk data with capacity management
             try chunk_buffer.ensureUnusedCapacity(bytes_read);
             try chunk_buffer.appendSlice(temp_buffer[0..bytes_read]);
             chunk_state.bytes_read += bytes_read;
             recovery_attempts = 0; // Reset on successful read
 
-            // Enhanced progress reporting for large chunks
+            // Progress reporting for large chunks
             if (is_large_chunk and chunk_state.bytes_read > 0 and
-                chunk_state.bytes_read % config.progress_reporting_interval == 0)
+                chunk_state.bytes_read % config.progressReportingInterval == 0)
             {
                 const progress_percent = (@as(f64, @floatFromInt(chunk_state.bytes_read)) /
                     @as(f64, @floatFromInt(chunk_state.size))) * 100.0;
@@ -550,8 +553,8 @@ pub fn processStreamingResponse(
     reader: *std.Io.Reader,
     callback: *const fn ([]const u8) void,
 ) !void {
-    const sse_config = sse.SSEProcessing{};
-    var event_state = sse.SSEEvent.init(allocator);
+    const sse_config = sse.SSEConfig{};
+    var event_state = sse.SSEEventBuilder.init(allocator);
     defer event_state.deinit();
 
     var lines_processed: usize = 0;
@@ -580,8 +583,8 @@ pub fn processStreamingResponse(
                 }
 
                 // Send final event if any data remains
-                if (event_state.has_data) {
-                    callback(event_state.data_buffer.items);
+                if (event_state.hasData) {
+                    callback(event_state.dataBuffer.items);
                     events_processed += 1;
                 }
 
@@ -616,26 +619,26 @@ pub fn processStreamingResponse(
         // Empty line handling with event dispatch
         if (line.len == 0) {
             // Empty line indicates end of SSE event - dispatch complete event
-            if (event_state.has_data) {
+            if (event_state.hasData) {
                 // Event size validation
-                if (event_state.data_buffer.items.len >= sse_config.large_event_threshold) {
+                if (event_state.dataBuffer.items.len >= sse_config.largeEventThreshold) {
                     std.log.debug("Dispatching large SSE event: {} bytes, type: {s}, id: {s}", .{
-                        event_state.data_buffer.items.len,
+                        event_state.dataBuffer.items.len,
                         event_state.event_type orelse "default",
                         event_state.event_id orelse "none",
                     });
                 }
 
-                if (event_state.data_buffer.items.len > sse_config.max_event_size) {
+                if (event_state.dataBuffer.items.len > sse_config.maxEventSize) {
                     std.log.warn("SSE event exceeds maximum size ({} > {}), truncating for safety", .{
-                        event_state.data_buffer.items.len,
-                        sse_config.max_event_size,
+                        event_state.dataBuffer.items.len,
+                        sse_config.maxEventSize,
                     });
                     // Truncate to maximum size to prevent memory issues
-                    const truncated_event = event_state.data_buffer.items[0..sse_config.max_event_size];
+                    const truncated_event = event_state.dataBuffer.items[0..sse_config.maxEventSize];
                     callback(truncated_event);
                 } else {
-                    callback(event_state.data_buffer.items);
+                    callback(event_state.dataBuffer.items);
                 }
 
                 events_processed += 1;
@@ -653,9 +656,9 @@ pub fn processStreamingResponse(
             };
 
             // Early callback for very large events to prevent memory buildup
-            if (event_state.data_buffer.items.len >= sse_config.streaming_callback_threshold) {
-                std.log.debug("Triggering early callback for large SSE event: {} bytes", .{event_state.data_buffer.items.len});
-                callback(event_state.data_buffer.items);
+            if (event_state.dataBuffer.items.len >= sse_config.streamingCallbackThreshold) {
+                std.log.debug("Triggering early callback for large SSE event: {} bytes", .{event_state.dataBuffer.items.len});
+                callback(event_state.dataBuffer.items);
                 events_processed += 1;
                 event_state.reset(); // Reset state after early dispatch
             }
@@ -675,7 +678,7 @@ pub fn processStreamingResponse(
 // ============================== Public API ==============================
 
 /// Stream messages from the Anthropic API with SSE processing
-/// This is a high-level convenience function for simple streaming use cases
+/// This is a high-level convenience function for basic streaming use cases
 pub fn streamMessages(
     allocator: std.mem.Allocator,
     reader: *std.Io.Reader,

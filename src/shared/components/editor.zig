@@ -16,10 +16,10 @@ pub const OptionResult = struct {
 };
 
 /// Option for opening file at specific line number
-pub const LineNumberOption = struct {
+pub const LineOption = struct {
     line: u32,
 
-    pub fn apply(self: LineNumberOption) OptionFn {
+    pub fn apply(self: LineOption) OptionFn {
         const S = struct {
             fn optionFn(editor_name: []const u8, filename: []const u8) OptionResult {
                 const line = self.line;
@@ -65,8 +65,8 @@ pub const LineNumberOption = struct {
 };
 
 /// Option for opening file at end of line
-pub const EndOfLineOption = struct {
-    pub fn apply(_: EndOfLineOption) OptionFn {
+pub const EndLineOption = struct {
+    pub fn apply(_: EndLineOption) OptionFn {
         const S = struct {
             fn optionFn(editor_name: []const u8, _: []const u8) OptionResult {
                 if (std.mem.eql(u8, editor_name, "vim") or std.mem.eql(u8, editor_name, "nvim")) {
@@ -88,14 +88,14 @@ pub const EndOfLineOption = struct {
 };
 
 /// Editor command builder
-pub const EditorCommand = struct {
+pub const Command = struct {
     allocator: std.mem.Allocator,
     app_name: []const u8,
     path: []const u8,
     options: std.ArrayListUnmanaged(OptionFn),
 
-    pub fn init(allocator: std.mem.Allocator, app_name: []const u8, path: []const u8) EditorCommand {
-        return EditorCommand{
+    pub fn init(allocator: std.mem.Allocator, app_name: []const u8, path: []const u8) Command {
+        return Command{
             .allocator = allocator,
             .app_name = app_name,
             .path = path,
@@ -103,24 +103,24 @@ pub const EditorCommand = struct {
         };
     }
 
-    pub fn deinit(self: *EditorCommand) void {
+    pub fn deinit(self: *Command) void {
         self.options.deinit(self.allocator);
     }
 
-    pub fn lineNumber(self: *EditorCommand, line: u32) !*EditorCommand {
-        const option = LineNumberOption{ .line = line };
+    pub fn lineNumber(self: *Command, line: u32) !*Command {
+        const option = LineOption{ .line = line };
         try self.options.append(self.allocator, option.apply());
         return self;
     }
 
-    pub fn endOfLine(self: *EditorCommand) !*EditorCommand {
-        const option = EndOfLineOption{};
+    pub fn endOfLine(self: *Command) !*Command {
+        const option = EndLineOption{};
         try self.options.append(self.allocator, option.apply());
         return self;
     }
 
     /// Create the child process for the editor
-    pub fn spawn(self: *EditorCommand) !std.process.Child {
+    pub fn spawn(self: *Command) !std.process.Child {
         // Check for Snap environment restriction
         if (std.posix.getenv("SNAP_REVISION")) |_| {
             return error.SnapRestriction;
@@ -197,14 +197,14 @@ fn getEditor(allocator: std.mem.Allocator) !struct { []const u8, [][]const u8 } 
 
 /// Convenience function to open a file with default editor
 pub fn openFile(allocator: std.mem.Allocator, app_name: []const u8, path: []const u8) !std.process.Child {
-    var cmd = EditorCommand.init(allocator, app_name, path);
+    var cmd = Command.init(allocator, app_name, path);
     defer cmd.deinit();
     return try cmd.spawn();
 }
 
 /// Convenience function to open a file at a specific line
 pub fn openFileAtLine(allocator: std.mem.Allocator, app_name: []const u8, path: []const u8, line: u32) !std.process.Child {
-    var cmd = EditorCommand.init(allocator, app_name, path);
+    var cmd = Command.init(allocator, app_name, path);
     defer cmd.deinit();
     _ = try cmd.lineNumber(line);
     return try cmd.spawn();
@@ -212,7 +212,7 @@ pub fn openFileAtLine(allocator: std.mem.Allocator, app_name: []const u8, path: 
 
 /// Convenience function to open a file at the end of the line
 pub fn openFileAtEndOfLine(allocator: std.mem.Allocator, app_name: []const u8, path: []const u8) !std.process.Child {
-    var cmd = EditorCommand.init(allocator, app_name, path);
+    var cmd = Command.init(allocator, app_name, path);
     defer cmd.deinit();
     _ = try cmd.endOfLine();
     return try cmd.spawn();
@@ -230,7 +230,7 @@ pub fn getDefaultEditor() []const u8 {
 
 // Tests
 test "line number option" {
-    const option = LineNumberOption{ .line = 42 };
+    const option = LineOption{ .line = 42 };
     const option_fn = option.apply();
 
     const result = option_fn("vim", "test.txt");
@@ -239,8 +239,8 @@ test "line number option" {
     try std.testing.expect(std.mem.startsWith(u8, result.args[0], "+42"));
 }
 
-test "VS Code line number option" {
-    const option = LineNumberOption{ .line = 10 };
+test "VS Code line option" {
+    const option = LineOption{ .line = 10 };
     const option_fn = option.apply();
 
     const result = option_fn("code", "test.txt");
@@ -250,21 +250,21 @@ test "VS Code line number option" {
     try std.testing.expect(std.mem.endsWith(u8, result.args[1], ":10"));
 }
 
+test "unsupported editor line option" {
+    const option = LineOption{ .line = 5 };
+    const option_fn = option.apply();
+
+    const result = option_fn("unknown_editor", "test.txt");
+    try std.testing.expect(!result.path_in_args);
+    try std.testing.expect(result.args.len == 0);
+}
+
 test "end of line option" {
-    const option = EndOfLineOption{};
+    const option = EndLineOption{};
     const option_fn = option.apply();
 
     const result = option_fn("vim", "test.txt");
     try std.testing.expect(!result.path_in_args);
     try std.testing.expect(result.args.len == 1);
     try std.testing.expectEqualStrings("+norm! $", result.args[0]);
-}
-
-test "unsupported editor" {
-    const option = LineNumberOption{ .line = 5 };
-    const option_fn = option.apply();
-
-    const result = option_fn("unknown_editor", "test.txt");
-    try std.testing.expect(!result.path_in_args);
-    try std.testing.expect(result.args.len == 0);
 }

@@ -1,6 +1,6 @@
 //! Authentication module for DocZ
 //!
-//! This module provides a unified interface for authentication functionality,
+//! This module provides authentication functionality,
 //! including OAuth, API key authentication, TUI components, and CLI commands.
 
 const std = @import("std");
@@ -20,6 +20,7 @@ pub const AuthCredentials = core.AuthCredentials;
 pub const Credentials = oauth.Credentials;
 pub const AuthClient = core.AuthClient;
 pub const AuthError = core.AuthError;
+pub const Service = core.Service;
 
 // Re-export main authentication functions
 pub const createClient = core.createClient;

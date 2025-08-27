@@ -79,7 +79,7 @@ pub const HyperlinkMenu = struct {
                 try writer.print("{d}. {s}", .{ i + 1, item.label });
             }
 
-            // Show URL in parentheses for basic terminals
+            // Show URL in parentheses for terminals
             if (item.url) |url| {
                 try writer.print(" ({s})", .{url});
             }
@@ -109,7 +109,7 @@ pub fn createDocsMenu(ctx: *state.Cli) HyperlinkMenu {
             .label = "Getting Started Guide",
             .url = "https://docs.example.com/getting-started",
             .hotkey = 'g',
-            .description = "Learn the basics",
+            .description = "Learn the fundamentals",
         },
         .{
             .label = "API Reference",

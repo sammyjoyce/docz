@@ -380,7 +380,7 @@ pub const DataTableImpl = struct {
         return null;
     }
 
-    /// Simple render method for basic usage (advanced rendering would be in a separate renderer module)
+    /// Render method for standard usage (complex rendering would be in a separate renderer module)
     pub fn render(self: *Self, renderer: *renderer_mod.Renderer, ctx: renderer_mod.Render) !void {
         self.bounds = ctx.bounds;
         self.renderer = renderer;
@@ -466,7 +466,7 @@ pub const DataTableImpl = struct {
         }
     }
 
-    /// Create a simple cell
+    /// Create a cell
     pub fn createCell(value: []const u8) base.Cell {
         return base.Cell{ .value = value };
     }
@@ -485,8 +485,8 @@ pub const Selection = struct {
 };
 
 /// Convenience functions for common table operations
-/// Create a simple table with string data
-pub fn createSimpleTable(allocator: std.mem.Allocator, headers: [][]const u8, data: [][]const u8) !DataTable {
+/// Create a table with string data
+pub fn createTable(allocator: std.mem.Allocator, headers: [][]const u8, data: [][]const u8) !DataTable {
     var table = try DataTable.init(allocator, headers, base.Config{});
 
     // Convert string data to cells

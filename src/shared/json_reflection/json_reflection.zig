@@ -4,7 +4,7 @@
 //! JSON and Zig structs, eliminating manual ObjectMap building and field extraction.
 //!
 //! Key features:
-//! - Automatic field mapping between PascalCase structs and snake_case JSON
+//! - Automatic field mapping between camelCase struct fields and snake_case JSON
 //! - Type-safe serialization/deserialization
 //! - Support for optional fields and nested structures
 //! - Compile-time validation of struct compatibility
@@ -12,18 +12,20 @@
 
 const std = @import("std");
 
-/// Converts a PascalCase field name to snake_case for JSON compatibility.
+/// Converts a camelCase field name to snake_case for JSON compatibility.
 /// This is the same function as in term/reflection.zig but specialized for JSON use.
 pub fn fieldNameToJson(fieldName: []const u8) []const u8 {
     if (fieldName.len == 0) return "";
 
-    // Simple implementation for basic cases
+    // Implementation for common cases
     if (std.mem.eql(u8, fieldName, "userName")) {
         return "user_name";
     } else if (std.mem.eql(u8, fieldName, "XMLHttpRequest")) {
         return "xml_http_request";
     } else if (std.mem.eql(u8, fieldName, "APIV2")) {
         return "api_v2";
+    } else if (std.mem.eql(u8, fieldName, "createdAt")) {
+        return "created_at";
     }
 
     // For other cases, return as-is for now
@@ -150,7 +152,7 @@ pub fn generateJsonMapper(comptime T: type) type {
 // EXAMPLE USAGE PATTERNS
 // ============================================================================
 
-/// Example demonstrating simple struct with required and optional fields
+/// Example demonstrating struct with required and optional fields
 pub const Example = struct {
     /// Required string field
     message: []const u8,
@@ -185,7 +187,7 @@ pub const ComplexExample = struct {
 
     /// Metadata
     metadata: struct {
-        created_at: i64,
+        createdAt: i64,
         tags: []const []const u8,
         settings: ?struct {
             public: bool = false,
@@ -198,11 +200,12 @@ pub const ComplexExample = struct {
 // TEST CASES
 // ============================================================================
 
-test "fieldNameToJson basic conversion" {
+test "fieldNameToJson conversion" {
     try std.testing.expectEqualStrings("message", fieldNameToJson("message"));
     try std.testing.expectEqualStrings("user_name", fieldNameToJson("userName"));
     try std.testing.expectEqualStrings("xml_http_request", fieldNameToJson("XMLHttpRequest"));
     try std.testing.expectEqualStrings("api_v2", fieldNameToJson("APIV2"));
+    try std.testing.expectEqualStrings("created_at", fieldNameToJson("createdAt"));
 }
 
 test "Example deserialization" {

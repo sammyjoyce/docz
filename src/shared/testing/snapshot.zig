@@ -503,12 +503,12 @@ pub fn expectSnapshotPass(result: SnapshotResult) !void {
     }
 }
 
-test "snapshot basic functionality" {
+test "snapshot functionality" {
     const allocator = testing.allocator;
 
-    // Test basic snapshot creation and matching
+    // Test snapshot creation and matching
     const content = "Hello, World!\nThis is a test.";
-    const result = try expectSnapshot(allocator, "basic_test", content);
+    const result = try expectSnapshot(allocator, "functionality_test", content);
 
     switch (result) {
         .pass, .created, .updated => {},

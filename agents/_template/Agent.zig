@@ -24,7 +24,7 @@ pub const Config = struct {
     // ============================================================================
     // Always include the standard AgentConfig as the first field
     // This ensures compatibility with shared configuration utilities
-    agent_config: @import("core_config").AgentConfig,
+    agentConfig: @import("core_config").AgentConfig,
 
     // ============================================================================
     // AGENT-SPECIFIC CONFIGURATION FIELDS
@@ -58,7 +58,7 @@ pub const Config = struct {
     pub fn loadFromFile(allocator: Allocator, path: []const u8) !Config {
         // Define default configuration values
         const defaults = Config{
-            .agent_config = ConfigHelpers.createAgentConfig("_template", // agent_id
+            .agentConfig = ConfigHelpers.createAgentConfig("_template", // agentId
                 "Template Agent", // display name
                 "A template for creating new agents", // description
                 "Developer" // author
@@ -90,7 +90,7 @@ pub const Config = struct {
     /// Returns: Error if configuration is invalid
     pub fn validate(self: *Config) !void {
         // Validate standard agent config
-        try ConfigHelpers.validateAgentConfig(&self.agent_config);
+        try ConfigHelpers.validateAgentConfig(&self.agentConfig);
 
         // Validate agent-specific fields
         if (self.maxCustomOperations == 0) {
@@ -105,10 +105,10 @@ pub const Config = struct {
 
         // Set derived configuration values if needed
         // For example, you might set model parameters based on other config
-        if (self.config.customFeatureEnabled) {
+        if (self.customFeatureEnabled) {
             // Adjust limits when custom feature is enabled
-            self.agent_config.limits.max_processing_time_ms =
-                @max(self.agent_config.limits.max_processing_time_ms, 60000);
+            self.agentConfig.limits.max_processing_time_ms =
+                @max(self.agentConfig.limits.max_processing_time_ms, 60000);
         }
     }
 };
@@ -140,7 +140,7 @@ pub const Template = struct {
     // ============================================================================
 
     /// Initialize agent with provided configuration.
-    /// This is the most basic initialization method.
+    /// This is a straightforward initialization method.
     ///
     /// Parameters:
     ///   allocator: Memory allocator for agent operations
@@ -314,7 +314,7 @@ pub const Template = struct {
     /// Returns: String value for the variable
     /// Errors: Memory allocation errors
     fn getTemplateVariableValue(self: *Template, varName: []const u8) ![]const u8 {
-        const cfg = &self.config.agent_config;
+        const cfg = &self.config.agentConfig;
 
         // ============================================================================
         // STANDARD AGENT CONFIGURATION VARIABLES
@@ -322,31 +322,31 @@ pub const Template = struct {
         // These variables are available for all agents using the standard config
 
         if (std.mem.eql(u8, varName, "agent_name")) {
-            return try self.allocator.dupe(u8, cfg.agent_info.name);
+            return try self.allocator.dupe(u8, cfg.agentInfo.name);
         } else if (std.mem.eql(u8, varName, "agent_version")) {
-            return try self.allocator.dupe(u8, cfg.agent_info.version);
+            return try self.allocator.dupe(u8, cfg.agentInfo.version);
         } else if (std.mem.eql(u8, varName, "agent_description")) {
-            return try self.allocator.dupe(u8, cfg.agent_info.description);
+            return try self.allocator.dupe(u8, cfg.agentInfo.description);
         } else if (std.mem.eql(u8, varName, "agent_author")) {
-            return try self.allocator.dupe(u8, cfg.agent_info.author);
+            return try self.allocator.dupe(u8, cfg.agentInfo.author);
         } else if (std.mem.eql(u8, varName, "debug_enabled")) {
-            return try self.allocator.dupe(u8, if (cfg.defaults.enable_debug_logging) "enabled" else "disabled");
+            return try self.allocator.dupe(u8, if (cfg.defaults.enableDebugLogging) "enabled" else "disabled");
         } else if (std.mem.eql(u8, varName, "verbose_enabled")) {
-            return try self.allocator.dupe(u8, if (cfg.defaults.enable_verbose_output) "enabled" else "disabled");
+            return try self.allocator.dupe(u8, if (cfg.defaults.enableVerboseOutput) "enabled" else "disabled");
         } else if (std.mem.eql(u8, varName, "custom_tools_enabled")) {
-            return try self.allocator.dupe(u8, if (cfg.features.enable_custom_tools) "enabled" else "disabled");
+            return try self.allocator.dupe(u8, if (cfg.features.enableCustomTools) "enabled" else "disabled");
         } else if (std.mem.eql(u8, varName, "file_operations_enabled")) {
-            return try self.allocator.dupe(u8, if (cfg.features.enable_file_operations) "enabled" else "disabled");
+            return try self.allocator.dupe(u8, if (cfg.features.enableFileOperations) "enabled" else "disabled");
         } else if (std.mem.eql(u8, varName, "network_access_enabled")) {
-            return try self.allocator.dupe(u8, if (cfg.features.enable_network_access) "enabled" else "disabled");
+            return try self.allocator.dupe(u8, if (cfg.features.enableNetworkAccess) "enabled" else "disabled");
         } else if (std.mem.eql(u8, varName, "system_commands_enabled")) {
-            return try self.allocator.dupe(u8, if (cfg.features.enable_system_commands) "enabled" else "disabled");
+            return try self.allocator.dupe(u8, if (cfg.features.enableSystemCommands) "enabled" else "disabled");
         } else if (std.mem.eql(u8, varName, "max_input_size")) {
-            return try std.fmt.allocPrint(self.allocator, "{d}", .{cfg.limits.max_input_size});
+            return try std.fmt.allocPrint(self.allocator, "{d}", .{cfg.limits.maxInputSize});
         } else if (std.mem.eql(u8, varName, "max_output_size")) {
-            return try std.fmt.allocPrint(self.allocator, "{d}", .{cfg.limits.max_output_size});
+            return try std.fmt.allocPrint(self.allocator, "{d}", .{cfg.limits.maxOutputSize});
         } else if (std.mem.eql(u8, varName, "max_processing_time")) {
-            return try std.fmt.allocPrint(self.allocator, "{d}", .{cfg.limits.max_processing_time_ms});
+            return try std.fmt.allocPrint(self.allocator, "{d}", .{cfg.limits.maxProcessingTimeMs});
         } else if (std.mem.eql(u8, varName, "current_date")) {
             // Get current date in YYYY-MM-DD format
             const now = std.time.timestamp();
@@ -441,18 +441,18 @@ pub const Template = struct {
             \\  Network Access: {s}
             \\  System Commands: {s}
         , .{
-            self.config.agent_config.agent_info.name,
-            self.config.agent_config.agent_info.version,
+            self.config.agentConfig.agentInfo.name,
+            self.config.agentConfig.agentInfo.version,
             if (self.config.customFeatureEnabled) "enabled" else "disabled",
             self.operationCount,
             self.config.maxCustomOperations,
             self.config.customTimeoutSeconds,
             if (self.customBuffer != null) "allocated" else "none",
-            if (self.config.agent_config.defaults.enable_debug_logging) "enabled" else "disabled",
-            if (self.config.agent_config.defaults.enable_verbose_output) "enabled" else "disabled",
-            if (self.config.agent_config.features.enable_file_operations) "enabled" else "disabled",
-            if (self.config.agent_config.features.enable_network_access) "enabled" else "disabled",
-            if (self.config.agent_config.features.enable_system_commands) "enabled" else "disabled",
+            if (self.config.agentConfig.defaults.enableDebugLogging) "enabled" else "disabled",
+            if (self.config.agentConfig.defaults.enableVerboseOutput) "enabled" else "disabled",
+            if (self.config.agentConfig.features.enableFileOperations) "enabled" else "disabled",
+            if (self.config.agentConfig.features.enableNetworkAccess) "enabled" else "disabled",
+            if (self.config.agentConfig.features.enableSystemCommands) "enabled" else "disabled",
         });
     }
 };

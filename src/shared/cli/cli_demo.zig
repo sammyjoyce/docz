@@ -289,7 +289,7 @@ pub const CommandRouter = struct {
                     current_output = json_output;
                 }
             } else {
-                // Execute as simple command (avoid recursion)
+                // Execute as command (avoid recursion)
                 if (std.mem.startsWith(u8, trimmed_stage, "auth status")) {
                     if (current_output) |curr_out| {
                         if (curr_out.ptr != pipeline.ptr) {
@@ -404,7 +404,7 @@ pub const CommandRouter = struct {
         const message = if (self.context.hasFeature(.hyperlinks) or self.context.hasFeature(.mouse))
             "🚀 Interactive mode with terminal features"
         else
-            "📟 Interactive mode (basic terminal)";
+            "📟 Interactive mode (terminal)";
 
         const output = try self.allocator.dupe(u8, message);
         return CommandResult.ok(output);

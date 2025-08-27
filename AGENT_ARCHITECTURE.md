@@ -321,7 +321,7 @@ The shared infrastructure is now organized into logical categories with improved
 
 - **`render/`**: Rendering and graphics capabilities
   - `components/`: Chart/table/progress bar rendering
-  - `adaptive.zig`: Adaptive rendering examples
+  - `demo.zig`: Adaptive rendering examples
   - `adaptive_renderer.zig`: Quality-aware rendering
   - `mod.zig`: Rendering module export
 

@@ -5,10 +5,10 @@
 //! Dashboard Framework for All Agents
 //!
 //! Provides a comprehensive dashboard system that integrates with:
-//! - src/shared/tui/components/dashboard/AdaptiveDashboard.zig
+//! - src/shared/tui/components/dashboard/Dashboard.zig
 //! - src/shared/tui/widgets/dashboard/
 //! - src/shared/cli/components/
-//! - src/shared/theme_manager/
+//! - src/shared/theme/
 //!
 //! Features:
 //! - Split panes for different sections
@@ -29,12 +29,12 @@ const config = @import("../../core/config.zig");
 const session = @import("../../core/session.zig");
 
 // Shared infrastructure
-const tui_dashboard = @import("../dashboard/AdaptiveDashboard.zig");
+const tui_dashboard = @import("../dashboard/Dashboard.zig");
 const dashboard_widgets = @import("../widgets/dashboard/mod.zig");
-const theme_manager = @import("../../theme_manager/mod.zig");
+const theme_manager = @import("../../theme/mod.zig");
 const cli_components = @import("../../cli/components/mod.zig");
 const term_mod = @import("../../term/mod.zig");
-const unified = term_mod.unified;
+const term = term_mod.unified;
 const caps = term_mod.caps;
 
 // Network and auth for monitoring
@@ -382,7 +382,7 @@ pub const AgentDashboard = struct {
     agent_config: config.AgentConfig,
 
     // Terminal and rendering
-    terminal: unified.Terminal,
+    terminal: term.Terminal,
     capabilities: caps.TermCaps,
     render_level: tui_dashboard.RenderLevel,
 
@@ -414,7 +414,7 @@ pub const AgentDashboard = struct {
         dashboard_config: DashboardConfig,
     ) !*Self {
         // Initialize terminal
-        var terminal = try unified.Terminal.init(allocator);
+        var terminal = try term.Terminal.init(allocator);
         const capabilities = caps.detectCaps(allocator);
         const render_level = tui_dashboard.RenderLevel.fromCapabilities(capabilities);
 
@@ -698,16 +698,16 @@ pub const AgentDashboard = struct {
 /// Layout manager for dashboard panels
 pub const Layout = struct {
     allocator: Allocator,
-    screen_size: unified.Size,
+    screen_size: term.Size,
     config: LayoutConfig,
-    panel_bounds: std.StringHashMap(unified.Rect),
+    panel_bounds: std.StringHashMap(term.Rect),
 
-    pub fn init(allocator: Allocator, screen_size: unified.Size, layout_config: LayoutConfig) !Layout {
+    pub fn init(allocator: Allocator, screen_size: term.Size, layout_config: LayoutConfig) !Layout {
         return .{
             .allocator = allocator,
             .screen_size = screen_size,
             .config = layout_config,
-            .panel_bounds = std.StringHashMap(unified.Rect).init(allocator),
+            .panel_bounds = std.StringHashMap(term.Rect).init(allocator),
         };
     }
 
@@ -715,17 +715,17 @@ pub const Layout = struct {
         self.panel_bounds.deinit();
     }
 
-    pub fn resize(self: *Layout, new_size: unified.Size) void {
+    pub fn resize(self: *Layout, new_size: term.Size) void {
         self.screen_size = new_size;
         // Recalculate all panel bounds
         self.recalculateLayout();
     }
 
-    pub fn getPanelBounds(self: *Layout, panel_name: []const u8) ?unified.Rect {
+    pub fn getPanelBounds(self: *Layout, panel_name: []const u8) ?term.Rect {
         return self.panel_bounds.get(panel_name);
     }
 
-    pub fn setPanelBounds(self: *Layout, panel_name: []const u8, bounds: unified.Rect) !void {
+    pub fn setPanelBounds(self: *Layout, panel_name: []const u8, bounds: term.Rect) !void {
         const owned_name = try self.allocator.dupe(u8, panel_name);
         try self.panel_bounds.put(owned_name, bounds);
     }
@@ -851,7 +851,7 @@ pub const PanelSet = struct {
         }
     }
 
-    pub fn render(self: *PanelSet, layout: Layout, terminal: unified.Terminal, theme: *theme_manager.ColorScheme) !void {
+    pub fn render(self: *PanelSet, layout: Layout, terminal: term.Terminal, theme: *theme_manager.ColorScheme) !void {
         var iter = self.panels.iterator();
         while (iter.next()) |entry| {
             const bounds = layout.getPanelBounds(entry.key) orelse continue;
@@ -920,7 +920,7 @@ pub const Panel = struct {
         self.last_update = now;
     }
 
-    pub fn render(self: *Panel, terminal: unified.Terminal, bounds: unified.Rect, theme: *theme_manager.ColorScheme) !void {
+    pub fn render(self: *Panel, terminal: term.Terminal, bounds: term.Rect, theme: *theme_manager.ColorScheme) !void {
         if (!self.visible) return;
 
         switch (self.impl) {
@@ -932,7 +932,7 @@ pub const Panel = struct {
         }
     }
 
-    pub fn handleInput(self: *Panel, input: unified.Event) !bool {
+    pub fn handleInput(self: *Panel, input: term.Event) !bool {
         switch (self.impl) {
             .status => |p| return p.handleInput(input),
             .activity_log => |p| return p.handleInput(input),
@@ -996,7 +996,7 @@ pub const StatusPanel = struct {
         self.session_info = try std.fmt.allocPrint(self.allocator, "Session: {d}s", .{session_data.duration_seconds});
     }
 
-    pub fn render(self: *StatusPanel, terminal: unified.Terminal, bounds: unified.Rect, theme: *theme_manager.ColorScheme) !void {
+    pub fn render(self: *StatusPanel, terminal: term.Terminal, bounds: term.Rect, theme: *theme_manager.ColorScheme) !void {
         // Render panel border
         try terminal.drawBorder(bounds, theme.border);
 
@@ -1025,7 +1025,7 @@ pub const StatusPanel = struct {
         try terminal.writeStyled(self.session_info, .{ .foreground = theme.foreground });
     }
 
-    pub fn handleInput(self: *StatusPanel, input: unified.Event) !bool {
+    pub fn handleInput(self: *StatusPanel, input: term.Event) !bool {
         _ = self;
         _ = input;
         return false; // Status panel doesn't handle input
@@ -1086,7 +1086,7 @@ pub const ActivityLogPanel = struct {
         log_data.entries.clearRetainingCapacity();
     }
 
-    pub fn render(self: *ActivityLogPanel, terminal: unified.Terminal, bounds: unified.Rect, theme: *theme_manager.ColorScheme) !void {
+    pub fn render(self: *ActivityLogPanel, terminal: term.Terminal, bounds: term.Rect, theme: *theme_manager.ColorScheme) !void {
         // Render panel border and title
         try terminal.drawBorder(bounds, theme.border);
         try terminal.moveCursor(bounds.x + 2, bounds.y);
@@ -1141,7 +1141,7 @@ pub const ActivityLogPanel = struct {
         }
     }
 
-    pub fn handleInput(self: *ActivityLogPanel, input: unified.Event) !bool {
+    pub fn handleInput(self: *ActivityLogPanel, input: term.Event) !bool {
         switch (input) {
             .key => |key| {
                 switch (key.key) {
@@ -1203,7 +1203,7 @@ pub const PerformancePanel = struct {
         self.metrics = perf_data.metrics;
     }
 
-    pub fn render(self: *PerformancePanel, terminal: unified.Terminal, bounds: unified.Rect, theme: *theme_manager.ColorScheme) !void {
+    pub fn render(self: *PerformancePanel, terminal: term.Terminal, bounds: term.Rect, theme: *theme_manager.ColorScheme) !void {
         // Render panel border and title
         try terminal.drawBorder(bounds, theme.border);
         try terminal.moveCursor(bounds.x + 2, bounds.y);
@@ -1243,7 +1243,7 @@ pub const PerformancePanel = struct {
         }
     }
 
-    fn renderChart(self: *PerformancePanel, terminal: unified.Terminal, bounds: unified.Rect, start_y: u16, theme: *theme_manager.ColorScheme) !void {
+    fn renderChart(self: *PerformancePanel, terminal: term.Terminal, bounds: term.Rect, start_y: u16, theme: *theme_manager.ColorScheme) !void {
         switch (self.config.chart_type) {
             .sparkline => {
                 // Simple sparkline representation
@@ -1280,7 +1280,7 @@ pub const PerformancePanel = struct {
         }
     }
 
-    pub fn handleInput(self: *PerformancePanel, input: unified.Event) !bool {
+    pub fn handleInput(self: *PerformancePanel, input: term.Event) !bool {
         _ = self;
         _ = input;
         return false; // Performance panel doesn't handle input yet
@@ -1317,7 +1317,7 @@ pub const ResourcePanel = struct {
         self.resources = res_data.usage;
     }
 
-    pub fn render(self: *ResourcePanel, terminal: unified.Terminal, bounds: unified.Rect, theme: *theme_manager.ColorScheme) !void {
+    pub fn render(self: *ResourcePanel, terminal: term.Terminal, bounds: term.Rect, theme: *theme_manager.ColorScheme) !void {
         // Render panel border and title
         try terminal.drawBorder(bounds, theme.border);
         try terminal.moveCursor(bounds.x + 2, bounds.y);
@@ -1359,7 +1359,7 @@ pub const ResourcePanel = struct {
         }
     }
 
-    pub fn handleInput(self: *ResourcePanel, input: unified.Event) !bool {
+    pub fn handleInput(self: *ResourcePanel, input: term.Event) !bool {
         _ = self;
         _ = input;
         return false; // Resource panel doesn't handle input yet
@@ -1371,9 +1371,9 @@ pub const CustomPanel = struct {
     allocator: Allocator,
     panel: Panel,
     name: []const u8,
-    render_fn: ?*const fn (*CustomPanel, unified.Terminal, unified.Rect, *theme_manager.ColorScheme) anyerror!void = null,
+    render_fn: ?*const fn (*CustomPanel, term.Terminal, term.Rect, *theme_manager.ColorScheme) anyerror!void = null,
     update_fn: ?*const fn (*CustomPanel, *Data) anyerror!void = null,
-    input_fn: ?*const fn (*CustomPanel, unified.Event) anyerror!bool = null,
+    input_fn: ?*const fn (*CustomPanel, term.Event) anyerror!bool = null,
 
     pub fn init(allocator: Allocator, name: []const u8) !*CustomPanel {
         const custom_panel = try allocator.create(CustomPanel);
@@ -1394,7 +1394,7 @@ pub const CustomPanel = struct {
         self.allocator.destroy(self);
     }
 
-    pub fn setRenderFunction(self: *CustomPanel, render_fn: *const fn (*CustomPanel, unified.Terminal, unified.Rect, *theme_manager.ColorScheme) anyerror!void) void {
+    pub fn setRenderFunction(self: *CustomPanel, render_fn: *const fn (*CustomPanel, term.Terminal, term.Rect, *theme_manager.ColorScheme) anyerror!void) void {
         self.render_fn = render_fn;
     }
 
@@ -1402,7 +1402,7 @@ pub const CustomPanel = struct {
         self.update_fn = update_fn;
     }
 
-    pub fn setInputFunction(self: *CustomPanel, input_fn: *const fn (*CustomPanel, unified.Event) anyerror!bool) void {
+    pub fn setInputFunction(self: *CustomPanel, input_fn: *const fn (*CustomPanel, term.Event) anyerror!bool) void {
         self.input_fn = input_fn;
     }
 
@@ -1412,7 +1412,7 @@ pub const CustomPanel = struct {
         }
     }
 
-    pub fn render(self: *CustomPanel, terminal: unified.Terminal, bounds: unified.Rect, theme: *theme_manager.ColorScheme) !void {
+    pub fn render(self: *CustomPanel, terminal: term.Terminal, bounds: term.Rect, theme: *theme_manager.ColorScheme) !void {
         // Render panel border and title
         try terminal.drawBorder(bounds, theme.border);
         try terminal.moveCursor(bounds.x + 2, bounds.y);
@@ -1428,7 +1428,7 @@ pub const CustomPanel = struct {
         }
     }
 
-    pub fn handleInput(self: *CustomPanel, input: unified.Event) !bool {
+    pub fn handleInput(self: *CustomPanel, input: term.Event) !bool {
         if (self.input_fn) |input_fn| {
             return try input_fn(self, input);
         }
@@ -1688,7 +1688,7 @@ pub const EventHandler = struct {
         self.key_bindings.deinit();
     }
 
-    pub fn handleEvent(self: *EventHandler, event: unified.Event, dashboard: *AgentDashboard) !void {
+    pub fn handleEvent(self: *EventHandler, event: term.Event, dashboard: *AgentDashboard) !void {
         switch (event) {
             .key => |key_event| {
                 switch (key_event.key) {
@@ -1752,7 +1752,7 @@ pub const EventHandler = struct {
 };
 
 /// Apply theme configuration to theme manager
-fn applyThemeConfig(theme_mgr: *theme_manager.ThemeManager, theme_config: Theme) !void {
+fn applyThemeConfig(theme_mgr: *theme_manager.Theme, theme_config: Theme) !void {
     // Switch to specified theme
     if (!std.mem.eql(u8, theme_config.theme_name, "auto")) {
         try theme_mgr.switchTheme(theme_config.theme_name);
@@ -1821,9 +1821,9 @@ pub fn createCustomPanel(allocator: Allocator, name: []const u8) !*CustomPanel {
 pub fn addCustomPanelToDashboard(
     dashboard: *AgentDashboard,
     name: []const u8,
-    render_fn: ?*const fn (*CustomPanel, unified.Terminal, unified.Rect, *theme_manager.ColorScheme) anyerror!void,
+    render_fn: ?*const fn (*CustomPanel, term.Terminal, term.Rect, *theme_manager.ColorScheme) anyerror!void,
     update_fn: ?*const fn (*CustomPanel, *Data) anyerror!void,
-    input_fn: ?*const fn (*CustomPanel, unified.Event) anyerror!bool,
+    input_fn: ?*const fn (*CustomPanel, term.Event) anyerror!bool,
 ) !void {
     const panel = try createCustomPanel(dashboard.allocator, name);
     if (render_fn) |rf| panel.setRenderFunction(rf);

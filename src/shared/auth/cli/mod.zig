@@ -33,13 +33,14 @@ pub fn runAuthCommand(allocator: std.mem.Allocator, command: AuthCommand) !void 
 /// Handle login command (OAuth setup)
 pub fn handleLoginCommand(allocator: std.mem.Allocator) !void {
     std.log.info("Starting OAuth authentication setup...", .{});
-    _ = try oauth.setupOAuth(allocator);
+    // Prefer the local callback server flow for seamless login (no manual code paste)
+    _ = try oauth.completeOAuthFlow(allocator);
 }
 
 /// Handle status command
 pub fn handleStatusCommand(allocator: std.mem.Allocator) !void {
     std.log.info("Checking authentication status...", .{});
-    try displayStatusCLI(allocator);
+    try displayStatus(allocator);
 }
 
 /// Handle refresh command
@@ -62,11 +63,11 @@ pub fn handleRefreshCommand(allocator: std.mem.Allocator) !void {
     std.log.info("✅ Tokens refreshed successfully!", .{});
 }
 
-/// Simple CLI status display (without TUI)
-pub fn displayStatusCLI(allocator: std.mem.Allocator) !void {
+/// Status display (without TUI)
+pub fn displayStatus(allocator: std.mem.Allocator) !void {
     var client = core.createClient(allocator) catch |err| {
         std.debug.print("❌ No authentication configured: {}\n", .{err});
-        std.debug.print("Run 'docz auth login' to setup OAuth authentication\n");
+        std.debug.print("Run 'docz auth login' to setup OAuth authentication\n", .{});
         return;
     };
     defer client.deinit();
@@ -74,19 +75,19 @@ pub fn displayStatusCLI(allocator: std.mem.Allocator) !void {
     switch (client.credentials) {
         .oauth => |creds| {
             if (creds.isExpired()) {
-                std.debug.print("⚠️  OAuth credentials expired\n");
-                std.debug.print("Run 'docz auth refresh' to renew tokens\n");
+                std.debug.print("⚠️  OAuth credentials expired\n", .{});
+                std.debug.print("Run 'docz auth refresh' to renew tokens\n", .{});
             } else {
-                std.debug.print("✅ OAuth authentication active (Claude Pro/Max)\n");
+                std.debug.print("✅ OAuth authentication active (Claude Pro/Max)\n", .{});
                 const timeToExpire = creds.expiresAt - std.time.timestamp();
                 std.debug.print("Expires in: {} seconds\n", .{timeToExpire});
             }
         },
-        .apiKey => {
-            std.debug.print("✅ API key authentication active\n");
+        .api_key => {
+            std.debug.print("✅ API key authentication active\n", .{});
         },
         .none => {
-            std.debug.print("❌ No authentication configured\n");
+            std.debug.print("❌ No authentication configured\n", .{});
         },
     }
 }

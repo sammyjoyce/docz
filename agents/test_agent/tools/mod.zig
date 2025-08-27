@@ -34,7 +34,7 @@ pub fn testTool(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.
     return ResponseMapper.toJsonValue(allocator, response);
 }
 
-/// Calculator tool for basic arithmetic operations
+/// Calculator tool for arithmetic operations
 /// Demonstrates the improved pattern using json_helpers
 pub fn calculator(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.ToolError!std.json.Value {
     // Define the expected request structure

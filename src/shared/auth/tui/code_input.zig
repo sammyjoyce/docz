@@ -3,7 +3,7 @@
 const std = @import("std");
 const print = std.debug.print;
 
-// Minimal TUI interface with basic ANSI escape codes
+// Minimal TUI interface with ANSI escape codes
 const Tui = struct {
     fn getTerminalSize() struct { width: u16, height: u16 } {
         // Use a reasonable default since we don't have access to full TUI

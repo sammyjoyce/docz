@@ -13,7 +13,7 @@
 
 const std = @import("std");
 const term_shared = @import("term_shared");
-const unified = term_shared.unified;
+const term = term_shared.term;
 const terminal_bridge = @import("./core/terminal_bridge.zig");
 const components = @import("components_shared");
 const presenters = @import("presenters/mod.zig");
@@ -201,7 +201,7 @@ pub const Notification = struct {
             try self.bridge.print(msg, null);
         }
 
-        try unified.Style.reset(self.bridge.writer(), caps);
+        try term.Style.reset(self.bridge.writer(), caps);
         try self.bridge.print("\n", null);
     }
 
@@ -251,12 +251,12 @@ pub const Notification = struct {
 
         // Render progress notification
         const icon = if (use_unicode) base_notif.notification_type.icon() else base_notif.notification_type.asciiIcon();
-        const color_style = unified.Style{ .fg_color = base_notif.notification_type.color() };
+        const color_style = term.Style{ .fg_color = base_notif.notification_type.color() };
 
         try self.bridge.print("\n", null);
         try self.bridge.print(icon, color_style);
         try self.bridge.print(" ", null);
-        try self.bridge.print(base_notif.title, unified.Style{ .bold = true });
+        try self.bridge.print(base_notif.title, term.Style{ .bold = true });
         try self.bridge.print(" [", null);
         try self.bridge.print(progress_bar, color_style);
         try self.bridge.print("] ", null);
@@ -275,12 +275,12 @@ pub const Notification = struct {
         return BoxStyle{
             .border_color = color_scheme.border,
             .background_color = switch (strategy) {
-                .rich_text, .full_graphics => color_scheme.background orelse unified.Color{ .rgb = .{ .r = 20, .g = 20, .b = 20 } },
+                .rich_text, .full_graphics => color_scheme.background orelse term.Color{ .rgb = .{ .r = 20, .g = 20, .b = 20 } },
                 else => null, // No background for limited terminals
             },
             .text_color = switch (strategy) {
-                .rich_text, .full_graphics, .ansi256 => color_scheme.text orelse unified.Colors.WHITE,
-                .basic_ascii => null, // Use default terminal colors
+                .rich_text, .full_graphics, .ansi256 => color_scheme.text orelse term.Colors.WHITE,
+                .minimal_ascii => null, // Use default terminal colors
                 .fallback => null,
             },
             .use_unicode_borders = strategy.supportsColor(),
@@ -316,7 +316,7 @@ pub const Notification = struct {
 
     /// Render a border line (top, middle, or bottom)
     fn renderBorderLine(self: *Self, border_type: BorderType, box_style: BoxStyle, width: u32) !void {
-        const border_style = unified.Style{ .fg_color = box_style.border_color };
+        const border_style = term.Style{ .fg_color = box_style.border_color };
 
         if (box_style.use_unicode_borders) {
             const border_chars = switch (border_type) {
@@ -347,8 +347,8 @@ pub const Notification = struct {
 
     /// Render the title line with icon and proper spacing
     fn renderTitleLine(self: *Self, notification_type: NotificationType, title: []const u8, box_style: BoxStyle, content_width: u32, strategy: terminal_bridge.RenderStrategy) !void {
-        const border_style = unified.Style{ .fg_color = box_style.border_color };
-        const text_style = if (box_style.text_color) |color| unified.Style{ .fg_color = color, .bold = true } else unified.Style{ .bold = true };
+        const border_style = term.Style{ .fg_color = box_style.border_color };
+        const text_style = if (box_style.text_color) |color| term.Style{ .fg_color = color, .bold = true } else term.Style{ .bold = true };
 
         const vertical_char = if (box_style.use_unicode_borders) "│" else "|";
 
@@ -361,7 +361,7 @@ pub const Notification = struct {
                 .rich_text, .full_graphics, .ansi256 => notification_type.icon(),
                 else => notification_type.asciiIcon(),
             };
-            try self.bridge.print(icon_text, unified.Style{ .fg_color = notification_type.color() });
+            try self.bridge.print(icon_text, term.Style{ .fg_color = notification_type.color() });
             try self.bridge.print(" ", null);
         }
 
@@ -383,8 +383,8 @@ pub const Notification = struct {
 
     /// Render message lines with word wrapping if needed
     fn renderMessageLines(self: *Self, message: []const u8, box_style: BoxStyle, content_width: u32) !void {
-        const border_style = unified.Style{ .fg_color = box_style.border_color };
-        const text_style = if (box_style.text_color) |color| unified.Style{ .fg_color = color } else null;
+        const border_style = term.Style{ .fg_color = box_style.border_color };
+        const text_style = if (box_style.text_color) |color| term.Style{ .fg_color = color } else null;
 
         const vertical_char = if (box_style.use_unicode_borders) "│" else "|";
 
@@ -420,7 +420,7 @@ pub const Notification = struct {
 
     /// Render timestamp line if enabled
     fn renderTimestampLine(self: *Self, box_style: BoxStyle, content_width: u32) !void {
-        const border_style = unified.Style{ .fg_color = box_style.border_color };
+        const border_style = term.Style{ .fg_color = box_style.border_color };
         const muted_style = terminal_bridge.Styles.MUTED;
 
         const vertical_char = if (box_style.use_unicode_borders) "│" else "|";
@@ -448,7 +448,7 @@ pub const Notification = struct {
 
     /// Render action lines with hyperlinks when supported
     fn renderActionLines(self: *Self, actions: []const NotificationAction, box_style: BoxStyle, content_width: u32, strategy: terminal_bridge.RenderStrategy) !void {
-        const border_style = unified.Style{ .fg_color = box_style.border_color };
+        const border_style = term.Style{ .fg_color = box_style.border_color };
         const vertical_char = if (box_style.use_unicode_borders) "│" else "|";
 
         // Add separator line
@@ -469,7 +469,7 @@ pub const Notification = struct {
                 },
                 .open_url => |url| {
                     if (self.config.enable_hyperlinks and strategy.supportsColor()) {
-                        try self.bridge.hyperlink(url, action.label, unified.Style{ .underline = true, .fg_color = unified.Colors.BLUE });
+                        try self.bridge.hyperlink(url, action.label, term.Style{ .underline = true, .fg_color = term.Colors.BLUE });
                     } else {
                         try self.bridge.printf("{s} ({s})", .{ action.label, url }, null);
                     }
@@ -518,14 +518,14 @@ pub const Notification = struct {
         _ = self;
 
         const style = if (use_colors) switch (notification_type) {
-            .info => unified.Style{ .fg_color = .{ .ansi = 12 } }, // Bright Blue
-            .success => unified.Style{ .fg_color = .{ .ansi = 10 } }, // Bright Green
-            .warning => unified.Style{ .fg_color = .{ .ansi = 11 } }, // Bright Yellow
-            .@"error" => unified.Style{ .fg_color = .{ .ansi = 9 } }, // Bright Red
-            .debug => unified.Style{ .fg_color = .{ .ansi = 13 } }, // Bright Magenta
-            .critical => unified.Style{ .fg_color = .{ .ansi = 9 } }, // Bright Red
-            .progress => unified.Style{ .fg_color = .{ .ansi = 14 } }, // Bright Cyan
-        } else unified.Style{};
+            .info => term.Style{ .fg_color = .{ .ansi = 12 } }, // Bright Blue
+            .success => term.Style{ .fg_color = .{ .ansi = 10 } }, // Bright Green
+            .warning => term.Style{ .fg_color = .{ .ansi = 11 } }, // Bright Yellow
+            .@"error" => term.Style{ .fg_color = .{ .ansi = 9 } }, // Bright Red
+            .debug => term.Style{ .fg_color = .{ .ansi = 13 } }, // Bright Magenta
+            .critical => term.Style{ .fg_color = .{ .ansi = 9 } }, // Bright Red
+            .progress => term.Style{ .fg_color = .{ .ansi = 14 } }, // Bright Cyan
+        } else term.Style{};
 
         // Use base notification system's icons
         const icon = if (use_colors)
@@ -536,7 +536,7 @@ pub const Notification = struct {
         return StyleElements{ .icon = icon, .style = style };
     }
 
-    fn renderBorder(self: *Self, border_type: BorderType, title: []const u8, message: ?[]const u8, style: unified.Style, caps: term_shared.TermCaps) !void {
+    fn renderBorder(self: *Self, border_type: BorderType, title: []const u8, message: ?[]const u8, style: term.Style, caps: term_shared.TermCaps) !void {
         const border_chars = if (caps.supportsTruecolor) switch (border_type) {
             .top => .{ "┌─", "─┐" },
             .middle => .{ "├─", "─┤" },
@@ -556,31 +556,31 @@ pub const Notification = struct {
             try self.bridge.print("─", null);
         }
         try self.bridge.print(border_chars[1], null);
-        try unified.Style.reset(self.bridge.writer(), caps);
+        try term.Style.reset(self.bridge.writer(), caps);
         try self.bridge.print("\n", null);
     }
 
-    fn renderTitleLineStyled(self: *Self, icon: []const u8, title: []const u8, style: unified.Style, caps: term_shared.TermCaps) !void {
+    fn renderTitleLineStyled(self: *Self, icon: []const u8, title: []const u8, style: term.Style, caps: term_shared.TermCaps) !void {
         try style.apply(self.bridge.writer(), caps);
         try self.bridge.print("│ ", null);
         try self.bridge.print(icon, null);
         try self.bridge.print(" ", null);
-        try self.bridge.print(title, unified.Style{ .bold = true });
-        try unified.Style.reset(self.bridge.writer(), caps);
+        try self.bridge.print(title, term.Style{ .bold = true });
+        try term.Style.reset(self.bridge.writer(), caps);
         try self.bridge.print(" │\n", null);
     }
 
-    fn renderMessageLineStyled(self: *Self, message: []const u8, style: unified.Style, caps: term_shared.TermCaps) !void {
+    fn renderMessageLineStyled(self: *Self, message: []const u8, style: term.Style, caps: term_shared.TermCaps) !void {
         try style.apply(self.bridge.writer(), caps);
         try self.bridge.print("│   ", null);
         try self.bridge.print(message, null);
-        try unified.Style.reset(self.bridge.writer(), caps);
+        try term.Style.reset(self.bridge.writer(), caps);
         try self.bridge.print(" │\n", null);
     }
 };
 
 /// Thin wrapper: display a base notification via CLI presenter
-pub fn displaySimple(
+pub fn display(
     allocator: std.mem.Allocator,
     n: *const BaseNotification,
     use_unicode: bool,
@@ -612,7 +612,7 @@ pub fn displaySimple(
 }
 
 /// Thin wrapper: display progress using CLI presenter
-pub fn displayProgressSimple(
+pub fn displayProgress(
     data: *const components.Progress,
     width: u32,
 ) !void {
@@ -621,9 +621,9 @@ pub fn displayProgressSimple(
 
 /// Styling configuration for notification boxes
 const BoxStyle = struct {
-    border_color: unified.Color,
-    background_color: ?unified.Color = null,
-    text_color: ?unified.Color = null,
+    border_color: term.Color,
+    background_color: ?term.Color = null,
+    text_color: ?term.Color = null,
     use_unicode_borders: bool = true,
 };
 
@@ -650,10 +650,10 @@ pub const DisplayStyle = enum {
 /// Style elements for notifications
 const StyleElements = struct {
     icon: []const u8,
-    style: unified.Style,
+    style: term.Style,
 };
 
-/// Enhanced notification handler with multiple delivery methods
+/// Notification handler with multiple delivery methods
 pub const NotificationHandler = struct {
     allocator: std.mem.Allocator,
     caps: term_shared.caps.TermCaps,
@@ -777,14 +777,14 @@ pub const NotificationHandler = struct {
     /// Show inline terminal notification using CLI presenter over shared model
     fn showInlineNotification(self: *NotificationHandler, notif: BaseNotification) !void {
         const use_unicode = self.caps.supportsTrueColor();
-        try displaySimple(self.allocator, &notif, use_unicode);
+        try display(self.allocator, &notif, use_unicode);
     }
 
     /// Show progress notification by delegating to CLI presenter
     fn showProgressNotification(self: *NotificationHandler, notif: BaseNotification) !void {
         if (notif.progress == null) return;
         const use_unicode = self.caps.supportsTrueColor();
-        try displaySimple(self.allocator, &notif, use_unicode);
+        try display(self.allocator, &notif, use_unicode);
     }
 
     /// Update progress for an existing notification

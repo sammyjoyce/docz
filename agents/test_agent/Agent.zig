@@ -14,7 +14,7 @@ pub const Test = struct {
     /// Agent configuration structure - extends the standard AgentConfig
     pub const Config = struct {
         // Include standard agent configuration
-        agent_config: @import("config_shared").AgentConfig,
+        agentConfig: @import("config_shared").AgentConfig,
 
         // Add agent-specific configuration fields here
         maxOperations: u32 = 100,
@@ -24,7 +24,7 @@ pub const Test = struct {
         pub fn loadFromFile(allocator: Allocator, path: []const u8) !Config {
             const config_utils = @import("config_shared");
             const defaults = Config{
-                .agent_config = config_utils.createValidatedAgentConfig("test_agent", "Example agent demonstrating best practices", "Developer"),
+                .agentConfig = config_utils.createValidatedAgentConfig("test_agent", "Example agent demonstrating best practices", "Developer"),
                 .maxOperations = 100,
                 .enableFeature = true,
             };
@@ -126,7 +126,7 @@ pub const Test = struct {
 
     /// Override base agent method to provide config-aware template variable processing
     pub fn getTemplateVariableValue(self: *Self, varName: []const u8) ![]const u8 {
-        const cfg = &self.config.agent_config;
+        const cfg = &self.config.agentConfig;
 
         if (std.mem.eql(u8, varName, "agent_name")) {
             return try self.allocator.dupe(u8, cfg.agentInfo.name);

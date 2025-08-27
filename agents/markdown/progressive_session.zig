@@ -14,9 +14,9 @@ const Agent = @import("agent.zig");
 
 /// User experience level for progressive disclosure
 pub const ExperienceLevel = enum {
-    beginner, // Basic editor + preview
+    beginner, // Editor + preview
     intermediate, // + navigation + snippets
-    advanced, // + dashboard + version control
+    professional, // + dashboard + version control
     expert, // + custom workflows + all features
 };
 
@@ -87,8 +87,8 @@ pub const ImprovedInteractiveSession = struct {
     fn initializeComponents(self: *Self) !void {
         switch (self.experience_level) {
             .beginner => {
-                // Basic components only
-                self.contextual_help = try ContextualHelpSystem.init(self.allocator, .simple);
+                // Core components only
+                self.contextual_help = try ContextualHelpSystem.init(self.allocator, .minimal);
                 self.notification_center = try NotificationCenter.init(self.allocator, .minimal);
             },
             .intermediate => {
@@ -98,7 +98,7 @@ pub const ImprovedInteractiveSession = struct {
                 self.contextual_help = try ContextualHelpSystem.init(self.allocator, .standard);
                 self.notification_center = try NotificationCenter.init(self.allocator, .standard);
             },
-            .advanced => {
+            .professional => {
                 // Add workflow builder
                 self.command_palette = try CommandPalette.init(self.allocator);
                 self.tool_discovery = try ToolDiscoveryGrid.init(self.allocator, .full);
@@ -231,7 +231,7 @@ pub const ImprovedInteractiveSession = struct {
 
         // Simple parsing (would be more robust in production)
         if (std.mem.indexOf(u8, contents, "\"expert\"")) |_| return .expert;
-        if (std.mem.indexOf(u8, contents, "\"advanced\"")) |_| return .advanced;
+        if (std.mem.indexOf(u8, contents, "\"professional\"")) |_| return .professional;
         if (std.mem.indexOf(u8, contents, "\"intermediate\"")) |_| return .intermediate;
 
         return .beginner;
@@ -484,7 +484,7 @@ pub const ToolDiscoveryGrid = struct {
             .description = "Format and align markdown tables",
             .category = "Formatting",
             .icon = "📊",
-            .complexity = .simple,
+            .complexity = .minimal,
             .usage_count = 0,
             .last_used = null,
         });
@@ -634,7 +634,7 @@ pub const ContextualHelpSystem = struct {
 
         // Render help based on level
         switch (self.help_level) {
-            .simple => try self.renderSimpleHelp(help_text),
+            .minimal => try self.renderMinimalHelp(help_text),
             .standard => try self.renderStandardHelp(help_text),
             .detailed => try self.renderDetailedHelp(help_text),
             .expert => try self.renderExpertHelp(help_text),

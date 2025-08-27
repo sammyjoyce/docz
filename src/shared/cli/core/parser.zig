@@ -6,7 +6,7 @@ const types = @import("types.zig");
 const Allocator = std.mem.Allocator;
 
 // Re-export types for convenience
-pub const ParsedArgs = types.LegacyArgs;
+pub const ParsedArgs = types.ParsedArgs;
 pub const ParsedOptions = types.Options;
 pub const ParsedFlags = types.Flags;
 pub const ParsedPositionals = types.Positionals;

@@ -32,7 +32,7 @@ pub const CliApp = struct {
 
     /// Main entry point for CLI execution
     pub fn run(self: *CliApp, args: []const []const u8) !u8 {
-        // Parse arguments (unified via parser)
+        // Parse arguments via parser
         const parsedArgs = try self.parseArguments(args);
 
         // Handle built-in commands
@@ -74,7 +74,7 @@ pub const CliApp = struct {
 
     fn parseArguments(self: *CliApp, args: []const []const u8) !types.Args {
         const legacy_parser = @import("legacy_parser.zig");
-        // The enhanced parser expects argv-style input including program name at index 0.
+        // The parser expects argv-style input including program name at index 0.
         var argv = try self.allocator.alloc([]const u8, args.len + 1);
         defer self.allocator.free(argv);
         argv[0] = "docz"; // synthetic argv[0]
@@ -84,29 +84,29 @@ pub const CliApp = struct {
         var parsed = try parser.parse(argv);
         defer parsed.deinit();
 
-        var unified = types.Args.fromConfig(self.state.config, self.allocator);
+        var cliArgs = types.Args.fromConfig(self.state.config, self.allocator);
 
-        // Map enhanced -> unified
-        unified.stream = parsed.stream;
-        unified.verbose = parsed.verbose;
-        unified.help = parsed.help;
-        unified.version = parsed.version;
-        unified.color = !parsed.no_color;
+        // Map parsed -> cliArgs
+        cliArgs.stream = parsed.stream;
+        cliArgs.verbose = parsed.verbose;
+        cliArgs.help = parsed.help;
+        cliArgs.version = parsed.version;
+        cliArgs.color = !parsed.no_color;
 
         // Command mapping
         if (parsed.command) |cmd| {
-            unified.command = cmd; // matches types.UnifiedCommand
+            cliArgs.command = cmd; // matches types.Command
         } else {
-            unified.command = .chat;
+            cliArgs.command = .chat;
         }
-        unified.authSubcommand = parsed.authSubcommand;
+        cliArgs.authSubcommand = parsed.authSubcommand;
 
         // Positional prompt as raw message (dupe for lifetime)
         if (parsed.prompt) |p| {
-            unified.rawMessage = try self.allocator.dupe(u8, p);
+            cliArgs.rawMessage = try self.allocator.dupe(u8, p);
         }
 
-        return unified;
+        return cliArgs;
     }
 
     fn showHelp(self: *CliApp) !void {
@@ -122,7 +122,7 @@ pub const CliApp = struct {
             \\Commands:
             \\  chat           Start a chat session (default)
             \\  auth           Authentication management
-            \\  interactive    Interactive mode with enhanced features
+            \\  interactive    Interactive mode with features
             \\  help           Show this help message
             \\  version        Show version information
             \\
@@ -134,7 +134,7 @@ pub const CliApp = struct {
             \\  --stream          Stream responses
             \\  --no-hyperlinks   Disable hyperlinks
             \\  --no-clipboard    Disable clipboard integration
-            \\  --format FORMAT   Output format (basic|rich|json|markdown)
+            \\  --format FORMAT   Output format (minimal|rich|json|markdown)
             \\
             \\Terminal Features:
         ;
@@ -152,7 +152,7 @@ pub const CliApp = struct {
             try writer.writeAll("  ✓ System notifications\n");
         }
         if (self.state.hasFeature(.graphics)) {
-            try writer.writeAll("  ✓ Enhanced graphics\n");
+            try writer.writeAll("  ✓ Graphics\n");
         }
 
         try writer.writeAll("\n");

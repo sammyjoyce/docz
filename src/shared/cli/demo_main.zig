@@ -34,7 +34,7 @@ pub const CliApp = struct {
 
         var bridge = try terminal_bridge.TerminalBridge.init(allocator, bridge_config);
 
-        // Initialize enhanced notification system
+        // Initialize notification system
         const notification_config = notification.NotificationConfig{
             .enable_system_notifications = true,
             .show_timestamp = true,
@@ -70,7 +70,7 @@ pub const CliApp = struct {
         const command = args[0];
         const command_args = if (args.len > 1) args[1..] else &[_][]const u8{};
 
-        // Execute command with enhanced error handling
+        // Execute command with error handling
         const result = self.executeCommand(command, command_args) catch |err| {
             try self.handleError(command, err);
             return 1;
@@ -85,12 +85,12 @@ pub const CliApp = struct {
 
         // Only show capabilities in interactive mode or with verbose flag
         if (strategy.supportsColor()) {
-            try self.bridge.printf("🚀 Enhanced CLI v1.0 ", .{}, terminal_bridge.Styles.INFO);
+            try self.bridge.printf("🚀 CLI v1.0 ", .{}, terminal_bridge.Styles.INFO);
             try self.bridge.printf("({s})\n", .{@tagName(strategy)}, terminal_bridge.Styles.MUTED);
         }
     }
 
-    /// Execute a command with enhanced features
+    /// Execute a command with features
     fn executeCommand(self: *Self, command: []const u8, args: []const []const u8) !u8 {
         if (std.mem.eql(u8, command, "demo")) {
             try demo.runDemo(self.allocator, args);

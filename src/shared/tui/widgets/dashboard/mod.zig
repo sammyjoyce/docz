@@ -7,13 +7,12 @@ const std = @import("std");
 const chart_line_mod = @import("chart/line.zig");
 const chart_bar_mod = @import("chart/bar.zig");
 const sparkline_mod = @import("sparkline.zig");
-const data_table_mod = @import("data_table.zig");
-const dashboard_mod = @import("dashboard.zig");
+const table_mod = @import("table.zig");
 
 // Chart implementations
 pub const LineChart = chart_line_mod.LineChart;
+pub const AreaChart = chart_line_mod.AreaChart;
 pub const BarChart = chart_bar_mod.BarChart;
-pub const AreaChart = chart_line_mod.AreaChart; // Area chart is a variant of line chart
 pub const Sparkline = sparkline_mod.Sparkline;
 
 // Placeholder implementations for missing components
@@ -24,7 +23,7 @@ pub const Heatmap = struct {
     }
 };
 
-pub const DataGrid = @import("grid.zig").Grid;
+pub const DataGrid = table_mod.Table;
 
 pub const Gauge = struct {
     pub fn init(allocator: std.mem.Allocator) !@This() {
@@ -42,7 +41,7 @@ pub const KPICard = struct {
 
 // Core engine placeholder
 pub const DashboardEngine = struct {
-    pub const CapabilityTier = enum { basic, rich, full };
+    pub const CapabilityTier = enum { high, rich, standard, minimal };
 
     pub fn init(allocator: std.mem.Allocator) !*DashboardEngine {
         _ = allocator;

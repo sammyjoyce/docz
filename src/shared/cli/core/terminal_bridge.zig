@@ -17,7 +17,7 @@ pub const RenderStrategy = enum {
     sixel_graphics, // Sixel graphics support
     rich_text, // Truecolor with Unicode
     ansi256, // 256 colors with basic Unicode
-    basic_ascii, // 16 colors, ASCII only
+    minimal_ascii, // 16 colors, ASCII only
     fallback, // Minimal ANSI support
 
     pub fn fromCapabilities(caps: unified.TermCaps) RenderStrategy {
@@ -25,13 +25,13 @@ pub const RenderStrategy = enum {
         if (caps.supportsSixel) return .sixel_graphics;
         if (caps.supportsTruecolor) return .rich_text;
         if (caps.supports256Color) return .ansi256;
-        if (caps.supportsColor) return .basic_ascii;
+        if (caps.supportsColor) return .minimal_ascii;
         return .fallback;
     }
 
     pub fn supportsColor(self: RenderStrategy) bool {
         return switch (self) {
-            .full_graphics, .sixel_graphics, .rich_text, .ansi256, .basic_ascii => true,
+            .full_graphics, .sixel_graphics, .rich_text, .ansi256, .minimal_ascii => true,
             .fallback => false,
         };
     }
@@ -47,7 +47,7 @@ pub const RenderStrategy = enum {
         return switch (self) {
             .full_graphics, .sixel_graphics, .rich_text => 16_777_216, // 24-bit
             .ansi256 => 256,
-            .basic_ascii => 16,
+            .minimal_ascii => 16,
             .fallback => 0,
         };
     }
@@ -63,7 +63,7 @@ pub const Config = struct {
     cache_capabilities: bool = true,
 };
 
-/// Main terminal bridge that provides unified CLI component access
+/// Main terminal bridge that provides CLI component access
 pub const TerminalBridge = struct {
     const Self = @This();
 
@@ -140,7 +140,7 @@ pub const TerminalBridge = struct {
         return self.render_strategy;
     }
 
-    /// Get direct access to the unified terminal (for advanced usage)
+    /// Get direct access to the terminal (for specialized usage)
     pub fn getUnifiedTerminal(self: *Self) *unified.Terminal {
         return &self.terminal;
     }
@@ -264,8 +264,8 @@ pub const TerminalBridge = struct {
             adapted.bg_color = bg.adapt(self.capabilities);
         }
 
-        // Remove unsupported attributes for basic terminals
-        if (self.render_strategy == .fallback or self.render_strategy == .basic_ascii) {
+        // Remove unsupported attributes for minimal terminals
+        if (self.render_strategy == .fallback or self.render_strategy == .minimal_ascii) {
             adapted.italic = false;
             adapted.strikethrough = false;
         }

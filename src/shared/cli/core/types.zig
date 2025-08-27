@@ -120,13 +120,13 @@ pub const Positionals = struct {
 };
 
 /// Complete parsed arguments structure
-pub const LegacyArgs = struct {
+pub const ParsedArgs = struct {
     options: Options,
     flags: Flags,
     positionals: Positionals,
     allocator: Allocator,
 
-    pub fn deinit(self: *LegacyArgs) void {
+    pub fn deinit(self: *ParsedArgs) void {
         // Clean up allocated strings
         if (self.options.model) |str| self.allocator.free(str);
         if (self.options.output) |str| self.allocator.free(str);
@@ -137,7 +137,7 @@ pub const LegacyArgs = struct {
     }
 };
 
-/// CLI Configuration for unified system
+/// CLI Configuration
 pub const Config = struct {
     // Core settings
     model: []const u8 = "claude-3-5-sonnet-20241022",
@@ -162,13 +162,13 @@ pub const Config = struct {
     allocator: Allocator,
 
     pub const OutputFormat = enum {
-        basic,
+        minimal,
         rich,
         json,
         markdown,
 
         pub fn fromString(str: []const u8) ?OutputFormat {
-            if (std.mem.eql(u8, str, "basic")) return .basic;
+            if (std.mem.eql(u8, str, "minimal")) return .minimal;
             if (std.mem.eql(u8, str, "rich")) return .rich;
             if (std.mem.eql(u8, str, "json")) return .json;
             if (std.mem.eql(u8, str, "markdown")) return .markdown;
@@ -320,7 +320,7 @@ pub const ConfigError = error{
     TypeMismatch,
 };
 
-/// Args for unified CLI
+/// Args for CLI
 pub const Args = struct {
     // Core options
     model: []const u8,

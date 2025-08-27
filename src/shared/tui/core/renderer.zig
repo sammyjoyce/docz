@@ -1,7 +1,7 @@
-//! TUI Renderer Abstraction Layer
+//! TUI RenderEngine Abstraction Layer
 //!
 //! This provides a rendering interface that leverages the rich terminal capabilities
-//! available in src/shared/term while maintaining compatibility with basic terminals through
+//! available in src/shared/term while maintaining compatibility with limited terminals through
 //! progressive enhancement. Also includes a widget system for building
 //! interactive terminal user interfaces.
 
@@ -119,7 +119,7 @@ pub const Render = struct {
 };
 
 /// Abstract renderer interface
-pub const Renderer = struct {
+pub const RenderEngine = struct {
     const Self = @This();
 
     /// Function pointers for renderer implementation
@@ -141,7 +141,7 @@ pub const Renderer = struct {
         draw_line: *const fn (impl: *anyopaque, ctx: Render, from: Point, to: Point) anyerror!void,
         fill_rect: *const fn (impl: *anyopaque, ctx: Render, color: Style.Color) anyerror!void,
 
-        // Advanced features (may be no-ops on basic terminals)
+        // Extended features (may be no-ops on limited terminals)
         draw_image: *const fn (impl: *anyopaque, ctx: Render, image: Image) anyerror!void,
         set_hyperlink: *const fn (impl: *anyopaque, url: []const u8) anyerror!void,
         clear_hyperlink: *const fn (impl: *anyopaque) anyerror!void,
@@ -347,7 +347,7 @@ fn getLevelColor(level: NotificationLevel, caps: TermCaps) Style.Color {
 }
 
 /// Factory function to create appropriate renderer based on terminal capabilities
-pub fn createRenderer(allocator: std.mem.Allocator) !Renderer {
+pub fn createRenderEngine(allocator: std.mem.Allocator) !RenderEngine {
     // Try to detect terminal capabilities, use safe defaults on error
     const caps = tui_mod.detectCapabilities() catch blk: {
         // If capability detection fails, create safe fallback capabilities
@@ -383,8 +383,8 @@ pub fn createRenderer(allocator: std.mem.Allocator) !Renderer {
         };
     };
 
-    // Determine if terminal has advanced capabilities that warrant RichRenderer
-    const hasAdvancedCapabilities =
+    // Determine if terminal has extended capabilities that warrant RichRenderEngine
+    const hasExtendedCapabilities =
         caps.supportsTruecolor or
         caps.supportsKittyGraphics or
         caps.supportsSixel or
@@ -395,21 +395,19 @@ pub fn createRenderer(allocator: std.mem.Allocator) !Renderer {
         caps.supportsXtwinops;
 
     // Choose renderer based on capabilities
-    if (hasAdvancedCapabilities) {
-        // Try RichRenderer first for terminals with advanced capabilities
+    if (hasExtendedCapabilities) {
+        // Try RichRenderEngine first for terminals with extended capabilities
         const rich_renderer = @import("renderers/rich.zig");
-        const rich = rich_renderer.RichRenderer.init(allocator, caps) catch {
-            // If RichRenderer fails, fall back to BasicRenderer
-            const basic_renderer = @import("renderers/basic.zig");
-            const basic = try basic_renderer.BasicRenderer.init(allocator, caps);
-            return basic.toRenderer();
+        const rich = rich_renderer.RichRenderEngine.init(allocator, caps) catch {
+            // If RichRenderEngine fails, fall back to FallbackRenderer
+            const fallback_renderer = @import("renderers/fallback.zig");
+            return try fallback_renderer.create(allocator, caps);
         };
-        return rich.toRenderer();
+        return rich.toRenderEngine();
     } else {
-        // Use BasicRenderer for limited terminals
-        const basic_renderer = @import("renderers/basic.zig");
-        const basic = try basic_renderer.BasicRenderer.init(allocator, caps);
-        return basic.toRenderer();
+        // Use FallbackRenderer for limited terminals
+        const fallback_renderer = @import("renderers/fallback.zig");
+        return try fallback_renderer.create(allocator, caps);
     }
 }
 
@@ -429,7 +427,7 @@ pub const InputEvent = union(enum) {
         modifiers: Modifiers,
     };
 
-    // Re-export unified types for backward compatibility
+    // Re-export shared types for backward compatibility
     pub const MouseEvent = @import("shared_types").MouseEvent;
 
     pub const Key = enum {
@@ -564,7 +562,7 @@ pub const Constraints = struct {
 };
 
 /// Widget layout information
-pub const LayoutInfo = struct {
+pub const WidgetLayout = struct {
     size: Size,
     position: Point,
     constraints: Constraints,
@@ -573,7 +571,7 @@ pub const LayoutInfo = struct {
 /// Widget VTable - defines the interface all widgets must implement
 pub const WidgetVTable = struct {
     /// Render the widget to the terminal
-    render: *const fn (ctx: *anyopaque, renderer: *Renderer, area: Rect) anyerror!void,
+    render: *const fn (ctx: *anyopaque, renderer: *RenderEngine, area: Rect) anyerror!void,
 
     /// Handle input events
     handle_input: *const fn (ctx: *anyopaque, event: InputEvent, area: Rect) anyerror!bool,
@@ -609,7 +607,7 @@ pub const Widget = struct {
     user_data: ?*anyopaque = null,
 
     /// Layout information
-    layout_info: LayoutInfo,
+    layout_info: WidgetLayout,
 
     pub fn init(
         ptr: *anyopaque,
@@ -631,7 +629,7 @@ pub const Widget = struct {
     }
 
     /// Render the widget
-    pub fn render(self: *Widget, renderer: *Renderer) !void {
+    pub fn render(self: *Widget, renderer: *RenderEngine) !void {
         if (!self.visible) return;
 
         try self.vtable.render(self.ptr, renderer, self.bounds);
@@ -780,7 +778,7 @@ pub const Container = struct {
         }
     }
 
-    pub fn render(self: *Container, renderer: *Renderer, area: Rect) !void {
+    pub fn render(self: *Container, renderer: *RenderEngine, area: Rect) !void {
         // Draw background
         if (self.background) |bg| {
             const bg_style = Style{ .bg_color = bg };
@@ -930,7 +928,7 @@ pub const Layout = struct {
 
         const item_count = children.len;
 
-        // Calculate spacing and positioning for advanced flex modes
+        // Calculate spacing and positioning for complex flex modes
         var spacing: u16 = 0;
         var start_offset: u16 = 0;
         const child_size: u16 = available_space / @as(u16, @intCast(item_count));
@@ -1040,18 +1038,18 @@ pub const Layout = struct {
 };
 
 /// Unified renderer that consolidates TUI systems
-pub const UnifiedRenderer = struct {
+pub const Renderer = struct {
     const Self = @This();
 
     allocator: std.mem.Allocator,
-    renderer: Renderer,
+    renderer: RenderEngine,
     theme: Theme,
     widgets: std.ArrayList(*Widget),
     focused_widget: ?*Widget,
     needs_redraw: bool,
 
     pub fn init(allocator: std.mem.Allocator, theme: Theme) !Self {
-        const renderer = try createRenderer(allocator);
+        const renderer = try createRenderEngine(allocator);
 
         return Self{
             .allocator = allocator,
@@ -1220,8 +1218,8 @@ pub const UnifiedRenderer = struct {
         self.needs_redraw = true;
     }
 
-    /// Get the underlying renderer for advanced operations
-    pub fn getRenderer(self: *Self) *Renderer {
+    /// Get the underlying renderer for direct operations
+    pub fn getRenderEngine(self: *Self) *RenderEngine {
         return &self.renderer;
     }
 };
@@ -1234,7 +1232,7 @@ pub const WidgetBuilder = struct {
             content: []const u8,
             allocator: std.mem.Allocator,
 
-            pub fn render(ctx: *anyopaque, renderer: *Renderer, area: Rect) !void {
+            pub fn render(ctx: *anyopaque, renderer: *RenderEngine, area: Rect) !void {
                 const self: *@This() = @ptrCast(@alignCast(ctx));
                 const render_ctx = Render{
                     .bounds = area.toBounds(),
@@ -1295,7 +1293,7 @@ pub const WidgetBuilder = struct {
             on_click: ?*const fn (*Widget) void,
             allocator: std.mem.Allocator,
 
-            pub fn render(ctx: *anyopaque, renderer: *Renderer, area: Rect) !void {
+            pub fn render(ctx: *anyopaque, renderer: *RenderEngine, area: Rect) !void {
                 const self: *@This() = @ptrCast(@alignCast(ctx));
 
                 // Draw button background
@@ -1385,7 +1383,7 @@ pub const WidgetBuilder = struct {
         const ContainerWidget = struct {
             container: Container,
 
-            pub fn render(ctx: *anyopaque, renderer: *Renderer, area: Rect) !void {
+            pub fn render(ctx: *anyopaque, renderer: *RenderEngine, area: Rect) !void {
                 const self: *@This() = @ptrCast(@alignCast(ctx));
                 try self.container.render(renderer, area);
             }

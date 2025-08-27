@@ -1323,7 +1323,7 @@ test "Progress bar rendering" {
 
 | Component | Location | Purpose | Terminal Requirements |
 |-----------|----------|---------|----------------------|
-| **OAuth Wizard** | `src/shared/auth/tui/oauth_wizard.zig` | Visual OAuth flow | Colors, Unicode |
+| **OAuth Wizard** | `src/shared/auth/tui/oauth_wizard_basic.zig` | Visual OAuth flow | Colors, Unicode |
 | **Progress Bar** | `src/shared/components/progress.zig` | Progress indication | Basic |
 | **Command Palette** | `src/shared/tui/components/command_palette.zig` | Command discovery | Colors, Mouse |
 | **Error Modal** | `src/shared/tui/widgets/modal.zig` | Error display | Colors |

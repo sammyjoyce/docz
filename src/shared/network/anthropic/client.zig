@@ -176,15 +176,15 @@ pub const AnthropicClient = struct {
                 // Check again in case another thread refreshed while we waited
                 if (!oauthCreds.willExpireSoon(300)) return;
 
-                if (globalRefreshState.in_progress) {
+                if (globalRefreshState.inProgress) {
                     return Error.RefreshInProgress;
                 }
 
-                globalRefreshState.in_progress = true;
-                defer globalRefreshState.in_progress = false;
+                globalRefreshState.inProgress = true;
+                defer globalRefreshState.inProgress = false;
 
                 // Perform the refresh
-                const newCreds = oauth.refreshTokens(self.allocator, oauthCreds.refresh_token) catch |err| {
+                const newCreds = oauth.refreshTokens(self.allocator, oauthCreds.refreshToken) catch |err| {
                     std.log.err("Token refresh failed: {}", .{err});
                     return err;
                 };
@@ -234,16 +234,16 @@ pub const AnthropicClient = struct {
         globalModel = null;
 
         // Create stream params with our collector callback
-        const stream_params = StreamParams{
+        const streamParams = StreamParams{
             .model = params.model,
-            .max_tokens = params.max_tokens,
+            .maxTokens = params.maxTokens,
             .temperature = params.temperature,
             .messages = params.messages,
             .system = params.system,
-            .top_p = params.top_p,
-            .top_k = params.top_k,
-            .stop_sequences = params.stop_sequences,
-            .on_token = struct {
+            .topP = params.topP,
+            .topK = params.topK,
+            .stopSequences = params.stopSequences,
+            .onToken = struct {
                 fn callback(data: []const u8) void {
                     // Try to parse as JSON to extract usage and content
                     const DeltaMessage = struct {
@@ -304,7 +304,7 @@ pub const AnthropicClient = struct {
         };
 
         // Perform streaming request
-        try self.stream(stream_params);
+        try self.stream(streamParams);
 
         // Create owned copies of the response data
         const owned_id = try self.allocator.dupe(u8, globalMessageId orelse "unknown");
@@ -327,7 +327,7 @@ pub const AnthropicClient = struct {
         return MessagesResult{
             .id = owned_id,
             .content = owned_content,
-            .stop_reason = owned_stop_reason,
+            .stopReason = owned_stop_reason,
             .model = owned_model,
             .usage = globalUsageInfo,
             .allocator = self.allocator,
@@ -347,8 +347,8 @@ pub const AnthropicClient = struct {
         }
 
         // Build request body
-        const body_json = try self.buildBodyJson(params);
-        defer self.allocator.free(body_json);
+        const bodyJson = try self.buildBodyJson(params);
+        defer self.allocator.free(bodyJson);
 
         // Initialize libcurl client
         var client = curl.HTTPClient.init(self.allocator) catch |err| {
@@ -358,53 +358,53 @@ pub const AnthropicClient = struct {
         defer client.deinit();
 
         // Prepare headers with auth
-        var auth_header_value: ?[]const u8 = null;
-        defer if (auth_header_value) |value| self.allocator.free(value);
+        var authHeaderValue: ?[]const u8 = null;
+        defer if (authHeaderValue) |value| self.allocator.free(value);
 
         const headers = switch (self.auth) {
             .api_key => |key| [_]curl.Header{
                 .{ .name = "x-api-key", .value = key },
                 .{ .name = "accept", .value = "text/event-stream" },
                 .{ .name = "content-type", .value = "application/json" },
-                .{ .name = "anthropic-version", .value = self.api_version },
+                .{ .name = "anthropic-version", .value = self.apiVersion },
                 .{ .name = "user-agent", .value = "docz/1.0 (libcurl)" },
             },
             .oauth => |creds| blk: {
-                auth_header_value = try std.fmt.allocPrint(self.allocator, "Bearer {s}", .{creds.access_token});
+                authHeaderValue = try std.fmt.allocPrint(self.allocator, "Bearer {s}", .{creds.accessToken});
                 break :blk [_]curl.Header{
-                    .{ .name = "authorization", .value = auth_header_value.? },
+                    .{ .name = "authorization", .value = authHeaderValue.? },
                     .{ .name = "accept", .value = "text/event-stream" },
                     .{ .name = "content-type", .value = "application/json" },
-                    .{ .name = "anthropic-version", .value = self.api_version },
+                    .{ .name = "anthropic-version", .value = self.apiVersion },
                     .{ .name = "user-agent", .value = "docz/1.0 (libcurl)" },
                 };
             },
         };
 
         // Create streaming context
-        var streaming_context = stream_module.createStreamingContext(self.allocator, params.on_token);
-        defer stream_module.destroyStreamingContext(&streaming_context);
+        var streamingContext = stream_module.createStreamingContext(self.allocator, params.onToken);
+        defer stream_module.destroyStreamingContext(&streamingContext);
 
         // Build full URL
-        const url = try std.fmt.allocPrint(self.allocator, "{s}/v1/messages", .{self.base_url});
+        const url = try std.fmt.allocPrint(self.allocator, "{s}/v1/messages", .{self.baseUrl});
         defer self.allocator.free(url);
 
         const req = curl.HTTPRequest{
             .method = .POST,
             .url = url,
             .headers = &headers,
-            .body = body_json,
-            .timeout_ms = self.timeout_ms,
+            .body = bodyJson,
+            .timeout_ms = self.timeoutMs,
             .verify_ssl = true,
             .follow_redirects = false,
             .verbose = false,
         };
 
         // Perform streaming request
-        const status_code = client.streamRequest(
+        const statusCode = client.streamRequest(
             req,
             stream_module.processStreamChunk,
-            &streaming_context,
+            &streamingContext,
         ) catch |err| {
             std.log.err("Streaming request failed: {}", .{err});
             switch (err) {
@@ -416,19 +416,19 @@ pub const AnthropicClient = struct {
         };
 
         // Check for 401 Unauthorized and retry if needed
-        if (status_code == 401 and !is_retry) {
+        if (statusCode == 401 and !is_retry) {
             std.log.warn("Received 401 Unauthorized, attempting token refresh...", .{});
             return self.streamWithRetry(params, true); // Retry once after refresh
         }
 
-        if (status_code != 200) {
-            std.log.err("HTTP error: {}", .{status_code});
+        if (statusCode != 200) {
+            std.log.err("HTTP error: {}", .{statusCode});
             return Error.APIError;
         }
 
         // Process any remaining buffered data
-        if (streaming_context.buffer.items.len > 0) {
-            stream_module.processSseChunk(&streaming_context, &.{}) catch |err| {
+        if (streamingContext.buffer.items.len > 0) {
+            stream_module.processSseChunk(&streamingContext, &.{}) catch |err| {
                 std.log.warn("Error processing final streaming data: {}", .{err});
             };
         }
@@ -448,7 +448,7 @@ pub const AnthropicClient = struct {
         try std.fmt.format(writer, "\"model\":\"{s}\",", .{params.model});
 
         // Max tokens
-        try std.fmt.format(writer, "\"max_tokens\":{},", .{params.max_tokens});
+        try std.fmt.format(writer, "\"max_tokens\":{},", .{params.maxTokens});
 
         // Temperature
         try std.fmt.format(writer, "\"temperature\":{d:.2},", .{params.temperature});
@@ -464,17 +464,17 @@ pub const AnthropicClient = struct {
         }
 
         // Top-p (optional)
-        if (params.top_p) |top_p| {
+        if (params.topP) |top_p| {
             try std.fmt.format(writer, "\"top_p\":{d:.2},", .{top_p});
         }
 
         // Top-k (optional)
-        if (params.top_k) |top_k| {
+        if (params.topK) |top_k| {
             try std.fmt.format(writer, "\"top_k\":{},", .{top_k});
         }
 
         // Stop sequences (optional)
-        if (params.stop_sequences) |sequences| {
+        if (params.stopSequences) |sequences| {
             try writer.writeAll("\"stop_sequences\":[");
             for (sequences, 0..) |seq, i| {
                 if (i > 0) try writer.writeAll(",");
@@ -525,8 +525,8 @@ pub const AnthropicClient = struct {
         }
     }
 
-    /// Convenience method: simple completion with just a prompt
-    pub fn completeSimple(self: *Self, model: []const u8, prompt: []const u8) ![]const u8 {
+    /// Convenience method: completion with just a prompt
+    pub fn completePrompt(self: *Self, model: []const u8, prompt: []const u8) ![]const u8 {
         const messages = [_]Message{
             .{ .role = .user, .content = prompt },
         };

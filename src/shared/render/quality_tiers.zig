@@ -1,65 +1,65 @@
 const std = @import("std");
-const adaptive_renderer = @import("mod.zig");
-const AdaptiveRenderer = adaptive_renderer.AdaptiveRenderer;
-const RenderTier = adaptive_renderer.RenderTier;
+const render_mod = @import("mod.zig");
+const Renderer = render_mod.Renderer;
+const RenderTier = render_mod.RenderTier;
 
 /// Defines quality tiers and characteristics for different rendering modes
 pub const QualityTiers = struct {
     /// Progress bar rendering characteristics for each mode
     pub const ProgressBar = struct {
         pub const high = ProgressConfig{
-            .use_gradient = true,
-            .use_animations = true,
-            .bar_chars = .{
+            .useGradient = true,
+            .useAnimations = true,
+            .barChars = .{
                 .filled = "█",
                 .partial = &[_][]const u8{ "▏", "▎", "▍", "▌", "▋", "▊", "▉", "█" },
                 .empty = " ",
             },
-            .supports_color = true,
-            .supports_percentage = true,
-            .supports_eta = true,
+            .supportsColor = true,
+            .supportsPercentage = true,
+            .supportsEta = true,
             .width = 40,
         };
 
         pub const medium = ProgressConfig{
-            .use_gradient = false,
-            .use_animations = false,
-            .bar_chars = .{
+            .useGradient = false,
+            .useAnimations = false,
+            .barChars = .{
                 .filled = "█",
                 .partial = &[_][]const u8{ "▏", "▎", "▍", "▌", "▋", "▊", "▉", "█" },
                 .empty = "░",
             },
-            .supports_color = true,
-            .supports_percentage = true,
-            .supports_eta = true,
+            .supportsColor = true,
+            .supportsPercentage = true,
+            .supportsEta = true,
             .width = 30,
         };
 
         pub const low = ProgressConfig{
-            .use_gradient = false,
-            .use_animations = false,
-            .bar_chars = .{
+            .useGradient = false,
+            .useAnimations = false,
+            .barChars = .{
                 .filled = "#",
                 .partial = &[_][]const u8{"#"},
                 .empty = "-",
             },
-            .supports_color = false,
-            .supports_percentage = true,
-            .supports_eta = false,
+            .supportsColor = false,
+            .supportsPercentage = true,
+            .supportsEta = false,
             .width = 20,
         };
 
-        pub const basic = ProgressConfig{
-            .use_gradient = false,
-            .use_animations = false,
-            .bar_chars = .{
+        pub const minimal = ProgressConfig{
+            .useGradient = false,
+            .useAnimations = false,
+            .barChars = .{
                 .filled = "",
                 .partial = &[_][]const u8{},
                 .empty = "",
             },
-            .supports_color = false,
-            .supports_percentage = true,
-            .supports_eta = false,
+            .supportsColor = false,
+            .supportsPercentage = true,
+            .supportsEta = false,
             .width = 0,
         };
 
@@ -68,7 +68,7 @@ pub const QualityTiers = struct {
                 .ultra => high, // Ultra gets high quality features
                 .rich => high,
                 .standard => medium,
-                .minimal => basic,
+                .minimal => minimal,
             };
         }
     };
@@ -76,43 +76,43 @@ pub const QualityTiers = struct {
     /// Table rendering characteristics for each mode
     pub const Table = struct {
         pub const high = TableConfig{
-            .use_box_drawing = true,
-            .use_rounded_corners = true,
-            .use_alternating_rows = true,
-            .use_cell_padding = true,
-            .supports_color = true,
-            .supports_sorting_indicators = true,
-            .border_style = .rounded_heavy,
+            .useBoxDrawing = true,
+            .useRoundedCorners = true,
+            .useAlternatingRows = true,
+            .useCellPadding = true,
+            .supportsColor = true,
+            .supportsSortingIndicators = true,
+            .borderStyle = .rounded_heavy,
         };
 
         pub const medium = TableConfig{
-            .use_box_drawing = true,
-            .use_rounded_corners = false,
-            .use_alternating_rows = true,
-            .use_cell_padding = true,
-            .supports_color = true,
-            .supports_sorting_indicators = true,
-            .border_style = .double_line,
+            .useBoxDrawing = true,
+            .useRoundedCorners = false,
+            .useAlternatingRows = true,
+            .useCellPadding = true,
+            .supportsColor = true,
+            .supportsSortingIndicators = true,
+            .borderStyle = .double_line,
         };
 
         pub const low = TableConfig{
-            .use_box_drawing = false,
-            .use_rounded_corners = false,
-            .use_alternating_rows = false,
-            .use_cell_padding = true,
-            .supports_color = false,
-            .supports_sorting_indicators = false,
-            .border_style = .ascii,
+            .useBoxDrawing = false,
+            .useRoundedCorners = false,
+            .useAlternatingRows = false,
+            .useCellPadding = true,
+            .supportsColor = false,
+            .supportsSortingIndicators = false,
+            .borderStyle = .ascii,
         };
 
-        pub const basic = TableConfig{
-            .use_box_drawing = false,
-            .use_rounded_corners = false,
-            .use_alternating_rows = false,
-            .use_cell_padding = false,
-            .supports_color = false,
-            .supports_sorting_indicators = false,
-            .border_style = .none,
+        pub const minimal = TableConfig{
+            .useBoxDrawing = false,
+            .useRoundedCorners = false,
+            .useAlternatingRows = false,
+            .useCellPadding = false,
+            .supportsColor = false,
+            .supportsSortingIndicators = false,
+            .borderStyle = .none,
         };
 
         pub fn getConfig(mode: RenderTier) TableConfig {
@@ -120,7 +120,7 @@ pub const QualityTiers = struct {
                 .ultra => high, // Ultra gets high quality features
                 .rich => medium,
                 .standard => low,
-                .minimal => basic,
+                .minimal => minimal,
             };
         }
     };
@@ -128,47 +128,47 @@ pub const QualityTiers = struct {
     /// Chart rendering characteristics for each mode
     pub const Chart = struct {
         pub const high = ChartConfig{
-            .use_graphics = true,
-            .use_gradients = true,
-            .use_animations = true,
-            .supports_color = true,
-            .supports_legends = true,
-            .supports_tooltips = true,
-            .max_resolution = .{ .width = 800, .height = 400 },
-            .render_style = .graphics,
+            .useGraphics = true,
+            .useGradients = true,
+            .useAnimations = true,
+            .supportsColor = true,
+            .supportsLegends = true,
+            .supportsTooltips = true,
+            .maxResolution = .{ .width = 800, .height = 400 },
+            .renderStyle = .graphics,
         };
 
         pub const medium = ChartConfig{
-            .use_graphics = false,
-            .use_gradients = false,
-            .use_animations = false,
-            .supports_color = true,
-            .supports_legends = true,
-            .supports_tooltips = false,
-            .max_resolution = .{ .width = 80, .height = 20 },
-            .render_style = .unicode_blocks,
+            .useGraphics = false,
+            .useGradients = false,
+            .useAnimations = false,
+            .supportsColor = true,
+            .supportsLegends = true,
+            .supportsTooltips = false,
+            .maxResolution = .{ .width = 80, .height = 20 },
+            .renderStyle = .unicode_blocks,
         };
 
         pub const low = ChartConfig{
-            .use_graphics = false,
-            .use_gradients = false,
-            .use_animations = false,
-            .supports_color = false,
-            .supports_legends = true,
-            .supports_tooltips = false,
-            .max_resolution = .{ .width = 60, .height = 15 },
-            .render_style = .ascii_art,
+            .useGraphics = false,
+            .useGradients = false,
+            .useAnimations = false,
+            .supportsColor = false,
+            .supportsLegends = true,
+            .supportsTooltips = false,
+            .maxResolution = .{ .width = 60, .height = 15 },
+            .renderStyle = .ascii_art,
         };
 
-        pub const basic = ChartConfig{
-            .use_graphics = false,
-            .use_gradients = false,
-            .use_animations = false,
-            .supports_color = false,
-            .supports_legends = false,
-            .supports_tooltips = false,
-            .max_resolution = .{ .width = 40, .height = 10 },
-            .render_style = .text_summary,
+        pub const minimal = ChartConfig{
+            .useGraphics = false,
+            .useGradients = false,
+            .useAnimations = false,
+            .supportsColor = false,
+            .supportsLegends = false,
+            .supportsTooltips = false,
+            .maxResolution = .{ .width = 40, .height = 10 },
+            .renderStyle = .text_summary,
         };
 
         pub fn getConfig(mode: RenderTier) ChartConfig {
@@ -176,7 +176,7 @@ pub const QualityTiers = struct {
                 .ultra => high, // Ultra gets high quality features
                 .rich => medium,
                 .standard => low,
-                .minimal => basic,
+                .minimal => minimal,
             };
         }
     };
@@ -184,12 +184,12 @@ pub const QualityTiers = struct {
 
 /// Configuration for progress bar rendering
 pub const ProgressConfig = struct {
-    use_gradient: bool,
-    use_animations: bool,
-    bar_chars: BarCharSet,
-    supports_color: bool,
-    supports_percentage: bool,
-    supports_eta: bool,
+    useGradient: bool,
+    useAnimations: bool,
+    barChars: BarCharSet,
+    supportsColor: bool,
+    supportsPercentage: bool,
+    supportsEta: bool,
     width: u8,
 
     pub const BarCharSet = struct {
@@ -201,13 +201,13 @@ pub const ProgressConfig = struct {
 
 /// Configuration for table rendering
 pub const TableConfig = struct {
-    use_box_drawing: bool,
-    use_rounded_corners: bool,
-    use_alternating_rows: bool,
-    use_cell_padding: bool,
-    supports_color: bool,
-    supports_sorting_indicators: bool,
-    border_style: BorderStyle,
+    useBoxDrawing: bool,
+    useRoundedCorners: bool,
+    useAlternatingRows: bool,
+    useCellPadding: bool,
+    supportsColor: bool,
+    supportsSortingIndicators: bool,
+    borderStyle: BorderStyle,
 
     pub const BorderStyle = enum {
         none,
@@ -304,14 +304,14 @@ pub const TableConfig = struct {
 
 /// Configuration for chart rendering
 pub const ChartConfig = struct {
-    use_graphics: bool,
-    use_gradients: bool,
-    use_animations: bool,
-    supports_color: bool,
-    supports_legends: bool,
-    supports_tooltips: bool,
-    max_resolution: Resolution,
-    render_style: RenderStyle,
+    useGraphics: bool,
+    useGradients: bool,
+    useAnimations: bool,
+    supportsColor: bool,
+    supportsLegends: bool,
+    supportsTooltips: bool,
+    maxResolution: Resolution,
+    renderStyle: RenderStyle,
 
     pub const Resolution = struct {
         width: u16,

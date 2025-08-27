@@ -1,4 +1,4 @@
-//! Advanced Line Chart Widget with Progressive Enhancement
+//! Line Chart Widget with Progressive Enhancement
 //!
 //! Demonstrates sophisticated terminal graphics capabilities with graceful fallback:
 //! - Kitty Graphics: WebGL-like shaders with smooth antialiased lines
@@ -10,8 +10,9 @@ const std = @import("std");
 const engine_mod = @import("engine.zig");
 const term_caps = @import("../../term/capabilities.zig");
 const graphics_manager = @import("../../term/graphics_manager.zig");
-const color_palette = @import("../../term/color_palette.zig");
-const enhanced_mouse = @import("../../term/mouse.zig");
+const term_shared = @import("../../../../term_shared.zig");
+const color_palette = term_shared.term.color.palettes;
+
 const braille = @import("../../render/braille.zig");
 
 /// Advanced line chart with progressive enhancement
@@ -206,14 +207,14 @@ pub const LineChart = struct {
 
     fn selectRenderMode(tier: engine_mod.DashboardEngine.CapabilityTier, allocator: std.mem.Allocator) RenderMode {
         return switch (tier) {
-            .ultra_enhanced => .{
+            .high => .{
                 .kitty_webgl = .{
                     .shader_program = 0, // Would be initialized properly
                     .vertex_buffer = 0,
                     .frame_buffer = 0,
                 },
             },
-            .enhanced => .{ .sixel_optimized = .{
+            .rich => .{ .sixel_optimized = .{
                 .palette = AdaptivePalette.init(allocator) catch unreachable,
                 .dither_matrix = [8][8]u8{
                     .{ 0, 32, 8, 40, 2, 34, 10, 42 },
@@ -293,7 +294,7 @@ pub const LineChart = struct {
     }
 
     fn renderKittyWebGL(self: *LineChart, bounds: Bounds) !void {
-        // Ultra-enhanced: Generate WebGL commands for smooth antialiased lines
+        // High: Generate WebGL commands for smooth antialiased lines
         const vertex_shader =
             \\precision highp float;
             \\attribute vec2 position;

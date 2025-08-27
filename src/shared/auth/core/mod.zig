@@ -3,6 +3,9 @@
 const std = @import("std");
 const oauth = @import("../oauth/mod.zig");
 
+// Re-export the UI-free service
+pub const Service = @import("Service.zig").Service;
+
 /// Authentication error types
 pub const AuthError = error{
     MissingAPIKey,
@@ -18,21 +21,21 @@ pub const AuthError = error{
 
 /// Authentication methods supported by the system
 pub const AuthMethod = enum {
-    apiKey,
+    api_key,
     oauth,
     none,
 };
 
 /// Generic authentication credentials
 pub const AuthCredentials = union(AuthMethod) {
-    apiKey: []const u8,
+    api_key: []const u8,
     oauth: oauth.Credentials,
     none: void,
 
     /// Check if credentials are valid/not expired
     pub fn isValid(self: AuthCredentials) bool {
         return switch (self) {
-            .apiKey => |key| key.len > 0,
+            .api_key => |key| key.len > 0,
             .oauth => |creds| !creds.isExpired(),
             .none => false,
         };
@@ -41,7 +44,7 @@ pub const AuthCredentials = union(AuthMethod) {
     /// Get the authentication method type
     pub fn getMethod(self: AuthCredentials) AuthMethod {
         return switch (self) {
-            .apiKey => .apiKey,
+            .api_key => .api_key,
             .oauth => .oauth,
             .none => .none,
         };
@@ -50,7 +53,7 @@ pub const AuthCredentials = union(AuthMethod) {
     /// Free any allocated memory in credentials
     pub fn deinit(self: AuthCredentials, allocator: std.mem.Allocator) void {
         switch (self) {
-            .apiKey => |key| allocator.free(key),
+            .api_key => |key| allocator.free(key),
             .oauth => |creds| creds.deinit(allocator),
             .none => {},
         }
@@ -122,7 +125,7 @@ pub const AuthClient = struct {
                     }
                 }
             },
-            .apiKey, .none => {}, // No refresh needed
+            .api_key, .none => {}, // No refresh needed
         }
     }
 };
@@ -169,7 +172,7 @@ pub fn createClient(allocator: std.mem.Allocator) AuthError!AuthClient {
                 allocator.free(apiKey);
 
                 std.log.info("Using API key authentication", .{});
-                const credentials = AuthCredentials{ .apiKey = finalKey };
+                const credentials = AuthCredentials{ .api_key = finalKey };
                 return AuthClient.init(allocator, credentials);
             } else {
                 std.log.err("ANTHROPIC_API_KEY contains invalid UTF-8 characters", .{});
@@ -220,7 +223,7 @@ pub fn saveCredentials(
                 return AuthError.InvalidFormat;
             };
         },
-        .apiKey => {
+        .api_key => {
             // Could save API key to file if needed
             return AuthError.InvalidFormat;
         },

@@ -2,8 +2,8 @@
 //! Provides rich formatting, adaptive colors using @src/term capabilities
 
 const std = @import("std");
-const term_mod = @import("term_shared");
-const unified = term_mod.unified;
+const termMod = @import("term_shared");
+const term = termMod.term;
 
 // Minimal TUI replacements
 const BasicTui = struct {
@@ -16,31 +16,31 @@ const BasicTui = struct {
 
 const tui = BasicTui;
 
-/// Enhanced CLI formatter with terminal capability awareness
+/// CLI formatter with terminal capability awareness
 pub const CliFormatter = struct {
     allocator: std.mem.Allocator,
-    caps: term_mod.caps.TermCaps,
-    terminal_size: tui.TerminalSize,
-    terminal: unified.Terminal,
+    caps: termMod.caps.TermCaps,
+    terminalSize: tui.TerminalSize,
+    terminal: term.Terminal,
 
     // Color scheme adapted to terminal capabilities
     styles: StyleScheme,
 
     pub const StyleScheme = struct {
-        primary: unified.Style,
-        secondary: unified.Style,
-        accent: unified.Style,
-        success: unified.Style,
-        warning: unified.Style,
-        errColor: unified.Style,
-        muted: unified.Style,
-        bold: unified.Style,
-        dim: unified.Style,
+        primary: term.Style,
+        secondary: term.Style,
+        accent: term.Style,
+        success: term.Style,
+        warning: term.Style,
+        errColor: term.Style,
+        muted: term.Style,
+        bold: term.Style,
+        dim: term.Style,
     };
 
     pub fn init(allocator: std.mem.Allocator) !CliFormatter {
-        const terminal = try unified.Terminal.init(allocator);
-        const terminal_size = tui.getTerminalSize();
+        const terminal = try term.Terminal.init(allocator);
+        const terminalSize = tui.getTerminalSize();
 
         // Adaptive style scheme based on terminal capabilities
         const styles = if (terminal.caps.supportsTruecolor)
@@ -73,7 +73,7 @@ pub const CliFormatter = struct {
         return CliFormatter{
             .allocator = allocator,
             .caps = terminal.caps,
-            .terminal_size = terminal_size,
+            .terminalSize = terminalSize,
             .terminal = terminal,
             .styles = styles,
         };
@@ -84,18 +84,18 @@ pub const CliFormatter = struct {
     }
 
     /// Enhanced help display with structured layout
-    pub fn printEnhancedHelp(self: *CliFormatter, cli_config: anytype) !void {
-        const width = @min(self.terminal_size.width, 80);
+    pub fn printHelp(self: *CliFormatter, cli_config: anytype) !void {
+        const width = @min(self.terminalSize.width, 80);
 
-        // Header section with enhanced styling
-        try self.terminal.printf("{s}DocZ{s}", .{ self.styles.bold, unified.Style{} }, self.styles.primary);
+        // Header section with styling
+        try self.terminal.printf("{s}DocZ{s}", .{ self.styles.bold, term.Style{} }, self.styles.primary);
         if (@hasField(@TypeOf(cli_config), "version")) {
-            try self.terminal.printf(" {s}v{s}{s}", .{ self.styles.muted, cli_config.version, unified.Style{} }, null);
+            try self.terminal.printf(" {s}v{s}{s}", .{ self.styles.muted, cli_config.version, term.Style{} }, null);
         }
-        try self.terminal.printf(" - {s}{s}{s}\n\n", .{ self.styles.secondary, cli_config.description, unified.Style{} }, null);
+        try self.terminal.printf(" - {s}{s}{s}\n\n", .{ self.styles.secondary, cli_config.description, term.Style{} }, null);
 
         // Usage section
-        const usage_content = [_][]const u8{
+        const usageContent = [_][]const u8{
             "",
             "Basic usage patterns:",
             "",
@@ -104,8 +104,8 @@ pub const CliFormatter = struct {
             "",
         };
 
-        const usage_section = tui.Section.init("🚀 USAGE", &usage_content, width);
-        usage_section.draw();
+        const usageSection = tui.Section.init("🚀 USAGE", &usageContent, width);
+        usageSection.draw();
         try self.terminal.printf("\n", .{}, null);
 
         // Options section
@@ -120,13 +120,13 @@ pub const CliFormatter = struct {
 
     /// Enhanced error display
     pub fn printEnhancedError(self: *CliFormatter, err: anytype, _: ?[]const u8) !void {
-        const width = @min(self.terminal_size.width, 80);
+        const width = @min(self.terminalSize.width, 80);
 
         // Error header with icon and color
         try self.terminal.printf("\n{s}{s}❌ Error{s}\n", .{ self.colors.bold, self.colors.errColor, self.colors.reset }, null);
 
         // Error message
-        const error_msg = switch (err) {
+        const errorMsg = switch (err) {
             error.InvalidArgument => "Invalid argument provided",
             error.MissingValue => "Missing value for option",
             error.UnknownOption => "Unknown option",
@@ -138,16 +138,16 @@ pub const CliFormatter = struct {
             else => "An unexpected error occurred",
         };
 
-        const error_content = [_][]const u8{
+        const errorContent = [_][]const u8{
             "",
-            error_msg,
+            errorMsg,
             "",
             "💡 Use --help for usage information",
             "",
         };
 
-        const error_section = tui.Section.init("Error Details", &error_content, width);
-        error_section.draw();
+        const errorSection = tui.Section.init("Error Details", &errorContent, width);
+        errorSection.draw();
         try self.terminal.printf("\n", .{}, null);
     }
 
@@ -178,8 +178,8 @@ pub const CliFormatter = struct {
 
             // Format option line
             if (@hasField(@TypeOf(opt), "short")) {
-                const short_char: u8 = @intCast(opt.short);
-                self.terminal.printf("  {s}-{c}, --{s}{s} <{s}>    {s}", .{ self.colors.accent, short_char, opt.long, self.colors.reset, opt.type, opt.description }, null) catch {};
+                const shortChar: u8 = @intCast(opt.short);
+                self.terminal.printf("  {s}-{c}, --{s}{s} <{s}>    {s}", .{ self.colors.accent, shortChar, opt.long, self.colors.reset, opt.type, opt.description }, null) catch {};
             } else {
                 self.terminal.printf("      {s}--{s}{s} <{s}>    {s}", .{ self.colors.accent, opt.long, self.colors.reset, opt.type, opt.description }, null) catch {};
             }
@@ -204,10 +204,10 @@ pub const CliFormatter = struct {
         self.terminal.printf("Try these commands:\n\n", .{}, null) catch {};
 
         const ExamplesT = @TypeOf(cli_config.examples);
-        const examples_info = @typeInfo(ExamplesT);
+        const examplesInfo = @typeInfo(ExamplesT);
 
-        if (examples_info == .@"struct") {
-            inline for (examples_info.@"struct".fields) |field| {
+        if (examplesInfo == .@"struct") {
+            inline for (examplesInfo.@"struct".fields) |field| {
                 const example = @field(cli_config.examples, field.name);
                 self.terminal.printf("  {s}docz {s}{s}  {s}# {s}{s}\n", .{ self.colors.accent, example.command, self.colors.reset, self.colors.muted, example.description, self.colors.reset }, null) catch {};
             }
@@ -221,25 +221,25 @@ pub const CliFormatter = struct {
 
     fn printCapabilitiesInfo(self: *CliFormatter) void {
         self.terminal.printf("\n{s}🖥️  TERMINAL CAPABILITIES:{s}\n", .{ self.colors.bold, self.colors.reset }, null) catch {};
-        self.terminal.printf("  Size: {s}{}×{} characters{s}\n", .{ self.colors.muted, self.terminal_size.width, self.terminal_size.height, self.colors.reset }, null) catch {};
+        self.terminal.printf("  Size: {s}{}×{} characters{s}\n", .{ self.colors.muted, self.terminalSize.width, self.terminalSize.height, self.colors.reset }, null) catch {};
 
-        const truecolor_status = if (self.caps.supportsTruecolor)
+        const truecolorStatus = if (self.caps.supportsTruecolor)
             "✅ 24-bit colors"
         else
             "⚠️  Basic colors";
-        self.terminal.printf("  Colors: {s}\n", .{truecolor_status}, null) catch {};
+        self.terminal.printf("  Colors: {s}\n", .{truecolorStatus}, null) catch {};
 
-        const hyperlinks_status = if (self.caps.supportsHyperlinkOsc8)
+        const hyperlinksStatus = if (self.caps.supportsHyperlinkOsc8)
             "✅ Clickable links"
         else
             "❌ Plain text only";
-        self.terminal.printf("  Hyperlinks: {s}\n", .{hyperlinks_status}, null) catch {};
+        self.terminal.printf("  Hyperlinks: {s}\n", .{hyperlinksStatus}, null) catch {};
 
-        const clipboard_status = if (self.caps.supportsClipboardOsc52)
+        const clipboardStatus = if (self.caps.supportsClipboardOsc52)
             "✅ Copy/paste support"
         else
             "❌ No clipboard";
-        self.terminal.printf("  Clipboard: {s}\n", .{clipboard_status}, null) catch {};
+        self.terminal.printf("  Clipboard: {s}\n", .{clipboardStatus}, null) catch {};
 
         self.terminal.printf("\n", .{}, null) catch {};
     }

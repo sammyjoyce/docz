@@ -1,21 +1,21 @@
 //! Select Menu with Terminal Capabilities
 //! Supports mouse interaction, rich graphics, hyperlinks, and modern terminal features
-//! while maintaining backward compatibility with basic terminals.
+//! while maintaining backward compatibility with terminals.
 
 const std = @import("std");
-const input = term_shared.input;
-const term_shared = @import("term_shared");
-const term_ansi = term_shared.ansi.color;
-const term_cursor = term_shared.cursor;
-const term_screen = term_shared.ansi.screen;
-const term_caps = term_shared.caps;
-const graphics_manager = term_shared.graphics_manager;
+const input = termShared.input;
+const termShared = @import("termShared");
+const termAnsi = termShared.ansi.color;
+const termCursor = termShared.cursor;
+const termScreen = termShared.ansi.screen;
+const termCaps = termShared.caps;
+const graphics = termShared.graphicsManager;
 
 const Input = input.Input;
 const InputEvent = input.InputEvent;
 const Key = input.Key;
 const MouseEvent = input.MouseEvent;
-const GraphicsManager = graphics_manager.GraphicsManager;
+const Graphics = graphics.Graphics;
 const Allocator = std.mem.Allocator;
 
 pub const SelectionMode = enum {
@@ -32,7 +32,7 @@ pub const MenuAction = enum {
 
 pub const SelectMenuItem = struct {
     id: []const u8,
-    display_text: []const u8,
+    displayText: []const u8,
     description: ?[]const u8 = null,
     icon: ?[]const u8 = null,
     disabled: bool = false,
@@ -40,17 +40,17 @@ pub const SelectMenuItem = struct {
     value: ?[]const u8 = null,
     hyperlink: ?[]const u8 = null, // URL for OSC 8 hyperlinks
 
-    pub fn init(id: []const u8, display_text: []const u8) SelectMenuItem {
+    pub fn init(id: []const u8, displayText: []const u8) SelectMenuItem {
         return .{
             .id = id,
-            .display_text = display_text,
+            .displayText = displayText,
         };
     }
 
     pub fn withDescription(self: SelectMenuItem, desc: []const u8) SelectMenuItem {
         return .{
             .id = self.id,
-            .display_text = self.display_text,
+            .displayText = self.displayText,
             .description = desc,
             .icon = self.icon,
             .disabled = self.disabled,
@@ -63,7 +63,7 @@ pub const SelectMenuItem = struct {
     pub fn withIcon(self: SelectMenuItem, icon_char: []const u8) SelectMenuItem {
         return .{
             .id = self.id,
-            .display_text = self.display_text,
+            .displayText = self.displayText,
             .description = self.description,
             .icon = icon_char,
             .disabled = self.disabled,
@@ -76,7 +76,7 @@ pub const SelectMenuItem = struct {
     pub fn withHyperlink(self: SelectMenuItem, url: []const u8) SelectMenuItem {
         return .{
             .id = self.id,
-            .display_text = self.display_text,
+            .displayText = self.displayText,
             .description = self.description,
             .icon = self.icon,
             .disabled = self.disabled,
@@ -89,7 +89,7 @@ pub const SelectMenuItem = struct {
     pub fn asDisabled(self: SelectMenuItem) SelectMenuItem {
         return .{
             .id = self.id,
-            .display_text = self.display_text,
+            .displayText = self.displayText,
             .description = self.description,
             .icon = self.icon,
             .disabled = true,
@@ -103,9 +103,9 @@ pub const SelectMenuItem = struct {
 /// Select Menu with mouse support and rich terminal features
 pub const SelectMenu = struct {
     allocator: Allocator,
-    inputManager: *Input,
-    caps: term_caps.TermCaps,
-    graphics: ?*GraphicsManager,
+    input: *Input,
+    caps: termCaps.TermCaps,
+    graphics: ?*Graphics,
 
     // Menu data
     items: std.array_list.Managed(SelectMenuItem),
@@ -138,11 +138,11 @@ pub const SelectMenu = struct {
         title: []const u8,
         selectionMode: SelectionMode,
     ) !SelectMenu {
-        const caps = term_caps.getTermCaps();
+        const caps = termCaps.getTermCaps();
 
         return SelectMenu{
             .allocator = allocator,
-            .inputManager = inputMgr,
+            .input = inputMgr,
             .caps = caps,
             .graphics = null,
             .items = std.array_list.Managed(SelectMenuItem).init(allocator),
@@ -154,12 +154,12 @@ pub const SelectMenu = struct {
             .showSearch = false,
             .showDescriptions = true,
             .showIcons = true,
-            .showMouseHints = caps.supportsEnhancedMouse,
+            .showMouseHints = caps.supportsMouse,
             .maxVisibleItems = 10,
             .scrollOffset = 0,
             .menuStartRow = 0,
             .menuStartCol = 0,
-            .mouseEnabled = caps.supportsEnhancedMouse,
+            .mouseEnabled = caps.supportsMouse,
             .useGraphics = caps.supportsKittyGraphics or caps.supportsSixel,
             .useHyperlinks = caps.supportsHyperlinkOsc8,
         };
@@ -171,7 +171,7 @@ pub const SelectMenu = struct {
         self.searchQuery.deinit();
     }
 
-    pub fn setGraphicsManager(self: *SelectMenu, gm: *GraphicsManager) void {
+    pub fn setGraphics(self: *SelectMenu, gm: *Graphics) void {
         self.graphics = gm;
     }
 
@@ -199,14 +199,14 @@ pub const SelectMenu = struct {
         self.showSearch = options.showSearch;
         self.showDescriptions = options.showDescriptions;
         self.showIcons = options.showIcons;
-        self.showMouseHints = options.showMouseHints orelse self.caps.supportsEnhancedMouse;
+        self.showMouseHints = options.showMouseHints orelse self.caps.supportsMouse;
         self.maxVisibleItems = options.maxVisibleItems;
     }
 
     /// Run the interactive menu and return the user's selection
     pub fn run(self: *SelectMenu) !MenuAction {
         // Enable terminal features
-        try self.inputManager.enableFeatures(.{
+        try self.input.enableFeatures(.{
             .raw_mode = true,
             .mouse_events = self.mouseEnabled,
             .bracketed_paste = true,
@@ -219,7 +219,7 @@ pub const SelectMenu = struct {
             try self.render();
 
             // Wait for input
-            const event = try self.inputManager.nextEvent();
+            const event = try self.input.nextEvent();
             const action = try self.handleInput(event);
 
             switch (action) {
@@ -239,13 +239,13 @@ pub const SelectMenu = struct {
                 try self.filteredItems.append(i);
             } else {
                 // Simple case-insensitive search
-                const query_lower = try std.ascii.allocLowerString(self.allocator, self.searchQuery.items);
-                defer self.allocator.free(query_lower);
+                const queryLower = try std.ascii.allocLowerString(self.allocator, self.searchQuery.items);
+                defer self.allocator.free(queryLower);
 
-                const text_lower = try std.ascii.allocLowerString(self.allocator, item.display_text);
-                defer self.allocator.free(text_lower);
+                const textLower = try std.ascii.allocLowerString(self.allocator, item.displayText);
+                defer self.allocator.free(textLower);
 
-                if (std.mem.indexOf(u8, text_lower, query_lower) != null) {
+                if (std.mem.indexOf(u8, textLower, queryLower) != null) {
                     try self.filteredItems.append(i);
                 }
             }
@@ -259,19 +259,19 @@ pub const SelectMenu = struct {
 
     /// Render the select menu
     fn render(self: *SelectMenu) !void {
-        var stdout_buffer: [4096]u8 = undefined;
-        var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
-        const stdout = &stdout_writer.interface;
+        var stdoutBuffer: [4096]u8 = undefined;
+        var stdoutWriter = std.fs.File.stdout().writer(&stdoutBuffer);
+        const stdout = &stdoutWriter.interface;
 
         // Clear screen and get cursor position
-        try term_screen.clearScreen(stdout, self.caps);
-        try term_cursor.moveTo(stdout, self.caps, 1, 1);
+        try termScreen.clearScreen(stdout, self.caps);
+        try termCursor.moveTo(stdout, self.caps, 1, 1);
 
         // Store menu position for mouse calculations
         self.menuStartRow = 1;
         self.menuStartCol = 1;
 
-        // Title with enhanced styling
+        // Title with styling
         try self.renderTitle(stdout);
 
         // Search bar if enabled
@@ -283,7 +283,7 @@ pub const SelectMenu = struct {
         try self.renderMenuItems(stdout);
 
         // Scrolling indicators
-        if (self.filteredItems.items.len > self.max_visible_items) {
+        if (self.filteredItems.items.len > self.maxVisibleItems) {
             try self.renderScrollIndicators(stdout);
         }
 
@@ -295,26 +295,26 @@ pub const SelectMenu = struct {
     }
 
     fn renderTitle(self: *SelectMenu, writer: anytype) !void {
-        // Enhanced title with graphics support
-        if (self.use_graphics and self.graphics != null) {
+        // Title with graphics support
+        if (self.useGraphics and self.graphics != null) {
             // Could add a small icon or visual element here
         }
 
         if (self.caps.supportsTrueColor()) {
-            try term_ansi.setForegroundRgb(writer, self.caps, 100, 149, 237);
+            try termAnsi.setForegroundRgb(writer, self.caps, 100, 149, 237);
         } else {
-            try term_ansi.setForeground256(writer, self.caps, 12);
+            try termAnsi.setForeground256(writer, self.caps, 12);
         }
 
         try writer.print("┌─ {s} ", .{self.title});
 
         // Selection mode indicator
-        const mode_text = switch (self.selectionMode) {
+        const modeText = switch (self.selectionMode) {
             .single => "(Single)",
             .multiple => "(Multiple)",
             .radio => "(Radio)",
         };
-        try writer.writeAll(mode_text);
+        try writer.writeAll(modeText);
 
         // Mouse hint in title
         if (self.showMouseHints and self.mouseEnabled) {
@@ -322,9 +322,9 @@ pub const SelectMenu = struct {
         }
 
         // Fill rest of header
-        const header_len = self.title.len + mode_text.len + (if (self.show_mouse_hints and self.mouse_enabled) 6 else 0) + 4;
-        const total_width = 70;
-        const padding = if (total_width > header_len) total_width - header_len else 0;
+        const headerLen = self.title.len + modeText.len + (if (self.showMouseHints and self.mouseEnabled) 6 else 0) + 4;
+        const totalWidth = 70;
+        const padding = if (totalWidth > headerLen) totalWidth - headerLen else 0;
         for (0..padding) |_| {
             try writer.writeAll("─");
         }
@@ -335,20 +335,20 @@ pub const SelectMenu = struct {
         try writer.writeAll("│ ");
 
         if (self.caps.supportsTrueColor()) {
-            try term_ansi.setForegroundRgb(writer, self.caps, 200, 200, 200);
+            try termAnsi.setForegroundRgb(writer, self.caps, 200, 200, 200);
         } else {
-            try term_ansi.setForeground256(writer, self.caps, 7);
+            try termAnsi.setForeground256(writer, self.caps, 7);
         }
 
         try writer.writeAll("🔍 Search: ");
 
-        // Enhanced search input with background
+        // Search input with background
         if (self.caps.supportsTrueColor()) {
-            try term_ansi.setBackgroundRgb(writer, self.caps, 30, 30, 30);
-            try term_ansi.setForegroundRgb(writer, self.caps, 255, 255, 255);
+            try termAnsi.setBackgroundRgb(writer, self.caps, 30, 30, 30);
+            try termAnsi.setForegroundRgb(writer, self.caps, 255, 255, 255);
         } else {
-            try term_ansi.setBackground256(writer, self.caps, 0);
-            try term_ansi.setForeground256(writer, self.caps, 15);
+            try termAnsi.setBackground256(writer, self.caps, 0);
+            try termAnsi.setForeground256(writer, self.caps, 15);
         }
 
         try writer.writeAll(self.searchQuery.items);
@@ -357,13 +357,13 @@ pub const SelectMenu = struct {
         try writer.writeAll("▎");
 
         // Pad to width
-        const used_width = 13 + self.searchQuery.items.len;
-        const padding = if (68 > used_width) 68 - used_width else 0;
+        const usedWidth = 13 + self.searchQuery.items.len;
+        const padding = if (68 > usedWidth) 68 - usedWidth else 0;
         for (0..padding) |_| {
             try writer.writeAll(" ");
         }
 
-        try term_ansi.resetStyle(writer, self.caps);
+        try termAnsi.resetStyle(writer, self.caps);
         try writer.writeAll(" │\n");
 
         // Separator
@@ -388,18 +388,18 @@ pub const SelectMenu = struct {
 
         try writer.writeAll("│");
 
-        // Enhanced selection indicator background
+        // Selection indicator background
         if (isCurrent) {
             if (self.caps.supportsTrueColor()) {
-                try term_ansi.setBackgroundRgb(writer, self.caps, 30, 30, 80);
-                try term_ansi.setForegroundRgb(writer, self.caps, 255, 255, 255);
+                try termAnsi.setBackgroundRgb(writer, self.caps, 30, 30, 80);
+                try termAnsi.setForegroundRgb(writer, self.caps, 255, 255, 255);
             } else {
-                try term_ansi.setBackground256(writer, self.caps, 18);
-                try term_ansi.setForeground256(writer, self.caps, 15);
+                try termAnsi.setBackground256(writer, self.caps, 18);
+                try termAnsi.setForeground256(writer, self.caps, 15);
             }
         }
 
-        // Enhanced selection state indicator
+        // Selection state indicator
         const selectionIndicator = switch (self.selectionMode) {
             .single => if (isCurrent) "🢒 " else "  ",
             .multiple => if (item.selected) "☑ " else "☐ ",
@@ -407,7 +407,7 @@ pub const SelectMenu = struct {
         };
         try writer.writeAll(selectionIndicator);
 
-        // Enhanced icon support
+        // Icon support
         if (self.showIcons and item.icon != null) {
             try writer.print("{s} ", .{item.icon.?});
         } else {
@@ -417,29 +417,29 @@ pub const SelectMenu = struct {
         // Main text with hyperlink support
         if (item.disabled) {
             if (self.caps.supportsTrueColor()) {
-                try term_ansi.setForegroundRgb(writer, self.caps, 100, 100, 100);
+                try termAnsi.setForegroundRgb(writer, self.caps, 100, 100, 100);
             } else {
-                try term_ansi.setForeground256(writer, self.caps, 8);
+                try termAnsi.setForeground256(writer, self.caps, 8);
             }
         }
 
         if (self.useHyperlinks and item.hyperlink != null) {
-            try term_shared.ansi.hyperlink.writeHyperlink(writer, self.allocator, self.caps, item.hyperlink.?, item.display_text);
+            try termShared.ansi.hyperlink.writeHyperlink(writer, self.allocator, self.caps, item.hyperlink.?, item.displayText);
         } else {
-            try writer.writeAll(item.display_text);
+            try writer.writeAll(item.displayText);
         }
 
-        // Enhanced description
+        // Description
         if (self.showDescriptions and item.description != null) {
             if (self.caps.supportsTrueColor()) {
-                try term_ansi.setForegroundRgb(writer, self.caps, 150, 150, 150);
+                try termAnsi.setForegroundRgb(writer, self.caps, 150, 150, 150);
             } else {
-                try term_ansi.setForeground256(writer, self.caps, 8);
+                try termAnsi.setForeground256(writer, self.caps, 8);
             }
             try writer.print(" - {s}", .{item.description.?});
         }
 
-        try term_ansi.resetStyle(writer, self.caps);
+        try termAnsi.resetStyle(writer, self.caps);
 
         // Pad to edge with better calculation
         try writer.writeAll("                           │\n");
@@ -447,9 +447,9 @@ pub const SelectMenu = struct {
 
     fn renderScrollIndicators(self: *SelectMenu, writer: anytype) !void {
         if (self.caps.supportsTrueColor()) {
-            try term_ansi.setForegroundRgb(writer, self.caps, 100, 149, 237);
+            try termAnsi.setForegroundRgb(writer, self.caps, 100, 149, 237);
         } else {
-            try term_ansi.setForeground256(writer, self.caps, 12);
+            try termAnsi.setForeground256(writer, self.caps, 12);
         }
 
         try writer.writeAll("│ ");
@@ -468,17 +468,17 @@ pub const SelectMenu = struct {
     }
 
     fn renderFooter(self: *SelectMenu) !void {
-        var stdout_buffer: [4096]u8 = undefined;
-        var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
-        const stdout = &stdout_writer.interface;
+        var stdoutBuffer: [4096]u8 = undefined;
+        var stdoutWriter = std.fs.File.stdout().writer(&stdoutBuffer);
+        const stdout = &stdoutWriter.interface;
 
         try self.renderSeparator(stdout);
 
         // Instructions
         if (self.caps.supportsTrueColor()) {
-            try term_ansi.setForegroundRgb(stdout, self.caps, 150, 150, 150);
+            try termAnsi.setForegroundRgb(stdout, self.caps, 150, 150, 150);
         } else {
-            try term_ansi.setForeground256(stdout, self.caps, 8);
+            try termAnsi.setForeground256(stdout, self.caps, 8);
         }
 
         const keyboardInstructions = switch (self.selectionMode) {
@@ -498,14 +498,14 @@ pub const SelectMenu = struct {
         }
 
         try stdout.writeAll("\n");
-        try term_ansi.resetStyle(stdout, self.caps);
+        try termAnsi.resetStyle(stdout, self.caps);
     }
 
     fn renderSeparator(self: *SelectMenu, writer: anytype) !void {
         if (self.caps.supportsTrueColor()) {
-            try term_ansi.setForegroundRgb(writer, self.caps, 100, 149, 237);
+            try termAnsi.setForegroundRgb(writer, self.caps, 100, 149, 237);
         } else {
-            try term_ansi.setForeground256(writer, self.caps, 12);
+            try termAnsi.setForeground256(writer, self.caps, 12);
         }
         try writer.writeAll("├");
         for (0..68) |_| {

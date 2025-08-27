@@ -1,6 +1,6 @@
-//! Enhanced Markdown UI
+//! Interactive Markdown UI
 //!
-//! This module provides an enhanced interactive session for markdown editing
+//! This module provides an interactive session for markdown editing
 //! with live preview, synchronized scrolling, smart completions, snippet management,
 //! document outline navigation, and integrated diff viewer.
 
@@ -25,8 +25,8 @@ const Bounds = renderer_mod.Bounds;
 const ThemeManager = theme_manager_mod.ThemeManager;
 const InputManager = input_system.InputManager;
 
-/// Enhanced markdown interactive session configuration
-pub const EnhancedMarkdownConfig = struct {
+/// Interactive markdown session configuration
+pub const InteractiveMarkdownConfig = struct {
     /// Base UI framework config
     ui_config: agent_ui_framework.StandardUIPatterns,
 
@@ -133,12 +133,12 @@ pub const FeatureFlags = struct {
     version_history: bool = true,
 };
 
-/// Enhanced markdown interactive session
-pub const EnhancedMarkdownSession = struct {
+/// Interactive markdown session
+pub const InteractiveMarkdownSession = struct {
     const Self = @This();
 
     allocator: std.mem.Allocator,
-    config: EnhancedMarkdownConfig,
+    config: InteractiveMarkdownConfig,
     renderer: *Renderer,
     theme_manager: *ThemeManager,
     input_manager: InputManager,
@@ -165,7 +165,7 @@ pub const EnhancedMarkdownSession = struct {
     show_diff: bool = false,
     command_palette_active: bool = false,
 
-    pub fn init(allocator: std.mem.Allocator, config: EnhancedMarkdownConfig) !*Self {
+    pub fn init(allocator: std.mem.Allocator, config: InteractiveMarkdownConfig) !*Self {
         const session = try allocator.create(Self);
         const renderer = config.ui_config.renderer;
         const theme_manager = config.ui_config.theme_manager;

@@ -4,7 +4,7 @@
 
 const std = @import("std");
 
-// Core widgets (basic functionality)
+// Core widgets (essential functionality)
 pub const core = @import("core/mod.zig");
 pub const Core = struct {
     // Consolidate from existing modular components
@@ -15,7 +15,7 @@ pub const Core = struct {
     pub const Alignment = @import("core/logo.zig").Alignment;
     pub const Logos = @import("core/logo.zig").Logos;
 
-    // Enhanced widgets from existing modular system
+    // Widgets from existing modular system
     pub const TextInput = @import("core/TextInput.zig").TextInput;
     pub const TabContainer = @import("core/tabs.zig").TabContainer;
     pub const TagInput = @import("core/tag_input.zig").TagInput;
@@ -65,7 +65,7 @@ pub const VirtualList = Core.VirtualList;
 pub const DataSource = core.DataSource;
 pub const Item = core.Item;
 pub const VirtualListConfig = core.Config;
-pub const ArrayDataSource = core.ArrayDataSource;
+pub const ArraySource = core.ArraySource;
 pub const ScrollableTextArea = Core.ScrollableTextArea;
 pub const ScrollableContainer = Core.ScrollableContainer;
 pub const Tag = @import("core/tag_input.zig").Tag;

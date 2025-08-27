@@ -3,7 +3,7 @@
 
 const std = @import("std");
 const term_mod = @import("../../term");
-const unified = term_mod.unified;
+const term = term_mod.unified;
 const graphics_manager = term_mod.graphics_manager;
 const caps = term_mod.caps;
 
@@ -24,7 +24,7 @@ pub const DashboardConfig = struct {
 /// Render capability levels for progressive enhancement
 pub const RenderLevel = enum {
     /// Kitty Graphics Protocol + full features
-    premium,
+    high,
     /// Sixel graphics + true colors + features
     rich,
     /// Unicode blocks + 256 colors + basic features
@@ -33,11 +33,11 @@ pub const RenderLevel = enum {
     minimal,
 
     pub fn fromCapabilities(term_caps: caps.TermCaps) RenderLevel {
-        // Premium: Kitty graphics + true colors + mouse + clipboard
+        // High: Kitty graphics + true colors + mouse + clipboard
         if (term_caps.supportsKittyGraphics and term_caps.supportsTruecolor and
             term_caps.supportsSgrMouse and term_caps.supportsClipboardOsc52)
         {
-            return .premium;
+            return .high;
         }
 
         // Rich: True colors + mouse + some features
@@ -50,15 +50,15 @@ pub const RenderLevel = enum {
     }
 };
 
-/// Main adaptive dashboard
-pub const AdaptiveDashboard = struct {
+/// Main dashboard
+pub const Dashboard = struct {
     const Self = @This();
 
     allocator: Allocator,
     config: DashboardConfig,
 
     // Terminal integration
-    terminal: unified.Terminal,
+    terminal: term.Terminal,
     capabilities: caps.TermCaps,
     render_level: RenderLevel,
     graphics_manager: ?graphics_manager.GraphicsManager,
@@ -80,7 +80,7 @@ pub const AdaptiveDashboard = struct {
 
     // Event handling
     mouse_enabled: bool,
-    last_mouse_pos: ?unified.Point,
+    last_mouse_pos: ?term.Point,
 
     const LayoutManager = @import("layout.zig").LayoutManager;
     const DashboardRenderer = @import("renderer.zig").DashboardRenderer;
@@ -89,7 +89,7 @@ pub const AdaptiveDashboard = struct {
 
     pub fn init(allocator: Allocator, config: DashboardConfig) !Self {
         // Initialize terminal with full capabilities
-        var terminal = try unified.Terminal.init(allocator);
+        var terminal = try term.Terminal.init(allocator);
 
         // Detect comprehensive capabilities
         const capabilities = caps.detectCaps(allocator);
@@ -236,7 +236,7 @@ pub const AdaptiveDashboard = struct {
     /// Get current render capabilities summary
     pub fn getCapabilitiesSummary(self: *Self) []const u8 {
         return switch (self.render_level) {
-            .premium => "Premium (Kitty Graphics + Full Features)",
+            .high => "High (Kitty Graphics + Full Features)",
             .rich => "Rich (True Color + Features)",
             .standard => "Standard (256 Color + Basic Features)",
             .minimal => "Minimal (16 Color + ASCII Only)",
@@ -284,7 +284,7 @@ pub const AdaptiveDashboard = struct {
         }
     }
 
-    fn processEvent(self: *Self, event: unified.Event) !void {
+    fn processEvent(self: *Self, event: term.Event) !void {
         switch (event) {
             .key => |key_event| {
                 switch (key_event.key) {
@@ -313,7 +313,7 @@ pub const AdaptiveDashboard = struct {
         }
     }
 
-    fn handleMouseEvent(self: *Self, mouse_event: unified.MouseEvent) !void {
+    fn handleMouseEvent(self: *Self, mouse_event: term.MouseEvent) !void {
         self.last_mouse_pos = .{ .x = mouse_event.x, .y = mouse_event.y };
 
         // Forward mouse events to widgets under cursor
@@ -376,7 +376,7 @@ pub const AdaptiveDashboard = struct {
         const footer_bounds = self.layout.getFooterBounds();
 
         // Keyboard shortcuts
-        const shortcuts = if (self.render_level == .premium or self.render_level == .rich)
+        const shortcuts = if (self.render_level == .high or self.render_level == .rich)
             "Q:Quit | R:Refresh | Mouse:Interactive"
         else
             "Q:Quit | R:Refresh";
@@ -386,14 +386,14 @@ pub const AdaptiveDashboard = struct {
 };
 
 /// Create a dashboard with demo data for testing
-pub fn createDemoDashboard(allocator: Allocator) !AdaptiveDashboard {
+pub fn createDemoDashboard(allocator: Allocator) !Dashboard {
     const config = DashboardConfig{
         .title = "Live System Dashboard",
         .refresh_rate_ms = 500,
         .enable_animations = true,
     };
 
-    var dashboard = try AdaptiveDashboard.init(allocator, config);
+    var dashboard = try Dashboard.init(allocator, config);
 
     // Add demo widgets
     try dashboard.addDemoWidgets();

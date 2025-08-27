@@ -51,7 +51,7 @@ pub const Panel = struct {
         try self.items.append(item);
     }
 
-    pub fn addInfo(self: *Panel, title: []const u8, content: []const u8) !void {
+    pub fn add(self: *Panel, title: []const u8, content: []const u8) !void {
         try self.addItem(Item{
             .level = .info,
             .title = title,

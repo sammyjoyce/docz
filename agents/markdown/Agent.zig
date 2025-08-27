@@ -14,7 +14,7 @@ pub const Markdown = struct {
     /// Agent configuration structure - extends the standard AgentConfig
     pub const Config = struct {
         // Include standard agent configuration
-        agent_config: @import("config_shared").AgentConfig,
+        agentConfig: @import("config_shared").AgentConfig,
 
         // Add agent-specific configuration fields here
         textWrapWidth: u32 = 80,
@@ -30,7 +30,7 @@ pub const Markdown = struct {
         pub fn loadFromFile(allocator: Allocator, path: []const u8) !Config {
             const config_utils = @import("config_shared");
             const defaults = Config{
-                .agent_config = config_utils.create_validated_agent_config("markdown", "Markdown document processing agent", "Developer"),
+                .agentConfig = config_utils.createValidatedAgentConfig("markdown", "Markdown document processing agent", "Developer"),
                 .textWrapWidth = 80,
                 .headingStyle = "atx",
                 .listStyle = "dash",
@@ -46,7 +46,7 @@ pub const Markdown = struct {
         /// Get the standard agent config path for this agent
         pub fn getConfigPath(allocator: Allocator) ![]const u8 {
             const config_utils = @import("config_shared");
-            return config_utils.get_agent_config_path(allocator, "markdown");
+            return config_utils.getAgentConfigPath(allocator, "markdown");
         }
     };
 
@@ -145,34 +145,34 @@ pub const Markdown = struct {
 
     /// Override base agent method to provide config-aware template variable processing
     pub fn getTemplateVariableValue(self: *Self, varName: []const u8) ![]const u8 {
-        const cfg = &self.config.agent_config;
+        const cfg = &self.config.agentConfig;
 
         if (std.mem.eql(u8, varName, "agent_name")) {
-            return try self.allocator.dupe(u8, cfg.agent_info.name);
+            return try self.allocator.dupe(u8, cfg.agentInfo.name);
         } else if (std.mem.eql(u8, varName, "agent_version")) {
-            return try self.allocator.dupe(u8, cfg.agent_info.version);
+            return try self.allocator.dupe(u8, cfg.agentInfo.version);
         } else if (std.mem.eql(u8, varName, "agent_description")) {
-            return try self.allocator.dupe(u8, cfg.agent_info.description);
+            return try self.allocator.dupe(u8, cfg.agentInfo.description);
         } else if (std.mem.eql(u8, varName, "agent_author")) {
-            return try self.allocator.dupe(u8, cfg.agent_info.author);
+            return try self.allocator.dupe(u8, cfg.agentInfo.author);
         } else if (std.mem.eql(u8, varName, "debug_enabled")) {
-            return try self.allocator.dupe(u8, if (cfg.defaults.enable_debug_logging) "enabled" else "disabled");
+            return try self.allocator.dupe(u8, if (cfg.defaults.enableDebugLogging) "enabled" else "disabled");
         } else if (std.mem.eql(u8, varName, "verbose_enabled")) {
-            return try self.allocator.dupe(u8, if (cfg.defaults.enable_verbose_output) "enabled" else "disabled");
+            return try self.allocator.dupe(u8, if (cfg.defaults.enableVerboseOutput) "enabled" else "disabled");
         } else if (std.mem.eql(u8, varName, "custom_tools_enabled")) {
-            return try self.allocator.dupe(u8, if (cfg.features.enable_custom_tools) "enabled" else "disabled");
+            return try self.allocator.dupe(u8, if (cfg.features.enableCustomTools) "enabled" else "disabled");
         } else if (std.mem.eql(u8, varName, "file_operations_enabled")) {
-            return try self.allocator.dupe(u8, if (cfg.features.enable_file_operations) "enabled" else "disabled");
+            return try self.allocator.dupe(u8, if (cfg.features.enableFileOperations) "enabled" else "disabled");
         } else if (std.mem.eql(u8, varName, "network_access_enabled")) {
-            return try self.allocator.dupe(u8, if (cfg.features.enable_network_access) "enabled" else "disabled");
+            return try self.allocator.dupe(u8, if (cfg.features.enableNetworkAccess) "enabled" else "disabled");
         } else if (std.mem.eql(u8, varName, "system_commands_enabled")) {
-            return try self.allocator.dupe(u8, if (cfg.features.enable_system_commands) "enabled" else "disabled");
+            return try self.allocator.dupe(u8, if (cfg.features.enableSystemCommands) "enabled" else "disabled");
         } else if (std.mem.eql(u8, varName, "max_input_size")) {
-            return try std.fmt.allocPrint(self.allocator, "{d}", .{cfg.limits.max_input_size});
+            return try std.fmt.allocPrint(self.allocator, "{d}", .{cfg.limits.maxInputSize});
         } else if (std.mem.eql(u8, varName, "max_output_size")) {
-            return try std.fmt.allocPrint(self.allocator, "{d}", .{cfg.limits.max_output_size});
+            return try std.fmt.allocPrint(self.allocator, "{d}", .{cfg.limits.maxOutputSize});
         } else if (std.mem.eql(u8, varName, "max_processing_time")) {
-            return try std.fmt.allocPrint(self.allocator, "{d}", .{cfg.limits.max_processing_time_ms});
+            return try std.fmt.allocPrint(self.allocator, "{d}", .{cfg.limits.maxProcessingTimeMs});
         } else if (std.mem.eql(u8, varName, "current_date")) {
             const now = std.time.timestamp();
             const epochSeconds = std.time.epoch.EpochSeconds{ .secs = @intCast(now) };

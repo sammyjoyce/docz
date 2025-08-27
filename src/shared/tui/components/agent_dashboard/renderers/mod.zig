@@ -30,7 +30,7 @@ pub const StatusConfig = status_renderer.StatusConfig;
 pub const HealthStatus = status_renderer.HealthStatus;
 pub const AuthStatus = status_renderer.AuthStatus;
 pub const ConnectionStatus = status_renderer.ConnectionStatus;
-pub const SessionInfo = status_renderer.SessionInfo;
+pub const Session = status_renderer.Session;
 pub const AgentStatus = status_renderer.AgentStatus;
 
 // Legacy placeholder types for compatibility
@@ -134,7 +134,7 @@ pub fn renderAll(
     renderers: *const RendererSet,
     writer: anytype,
     layout: anytype, // Should be layout.Layout
-    data_store: anytype, // Should be state.DashboardDataStore
+    data_store: anytype, // Should be state.DashboardStore
     theme: anytype, // Should be theme_manager.ColorScheme
 ) !void {
     // Render status panel

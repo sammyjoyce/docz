@@ -11,7 +11,7 @@ const notification = @import("notification.zig");
 const progress = @import("progress.zig");
 
 const Component = base.Component;
-const ComponentRegistry = base.ComponentRegistry;
+const Registry = base.Registry;
 const Render = base.Render;
 const Event = base.Event;
 const Theme = base.Theme;
@@ -36,14 +36,14 @@ pub const UI = struct {
     allocator: std.mem.Allocator,
     terminal: Terminal,
     graphics: ?graphics.GraphicsManager,
-    componentManager: ComponentRegistry,
+    componentManager: Registry,
     mode: UIMode,
     theme: Theme,
 
     pub fn init(allocator: std.mem.Allocator, mode: UIMode) !Self {
         var terminal = try Terminal.init(allocator);
         const graphics_manager = graphics.GraphicsManager.init(allocator, &terminal);
-        const component_manager = ComponentRegistry.init(allocator, &terminal);
+        const component_manager = Registry.init(allocator, &terminal);
         const theme = Theme.forTerminal(&terminal);
 
         return Self{
@@ -83,7 +83,7 @@ pub const UI = struct {
             },
             .tui => {
                 // For TUI mode, create a notification component
-                const notification_component = try NotificationComponent.create(self.allocator, NotificationConfiguration{
+                const notification_component = try NotificationComponent.create(self.allocator, Configuration{
                     .level = level,
                     .title = try self.allocator.dupe(u8, title),
                     .message = try self.allocator.dupe(u8, message),
@@ -100,7 +100,7 @@ pub const UI = struct {
     pub fn showProgress(self: *Self, progress_value: f32, label: ?[]const u8) !?*Component {
         switch (self.mode) {
             .cli => {
-                // For CLI mode, create a simple inline progress bar
+                // For CLI mode, create an inline progress bar
                 const progress_component = try progress.ProgressBar.create(self.allocator, .{
                     .progress = progress_value,
                     .label = label,
@@ -181,8 +181,8 @@ pub const NotificationComponent = struct {
     const Self = @This();
 
     allocator: std.mem.Allocator,
-    state: base.ComponentState,
-    config: NotificationConfiguration,
+    state: base.State,
+    config: Configuration,
     creationTime: i64,
     animationProgress: f32 = 0.0,
 
@@ -200,11 +200,11 @@ pub const NotificationComponent = struct {
         .update = update,
     };
 
-    pub fn create(allocator: std.mem.Allocator, config: NotificationConfiguration) !*Component {
+    pub fn create(allocator: std.mem.Allocator, config: Configuration) !*Component {
         const self = try allocator.create(Self);
         self.* = Self{
             .allocator = allocator,
-            .state = base.ComponentState{},
+            .state = base.State{},
             .config = config,
             .creationTime = std.time.timestamp(),
         };
@@ -222,7 +222,7 @@ pub const NotificationComponent = struct {
     fn init(impl: *anyopaque, allocator: std.mem.Allocator) anyerror!void {
         _ = allocator;
         const self: *Self = @ptrCast(@alignCast(impl));
-        self.state = base.ComponentState{
+        self.state = base.State{
             .zIndex = 1000, // High z-index for notifications
         };
     }
@@ -233,12 +233,12 @@ pub const NotificationComponent = struct {
         self.allocator.free(self.config.message);
     }
 
-    fn getState(impl: *anyopaque) *base.ComponentState {
+    fn getState(impl: *anyopaque) *base.State {
         const self: *Self = @ptrCast(@alignCast(impl));
         return &self.state;
     }
 
-    fn setState(impl: *anyopaque, state: base.ComponentState) void {
+    fn setState(impl: *anyopaque, state: base.State) void {
         const self: *Self = @ptrCast(@alignCast(impl));
         self.state = state;
     }
@@ -368,7 +368,7 @@ pub const NotificationComponent = struct {
 };
 
 /// Configuration for notification components
-pub const NotificationConfiguration = struct {
+pub const Configuration = struct {
     level: NotificationLevel,
     title: []const u8,
     message: []const u8,

@@ -1,10 +1,10 @@
-//! Unified CLI Entry Point
+//! CLI Entry Point
 //! Single entry point that replaces the multiple CLI implementations
 
 const std = @import("std");
 const cli = @import("mod.zig");
 
-/// Main entry point for the unified CLI
+/// Main entry point for the CLI
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();

@@ -23,83 +23,83 @@ pub const Message = struct {
 };
 
 // OAuth configuration constants
-pub const OAUTH_CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e";
-pub const OAUTH_AUTHORIZATION_URL = "https://claude.ai/oauth/authorize";
-pub const OAUTH_TOKEN_ENDPOINT = "https://console.anthropic.com/v1/oauth/token";
-pub const OAUTH_REDIRECT_URI = "https://console.anthropic.com/oauth/code/callback";
-pub const OAUTH_SCOPES = "org:create_api_key user:profile user:inference";
+pub const oauth_client_id = "9d1c250a-e61b-44d9-88ed-5944d1962f5e";
+pub const oauth_authorization_url = "https://claude.ai/oauth/authorize";
+pub const oauth_token_endpoint = "https://console.anthropic.com/v1/oauth/token";
+pub const oauth_redirect_uri = "https://console.anthropic.com/oauth/code/callback";
+pub const oauth_scopes = "org:create_api_key user:profile user:inference";
 
 // OAuth credentials stored to disk
 pub const Credentials = struct {
     type: []const u8, // Always "oauth"
-    access_token: []const u8,
-    refresh_token: []const u8,
-    expires_at: i64, // Unix timestamp
+    accessToken: []const u8,
+    refreshToken: []const u8,
+    expiresAt: i64, // Unix timestamp
 
     /// Check if the token is expired
     pub fn isExpired(self: Credentials) bool {
         const now = std.time.timestamp();
-        return now >= self.expires_at;
+        return now >= self.expiresAt;
     }
 
     /// Check if the token will expire within the specified leeway (in seconds)
     pub fn willExpireSoon(self: Credentials, leeway: i64) bool {
         const now = std.time.timestamp();
-        return now + leeway >= self.expires_at;
+        return now + leeway >= self.expiresAt;
     }
 };
 
 // PKCE parameters for OAuth flow
 pub const Pkce = struct {
-    code_verifier: []const u8,
-    code_challenge: []const u8,
+    codeVerifier: []const u8,
+    codeChallenge: []const u8,
     state: []const u8,
 
     /// Clean up allocated memory
     pub fn deinit(self: Pkce, allocator: std.mem.Allocator) void {
-        allocator.free(self.code_verifier);
-        allocator.free(self.code_challenge);
+        allocator.free(self.codeVerifier);
+        allocator.free(self.codeChallenge);
         allocator.free(self.state);
     }
 };
 
 /// Authentication methods supported
-pub const AuthMethod = union(enum) {
+pub const AuthType = union(enum) {
     api_key: []const u8,
     oauth: Credentials,
 };
 
 /// OAuth provider configuration
-pub const Provider = struct {
+pub const OAuthProvider = struct {
     client_id: []const u8,
     authorization_url: []const u8,
     token_url: []const u8,
     redirect_uri: []const u8,
     scopes: []const []const u8,
 
-    pub fn buildAuthURL(self: Provider, allocator: std.mem.Allocator, pkce_params: Pkce) ![]u8 {
+    pub fn buildAuthURL(self: OAuthProvider, allocator: std.mem.Allocator, pkce_params: Pkce) ![]u8 {
         const scopes_joined = try std.mem.join(allocator, " ", self.scopes);
         defer allocator.free(scopes_joined);
 
-        return try std.fmt.allocPrint(allocator, "{s}?client_id={s}&response_type=code&redirect_uri={s}&scope={s}&code_challenge={s}&code_challenge_method=S256&state={s}", .{ self.authorization_url, self.client_id, self.redirect_uri, scopes_joined, pkce_params.code_challenge, pkce_params.state });
+        return try std.fmt.allocPrint(allocator, "{s}?client_id={s}&response_type=code&redirect_uri={s}&scope={s}&code_challenge={s}&code_challenge_method=S256&state={s}", .{ self.authorization_url, self.client_id, self.redirect_uri, scopes_joined, pkce_params.codeChallenge, pkce_params.state });
     }
 };
 
 /// Token refresh state to prevent concurrent refreshes
-pub const RefreshState = struct {
+pub const RefreshLock = struct {
     mutex: std.Thread.Mutex,
-    in_progress: bool,
+    inProgress: bool,
 
-    pub fn init() RefreshState {
-        return RefreshState{
+    pub fn init() RefreshLock {
+        return RefreshLock{
             .mutex = std.Thread.Mutex{},
-            .in_progress = false,
+            .inProgress = false,
         };
     }
 };
 
 /// Global refresh state for single-flight protection
-var globalRefreshState = RefreshState.init();
+var globalRefreshState = RefreshLock.init();
 
 /// Global content collector for complete method (not thread-safe)
 var globalContentCollector: std.ArrayList(u8) = undefined;
@@ -107,79 +107,79 @@ var globalAllocator: std.mem.Allocator = undefined;
 var globalUsageInfo: Usage = undefined;
 
 /// Model pricing information (rates per million tokens)
-pub const ModelPricing = struct {
-    input_rate: f64, // Rate per million input tokens
-    output_rate: f64, // Rate per million output tokens
+pub const ModelRates = struct {
+    inputRate: f64, // Rate per million input tokens
+    outputRate: f64, // Rate per million output tokens
 
-    pub fn getInputCostPerToken(self: ModelPricing) f64 {
-        return self.input_rate / 1_000_000.0;
+    pub fn getInputCostPerToken(self: ModelRates) f64 {
+        return self.inputRate / 1_000_000.0;
     }
 
-    pub fn getOutputCostPerToken(self: ModelPricing) f64 {
-        return self.output_rate / 1_000_000.0;
+    pub fn getOutputCostPerToken(self: ModelRates) f64 {
+        return self.outputRate / 1_000_000.0;
     }
 };
 
 /// Anthropic API pricing table (updated as of August 2025)
-const MODEL_PRICING = std.StaticStringMap(ModelPricing).initComptime(.{
+const model_pricing = std.StaticStringMap(ModelRates).initComptime(.{
     // Current Models
-    .{ "claude-opus-4-1-20250805", ModelPricing{ .input_rate = 15.0, .output_rate = 75.0 } },
-    .{ "claude-opus-4-1", ModelPricing{ .input_rate = 15.0, .output_rate = 75.0 } }, // alias
-    .{ "claude-opus-4-20250514", ModelPricing{ .input_rate = 15.0, .output_rate = 75.0 } },
-    .{ "claude-opus-4-0", ModelPricing{ .input_rate = 15.0, .output_rate = 75.0 } }, // alias
-    .{ "claude-sonnet-4-20250514", ModelPricing{ .input_rate = 3.0, .output_rate = 15.0 } },
-    .{ "claude-sonnet-4-0", ModelPricing{ .input_rate = 3.0, .output_rate = 15.0 } }, // alias
-    .{ "claude-3-7-sonnet-20250219", ModelPricing{ .input_rate = 3.0, .output_rate = 15.0 } },
-    .{ "claude-3-7-sonnet-latest", ModelPricing{ .input_rate = 3.0, .output_rate = 15.0 } }, // alias
-    .{ "claude-3-5-haiku-20241022", ModelPricing{ .input_rate = 0.80, .output_rate = 4.0 } },
-    .{ "claude-3-5-haiku-latest", ModelPricing{ .input_rate = 0.80, .output_rate = 4.0 } }, // alias
-    .{ "claude-3-haiku-20240307", ModelPricing{ .input_rate = 0.25, .output_rate = 1.25 } },
+    .{ "claude-opus-4-1-20250805", ModelRates{ .inputRate = 15.0, .outputRate = 75.0 } },
+    .{ "claude-opus-4-1", ModelRates{ .inputRate = 15.0, .outputRate = 75.0 } }, // alias
+    .{ "claude-opus-4-20250514", ModelRates{ .inputRate = 15.0, .outputRate = 75.0 } },
+    .{ "claude-opus-4-0", ModelRates{ .inputRate = 15.0, .outputRate = 75.0 } }, // alias
+    .{ "claude-sonnet-4-20250514", ModelRates{ .inputRate = 3.0, .outputRate = 15.0 } },
+    .{ "claude-sonnet-4-0", ModelRates{ .inputRate = 3.0, .outputRate = 15.0 } }, // alias
+    .{ "claude-3-7-sonnet-20250219", ModelRates{ .inputRate = 3.0, .outputRate = 15.0 } },
+    .{ "claude-3-7-sonnet-latest", ModelRates{ .inputRate = 3.0, .outputRate = 15.0 } }, // alias
+    .{ "claude-3-5-haiku-20241022", ModelRates{ .inputRate = 0.80, .outputRate = 4.0 } },
+    .{ "claude-3-5-haiku-latest", ModelRates{ .inputRate = 0.80, .outputRate = 4.0 } }, // alias
+    .{ "claude-3-haiku-20240307", ModelRates{ .inputRate = 0.25, .outputRate = 1.25 } },
 
     // Legacy/Deprecated Models
-    .{ "claude-3-5-sonnet-20241022", ModelPricing{ .input_rate = 3.0, .output_rate = 15.0 } }, // deprecated
-    .{ "claude-3-5-sonnet-20240620", ModelPricing{ .input_rate = 3.0, .output_rate = 15.0 } }, // deprecated
-    .{ "claude-3-opus-20240229", ModelPricing{ .input_rate = 15.0, .output_rate = 75.0 } }, // deprecated
+    .{ "claude-3-5-sonnet-20241022", ModelRates{ .inputRate = 3.0, .outputRate = 15.0 } }, // deprecated
+    .{ "claude-3-5-sonnet-20240620", ModelRates{ .inputRate = 3.0, .outputRate = 15.0 } }, // deprecated
+    .{ "claude-3-opus-20240229", ModelRates{ .inputRate = 15.0, .outputRate = 75.0 } }, // deprecated
 });
 
 /// Default pricing for unknown models (uses Sonnet 4 rates)
-const DEFAULT_PRICING = ModelPricing{ .input_rate = 3.0, .output_rate = 15.0 };
+const default_pricing = ModelRates{ .inputRate = 3.0, .outputRate = 15.0 };
 
 /// Cost calculation structure with Pro/Max override support
-pub const CostCalculator = struct {
-    is_oauth_session: bool,
+pub const CostCalc = struct {
+    isOauthSession: bool,
 
-    pub fn init(is_oauth: bool) CostCalculator {
-        return CostCalculator{ .is_oauth_session = is_oauth };
+    pub fn init(isOauth: bool) CostCalc {
+        return CostCalc{ .isOauthSession = isOauth };
     }
 
     /// Get model pricing information
-    fn getModelPricing(model: []const u8) ModelPricing {
-        return MODEL_PRICING.get(model) orelse DEFAULT_PRICING;
+    fn getModelPricing(model: []const u8) ModelRates {
+        return model_pricing.get(model) orelse default_pricing;
     }
 
     /// Calculate cost for input tokens (returns 0 for OAuth Pro/Max sessions)
-    pub fn calculateInputCost(self: CostCalculator, tokens: u32, model: []const u8) f64 {
-        if (self.is_oauth_session) return 0.0;
+    pub fn calculateInputCost(self: CostCalc, tokens: u32, model: []const u8) f64 {
+        if (self.isOauthSession) return 0.0;
 
         const pricing = getModelPricing(model);
         return @as(f64, @floatFromInt(tokens)) * pricing.getInputCostPerToken();
     }
 
     /// Calculate cost for output tokens (returns 0 for OAuth Pro/Max sessions)
-    pub fn calculateOutputCost(self: CostCalculator, tokens: u32, model: []const u8) f64 {
-        if (self.is_oauth_session) return 0.0;
+    pub fn calculateOutputCost(self: CostCalc, tokens: u32, model: []const u8) f64 {
+        if (self.isOauthSession) return 0.0;
 
         const pricing = getModelPricing(model);
         return @as(f64, @floatFromInt(tokens)) * pricing.getOutputCostPerToken();
     }
 
     /// Get pricing display mode
-    pub fn getPricingMode(self: CostCalculator) []const u8 {
-        return if (self.is_oauth_session) "Subscription (Free)" else "Pay-per-use";
+    pub fn getPricingMode(self: CostCalc) []const u8 {
+        return if (self.isOauthSession) "Subscription (Free)" else "Pay-per-use";
     }
 
     /// Get model pricing information for display
-    pub fn getModelPricingInfo(self: CostCalculator, model: []const u8) ModelPricing {
+    pub fn getModelPricingInfo(self: CostCalc, model: []const u8) ModelRates {
         _ = self; // Cost calculator itself doesn't affect pricing rates
         return getModelPricing(model);
     }
@@ -196,21 +196,21 @@ pub const Error = error{ MissingAPIKey, APIError, AuthError, TokenExpired, OutOf
 
 pub const Stream = struct {
     model: []const u8,
-    max_tokens: usize = 256,
+    maxTokens: usize = 256,
     temperature: f32 = 0.7,
     messages: []const Message,
     /// Callback invoked for every token / delta chunk.
     /// The slice is only valid until the next invocation.
-    on_token: *const fn ([]const u8) void,
+    onToken: *const fn ([]const u8) void,
 };
 
 /// Response structure for non-streaming completion
-pub const CompletionResponse = struct {
+pub const CompletionResult = struct {
     content: []const u8,
     usage: Usage,
     allocator: std.mem.Allocator,
 
-    pub fn deinit(self: *CompletionResponse, allocator: std.mem.Allocator) void {
+    pub fn deinit(self: *CompletionResult, allocator: std.mem.Allocator) void {
         _ = self;
         _ = allocator;
         // Content is owned by the collector, which will be freed separately
@@ -218,50 +218,50 @@ pub const CompletionResponse = struct {
 };
 
 pub const Usage = struct {
-    input_tokens: u32 = 0,
-    output_tokens: u32 = 0,
+    inputTokens: u32 = 0,
+    outputTokens: u32 = 0,
 };
 
 /// Parameters for non-streaming completion
 pub const Complete = struct {
     model: []const u8,
-    max_tokens: usize = 256,
+    maxTokens: usize = 256,
     temperature: f32 = 0.7,
     messages: []const Message,
 };
 
 pub const AnthropicClient = struct {
     allocator: std.mem.Allocator,
-    auth: AuthMethod,
-    credentials_path: ?[]const u8, // Path to store OAuth credentials
+    auth: AuthType,
+    credentialsPath: ?[]const u8, // Path to store OAuth credentials
 
     pub fn init(allocator: std.mem.Allocator, api_key: []const u8) Error!AnthropicClient {
         if (api_key.len == 0) return Error.MissingAPIKey;
         return AnthropicClient{
             .allocator = allocator,
-            .auth = AuthMethod{ .api_key = api_key },
-            .credentials_path = null,
+            .auth = AuthType{ .api_key = api_key },
+            .credentialsPath = null,
         };
     }
 
     pub fn initWithOAuth(allocator: std.mem.Allocator, oauth_creds: Credentials, credentials_path: []const u8) Error!AnthropicClient {
         return AnthropicClient{
             .allocator = allocator,
-            .auth = AuthMethod{ .oauth = oauth_creds },
-            .credentials_path = try allocator.dupe(u8, credentials_path),
+            .auth = AuthType{ .oauth = oauth_creds },
+            .credentialsPath = try allocator.dupe(u8, credentials_path),
         };
     }
 
     pub fn deinit(self: *AnthropicClient) void {
-        if (self.credentials_path) |path| {
+        if (self.credentialsPath) |path| {
             self.allocator.free(path);
         }
         // Free auth data
         switch (self.auth) {
             .oauth => |creds| {
                 self.allocator.free(creds.type);
-                self.allocator.free(creds.access_token);
-                self.allocator.free(creds.refresh_token);
+                self.allocator.free(creds.accessToken);
+                self.allocator.free(creds.refreshToken);
             },
             .api_key => {}, // String is not owned by client
         }
@@ -298,21 +298,21 @@ pub const AnthropicClient = struct {
                 defer globalRefreshState.in_progress = false;
 
                 // Perform the refresh
-                const new_creds = refreshTokens(self.allocator, oauth_creds.refresh_token) catch |err| {
+                const new_creds = refreshTokens(self.allocator, oauth_creds.refreshToken) catch |err| {
                     std.log.err("Token refresh failed: {}", .{err});
                     return err;
                 };
 
                 // Free old credentials
                 self.allocator.free(oauth_creds.type);
-                self.allocator.free(oauth_creds.access_token);
-                self.allocator.free(oauth_creds.refresh_token);
+                self.allocator.free(oauth_creds.accessToken);
+                self.allocator.free(oauth_creds.refreshToken);
 
                 // Update with new credentials
-                self.auth = AuthMethod{ .oauth = new_creds };
+                self.auth = AuthType{ .oauth = new_creds };
 
                 // Persist updated credentials
-                if (self.credentials_path) |path| {
+                if (self.credentialsPath) |path| {
                     saveOAuthCredentials(self.allocator, path, new_creds) catch |err| {
                         std.log.warn("Failed to save refreshed credentials: {}", .{err});
                     };
@@ -327,20 +327,20 @@ pub const AnthropicClient = struct {
     }
 
     /// Complete method for non-streaming requests (collects streaming response)
-    pub fn complete(self: *AnthropicClient, params: Complete) !CompletionResponse {
+    pub fn complete(self: *AnthropicClient, params: Complete) !CompletionResult {
         // Set up global collector (not thread-safe, but ok for single-threaded use)
         globalAllocator = self.allocator;
         globalContentCollector = std.ArrayList(u8){};
         defer globalContentCollector.deinit(self.allocator);
-        globalUsageInfo = Usage{ .input_tokens = 0, .output_tokens = 0 };
+        globalUsageInfo = Usage{ .inputTokens = 0, .outputTokens = 0 };
 
         // Create stream params with our collector callback
-        const stream_params = Stream{
+        const streamParams = Stream{
             .model = params.model,
-            .max_tokens = params.max_tokens,
+            .maxTokens = params.maxTokens,
             .temperature = params.temperature,
             .messages = params.messages,
-            .on_token = struct {
+            .onToken = struct {
                 fn callback(data: []const u8) void {
                     // Try to parse as JSON to extract usage and content
                     const DeltaMessage = struct {
@@ -370,20 +370,20 @@ pub const AnthropicClient = struct {
 
                     // Extract usage if present
                     if (parsed.value.usage) |usage| {
-                        globalUsageInfo.input_tokens = usage.input_tokens;
-                        globalUsageInfo.output_tokens = usage.output_tokens;
+                        globalUsageInfo.inputTokens = usage.input_tokens;
+                        globalUsageInfo.outputTokens = usage.output_tokens;
                     }
                 }
             }.callback,
         };
 
-        try self.stream(stream_params);
+        try self.stream(streamParams);
 
         // Create owned content copy
-        const owned_content = try self.allocator.dupe(u8, globalContentCollector.items);
+        const ownedContent = try self.allocator.dupe(u8, globalContentCollector.items);
 
-        return CompletionResponse{
-            .content = owned_content,
+        return CompletionResult{
+            .content = ownedContent,
             .usage = globalUsageInfo,
             .allocator = self.allocator,
         };
@@ -408,8 +408,8 @@ pub const AnthropicClient = struct {
         defer client.deinit();
 
         // Prepare headers with auth
-        var auth_header_value: ?[]const u8 = null;
-        defer if (auth_header_value) |value| self.allocator.free(value);
+        var authHeaderValue: ?[]const u8 = null;
+        defer if (authHeaderValue) |value| self.allocator.free(value);
 
         const headers = switch (self.auth) {
             .api_key => |key| [_]curl.Header{
@@ -420,9 +420,9 @@ pub const AnthropicClient = struct {
                 .{ .name = "user-agent", .value = "docz/1.0 (libcurl)" },
             },
             .oauth => |creds| blk: {
-                auth_header_value = try std.fmt.allocPrint(self.allocator, "Bearer {s}", .{creds.access_token});
+                authHeaderValue = try std.fmt.allocPrint(self.allocator, "Bearer {s}", .{creds.accessToken});
                 break :blk [_]curl.Header{
-                    .{ .name = "authorization", .value = auth_header_value.? },
+                    .{ .name = "authorization", .value = authHeaderValue.? },
                     .{ .name = "accept", .value = "text/event-stream" },
                     .{ .name = "content-type", .value = "application/json" },
                     .{ .name = "anthropic-version", .value = "2023-06-01" },
@@ -450,7 +450,7 @@ pub const AnthropicClient = struct {
             }
         };
 
-        var streamContext = Streaming.init(self.allocator, params.on_token);
+        var streamContext = Streaming.init(self.allocator, params.onToken);
         defer streamContext.deinit();
 
         const req = curl.HTTPRequest{
@@ -508,7 +508,7 @@ fn buildBodyJson(allocator: std.mem.Allocator, params: Stream) ![]u8 {
     // Manual JSON construction for Zig 0.15.1 compatibility
     try std.fmt.format(writer, "{{", .{});
     try std.fmt.format(writer, "\"model\":\"{s}\",", .{params.model});
-    try std.fmt.format(writer, "\"max_tokens\":{},", .{params.max_tokens});
+    try std.fmt.format(writer, "\"max_tokens\":{},", .{params.maxTokens});
     try std.fmt.format(writer, "\"temperature\":{d},", .{params.temperature});
     try std.fmt.format(writer, "\"stream\":true,", .{});
     try std.fmt.format(writer, "\"messages\":[", .{});
@@ -586,7 +586,7 @@ fn processSseChunk(streamContext: anytype, chunk: []const u8) !void {
 fn isChunkedEncoding(response_head: anytype) bool {
     _ = response_head;
     // For now, assume non-chunked as std.http.Client handles chunked encoding internally
-    // This allows us to keep the enhanced processing logic for future use
+    // This allows us to keep the processing logic for future use
     return false;
 }
 
@@ -819,7 +819,7 @@ fn processChunkedStreamingResponse(allocator: std.mem.Allocator, reader: *std.Io
                 }
             }
 
-            // Accumulate chunk data with enhanced capacity management
+            // Accumulate chunk data with capacity management
             try chunk_buffer.ensureUnusedCapacity(bytes_read);
             try chunk_buffer.appendSlice(temp_buffer[0..bytes_read]);
             chunk_state.bytes_read += bytes_read;
@@ -845,7 +845,7 @@ const ChunkSizeValidation = struct {
     streaming_threshold: usize = 16 * 1024 * 1024, // 16MB threshold for mandatory streaming
 };
 
-/// Parse chunk size and extensions from chunk size line with enhanced large payload support
+/// Parse chunk size and extensions from chunk size line with large payload support
 fn parseChunkSize(size_line: []const u8) !struct { size: usize, extensions: ?[]const u8 } {
     const validation = ChunkSizeValidation{};
 
@@ -1157,7 +1157,7 @@ pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorization_code: [
         \\  "redirect_uri": "{s}",
         \\  "code_verifier": "{s}"
         \\}}
-    , .{ code, state, OAUTH_CLIENT_ID, OAUTH_REDIRECT_URI, pkce_params.code_verifier });
+    , .{ code, state, oauth_client_id, oauth_redirect_uri, pkce_params.codeVerifier });
     defer allocator.free(body);
 
     std.log.debug("Sending OAuth token request with JSON body: {s}", .{body});
@@ -1170,7 +1170,7 @@ pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorization_code: [
 
     const req = curl.HTTPRequest{
         .method = .POST,
-        .url = OAUTH_TOKEN_ENDPOINT,
+        .url = oauth_token_endpoint,
         .headers = &headers,
         .body = body,
         .timeout_ms = 30000, // 30 second timeout
@@ -1235,14 +1235,14 @@ pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorization_code: [
     // Return OAuth credentials with owned strings
     return Credentials{
         .type = try allocator.dupe(u8, "oauth"),
-        .access_token = try allocator.dupe(u8, parsed.value.access_token),
-        .refresh_token = try allocator.dupe(u8, parsed.value.refresh_token),
-        .expires_at = expires_at,
+        .accessToken = try allocator.dupe(u8, parsed.value.access_token),
+        .refreshToken = try allocator.dupe(u8, parsed.value.refresh_token),
+        .expiresAt = expires_at,
     };
 }
 
 /// Refresh OAuth tokens
-pub fn refreshTokens(allocator: std.mem.Allocator, refresh_token: []const u8) !Credentials {
+pub fn refreshTokens(allocator: std.mem.Allocator, refreshToken: []const u8) !Credentials {
     std.log.info("🔄 Refreshing OAuth tokens...", .{});
 
     var client = curl.HTTPClient.init(allocator) catch |err| {
@@ -1258,7 +1258,7 @@ pub fn refreshTokens(allocator: std.mem.Allocator, refresh_token: []const u8) !C
         \\  "refresh_token": "{s}",
         \\  "client_id": "{s}"
         \\}}
-    , .{ refresh_token, OAUTH_CLIENT_ID });
+    , .{ refreshToken, oauth_client_id });
     defer allocator.free(body);
 
     const headers = [_]curl.Header{
@@ -1269,7 +1269,7 @@ pub fn refreshTokens(allocator: std.mem.Allocator, refresh_token: []const u8) !C
 
     const req = curl.HTTPRequest{
         .method = .POST,
-        .url = OAUTH_TOKEN_ENDPOINT,
+        .url = oauth_token_endpoint,
         .headers = &headers,
         .body = body,
         .timeout_ms = 30000, // 30 second timeout
@@ -1326,9 +1326,9 @@ pub fn refreshTokens(allocator: std.mem.Allocator, refresh_token: []const u8) !C
     // Return OAuth credentials with owned strings
     return Credentials{
         .type = try allocator.dupe(u8, "oauth"),
-        .access_token = try allocator.dupe(u8, parsed.value.access_token),
-        .refresh_token = try allocator.dupe(u8, parsed.value.refresh_token),
-        .expires_at = expires_at,
+        .accessToken = try allocator.dupe(u8, parsed.value.access_token),
+        .refreshToken = try allocator.dupe(u8, parsed.value.refresh_token),
+        .expiresAt = expires_at,
     };
 }
 
@@ -1348,16 +1348,16 @@ pub fn loadOAuthCredentials(allocator: std.mem.Allocator, file_path: []const u8)
 
     return Credentials{
         .type = try allocator.dupe(u8, parsed.value.type),
-        .access_token = try allocator.dupe(u8, parsed.value.access_token),
-        .refresh_token = try allocator.dupe(u8, parsed.value.refresh_token),
-        .expires_at = parsed.value.expires_at,
+        .accessToken = try allocator.dupe(u8, parsed.value.accessToken),
+        .refreshToken = try allocator.dupe(u8, parsed.value.refreshToken),
+        .expiresAt = parsed.value.expiresAt,
     };
 }
 
 /// Save OAuth credentials to file with atomic update
 pub fn saveOAuthCredentials(allocator: std.mem.Allocator, file_path: []const u8, creds: Credentials) !void {
     // Use manual JSON construction (working approach in Zig 0.15.1)
-    const json_content = try std.fmt.allocPrint(allocator, "{{\"type\":\"{s}\",\"access_token\":\"{s}\",\"refresh_token\":\"{s}\",\"expires_at\":{}}}", .{ creds.type, creds.access_token, creds.refresh_token, creds.expires_at });
+    const json_content = try std.fmt.allocPrint(allocator, "{{\"type\":\"{s}\",\"access_token\":\"{s}\",\"refresh_token\":\"{s}\",\"expires_at\":{}}}", .{ creds.type, creds.accessToken, creds.refreshToken, creds.expiresAt });
     defer allocator.free(json_content);
 
     const file = try std.fs.cwd().createFile(file_path, .{ .mode = 0o600 });

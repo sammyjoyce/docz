@@ -308,7 +308,7 @@ pub fn runInteractiveMode(allocator: std.mem.Allocator) !void {
 
                 const system_content = [_][]const u8{
                     "",
-                    "🖥️  Terminal Information:",
+                    "🖥️  Terminal:",
                     "",
                     std.fmt.allocPrint(allocator, "   Size: {}x{} characters", .{ terminal_size.width, terminal_size.height }) catch "   Size: Unknown",
                     std.fmt.allocPrint(allocator, "   Platform: {s}", .{@tagName(@import("builtin").os.tag)}) catch "   Platform: Unknown",

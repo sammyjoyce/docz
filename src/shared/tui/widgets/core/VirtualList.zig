@@ -463,7 +463,7 @@ pub const VirtualList = struct {
 };
 
 /// Example array data source for testing
-pub const ArrayDataSource = struct {
+pub const ArraySource = struct {
     items: []const Item,
 
     pub fn init(items: []const Item) DataSource {

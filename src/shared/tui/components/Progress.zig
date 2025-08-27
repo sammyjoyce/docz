@@ -133,7 +133,7 @@ pub const Progress = struct {
         const style = switch (item.type) {
             .bar => ProgressStyle.unicode_smooth,
             .spinner => ProgressStyle.spinner,
-            .percentage => ProgressStyle.simple,
+            .percentage => ProgressStyle.minimal,
         };
 
         // Render using progress renderer

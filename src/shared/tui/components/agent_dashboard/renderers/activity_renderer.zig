@@ -9,14 +9,14 @@ const Allocator = std.mem.Allocator;
 // Import dependencies
 const state = @import("../state.zig");
 const layout = @import("../layout.zig");
-const theme_manager = @import("../../../../theme_manager/mod.zig");
+const theme_manager = @import("../../../../theme/mod.zig");
 const term_mod = @import("../../../../term/mod.zig");
 const render_mod = @import("../../../../render/mod.zig");
 
 // Type aliases
 const ActivityLogEntry = state.ActivityLogEntry;
 const LogLevel = state.LogLevel;
-const DashboardDataStore = state.DashboardDataStore;
+const DashboardStore = state.DashboardStore;
 const Rect = layout.Rect;
 
 /// Configuration for activity log rendering
@@ -85,7 +85,7 @@ pub const ActivityLogRenderer = struct {
         self: *Self,
         writer: anytype,
         bounds: Rect,
-        data_store: *const DashboardDataStore,
+        data_store: *const DashboardStore,
         theme: *const theme_manager.ColorScheme,
     ) !void {
         // Get filtered log entries
@@ -116,7 +116,7 @@ pub const ActivityLogRenderer = struct {
     }
 
     /// Get filtered log entries based on configuration
-    fn getFilteredEntries(self: *const Self, data_store: *const DashboardDataStore) ![]const ActivityLogEntry {
+    fn getFilteredEntries(self: *const Self, data_store: *const DashboardStore) ![]const ActivityLogEntry {
         var filtered = std.ArrayList(ActivityLogEntry).init(self.allocator);
         defer filtered.deinit();
 

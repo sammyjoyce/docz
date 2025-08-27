@@ -1,5 +1,5 @@
-//! Unified CLI Demo
-//! Demonstrates the new enhanced CLI system with terminal integration
+//! CLI Demo
+//! Demonstrates the new CLI system with terminal integration
 
 const std = @import("std");
 const cli = @import("mod.zig");

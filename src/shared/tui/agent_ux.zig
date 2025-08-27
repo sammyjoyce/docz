@@ -59,7 +59,7 @@ const welcome_screen_mod = @import("../tui/components/welcome_screen.zig");
 // Shared infrastructure
 const term = @import("../../term/mod.zig");
 const config_shared = @import("../../core/config.zig");
-const theme_manager = @import("../../theme_manager/mod.zig");
+const theme_manager = @import("../../theme/mod.zig");
 
 /// Configuration for the Agent UX framework
 pub const UXConfig = struct {
@@ -126,7 +126,7 @@ pub const UniversalShortcuts = struct {
 };
 
 /// Command definition for the shared command system
-pub const Command = struct {
+pub const CommandDefinition = struct {
     /// Unique command name (used for identification)
     name: []const u8,
 
@@ -146,7 +146,7 @@ pub const Command = struct {
     enabled: bool = true,
 
     /// The action to execute when command is triggered
-    action: *const fn (context: *CommandContext) anyerror!void,
+    action: *const fn (context: *Command) anyerror!void,
 
     /// Optional help text
     help_text: ?[]const u8 = null,
@@ -156,7 +156,7 @@ pub const Command = struct {
 };
 
 /// Context passed to command actions
-pub const CommandContext = struct {
+pub const Command = struct {
     /// UX manager instance
     ux: *AgentUX,
 
@@ -564,7 +564,7 @@ pub const AgentUX = struct {
                 .description = command.description,
                 .shortcut = command.shortcut,
                 .action = struct {
-                    fn action(ctx: *CommandContext) anyerror!void {
+                    fn action(ctx: *Command) anyerror!void {
                         _ = ctx;
                         // This would be replaced with the actual command action
                     }
@@ -583,7 +583,7 @@ pub const AgentUX = struct {
             return error.CommandDisabled;
         }
 
-        const context = CommandContext{
+        const context = Command{
             .ux = self,
             .args = args,
             .cwd = try std.fs.cwd().realpathAlloc(self.allocator, "."),
@@ -1068,7 +1068,7 @@ pub const AgentUX = struct {
             .description = "Exit the application",
             .shortcut = UniversalShortcuts.QUIT,
             .action = struct {
-                fn action(ctx: *CommandContext) anyerror!void {
+                fn action(ctx: *Command) anyerror!void {
                     _ = ctx;
                     // This would signal the main loop to exit
                 }
@@ -1081,7 +1081,7 @@ pub const AgentUX = struct {
             .description = "Show help information",
             .shortcut = UniversalShortcuts.HELP,
             .action = struct {
-                fn action(ctx: *CommandContext) anyerror!void {
+                fn action(ctx: *Command) anyerror!void {
                     try ctx.ux.showHelp(null);
                 }
             }.action,
@@ -1093,7 +1093,7 @@ pub const AgentUX = struct {
             .description = "Save current session",
             .shortcut = UniversalShortcuts.save_session,
             .action = struct {
-                fn action(ctx: *CommandContext) anyerror!void {
+                fn action(ctx: *Command) anyerror!void {
                     try ctx.ux.saveSession();
                 }
             }.action,
@@ -1105,7 +1105,7 @@ pub const AgentUX = struct {
         const general_topic = HelpTopic{
             .id = "general",
             .title = "General Help",
-            .content = "Welcome to " ++ self.config.agent_name ++ "! Here are some basic commands:",
+            .content = "Welcome to " ++ self.config.agent_name ++ "! Here are some essential commands:",
             .related_commands = &.{ "help", "quit", "save_session" },
             .category = "general",
         };
@@ -1284,7 +1284,7 @@ test "command registration" {
         .name = "test_command",
         .description = "A test command",
         .action = struct {
-            fn action(ctx: *CommandContext) anyerror!void {
+            fn action(ctx: *Command) anyerror!void {
                 _ = ctx;
             }
         }.action,

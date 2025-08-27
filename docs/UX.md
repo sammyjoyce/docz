@@ -135,7 +135,7 @@ Enhanced authentication flows with modern UX:
   - `core/`: Core functionality demonstrations
 
 - **`examples/`**: General examples
-  - `adaptive_render.zig`: Adaptive rendering demonstration
+  - `render.zig`: Adaptive rendering demonstration
   - `markdown_render.zig`: Markdown rendering examples
   - `theme_manager.zig`: Theme system usage
 

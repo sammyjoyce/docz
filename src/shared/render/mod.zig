@@ -1,13 +1,13 @@
-//! Adaptive Rendering System
+//! Rendering System
 //!
-//! This module provides a comprehensive adaptive rendering system that automatically
+//! This module provides a comprehensive rendering system that automatically
 //! optimizes visual output based on detected terminal capabilities. It implements
 //! progressive enhancement to provide the best possible experience across all terminals.
 //!
 //! ## Features
 //!
 //! - **Automatic Capability Detection**: Detects terminal features and selects optimal rendering mode
-//! - **Progressive Enhancement**: Four quality tiers from minimal to enhanced
+//! - **Progressive Enhancement**: Four quality tiers from minimal to rich
 //! - **Component-Based Architecture**: Modular, reusable rendering components
 //! - **Caching System**: Efficient caching to avoid recomputation
 //! - **Comprehensive Coverage**: Progress bars, tables, charts, and more
@@ -15,11 +15,11 @@
 //! ## Quick Start
 //!
 //! ```zig
-//! const AdaptiveRenderer = @import("render/mod.zig").AdaptiveRenderer;
+//! const Renderer = @import("render/mod.zig").Renderer;
 //! const Progress = @import("render/mod.zig").Progress;
 //!
 //! // Initialize with automatic capability detection
-//! const renderer = try AdaptiveRenderer.init(allocator);
+//! const renderer = try Renderer.init(allocator);
 //! defer renderer.deinit();
 //!
 //! // Render a progress bar - automatically adapts to terminal capabilities
@@ -41,7 +41,7 @@
 //!
 //! ## Architecture
 //!
-//! The system is built around the `AdaptiveRenderer` core that:
+//! The system is built around the `Renderer` core that:
 //! 1. Detects terminal capabilities using the `caps` module
 //! 2. Selects appropriate render mode based on capabilities
 //! 3. Routes rendering calls to mode-specific implementations
@@ -51,10 +51,14 @@
 
 const std = @import("std");
 const term_mod = @import("term_shared");
+pub const Painter = @import("painter.zig").Painter;
+pub const Surface = @import("surface.zig").Surface;
+pub const MemorySurface = @import("surface.zig").MemorySurface;
+pub const TermSurface = @import("surface.zig").TermSurface;
 
 // Core exports - Renderer System
 pub const Renderer = @import("Renderer.zig").Renderer;
-pub const AdaptiveRenderer = Renderer.AdaptiveRenderer; // Backward compatibility
+pub const AdaptiveRenderer = Renderer.AdaptiveRenderer; // Legacy compatibility
 pub const RenderTier = Renderer.RenderTier;
 pub const Theme = Renderer.Theme;
 pub const cacheKey = Renderer.cacheKey;
@@ -84,6 +88,14 @@ pub const Graphics = term_mod.graphics.Graphics;
 
 // Diff rendering module
 pub const diff = @import("diff.zig");
+pub const diff_surface = @import("diff_surface.zig");
+pub const DirtySpan = diff_surface.DirtySpan;
+pub const diff_coalesce = @import("diff_coalesce.zig");
+pub const DirtyRect = diff_coalesce.DirtyRect;
+pub const coalesceSpansToRects = diff_coalesce.coalesceSpansToRects;
+pub const MemoryRenderer = @import("renderer_memory.zig").MemoryRenderer;
+pub const TermRenderer = @import("renderer_term.zig").TermRenderer;
+pub const Scheduler = @import("scheduler.zig").Scheduler;
 
 // Braille graphics module
 pub const braille = @import("braille.zig");
@@ -92,30 +104,20 @@ pub const BraillePatterns = braille.BraillePatterns;
 pub const Braille = braille.Braille;
 
 // Multi-resolution canvas module
-pub const multi_resolution_canvas = @import("multi_resolution_canvas.zig");
-pub const MultiResolutionCanvas = multi_resolution_canvas.MultiResolutionCanvas;
-pub const ResolutionMode = multi_resolution_canvas.ResolutionMode;
-pub const CanvasPoint = multi_resolution_canvas.Point;
-pub const CanvasRect = multi_resolution_canvas.Rect;
-pub const CanvasStyle = multi_resolution_canvas.Style;
-pub const LineStyle = multi_resolution_canvas.LineStyle;
-pub const FillPattern = multi_resolution_canvas.FillPattern;
+pub const canvas = @import("canvas.zig");
+pub const Canvas = canvas.Canvas;
+pub const ResolutionMode = canvas.ResolutionMode;
+pub const CanvasPoint = canvas.Point;
+pub const CanvasRect = canvas.Rect;
+pub const CanvasStyle = canvas.Style;
+pub const LineStyle = canvas.LineStyle;
+pub const FillPattern = canvas.FillPattern;
 
-// Component modules
-const table_mod = @import("components/Table.zig");
-const chart_mod = @import("components/Chart.zig");
-
-// Progress exports from shared components (avoid cross-module duplication)
+// Progress exports (legacy adapter retained)
 const shared_components = @import("components_shared");
-pub const Progress = shared_components.AdaptiveProgress;
+pub const Progress = shared_components.Progress;
 pub const renderProgress = shared_components.progress.renderProgress;
 pub const AnimatedProgress = shared_components.AnimatedProgress;
-
-pub const Table = table_mod.Table;
-pub const renderTable = table_mod.renderTable;
-
-pub const Chart = chart_mod.Chart;
-pub const renderChart = chart_mod.renderChart;
 
 // Temporarily disabled due to module conflicts
 // // Markdown and syntax highlighting modules
@@ -132,7 +134,7 @@ pub const renderChart = chart_mod.renderChart;
 // pub const highlightCode = syntax_highlighter.highlightCode;
 
 // Demo and utilities
-// pub const runDemo = @import("../../examples/adaptive.zig").runDemo; // disabled in library builds
+// pub const runDemo = @import("../../examples/demo.zig").runDemo; // disabled in library builds
 
 /// Convenience function to create a renderer with automatic capability detection
 pub fn createRenderer(allocator: std.mem.Allocator) !*Renderer {
@@ -171,16 +173,10 @@ pub const RendererAPI = struct {
         return shared_components.progress.renderProgress(self.renderer, progress);
     }
 
-    pub fn renderTable(self: *RendererAPI, table: Table) !void {
-        return @import("components/Table.zig").renderTable(self.renderer, table);
-    }
+    // Table/Chart rendering moved to widgets; legacy APIs removed from RendererAPI.
 
-    pub fn renderChart(self: *RendererAPI, chart: Chart) !void {
-        return @import("components/Chart.zig").renderChart(self.renderer, chart);
-    }
-
-    pub fn getRenderingInfo(self: *const RendererAPI) Renderer.Capabilities {
-        return self.renderer.getRenderingInfo();
+    pub fn getCapabilities(self: *const RendererAPI) Renderer.Capabilities {
+        return self.renderer.getCapabilities();
     }
 
     pub fn writeText(self: *RendererAPI, text: []const u8, color: ?term_mod.unified.Color, bold: bool) !void {
@@ -199,37 +195,7 @@ pub const RendererAPI = struct {
         return self.renderer.endSynchronized();
     }
 
-    /// Render a data dashboard with table and charts
-    pub fn renderDataDashboard(self: *RendererAPI, dashboard: Dashboard) !void {
-        try self.renderer.beginSynchronized();
-        defer self.renderer.endSynchronized() catch {};
-
-        // Title
-        if (dashboard.title) |title| {
-            try self.writeText(title, term_mod.unified.Color.CYAN, true);
-            try self.writeText("\n\n", null, false);
-        }
-
-        // Table
-        if (dashboard.table) |table| {
-            try self.renderTable(table);
-            try self.writeText("\n", null, false);
-        }
-
-        // Charts
-        for (dashboard.charts) |chart| {
-            try self.renderChart(chart);
-            try self.writeText("\n", null, false);
-        }
-
-        try self.flush();
-    }
-};
-
-pub const Dashboard = struct {
-    title: ?[]const u8 = null,
-    table: ?Table = null,
-    charts: []const Chart = &[_]Chart{},
+    // Legacy dashboard helpers removed in new architecture.
 };
 
 // pub const Dashboard = struct {
@@ -247,14 +213,14 @@ test "rendering system" {
     var renderer = try createRendererWithTier(testing.allocator, .minimal);
     defer renderer.deinit();
 
-    const info = renderer.getRenderingInfo();
+    const info = renderer.getCapabilities();
     try testing.expect(info.tier == .minimal);
 
     // Test renderer API
     var api = try RendererAPI.init(testing.allocator);
     defer api.deinit();
 
-    const api_info = api.getRenderingInfo();
+    const api_info = api.getCapabilities();
     try testing.expect(api_info.tier != .minimal or api_info.tier == .minimal); // Any tier is valid
 
     // Test component rendering
@@ -264,18 +230,5 @@ test "rendering system" {
     };
     try api.renderProgress(progress);
 
-    const headers = [_][]const u8{ "A", "B" };
-    const row = [_][]const u8{ "1", "2" };
-    const rows = [_][]const []const u8{&row};
-
-    const table = Table{
-        .headers = &headers,
-        .rows = &rows,
-    };
-    try api.renderTable(table);
-
-    const data = [_]f64{ 1.0, 2.0 };
-    const series = Chart.Series{ .name = "Test", .data = &data };
-    const chart = Chart{ .data_series = &[_]Chart.Series{series} };
-    try api.renderChart(chart);
+    // Table/Chart legacy tests removed; covered in widgets golden tests.
 }

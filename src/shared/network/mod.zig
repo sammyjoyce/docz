@@ -1,7 +1,7 @@
 //! Network Module
 //! Network and API communication utilities
 //!
-//! This module provides a unified interface for network functionality,
+//! This module provides a common interface for network functionality,
 //! including HTTP clients, API integrations, and streaming protocols.
 
 const std = @import("std");
@@ -16,8 +16,8 @@ pub const anthropic_legacy = @import("anthropic.zig");
 // Server-Sent Events (SSE) parsing
 pub const sse = @import("sse.zig");
 
-// Network service interface for abstraction and testing
-pub const service = @import("service.zig");
+// Network client interface for abstraction and testing
+pub const client = @import("client.zig");
 
 // Re-export commonly used types for convenience
 
@@ -46,12 +46,12 @@ pub const SSEEvent = sse.SSEEvent;
 pub const SSEEventBuilder = sse.SSEEventBuilder;
 pub const SSEConfig = sse.SSEConfig;
 
-// Service types
-pub const NetworkService = service.Service;
-pub const NetworkError = service.NetworkError;
-pub const NetworkRequest = service.NetworkRequest;
-pub const NetworkResponse = service.NetworkResponse;
-pub const NetworkEvent = service.NetworkEvent;
+// Client types
+pub const Service = client.Service;
+pub const ClientError = client.Error;
+pub const Request = client.NetworkRequest;
+pub const Response = client.NetworkResponse;
+pub const Event = client.NetworkEvent;
 
 /// Initialize the network module
 pub fn init() void {

@@ -1,5 +1,5 @@
-//! Enhanced Menu widget for interactive navigation
-//! Extracted from monolithic tui.zig with terminal capability enhancements
+//! Menu widget for interactive navigation
+//! Extracted from monolithic tui.zig with terminal capability support
 
 const std = @import("std");
 const term_shared = @import("term_shared");
@@ -290,7 +290,7 @@ pub const Menu = struct {
     }
 
     fn drawImpl(self: Menu, writer: anytype) !void {
-        // Title with enhanced colors
+        // Title with colors
         if (self.caps.supportsTrueColor()) {
             try term_ansi.setForegroundRgb(writer, self.caps, 255, 255, 255);
             try term_ansi.bold(writer, self.caps);
@@ -400,7 +400,7 @@ pub const Menu = struct {
         try term_ansi.resetStyle(writer, self.caps);
     }
 
-    /// Draw with ID for screen management (compatibility with enhanced TUI system)
+    /// Draw with ID for screen management (compatibility with TUI system)
     pub fn drawWithId(self: Menu, title: []const u8, id: []const u8) void {
         _ = title;
         _ = id;

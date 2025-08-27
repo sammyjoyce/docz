@@ -1,7 +1,7 @@
-//! Enhanced Markdown Interactive Editor
+//! Markdown Interactive Editor
 //!
 //! A powerful, feature-rich markdown editor that rivals GUI editors but runs in the terminal.
-//! Built using advanced TUI components including split panes, smart input, file trees, modals,
+//! Built using TUI components including split panes, smart input, file trees, modals,
 //! canvas rendering, and comprehensive keyboard/mouse support.
 //!
 //! ## Features
@@ -19,7 +19,7 @@
 //! - **Recent files** management with session persistence
 //! - **Create/rename/delete** operations with confirmation dialogs
 //!
-//! ### Advanced Rendering
+//! ### Rendering
 //! - **Canvas system** for diagrams (mermaid-like), image previews, tables
 //! - **Live preview** with real-time markdown rendering
 //! - **Math rendering** support (LaTeX/MathJax)
@@ -46,10 +46,10 @@
 //! ## Usage Example
 //!
 //! ```zig
-//! const enhanced_editor = @import("markdown_editor.zig");
+//! const editor = @import("markdown_editor.zig");
 //!
 //! // Create editor with full configuration
-//! const editor = try enhanced_editor.MarkdownEditor.init(allocator, agent, .{
+//! const editor = try editor.MarkdownEditor.init(allocator, agent, .{
 //!     .base_config = agent_config,
 //!     .editor_settings = .{
 //!         .syntax_highlighting = true,
@@ -120,7 +120,7 @@
 //! The editor is built using a modular architecture with these key components:
 //!
 //! - **MarkdownEditor** - Main editor controller
-//! - **Smart Input Component** - Advanced text input with autocomplete
+//! - **Smart Input Component** - Text input with autocomplete
 //! - **Split Pane Widget** - Resizable panel layout
 //! - **File Tree Widget** - Hierarchical file browser
 //! - **Modal System** - Dialog and popup management
@@ -147,8 +147,8 @@ const theme_manager = @import("../../src/shared/theme_manager/mod.zig");
 const render = @import("render_shared");
 const components = @import("components_shared");
 
-// Advanced UI components
-const input_enhanced = @import("../../src/shared/components/input_enhanced.zig");
+// UI components
+const input_component = @import("../../src/shared/components/input.zig");
 const split_pane = @import("../../src/shared/tui/widgets/core/split_pane.zig");
 const file_tree = tui.widgets.core.file_tree;
 const modal = @import("../../src/shared/tui/widgets/modal.zig");
@@ -163,14 +163,14 @@ const Validate = @import("tools/validate.zig");
 const document_tool = @import("tools/document.zig");
 
 // Common utilities
-const fs = @import("common/fs.zig");
-const link = @import("common/link.zig");
-const meta = @import("common/meta.zig");
-const table = @import("common/table.zig");
-const template = @import("common/template.zig");
-const text_utils = @import("common/text.zig");
+const fs = @import("lib/fs.zig");
+const link = @import("lib/link.zig");
+const meta = @import("lib/meta.zig");
+const table = @import("lib/table.zig");
+const template = @import("lib/template.zig");
+const text_utils = @import("lib/text.zig");
 
-/// Enhanced Markdown Editor Configuration
+/// Markdown Editor Configuration
 pub const MarkdownEditorConfig = struct {
     /// Base agent configuration
     base_config: agent_interface.Config,
@@ -242,14 +242,14 @@ pub const PreviewSettings = struct {
     custom_css: ?[]const u8 = null,
 
     /// Render mode
-    render_mode: PreviewRenderMode = .enhanced,
+    render_mode: PreviewRenderMode = .full,
 };
 
 /// Preview render modes
 pub const PreviewRenderMode = enum {
     plain, // Plain text
-    basic, // Basic markdown formatting
-    enhanced, // Full rendering with graphics
+    text, // Text-only markdown formatting
+    full, // Full rendering with graphics
     print, // Print-optimized layout
 };
 
@@ -672,7 +672,7 @@ pub const MarkdownEditor = struct {
             try self.render();
 
             // Handle input events
-            const event = try self.enhanced_agent.event_system.waitForEvent();
+            const event = try self.agent.event_system.waitForEvent();
             const should_exit = try self.handleEvent(event);
 
             if (should_exit) break;
@@ -698,7 +698,7 @@ pub const MarkdownEditor = struct {
         defer self.mutex.unlock();
 
         // Show loading progress
-        const progress = try self.enhanced_agent.progress.createSpinner(.{
+        const progress = try self.agent.progress.createSpinner(.{
             .label = try std.fmt.allocPrint(self.allocator, "Loading {s}...", .{file_path}),
             .style = .dots,
         });
@@ -735,7 +735,7 @@ pub const MarkdownEditor = struct {
         try self.session_manager.addRecentFile(file_path);
 
         // Show notification
-        try self.enhanced_agent.notifier.showNotification(.{
+        try self.agent.notifier.showNotification(.{
             .title = "File Loaded",
             .message = try std.fmt.allocPrint(self.allocator, "Loaded {s}", .{fs.basename(file_path)}),
             .type = .success,
@@ -761,7 +761,7 @@ pub const MarkdownEditor = struct {
         defer self.mutex.unlock();
 
         // Show saving progress
-        const progress = try self.enhanced_agent.progress.createSpinner(.{
+        const progress = try self.agent.progress.createSpinner(.{
             .label = "Saving document...",
             .style = .dots,
         });
@@ -793,7 +793,7 @@ pub const MarkdownEditor = struct {
         self.state.last_save_time = std.time.milliTimestamp();
 
         // Show notification
-        try self.enhanced_agent.notifier.showNotification(.{
+        try self.agent.notifier.showNotification(.{
             .title = "Document Saved",
             .message = try std.fmt.allocPrint(self.allocator, "Saved to {s}", .{fs.basename(file_path)}),
             .type = .success,
@@ -1387,12 +1387,12 @@ pub const MarkdownEditor = struct {
         if (self.canvas_engine != null and self.config.preview_settings.live_preview) {
             try self.renderMarkdownPreview(x + 1, y + 1, width - 2, height - 2);
         } else {
-            // Fallback to basic text rendering
-            try self.renderBasicPreview(renderer, x, y, width, height);
+            // Fallback to text rendering
+            try self.renderTextPreview(renderer, x, y, width, height);
         }
     }
 
-    fn renderBasicPreview(self: *Self, renderer: *tui.Renderer, x: u16, y: u16, width: u16, height: u16) !void {
+    fn renderTextPreview(self: *Self, renderer: *tui.Renderer, x: u16, y: u16, width: u16, height: u16) !void {
         // Build markdown content
         var content = std.ArrayList(u8).init(self.allocator);
         defer content.deinit();
@@ -1402,7 +1402,7 @@ pub const MarkdownEditor = struct {
             try content.append('\n');
         }
 
-        // Simple markdown rendering
+        // Markdown rendering
         var line_start: usize = 0;
         var display_y = y + 2;
 
@@ -1410,7 +1410,7 @@ pub const MarkdownEditor = struct {
             if (char == '\n' or idx == content.items.len - 1) {
                 const line = content.items[line_start..idx];
                 if (display_y < y + height - 1) {
-                    // Basic syntax highlighting for preview
+                    // Syntax highlighting for preview
                     try self.renderPreviewLine(renderer, x + 2, display_y, line, width - 4);
                     display_y += 1;
                 }
@@ -1649,7 +1649,7 @@ pub const MarkdownEditor = struct {
 
             // Count tables
             if (std.mem.indexOf(u8, line, "|") != null) {
-                // Simple heuristic for tables
+                // Heuristic for tables
                 const pipes = countOccurrences(line, "|");
                 if (pipes >= 2) {
                     metrics.table_count += 1;
@@ -2234,8 +2234,8 @@ fn countOccurrences(text: []const u8, needle: []const u8) u32 {
 
 // === Public API ===
 
-/// Create and run the enhanced markdown editor
-pub fn runEnhancedEditor(allocator: Allocator, agent: *agent_interface.Agent) !void {
+/// Create and run the markdown editor
+pub fn runEditor(allocator: Allocator, agent: *agent_interface.Agent) !void {
     const editor_config = MarkdownEditorConfig{
         .base_config = agent.config,
         .editor_settings = .{

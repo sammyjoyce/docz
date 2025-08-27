@@ -17,7 +17,8 @@ const constraint_solver = @import("../../core/constraint_solver.zig");
 const term_cursor = @import("../../../term/cursor.zig");
 const term_mod = @import("../../../term/mod.zig");
 const input_mod = @import("../../../components/input.zig");
-const term_color = @import("../../../term/color/mod.zig");
+const term_shared = @import("../../../../term_shared.zig");
+const term_color = term_shared.term.color;
 
 // Type aliases for convenience
 const ConstraintSolver = constraint_solver.ConstraintSolver;
@@ -70,7 +71,7 @@ pub const DividerStyle = struct {
     width: u32, // Width in cells for horizontal, height for vertical
 
     /// Generate ANSI sequence for a color at comptime
-    fn colorSeq(comptime color: term_color.TerminalColor) []const u8 {
+    fn colorSeq(comptime color: term_color.types.TerminalColor) []const u8 {
         return switch (color) {
             .default => "\x1b[39m",
             .ansi16 => |c| switch (c) {
@@ -108,18 +109,18 @@ pub const DividerStyle = struct {
         if (caps.supportsTruecolor) {
             return .{
                 .char = "│",
-                .color = colorSeq(.{ .rgb = term_color.RGB.init(128, 128, 128) }), // Gray
-                .hover_color = colorSeq(.{ .rgb = term_color.RGB.init(100, 149, 237) }), // Cornflower blue
-                .active_color = colorSeq(.{ .rgb = term_color.RGB.init(50, 205, 50) }), // Lime green
+                .color = colorSeq(.{ .rgb = term_color.types.RGB.init(128, 128, 128) }), // Gray
+                .hover_color = colorSeq(.{ .rgb = term_color.types.RGB.init(100, 149, 237) }), // Cornflower blue
+                .active_color = colorSeq(.{ .rgb = term_color.types.RGB.init(50, 205, 50) }), // Lime green
                 .width = 1,
             };
         } else {
             // Assume 256-color support for non-truecolor terminals
             return .{
                 .char = "│",
-                .color = colorSeq(.{ .ansi256 = term_color.Ansi256.init(8) }), // Bright black
-                .hover_color = colorSeq(.{ .ansi256 = term_color.Ansi256.init(12) }), // Bright blue
-                .active_color = colorSeq(.{ .ansi256 = term_color.Ansi256.init(10) }), // Bright green
+                .color = colorSeq(.{ .ansi256 = term_color.types.Ansi256.init(8) }), // Bright black
+                .hover_color = colorSeq(.{ .ansi256 = term_color.types.Ansi256.init(12) }), // Bright blue
+                .active_color = colorSeq(.{ .ansi256 = term_color.types.Ansi256.init(10) }), // Bright green
                 .width = 1,
             };
         }

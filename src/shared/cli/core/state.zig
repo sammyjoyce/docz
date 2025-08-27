@@ -1,4 +1,4 @@
-//! CLI Context
+//! CLI State
 //! Central context that provides access to all terminal capabilities and shared state
 //! This replaces the fragmented initialization patterns from multiple CLI entry points
 
@@ -59,7 +59,7 @@ pub const Notification = struct {
         err, // error is reserved keyword
     };
 
-    pub const NotificationData = struct {
+    pub const NotificationMessage = struct {
         title: []const u8,
         body: ?[]const u8 = null,
         level: NotificationLevel = .info,
@@ -76,7 +76,7 @@ pub const Notification = struct {
         };
     }
 
-    pub fn send(self: *Notification, n: NotificationData) !void {
+    pub fn send(self: *Notification, n: NotificationMessage) !void {
         if (!self.enabled) return;
 
         // Build shared Notification model
@@ -214,7 +214,7 @@ pub const Cli = struct {
         const capabilities = Capability.detect(allocator);
         const termCaps = try term.caps.detectCaps(allocator);
 
-        // Initialize unified terminal
+        // Initialize terminal
         var terminal = try term.unified.Terminal.init(allocator);
 
         // Load configuration

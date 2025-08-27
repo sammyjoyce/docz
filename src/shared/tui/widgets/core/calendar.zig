@@ -3,7 +3,9 @@
 //! date ranges, event markers, and customizable styles.
 
 const std = @import("std");
-const term_ansi = @import("term_shared").ansi.color;
+const term_shared = @import("term_shared");
+const term_ansi = term_shared.term.color;
+const TerminalColor = term_shared.term.ansi.color.types.TerminalColor;
 const term_cursor = @import("term_shared").cursor;
 const term_mod = @import("term_shared");
 const shared = @import("../../../mod.zig");
@@ -79,19 +81,19 @@ pub const DateRange = struct {
 pub const EventMarker = struct {
     date: Date,
     symbol: []const u8,
-    color: term_ansi.Color,
+    color: TerminalColor,
     description: ?[]const u8,
 
     pub fn init(date: Date, symbol: []const u8) EventMarker {
         return EventMarker{
             .date = date,
             .symbol = symbol,
-            .color = term_ansi.Color.Blue,
+            .color = .{ .ansi16 = .blue },
             .description = null,
         };
     }
 
-    pub fn withColor(self: EventMarker, color: term_ansi.Color) EventMarker {
+    pub fn withColor(self: EventMarker, color: TerminalColor) EventMarker {
         return EventMarker{
             .date = self.date,
             .symbol = self.symbol,
@@ -124,14 +126,14 @@ pub const DayOfWeek = enum(u8) {
 /// Calendar display style configuration
 pub const CalendarStyle = struct {
     // Colors for different date states
-    normal_color: term_ansi.Color,
-    selected_color: term_ansi.Color,
-    today_color: term_ansi.Color,
-    marked_color: term_ansi.Color,
-    range_color: term_ansi.Color,
-    weekend_color: term_ansi.Color,
-    disabled_color: term_ansi.Color,
-    header_color: term_ansi.Color,
+    normal_color: TerminalColor,
+    selected_color: TerminalColor,
+    today_color: TerminalColor,
+    marked_color: TerminalColor,
+    range_color: TerminalColor,
+    weekend_color: TerminalColor,
+    disabled_color: TerminalColor,
+    header_color: TerminalColor,
 
     // Symbols
     selected_marker: []const u8,
@@ -146,14 +148,14 @@ pub const CalendarStyle = struct {
 
     pub fn default() CalendarStyle {
         return CalendarStyle{
-            .normal_color = term_ansi.Color.Default,
-            .selected_color = term_ansi.Color.Cyan,
-            .today_color = term_ansi.Color.Green,
-            .marked_color = term_ansi.Color.Yellow,
-            .range_color = term_ansi.Color.Blue,
-            .weekend_color = term_ansi.Color.BrightBlack,
-            .disabled_color = term_ansi.Color.Black,
-            .header_color = term_ansi.Color.BrightWhite,
+            .normal_color = .{ .default = {} },
+            .selected_color = .{ .ansi16 = .cyan },
+            .today_color = .{ .ansi16 = .green },
+            .marked_color = .{ .ansi16 = .yellow },
+            .range_color = .{ .ansi16 = .blue },
+            .weekend_color = .{ .ansi16 = .bright_black },
+            .disabled_color = .{ .ansi16 = .black },
+            .header_color = .{ .ansi16 = .bright_white },
             .selected_marker = "▸",
             .today_marker = "●",
             .range_start_marker = "[",

@@ -5,12 +5,12 @@
 // agent entry points and CLI parsing.
 // This file will be removed in the next major version.
 
-//! Enhanced CLI parser that combines the modular architecture with legacy functionality
+//! CLI parser that combines the modular architecture with legacy functionality
 //! Provides backward compatibility while using the new modular system
 
 const std = @import("std");
 const Allocator = std.mem.Allocator;
-const cli_config = @import("../cli.zon");
+const cliConfig = @import("../cli.zon");
 const rich_formatter = @import("../formatters/rich.zig");
 const types = @import("types.zig");
 
@@ -58,19 +58,19 @@ pub const Args = struct {
 
     pub fn init(allocator: Allocator) Args {
         return Args{
-            .model = cli_config.options[0].default,
+            .model = cliConfig.options[0].default,
             .maxTokens = null,
             .temperature = null,
-            .stream = cli_config.flags[3].default,
+            .stream = cliConfig.flags[3].default,
             .json = false, // Not defined in zon file, using default
             .quiet = false, // Not defined in zon file, using default
-            .verbose = false, // cli_config.flags[0] doesn't have default
+            .verbose = false, // cliConfig.flags[0] doesn't have default
             .noColor = false, // Not defined in zon file, using default
             .help = false,
             .version = false,
             .preview = false,
             .command = null,
-            .auth_subcommand = null,
+            .authSubcommand = null,
             .prompt = null,
             .rawArgs = &[_][]const u8{},
             .allocator = allocator,
@@ -183,7 +183,7 @@ pub const Parser = struct {
                 if (parsed.command == null) {
                     if (types.Command.fromString(arg)) |cmd| {
                         parsed.command = cmd;
-                        parsed.positionals.command = cmd;
+                        parsed.command = cmd;
                         if (cmd == .auth) {
                             // Next arg should be auth subcommand
                             i += 1;
@@ -192,12 +192,6 @@ pub const Parser = struct {
                                 return error.UnknownSubcommand;
                             }
                             parsed.authSubcommand = types.AuthSubcommand.fromString(args[i]) orelse {
-                                // Pass "auth" as context for better error messages
-                                return error.UnknownSubcommand;
-                            };
-                        }
-                    }
-                            parsed.auth_subcommand = types.AuthSubcommand.fromString(args[i]) orelse {
                                 // Pass "auth" as context for better error messages
                                 return error.UnknownSubcommand;
                             };
@@ -248,23 +242,23 @@ pub const Parser = struct {
 
     pub fn handleParsedArgs(self: *Parser, parsed: *Args) !void {
         if (parsed.help) {
-            try self.formatter.printHelp(cli_config);
+            try self.formatter.printHelp(cliConfig);
             return;
         }
 
         if (parsed.version) {
-            try self.formatter.printVersion(cli_config);
+            try self.formatter.printVersion(cliConfig);
             return;
         }
 
         if (parsed.command) |cmd| {
             switch (cmd) {
                 .help => {
-                    try self.formatter.printHelp(cli_config);
+                    try self.formatter.printHelp(cliConfig);
                     return;
                 },
                 .version => {
-                    try self.formatter.printVersion(cli_config);
+                    try self.formatter.printVersion(cliConfig);
                     return;
                 },
                 .auth => {
@@ -290,7 +284,7 @@ pub const Parser = struct {
             }
         } else if (parsed.prompt == null) {
             // No command and no prompt - show help
-            try self.formatter.printHelp(cli_config);
+            try self.formatter.printHelp(cliConfig);
         }
         // If we have a prompt, the caller will handle it
     }
@@ -346,12 +340,12 @@ pub fn parseAndHandle(allocator: Allocator, args: [][]const u8) !?Args {
     if (parsed.command) |cmd| {
         switch (cmd) {
             .help => {
-                try parser.formatter.printHelp(cli_config);
+                try parser.formatter.printHelp(cliConfig);
                 parsed.deinit();
                 return null;
             },
             .version => {
-                try parser.formatter.printVersion(cli_config);
+                try parser.formatter.printVersion(cliConfig);
                 parsed.deinit();
                 return null;
             },
@@ -366,7 +360,7 @@ pub fn parseAndHandle(allocator: Allocator, args: [][]const u8) !?Args {
         }
     } else if (parsed.prompt == null) {
         // No command and no prompt - show help
-        try parser.formatter.printHelp(cli_config);
+        try parser.formatter.printHelp(cliConfig);
         parsed.deinit();
         return null;
     }

@@ -78,7 +78,7 @@ pub const NotificationType = enum {
 };
 
 /// Configuration for notification rendering and behavior
-pub const NotificationConfiguration = struct {
+pub const Config = struct {
     // Behavior settings
     enableSystemNotifications: bool = true,
     enableSound: bool = false,
@@ -96,7 +96,7 @@ pub const NotificationConfiguration = struct {
 };
 
 /// Action that can be attached to a notification
-pub const NotificationAction = struct {
+pub const Action = struct {
     label: []const u8,
     action: ActionType,
 
@@ -117,10 +117,10 @@ pub const Notification = struct {
     message: []const u8,
     notification_type: NotificationType,
     timestamp: i64,
-    config: NotificationConfiguration,
+    config: Config,
 
     // Optional metadata
-    actions: []const NotificationAction = &[_]NotificationAction{},
+    actions: []const Action = &[_]Action{},
     priority: Priority = .normal,
     persistent: bool = false,
     progress: ?f32 = null, // 0.0 to 1.0 for progress notifications
@@ -138,7 +138,7 @@ pub const Notification = struct {
         title: []const u8,
         message: []const u8,
         notification_type: NotificationType,
-        config: NotificationConfiguration,
+        config: Config,
     ) Self {
         return Self{
             .title = title,
@@ -154,8 +154,8 @@ pub const Notification = struct {
         title: []const u8,
         message: []const u8,
         notification_type: NotificationType,
-        config: NotificationConfiguration,
-        actions: []const NotificationAction,
+        config: Config,
+        actions: []const Action,
     ) Self {
         return Self{
             .title = title,
@@ -172,7 +172,7 @@ pub const Notification = struct {
         title: []const u8,
         message: []const u8,
         progress: f32,
-        config: NotificationConfiguration,
+        config: Config,
     ) Self {
         return Self{
             .title = title,
@@ -294,7 +294,7 @@ pub const NotificationUtil = struct {
         const clean_message = try NotificationUtil.sanitizeText(allocator, message);
         errdefer allocator.free(clean_message);
 
-        // Simple word wrapping for message
+        // Word wrapping for message
         const wrapped_message = try NotificationUtil.wordWrap(allocator, clean_message, max_width);
         errdefer allocator.free(wrapped_message);
 
@@ -304,7 +304,7 @@ pub const NotificationUtil = struct {
         };
     }
 
-    /// Simple word wrapping implementation
+    /// Word wrapping implementation
     pub fn wordWrap(allocator: std.mem.Allocator, text: []const u8, max_width: u32) ![]u8 {
         if (text.len <= max_width) return allocator.dupe(u8, text);
 
@@ -368,7 +368,7 @@ pub const NotificationUtil = struct {
     pub fn calculateDimensions(
         title: []const u8,
         message: []const u8,
-        config: NotificationConfiguration,
+        config: Config,
     ) struct { width: u32, height: u32 } {
         const title_len = std.unicode.utf8CountCodepoints(title) catch title.len;
         const message_len = std.unicode.utf8CountCodepoints(message) catch message.len;
@@ -505,7 +505,7 @@ test "word wrapping" {
     const allocator = gpa.allocator();
 
     const long_text = "This is a very long message that should be wrapped";
-    const wrapped = try NotificationUtils.wordWrap(allocator, long_text, 20);
+    const wrapped = try NotificationUtil.wordWrap(allocator, long_text, 20);
     defer allocator.free(wrapped);
 
     // Should contain newlines

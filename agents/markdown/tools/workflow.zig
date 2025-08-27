@@ -1,6 +1,6 @@
 const std = @import("std");
 const json = std.json;
-const fs = @import("../common/fs.zig");
+const fs = @import("../lib/fs.zig");
 
 pub const Error = fs.Error || error{
     UnknownCommand,

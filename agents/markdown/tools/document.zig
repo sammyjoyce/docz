@@ -1,8 +1,8 @@
 const std = @import("std");
 const json = std.json;
-const fs = @import("../common/fs.zig");
-const template = @import("../common/template.zig");
-const meta = @import("../common/meta.zig");
+const fs = @import("../lib/fs.zig");
+const template = @import("../lib/template.zig");
+const meta = @import("../lib/meta.zig");
 
 pub const Error = fs.Error || template.Error || meta.Error || error{
     UnknownCommand,

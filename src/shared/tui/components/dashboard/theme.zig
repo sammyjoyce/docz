@@ -2,7 +2,7 @@
 //! Provides theme support for the adaptive dashboard using the centralized theme system
 
 const std = @import("std");
-const theme_manager = @import("../../../theme_manager/mod.zig");
+const theme_manager = @import("../../../theme/mod.zig");
 const term_caps = @import("../../../term/mod.zig");
 
 /// Dashboard-specific theme colors and styles
@@ -57,9 +57,9 @@ pub const DashboardTheme = struct {
         return Self{
             .allocator = allocator,
             .background = color_scheme.background,
-            .surface = color_scheme.secondary,
+            .surface = color_scheme.subtle,
             .title_style = .{
-                .color = color_scheme.primary,
+                .color = color_scheme.focus,
                 .bold = true,
             },
             .stats_style = .{
