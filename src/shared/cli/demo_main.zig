@@ -15,11 +15,11 @@ const input_mod = shared.components.input;
 const demo = @import("demos/capabilities_presenters_demo.zig");
 
 /// CLI Application that uses the terminal interface
-pub const CliApp = struct {
+pub const App = struct {
     const Self = @This();
 
     allocator: std.mem.Allocator,
-    bridge: terminal_bridge.TerminalBridge,
+    bridge: terminal_bridge.Bridge,
     notifications: notification.Notification,
 
     pub fn init(allocator: std.mem.Allocator) !Self {
@@ -32,7 +32,7 @@ pub const CliApp = struct {
             .cache_capabilities = true,
         };
 
-        var bridge = try terminal_bridge.TerminalBridge.init(allocator, bridge_config);
+        var bridge = try terminal_bridge.Bridge.init(allocator, bridge_config);
 
         // Initialize notification system
         const notification_config = notification.NotificationConfig{
@@ -314,7 +314,7 @@ pub fn main() !void {
 
     const cli_args = if (args.len > 1) args[1..] else &[_][]const u8{};
 
-    var app = try CliApp.init(allocator);
+    var app = try App.init(allocator);
     defer app.deinit();
 
     const exit_code = try app.run(cli_args);
@@ -326,7 +326,7 @@ test "cli initialization" {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    var app = try CliApp.init(allocator);
+    var app = try App.init(allocator);
     defer app.deinit();
 
     // Basic functionality test

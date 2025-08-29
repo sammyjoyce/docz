@@ -115,34 +115,34 @@ const model_pricing = std.StaticStringMap(ModelRates).initComptime(.{
 const default_pricing = ModelRates{ .inputRate = 3.0, .outputRate = 15.0 };
 
 /// Cost calculation structure with Pro/Max override support
-pub const CostCalc = struct {
+pub const CostCalculator = struct {
     isOauthSession: bool,
 
-    pub fn init(isOauth: bool) CostCalc {
-        return CostCalc{ .isOauthSession = isOauth };
+    pub fn init(isOauth: bool) CostCalculator {
+        return CostCalculator{ .isOauthSession = isOauth };
     }
 
     fn getModelPricing(model: []const u8) ModelRates {
         return model_pricing.get(model) orelse default_pricing;
     }
 
-    pub fn calculateInputCost(self: CostCalc, tokens: u32, model: []const u8) f64 {
+    pub fn calculateInputCost(self: CostCalculator, tokens: u32, model: []const u8) f64 {
         if (self.isOauthSession) return 0.0;
         const pricing = getModelPricing(model);
         return @as(f64, @floatFromInt(tokens)) * pricing.getInputCostPerToken();
     }
 
-    pub fn calculateOutputCost(self: CostCalc, tokens: u32, model: []const u8) f64 {
+    pub fn calculateOutputCost(self: CostCalculator, tokens: u32, model: []const u8) f64 {
         if (self.isOauthSession) return 0.0;
         const pricing = getModelPricing(model);
         return @as(f64, @floatFromInt(tokens)) * pricing.getOutputCostPerToken();
     }
 
-    pub fn getPricingMode(self: CostCalc) []const u8 {
+    pub fn getPricingMode(self: CostCalculator) []const u8 {
         return if (self.isOauthSession) "Subscription (Free)" else "Pay-per-use";
     }
 
-    pub fn getModelRates(self: CostCalc, model: []const u8) ModelRates {
+    pub fn getModelRates(self: CostCalculator, model: []const u8) ModelRates {
         _ = self;
         return getModelPricing(model);
     }

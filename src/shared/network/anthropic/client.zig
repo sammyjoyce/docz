@@ -32,7 +32,7 @@ pub const Error = models.Error;
 pub const CostCalc = models.CostCalc;
 
 /// High-level request interface for messages API
-pub const MessagesParams = struct {
+pub const MessageParameters = struct {
     model: []const u8,
     messages: []const Message,
     maxTokens: u32 = 1024,
@@ -45,7 +45,7 @@ pub const MessagesParams = struct {
 };
 
 /// Response from non-streaming messages API
-pub const MessagesResult = struct {
+pub const MessageResult = struct {
     id: []const u8,
     content: []const u8,
     stopReason: []const u8,
@@ -53,7 +53,7 @@ pub const MessagesResult = struct {
     usage: Usage,
     allocator: std.mem.Allocator,
 
-    pub fn deinit(self: *MessagesResult) void {
+    pub fn deinit(self: *MessageResult) void {
         self.allocator.free(self.id);
         self.allocator.free(self.content);
         self.allocator.free(self.stopReason);
@@ -62,7 +62,7 @@ pub const MessagesResult = struct {
 };
 
 /// Streaming parameters for the messages API
-pub const StreamParams = struct {
+pub const StreamParameters = struct {
     model: []const u8,
     messages: []const Message,
     maxTokens: u32 = 1024,
@@ -86,7 +86,7 @@ var globalStopReason: ?[]const u8 = null;
 var globalModel: ?[]const u8 = null;
 
 /// Anthropic HTTP client with OAuth and API key support
-pub const AnthropicClient = struct {
+pub const Client = struct {
     allocator: std.mem.Allocator,
     auth: AuthType,
     credentialsPath: ?[]const u8 = null,
@@ -208,7 +208,7 @@ pub const AnthropicClient = struct {
     }
 
     /// Create a non-streaming message (complete response)
-    pub fn create(self: *Self, req: MessagesParams) !MessagesResult {
+    pub fn create(self: *Self, req: MessageParameters) !MessageResult {
         // Use the complete method which collects the streaming response
         return self.complete(.{
             .model = req.model,
@@ -223,7 +223,7 @@ pub const AnthropicClient = struct {
     }
 
     /// Complete method for non-streaming requests (collects streaming response)
-    pub fn complete(self: *Self, params: MessagesParams) !MessagesResult {
+    pub fn complete(self: *Self, params: MessageParameters) !MessageResult {
         // Set up global collector (not thread-safe, but ok for single-threaded use)
         globalAllocator = self.allocator;
         globalContentCollector.clearRetainingCapacity();
@@ -234,7 +234,7 @@ pub const AnthropicClient = struct {
         globalModel = null;
 
         // Create stream params with our collector callback
-        const streamParams = StreamParams{
+        const streamParams = StreamParameters{
             .model = params.model,
             .maxTokens = params.maxTokens,
             .temperature = params.temperature,
@@ -324,7 +324,7 @@ pub const AnthropicClient = struct {
         if (globalStopReason) |reason| self.allocator.free(reason);
         if (globalModel) |model| self.allocator.free(model);
 
-        return MessagesResult{
+        return MessageResult{
             .id = owned_id,
             .content = owned_content,
             .stopReason = owned_stop_reason,
@@ -335,12 +335,12 @@ pub const AnthropicClient = struct {
     }
 
     /// Stream messages using Server-Sent Events
-    pub fn stream(self: *Self, params: StreamParams) !void {
+    pub fn stream(self: *Self, params: StreamParameters) !void {
         return self.streamWithRetry(params, false);
     }
 
     /// Internal method to handle streaming with automatic retry on 401
-    fn streamWithRetry(self: *Self, params: StreamParams, is_retry: bool) !void {
+    fn streamWithRetry(self: *Self, params: StreamParameters, is_retry: bool) !void {
         // Refresh OAuth tokens if needed (unless this is already a retry)
         if (!is_retry) {
             try self.refreshOAuthIfNeeded();
@@ -440,7 +440,7 @@ pub const AnthropicClient = struct {
     }
 
     /// Build JSON request body for the messages API
-    fn buildBodyJson(self: *Self, params: StreamParams) ![]u8 {
+    fn buildBodyJson(self: *Self, params: StreamParameters) ![]u8 {
         var buffer = std.ArrayListUnmanaged(u8){};
         defer buffer.deinit(self.allocator);
 

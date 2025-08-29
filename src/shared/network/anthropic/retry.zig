@@ -2,12 +2,12 @@
 
 const std = @import("std");
 
-pub const RetryCfg = struct {
+pub const RetryConfig = struct {
     maxRetries: u8 = 3,
     baseDelayMs: u32 = 200,
     maxDelayMs: u32 = 5_000,
 
-    pub fn backoff(self: RetryCfg, attempt: u8) u32 {
+    pub fn backoff(self: RetryConfig, attempt: u8) u32 {
         const a: u32 = @intCast(attempt);
         const delay = self.baseDelayMs << @min(a, 10);
         return @min(delay, self.maxDelayMs);
@@ -16,7 +16,7 @@ pub const RetryCfg = struct {
 
 pub fn withRetry(
     allocator: std.mem.Allocator,
-    policy: RetryCfg,
+    policy: RetryConfig,
     op: *const fn () anyerror!void,
 ) anyerror!void {
     _ = allocator; // reserved for future jitter seed

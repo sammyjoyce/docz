@@ -1,6 +1,6 @@
 //! Dashboard System Module
 //!
-//! Provides data visualization components leveraging terminal capabilities 
+//! Provides data visualization components leveraging terminal capabilities
 //! including Kitty graphics, Sixel, 24-bit color, and input.
 
 const std = @import("std");

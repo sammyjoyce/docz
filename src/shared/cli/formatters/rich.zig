@@ -18,7 +18,7 @@ const BasicTui = struct {
 const tui = BasicTui;
 
 /// CLI formatter with terminal capability awareness
-pub const CliFormatter = struct {
+pub const Formatter = struct {
     allocator: std.mem.Allocator,
     caps: termMod.caps.TermCaps,
     terminalSize: tui.TerminalSize,
@@ -39,7 +39,7 @@ pub const CliFormatter = struct {
         dim: term.Style,
     };
 
-    pub fn init(allocator: std.mem.Allocator) !CliFormatter {
+    pub fn init(allocator: std.mem.Allocator) !Formatter {
         const terminal = try term.Terminal.init(allocator);
         const terminalSize = BasicTui.TerminalSize{ .width = 80, .height = 24 };
 
@@ -71,7 +71,7 @@ pub const CliFormatter = struct {
                 .dim = .{ .fg_color = .{ .ansi = 8 } }, // Dark gray
             };
 
-        return CliFormatter{
+        return Formatter{
             .allocator = allocator,
             .caps = terminal.caps,
             .terminalSize = terminalSize,
@@ -81,7 +81,7 @@ pub const CliFormatter = struct {
     }
 
     /// Help display with structured layout and hyperlinks
-    pub fn printHelp(self: *CliFormatter, cli_config: anytype) !void {
+    pub fn printHelp(self: *Formatter, cli_config: anytype) !void {
         const width = @min(self.terminalSize.width, 80);
 
         // Header section with styling
@@ -120,7 +120,7 @@ pub const CliFormatter = struct {
     }
 
     /// Error display with structured formatting
-    pub fn printError(self: *CliFormatter, err: anytype, context: ?[]const u8) !void {
+    pub fn printError(self: *Formatter, err: anytype, context: ?[]const u8) !void {
         // Error header with icon and color
         try self.terminal.printf("\n❌ Error\n", .{}, self.styles.errColor);
 
@@ -224,7 +224,7 @@ pub const CliFormatter = struct {
     }
 
     /// Version display with system info
-    pub fn printVersion(self: *CliFormatter, cli_config: anytype) !void {
+    pub fn printVersion(self: *Formatter, cli_config: anytype) !void {
         try self.terminal.printf("{s}DocZ{s}", .{ self.styles.bold, term.Style{} }, self.styles.primary);
         if (@hasField(@TypeOf(cli_config), "version")) {
             try self.terminal.printf(" version {s}{s}{s}\n", .{ self.styles.accent, cli_config.version, term.Style{} }, null);
@@ -272,12 +272,12 @@ pub const CliFormatter = struct {
         self.allocator.free(clipboardLine);
     }
 
-    pub fn deinit(self: *CliFormatter) void {
+    pub fn deinit(self: *Formatter) void {
         self.terminal.deinit();
     }
 
     /// Copy text to system clipboard if supported
-    pub fn copyToClipboard(self: *CliFormatter, text: []const u8) !bool {
+    pub fn copyToClipboard(self: *Formatter, text: []const u8) !bool {
         if (!self.caps.supportsClipboardOsc52) return false;
 
         try self.terminal.copyToClipboard(text);
@@ -286,7 +286,7 @@ pub const CliFormatter = struct {
     }
 
     /// Progress indicator
-    pub fn showProgress(self: *CliFormatter, message: []const u8, current: u32, total: u32) !void {
+    pub fn showProgress(self: *Formatter, message: []const u8, current: u32, total: u32) !void {
         const percent = if (total > 0) (current * 100) / total else 0;
         const barWidth = @min(40, self.terminalSize.width - 20);
         const filled = (percent * barWidth) / 100;
@@ -306,13 +306,13 @@ pub const CliFormatter = struct {
     }
 
     /// Finish progress and clear line
-    pub fn finishProgress(self: *CliFormatter, message: []const u8) !void {
+    pub fn finishProgress(self: *Formatter, message: []const u8) !void {
         try self.terminal.printf("\r✅ {s}\n", .{message}, self.styles.success);
     }
 
     // Private helper methods
 
-    fn printOptionsSection(self: *CliFormatter, cli_config: anytype, _: u32) !void {
+    fn printOptionsSection(self: *Formatter, cli_config: anytype, _: u32) !void {
         const OptsT = @TypeOf(cli_config.options);
         const OptsInfo = @typeInfo(OptsT).@"struct";
 
@@ -346,7 +346,7 @@ pub const CliFormatter = struct {
     }
 
     /// Print examples section from CLI configuration
-    pub fn printExamplesSection(self: *CliFormatter, cli_config: anytype, width: u16) !void {
+    pub fn printExamplesSection(self: *Formatter, cli_config: anytype, width: u16) !void {
         _ = width; // unused parameter
         try self.terminal.printf("💡 EXAMPLES:\n\n", .{}, self.styles.bold);
 
@@ -372,7 +372,7 @@ pub const CliFormatter = struct {
     }
 
     /// Print links section (stub implementation)
-    pub fn printLinksSection(self: *CliFormatter, width: u16) !void {
+    pub fn printLinksSection(self: *Formatter, width: u16) !void {
         _ = width; // unused parameter
         try self.terminal.printf("🔗 LINKS:\n\n", .{}, self.styles.bold);
         try self.terminal.printf("      Repository: https://github.com/username/docz\n", .{}, null);

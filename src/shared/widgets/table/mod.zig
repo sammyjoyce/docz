@@ -26,35 +26,35 @@ pub const Table = struct {
         return ui.component.wrap(@TypeOf(self.*), self);
     }
 
-    pub fn measure(self: *Table, c: ui.layout.Constraints) ui.layout.Size {
-        var h: u32 = 0;
-        if (self.title) |_| h += 1;
+    pub fn measure(self: *Table, constraints: ui.layout.Constraints) ui.layout.Size {
+        var height: u32 = 0;
+        if (self.title) |_| height += 1;
         if (self.headers.len > 0) {
-            h += 1; // top border
-            h += 1; // header row
-            h += 1; // header separator
-            h += @intCast(self.rows.len); // data rows
-            h += 1; // bottom border
+            height += 1; // top border
+            height += 1; // header row
+            height += 1; // header separator
+            height += @intCast(self.rows.len); // data rows
+            height += 1; // bottom border
         } else {
-            h += @intCast(self.rows.len);
+            height += @intCast(self.rows.len);
         }
-        if (h == 0) h = 1;
-        return .{ .w = c.max.w, .h = h };
+        if (height == 0) height = 1;
+        return .{ .w = constraints.max.w, .h = height };
     }
 
-    pub fn layout(self: *Table, rect: ui.layout.Rect) void {
+    pub fn layout(self: *Table, rectangle: ui.layout.Rect) void {
         _ = self;
-        _ = rect;
+        _ = rectangle;
     }
 
-    pub fn render(self: *Table, ctx: *renderCtx.Context) !void {
-        const rect = ui.layout.Rect{ .x = 0, .y = 0, .w = ctx.surface.size().w, .h = ctx.surface.size().h };
-        try draw.table(ctx, rect, self);
+    pub fn render(self: *Table, context: *renderCtx.Context) !void {
+        const rectangle = ui.layout.Rect{ .x = 0, .y = 0, .w = context.surface.size().w, .h = context.surface.size().h };
+        try draw.table(context, rectangle, self);
     }
 
-    pub fn event(self: *Table, ev: ui.event.Event) ui.component.Component.Invalidate {
+    pub fn event(self: *Table, inputEvent: ui.event.Event) ui.component.Component.Invalidate {
         _ = self;
-        _ = ev;
+        _ = inputEvent;
         return .none;
     }
 };

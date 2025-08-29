@@ -335,23 +335,23 @@ pub fn waitForOAuthCallback(allocator: std.mem.Allocator, port: u16) ![]const u8
         const requestLineTrimmed = std.mem.trim(u8, requestLine, " \t\r\n");
         var requestParts = std.mem.splitSequence(u8, requestLineTrimmed, " ");
         const method = requestParts.next() orelse {
-            sendHTTPError(&connection.stream, 400, "Invalid request format") catch {};
+            sendHttpError(&connection.stream, 400, "Invalid request format") catch {};
             continue;
         };
         const pathAndQuery = requestParts.next() orelse {
-            sendHTTPError(&connection.stream, 400, "Invalid request format") catch {};
+            sendHttpError(&connection.stream, 400, "Invalid request format") catch {};
             continue;
         };
 
         if (!std.mem.eql(u8, method, "GET")) {
-            sendHTTPError(&connection.stream, 405, "Method not allowed") catch {};
+            sendHttpError(&connection.stream, 405, "Method not allowed") catch {};
             continue;
         }
 
         std.log.debug("Received OAuth callback request: GET {s}", .{pathAndQuery});
         const queryStart = std.mem.indexOf(u8, pathAndQuery, "?");
         if (queryStart == null) {
-            sendHTTPError(&connection.stream, 400, "No query parameters in OAuth callback") catch {};
+            sendHttpError(&connection.stream, 400, "No query parameters in OAuth callback") catch {};
             continue;
         }
 
@@ -371,13 +371,13 @@ pub fn waitForOAuthCallback(allocator: std.mem.Allocator, port: u16) ![]const u8
             std.log.info("✅ Authorization code received successfully!", .{});
             return allocator.dupe(u8, authCode);
         } else {
-            sendHTTPError(&connection.stream, 400, "Authorization code not found in OAuth callback") catch {};
+            sendHttpError(&connection.stream, 400, "Authorization code not found in OAuth callback") catch {};
             continue;
         }
     }
 }
 
-fn sendHTTPError(stream: *std.net.Stream, statusCode: u16, message: []const u8) !void {
+fn sendHttpError(stream: *std.net.Stream, statusCode: u16, message: []const u8) !void {
     const statusText = switch (statusCode) {
         400 => "Bad Request",
         404 => "Not Found",

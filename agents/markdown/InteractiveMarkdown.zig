@@ -55,7 +55,7 @@
 //! - `src/shared/tui/widgets/core/file_tree.zig` - File navigation
 //! - `src/shared/tui/widgets/core/tabs.zig` - Multi-document management
 //! - `src/shared/tui/widgets/core/tag_input.zig` - Document tagging
-//! - `src/shared/cli/components/base/breadcrumb_trail.zig` - Navigation trail
+//! - `src/shared/cli/components/base/BreadcrumbTrail.zig` - Navigation trail
 //! - `src/shared/tui/components/agent_dashboard.zig` - Dashboard framework integration
 //!
 //! ## Architecture
@@ -102,7 +102,7 @@ const diff_viewer = @import("../../src/shared/tui/widgets/core/diff_viewer.zig")
 const file_tree = @import("../../src/shared/tui/widgets/core/file_tree.zig");
 const tabs = @import("../../src/shared/tui/widgets/core/tabs.zig");
 const tag_input = @import("../../src/shared/tui/widgets/core/tag_input.zig");
-const breadcrumb_trail = @import("../../src/shared/cli/components/base/breadcrumb_trail.zig");
+const breadcrumb_trail = @import("../../src/shared/cli/components/base/BreadcrumbTrail.zig");
 const agent_dashboard = @import("../../src/shared/tui/components/agent_dashboard/mod.zig");
 
 // Markdown agent specific

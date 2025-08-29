@@ -107,8 +107,8 @@ pub const Terminal = struct {
                 var tmp: [32]u8 = undefined;
                 const seq = try std.fmt.bufPrint(&tmp, "\x1b[{d};{d}H", .{ row + 1, col + 1 });
                 try out.appendSlice(seq);
-                const line_start: usize = @as(usize, @intCast(row)) * @as(usize, @intCast(dim.w + 1));
-                const start: usize = line_start + @as(usize, @intCast(col));
+                const lineStart: usize = @as(usize, @intCast(row)) * @as(usize, @intCast(dim.w + 1));
+                const start: usize = lineStart + @as(usize, @intCast(col));
                 const end: usize = start + @as(usize, @intCast(len));
                 if (end <= snapshot.len) {
                     try out.appendSlice(snapshot[start..end]);
@@ -127,18 +127,18 @@ pub const Terminal = struct {
                 // Move cursor to row+1, col+1
                 var buf: [32]u8 = undefined;
                 const seq = try std.fmt.bufPrint(&buf, "\x1b[{d};{d}H", .{ row + 1, col + 1 });
-                if (has_custom) {
+                if (hasCustom) {
                     try writer.*.writeAll(seq);
                 } else {
                     try self.stdout.writeAll(seq);
                 }
                 // Compute offset into snapshot (lines are width + 1 for newline)
-                const line_start: usize = @as(usize, @intCast(row)) * @as(usize, @intCast(dim.w + 1));
-                const start: usize = line_start + @as(usize, @intCast(col));
+                const lineStart: usize = @as(usize, @intCast(row)) * @as(usize, @intCast(dim.w + 1));
+                const start: usize = lineStart + @as(usize, @intCast(col));
                 const end: usize = start + @as(usize, @intCast(len));
                 if (end <= snapshot.len) {
                     const slice = snapshot[start..end];
-                    if (has_custom) {
+                    if (hasCustom) {
                         try writer.*.writeAll(slice);
                     } else {
                         try self.stdout.writeAll(slice);
@@ -150,11 +150,11 @@ pub const Terminal = struct {
 
     fn applyRects(self: *Terminal, rects: []const diffCoalesce.Rect, snapshot: []const u8) !void {
         const dim = self.size();
-        const writer_ptr = self.out_writer;
-        const has_custom = writer_ptr != null;
-        const writer = if (has_custom) writer_ptr.? else undefined;
+        const writerPtr = self.outWriter;
+        const hasCustom = writerPtr != null;
+        const writer = if (hasCustom) writerPtr.? else undefined;
 
-        if (self.opts.batch_writes) {
+        if (self.opts.batchWrites) {
             var out = std.array_list.Managed(u8).init(self.allocator);
             defer out.deinit();
             for (rects) |r| {
@@ -164,13 +164,13 @@ pub const Terminal = struct {
                     var tmp: [32]u8 = undefined;
                     const seq = try std.fmt.bufPrint(&tmp, "\x1b[{d};{d}H", .{ y + 1, r.x + 1 });
                     try out.appendSlice(seq);
-                    const line_start: usize = @as(usize, @intCast(y)) * @as(usize, @intCast(dim.w + 1));
-                    const start: usize = line_start + @as(usize, @intCast(r.x));
+                    const lineStart: usize = @as(usize, @intCast(y)) * @as(usize, @intCast(dim.w + 1));
+                    const start: usize = lineStart + @as(usize, @intCast(r.x));
                     const end: usize = start + @as(usize, @intCast(r.w));
                     if (end <= snapshot.len) try out.appendSlice(snapshot[start..end]);
                 }
             }
-            if (has_custom) try writer.*.writeAll(out.items) else try self.stdout.writeAll(out.items);
+            if (hasCustom) try writer.*.writeAll(out.items) else try self.stdout.writeAll(out.items);
         } else {
             for (rects) |r| {
                 var row: u32 = 0;
@@ -178,13 +178,13 @@ pub const Terminal = struct {
                     const y = r.y + row;
                     var mv: [32]u8 = undefined;
                     const seq = try std.fmt.bufPrint(&mv, "\x1b[{d};{d}H", .{ y + 1, r.x + 1 });
-                    if (has_custom) try writer.*.writeAll(seq) else try self.stdout.writeAll(seq);
-                    const line_start: usize = @as(usize, @intCast(y)) * @as(usize, @intCast(dim.w + 1));
-                    const start: usize = line_start + @as(usize, @intCast(r.x));
+                    if (hasCustom) try writer.*.writeAll(seq) else try self.stdout.writeAll(seq);
+                    const lineStart: usize = @as(usize, @intCast(y)) * @as(usize, @intCast(dim.w + 1));
+                    const start: usize = lineStart + @as(usize, @intCast(r.x));
                     const end: usize = start + @as(usize, @intCast(r.w));
                     if (end <= snapshot.len) {
                         const slice = snapshot[start..end];
-                        if (has_custom) try writer.*.writeAll(slice) else try self.stdout.writeAll(slice);
+                        if (hasCustom) try writer.*.writeAll(slice) else try self.stdout.writeAll(slice);
                     }
                 }
             }

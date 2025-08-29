@@ -431,7 +431,7 @@ pub const Canvas = struct {
                 }
             },
             .character => {
-        if (self.charBuffer) |buffer| {
+                if (self.charBuffer) |buffer| {
                     for (buffer) |row| {
                         try writer.writeAll(row);
                         try writer.writeByte('\n');

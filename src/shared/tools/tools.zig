@@ -27,7 +27,9 @@ pub const ToolError = error{
 
     /// Processing errors
     ProcessingFailed,
+    ExecutionFailed,
     UnexpectedError,
+    SerializationFailed,
 };
 
 /// Generic function signature for tools.
@@ -445,7 +447,7 @@ pub fn createJsonToolWrapper(jsonFunc: JsonFunction) ToolFn {
             const value = StoredFunction.func(allocator, parsed.value) catch |err| return err;
 
             // Serialize result to string
-            const out = std.json.stringifyAlloc(allocator, value, .{ .whitespace = false }) catch return ToolError.UnexpectedError;
+            const out = std.json.stringifyAlloc(allocator, value, .{}) catch return ToolError.UnexpectedError;
             return out;
         }
     }.wrapper;

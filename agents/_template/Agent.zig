@@ -282,7 +282,7 @@ pub const Template = struct {
                     const varName = template[i + 1 .. i + end];
 
                     // Get the replacement value
-                    const replacement = try self.getTemplateVariableValue(varName);
+                    const replacement = try self.templateVariableValue(varName);
                     defer self.allocator.free(replacement);
 
                     // Append the replacement
@@ -313,7 +313,7 @@ pub const Template = struct {
     ///
     /// Returns: String value for the variable
     /// Errors: Memory allocation errors
-    fn getTemplateVariableValue(self: *Template, varName: []const u8) ![]const u8 {
+    fn templateVariableValue(self: *Template, varName: []const u8) ![]const u8 {
         const cfg = &self.config.agentConfig;
 
         // ============================================================================

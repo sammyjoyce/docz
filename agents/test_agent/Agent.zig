@@ -105,7 +105,7 @@ pub const Test = struct {
 
                 if (std.mem.indexOf(u8, template[i..], "}")) |end| {
                     const varName = template[i + 1 .. i + end];
-                    const replacement = try self.getTemplateVariableValue(varName);
+                    const replacement = try self.templateVariableValue(varName);
                     defer self.allocator.free(replacement);
                     try result.appendSlice(self.allocator, replacement);
                     i += end + 1;
@@ -125,7 +125,7 @@ pub const Test = struct {
     }
 
     /// Override base agent method to provide config-aware template variable processing
-    pub fn getTemplateVariableValue(self: *Self, varName: []const u8) ![]const u8 {
+    pub fn templateVariableValue(self: *Self, varName: []const u8) ![]const u8 {
         const cfg = &self.config.agentConfig;
 
         if (std.mem.eql(u8, varName, "agent_name")) {
@@ -149,11 +149,11 @@ pub const Test = struct {
         } else if (std.mem.eql(u8, varName, "system_commands_enabled")) {
             return try self.allocator.dupe(u8, if (cfg.features.enableSystemCommands) "enabled" else "disabled");
         } else if (std.mem.eql(u8, varName, "max_input_size")) {
-            return try std.fmt.allocPrint(self.allocator, "{d}", .{cfg.limits.maxInputSize});
+            return try std.fmt.allocPrint(self.allocator, "{d}", .{cfg.limits.inputSizeMax});
         } else if (std.mem.eql(u8, varName, "max_output_size")) {
-            return try std.fmt.allocPrint(self.allocator, "{d}", .{cfg.limits.maxOutputSize});
+            return try std.fmt.allocPrint(self.allocator, "{d}", .{cfg.limits.outputSizeMax});
         } else if (std.mem.eql(u8, varName, "max_processing_time")) {
-            return try std.fmt.allocPrint(self.allocator, "{d}", .{cfg.limits.maxProcessingTimeMs});
+            return try std.fmt.allocPrint(self.allocator, "{d}", .{cfg.limits.processingTimeMsMax});
         } else if (std.mem.eql(u8, varName, "current_date")) {
             const now = std.time.timestamp();
             const epochSeconds = std.time.epoch.EpochSeconds{ .secs = @intCast(now) };
@@ -164,7 +164,7 @@ pub const Test = struct {
             return try std.fmt.allocPrint(self.allocator, "{d:0>4}-{d:0>2}-{d:0>2}", .{
                 yearDay.year,
                 @intFromEnum(monthDay.month),
-                monthDay.day_of_month,
+                monthDay.day_index + 1,
             });
         } else if (std.mem.eql(u8, varName, "max_operations")) {
             return try std.fmt.allocPrint(self.allocator, "{d}", .{self.config.maxOperations});

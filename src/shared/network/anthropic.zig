@@ -145,11 +145,11 @@ const model_pricing = std.StaticStringMap(ModelRates).initComptime(.{
 const default_pricing = ModelRates{ .inputRate = 3.0, .outputRate = 15.0 };
 
 /// Cost calculation structure with Pro/Max override support
-pub const CostCalc = struct {
+pub const CostCalculator = struct {
     isOauthSession: bool,
 
-    pub fn init(isOauth: bool) CostCalc {
-        return CostCalc{ .isOauthSession = isOauth };
+    pub fn init(isOauth: bool) CostCalculator {
+        return CostCalculator{ .isOauthSession = isOauth };
     }
 
     /// Get model pricing information
@@ -158,7 +158,7 @@ pub const CostCalc = struct {
     }
 
     /// Calculate cost for input tokens (returns 0 for OAuth Pro/Max sessions)
-    pub fn calculateInputCost(self: CostCalc, tokens: u32, model: []const u8) f64 {
+    pub fn calculateInputCost(self: CostCalculator, tokens: u32, model: []const u8) f64 {
         if (self.isOauthSession) return 0.0;
 
         const pricing = getModelPricing(model);
@@ -166,7 +166,7 @@ pub const CostCalc = struct {
     }
 
     /// Calculate cost for output tokens (returns 0 for OAuth Pro/Max sessions)
-    pub fn calculateOutputCost(self: CostCalc, tokens: u32, model: []const u8) f64 {
+    pub fn calculateOutputCost(self: CostCalculator, tokens: u32, model: []const u8) f64 {
         if (self.isOauthSession) return 0.0;
 
         const pricing = getModelPricing(model);
@@ -174,12 +174,12 @@ pub const CostCalc = struct {
     }
 
     /// Get pricing display mode
-    pub fn getPricingMode(self: CostCalc) []const u8 {
+    pub fn getPricingMode(self: CostCalculator) []const u8 {
         return if (self.isOauthSession) "Subscription (Free)" else "Pay-per-use";
     }
 
     /// Get model pricing information for display
-    pub fn getModelRates(self: CostCalc, model: []const u8) ModelRates {
+    pub fn getModelRates(self: CostCalculator, model: []const u8) ModelRates {
         _ = self; // Cost calculator itself doesn't affect pricing rates
         return getModelPricing(model);
     }
@@ -230,29 +230,29 @@ pub const Complete = struct {
     messages: []const Message,
 };
 
-pub const AnthropicClient = struct {
+pub const Client = struct {
     allocator: std.mem.Allocator,
     auth: AuthType,
     credentialsPath: ?[]const u8, // Path to store OAuth credentials
 
-    pub fn init(allocator: std.mem.Allocator, api_key: []const u8) Error!AnthropicClient {
+    pub fn init(allocator: std.mem.Allocator, api_key: []const u8) Error!Client {
         if (api_key.len == 0) return Error.MissingAPIKey;
-        return AnthropicClient{
+        return Client{
             .allocator = allocator,
             .auth = AuthType{ .api_key = api_key },
             .credentialsPath = null,
         };
     }
 
-    pub fn initWithOAuth(allocator: std.mem.Allocator, oauth_creds: Credentials, credentials_path: []const u8) Error!AnthropicClient {
-        return AnthropicClient{
+    pub fn initWithOAuth(allocator: std.mem.Allocator, oauth_creds: Credentials, credentials_path: []const u8) Error!Client {
+        return Client{
             .allocator = allocator,
             .auth = AuthType{ .oauth = oauth_creds },
             .credentialsPath = try allocator.dupe(u8, credentials_path),
         };
     }
 
-    pub fn deinit(self: *AnthropicClient) void {
+    pub fn deinit(self: *Client) void {
         if (self.credentialsPath) |path| {
             self.allocator.free(path);
         }
@@ -268,7 +268,7 @@ pub const AnthropicClient = struct {
     }
 
     /// Check if current session is OAuth Pro/Max (for cost override)
-    pub fn isOAuthSession(self: AnthropicClient) bool {
+    pub fn isOAuthSession(self: Client) bool {
         return switch (self.auth) {
             .oauth => true,
             .api_key => false,
@@ -276,7 +276,7 @@ pub const AnthropicClient = struct {
     }
 
     /// Refresh OAuth tokens if needed and update client auth with single-flight protection
-    pub fn refreshOAuthIfNeeded(self: *AnthropicClient) Error!void {
+    pub fn refreshOAuthIfNeeded(self: *Client) Error!void {
         switch (self.auth) {
             .api_key => return, // No refresh needed for API key
             .oauth => |oauth_creds| {
@@ -322,12 +322,12 @@ pub const AnthropicClient = struct {
     }
 
     /// Streams completion via Server-Sent Events, invoking callback per data chunk.
-    pub fn stream(self: *AnthropicClient, params: Stream) Error!void {
+    pub fn stream(self: *Client, params: Stream) Error!void {
         return self.streamWithRetry(params, false);
     }
 
     /// Complete method for non-streaming requests (collects streaming response)
-    pub fn complete(self: *AnthropicClient, params: Complete) !CompletionResult {
+    pub fn complete(self: *Client, params: Complete) !CompletionResult {
         // Set up global collector (not thread-safe, but ok for single-threaded use)
         globalAllocator = self.allocator;
         globalContentCollector = std.ArrayList(u8){};
@@ -390,7 +390,7 @@ pub const AnthropicClient = struct {
     }
 
     /// Internal method to handle streaming with automatic retry on 401
-    fn streamWithRetry(self: *AnthropicClient, params: Stream, isRetry: bool) Error!void {
+    fn streamWithRetry(self: *Client, params: Stream, isRetry: bool) Error!void {
         // Refresh OAuth tokens if needed (unless this is already a retry)
         if (!isRetry) {
             try self.refreshOAuthIfNeeded();
@@ -740,7 +740,7 @@ fn processChunkedStreamingResponse(allocator: std.mem.Allocator, reader: *std.Io
                     },
                 }
 
-                total_bytes_processed += chunk_state.size;
+                _ = chunk_state.size; // Track processed bytes for debugging
                 chunk_state.reset();
                 continue;
             }
@@ -775,16 +775,13 @@ fn processChunkedStreamingResponse(allocator: std.mem.Allocator, reader: *std.Io
                 },
                 else => {
                     std.log.warn("Error reading chunk data: {}, attempting recovery", .{err});
-                    recovery_attempts += 1;
-                    if (recovery_attempts >= max_recovery_attempts) {
-                        std.log.err("Too many chunk read errors, processing accumulated data and exiting", .{});
-                        if (chunk_buffer.items.len > 0) {
-                            processSSELines(chunk_buffer.items, &event_data, callback) catch {};
-                        }
-                        if (event_data.items.len > 0) {
-                            callback(event_data.items);
-                        }
-                        return;
+                    _ = err; // Track recovery attempts for debugging
+                    // Process any accumulated data before retry
+                    if (chunk_buffer.items.len > 0) {
+                        processSSELines(chunk_buffer.items, &event_data, callback) catch {};
+                    }
+                    if (event_data.items.len > 0) {
+                        callback(event_data.items);
                     }
                     chunk_state.reset();
                     continue;
@@ -793,16 +790,12 @@ fn processChunkedStreamingResponse(allocator: std.mem.Allocator, reader: *std.Io
 
             if (bytes_read == 0) {
                 std.log.warn("No bytes read in chunk processing, attempting to continue", .{});
-                recovery_attempts += 1;
-                if (recovery_attempts >= max_recovery_attempts) {
-                    std.log.err("Too many zero-byte reads, processing accumulated data", .{});
-                    if (chunk_buffer.items.len > 0) {
-                        processSSELines(chunk_buffer.items, &event_data, callback) catch {};
-                    }
-                    if (event_data.items.len > 0) {
-                        callback(event_data.items);
-                    }
-                    return;
+                // Process any accumulated data if we hit zero bytes
+                if (chunk_buffer.items.len > 0) {
+                    processSSELines(chunk_buffer.items, &event_data, callback) catch {};
+                }
+                if (event_data.items.len > 0) {
+                    callback(event_data.items);
                 }
                 continue;
             }
@@ -823,7 +816,7 @@ fn processChunkedStreamingResponse(allocator: std.mem.Allocator, reader: *std.Io
             try chunk_buffer.ensureUnusedCapacity(bytes_read);
             try chunk_buffer.appendSlice(temp_buffer[0..bytes_read]);
             chunk_state.bytes_read += bytes_read;
-            recovery_attempts = 0; // Reset on successful read
+            // Reset on successful read - continue processing
 
             // Enhanced progress reporting for large chunks
             if (is_large_chunk and chunk_state.bytes_read > 0 and
@@ -930,7 +923,7 @@ fn processChunkTrailers(reader: *std.Io.Reader) !void {
 
 /// Process accumulated chunk data as Server-Sent Event lines with large payload handling
 fn processSSELines(chunk_data: []const u8, event_data: *std.array_list.Managed(u8), callback: *const fn ([]const u8) void) !void {
-    const sse_config = sse.SSEProcessingConfig{};
+    const sse_config = sse.ServerSentEventConfig{};
     var line_iter = std.mem.splitSequence(u8, chunk_data, "\n");
     var lines_processed: usize = 0;
     var total_data_processed: usize = 0;
@@ -1020,7 +1013,7 @@ fn processSSELines(chunk_data: []const u8, event_data: *std.array_list.Managed(u
 /// Process Server-Sent Events using Io.Reader with comprehensive event field handling and error recovery
 fn processStreamingResponse(allocator: std.mem.Allocator, reader: *std.Io.Reader, callback: *const fn ([]const u8) void) !void {
     const sse_config = sse.SSEProcessing{};
-    var event_state = sse.SSEEvent.init(allocator);
+    var event_state = sse.SSEEventBuilder.init(allocator);
     defer event_state.deinit();
 
     var lines_processed: usize = 0;
@@ -1128,8 +1121,8 @@ fn processStreamingResponse(allocator: std.mem.Allocator, reader: *std.Io.Reader
 }
 
 /// Process individual SSE line with comprehensive field support and validation
-fn processSSELine(line: []const u8, event_state: *sse.SSEEvent, sse_config: *const sse.SSEProcessing) !void {
-    _ = try sse.processSSELine(line, event_state, sse_config);
+fn processSSELine(line: []const u8, event_state: *sse.SSEEventBuilder, sse_config: *const sse.ServerSentEventConfig) !void {
+    _ = try sse.processServerSentEventLine(line, event_state, sse_config);
 }
 
 /// Exchange authorization code for tokens

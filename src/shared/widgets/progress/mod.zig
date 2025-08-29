@@ -20,25 +20,25 @@ pub const Progress = struct {
         return ui.component.wrap(@TypeOf(self.*), self);
     }
 
-    pub fn measure(self: *Progress, c: ui.layout.Constraints) ui.layout.Size {
+    pub fn measure(self: *Progress, constraints: ui.layout.Constraints) ui.layout.Size {
         _ = self;
         // Single-line widget; take full width provided by constraints
-        return .{ .w = c.max.w, .h = 1 };
+        return .{ .w = constraints.max.w, .h = 1 };
     }
 
-    pub fn layout(self: *Progress, rect: ui.layout.Rect) void {
+    pub fn layout(self: *Progress, rectangle: ui.layout.Rect) void {
         _ = self;
-        _ = rect;
+        _ = rectangle;
     }
 
-    pub fn render(self: *Progress, ctx: *renderCtx.Context) !void {
-        const rect = ui.layout.Rect{ .x = 0, .y = 0, .w = ctx.surface.size().w, .h = 1 };
-        try draw.progress(ctx, rect, self.value, self.label);
+    pub fn render(self: *Progress, context: *renderCtx.Context) !void {
+        const rectangle = ui.layout.Rect{ .x = 0, .y = 0, .w = context.surface.size().w, .h = 1 };
+        try draw.progress(context, rectangle, self.value, self.label);
     }
 
-    pub fn event(self: *Progress, ev: ui.event.Event) ui.component.Component.Invalidate {
+    pub fn event(self: *Progress, inputEvent: ui.event.Event) ui.component.Component.Invalidate {
         _ = self;
-        _ = ev;
+        _ = inputEvent;
         return .none;
     }
 };
@@ -51,8 +51,8 @@ test "progress renders bar proportionally" {
         allocator.destroy(surface);
     }
 
-    var ctx = renderCtx.Context.init(surface, null);
-    try draw.progress(&ctx, .{ .x = 0, .y = 0, .w = 10, .h = 1 }, 0.5, null);
+    var context = renderCtx.Context.init(surface, null);
+    try draw.progress(&context, .{ .x = 0, .y = 0, .w = 10, .h = 1 }, 0.5, null);
     const dump = try surface.toString(allocator);
     defer allocator.free(dump);
     try std.testing.expectEqualStrings("=====-----\n", dump);

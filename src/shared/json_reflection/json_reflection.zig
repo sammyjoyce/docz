@@ -96,7 +96,7 @@ pub fn generateJsonSerializer(comptime T: type) type {
         /// Errors: Error if serialization fails
         pub fn serialize(allocator: std.mem.Allocator, instance: T, options: std.json.StringifyOptions) Error![]const u8 {
             const jsonString = std.json.stringifyAlloc(allocator, instance, options) catch |err| {
-                _ = err;
+                std.log.warn("JSON serialization failed: {any}", .{err});
                 return Error.SerializationFailed;
             };
             return jsonString;

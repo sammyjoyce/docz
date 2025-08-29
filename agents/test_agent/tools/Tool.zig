@@ -305,8 +305,10 @@ pub fn execute(allocator: std.mem.Allocator, params: std.json.Value) toolsMod.To
     const RequestMapper = json_reflection.generateJsonMapper(Request);
 
     // Deserialize JSON to struct - this replaces all manual field extraction
-    const request = RequestMapper.fromJson(allocator, params) catch
+    const parsed = RequestMapper.fromJson(allocator, params) catch
         return toolsMod.ToolError.MalformedJSON;
+    defer parsed.deinit();
+    const request = parsed.value;
 
     // ============================================================================
     // PARAMETER VALIDATION

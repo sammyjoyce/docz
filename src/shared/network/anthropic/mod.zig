@@ -10,7 +10,7 @@ pub const retry = @import("retry.zig");
 
 // Stable API re-exports to enable gradual migration away from the legacy file
 // without forcing downstream callers to change their imports immediately.
-pub const AnthropicClient = client.AnthropicClient;
+pub const Client = client.Client;
 pub const Error = models.Error;
 pub const Message = models.Message;
 pub const MessageRole = models.MessageRole;
@@ -20,8 +20,8 @@ pub const CompletionResult = models.CompletionResult;
 pub const Usage = models.Usage;
 pub const Credentials = models.Credentials;
 pub const Pkce = models.Pkce;
-pub const MessagesParams = client.MessagesParams;
-pub const MessagesResult = client.MessagesResult;
+pub const MessageParameters = client.MessageParameters;
+pub const MessageResult = client.MessageResult;
 pub const StreamParams = client.StreamParams;
 
 // Note: explicit re-exports should be added incrementally as the split progresses.

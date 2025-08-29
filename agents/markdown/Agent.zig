@@ -126,7 +126,7 @@ pub const Markdown = struct {
 
                 if (std.mem.indexOf(u8, template[i..], "}")) |end| {
                     const varName = template[i + 1 .. i + end];
-                    const replacement = try self.getTemplateVariableValue(varName);
+                    const replacement = try self.templateVariableValue(varName);
                     defer self.allocator.free(replacement);
                     try result.appendSlice(self.allocator, replacement);
                     i += end + 1;
@@ -146,7 +146,7 @@ pub const Markdown = struct {
     }
 
     /// Override base agent method to provide config-aware template variable processing
-    pub fn getTemplateVariableValue(self: *Self, varName: []const u8) ![]const u8 {
+    pub fn templateVariableValue(self: *Self, varName: []const u8) ![]const u8 {
         const cfg = &self.config.agentConfig;
 
         if (std.mem.eql(u8, varName, "agent_name")) {

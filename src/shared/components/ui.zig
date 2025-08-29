@@ -390,9 +390,9 @@ pub const BorderStyle = struct {
     color: Color,
     style: enum { single, double, rounded },
 
-    pub fn getChars(self: BorderStyle) BorderChars {
+    pub fn getChars(self: BorderStyle) BorderCharacters {
         return switch (self.style) {
-            .single => BorderChars{
+            .single => BorderCharacters{
                 .topLeft = "┌",
                 .topRight = "┐",
                 .bottomLeft = "└",
@@ -400,7 +400,7 @@ pub const BorderStyle = struct {
                 .horizontal = "─",
                 .vertical = "│",
             },
-            .double => BorderChars{
+            .double => BorderCharacters{
                 .topLeft = "╔",
                 .topRight = "╗",
                 .bottomLeft = "╚",
@@ -408,7 +408,7 @@ pub const BorderStyle = struct {
                 .horizontal = "═",
                 .vertical = "║",
             },
-            .rounded => BorderChars{
+            .rounded => BorderCharacters{
                 .topLeft = "╭",
                 .topRight = "╮",
                 .bottomLeft = "╰",

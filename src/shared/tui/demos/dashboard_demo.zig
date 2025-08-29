@@ -17,8 +17,8 @@ pub fn main() !void {
     const allocator = gpa.allocator();
 
     // Initialize TUI system
-    try tui.initTUI(allocator);
-    defer tui.deinitTUI();
+    try tui.initTui(allocator);
+    defer tui.deinitTui();
 
     // Detect terminal capabilities
     const caps = tui.detectCapabilities();

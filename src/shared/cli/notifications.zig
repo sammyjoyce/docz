@@ -31,7 +31,7 @@ pub const SoundPattern = components.SoundPattern;
 pub const Notification = struct {
     const Self = @This();
 
-    bridge: *terminal_bridge.TerminalBridge,
+    bridge: *terminal_bridge.Bridge,
     config: NotificationConfig,
 
     // State tracking
@@ -42,7 +42,7 @@ pub const Notification = struct {
     active_notifications: std.ArrayList(BaseNotification),
     allocator: std.mem.Allocator,
 
-    pub fn init(allocator: std.mem.Allocator, bridge: *terminal_bridge.TerminalBridge, config: NotificationConfig) !Self {
+    pub fn init(allocator: std.mem.Allocator, bridge: *terminal_bridge.Bridge, config: NotificationConfig) !Self {
         return Self{
             .bridge = bridge,
             .config = config,
@@ -1001,7 +1001,7 @@ test "notification manager initialization" {
     const allocator = gpa.allocator();
 
     const bridge_config = terminal_bridge.Config{};
-    var bridge = try terminal_bridge.TerminalBridge.init(allocator, bridge_config);
+    var bridge = try terminal_bridge.Bridge.init(allocator, bridge_config);
     defer bridge.deinit();
 
     const notification_config = NotificationConfig{};

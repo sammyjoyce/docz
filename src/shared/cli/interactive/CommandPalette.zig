@@ -516,11 +516,11 @@ pub const Palette = struct {
                 },
                 .cancel => {
                     // Terminal cleanup would happen here in a full implementation
-                return PaletteResult{
-                    .action = .cancel,
-                    .selectedItem = null,
-                    .query = null,
-                };
+                    return PaletteResult{
+                        .action = .cancel,
+                        .selectedItem = null,
+                        .query = null,
+                    };
                 },
                 .copy, .notification_test, .graphics_preview => {
                     // These actions are handled in handleInput, continue loop

@@ -10,9 +10,9 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const cli_config = @import("cli.zon");
-const CliFormatter = @import("formatters/formatter.zig").CliFormatter;
+const Formatter = @import("formatters/formatter.zig").Formatter;
 
-pub const CliError = error{
+pub const Error = error{
     UnknownOption,
     MissingValue,
     InvalidValue,
@@ -194,11 +194,11 @@ pub fn parseArgs(allocator: Allocator, args: []const []const u8) !ParsedArgs {
             const opt = @field(cfg.options, opt_field.name);
             if (!option_matched and matchesOption(opt, arg)) {
                 option_matched = true;
-                if (i + 1 >= args.len) return CliError.MissingValue;
+                if (i + 1 >= args.len) return Error.MissingValue;
                 i += 1;
                 const OptionType = getOptionType(opt);
                 const parsed_value = parseOptionValue(OptionType, args[i]) catch {
-                    return CliError.InvalidValue;
+                    return Error.InvalidValue;
                 };
 
                 // Set the field value using comptime string matching
@@ -253,7 +253,7 @@ pub fn parseArgs(allocator: Allocator, args: []const []const u8) !ParsedArgs {
 
             if (!flag_matched and !option_matched) {
                 if (std.mem.startsWith(u8, arg, "-")) {
-                    return CliError.UnknownOption;
+                    return Error.UnknownOption;
                 } else {
                     // Positional argument - handle commands and typeInfo
                     switch (result.positionals.command) {
@@ -261,14 +261,14 @@ pub fn parseArgs(allocator: Allocator, args: []const []const u8) !ParsedArgs {
                             // For chat command, check if this is actually a command
                             if (std.mem.eql(u8, arg, "auth")) {
                                 if (i + 1 >= args.len) {
-                                    return CliError.MissingValue; // auth subcommand is required
+                                    return Error.MissingValue; // auth subcommand is required
                                 }
                                 i += 1;
                                 const subcommand_str = args[i];
                                 if (AuthSubcommand.fromString(subcommand_str)) |sub| {
                                     result.positionals.command = Command{ .auth = sub };
                                 } else {
-                                    return CliError.UnknownSubcommand;
+                                    return Error.UnknownSubcommand;
                                 }
                             } else {
                                 // Not a known command, treat as prompt for default chat command
@@ -431,13 +431,13 @@ fn printSubcommands(typeInfo: anytype) void {
 
 pub fn printHelp(allocator: Allocator) !void {
     // For now, use an approach
-    var formatter = try CliFormatter.init(allocator);
+    var formatter = try Formatter.init(allocator);
     defer formatter.deinit();
     try formatter.printEnhancedHelp(cli_config);
 }
 
 pub fn printVersion(allocator: Allocator) !void {
-    var formatter = try CliFormatter.init(allocator);
+    var formatter = try Formatter.init(allocator);
     defer formatter.deinit();
     try formatter.printVersion(cli_config);
 }
@@ -450,8 +450,8 @@ pub fn shouldShowVersion(parsed: *const ParsedArgs) bool {
     return parsed.flags.version;
 }
 
-pub fn printError(allocator: Allocator, err: CliError, context: ?[]const u8) !void {
-    var formatter = try CliFormatter.init(allocator);
+pub fn printError(allocator: Allocator, err: Error, context: ?[]const u8) !void {
+    var formatter = try Formatter.init(allocator);
     defer formatter.deinit();
     try formatter.printError(err, context);
 }

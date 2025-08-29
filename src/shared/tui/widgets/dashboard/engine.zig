@@ -1,6 +1,6 @@
 //! Dashboard Engine
 //!
-//! Leverages terminal capabilities from @src/term to provide data visualization 
+//! Leverages terminal capabilities from @src/term to provide data visualization
 //! and interactive dashboard components with progressive enhancement.
 
 const std = @import("std");

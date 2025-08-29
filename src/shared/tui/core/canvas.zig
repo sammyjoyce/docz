@@ -1,8 +1,8 @@
 //! Canvas System - Graphics canvas with layer management and real-time interaction
 //!
-//! This module provides a graphics canvas that leverages terminal capabilities. 
-//! It supports multi-layer compositing, real-time interaction, progressive 
-//! enhancement based on terminal features, and maintains backward compatibility 
+//! This module provides a graphics canvas that leverages terminal capabilities.
+//! It supports multi-layer compositing, real-time interaction, progressive
+//! enhancement based on terminal features, and maintains backward compatibility
 //! with the original canvas_engine API.
 
 const std = @import("std");

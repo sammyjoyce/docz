@@ -20,12 +20,12 @@ pub const StreamError = error{
     EndOfStream,
     StreamTooLong,
     NetworkError,
-} || sse.SSEError;
+} || sse.ServerSentEventError;
 
 // ============================== Configuration Types ==============================
 
 /// Configuration for large payload processing
-pub const LargePayloadCfg = struct {
+pub const LargePayloadConfig = struct {
     largeChunkThreshold: usize = 1024 * 1024, // 1MB threshold for large chunk processing
     streamingBufferSize: usize = 64 * 1024, // 64KB buffer for streaming large chunks
     maxAccumulatedSize: usize = 16 * 1024 * 1024, // 16MB max accumulated data before streaming
@@ -60,20 +60,20 @@ pub const ChunkState = struct {
 };
 
 /// Streaming context for callback-based processing
-pub const StreamingCtx = struct {
+pub const StreamingContext = struct {
     allocator: std.mem.Allocator,
     callback: *const fn ([]const u8) void,
     buffer: std.ArrayListUnmanaged(u8),
 
-    pub fn init(allocator: std.mem.Allocator, callback: *const fn ([]const u8) void) StreamingCtx {
-        return StreamingCtx{
+    pub fn init(allocator: std.mem.Allocator, callback: *const fn ([]const u8) void) StreamingContext {
+        return StreamingContext{
             .allocator = allocator,
             .callback = callback,
             .buffer = std.ArrayListUnmanaged(u8){},
         };
     }
 
-    pub fn deinit(self: *StreamingCtx) void {
+    pub fn deinit(self: *StreamingContext) void {
         self.buffer.deinit(self.allocator);
     }
 };
@@ -82,22 +82,22 @@ pub const StreamingCtx = struct {
 
 /// Process a stream chunk (entry point for curl callbacks)
 pub fn processStreamChunk(chunk: []const u8, context: *anyopaque) void {
-    const stream_ctx: *StreamingCtx = @ptrCast(@alignCast(context));
+    const streamContext: *StreamingContext = @ptrCast(@alignCast(context));
 
     // Process chunk for SSE events
-    processSseChunk(stream_ctx, chunk) catch |err| {
+    processSseChunk(streamContext, chunk) catch |err| {
         std.log.warn("Error processing stream chunk: {}", .{err});
     };
 }
 
 /// Process individual SSE chunk and extract events
-pub fn processSseChunk(stream_ctx: *StreamingCtx, chunk: []const u8) !void {
+pub fn processSseChunk(streamContext: *StreamingContext, chunk: []const u8) !void {
     // Add chunk to buffer
-    try stream_ctx.buffer.appendSlice(stream_ctx.allocator, chunk);
+    try streamContext.buffer.appendSlice(streamContext.allocator, chunk);
 
     // Process complete SSE events (separated by double newlines)
-    while (std.mem.indexOf(u8, stream_ctx.buffer.items, "\n\n")) |end_pos| {
-        const eventData = stream_ctx.buffer.items[0..end_pos];
+    while (std.mem.indexOf(u8, streamContext.buffer.items, "\n\n")) |end_pos| {
+        const eventData = streamContext.buffer.items[0..end_pos];
 
         // Extract SSE data field content
         var lines = std.mem.splitSequence(u8, eventData, "\n");
@@ -107,15 +107,15 @@ pub fn processSseChunk(stream_ctx: *StreamingCtx, chunk: []const u8) !void {
                 const data_content = trimmed_line[6..]; // Skip "data: "
                 if (data_content.len > 0 and !std.mem.eql(u8, data_content, "[DONE]")) {
                     // Call the user callback with the SSE data
-                    stream_ctx.callback(data_content);
+                    streamContext.callback(data_content);
                 }
             }
         }
 
         // Remove processed event from buffer
-        const remaining = stream_ctx.buffer.items[end_pos + 2 ..];
-        std.mem.copyForwards(u8, stream_ctx.buffer.items[0..remaining.len], remaining);
-        stream_ctx.buffer.shrinkRetainingCapacity(remaining.len);
+        const remaining = streamContext.buffer.items[end_pos + 2 ..];
+        std.mem.copyForwards(u8, streamContext.buffer.items[0..remaining.len], remaining);
+        streamContext.buffer.shrinkRetainingCapacity(remaining.len);
     }
 }
 
@@ -222,7 +222,7 @@ pub fn processSSELines(
     eventData: *std.array_list.Managed(u8),
     callback: *const fn ([]const u8) void,
 ) !void {
-    const sse_config = sse.SSEConfig{};
+    const sse_config = sse.ServerSentEventConfig{};
     var lineIter = std.mem.splitSequence(u8, chunk_data, "\n");
     var linesProcessed: usize = 0;
     var totalDataProcessed: usize = 0;
@@ -313,7 +313,7 @@ pub fn processSSELines(
 pub fn processSSELine(
     line: []const u8,
     event_state: *sse.SSEEventBuilder,
-    sse_config: *const sse.SSEConfig,
+    sse_config: *const sse.ServerSentEventConfig,
 ) !void {
     _ = sse.processSseLine(line, event_state, sse_config) catch |err| {
         std.log.warn("Error processing SSE line: {}", .{err});
@@ -336,7 +336,7 @@ pub fn processChunkedStreamingResponse(
     var chunkBuffer = std.array_list.Managed(u8).init(allocator);
     defer chunkBuffer.deinit();
 
-    const config = LargePayloadCfg{};
+    const config = LargePayloadConfig{};
 
     // Use adaptive initial capacity based on expected large payload handling
     try eventData.ensureTotalCapacity(16384); // 16KB initial capacity
@@ -553,7 +553,7 @@ pub fn processStreamingResponse(
     reader: *std.Io.Reader,
     callback: *const fn ([]const u8) void,
 ) !void {
-    const sse_config = sse.SSEConfig{};
+    const sse_config = sse.ServerSentEventConfig{};
     var event_state = sse.SSEEventBuilder.init(allocator);
     defer event_state.deinit();
 
@@ -696,11 +696,11 @@ pub fn streamMessages(
 pub fn createStreamingContext(
     allocator: std.mem.Allocator,
     callback: *const fn ([]const u8) void,
-) StreamingCtx {
-    return StreamingCtx.init(allocator, callback);
+) StreamingContext {
+    return StreamingContext.init(allocator, callback);
 }
 
 /// Destroy a streaming context and free its resources
-pub fn destroyStreamingContext(context: *StreamingCtx) void {
+pub fn destroyStreamingContext(context: *StreamingContext) void {
     context.deinit();
 }

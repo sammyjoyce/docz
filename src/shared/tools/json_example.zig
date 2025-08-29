@@ -134,7 +134,7 @@ pub fn fileOperationTool(allocator: std.mem.Allocator, params: std.json.Value) t
     // Perform file operation
     const result = switch (request.operation) {
         .read => blk: {
-        const file = try std.fs.cwd().openFile(request.filename, .{});
+            const file = try std.fs.cwd().openFile(request.filename, .{});
             defer file.close();
 
             const content = try file.readToEndAlloc(allocator, 1024 * 1024);

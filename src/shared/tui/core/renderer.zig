@@ -11,7 +11,7 @@ const tui_mod = @import("../mod.zig");
 
 pub const Point = bounds_mod.Point;
 pub const Bounds = bounds_mod.Bounds;
-pub const TermCaps = tui_mod.TermCaps;
+pub const TerminalCapabilities = tui_mod.TerminalCapabilities;
 
 // Additional geometric types for widget system
 pub const Size = struct {
@@ -154,7 +154,7 @@ pub const RenderEngine = struct {
         show_cursor: *const fn (impl: *anyopaque, visible: bool) anyerror!void,
 
         // Capabilities query
-        get_capabilities: *const fn (impl: *anyopaque) TermCaps,
+        get_capabilities: *const fn (impl: *anyopaque) TerminalCapabilities,
 
         // Cleanup
         deinit: *const fn (impl: *anyopaque) void,
@@ -225,7 +225,7 @@ pub const RenderEngine = struct {
         return self.vtable.show_cursor(self.impl, visible);
     }
 
-    pub inline fn getCapabilities(self: *Self) TermCaps {
+    pub inline fn getCapabilities(self: *Self) TerminalCapabilities {
         return self.vtable.get_capabilities(self.impl);
     }
 
@@ -326,7 +326,7 @@ fn getLevelIcon(level: NotificationLevel) []const u8 {
     };
 }
 
-fn getLevelColor(level: NotificationLevel, caps: TermCaps) Style.Color {
+fn getLevelColor(level: NotificationLevel, caps: TerminalCapabilities) Style.Color {
     if (caps.supportsTruecolor) {
         return switch (level) {
             .info => .{ .rgb = .{ .r = 100, .g = 149, .b = 237 } }, // Cornflower blue
@@ -351,7 +351,7 @@ pub fn createRenderEngine(allocator: std.mem.Allocator) !RenderEngine {
     // Try to detect terminal capabilities, use safe defaults on error
     const caps = tui_mod.detectCapabilities() catch blk: {
         // If capability detection fails, create safe fallback capabilities
-        break :blk TermCaps{
+        break :blk TerminalCapabilities{
             .supportsTruecolor = false,
             .supportsHyperlinkOsc8 = false,
             .supportsClipboardOsc52 = false,

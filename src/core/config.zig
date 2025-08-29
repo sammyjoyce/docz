@@ -49,6 +49,12 @@ pub fn loadWithDefaults(
     return parsed;
 }
 
+/// Get the standard agent config path for a given agent name.
+/// Returns a path like "agents/{name}/config.zon"
+pub fn getAgentConfigPath(allocator: Allocator, agentName: []const u8) ![]const u8 {
+    return std.fmt.allocPrint(allocator, "agents/{s}/config.zon", .{agentName});
+}
+
 /// Validate that a configuration file exists and is readable
 pub fn validateConfigFile(path: []const u8) !void {
     const file = std.fs.cwd().openFile(path, .{}) catch |err| {

@@ -29,7 +29,7 @@ pub const StatusLevel = status.Level;
 pub const Status = status.Status;
 
 pub const ProgressStyle = progress.Style;
-pub const TermCaps = progress.TermCaps;
+pub const TerminalCapabilities = progress.TerminalCapabilities;
 pub const ProgressRenderer = progress.Renderer;
 
 // Re-export progress rendering functions

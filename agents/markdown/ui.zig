@@ -5,7 +5,7 @@
 //! document outline navigation, and integrated diff viewer.
 
 const std = @import("std");
-const agent_ui_framework = @import("../../src/shared/tui/agent_ui_framework.zig");
+const agent_ui_framework = @import("../../src/shared/tui/agent_ui.zig");
 const renderer_mod = @import("../../src/shared/tui/core/renderer.zig");
 const bounds_mod = @import("../../src/shared/tui/core/bounds.zig");
 const theme = @import("../../src/shared/theme/mod.zig");

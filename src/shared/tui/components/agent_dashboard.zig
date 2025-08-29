@@ -1459,7 +1459,7 @@ pub const DashboardMonitor = struct {
 
     pub fn update(self: *DashboardMonitor, dashboard: *AgentDashboard) !void {
         // Collect API call times from anthropic client if available
-        if (dashboard.base_agent.getAuthClient()) |client| {
+        if (dashboard.base_agent.currentAuthClient()) |client| {
             // This would integrate with actual API client metrics
             // For now, this is a placeholder
             _ = client;

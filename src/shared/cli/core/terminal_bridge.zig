@@ -64,7 +64,7 @@ pub const Config = struct {
 };
 
 /// Main terminal bridge that provides CLI component access
-pub const TerminalBridge = struct {
+pub const Bridge = struct {
     const Self = @This();
 
     allocator: std.mem.Allocator,
@@ -297,11 +297,11 @@ pub const TerminalBridge = struct {
 pub const Render = struct {
     const Self = @This();
 
-    bridge: *TerminalBridge,
+    bridge: *Bridge,
     start_time: std.time.Timer,
     scoped_context: terminal.Scoped,
 
-    fn init(bridge: *TerminalBridge) !Self {
+    fn init(bridge: *Bridge) !Self {
         return Self{
             .bridge = bridge,
             .start_time = try std.time.Timer.start(),
@@ -311,13 +311,13 @@ pub const Render = struct {
 
     pub fn deinit(self: *Self) void {
         const elapsed = self.start_time.read();
-        TerminalBridge.global_metrics.render_calls += 1;
-        TerminalBridge.global_metrics.total_render_time_ns += elapsed;
+        Bridge.global_metrics.render_calls += 1;
+        Bridge.global_metrics.total_render_time_ns += elapsed;
 
         self.scoped_context.deinit();
     }
 
-    pub fn getBridge(self: *Self) *TerminalBridge {
+    pub fn getBridge(self: *Self) *Bridge {
         return self.bridge;
     }
 
@@ -372,7 +372,7 @@ test "terminal bridge initialization" {
     const allocator = gpa.allocator();
 
     const config = Config{};
-    var bridge = try TerminalBridge.init(allocator, config);
+    var bridge = try Bridge.init(allocator, config);
     defer bridge.deinit();
 
     const caps = bridge.getCapabilities();

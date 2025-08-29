@@ -1,7 +1,7 @@
 const std = @import("std");
 const Painter = @import("painter.zig").Painter;
 const surface = @import("surface.zig");
-const diff_surface = @import("diff_surface.zig");
+const diffSurface = @import("diff_surface.zig");
 
 pub const Memory = struct {
     allocator: std.mem.Allocator,
@@ -42,11 +42,11 @@ pub const Memory = struct {
     }
 
     /// Render using a provided paint callback (testing and simple callers)
-    pub fn renderWith(self: *Memory, paint: *const fn (*Painter) anyerror!void) ![]diff_surface.DirtySpan {
+    pub fn renderWith(self: *Memory, paint: *const fn (*Painter) anyerror!void) ![]diffSurface.Span {
         try self.clearSurface(self.back);
         var ctx = Painter.init(self.back, null);
         try paint(&ctx);
-        const spans = try diff_surface.computeDirtySpans(self.allocator, self.front, self.back);
+        const spans = try diffSurface.computeDirtySpans(self.allocator, self.front, self.back);
         const tmp = self.front;
         self.front = self.back;
         self.back = tmp;

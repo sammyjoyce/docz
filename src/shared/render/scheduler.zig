@@ -13,13 +13,13 @@ pub const Scheduler = struct {
     }
 
     /// Render one frame to memory and return dirty spans.
-    pub fn stepMemory(self: *Scheduler, mr: *render.MemoryRenderer, comp: ui.component.Component) ![]render.DirtySpan {
+    pub fn stepMemory(self: *Scheduler, mr: *render.MemoryRenderer, comp: ui.component.Component) ![]render.DiffSpan {
         // self reserved for future (frame arenas, stats)
         return ui.runner.renderToMemory(self.allocator, mr, comp);
     }
 
     /// Render one frame to terminal and return dirty spans.
-    pub fn stepTerminal(self: *Scheduler, tr: *render.TermRenderer, comp: ui.component.Component) ![]render.DirtySpan {
+    pub fn stepTerminal(self: *Scheduler, tr: *render.TermRenderer, comp: ui.component.Component) ![]render.DiffSpan {
         return ui.runner.renderToTerminal(self.allocator, tr, comp);
     }
 };

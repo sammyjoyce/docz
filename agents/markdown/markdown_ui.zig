@@ -5,7 +5,7 @@
 //! document outline navigation, and integrated diff viewer.
 
 const std = @import("std");
-const agent_ui_framework = @import("../../src/shared/tui/agent_ui_framework.zig");
+const agent_ui_framework = @import("../../src/shared/tui/agent_ui.zig");
 const renderer_mod = @import("../../src/shared/tui/core/renderer.zig");
 const bounds_mod = @import("../../src/shared/tui/core/bounds.zig");
 const theme = @import("../../src/shared/theme/mod.zig");
@@ -22,7 +22,7 @@ const Renderer = renderer_mod.Renderer;
 const Render = renderer_mod.Render;
 const Style = renderer_mod.Style;
 const Bounds = renderer_mod.Bounds;
-const Theme = theme_manager_mod.Theme;
+const Theme = theme.Theme;
 const InputManager = input_system.InputManager;
 
 /// Interactive markdown session configuration
@@ -168,7 +168,7 @@ pub const InteractiveMarkdownSession = struct {
     pub fn init(allocator: std.mem.Allocator, config: InteractiveMarkdownConfig) !*Self {
         const session = try allocator.create(Self);
         const renderer = config.ui_config.renderer;
-        const theme = config.ui_config.theme_manager;
+        const theme_manager = config.ui_config.theme_manager;
 
         // Initialize input manager
         const input_manager = try InputManager.init(allocator);
@@ -462,12 +462,12 @@ pub const InteractiveMarkdownSession = struct {
             .height = 1,
         };
 
-        const theme = self.theme.getCurrentTheme();
+        const theme = self.current_theme.getCurrentTheme();
 
         // Draw status bar background
         const bg_style = Style{
-            .bg_color = theme.primary,
-            .fg_color = theme.background,
+            .bg_color = status_theme.primary,
+            .fg_color = status_theme.background,
             .bold = false,
         };
 
@@ -490,7 +490,7 @@ pub const InteractiveMarkdownSession = struct {
 
         const status_ctx = Render{
             .bounds = status_bounds,
-            .style = .{ .fg_color = theme.background, .bg_color = theme.primary },
+            .style = .{ .fg_color = current_theme.background, .bg_color = current_theme.primary },
             .zIndex = 0,
             .clipRegion = null,
         };
@@ -509,10 +509,10 @@ pub const InteractiveMarkdownSession = struct {
         };
 
         // Draw outline background
-        const theme = self.theme.getCurrentTheme();
+        const outline_theme = self.current_theme.currentTheme();
         const bg_style = Style{
-            .bg_color = theme.secondary,
-            .fg_color = theme.foreground,
+            .bg_color = outline_theme.secondary,
+            .fg_color = outline_theme.foreground,
             .bold = false,
         };
 
@@ -528,7 +528,7 @@ pub const InteractiveMarkdownSession = struct {
 
         const title_ctx = Render{
             .bounds = title_bounds,
-            .style = .{ .fg_color = theme.primary, .bold = true },
+            .style = .{ .fg_color = current_theme.primary, .bold = true },
             .zIndex = 0,
             .clipRegion = null,
         };
@@ -615,12 +615,12 @@ pub const PreviewRenderer = struct {
             try self.updateContent(content);
         }
 
-        const theme = self.theme.getCurrentTheme();
+        const theme = self.current_theme.getCurrentTheme();
 
         // Draw preview border
         const border_style = Style{
-            .bg_color = theme.background,
-            .fg_color = theme.primary,
+            .bg_color = preview_theme.background,
+            .fg_color = preview_theme.primary,
             .bold = true,
         };
 
@@ -636,7 +636,7 @@ pub const PreviewRenderer = struct {
 
         const title_ctx = Render{
             .bounds = title_bounds,
-            .style = .{ .fg_color = theme.primary, .bold = true },
+            .style = .{ .fg_color = current_theme.primary, .bold = true },
             .zIndex = 0,
             .clipRegion = null,
         };
@@ -654,7 +654,7 @@ pub const PreviewRenderer = struct {
         // Render markdown content (simplified)
         const content_ctx = Render{
             .bounds = content_bounds,
-            .style = .{ .fg_color = theme.foreground },
+            .style = .{ .fg_color = current_theme.foreground },
             .zIndex = 0,
             .clipRegion = null,
         };

@@ -103,8 +103,8 @@ pub const ServerSentEvent = struct {
     }
 };
 
-/// Configuration for SSE processing with memory and performance limits
-pub const SSEConfig = struct {
+/// Configuration for Server-Sent Event processing with memory and performance limits
+pub const ServerSentEventConfig = struct {
     /// Maximum size per SSE event (default: 32MB)
     maxEventSize: usize = 32 * 1024 * 1024,
 
@@ -124,8 +124,8 @@ pub const SSEConfig = struct {
     maxRetryInterval: u32 = 300,
 };
 
-/// SSE event state management for building events from parsed lines
-pub const SSEEventBuilder = struct {
+/// Server-Sent Event state management for building events from parsed lines
+pub const ServerSentEventBuilder = struct {
     /// Current event type being built
     event_type: ?[]const u8 = null,
 
@@ -142,19 +142,19 @@ pub const SSEEventBuilder = struct {
     hasData: bool = false,
 
     /// Initialize new event state with allocator
-    pub fn init(allocator: std.mem.Allocator) SSEEventBuilder {
-        return SSEEventBuilder{
+    pub fn init(allocator: std.mem.Allocator) ServerSentEventBuilder {
+        return ServerSentEventBuilder{
             .dataBuffer = std.array_list.Managed(u8).init(allocator),
         };
     }
 
     /// Free allocated resources
-    pub fn deinit(self: *SSEEventBuilder) void {
+    pub fn deinit(self: *ServerSentEventBuilder) void {
         self.dataBuffer.deinit();
     }
 
     /// Reset event state for next event (preserves retry_interval)
-    pub fn reset(self: *SSEEventBuilder) void {
+    pub fn reset(self: *ServerSentEventBuilder) void {
         self.event_type = null;
         self.event_id = null;
         // Keep retry_interval as it persists across events
@@ -163,7 +163,7 @@ pub const SSEEventBuilder = struct {
     }
 
     /// Add data line to current event with newline handling
-    pub fn addDataLine(self: *SSEEventBuilder, dataLine: []const u8) ServerSentEventError!void {
+    pub fn addDataLine(self: *ServerSentEventBuilder, dataLine: []const u8) ServerSentEventError!void {
         if (self.hasData) {
             try self.dataBuffer.append('\n'); // Multi-line data separator
         }
@@ -172,7 +172,7 @@ pub const SSEEventBuilder = struct {
     }
 
     /// Set retry interval with validation
-    pub fn setRetryInterval(self: *SSEEventBuilder, retry_str: []const u8, config: *const SSEConfig) ServerSentEventError!void {
+    pub fn setRetryInterval(self: *ServerSentEventBuilder, retry_str: []const u8, config: *const ServerSentEventConfig) ServerSentEventError!void {
         const retry_value = std.fmt.parseInt(u32, std.mem.trim(u8, retry_str, " \t"), 10) catch {
             std.log.warn("Invalid retry interval format: '{s}', ignoring", .{retry_str});
             return ServerSentEventError.InvalidRetryInterval;
@@ -188,7 +188,7 @@ pub const SSEEventBuilder = struct {
     }
 
     /// Build SSEEvent from current state
-    pub fn buildEvent(self: *const SSEEventBuilder) ServerSentEvent {
+    pub fn buildEvent(self: *const ServerSentEventBuilder) ServerSentEvent {
         return ServerSentEvent{
             .event_type = self.event_type,
             .event_id = self.event_id,
@@ -199,7 +199,7 @@ pub const SSEEventBuilder = struct {
     }
 
     /// Check if event has any content and is ready to be dispatched
-    pub fn hasEventContent(self: *const SSEEventBuilder) bool {
+    pub fn hasEventContent(self: *const ServerSentEventBuilder) bool {
         return self.hasData or self.event_type != null or self.event_id != null;
     }
 };
@@ -212,7 +212,7 @@ pub const SSEEventBuilder = struct {
 /// - id: field_value (event identifier)
 /// - retry: field_value (reconnection time in milliseconds)
 /// - :comment (ignored per specification)
-pub fn processServerSentEventLine(line: []const u8, eventState: *SSEEventBuilder, config: *const SSEConfig) ServerSentEventError!?ServerSentEventField {
+pub fn processServerSentEventLine(line: []const u8, eventState: *ServerSentEventBuilder, config: *const ServerSentEventConfig) ServerSentEventError!?ServerSentEventField {
     if (line.len == 0) return null; // Skip empty lines - these typically separate events
 
     // Handle comment lines (start with ':')
@@ -279,14 +279,14 @@ pub fn processServerSentEventLine(line: []const u8, eventState: *SSEEventBuilder
     return fieldType;
 }
 
-/// Process multiple SSE lines from accumulated data
+/// Process multiple Server-Sent Event lines from accumulated data
 ///
 /// This function splits input data by newlines and processes each line,
 /// building up event state and returning completed events.
-pub fn processSseLines(
+pub fn processServerSentEventLines(
     data: []const u8,
-    eventState: *SSEEventBuilder,
-    config: *const SSEConfig,
+    eventState: *ServerSentEventBuilder,
+    config: *const ServerSentEventConfig,
     events: *std.array_list.Managed(ServerSentEvent),
     allocator: std.mem.Allocator,
 ) ServerSentEventError!void {
@@ -334,20 +334,20 @@ pub fn processSseLines(
 pub fn parseSseData(
     data: []const u8,
     allocator: std.mem.Allocator,
-    config: ?SSEConfig,
+    config: ?ServerSentEventConfig,
 ) ServerSentEventError![]ServerSentEvent {
-    const sseConfig = config orelse SSEConfig{};
-    var eventState = SSEEventBuilder.init(allocator);
+    const serverSentEventConfig = config orelse ServerSentEventConfig{};
+    var eventState = ServerSentEventBuilder.init(allocator);
     defer eventState.deinit();
 
-    var events = std.array_list.Managed(SSEEvent).init(allocator);
-    try processSseLines(data, &eventState, &sseConfig, &events, allocator);
+    var events = std.array_list.Managed(ServerSentEvent).init(allocator);
+    try processServerSentEventLines(data, &eventState, &serverSentEventConfig, &events, allocator);
 
     return events.toOwnedSlice();
 }
 
 /// Free array of SSE events returned by parseSseData
-pub fn freeSseEvents(events: []SSEEvent, allocator: std.mem.Allocator) void {
+pub fn freeServerSentEventEvents(events: []ServerSentEvent, allocator: std.mem.Allocator) void {
     for (events) |*event| {
         event.deinit(allocator);
     }
@@ -357,8 +357,8 @@ pub fn freeSseEvents(events: []SSEEvent, allocator: std.mem.Allocator) void {
 // ==================== Testing Support ====================
 
 /// Create a test SSE configuration with smaller limits for testing
-pub fn createTestConfig() SSEConfig {
-    return SSEConfig{
+pub fn createTestConfig() ServerSentEventConfig {
+    return ServerSentEventConfig{
         .maxEventSize = 1024,
         .largeEventThreshold = 100,
         .streamingCallbackThreshold = 500,
@@ -383,7 +383,7 @@ test "SSE event state management" {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    var event_state = SSEEventBuilder.init(allocator);
+    var event_state = ServerSentEventBuilder.init(allocator);
     defer event_state.deinit();
 
     // Test data line addition
@@ -415,7 +415,7 @@ test "SSE line processing" {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    var eventState = SSEEventBuilder.init(allocator);
+    var eventState = ServerSentEventBuilder.init(allocator);
     defer eventState.deinit();
 
     const config = createTestConfig();
@@ -460,7 +460,7 @@ test "SSE multi-line data parsing" {
     ;
 
     const events = try parseSseData(sseData, allocator, createTestConfig());
-    defer freeSseEvents(events, allocator);
+    defer freeServerSentEventEvents(events, allocator);
 
     try std.testing.expectEqual(@as(usize, 2), events.len);
 

@@ -242,7 +242,7 @@ pub const Agent = struct {
 
     /// Get authentication status as text for templates
     pub fn authStatusText(self: *Self) ![]const u8 {
-        const status = try self.checkAuthStatus();
+        const status = try self.authStatus();
         return switch (status) {
             .oauth => try self.allocator.dupe(u8, "OAuth (Claude Pro/Max)"),
             .api_key => try self.allocator.dupe(u8, "API Key"),
@@ -333,22 +333,22 @@ pub const Agent = struct {
     /// This provides easy access to theme colors for agents
     pub fn currentTheme(self: *Self) ?*agent_main.theme.ColorScheme {
         _ = self; // Not currently used but available for future per-agent theme customization
-        return agent_main.getCurrentTheme();
+        return agent_main.currentTheme();
     }
 
     /// Get theme-aware color for UI elements
-    /// Convenience method that wraps agent_main.getThemeColor
+    /// Convenience method that wraps agent_main.themeColor
     pub fn themeColor(self: *Self, colorType: anytype) []const u8 {
         _ = self; // Not currently used but available for future per-agent customization
         _ = colorType; // TODO: Implement proper color type enum
-        return agent_main.getThemeColor(.primary);
+        return agent_main.themeColor(.primary);
     }
 
     /// Get accessibility information about the current theme
     /// Useful for agents that need to adapt their UI based on accessibility settings
-    pub fn themeAccessibilityInfo(self: *Self) @TypeOf(agent_main.getThemeAccessibilityInfo()) {
+    pub fn themeAccessibilityInfo(self: *Self) @TypeOf(agent_main.themeAccessibilityInfo()) {
         _ = self; // Not currently used but available for future per-agent customization
-        return agent_main.getThemeAccessibilityInfo();
+        return agent_main.themeAccessibilityInfo();
     }
 
     /// Check if the current theme is dark mode
@@ -471,7 +471,7 @@ pub const ConfigHelpers = struct {
         defaults: ConfigType,
     ) ConfigType {
         const configUtils = @import("config_shared");
-        const configPath = configUtils.getAgentConfigPath(allocator, agentName) catch {
+        const configPath = configUtils.agentConfigPath(allocator, agentName) catch {
             std.log.info("Using default configuration for agent: {s}", .{agentName});
             return defaults;
         };
@@ -510,7 +510,7 @@ pub const ConfigHelpers = struct {
         config: ConfigType,
     ) !void {
         const configUtils = @import("config_shared");
-        const configPath = try configUtils.getAgentConfigPath(allocator, agentName);
+        const configPath = try configUtils.agentConfigPath(allocator, agentName);
         defer allocator.free(configPath);
 
         // Convert config to JSON for saving

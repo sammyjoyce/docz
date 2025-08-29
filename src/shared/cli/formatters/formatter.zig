@@ -17,7 +17,7 @@ const BasicTui = struct {
 const tui = BasicTui;
 
 /// CLI formatter with terminal capability awareness
-pub const CliFormatter = struct {
+pub const Formatter = struct {
     allocator: std.mem.Allocator,
     caps: termMod.caps.TermCaps,
     terminalSize: tui.TerminalSize,
@@ -38,7 +38,7 @@ pub const CliFormatter = struct {
         dim: term.Style,
     };
 
-    pub fn init(allocator: std.mem.Allocator) !CliFormatter {
+    pub fn init(allocator: std.mem.Allocator) !Formatter {
         const terminal = try term.Terminal.init(allocator);
         const terminalSize = tui.getTerminalSize();
 
@@ -70,7 +70,7 @@ pub const CliFormatter = struct {
                 .dim = .{ .fg_color = .{ .ansi = 8 } }, // Dark gray
             };
 
-        return CliFormatter{
+        return Formatter{
             .allocator = allocator,
             .caps = terminal.caps,
             .terminalSize = terminalSize,
@@ -79,12 +79,12 @@ pub const CliFormatter = struct {
         };
     }
 
-    pub fn deinit(self: *CliFormatter) void {
+    pub fn deinit(self: *Formatter) void {
         self.terminal.deinit();
     }
 
     /// Help display with structured layout
-    pub fn printHelp(self: *CliFormatter, cli_config: anytype) !void {
+    pub fn printHelp(self: *Formatter, cli_config: anytype) !void {
         const width = @min(self.terminalSize.width, 80);
 
         // Header section with styling
@@ -119,7 +119,7 @@ pub const CliFormatter = struct {
     }
 
     /// Error display
-    pub fn printError(self: *CliFormatter, err: anytype, _: ?[]const u8) !void {
+    pub fn printError(self: *Formatter, err: anytype, _: ?[]const u8) !void {
         const width = @min(self.terminalSize.width, 80);
 
         // Error header with icon and color
@@ -152,7 +152,7 @@ pub const CliFormatter = struct {
     }
 
     /// Version display
-    pub fn printVersion(self: *CliFormatter, cli_config: anytype) !void {
+    pub fn printVersion(self: *Formatter, cli_config: anytype) !void {
         try self.terminal.printf("{s}{s}DocZ{s}", .{ self.colors.bold, self.colors.primary, self.colors.reset }, null);
         if (@hasField(@TypeOf(cli_config), "version")) {
             try self.terminal.printf(" version {s}{s}{s}\n", .{ self.colors.accent, cli_config.version, self.colors.reset }, null);
@@ -165,7 +165,7 @@ pub const CliFormatter = struct {
 
     // Private helper methods
 
-    fn printOptionsSection(self: *CliFormatter, cli_config: anytype) void {
+    fn printOptionsSection(self: *Formatter, cli_config: anytype) void {
         const OptsT = @TypeOf(cli_config.options);
         const OptsInfo = @typeInfo(OptsT).@"struct";
 
@@ -197,7 +197,7 @@ pub const CliFormatter = struct {
         self.terminal.printf("\n", .{}, null) catch {};
     }
 
-    fn printExamplesSection(self: *CliFormatter, cli_config: anytype) void {
+    fn printExamplesSection(self: *Formatter, cli_config: anytype) void {
         if (!@hasField(@TypeOf(cli_config), "examples")) return;
 
         self.terminal.printf("{s}💡 EXAMPLES:{s}\n\n", .{ self.colors.bold, self.colors.reset }, null) catch {};
@@ -219,7 +219,7 @@ pub const CliFormatter = struct {
         self.terminal.printf("\n", .{}, null) catch {};
     }
 
-    fn printCapabilitiesInfo(self: *CliFormatter) void {
+    fn printCapabilitiesInfo(self: *Formatter) void {
         self.terminal.printf("\n{s}🖥️  TERMINAL CAPABILITIES:{s}\n", .{ self.colors.bold, self.colors.reset }, null) catch {};
         self.terminal.printf("  Size: {s}{}×{} characters{s}\n", .{ self.colors.muted, self.terminalSize.width, self.terminalSize.height, self.colors.reset }, null) catch {};
 

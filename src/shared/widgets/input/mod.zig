@@ -21,39 +21,39 @@ pub const Input = struct {
         return ui.component.wrap(@TypeOf(self.*), self);
     }
 
-    pub fn setText(self: *Input, s: []const u8) !void {
+    pub fn setText(self: *Input, textContent: []const u8) !void {
         self.text.clearRetainingCapacity();
-        try self.text.appendSlice(s);
+        try self.text.appendSlice(textContent);
         self.cursor = self.text.items.len;
     }
 
-    pub fn measure(self: *Input, c: ui.layout.Constraints) ui.layout.Size {
+    pub fn measure(self: *Input, constraints: ui.layout.Constraints) ui.layout.Size {
         _ = self;
-        return .{ .w = c.max.w, .h = 1 };
+        return .{ .w = constraints.max.w, .h = 1 };
     }
 
-    pub fn layout(self: *Input, rect: ui.layout.Rect) void {
+    pub fn layout(self: *Input, rectangle: ui.layout.Rect) void {
         _ = self;
-        _ = rect;
+        _ = rectangle;
     }
 
-    pub fn render(self: *Input, ctx: *renderCtx.Context) !void {
-        const rect = ui.layout.Rect{ .x = 0, .y = 0, .w = ctx.surface.size().w, .h = 1 };
-        const lab = if (self.label) |l| l else "";
-        try draw.input(ctx, rect, lab, self.text.items, self.cursor);
+    pub fn render(self: *Input, context: *renderCtx.Context) !void {
+        const rectangle = ui.layout.Rect{ .x = 0, .y = 0, .w = context.surface.size().w, .h = 1 };
+        const labelText = if (self.label) |label| label else "";
+        try draw.input(context, rectangle, labelText, self.text.items, self.cursor);
     }
 
-    pub fn event(self: *Input, ev: ui.event.Event) ui.component.Component.Invalidate {
-        switch (ev) {
-            .Key => |k| {
-                return self.handleKey(k);
+    pub fn event(self: *Input, inputEvent: ui.event.Event) ui.component.Component.Invalidate {
+        switch (inputEvent) {
+            .Key => |keyEvent| {
+                return self.handleKey(keyEvent);
             },
             else => return .none,
         }
     }
 
-    fn handleKey(self: *Input, k: ui.event.KeyEvent) ui.component.Component.Invalidate {
-        return switch (k.code) {
+    fn handleKey(self: *Input, keyEvent: ui.event.KeyEvent) ui.component.Component.Invalidate {
+        return switch (keyEvent.code) {
             .arrow_left => blk: {
                 if (self.cursor > 0) self.cursor -= 1;
                 break :blk .paint;
@@ -80,28 +80,28 @@ pub const Input = struct {
             .enter => .none,
             .escape => .none,
             .char => blk: {
-                if (k.ch) |ch| {
-                    var buf: [4]u8 = undefined;
-                    const n = std.unicode.utf8Encode(ch, &buf) catch 0;
-                    if (n > 0) {
+                if (keyEvent.ch) |character| {
+                    var buffer: [4]u8 = undefined;
+                    const byteCount = std.unicode.utf8Encode(character, &buffer) catch 0;
+                    if (byteCount > 0) {
                         // insert at cursor
                         if (self.cursor == self.text.items.len) {
-                            self.text.appendSliceAssumeCapacity(buf[0..n]) catch {
+                            self.text.appendSliceAssumeCapacity(buffer[0..byteCount]) catch {
                                 // grow and retry
-                                self.text.ensureTotalCapacity(self.text.items.len + n) catch return .none;
-                                self.text.appendSliceAssumeCapacity(buf[0..n]);
+                                self.text.ensureTotalCapacity(self.text.items.len + byteCount) catch return .none;
+                                self.text.appendSliceAssumeCapacity(buffer[0..byteCount]);
                             };
                         } else {
                             // make room
-                            const newLen = self.text.items.len + n;
-                            self.text.ensureTotalCapacity(newLen) catch return .none;
+                            const newLength = self.text.items.len + byteCount;
+                            self.text.ensureTotalCapacity(newLength) catch return .none;
                             // shift right
-                            std.mem.copyBackwards(u8, self.text.items[self.cursor + n .. newLen], self.text.items[self.cursor..self.text.items.len]);
-                            self.text.items.len = newLen;
+                            std.mem.copyBackwards(u8, self.text.items[self.cursor + byteCount .. newLength], self.text.items[self.cursor..self.text.items.len]);
+                            self.text.items.len = newLength;
                             // insert bytes
-                            std.mem.copy(u8, self.text.items[self.cursor .. self.cursor + n], buf[0..n]);
+                            std.mem.copy(u8, self.text.items[self.cursor .. self.cursor + byteCount], buffer[0..byteCount]);
                         }
-                        self.cursor += n;
+                        self.cursor += byteCount;
                         break :blk .paint;
                     }
                 }
@@ -119,14 +119,14 @@ test "input renders label and caret" {
         surface.deinit(allocator);
         allocator.destroy(surface);
     }
-    var ctx = renderCtx.Context.init(surface, null);
+    var context = renderCtx.Context.init(surface, null);
 
-    var input = try Input.init(allocator);
-    defer input.deinit();
-    input.label = ">";
-    try input.setText("abc");
-    input.cursor = 1;
-    try draw.input(&ctx, .{ .x = 0, .y = 0, .w = 12, .h = 1 }, input.label.?, input.text.items, input.cursor);
+    var inputWidget = try Input.init(allocator);
+    defer inputWidget.deinit();
+    inputWidget.label = ">";
+    try inputWidget.setText("abc");
+    inputWidget.cursor = 1;
+    try draw.input(&context, .{ .x = 0, .y = 0, .w = 12, .h = 1 }, inputWidget.label.?, inputWidget.text.items, inputWidget.cursor);
     const dump = try surface.toString(allocator);
     defer allocator.free(dump);
     // Expect '>' then some text with caret '|' roughly after first character

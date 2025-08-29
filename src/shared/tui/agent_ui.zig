@@ -22,7 +22,7 @@ const NotificationController = notification_mod.NotificationController;
 const NotificationType = notification_mod.NotificationType;
 const ProgressBar = progress_mod.ProgressBar;
 const TextInput = text_input_mod.TextInput;
-const Theme = theme_manager_mod.Theme;
+const Theme = theme.Theme;
 const InputManager = input_system.InputManager;
 
 /// Standard UI patterns that all agents can use
@@ -54,7 +54,7 @@ pub const StandardUIPatterns = struct {
 
     /// Show a standard confirmation dialog
     pub fn showConfirmationDialog(self: *StandardUIPatterns, title: []const u8, message: []const u8) !bool {
-        const theme = self.theme.getCurrentTheme();
+        const current_theme = self.theme.currentTheme();
 
         // Create dialog bounds
         const terminal_size = bounds_mod.getTerminalSize();
@@ -72,8 +72,8 @@ pub const StandardUIPatterns = struct {
 
         // Draw dialog background
         const bg_style = Style{
-            .bg_color = theme.background,
-            .fg_color = theme.foreground,
+            .bg_color = current_theme.background,
+            .fg_color = current_theme.foreground,
             .bold = false,
         };
 
@@ -81,8 +81,8 @@ pub const StandardUIPatterns = struct {
 
         // Draw dialog border
         const border_style = Style{
-            .bg_color = theme.background,
-            .fg_color = theme.focus,
+            .bg_color = current_theme.background,
+            .fg_color = current_theme.focus,
             .bold = true,
         };
 
@@ -98,7 +98,7 @@ pub const StandardUIPatterns = struct {
 
         const title_ctx = Render{
             .bounds = title_bounds,
-            .style = .{ .fg_color = theme.focus, .bold = true },
+            .style = .{ .fg_color = current_theme.focus, .bold = true },
             .zIndex = 0,
             .clipRegion = null,
         };
@@ -115,7 +115,7 @@ pub const StandardUIPatterns = struct {
 
         const message_ctx = Render{
             .bounds = message_bounds,
-            .style = .{ .fg_color = theme.foreground },
+            .style = .{ .fg_color = current_theme.foreground },
             .zIndex = 0,
             .clipRegion = null,
         };
@@ -265,7 +265,7 @@ pub const OAuthIntegration = struct {
     }
 
     /// Run complete OAuth flow with UI integration
-    pub fn runOAuthFlow(self: *OAuthIntegration, ui_patterns: *StandardUIPatterns) !oauth_mod.Credentials {
+    pub fn runOauthFlow(self: *OAuthIntegration, ui_patterns: *StandardUIPatterns) !oauth_mod.Credentials {
         // Show initial setup notification
         try ui_patterns.showNotification(.info, "OAuth Setup", "Starting authentication flow...");
 
@@ -305,7 +305,7 @@ pub const OAuthIntegration = struct {
     /// Wait for authorization code with UI feedback
     fn waitForAuthCode(self: *OAuthIntegration, ui_patterns: *StandardUIPatterns) ![]const u8 {
         _ = self; // Method doesn't use self but needs to be instance method for future extensibility
-        const theme = ui_patterns.theme.getCurrentTheme();
+        const current_theme = ui_patterns.theme.currentTheme();
 
         // Create input field for code entry
         const input_bounds = renderer_mod.Bounds{
@@ -317,7 +317,7 @@ pub const OAuthIntegration = struct {
 
         const input_ctx = Render{
             .bounds = input_bounds,
-            .style = .{ .fg_color = theme.foreground },
+            .style = .{ .fg_color = current_theme.foreground },
             .zIndex = 0,
             .clipRegion = null,
         };
@@ -332,7 +332,7 @@ pub const OAuthIntegration = struct {
 
         const prompt_ctx = Render{
             .bounds = prompt_bounds,
-            .style = .{ .fg_color = theme.focus, .bold = true },
+            .style = .{ .fg_color = current_theme.focus, .bold = true },
             .zIndex = 0,
             .clipRegion = null,
         };
@@ -469,12 +469,12 @@ pub const MarkdownEditor = struct {
 
     /// Render the editor
     pub fn render(self: *MarkdownEditor, bounds: renderer_mod.Bounds) !void {
-        const theme = self.theme.getCurrentTheme();
+        const current_theme = self.theme.currentTheme();
 
         // Draw editor border
         const border_style = Style{
-            .bg_color = theme.background,
-            .fg_color = theme.focus,
+            .bg_color = current_theme.background,
+            .fg_color = current_theme.focus,
             .bold = true,
         };
 
@@ -523,7 +523,7 @@ pub const MarkdownEditor = struct {
 
             const line_ctx = Render{
                 .bounds = line_bounds,
-                .style = .{ .fg_color = theme.foreground },
+                .style = .{ .fg_color = current_theme.foreground },
                 .zIndex = 0,
                 .clipRegion = null,
             };
@@ -542,7 +542,7 @@ pub const MarkdownEditor = struct {
 
                 const cursor_ctx = Render{
                     .bounds = cursor_bounds,
-                    .style = .{ .fg_color = theme.cursor, .bg_color = theme.cursor_bg, .bold = true },
+                    .style = .{ .fg_color = current_theme.cursor, .bg_color = current_theme.cursor_bg, .bold = true },
                     .zIndex = 0,
                     .clipRegion = null,
                 };
