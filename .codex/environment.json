@@ -1,0 +1,26 @@
+{
+  "name": "docz-development",
+  "description": "Docz multi-agent terminal AI system development environment",
+  "image": "universal",
+  "setup_script": "./codex_setup.sh",
+  "maintenance_script": "./codex_maintenance.sh",
+  "environment_variables": {
+    "ZIG_VERSION": "0.15.1",
+    "PROJECT_NAME": "docz",
+    "CI_STRICT_IMPORTS": "0",
+    "TERM": "xterm-256color",
+    "COLORTERM": "truecolor"
+  },
+  "internet_access": "setup_only",
+  "suggested_commands": {
+    "build": "zig build -Dagent=markdown run",
+    "format": "zig fmt src/**/*.zig build.zig build.zig.zon",
+  },
+  "cache_duration_hours": 12,
+  "notes": [
+    "This environment installs Zig 0.15.1 and development tools",
+    "Agents are built independently using -Dagent=<name> flag",
+    "Run 'zig build list-agents' to see available agents",
+    "Check ~/.docz_info after setup for quick reference"
+  ]
+}

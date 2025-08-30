@@ -166,3 +166,75 @@ const self: *T = @ptrCast(@alignCast(ctx));
 - Validate registry: `zig build validate-agents`
 - List agents: `zig build list-agents`
 
+## Codex Cloud Development
+
+This project is configured for development in Codex cloud environments.
+
+### Setup
+The environment is automatically configured with:
+- Zig 0.15.1 compiler
+- ripgrep for code analysis
+- Standard Unix development tools
+
+### Building Agents
+
+List available agents:
+```bash
+zig build list-agents
+```
+
+Build and run a specific agent:
+```bash
+zig build -Dagent=<name> run
+```
+
+Test an agent:
+```bash
+zig build -Dagent=<name> test
+```
+
+### Code Quality Checks
+
+Format code:
+```bash
+zig fmt src/**/*.zig build.zig build.zig.zon
+```
+
+Check import boundaries:
+```bash
+scripts/check_imports.sh
+```
+
+Validate agent structure:
+```bash
+zig build validate-agents
+```
+
+### Common Tasks
+
+**Creating a new agent:**
+```bash
+zig build scaffold-agent -- <name>
+```
+
+**Building for release:**
+```bash
+zig build -Dagent=<name> -Drelease-safe
+```
+
+**Size-optimized build:**
+```bash
+zig build -Dagent=<name> -Doptimize-binary
+```
+
+### Debugging Tips
+- Use `zig build --help` to see all available targets
+- Run individual tests with `zig test <file.zig>`
+- Use `zig build-exe -freference-trace` for detailed error traces
+
+### Architecture Notes
+- Each agent compiles independently
+- Shared infrastructure in `src/core/` and `src/shared/`
+- Feature flags gate module inclusion to minimize binary size
+- Follow Zig 0.15.1 patterns (no `usingnamespace`, new I/O APIs)
+
