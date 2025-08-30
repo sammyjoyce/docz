@@ -31,18 +31,31 @@ pub const NetworkEvent = struct {
 };
 
 pub const Service = struct {
-    pub fn request(alloc: std.mem.Allocator, req: NetworkRequest) Error!NetworkResponse {
-        var client = try curl.HTTPClient.init(alloc);
-        defer client.deinit();
+    const Self = @This();
 
+    allocator: std.mem.Allocator,
+    client: curl.HTTPClient,
+    config: Config,
+
+    pub const Config = struct {};
+
+    pub fn init(allocator: std.mem.Allocator, client: curl.HTTPClient, config: Config) Self {
+        return Self{ .allocator = allocator, .client = client, .config = config };
+    }
+
+    pub fn deinit(self: *Self) void {
+        self.client.deinit();
+    }
+
+    pub fn request(self: *Self, req: NetworkRequest) Error!NetworkResponse {
         // Convert headers of form "Name: Value" to curl.Header
         var headersList = std.ArrayListUnmanaged(curl.Header){};
-        defer headersList.deinit(alloc);
+        defer headersList.deinit(self.allocator);
         for (req.headers) |h| {
             if (std.mem.indexOfScalar(u8, h, ':')) |pos| {
                 const name = std.mem.trim(u8, h[0..pos], " \t");
                 const value = std.mem.trim(u8, h[pos + 1 ..], " \t");
-                try headersList.append(alloc, .{ .name = name, .value = value });
+                try headersList.append(self.allocator, .{ .name = name, .value = value });
             } else {
                 // Skip malformed header entries
                 std.log.warn("Skipping malformed header (missing colon): '{s}'", .{h});
@@ -67,7 +80,7 @@ pub const Service = struct {
             .follow_redirects = true,
         };
 
-        const http_resp = client.request(http_req) catch |err| switch (err) {
+        const http_resp = self.client.request(http_req) catch |err| switch (err) {
             curl.HTTPError.Timeout => return Error.Timeout,
             curl.HTTPError.Error => return Error.Connection,
             curl.HTTPError.TlsError => return Error.Connection,
@@ -77,22 +90,19 @@ pub const Service = struct {
         };
         defer http_resp.deinit();
 
-        const body = try alloc.dupe(u8, http_resp.body);
+        const body = try self.allocator.dupe(u8, http_resp.body);
         return NetworkResponse{ .status = http_resp.status_code, .body = body };
     }
 
-    pub fn stream(alloc: std.mem.Allocator, req: NetworkRequest, on_chunk: *const fn ([]const u8) void) Error!void {
-        var client = try curl.HTTPClient.init(alloc);
-        defer client.deinit();
-
+    pub fn stream(self: *Self, req: NetworkRequest, on_chunk: *const fn ([]const u8) void) Error!void {
         // Convert headers
         var headersList = std.ArrayListUnmanaged(curl.Header){};
-        defer headersList.deinit(alloc);
+        defer headersList.deinit(self.allocator);
         for (req.headers) |h| {
             if (std.mem.indexOfScalar(u8, h, ':')) |pos| {
                 const name = std.mem.trim(u8, h[0..pos], " \t");
                 const value = std.mem.trim(u8, h[pos + 1 ..], " \t");
-                try headersList.append(alloc, .{ .name = name, .value = value });
+                try headersList.append(self.allocator, .{ .name = name, .value = value });
             }
         }
 
@@ -106,36 +116,32 @@ pub const Service = struct {
             .follow_redirects = true,
         };
 
-        _ = client.streamRequest(http_req, streamChunkThunk, @ptrFromInt(@intFromPtr(on_chunk))) catch |err| switch (err) {
+        _ = self.client.streamRequest(http_req, streamChunkThunk, @ptrFromInt(@intFromPtr(on_chunk))) catch |err| switch (err) {
             curl.HTTPError.Timeout => return Error.Timeout,
             curl.HTTPError.Error => return Error.Connection,
             else => return Error.Connection,
         };
     }
 
-    pub fn sse(alloc: std.mem.Allocator, req: NetworkRequest, on_event: *const fn (NetworkEvent) void) Error!void {
+    pub fn sse(self: *Self, req: NetworkRequest, on_event: *const fn (NetworkEvent) void) Error!void {
         // Basic SSE adapter using streaming; parse lines and dispatch minimal events
         var buffer = std.ArrayListUnmanaged(u8){};
-        defer buffer.deinit(alloc);
+        defer buffer.deinit(self.allocator);
 
-        const Self = struct {
+        const Context = struct {
             on_event: *const fn (NetworkEvent) void,
             alloc: std.mem.Allocator,
             buf: *std.ArrayListUnmanaged(u8),
         };
-        var ctx = Self{ .on_event = on_event, .alloc = alloc, .buf = &buffer };
-
-        // Wire our local callback by calling the HTTP client directly:
-        var client = try curl.HTTPClient.init(alloc);
-        defer client.deinit();
+        var ctx = Context{ .on_event = on_event, .alloc = self.allocator, .buf = &buffer };
 
         var headersList = std.ArrayListUnmanaged(curl.Header){};
-        defer headersList.deinit(alloc);
+        defer headersList.deinit(self.allocator);
         for (req.headers) |h| {
             if (std.mem.indexOfScalar(u8, h, ':')) |pos| {
                 const name = std.mem.trim(u8, h[0..pos], " \t");
                 const value = std.mem.trim(u8, h[pos + 1 ..], " \t");
-                try headersList.append(alloc, .{ .name = name, .value = value });
+                try headersList.append(self.allocator, .{ .name = name, .value = value });
             }
         }
         const http_req = curl.HTTPRequest{
@@ -146,16 +152,16 @@ pub const Service = struct {
             .timeout_ms = req.timeout_ms,
             .follow_redirects = true,
         };
-        _ = client.streamRequest(http_req, streamChunkThunkWithCtx, @ptrCast(&ctx)) catch |err| switch (err) {
+        _ = self.client.streamRequest(http_req, streamChunkThunkWithCtx, @ptrCast(&ctx)) catch |err| switch (err) {
             curl.HTTPError.Timeout => return Error.Timeout,
             curl.HTTPError.Error => return Error.Connection,
             else => return Error.Connection,
         };
     }
 
-    pub fn download(alloc: std.mem.Allocator, req: NetworkRequest, path: []const u8) Error!void {
-        const resp = try Service.request(alloc, req);
-        defer alloc.free(resp.body);
+    pub fn download(self: *Self, req: NetworkRequest, path: []const u8) Error!void {
+        const resp = try self.request(req);
+        defer self.allocator.free(resp.body);
         var file = std.fs.cwd().createFile(path, .{ .truncate = true }) catch return Error.Connection;
         defer file.close();
         try file.writeAll(resp.body);
