@@ -3,6 +3,7 @@
 const std = @import("std");
 // Import anthropic conditionally - this will be handled by the build system
 const anthropic = @import("anthropic_shared");
+const SharedContext = @import("../context.zig").SharedContext;
 
 /// Error set for tool operations.
 pub const ToolError = error{
@@ -34,7 +35,7 @@ pub const ToolError = error{
 
 /// Generic function signature for tools.
 /// Input and output are arbitrary JSON encoded strings for flexibility.
-pub const ToolFn = *const fn (allocator: std.mem.Allocator, input: []const u8) ToolError![]u8;
+pub const ToolFn = *const fn (*SharedContext, allocator: std.mem.Allocator, input: []const u8) ToolError![]u8;
 
 /// Tool definition for comptime reflection
 pub const Tool = struct {
@@ -65,7 +66,7 @@ pub const ToolReflection = struct {
                         const funcInfo = @typeInfo(@TypeOf(func));
 
                         // Check if it matches ToolFn signature
-                        if (funcInfo == .@"fn" and funcInfo.@"fn".params.len == 2) {
+                        if (funcInfo == .@"fn" and funcInfo.@"fn".params.len == 3) {
                             const toolName = comptime blk: {
                                 // Convert function name to tool name (e.g., "readFile" -> "read_file")
                                 var nameBuf: [decl.name.len * 2]u8 = undefined;
@@ -121,7 +122,7 @@ pub const ToolReflection = struct {
                         const func = @field(ModuleType, decl.name);
                         const funcInfo = @typeInfo(@TypeOf(func));
 
-                        if (funcInfo == .@"fn" and funcInfo.@"fn".params.len == 2) {
+                        if (funcInfo == .@"fn" and funcInfo.@"fn".params.len == 3) {
                             tool_list = tool_list ++ [_][]const u8{decl.name};
                         }
                     }
@@ -209,7 +210,7 @@ pub const Registry = struct {
                 const funcInfo = @typeInfo(@TypeOf(func));
 
                 // Check if it matches ToolFn signature
-                if (funcInfo == .@"fn" and funcInfo.@"fn".params.len == 2) {
+                if (funcInfo == .@"fn" and funcInfo.@"fn".params.len == 3) {
                     const toolName = comptime blk: {
                         // Convert function name to tool name (e.g., "readFile" -> "read_file")
                         var nameBuf: [decl.name.len * 2]u8 = undefined;
@@ -286,7 +287,8 @@ pub const Registry = struct {
 };
 
 // ---------------- Built-in tools ----------------
-fn readFile(allocator: std.mem.Allocator, input: []const u8) ToolError![]u8 {
+fn readFile(ctx: *SharedContext, allocator: std.mem.Allocator, input: []const u8) ToolError![]u8 {
+    _ = ctx;
     const request = std.json.parseFromSlice(
         struct { path: []const u8 },
         allocator,
@@ -315,24 +317,19 @@ fn readFile(allocator: std.mem.Allocator, input: []const u8) ToolError![]u8 {
     return allocator.dupe(u8, fileData) catch ToolError.OutOfMemory;
 }
 
-fn echo(allocator: std.mem.Allocator, input: []const u8) ToolError![]u8 {
+fn echo(ctx: *SharedContext, allocator: std.mem.Allocator, input: []const u8) ToolError![]u8 {
+    _ = ctx;
     // Simply wraps input back.
     return allocator.dupe(u8, input) catch ToolError.OutOfMemory;
 }
 
-var globalList: ?*std.ArrayList(u8) = null;
-var globalAllocator: ?std.mem.Allocator = null;
-fn tokenCallbackImpl(chunk: []const u8) void {
-    if (globalList) |list| {
-        if (globalAllocator) |allocator| {
-            list.appendSlice(allocator, chunk) catch |appendError| {
-                std.log.err("Failed to append token chunk: {any}", .{appendError});
-            };
-        }
-    }
+fn tokenCallbackImpl(ctx: *SharedContext, chunk: []const u8) void {
+    ctx.tools.tokenBuffer.appendSlice(chunk) catch |appendError| {
+        std.log.err("Failed to append token chunk: {any}", .{appendError});
+    };
 }
 
-fn oracleTool(allocator: std.mem.Allocator, input: []const u8) ToolError![]u8 {
+fn oracleTool(ctx: *SharedContext, allocator: std.mem.Allocator, input: []const u8) ToolError![]u8 {
     // Expect {"prompt":"..."}
     const Request = struct { prompt: []const u8 };
     const parsed = std.json.parseFromSlice(Request, allocator, input, .{}) catch return ToolError.MalformedJSON;
@@ -358,15 +355,7 @@ fn oracleTool(allocator: std.mem.Allocator, input: []const u8) ToolError![]u8 {
         },
     };
 
-    var accumulator = std.ArrayList(u8){};
-    defer accumulator.deinit(allocator);
-
-    globalList = &accumulator;
-    globalAllocator = allocator;
-    defer {
-        globalList = null;
-        globalAllocator = null;
-    }
+    ctx.tools.tokenBuffer.clearRetainingCapacity();
     const tokenCallback = &tokenCallbackImpl;
 
     // Read and prepend anthropic_spoof.txt to system prompt
@@ -411,7 +400,7 @@ fn oracleTool(allocator: std.mem.Allocator, input: []const u8) ToolError![]u8 {
         , .{currentDate}) catch return ToolError.OutOfMemory;
     defer allocator.free(systemPrompt);
 
-    client.stream(.{
+    client.stream(ctx, .{
         .model = "claude-3-sonnet-20240229",
         .messages = &[_]anthropic.Message{
             .{ .role = .system, .content = systemPrompt },
@@ -426,7 +415,7 @@ fn oracleTool(allocator: std.mem.Allocator, input: []const u8) ToolError![]u8 {
         else => return ToolError.UnexpectedError,
     };
 
-    return allocator.dupe(u8, accumulator.items) catch ToolError.OutOfMemory;
+    return allocator.dupe(u8, ctx.tools.tokenBuffer.items) catch ToolError.OutOfMemory;
 }
 
 /// Helper to create a ToolFn wrapper for JSON-based tools
@@ -438,7 +427,8 @@ pub fn createJsonToolWrapper(jsonFunc: JsonFunction) ToolFn {
     StoredFunction.func = jsonFunc;
 
     return struct {
-        fn wrapper(allocator: std.mem.Allocator, input: []const u8) ToolError![]u8 {
+        fn wrapper(ctx: *SharedContext, allocator: std.mem.Allocator, input: []const u8) ToolError![]u8 {
+            _ = ctx;
             // Parse input JSON
             const parsed = std.json.parseFromSlice(std.json.Value, allocator, input, .{}) catch return ToolError.MalformedJSON;
             defer parsed.deinit();
@@ -484,7 +474,8 @@ pub fn registerJsonToolWithRequiredFields(
     Stored.request = requiredFields;
 
     const wrapper = struct {
-        fn run(allocator: std.mem.Allocator, input: []const u8) ToolError![]u8 {
+        fn run(ctx: *SharedContext, allocator: std.mem.Allocator, input: []const u8) ToolError![]u8 {
+            _ = ctx;
             const parsed = std.json.parseFromSlice(std.json.Value, allocator, input, .{}) catch return ToolError.MalformedJSON;
             defer parsed.deinit();
             if (parsed.value != .object) return ToolError.InvalidInput;

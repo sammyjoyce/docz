@@ -3,6 +3,7 @@
 //! Organizes widgets by category and provides exports
 
 const std = @import("std");
+const SharedContext = @import("../../context.zig").SharedContext;
 
 // Core widgets (essential functionality)
 pub const core = @import("core/mod.zig");
@@ -109,32 +110,40 @@ pub const StatusBar = struct {
 };
 
 // Global notification functions (placeholders)
-pub fn initGlobalNotifications(allocator: std.mem.Allocator) !void {
-    _ = allocator;
+pub fn initNotifications(ctx: *SharedContext, allocator: std.mem.Allocator) !void {
+    _ = ctx; _ = allocator;
 }
 
-pub fn deinitGlobalNotifications() void {}
+pub fn deinitNotifications(ctx: *SharedContext) void {
+    _ = ctx;
+}
 
-pub fn notifyInfo(message: []const u8) void {
+pub fn notifyInfo(ctx: *SharedContext, message: []const u8) void {
+    _ = ctx;
     std.debug.print("ℹ️  {s}\n", .{message});
 }
 
-pub fn notifySuccess(message: []const u8) void {
+pub fn notifySuccess(ctx: *SharedContext, message: []const u8) void {
+    _ = ctx;
     std.debug.print("✅ {s}\n", .{message});
 }
 
-pub fn notifyWarning(message: []const u8) void {
+pub fn notifyWarning(ctx: *SharedContext, message: []const u8) void {
+    _ = ctx;
     std.debug.print("⚠️  {s}\n", .{message});
 }
 
-pub fn notifyError(message: []const u8) void {
+pub fn notifyError(ctx: *SharedContext, message: []const u8) void {
+    _ = ctx;
     std.debug.print("❌ {s}\n", .{message});
 }
 
-pub fn notifyDebug(message: []const u8) void {
+pub fn notifyDebug(ctx: *SharedContext, message: []const u8) void {
+    _ = ctx;
     std.debug.print("🐛 {s}\n", .{message});
 }
 
-pub fn notifyCritical(message: []const u8) void {
+pub fn notifyCritical(ctx: *SharedContext, message: []const u8) void {
+    _ = ctx;
     std.debug.print("🚨 {s}\n", .{message});
 }

@@ -13,6 +13,7 @@ const std = @import("std");
 const renderer_mod = @import("./core/renderer.zig");
 const bounds_mod = @import("./core/bounds.zig");
 const shared = @import("../mod.zig");
+const SharedContext = @import("../context.zig").SharedContext;
 const components_shared = shared.components;
 const notification = components_shared.notification;
 
@@ -767,56 +768,57 @@ pub const NotificationSystem = struct {
     }
 };
 
-/// Convenience functions for quick notifications with global controller
-var global_controller: ?NotificationController = null;
-var global_allocator: ?std.mem.Allocator = null;
-
-pub fn initGlobalManager(allocator: std.mem.Allocator, renderer: *Renderer) void {
-    if (global_controller) |*controller| {
-        controller.deinit();
+/// Convenience functions using shared context controller
+pub fn initManager(ctx: *SharedContext, allocator: std.mem.Allocator, renderer: *Renderer) void {
+    if (ctx.notification.controller) |c| {
+        const existing: *NotificationController = @ptrCast(@alignCast(c));
+        existing.deinit();
     }
-    global_controller = NotificationController.init(allocator, renderer);
-    global_allocator = allocator;
+    const controller = NotificationController.init(allocator, renderer);
+    ctx.notification.controller = controller;
+    ctx.notification.allocator = allocator;
 }
 
-pub fn deinitGlobalManager() void {
-    if (global_controller) |*controller| {
+pub fn deinitManager(ctx: *SharedContext) void {
+    if (ctx.notification.controller) |c| {
+        const controller: *NotificationController = @ptrCast(@alignCast(c));
         controller.deinit();
-        global_controller = null;
-        global_allocator = null;
+        ctx.notification.controller = null;
+        ctx.notification.allocator = null;
     }
 }
 
-pub fn notify(title: []const u8, message: []const u8, notification_type: NotificationType, config: NotificationConfig, options: NotificationWidget.Options) !void {
-    if (global_controller) |*controller| {
+pub fn notify(ctx: *SharedContext, title: []const u8, message: []const u8, notification_type: NotificationType, config: NotificationConfig, options: NotificationWidget.Options) !void {
+    if (ctx.notification.controller) |c| {
+        const controller: *NotificationController = @ptrCast(@alignCast(c));
         try controller.notify(title, message, notification_type, config, options);
     } else {
         return error.ControllerNotInitialized;
     }
 }
 
-pub fn info(title: []const u8, message: []const u8) !void {
-    try notify(title, message, .info, .{}, .{});
+pub fn info(ctx: *SharedContext, title: []const u8, message: []const u8) !void {
+    try notify(ctx, title, message, .info, .{}, .{});
 }
 
-pub fn success(title: []const u8, message: []const u8) !void {
-    try notify(title, message, .success, .{}, .{});
+pub fn success(ctx: *SharedContext, title: []const u8, message: []const u8) !void {
+    try notify(ctx, title, message, .success, .{}, .{});
 }
 
-pub fn warning(title: []const u8, message: []const u8) !void {
-    try notify(title, message, .warning, .{}, .{});
+pub fn warning(ctx: *SharedContext, title: []const u8, message: []const u8) !void {
+    try notify(ctx, title, message, .warning, .{}, .{});
 }
 
-pub fn errorNotification(title: []const u8, message: []const u8) !void {
-    try notify(title, message, .@"error", .{}, .{ .priority = .high, .persistent = true });
+pub fn errorNotification(ctx: *SharedContext, title: []const u8, message: []const u8) !void {
+    try notify(ctx, title, message, .@"error", .{}, .{ .priority = .high, .persistent = true });
 }
 
-pub fn debug(title: []const u8, message: []const u8) !void {
-    try notify(title, message, .debug, .{}, .{ .duration_ms = 5000 });
+pub fn debug(ctx: *SharedContext, title: []const u8, message: []const u8) !void {
+    try notify(ctx, title, message, .debug, .{}, .{ .duration_ms = 5000 });
 }
 
-pub fn critical(title: []const u8, message: []const u8) !void {
-    try notify(title, message, .critical, .{}, .{
+pub fn critical(ctx: *SharedContext, title: []const u8, message: []const u8) !void {
+    try notify(ctx, title, message, .critical, .{}, .{
         .priority = .critical,
         .persistent = true,
         .position = .center,
@@ -824,16 +826,18 @@ pub fn critical(title: []const u8, message: []const u8) !void {
     });
 }
 
-pub fn showProgress(title: []const u8, message: []const u8, progress_value: f32) !void {
-    if (global_controller) |*controller| {
+pub fn showProgress(ctx: *SharedContext, title: []const u8, message: []const u8, progress_value: f32) !void {
+    if (ctx.notification.controller) |c| {
+        const controller: *NotificationController = @ptrCast(@alignCast(c));
         try controller.progress(title, message, progress_value);
     } else {
         return error.ControllerNotInitialized;
     }
 }
 
-pub fn updateProgress(title: []const u8, message: []const u8, progress_value: f32) !void {
-    if (global_controller) |*controller| {
+pub fn updateProgress(ctx: *SharedContext, title: []const u8, message: []const u8, progress_value: f32) !void {
+    if (ctx.notification.controller) |c| {
+        const controller: *NotificationController = @ptrCast(@alignCast(c));
         try controller.updateProgress(title, message, progress_value);
     } else {
         return error.ControllerNotInitialized;
