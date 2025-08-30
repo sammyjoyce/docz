@@ -1,4 +1,27 @@
 # Zig artifacts
 .zig-cache/
 zig-out/
+
+# OS cruft
 .DS_Store
+
+# Build outputs
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+
+# Zig watch logs
+.zig-watch.log
+.zig-watch.pid
+
+# Backup files
+*.bak
+*.backup
+
+# Test binaries
+test_anthropic
+test_binary
+test_ux
