@@ -14,8 +14,8 @@ pub const ProgressBar = progress.ProgressBar;
 pub const TextInput = text_input.TextInput;
 
 // Re-export convenience functions
-pub const initGlobalNotifications = notification.initGlobalManager;
-pub const deinitGlobalNotifications = notification.deinitGlobalManager;
+pub const initNotifications = notification.initManager;
+pub const deinitNotifications = notification.deinitManager;
 pub const notifyInfo = notification.info;
 pub const notifySuccess = notification.success;
 pub const notifyWarning = notification.warning;

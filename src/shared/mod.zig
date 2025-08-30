@@ -27,6 +27,7 @@ pub const tools = @import("tools/mod.zig");
 // New guardrail barrels for refactor
 pub const ui = @import("ui/mod.zig");
 pub const widgets = @import("widgets/mod.zig");
+pub const SharedContext = @import("context.zig").SharedContext;
 const build_options = @import("build_options");
 // Network barrel re-export (module, not container struct)
 pub const network = @import("network/mod.zig");
