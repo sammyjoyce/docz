@@ -307,10 +307,19 @@ pub const Client = struct {
         const owned_model = try self.allocator.dupe(u8, ctx.anthropic.model orelse params.model);
         errdefer self.allocator.free(owned_model);
 
-        // Clean up context strings
-        if (ctx.anthropic.messageId) |id| self.allocator.free(id);
-        if (ctx.anthropic.stopReason) |reason| self.allocator.free(reason);
-        if (ctx.anthropic.model) |model| self.allocator.free(model);
+        // Clean up context strings using the same allocator that allocated them
+        if (ctx.anthropic.messageId) |id| {
+            ctx.anthropic.allocator.free(id);
+            ctx.anthropic.messageId = null;
+        }
+        if (ctx.anthropic.stopReason) |reason| {
+            ctx.anthropic.allocator.free(reason);
+            ctx.anthropic.stopReason = null;
+        }
+        if (ctx.anthropic.model) |model| {
+            ctx.anthropic.allocator.free(model);
+            ctx.anthropic.model = null;
+        }
 
         return MessageResult{
             .id = owned_id,
