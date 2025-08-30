@@ -1,8 +1,9 @@
 //! Shared UI Components
 //!
-//! This module provides reusable UI components that work across different
-//! terminal interfaces (CLI, TUI, GUI). Components are designed to be
-//! adaptive and follow progressive enhancement principles.
+//! Barrel for reusable UI components shared across CLI/TUI.
+//! - Import via barrel: `const components = @import("../shared/components/mod.zig");`
+//! - Feature-gate: check `@import("../shared/mod.zig").options.feature_widgets`
+//! - Override defaults: define `pub const shared_options = @import("../shared/mod.zig").Options{ ... };` at root.
 
 pub const progress = @import("progress.zig");
 pub const notification = @import("notification.zig");
@@ -47,6 +48,7 @@ pub const Pattern = notification.Pattern;
 
 // Progress notification support
 pub const ProgressNotification = struct {
+    const Self = @This();
     pub fn create(title: []const u8, message: []const u8, progress_value: f32, config: NotificationConfig) Notification {
         return Notification.initProgress(title, message, progress_value, config);
     }
@@ -65,25 +67,12 @@ pub const Theme = base.Theme;
 pub const Animation = base.Animation;
 pub const Render = base.Render;
 
-// UI Context exports (disabled for now)
-// pub const UI = ui.UI;
-// pub const Mode = ui.Mode;
-// pub const Notification = ui.Notification;
-// pub const Border = ui.Border;
-// pub const BorderChars = ui.BorderChars;
-// pub const createTextStyle = ui.createTextStyle;
-// pub const drawBorder = ui.drawBorder;
-// pub const centerText = ui.centerText;
+// Note: Additional UI context helpers are available under legacy shims
+// when building with -Dlegacy.
 
 // Component implementations
 pub const ProgressBar = progress.Bar;
-// pub const Input = InputComponent.Input;
-// pub const InputConfig = InputComponent.Config;
-// pub const Feature = InputComponent.Feature;
-// pub const Suggestion = InputComponent.Suggestion;
-// pub const Validation = InputComponent.Validation;
-// pub const Provider = InputComponent.Provider;
-// pub const Validator = InputComponent.Validator;
+// Advanced input component adapters are provided in legacy shims.
 
 // Terminal wrapper components removed (use term_shared directly or presenters)
 

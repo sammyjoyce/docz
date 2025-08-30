@@ -63,7 +63,7 @@ pub const AuthCommands = struct {
         defer workflow.deinit();
 
         workflow.setWriter(self.writer);
-        workflow.configure(.{ .show_progress = true, .interactive = false });
+        workflow.configure(.{ .showProgress = true, .interactive = false });
 
         // Add OAuth workflow steps
         try workflow.addSteps(&[_]workflow_step.WorkflowStep{
@@ -98,7 +98,7 @@ pub const AuthCommands = struct {
             try self.renderSuccessMessage("OAuth authentication completed successfully!");
             try self.showAuthStatus();
         } else {
-            try self.renderErrorMessage("OAuth authentication failed", result.error_message);
+            try self.renderErrorMessage("OAuth authentication failed", result.errorMessage);
         }
     }
 
@@ -403,65 +403,56 @@ pub const AuthCommands = struct {
 
 // Workflow step implementations
 
-fn generateAuthURL(allocator: Allocator, context: ?workflow_step.WorkflowStep) anyerror!workflow_step.WorkflowStepResult {
+fn generateAuthURL(allocator: Allocator, context: ?workflow_step.StepContext) anyerror!workflow_step.WorkflowStepResult {
     _ = allocator;
     _ = context;
 
     // Mock URL generation
     std.time.sleep(200 * std.time.ns_per_ms);
-    return workflow_step.WorkflowStepResult{
-        .success = true,
-        .output_data = "https://api.anthropic.com/oauth/authorize?client_id=demo&response_type=code",
-    };
+    return .{ .success = true, .outputData = "https://api.anthropic.com/oauth/authorize?client_id=demo&response_type=code" };
 }
 
-fn openBrowser(allocator: Allocator, context: ?workflow_step.WorkflowStep) anyerror!workflow_step.WorkflowStepResult {
+fn openBrowser(allocator: Allocator, context: ?workflow_step.StepContext) anyerror!workflow_step.WorkflowStepResult {
     _ = allocator;
     _ = context;
 
     // Mock browser opening
     std.time.sleep(500 * std.time.ns_per_ms);
-    return workflow_step.WorkflowStepResult{ .success = true };
+    return .{ .success = true };
 }
 
-fn waitForCallback(allocator: Allocator, context: ?workflow_step.WorkflowStep) anyerror!workflow_step.WorkflowStepResult {
+fn waitForCallback(allocator: Allocator, context: ?workflow_step.StepContext) anyerror!workflow_step.WorkflowStepResult {
     _ = allocator;
     _ = context;
 
     // Mock waiting for OAuth callback
     std.time.sleep(2000 * std.time.ns_per_ms);
-    return workflow_step.WorkflowStepResult{
-        .success = true,
-        .output_data = "authorization_code_12345",
-    };
+    return .{ .success = true, .outputData = "authorization_code_12345" };
 }
 
-fn exchangeCodeForToken(allocator: Allocator, context: ?workflow_step.WorkflowStep) anyerror!workflow_step.WorkflowStepResult {
+fn exchangeCodeForToken(allocator: Allocator, context: ?workflow_step.StepContext) anyerror!workflow_step.WorkflowStepResult {
     _ = allocator;
     _ = context;
 
     // Mock token exchange
     std.time.sleep(1000 * std.time.ns_per_ms);
-    return workflow_step.WorkflowStepResult{
-        .success = true,
-        .output_data = "access_token_abc123",
-    };
+    return .{ .success = true, .outputData = "access_token_abc123" };
 }
 
-fn validateToken(allocator: Allocator, context: ?workflow_step.WorkflowStep) anyerror!workflow_step.WorkflowStepResult {
+fn validateToken(allocator: Allocator, context: ?workflow_step.StepContext) anyerror!workflow_step.WorkflowStepResult {
     _ = allocator;
     _ = context;
 
     // Mock token validation
     std.time.sleep(300 * std.time.ns_per_ms);
-    return workflow_step.WorkflowStepResult{ .success = true };
+    return .{ .success = true };
 }
 
-fn saveCredentials(allocator: Allocator, context: ?workflow_step.WorkflowStep) anyerror!workflow_step.WorkflowStepResult {
+fn saveCredentials(allocator: Allocator, context: ?workflow_step.StepContext) anyerror!workflow_step.WorkflowStepResult {
     _ = allocator;
     _ = context;
 
     // Mock credential saving
     std.time.sleep(100 * std.time.ns_per_ms);
-    return workflow_step.WorkflowStepResult{ .success = true };
+    return .{ .success = true };
 }

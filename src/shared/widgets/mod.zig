@@ -1,6 +1,6 @@
 //! Widgets package barrel.
-//! During migration, this exposes shims to legacy render/components/* implementations
-//! while we port concrete widgets to the new ui.component interface.
+//! Exposes widget families via sub-barrels; avoid importing individual files.
+//! Feature-gate at call sites via `@import("../shared/mod.zig").options.feature_widgets`.
 
 pub const chart = @import("chart/mod.zig");
 pub const table = @import("table/mod.zig");

@@ -78,10 +78,10 @@ test "progressBarStyleConfig" {
             .show_rate = false,
         };
 
-    const progressComponent = try ProgressBar.create(allocator, config);
-    defer allocator.destroy(progressComponent);
+        const progressComponent = try ProgressBar.create(allocator, config);
+        defer allocator.destroy(progressComponent);
 
-    const progress = @as(*ProgressBar, @ptrCast(progressComponent.impl));
+        const progress = @as(*ProgressBar, @ptrCast(progressComponent.impl));
 
         try std.testing.expectEqual(progress.config.style, style);
     }

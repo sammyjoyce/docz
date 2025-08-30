@@ -5,7 +5,7 @@ const allocator = std.testing.allocator;
 
 const table = @import("agents/markdown/lib/table.zig");
 
-  test "tableValidation" {
+test "tableValidation" {
     // Create a table
     const headers = [_][]const u8{ "Name", "Age" };
     const row1 = [_][]const u8{ "John", "25" };
@@ -23,7 +23,7 @@ const table = @import("agents/markdown/lib/table.zig");
     try expectEqual(@as(usize, 0), result.issues.len);
 }
 
-  test "tableRepair" {
+test "tableRepair" {
     // Create a table with alignment mismatch - first create it normally, then modify alignments
     const headers = [_][]const u8{ "Name", "Age", "City" };
     const row1 = [_][]const u8{ "John", "25", "NYC" };

@@ -404,7 +404,7 @@ pub const OAuthWizard = struct {
 
     /// Clear the entire screen
     fn clearScreen(self: *Self) !void {
-        const terminal_size = tui_mod.getTerminalSize();
+        const terminal_size = bounds_mod.getTerminalSize();
         const full_bounds = Bounds{
             .x = 0,
             .y = 0,
@@ -444,7 +444,7 @@ pub const OAuthWizard = struct {
 
     /// Draw the progress bar
     fn drawProgress(self: *Self) !void {
-        const terminal_size = tui_mod.getTerminalSize();
+        const terminal_size = bounds_mod.getTerminalSize();
         const progress_bounds = Bounds{
             .x = 2,
             .y = 5,
@@ -464,7 +464,7 @@ pub const OAuthWizard = struct {
 
     /// Draw the current state information
     fn drawCurrentState(self: *Self) !void {
-        const terminal_size = tui_mod.getTerminalSize();
+        const terminal_size = bounds_mod.getTerminalSize();
         const state_bounds = Bounds{
             .x = 2,
             .y = 9,
@@ -532,7 +532,7 @@ pub const OAuthWizard = struct {
 
     /// Draw code input interface
     fn drawCodeInput(self: *Self, y: u32) !void {
-        const terminal_size = tui_mod.getTerminalSize();
+        const terminal_size = bounds_mod.getTerminalSize();
         const input_bounds = Bounds{
             .x = 4,
             .y = y,
@@ -607,7 +607,7 @@ pub const OAuthWizard = struct {
 
     /// Draw error details
     fn drawErrorDetails(self: *Self, y: u32, error_msg: []const u8) !void {
-        const terminal_size = tui_mod.getTerminalSize();
+        const terminal_size = bounds_mod.getTerminalSize();
         const error_bounds = Bounds{
             .x = 4,
             .y = y,
@@ -638,7 +638,7 @@ pub const OAuthWizard = struct {
 
     /// Draw completion details
     fn drawCompletionDetails(self: *Self, y: u32) !void {
-        const terminal_size = tui_mod.getTerminalSize();
+        const terminal_size = bounds_mod.getTerminalSize();
         const complete_bounds = Bounds{
             .x = 4,
             .y = y,
@@ -669,7 +669,7 @@ pub const OAuthWizard = struct {
 
     /// Draw state-specific animation
     fn drawStateAnimation(self: *Self, y: u32) !void {
-        const terminal_size = tui_mod.getTerminalSize();
+        const terminal_size = bounds_mod.getTerminalSize();
         const anim_bounds = Bounds{
             .x = 4,
             .y = y,
@@ -715,7 +715,7 @@ pub const OAuthWizard = struct {
 
     /// Draw status bar
     fn drawStatusBar(self: *Self) !void {
-        const terminal_size = tui_mod.getTerminalSize();
+        const terminal_size = bounds_mod.getTerminalSize();
         const status_bounds = Bounds{
             .x = 0,
             .y = terminal_size.height - 1,
@@ -735,7 +735,7 @@ pub const OAuthWizard = struct {
 
     /// Draw keyboard shortcuts
     fn drawKeyboardShortcuts(self: *Self) !void {
-        const terminal_size = tui_mod.getTerminalSize();
+        const terminal_size = bounds_mod.getTerminalSize();
         const shortcuts_bounds = Bounds{
             .x = 2,
             .y = terminal_size.height - 3,

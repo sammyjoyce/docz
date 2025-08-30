@@ -1,7 +1,9 @@
 //! Authentication module for DocZ
 //!
-//! This module provides authentication functionality,
-//! including OAuth, API key authentication, TUI components, and CLI commands.
+//! Barrel for auth core + OAuth + CLI glue.
+//! - Import via this barrel; avoid deep-importing subfiles.
+//! - Feature-gate in consumers via `@import("../shared/mod.zig").options.feature_tui` if tying to TUI.
+//! - Override behavior using root `shared_options` to toggle auth-related features in builds.
 
 const std = @import("std");
 
@@ -31,8 +33,8 @@ pub const saveCredentials = core.saveCredentials;
 pub const setupOAuth = oauth.setupOAuth;
 pub const refreshTokens = oauth.refreshTokens;
 
-// Re-export curl for OAuth module usage - temporarily disabled for build fix
-// pub const curl = @import("curl_shared");
+// Note: curl re-export is stubbed here to avoid deep dependency;
+// prefer `@import("shared/network/mod.zig").curl` in new code.
 pub const curl = struct {
     pub const HTTPResponse = struct {
         status_code: u16,

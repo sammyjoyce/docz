@@ -1,10 +1,43 @@
 //! Theme System
 //! Provides comprehensive theme management with persistence, customization,
 //! accessibility features, and cross-platform support
+//!
+//! Compile-time Options
+//! - Define `pub const shared_options = @import("src/shared/mod.zig").Options{ ... };` at root,
+//!   or provide any struct; fields are discovered with `@hasField`.
+//! - This module reads optional fields: `theme_enable_tools`,
+//!   `theme_enable_accessibility`, `theme_default_scheme`.
 
 const std = @import("std");
 const builtin = @import("builtin");
 const term = @import("term_shared");
+const root = @import("root");
+const shared = @import("../mod.zig");
+
+// -----------------------------------------------------------------------------
+// Compile-time Options for theme subsystem
+// -----------------------------------------------------------------------------
+/// Theme-level feature flags. Override via `root.shared_options` fields prefixed
+/// with `theme_` or copy this struct to your agent to gate features.
+pub const Options = struct {
+    enable_tools: bool = true, // editor/exporter/development utilities
+    enable_accessibility: bool = true, // color blindness transforms, HC variants
+    default_scheme: ?[]const u8 = null, // e.g., "light" | "dark"
+};
+
+/// Resolve options from `root.shared_options` if present.
+pub const options: Options = blk: {
+    const defaults = Options{};
+    if (@hasDecl(root, "shared_options")) {
+        const T = @TypeOf(root.shared_options);
+        break :blk Options{
+            .enable_tools = if (@hasField(T, "theme_enable_tools")) @field(root.shared_options, "theme_enable_tools") else defaults.enable_tools,
+            .enable_accessibility = if (@hasField(T, "theme_enable_accessibility")) @field(root.shared_options, "theme_enable_accessibility") else defaults.enable_accessibility,
+            .default_scheme = if (@hasField(T, "theme_default_scheme")) @field(root.shared_options, "theme_default_scheme") else defaults.default_scheme,
+        };
+    }
+    break :blk defaults;
+};
 
 // Runtime exports - always available
 pub const Theme = @import("runtime/Theme.zig").Theme;

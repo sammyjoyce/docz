@@ -4,7 +4,6 @@
 const std = @import("std");
 const tui = @import("../../src/shared/tui/mod.zig");
 const components = @import("../../src/shared/components/mod.zig");
-const cli = @import("../../src/shared/cli/mod.zig");
 const tools_mod = @import("../../src/shared/tools/mod.zig");
 const render_mod = @import("../../src/shared/render/mod.zig");
 

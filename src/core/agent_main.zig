@@ -151,7 +151,7 @@ pub fn runAgent(allocator: std.mem.Allocator, spec: engine.AgentSpec) !void {
     }
 
     // Fall back to standard engine execution
-    if (engine.runWithOptions(allocator, interactiveOptions.base, spec)) {
+    if (engine.runWithOptions(allocator, interactiveOptions.base, spec, std.fs.cwd())) {
         // done
     } else |err| {
         // Clear, actionable error handling for common cases

@@ -7,6 +7,7 @@ const types = @import("../core/types.zig");
 const WorkflowStep = @import("workflow_step.zig");
 
 pub const Workflow = struct {
+    const Self = @This();
     name: []const u8,
     description: []const u8,
     steps: []const WorkflowStep.WorkflowStep,
@@ -19,16 +20,16 @@ pub const Workflow = struct {
         general,
     };
 
-    pub fn init(name: []const u8, description: []const u8, steps: []const WorkflowStep.WorkflowStep) Workflow {
-        return Workflow{
+    pub fn init(name: []const u8, description: []const u8, steps: []const WorkflowStep.WorkflowStep) Self {
+        return Self{
             .name = name,
             .description = description,
             .steps = steps,
         };
     }
 
-    pub fn withCategory(self: Workflow, category: Category) Workflow {
-        return Workflow{
+    pub fn withCategory(self: Self, category: Category) Self {
+        return Self{
             .name = self.name,
             .description = self.description,
             .steps = self.steps,
@@ -38,29 +39,30 @@ pub const Workflow = struct {
 };
 
 pub const WorkflowRegistry = struct {
+    const Self = @This();
     allocator: std.mem.Allocator,
     workflows: std.StringHashMap(Workflow),
     state: *const state.Cli,
 
-    pub fn init(allocator: std.mem.Allocator, ctx: *const state.Cli) WorkflowRegistry {
-        return WorkflowRegistry{
+    pub fn init(allocator: std.mem.Allocator, ctx: *const state.Cli) Self {
+        return Self{
             .allocator = allocator,
             .workflows = std.StringHashMap(Workflow).init(allocator),
             .state = ctx,
         };
     }
 
-    pub fn deinit(self: *WorkflowRegistry) void {
+    pub fn deinit(self: *Self) void {
         self.workflows.deinit();
     }
 
     /// Register a workflow
-    pub fn register(self: *WorkflowRegistry, workflow: Workflow) !void {
+    pub fn register(self: *Self, workflow: Workflow) !void {
         try self.workflows.put(workflow.name, workflow);
     }
 
     /// Execute a workflow by name
-    pub fn execute(self: *WorkflowRegistry, workflowName: []const u8) !types.CommandResult {
+    pub fn execute(self: *Self, workflowName: []const u8) !types.CommandResult {
         const workflow = self.workflows.get(workflowName) orelse {
             return types.CommandResult.err("Unknown workflow", 1);
         };
@@ -128,7 +130,7 @@ pub const WorkflowRegistry = struct {
     }
 
     /// List all available workflows
-    pub fn list(self: *WorkflowRegistry, writer: anytype) !void {
+    pub fn list(self: *Self, writer: anytype) !void {
         try writer.print("Available Workflows:\n");
 
         var iterator = self.workflows.iterator();
@@ -148,22 +150,21 @@ pub const WorkflowRegistry = struct {
     }
 
     /// Get workflow by name
-    pub fn get(self: *WorkflowRegistry, name: []const u8) ?Workflow {
+    pub fn get(self: *Self, name: []const u8) ?Workflow {
         return self.workflows.get(name);
     }
 
     /// Check if workflow exists
-    pub fn exists(self: *WorkflowRegistry, name: []const u8) bool {
+    pub fn exists(self: *Self, name: []const u8) bool {
         return self.workflows.contains(name);
     }
 
     /// Register common workflows
-    pub fn registerCommonWorkflows(self: *WorkflowRegistry) !void {
+    pub fn registerCommonWorkflows(self: *Self) !void {
         // Auth workflow
         const auth_steps = [_]WorkflowStep.WorkflowStep{
             WorkflowStep.CommonSteps.checkNetworkConnectivity("https://api.anthropic.com"),
-            WorkflowStep.CommonSteps.checkEnvironmentVariable("ANTHROPIC_API_KEY")
-                .asOptional(),
+            WorkflowStep.CommonSteps.checkEnvironmentVariable("ANTHROPIC_API_KEY").asOptional(),
             createAuthVerificationStep(),
         };
 
@@ -194,7 +195,7 @@ pub const WorkflowRegistry = struct {
 
 fn createAuthVerificationStep() WorkflowStep.WorkflowStep {
     const AuthVerifyImpl = struct {
-        fn execute(allocator: std.mem.Allocator, ctx: ?WorkflowStep.WorkflowStep) anyerror!WorkflowStep.WorkflowStepResult {
+        fn execute(allocator: std.mem.Allocator, ctx: ?WorkflowStep.StepContext) anyerror!WorkflowStep.WorkflowStepResult {
             _ = allocator;
             _ = ctx;
 
@@ -202,10 +203,7 @@ fn createAuthVerificationStep() WorkflowStep.WorkflowStep {
             // For now, simulate the verification
             std.time.sleep(500 * std.time.ns_per_ms);
 
-            return WorkflowStep.WorkflowStepResult{
-                .success = true,
-                .outputData = "Authentication verified",
-            };
+            return .{ .success = true, .outputData = "Authentication verified" };
         }
     };
 
@@ -215,17 +213,14 @@ fn createAuthVerificationStep() WorkflowStep.WorkflowStep {
 
 fn createConfigOptimizationStep() WorkflowStep.WorkflowStep {
     const ConfigOptimizeImpl = struct {
-        fn execute(allocator: std.mem.Allocator, ctx: ?WorkflowStep.WorkflowStep) anyerror!WorkflowStep.WorkflowStepResult {
+        fn execute(allocator: std.mem.Allocator, ctx: ?WorkflowStep.StepContext) anyerror!WorkflowStep.WorkflowStepResult {
             _ = allocator;
             _ = ctx;
 
             // Simulate config optimization
             std.time.sleep(300 * std.time.ns_per_ms);
 
-            return WorkflowStep.WorkflowStepResult{
-                .success = true,
-                .outputData = "Configuration optimized for current environment",
-            };
+            return .{ .success = true, .outputData = "Configuration optimized for current environment" };
         }
     };
 
@@ -235,7 +230,7 @@ fn createConfigOptimizationStep() WorkflowStep.WorkflowStep {
 
 fn createInitialConfigStep() WorkflowStep.WorkflowStep {
     const InitConfigImpl = struct {
-        fn execute(allocator: std.mem.Allocator, ctx: ?WorkflowStep.WorkflowStep) anyerror!WorkflowStep.WorkflowStepResult {
+        fn execute(allocator: std.mem.Allocator, ctx: ?WorkflowStep.StepContext) anyerror!WorkflowStep.WorkflowStepResult {
             _ = ctx;
 
             // Create configuration if it doesn't exist
@@ -247,10 +242,11 @@ fn createInitialConfigStep() WorkflowStep.WorkflowStep {
                 \\}
             ;
 
-            std.fs.cwd().access("config.zon", .{}) catch |err| switch (err) {
+            const dir = if (ctx) |c| c.dir else std.fs.cwd();
+            dir.access("config.zon", .{}) catch |err| switch (err) {
                 error.FileNotFound => {
                     // Create the config file
-                    const file = try std.fs.cwd().createFile("config.zon", .{});
+                    const file = try dir.createFile("config.zon", .{});
                     defer file.close();
                     try file.writeAll(config_content);
                 },
@@ -259,10 +255,7 @@ fn createInitialConfigStep() WorkflowStep.WorkflowStep {
 
             _ = allocator;
 
-            return WorkflowStep.WorkflowStepResult{
-                .success = true,
-                .outputData = "Initial configuration created",
-            };
+            return .{ .success = true, .outputData = "Initial configuration created" };
         }
     };
 

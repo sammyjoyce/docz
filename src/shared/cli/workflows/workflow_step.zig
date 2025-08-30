@@ -1,59 +1,63 @@
 //! Workflow step definition and utilities
-//! Defines the structure and execution model for workflow steps
+//! Redesign: single WorkflowStep struct + separate StepContext
 
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
-pub const StepResult = struct {
+pub const WorkflowStepResult = struct {
+    const Self = @This();
     success: bool,
     errorMessage: ?[]const u8 = null,
     outputData: ?[]const u8 = null, // Optional step output for next steps
 };
 
-pub const Step = struct {
+pub const StepContext = struct {
+    const Self = @This();
     parameters: std.StringHashMap([]const u8),
     previousOutput: ?[]const u8 = null,
     stepIndex: u32 = 0,
+    dir: std.fs.Dir = std.fs.cwd(),
 
-    pub fn init(allocator: Allocator) Step {
-        return .{
-            .parameters = std.StringHashMap([]const u8).init(allocator),
-        };
+    pub fn init(allocator: Allocator) Self {
+        return .{ .parameters = std.StringHashMap([]const u8).init(allocator) };
     }
 
-    pub fn deinit(self: *Step) void {
+    pub fn deinit(self: *Self) void {
         self.parameters.deinit();
     }
 
-    pub fn setParam(self: *Step, key: []const u8, value: []const u8) !void {
+    pub fn setParam(self: *Self, key: []const u8, value: []const u8) !void {
         try self.parameters.put(key, value);
     }
 
-    pub fn getParam(self: Step, key: []const u8) ?[]const u8 {
+    pub fn getParam(self: Self, key: []const u8) ?[]const u8 {
         return self.parameters.get(key);
     }
 };
 
 pub const WorkflowStep = struct {
+    const Self = @This();
+
     name: []const u8,
     description: ?[]const u8 = null,
-    executeFn: *const fn (allocator: Allocator, context: ?Step) anyerror!StepResult,
-    context: ?Step = null,
+    executeFn: *const fn (allocator: Allocator, context: ?StepContext) anyerror!WorkflowStepResult,
+    context: ?StepContext = null,
     required: bool = true,
     timeoutMs: ?u32 = null,
     retryCount: u32 = 0,
 
     pub fn init(
         name: []const u8,
-        executeFn: *const fn (allocator: Allocator, context: ?Step) anyerror!StepResult,
-    ) WorkflowStep {
-        return .{
-            .name = name,
-            .executeFn = executeFn,
-        };
+        executeFn: *const fn (allocator: Allocator, context: ?StepContext) anyerror!WorkflowStepResult,
+    ) Self {
+        return .{ .name = name, .executeFn = executeFn };
     }
 
-    pub fn withDescription(self: WorkflowStep, desc: []const u8) WorkflowStep {
+    pub fn deinit(self: *Self) void {
+        if (self.context) |*ctx| ctx.deinit();
+    }
+
+    pub fn withDescription(self: Self, desc: []const u8) Self {
         return .{
             .name = self.name,
             .description = desc,
@@ -65,7 +69,7 @@ pub const WorkflowStep = struct {
         };
     }
 
-    pub fn withContext(self: WorkflowStep, ctx: Step) WorkflowStep {
+    pub fn withContext(self: Self, ctx: StepContext) Self {
         return .{
             .name = self.name,
             .description = self.description,
@@ -77,7 +81,7 @@ pub const WorkflowStep = struct {
         };
     }
 
-    pub fn asOptional(self: WorkflowStep) WorkflowStep {
+    pub fn asOptional(self: Self) Self {
         return .{
             .name = self.name,
             .description = self.description,
@@ -89,19 +93,19 @@ pub const WorkflowStep = struct {
         };
     }
 
-    pub fn withTimeout(self: WorkflowStep, timeoutMs: u32) WorkflowStep {
+    pub fn withTimeout(self: Self, timeout_ms: u32) Self {
         return .{
             .name = self.name,
             .description = self.description,
             .executeFn = self.executeFn,
             .context = self.context,
             .required = self.required,
-            .timeoutMs = timeoutMs,
+            .timeoutMs = timeout_ms,
             .retryCount = self.retryCount,
         };
     }
 
-    pub fn withRetry(self: WorkflowStep, retryCount: u32) WorkflowStep {
+    pub fn withRetry(self: Self, retry_count: u32) Self {
         return .{
             .name = self.name,
             .description = self.description,
@@ -109,7 +113,7 @@ pub const WorkflowStep = struct {
             .context = self.context,
             .required = self.required,
             .timeoutMs = self.timeoutMs,
-            .retryCount = retryCount,
+            .retryCount = retry_count,
         };
     }
 };
@@ -117,204 +121,155 @@ pub const WorkflowStep = struct {
 /// Common step implementations for typical CLI operations
 pub const CommonSteps = struct {
     /// Delay step for testing or spacing
-    pub fn delay(duration_ms: u32) Step {
-        const DelayImpl = struct {
-            fn execute(allocator: Allocator, context: ?Step) anyerror!StepResult {
+    pub fn delay(durationMs: u32) WorkflowStep {
+        const Impl = struct {
+            fn execute(allocator: Allocator, context: ?StepContext) anyerror!WorkflowStepResult {
                 _ = allocator;
                 _ = context;
-                std.time.sleep(duration_ms * std.time.ns_per_ms);
-                return StepResult{ .success = true };
+                std.time.sleep(durationMs * std.time.ns_per_ms);
+                return .{ .success = true };
             }
         };
 
-        return Step.init("Delay", DelayImpl.execute)
+        return WorkflowStep.init("Delay", Impl.execute)
             .withDescription("Wait for specified duration");
     }
 
     /// File system check step
-    pub fn checkFileExists(file_path: []const u8) Step {
-        const CheckFileImpl = struct {
-            fn execute(allocator: Allocator, context: ?Step) anyerror!StepResult {
+    pub fn checkFileExists(filePath: []const u8) WorkflowStep {
+        const Impl = struct {
+            fn execute(allocator: Allocator, context: ?StepContext) anyerror!WorkflowStepResult {
                 _ = allocator;
-                const path = if (context) |ctx| ctx.getParam("file_path") orelse file_path else file_path;
+                const path = if (context) |ctx| ctx.getParam("file_path") orelse filePath else filePath;
 
-                std.fs.cwd().access(path, .{}) catch |err| switch (err) {
-                    error.FileNotFound => return StepResult{
-                        .success = false,
-                        .errorMessage = "File not found",
-                    },
+                const dir = if (context) |ctx| ctx.dir else std.fs.cwd();
+                dir.access(path, .{}) catch |err| switch (err) {
+                    error.FileNotFound => return .{ .success = false, .errorMessage = "File not found" },
                     else => return err,
                 };
 
-                return StepResult{ .success = true };
+                return .{ .success = true };
             }
         };
 
-        return Step.init("Check File", CheckFileImpl.execute)
+        return WorkflowStep.init("Check File", Impl.execute)
             .withDescription("Verify file exists");
     }
 
     /// Directory creation step
-    pub fn createDirectory(dir_path: []const u8) Step {
-        const CreateDirImpl = struct {
-            fn execute(allocator: Allocator, context: ?Step) anyerror!StepResult {
+    pub fn createDirectory(dirPath: []const u8) WorkflowStep {
+        const Impl = struct {
+            fn execute(allocator: Allocator, context: ?StepContext) anyerror!WorkflowStepResult {
                 _ = allocator;
-                const path = if (context) |ctx| ctx.getParam("dir_path") orelse dir_path else dir_path;
+                const path = if (context) |ctx| ctx.getParam("dir_path") orelse dirPath else dirPath;
 
-                std.fs.cwd().makeDir(path) catch |err| switch (err) {
-                    error.PathAlreadyExists => {
-                        // Directory already exists, that's fine
-                    },
-                    else => return StepResult{
-                        .success = false,
-                        .errorMessage = "Failed to create directory",
-                    },
+                const dir = if (context) |ctx| ctx.dir else std.fs.cwd();
+                dir.makeDir(path) catch |err| switch (err) {
+                    error.PathAlreadyExists => {},
+                    else => return .{ .success = false, .errorMessage = "Failed to create directory" },
                 };
 
-                return StepResult{ .success = true };
+                return .{ .success = true };
             }
         };
 
-        return Step.init("Create Directory", CreateDirImpl.execute)
+        return WorkflowStep.init("Create Directory", Impl.execute)
             .withDescription("Create directory if it doesn't exist");
     }
 
     /// Environment variable check step
-    pub fn checkEnvironmentVariable(var_name: []const u8) Step {
-        const CheckEnvImpl = struct {
-            fn execute(allocator: Allocator, context: ?Step) anyerror!StepResult {
-                const name = if (context) |ctx| ctx.getParam("var_name") orelse var_name else var_name;
+    pub fn checkEnvironmentVariable(varName: []const u8) WorkflowStep {
+        const Impl = struct {
+            fn execute(allocator: Allocator, context: ?StepContext) anyerror!WorkflowStepResult {
+                const name = if (context) |ctx| ctx.getParam("var_name") orelse varName else varName;
 
-                const env_value = std.process.getEnvVarOwned(allocator, name) catch |err| switch (err) {
-                    error.EnvironmentVariableNotFound => return StepResult{
-                        .success = false,
-                        .errorMessage = "Environment variable not found",
-                    },
+                const val = std.process.getEnvVarOwned(allocator, name) catch |err| switch (err) {
+                    error.EnvironmentVariableNotFound => return .{ .success = false, .errorMessage = "Environment variable not found" },
                     else => return err,
                 };
-
-                allocator.free(env_value);
-                return StepResult{ .success = true };
+                allocator.free(val);
+                return .{ .success = true };
             }
         };
 
-        return Step.init("Check Environment Variable", CheckEnvImpl.execute)
+        return WorkflowStep.init("Check Environment Variable", Impl.execute)
             .withDescription("Verify environment variable is set");
     }
 
-    /// Network connectivity check
-    pub fn checkNetworkConnectivity(host: []const u8) Step {
-        const NetworkCheckImpl = struct {
-            fn execute(allocator: Allocator, context: ?Step) anyerror!StepResult {
+    /// Network connectivity check (simulated)
+    pub fn checkNetworkConnectivity(host: []const u8) WorkflowStep {
+        _ = host;
+        const Impl = struct {
+            fn execute(allocator: Allocator, context: ?StepContext) anyerror!WorkflowStepResult {
                 _ = allocator;
                 _ = context;
-                _ = host;
-
-                // In a real implementation, this would make a network request
-                // For now, simulate a network check
                 std.time.sleep(100 * std.time.ns_per_ms);
-
-                // Simulate success - in real implementation would do actual network check
-                return StepResult{
-                    .success = true,
-                    .outputData = "Network connection verified",
-                };
+                return .{ .success = true, .outputData = "Network connection verified" };
             }
         };
 
-        return Step.init("Network Check", NetworkCheckImpl.execute)
+        return WorkflowStep.init("Network Check", Impl.execute)
             .withDescription("Verify network connectivity");
     }
 
     /// Configuration validation step
-    pub fn validateConfiguration(config_path: []const u8) Step {
-        const ValidateConfigImpl = struct {
-            fn execute(allocator: Allocator, context: ?Step) anyerror!StepResult {
+    pub fn validateConfiguration(configPath: []const u8) WorkflowStep {
+        const Impl = struct {
+            fn execute(allocator: Allocator, context: ?StepContext) anyerror!WorkflowStepResult {
                 _ = context;
-
-                // Read and validate configuration file
-                const file = std.fs.cwd().openFile(config_path, .{}) catch |err| switch (err) {
-                    error.FileNotFound => return StepResult{
-                        .success = false,
-                        .errorMessage = "Configuration file not found",
-                    },
+                const dir = if (context) |ctx| ctx.dir else std.fs.cwd();
+                const file = dir.openFile(configPath, .{}) catch |err| switch (err) {
+                    error.FileNotFound => return .{ .success = false, .errorMessage = "Configuration file not found" },
                     else => return err,
                 };
                 defer file.close();
 
-                const file_size = try file.getEndPos();
-                if (file_size == 0) {
-                    return StepResult{
-                        .success = false,
-                        .errorMessage = "Configuration file is empty",
-                    };
-                }
+                const size = try file.getEndPos();
+                if (size == 0) return .{ .success = false, .errorMessage = "Configuration file is empty" };
 
-                const contents = try file.readToEndAlloc(allocator, file_size);
+                const contents = try file.readToEndAlloc(allocator, size);
                 defer allocator.free(contents);
 
-                // Basic validation - check if it's valid JSON/ZON
-                // In a real implementation, this would do more thorough validation
-                if (contents.len < 2) {
-                    return StepResult{
-                        .success = false,
-                        .errorMessage = "Configuration file too small",
-                    };
-                }
-
-                return StepResult{ .success = true };
+                if (contents.len < 2) return .{ .success = false, .errorMessage = "Configuration file too small" };
+                return .{ .success = true };
             }
         };
 
-        return Step.init("Validate Configuration", ValidateConfigImpl.execute)
+        return WorkflowStep.init("Validate Configuration", Impl.execute)
             .withDescription("Check configuration file validity");
     }
 };
 
-/// Step builder for creating custom steps with fluent API
+/// StepBuilder: constructs WorkflowStep via fluent API
 pub const StepBuilder = struct {
-    step: Step,
+    const Self = @This();
+    step: WorkflowStep,
     allocator: Allocator,
 
-    pub fn init(allocator: Allocator, name: []const u8) StepBuilder {
-        return .{
-            .step = Step{
-                .name = name,
-                .executeFn = undefined, // Will be set later
-            },
-            .allocator = allocator,
-        };
+    pub fn init(allocator: Allocator, name: []const u8) Self {
+        return .{ .step = .{ .name = name, .executeFn = undefined }, .allocator = allocator };
     }
 
-    pub fn description(self: StepBuilder, desc: []const u8) StepBuilder {
-        return .{
-            .step = self.step.withDescription(desc),
-            .allocator = self.allocator,
-        };
+    pub fn description(self: Self, desc: []const u8) Self {
+        return .{ .step = self.step.withDescription(desc), .allocator = self.allocator };
     }
 
-    pub fn optional(self: StepBuilder) StepBuilder {
-        return .{
-            .step = self.step.asOptional(),
-            .allocator = self.allocator,
-        };
+    pub fn optional(self: Self) Self {
+        return .{ .step = self.step.asOptional(), .allocator = self.allocator };
     }
 
-    pub fn timeout(self: StepBuilder, timeoutMs: u32) StepBuilder {
-        return .{
-            .step = self.step.withTimeout(timeoutMs),
-            .allocator = self.allocator,
-        };
+    pub fn timeout(self: Self, timeoutMs: u32) Self {
+        return .{ .step = self.step.withTimeout(timeoutMs), .allocator = self.allocator };
     }
 
-    pub fn retry(self: StepBuilder, retryCount: u32) StepBuilder {
-        return .{
-            .step = self.step.withRetry(retryCount),
-            .allocator = self.allocator,
-        };
+    pub fn retry(self: Self, retryCount: u32) Self {
+        return .{ .step = self.step.withRetry(retryCount), .allocator = self.allocator };
     }
 
-    pub fn execute(self: StepBuilder, executeFn: *const fn (allocator: Allocator, context: ?Step) anyerror!StepResult) Step {
+    pub fn execute(
+        self: Self,
+        executeFn: *const fn (allocator: Allocator, context: ?StepContext) anyerror!WorkflowStepResult,
+    ) WorkflowStep {
         return .{
             .name = self.step.name,
             .description = self.step.description,

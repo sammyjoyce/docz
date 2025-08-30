@@ -11,15 +11,17 @@ const defaultEditor = "nano";
 pub const OptionFunction = fn (editorName: []const u8, filename: []const u8) Result;
 
 pub const Result = struct {
+    const Self = @This();
     args: []const []const u8,
     pathInArgs: bool,
 };
 
 /// Option for opening file at specific line number
 pub const LinePosition = struct {
+    const Self = @This();
     line: u32,
 
-    pub fn apply(self: LinePosition) OptionFunction {
+    pub fn apply(self: Self) OptionFunction {
         const S = struct {
             fn optionFn(editorName: []const u8, filename: []const u8) Result {
                 const line = self.line;
@@ -66,7 +68,8 @@ pub const LinePosition = struct {
 
 /// Option for opening file at end of line
 pub const EndLinePosition = struct {
-    pub fn apply(_: EndLinePosition) OptionFunction {
+    const Self = @This();
+    pub fn apply(self: Self) OptionFunction {
         const S = struct {
             fn optionFn(editorName: []const u8, _: []const u8) Result {
                 if (std.mem.eql(u8, editorName, "vim") or std.mem.eql(u8, editorName, "nvim")) {
@@ -89,13 +92,14 @@ pub const EndLinePosition = struct {
 
 /// Editor command builder
 pub const Command = struct {
+    const Self = @This();
     allocator: std.mem.Allocator,
     appName: []const u8,
     path: []const u8,
     options: std.ArrayListUnmanaged(OptionFunction),
 
-    pub fn init(allocator: std.mem.Allocator, appName: []const u8, path: []const u8) Command {
-        return Command{
+    pub fn init(allocator: std.mem.Allocator, appName: []const u8, path: []const u8) Self {
+        return Self{
             .allocator = allocator,
             .appName = appName,
             .path = path,
@@ -103,24 +107,24 @@ pub const Command = struct {
         };
     }
 
-    pub fn deinit(self: *Command) void {
+    pub fn deinit(self: *Self) void {
         self.options.deinit(self.allocator);
     }
 
-    pub fn lineNumber(self: *Command, line: u32) !*Command {
+    pub fn lineNumber(self: *Self, line: u32) !*Self {
         const option = LinePosition{ .line = line };
         try self.options.append(self.allocator, option.apply());
         return self;
     }
 
-    pub fn endOfLine(self: *Command) !*Command {
+    pub fn endOfLine(self: *Self) !*Self {
         const option = EndLinePosition{};
         try self.options.append(self.allocator, option.apply());
         return self;
     }
 
     /// Create the child process for the editor
-    pub fn spawn(self: *Command) !std.process.Child {
+    pub fn spawn(self: *Self) !std.process.Child {
         // Check for Snap environment restriction
         if (std.posix.getenv("SNAP_REVISION")) |_| {
             return error.SnapRestriction;

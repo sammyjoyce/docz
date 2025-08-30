@@ -1,7 +1,8 @@
 //! Testing Framework Module
 //!
-//! This module provides comprehensive testing utilities for the project,
-//! including snapshot testing for TUI components.
+//! Barrel for testing utilities. Import via this barrel from tests; do not
+//! deep-import subfiles. Tests may gate TUI-dependent helpers behind
+//! `@import("../shared/mod.zig").options.feature_tui`.
 
 pub const snapshot = @import("snapshot.zig");
 

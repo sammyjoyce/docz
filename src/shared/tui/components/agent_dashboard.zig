@@ -39,7 +39,7 @@ const caps = term_mod.caps;
 
 // Network and auth for monitoring
 const shared = @import("../../mod.zig");
-const anthropic = shared.Network.anthropic;
+const anthropic = shared.network.anthropic;
 const auth = @import("../../auth/core/mod.zig");
 
 /// Main dashboard configuration

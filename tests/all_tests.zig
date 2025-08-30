@@ -4,4 +4,3 @@ pub const _ = struct {
     const _rp = @import("render_pipeline.zig");
     const _nr = @import("notification_render.zig");
 };
-

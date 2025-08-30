@@ -1,5 +1,5 @@
-//! JSON reflection utilities module.
-//! Exports the main json_reflection functionality.
+//! JSON reflection utilities barrel.
+//! Import via this barrel; do not deep-import subfiles.
 
 pub const json_reflection = @import("json_reflection.zig");
 pub const generateJsonMapper = json_reflection.generateJsonMapper;

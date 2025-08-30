@@ -6,7 +6,8 @@ const term_shared = @import("term_shared");
 const term_clipboard = term_shared.ansi.clipboard;
 const term_caps = term_shared.caps;
 const term_ansi = term_shared.ansi.color;
-const notification = @import("../../notifications.zig");
+const cli = @import("../../mod.zig");
+const notification = cli.notifications;
 const Allocator = std.mem.Allocator;
 
 pub const ClipboardError = error{
@@ -17,12 +18,13 @@ pub const ClipboardError = error{
 };
 
 pub const ClipboardEntry = struct {
+    const Self = @This();
     content: []const u8,
     timestamp: i64,
     content_type: []const u8, // "text", "json", "url", "command", etc.
     source: []const u8, // Which component/command created this entry
 
-    pub fn init(content: []const u8, content_type: []const u8, source: []const u8) ClipboardEntry {
+    pub fn init(content: []const u8, content_type: []const u8, source: []const u8) Self {
         return .{
             .content = content,
             .timestamp = std.time.timestamp(),
@@ -33,6 +35,7 @@ pub const ClipboardEntry = struct {
 };
 
 pub const Clipboard = struct {
+    const Self = @This();
     allocator: Allocator,
     caps: term_caps.TermCaps,
     notification: ?*notification.NotificationHandler,
@@ -42,7 +45,7 @@ pub const Clipboard = struct {
     maxContentSize: usize,
     writer: ?*std.Io.Writer,
 
-    pub fn init(allocator: Allocator) Clipboard {
+    pub fn init(allocator: Allocator) Self {
         return .{
             .allocator = allocator,
             .caps = term_caps.detectCaps(allocator) catch term_caps.TermCaps{
@@ -84,7 +87,7 @@ pub const Clipboard = struct {
         };
     }
 
-    pub fn deinit(self: *Clipboard) void {
+    pub fn deinit(self: *Self) void {
         // Free all history content
         for (self.history.items) |entry| {
             self.allocator.free(entry.content);
@@ -92,16 +95,16 @@ pub const Clipboard = struct {
         self.history.deinit();
     }
 
-    pub fn setWriter(self: *Clipboard, writer: *std.Io.Writer) void {
+    pub fn setWriter(self: *Self, writer: *std.Io.Writer) void {
         self.writer = writer;
     }
 
-    pub fn setNotificationManager(self: *Clipboard, manager: *notification.NotificationHandler) void {
+    pub fn setNotificationManager(self: *Self, manager: *notification.NotificationHandler) void {
         self.notification = manager;
     }
 
     pub fn configure(
-        self: *Clipboard,
+        self: *Self,
         options: struct {
             maxHistorySize: usize = 50,
             autoTrimLargeContent: bool = true,
@@ -114,7 +117,7 @@ pub const Clipboard = struct {
     }
 
     /// Copy text to system clipboard using OSC 52
-    pub fn copy(self: *Clipboard, content: []const u8, content_type: []const u8, source: []const u8) !void {
+    pub fn copy(self: *Self, content: []const u8, content_type: []const u8, source: []const u8) !void {
         if (!self.caps.supportsClipboard()) {
             return ClipboardError.NotSupported;
         }
@@ -165,7 +168,7 @@ pub const Clipboard = struct {
     }
 
     /// Copy structured data (JSON, command output, etc.)
-    pub fn copyStructured(self: *Clipboard, data: anytype, source: []const u8) !void {
+    pub fn copyStructured(self: *Self, data: anytype, source: []const u8) !void {
         const json_content = try std.json.stringifyAlloc(self.allocator, data, .{ .whitespace = .indent_2 });
         defer self.allocator.free(json_content);
 
@@ -173,7 +176,7 @@ pub const Clipboard = struct {
     }
 
     /// Copy a command for easy re-execution
-    pub fn copyCommand(self: *Clipboard, command: []const u8, args: []const []const u8) !void {
+    pub fn copyCommand(self: *Self, command: []const u8, args: []const []const u8) !void {
         var command_str = std.ArrayList(u8).init(self.allocator);
         defer command_str.deinit();
 
@@ -196,7 +199,7 @@ pub const Clipboard = struct {
     }
 
     /// Copy URL with validation
-    pub fn copyURL(self: *Clipboard, url: []const u8, source: []const u8) !void {
+    pub fn copyURL(self: *Self, url: []const u8, source: []const u8) !void {
         // Basic URL validation
         if (!std.mem.startsWith(u8, url, "http://") and !std.mem.startsWith(u8, url, "https://")) {
             return ClipboardError.Invalid;
@@ -206,7 +209,7 @@ pub const Clipboard = struct {
     }
 
     /// Read from system clipboard (if supported)
-    pub fn paste(self: *Clipboard) !?[]const u8 {
+    pub fn paste(self: *Self) !?[]const u8 {
         // OSC 52 supports writing but reading is limited
         // For now, return the most recent history entry
         if (self.history.items.len > 0) {
@@ -218,7 +221,7 @@ pub const Clipboard = struct {
     }
 
     /// Show clipboard history
-    pub fn showHistory(self: *Clipboard) !void {
+    pub fn showHistory(self: *Self) !void {
         if (self.writer == null) return error.NoWriter;
 
         try self.renderHistoryHeader();
@@ -245,7 +248,7 @@ pub const Clipboard = struct {
     }
 
     /// Clear clipboard history
-    pub fn clearHistory(self: *Clipboard) !void {
+    pub fn clearHistory(self: *Self) !void {
         for (self.history.items) |entry| {
             self.allocator.free(entry.content);
         }
@@ -257,8 +260,8 @@ pub const Clipboard = struct {
     }
 
     /// Export clipboard history to file
-    pub fn exportHistory(self: *Clipboard, file_path: []const u8) !void {
-        const file = try std.fs.cwd().createFile(file_path, .{});
+    pub fn exportHistory(self: *Self, dir: std.fs.Dir, file_path: []const u8) !void {
+        const file = try dir.createFile(file_path, .{});
         defer file.close();
 
         const writer = file.writer();
@@ -288,7 +291,7 @@ pub const Clipboard = struct {
 
     // Private helper methods
 
-    fn addToHistory(self: *Clipboard, content: []const u8, content_type: []const u8, source: []const u8) !void {
+    fn addToHistory(self: *Self, content: []const u8, content_type: []const u8, source: []const u8) !void {
         // Create a copy of the content for history
         const content_copy = try self.allocator.dupe(u8, content);
         const type_copy = try self.allocator.dupe(u8, content_type);
@@ -312,7 +315,7 @@ pub const Clipboard = struct {
         }
     }
 
-    fn renderCopyConfirmation(self: *Clipboard, content: []const u8, content_type: []const u8) !void {
+    fn renderCopyConfirmation(self: *Self, content: []const u8, content_type: []const u8) !void {
         if (self.writer == null) return;
         const writer = self.writer.?;
 
@@ -354,7 +357,7 @@ pub const Clipboard = struct {
         try term_ansi.resetStyle(writer.*, self.caps);
     }
 
-    fn renderEmptyHistory(self: *Clipboard) !void {
+    fn renderEmptyHistory(self: *Self) !void {
         const writer = self.writer.?;
 
         if (self.caps.supportsTrueColor()) {
@@ -369,7 +372,7 @@ pub const Clipboard = struct {
         try term_ansi.resetStyle(writer.*, self.caps);
     }
 
-    fn renderHistoryEntry(self: *Clipboard, index: usize, entry: ClipboardEntry) !void {
+    fn renderHistoryEntry(self: *Self, index: usize, entry: ClipboardEntry) !void {
         const writer = self.writer.?;
 
         // Entry header
@@ -427,7 +430,7 @@ pub const Clipboard = struct {
         try term_ansi.resetStyle(writer.*, self.caps);
     }
 
-    fn renderHistoryFooter(self: *Clipboard) !void {
+    fn renderHistoryFooter(self: *Self) !void {
         const writer = self.writer.?;
 
         if (self.caps.supportsTrueColor()) {

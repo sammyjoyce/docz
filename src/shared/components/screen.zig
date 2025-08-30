@@ -17,6 +17,7 @@ pub const TermCaps = term_screen.TermCaps;
 /// Terminal provides high-level terminal screen functionality
 /// Wraps the low-level term/screen.zig with additional convenience methods
 pub const Terminal = struct {
+    const Self = @This();
     /// Clear the entire screen
     pub fn clear() void {
         writeControlSequence(Control.CLEAR_SCREEN);

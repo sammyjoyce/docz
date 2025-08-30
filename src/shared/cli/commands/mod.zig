@@ -1,11 +1,10 @@
 //! CLI commands module
 //! Organized command implementations
 
-// For now, re-export existing command types
-pub const AuthSubcommand = @import("../core/types.zig").AuthSubcommand;
-pub const Command = @import("../core/types.zig").Command;
+// Re-export command enums from core types directly
+const types = @import("../core/types.zig");
+pub const AuthSubcommand = types.AuthSubcommand;
+pub const Command = types.Command;
 
-// Future command implementations would go here:
-// pub const auth = @import("auth.zig");
-// pub const chat = @import("chat.zig");
-// pub const help = @import("help.zig");
+// Note: Command implementations live under this directory per-file when added.
+// Legacy commands (if any) are exposed via `cli.legacy` behind `-Dlegacy`.

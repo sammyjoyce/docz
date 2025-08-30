@@ -7,7 +7,7 @@ const term_ansi = term_shared.ansi.color;
 const term_caps = term_shared.caps;
 const notifications = @import("../notifications.zig");
 const ProgressBar = @import("../components/mod.zig").ProgressBar;
-const WorkflowStep = @import("workflow_step.zig");
+const WorkflowStepMod = @import("workflow_step.zig");
 const Allocator = std.mem.Allocator;
 
 pub const WorkflowStatus = enum {
@@ -19,6 +19,7 @@ pub const WorkflowStatus = enum {
 };
 
 pub const WorkflowResult = struct {
+    const Self = @This();
     status: WorkflowStatus,
     completedSteps: u32,
     totalSteps: u32,
@@ -27,10 +28,11 @@ pub const WorkflowResult = struct {
 };
 
 pub const WorkflowRunner = struct {
+    const Self = @This();
     allocator: Allocator,
     caps: term_caps.TermCaps,
     notificationManager: *notifications.NotificationHandler,
-    steps: std.ArrayList(WorkflowStep.Step),
+    steps: std.ArrayList(WorkflowStepMod.WorkflowStep),
     currentStep: u32,
     status: WorkflowStatus,
     startTime: ?i64,
@@ -42,12 +44,12 @@ pub const WorkflowRunner = struct {
     pub fn init(
         allocator: Allocator,
         notificationMgr: *notifications.NotificationHandler,
-    ) WorkflowRunner {
+    ) Self {
         return .{
             .allocator = allocator,
             .caps = term_caps.getTermCaps(),
             .notificationManager = notificationMgr,
-            .steps = std.ArrayList(WorkflowStep.Step).init(allocator),
+            .steps = std.ArrayList(WorkflowStepMod.WorkflowStep).init(allocator),
             .currentStep = 0,
             .status = .pending,
             .startTime = null,
@@ -58,20 +60,24 @@ pub const WorkflowRunner = struct {
         };
     }
 
-    pub fn deinit(self: *WorkflowRunner) void {
+    pub fn deinit(self: *Self) void {
+        // Deinit step contexts if present
+        for (self.steps.items) |*s| {
+            s.deinit();
+        }
         self.steps.deinit();
         if (self.progressBar) |*bar| {
             bar.clear(self.writer.?) catch {};
         }
     }
 
-    pub fn setWriter(self: *WorkflowRunner, writer: *std.Io.Writer) void {
+    pub fn setWriter(self: *Self, writer: *std.Io.Writer) void {
         self.writer = writer;
         self.notificationManager.setWriter(writer);
     }
 
     pub fn configure(
-        self: *WorkflowRunner,
+        self: *Self,
         options: struct {
             showProgress: bool = true,
             interactive: bool = false,
@@ -82,19 +88,19 @@ pub const WorkflowRunner = struct {
     }
 
     /// Add a step to the workflow
-    pub fn addStep(self: *WorkflowRunner, step: WorkflowStep.Step) !void {
+    pub fn addStep(self: *Self, step: WorkflowStepMod.WorkflowStep) !void {
         try self.steps.append(step);
     }
 
     /// Add multiple steps to the workflow
-    pub fn addSteps(self: *WorkflowRunner, steps: []const WorkflowStep.Step) !void {
+    pub fn addSteps(self: *Self, steps: []const WorkflowStepMod.WorkflowStep) !void {
         for (steps) |step| {
             try self.addStep(step);
         }
     }
 
     /// Execute the workflow
-    pub fn execute(self: *WorkflowRunner, workflowName: []const u8) !WorkflowResult {
+    pub fn execute(self: *Self, workflowName: []const u8) !WorkflowResult {
         if (self.writer == null) {
             return error.NoWriter;
         }
@@ -166,19 +172,19 @@ pub const WorkflowRunner = struct {
             if (!stepResult.success) {
                 self.status = .failed;
 
-                try self.renderStepError(step, stepResult.error_message);
+                try self.renderStepError(step, stepResult.errorMessage);
 
                 _ = try self.notificationManager.notify(
                     .err,
                     "Workflow Failed",
-                    stepResult.error_message orelse "Unknown error",
+                    stepResult.errorMessage orelse "Unknown error",
                 );
 
                 return WorkflowResult{
                     .status = .failed,
                     .completedSteps = @intCast(i),
                     .totalSteps = @intCast(self.steps.items.len),
-                    .errorMessage = stepResult.error_message,
+                    .errorMessage = stepResult.errorMessage,
                     .elapsedTime = std.time.timestamp() - self.startTime.?,
                 };
             }
@@ -216,7 +222,7 @@ pub const WorkflowRunner = struct {
         };
     }
 
-    fn renderWorkflowHeader(self: *WorkflowRunner, name: []const u8) !void {
+    fn renderWorkflowHeader(self: *Self, name: []const u8) !void {
         const writer = self.writer.?;
 
         if (self.caps.supportsTrueColor()) {
@@ -233,7 +239,7 @@ pub const WorkflowRunner = struct {
         try term_ansi.resetStyle(writer.*, self.caps);
     }
 
-    fn renderStepStart(self: *WorkflowRunner, step: WorkflowStep.Step) !void {
+    fn renderStepStart(self: *Self, step: WorkflowStepMod.WorkflowStep) !void {
         const writer = self.writer.?;
 
         if (self.caps.supportsTrueColor()) {
@@ -257,7 +263,7 @@ pub const WorkflowRunner = struct {
         try term_ansi.resetStyle(writer.*, self.caps);
     }
 
-    fn renderStepSuccess(self: *WorkflowRunner, step: WorkflowStep.Step) !void {
+    fn renderStepSuccess(self: *Self, step: WorkflowStepMod.WorkflowStep) !void {
         const writer = self.writer.?;
 
         if (self.caps.supportsTrueColor()) {
@@ -270,7 +276,7 @@ pub const WorkflowRunner = struct {
         try term_ansi.resetStyle(writer.*, self.caps);
     }
 
-    fn renderStepError(self: *WorkflowRunner, step: WorkflowStep.Step, errorMsg: ?[]const u8) !void {
+    fn renderStepError(self: *Self, step: WorkflowStepMod.WorkflowStep, errorMsg: ?[]const u8) !void {
         const writer = self.writer.?;
 
         if (self.caps.supportsTrueColor()) {
@@ -289,7 +295,7 @@ pub const WorkflowRunner = struct {
         try term_ansi.resetStyle(writer.*, self.caps);
     }
 
-    fn renderWorkflowComplete(self: *WorkflowRunner) !void {
+    fn renderWorkflowComplete(self: *Self) !void {
         const writer = self.writer.?;
         const elapsed = std.time.timestamp() - self.startTime.?;
 
@@ -307,7 +313,7 @@ pub const WorkflowRunner = struct {
         try term_ansi.resetStyle(writer.*, self.caps);
     }
 
-    fn waitForUserConfirmation(self: *WorkflowRunner) !void {
+    fn waitForUserConfirmation(self: *Self) !void {
         const writer = self.writer.?;
 
         if (self.caps.supportsTrueColor()) {
@@ -326,7 +332,7 @@ pub const WorkflowRunner = struct {
     }
 
     /// Cancel the workflow
-    pub fn cancel(self: *WorkflowRunner) !void {
+    pub fn cancel(self: *Self) !void {
         self.status = .cancelled;
 
         _ = try self.notificationManager.notify(
@@ -341,13 +347,13 @@ pub const WorkflowRunner = struct {
     }
 
     /// Get current progress
-    pub fn getProgress(self: WorkflowRunner) f32 {
+    pub fn getProgress(self: Self) f32 {
         if (self.steps.items.len == 0) return 0.0;
         return @as(f32, @floatFromInt(self.currentStep)) / @as(f32, @floatFromInt(self.steps.items.len));
     }
 
     /// Get estimated time remaining
-    pub fn getEstimatedTimeRemaining(self: WorkflowRunner) ?i64 {
+    pub fn getEstimatedTimeRemaining(self: Self) ?i64 {
         if (self.startTime == null or self.currentStep == 0) return null;
 
         const elapsed = std.time.timestamp() - self.startTime.?;

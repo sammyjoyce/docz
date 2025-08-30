@@ -263,7 +263,7 @@ pub const DashboardDemo = struct {
         // Main event loop
         while (self.running) {
             // Get terminal size
-            const terminal_size = tui.getTerminalSize() catch tui.TerminalSize{ .width = 80, .height = 24 };
+            const terminal_size = tui.bounds.getTerminalSize();
 
             // Check minimum size
             if (terminal_size.width < 80 or terminal_size.height < 24) {

@@ -10,10 +10,7 @@ pub fn main() !void {
     var canvas = try braille.BrailleCanvas.init(allocator, 20, 10);
     defer canvas.deinit();
 
-    canvas.setWorldBounds(.{
-        .min_x = 0, .max_x = 100,
-        .min_y = 0, .max_y = 100
-    });
+    canvas.setWorldBounds(.{ .min_x = 0, .max_x = 100, .min_y = 0, .max_y = 100 });
 
     // Draw a simple line
     canvas.drawLine(10, 10, 90, 90);
@@ -23,8 +20,8 @@ pub fn main() !void {
 
     // Check canvas properties
     std.debug.print("Canvas created successfully!\n", .{});
-    std.debug.print("Character dimensions: {}x{}\n", .{canvas.getCharDimensions().width, canvas.getCharDimensions().height});
-    std.debug.print("Dot dimensions: {}x{}\n", .{canvas.getDotDimensions().width, canvas.getDotDimensions().height});
+    std.debug.print("Character dimensions: {}x{}\n", .{ canvas.getCharDimensions().width, canvas.getCharDimensions().height });
+    std.debug.print("Dot dimensions: {}x{}\n", .{ canvas.getDotDimensions().width, canvas.getDotDimensions().height });
     std.debug.print("Buffer size: {}\n", .{canvas.buffer.len});
 
     // Try to render Braille characters

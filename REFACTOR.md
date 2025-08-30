@@ -59,6 +59,36 @@ pub const ui = @import("ui/mod.zig");
 pub const widgets = @import("widgets/mod.zig");
 pub const render = @import("render/mod.zig");
 pub const term = @import("term/mod.zig");
+
+---
+
+## Workflow Steps consolidation (Aug 30, 2025)
+
+- Unified step API under `src/shared/cli/workflows/workflow_step.zig`.
+- New types:
+  - `WorkflowStep`: the single struct representing a step: `name`, `description`, `executeFn`, `context`, `required`, `timeoutMs`, `retryCount`.
+  - `StepContext`: execution context with `parameters`, `previousOutput`, `stepIndex` and `init/deinit` helpers.
+  - `WorkflowStepResult`: `{ success, errorMessage, outputData }`.
+- Builder methods are defined on `WorkflowStep` (`withDescription`, `withTimeout`, `withRetry`, `asOptional`, `withContext`).
+- `CommonSteps` now constructs and returns `WorkflowStep` values directly.
+- Removed legacy files: `src/shared/cli/workflows/Step.zig`, `Runner.zig`, `Registry.zig`, `SetupWorkflow.zig`.
+- Updated call sites: `workflow_runner.zig`, `workflow_registry.zig`, `setup_workflow.zig`, `commands/auth.zig`.
+
+Example:
+
+```zig
+const WS = @import("src/shared/cli/workflows/workflow_step.zig");
+
+fn verify(alloc: std.mem.Allocator, ctx: ?WS.StepContext) anyerror!WS.WorkflowStepResult {
+    _ = ctx; _ = alloc;
+    return .{ .success = true, .outputData = "ok" };
+}
+
+const step = WS.WorkflowStep
+    .init("Verify Config", verify)
+    .withDescription("Validate config files")
+    .withTimeout(30_000);
+```
 ```
 
 Each sub‑module’s `mod.zig` **only** re‑exports public types/symbols. Keep internal helpers under `_internal/` folders or unexported files to make intent obvious.

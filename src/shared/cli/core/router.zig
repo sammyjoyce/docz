@@ -7,29 +7,30 @@ const types = @import("types.zig");
 const workflows = @import("../workflows/workflow_registry.zig");
 
 pub const CommandRouter = struct {
+    const Self = @This();
     allocator: std.mem.Allocator,
     state: *const state.Cli,
     workflowRegistry: workflows.WorkflowRegistry,
 
-    pub fn init(allocator: std.mem.Allocator, ctx: *const state.Cli) !CommandRouter {
+    pub fn init(allocator: std.mem.Allocator, ctx: *const state.Cli) !Self {
         var workflowRegistry = workflows.WorkflowRegistry.init(allocator, ctx);
 
         // Register common workflows
         try workflowRegistry.registerCommonWorkflows();
 
-        return CommandRouter{
+        return Self{
             .allocator = allocator,
             .state = ctx,
             .workflowRegistry = workflowRegistry,
         };
     }
 
-    pub fn deinit(self: *CommandRouter) void {
+    pub fn deinit(self: *Self) void {
         self.workflowRegistry.deinit();
     }
 
     /// Execute a parsed command with pipeline support
-    pub fn execute(self: *CommandRouter, args: types.Args) !types.CommandResult {
+    pub fn execute(self: *Self, args: types.Args) !types.CommandResult {
         // Check for pipeline syntax (e.g., "auth status | format json | clipboard")
         if (args.rawMessage) |msg| {
             if (std.mem.indexOf(u8, msg, "|")) |_| {
@@ -61,7 +62,7 @@ pub const CommandRouter = struct {
     }
 
     /// Execute a command pipeline
-    fn executePipeline(self: *CommandRouter, args: types.Args) !types.CommandResult {
+    fn executePipeline(self: *Self, args: types.Args) !types.CommandResult {
         if (args.rawMessage) |msg| {
             const stages = std.mem.split(u8, msg, "|");
             var currentOutput: ?[]const u8 = null;
@@ -117,12 +118,12 @@ pub const CommandRouter = struct {
     }
 
     /// Execute a workflow
-    fn executeWorkflow(self: *CommandRouter, workflowName: []const u8) !types.CommandResult {
+    fn executeWorkflow(self: *Self, workflowName: []const u8) !types.CommandResult {
         return self.workflowRegistry.execute(workflowName);
     }
 
     /// Execute a command (for pipeline stages)
-    fn executeCommand(self: *CommandRouter, command: []const u8) !types.CommandResult {
+    fn executeCommand(self: *Self, command: []const u8) !types.CommandResult {
         if (std.mem.startsWith(u8, command, "auth")) {
             // Parse auth subcommand
             if (std.mem.indexOf(u8, command, " ")) |space_idx| {
@@ -136,7 +137,7 @@ pub const CommandRouter = struct {
         return types.CommandResult.ok(command);
     }
 
-    fn executeChat(self: *CommandRouter, args: types.Args) !types.CommandResult {
+    fn executeChat(self: *Self, args: types.Args) !types.CommandResult {
         _ = args;
 
         // For now, just return a placeholder
@@ -150,7 +151,7 @@ pub const CommandRouter = struct {
         return types.CommandResult.ok("Chat functionality would be implemented here");
     }
 
-    fn executeAuth(self: *CommandRouter, args: types.Args) !types.CommandResult {
+    fn executeAuth(self: *Self, args: types.Args) !types.CommandResult {
         // Handle auth subcommands
         if (args.authSubcommand) |subcmd| {
             switch (subcmd) {
@@ -163,7 +164,7 @@ pub const CommandRouter = struct {
         }
     }
 
-    fn executeAuthLogin(self: *CommandRouter, args: types.Args) !types.CommandResult {
+    fn executeAuthLogin(self: *Self, args: types.Args) !types.CommandResult {
         _ = args;
 
         try self.state.notification.send(.{
@@ -175,7 +176,7 @@ pub const CommandRouter = struct {
         return types.CommandResult.ok("Auth login would be implemented here");
     }
 
-    fn executeAuthStatus(self: *CommandRouter, args: types.Args) !types.CommandResult {
+    fn executeAuthStatus(self: *Self, args: types.Args) !types.CommandResult {
         _ = args;
 
         // Show auth status with formatting
@@ -187,7 +188,7 @@ pub const CommandRouter = struct {
         return types.CommandResult.ok(statusText);
     }
 
-    fn executeAuthRefresh(self: *CommandRouter, args: types.Args) !types.CommandResult {
+    fn executeAuthRefresh(self: *Self, args: types.Args) !types.CommandResult {
         _ = args;
 
         try self.state.notification.send(.{

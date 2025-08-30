@@ -235,6 +235,7 @@ pub const Notification = struct {
 
 /// System notification wrapper using OSC 9
 pub const SystemNotification = struct {
+    const Self = @This();
     /// Send a system notification using OSC 9 if supported
     pub fn send(
         writer: anytype,
@@ -265,6 +266,7 @@ pub const SystemNotification = struct {
 
 /// Common sanitization and formatting utilities
 pub const Util = struct {
+    const Self = @This();
     /// Sanitize text by removing control characters
     pub fn sanitizeText(allocator: std.mem.Allocator, text: []const u8) ![]u8 {
         var out = std.ArrayList(u8).init(allocator);
@@ -417,6 +419,7 @@ pub const Util = struct {
 
 /// Common color schemes for notifications
 pub const ColorScheme = struct {
+    const Self = @This();
     /// Get the standard color scheme for a notification type
     pub fn getStandard(notificationType: NotificationType) struct {
         border: term_shared.term.Color,
@@ -453,6 +456,7 @@ pub const ColorScheme = struct {
 
 /// Sound notification patterns
 pub const SoundPattern = struct {
+    const Self = @This();
     /// Get the appropriate sound pattern for a notification type
     pub fn getPattern(notificationType: NotificationType) struct {
         pattern: []const u8,

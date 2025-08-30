@@ -47,7 +47,7 @@ const auth = @import("auth_shared");
 const render = @import("render_shared");
 const theme = @import("../theme/mod.zig");
 const shared = @import("../mod.zig");
-const network = shared.Network;
+const network = shared.network;
 const tools_mod = @import("tools_shared");
 
 // Re-export CliOptions from engine to avoid duplication

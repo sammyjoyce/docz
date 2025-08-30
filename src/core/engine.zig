@@ -133,9 +133,9 @@ fn initStdoutWriter() void {
     }
 }
 
-fn initOutputFile(filePath: []const u8) !void {
+fn initOutputFile(dir: std.fs.Dir, filePath: []const u8) !void {
     if (!outputWriterInitialized) {
-        globalOutputFile = try std.fs.cwd().createFile(filePath, .{});
+        globalOutputFile = try dir.createFile(filePath, .{});
         outputWriter = globalOutputFile.?.writer(&outputBuffer);
         outputWriterInitialized = true;
     }
@@ -200,7 +200,12 @@ fn writeCompleteResponse(content: []const u8) void {
 }
 
 /// Main engine entry point used by all agents.
-pub fn runWithOptions(allocator: std.mem.Allocator, options: CliOptions, spec: AgentSpec) !void {
+pub fn runWithOptions(
+    allocator: std.mem.Allocator,
+    options: CliOptions,
+    spec: AgentSpec,
+    dir: std.fs.Dir,
+) !void {
     var client = try initAnthropicClient(allocator);
     defer client.deinit();
 
@@ -229,7 +234,7 @@ pub fn runWithOptions(allocator: std.mem.Allocator, options: CliOptions, spec: A
     // Prepend anthropic spoof content, if present
     const spoof = blk: {
         const path = "prompt/anthropic_spoof.txt";
-        const file = std.fs.cwd().openFile(path, .{}) catch break :blk null;
+        const file = dir.openFile(path, .{}) catch break :blk null;
         defer file.close();
         const data = file.readToEndAlloc(allocator, 4096) catch break :blk null;
         break :blk data;
@@ -253,7 +258,7 @@ pub fn runWithOptions(allocator: std.mem.Allocator, options: CliOptions, spec: A
 
         if (options.options.input) |inputFile| {
             if (!std.mem.eql(u8, inputFile, "-")) {
-                const file = std.fs.cwd().openFile(inputFile, .{}) catch |err| {
+                const file = dir.openFile(inputFile, .{}) catch |err| {
                     std.log.err("Failed to open input file '{s}': {any}", .{ inputFile, err });
                     return err;
                 };
@@ -283,7 +288,7 @@ pub fn runWithOptions(allocator: std.mem.Allocator, options: CliOptions, spec: A
 
     if (options.options.output) |outputFile| {
         if (!std.mem.eql(u8, outputFile, "-")) {
-            try initOutputFile(outputFile);
+            try initOutputFile(dir, outputFile);
             std.log.info("Output will be saved to: {s}", .{outputFile});
         }
     }

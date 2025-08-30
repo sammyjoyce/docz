@@ -32,6 +32,9 @@ A multi-agent terminal AI system with shared infrastructure for building special
 - **Responsive Design**: Dynamic layout adjustments based on terminal size and capabilities
 - **Improved Readability**: Smart element spacing, visual hierarchy, and distraction-free interfaces
 
+#### New: Duck-Typed Interfaces
+- Network client and renderer now expose comptime factories that validate backends via `@hasDecl` for flexible, testable integration without formal interfaces. See `docs/DUCK_TYPED_INTERFACES.md`.
+
 ## Enhanced Terminal Experience
 
 ### Visual and Interactive Improvements

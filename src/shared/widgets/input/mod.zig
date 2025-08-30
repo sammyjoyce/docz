@@ -4,46 +4,47 @@ const renderCtx = @import("../../render/mod.zig");
 const draw = @import("draw.zig");
 
 pub const Input = struct {
+    const Self = @This();
     allocator: std.mem.Allocator,
     label: ?[]const u8 = null,
     text: std.array_list.Managed(u8),
     cursor: usize = 0,
 
-    pub fn init(allocator: std.mem.Allocator) !Input {
+    pub fn init(allocator: std.mem.Allocator) !Self {
         return .{ .allocator = allocator, .text = std.array_list.Managed(u8).init(allocator) };
     }
 
-    pub fn deinit(self: *Input) void {
+    pub fn deinit(self: *Self) void {
         self.text.deinit();
     }
 
-    pub fn asComponent(self: *Input) ui.component.Component {
+    pub fn asComponent(self: *Self) ui.component.Component {
         return ui.component.wrap(@TypeOf(self.*), self);
     }
 
-    pub fn setText(self: *Input, textContent: []const u8) !void {
+    pub fn setText(self: *Self, textContent: []const u8) !void {
         self.text.clearRetainingCapacity();
         try self.text.appendSlice(textContent);
         self.cursor = self.text.items.len;
     }
 
-    pub fn measure(self: *Input, constraints: ui.layout.Constraints) ui.layout.Size {
+    pub fn measure(self: *Self, constraints: ui.layout.Constraints) ui.layout.Size {
         _ = self;
         return .{ .w = constraints.max.w, .h = 1 };
     }
 
-    pub fn layout(self: *Input, rectangle: ui.layout.Rect) void {
+    pub fn layout(self: *Self, rectangle: ui.layout.Rect) void {
         _ = self;
         _ = rectangle;
     }
 
-    pub fn render(self: *Input, context: *renderCtx.Context) !void {
+    pub fn render(self: *Self, context: *renderCtx.Context) ui.component.ComponentError!void {
         const rectangle = ui.layout.Rect{ .x = 0, .y = 0, .w = context.surface.size().w, .h = 1 };
         const labelText = if (self.label) |label| label else "";
-        try draw.input(context, rectangle, labelText, self.text.items, self.cursor);
+        draw.input(context, rectangle, labelText, self.text.items, self.cursor) catch return ui.component.ComponentError.RenderFailed;
     }
 
-    pub fn event(self: *Input, inputEvent: ui.event.Event) ui.component.Component.Invalidate {
+    pub fn event(self: *Self, inputEvent: ui.event.Event) ui.component.Component.Invalidate {
         switch (inputEvent) {
             .Key => |keyEvent| {
                 return self.handleKey(keyEvent);
@@ -52,7 +53,7 @@ pub const Input = struct {
         }
     }
 
-    fn handleKey(self: *Input, keyEvent: ui.event.KeyEvent) ui.component.Component.Invalidate {
+    fn handleKey(self: *Self, keyEvent: ui.event.KeyEvent) ui.component.Component.Invalidate {
         return switch (keyEvent.code) {
             .arrow_left => blk: {
                 if (self.cursor > 0) self.cursor -= 1;

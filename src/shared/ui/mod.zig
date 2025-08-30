@@ -1,5 +1,8 @@
 //! UI package barrel: component interface, layout and events.
 //! Public surface intentionally minimal and stable.
+//!
+//! Import via this barrel. If you need to feature-gate, use
+//! `@import("../shared/mod.zig").options.feature_tui` in consumers.
 
 pub const component = @import("component/mod.zig");
 pub const layout = @import("layout/mod.zig");

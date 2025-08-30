@@ -8,6 +8,16 @@ on:
     branches: [main]
 
 jobs:
+  imports:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Run import boundary checks (non-strict)
+        run: bash scripts/check_imports.sh
+
   run:
     runs-on: ubuntu-latest
 
@@ -46,3 +56,6 @@ jobs:
 
       - name: Run `fmt` step
         run: zig build fmt
+
+  # Enable strict mode by setting env CI_STRICT_IMPORTS=1 at workflow or job level
+  # once violations are resolved.

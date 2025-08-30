@@ -111,11 +111,11 @@ const COMMANDS = [_]tui.Menu.MenuItem{
 
 /// Display the main header with optional partial update
 fn displayHeader(force_redraw: bool) void {
-    const terminal_size = tui.getTerminalSize();
+    const terminal_size = tui.bounds.getTerminalSize();
     const width = @min(terminal_size.width, 80);
 
     if (force_redraw) {
-        tui.clearScreen();
+        components.screen.clear();
         if (tui.getScreen()) |screen| {
             screen.reset();
         }
@@ -136,7 +136,7 @@ fn displayHeader(force_redraw: bool) void {
 
 /// Display current authentication status using cached data
 fn displayAuthStatus(auth_cache: *const AuthStatusCache) void {
-    const terminal_size = tui.getTerminalSize();
+    const terminal_size = tui.bounds.getTerminalSize();
     const width = @min(terminal_size.width, 80);
 
     const status_content = [_][]const u8{
@@ -163,7 +163,7 @@ fn displayCommandPalette() void {
 
 /// Display help information
 fn displayHelp() void {
-    const terminal_size = tui.getTerminalSize();
+    const terminal_size = tui.bounds.getTerminalSize();
     const width = @min(terminal_size.width, 80);
 
     const help_content = [_][]const u8{
@@ -299,7 +299,7 @@ pub fn runInteractiveMode(allocator: std.mem.Allocator) !void {
                 displayAuthStatus(&auth_cache);
 
                 // Additional system info
-                const terminal_size = tui.getTerminalSize();
+                const terminal_size = tui.bounds.getTerminalSize();
                 const width = @min(terminal_size.width, 80);
 
                 // Calculate cache age for display

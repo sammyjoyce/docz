@@ -1,5 +1,10 @@
 //! Shared tools registry and utilities.
 //! Provides common tools that all agents can use.
+//!
+//! - Import via barrel: `const tools = @import("../shared/tools/mod.zig");`
+//! - Feature-gate in consumers using `@import("../shared/mod.zig").options.feature_widgets`
+//! - Override behavior (e.g., enable/disable builtins) by defining
+//!   `pub const shared_options = @import("../shared/mod.zig").Options{ ... };` at root.
 
 pub const Registry = @import("tools.zig").Registry;
 pub const registerBuiltins = @import("tools.zig").registerBuiltins;
@@ -26,5 +31,5 @@ pub const createErrorResponse = json.createErrorResponse;
 pub const validateRequiredFields = json.validateRequiredFields;
 pub const convertZonToJson = json.convertZonToJson;
 
-// Example usage patterns (for documentation) - disabled in production build
-// pub const json_example = @import("json_example.zig");
+// Note: Example usage has moved to docs/examples. Legacy examples are available
+// only when building with `-Dlegacy` via `tools/legacy/*`.

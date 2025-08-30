@@ -162,6 +162,54 @@ pub const Service = struct {
     }
 };
 
+/// Duck-typed client adapter
+///
+/// Exposes a uniform API over any backend type `T` that provides the
+/// following declarations (no formal interface needed):
+///   - `request(alloc: std.mem.Allocator, req: NetworkRequest) Error!NetworkResponse`
+///   - `stream(alloc: std.mem.Allocator, req: NetworkRequest, on_chunk: *const fn([]const u8) void) Error!void`
+///   - `sse(alloc: std.mem.Allocator, req: NetworkRequest, on_event: *const fn(NetworkEvent) void) Error!void`
+///
+/// Usage:
+///   const net = @import("../network/mod.zig");
+///   const Client = net.client.use(MyBackend);
+///   const resp = try Client.request(alloc, .{ .url = "https://example.com" });
+pub fn use(comptime T: type) type {
+    comptime {
+        if (!@hasDecl(T, "request")) @compileError("backend is missing required decl 'request'");
+        if (!@hasDecl(T, "stream")) @compileError("backend is missing required decl 'stream'");
+        if (!@hasDecl(T, "sse")) @compileError("backend is missing required decl 'sse'");
+    }
+
+    return struct {
+        /// Re-export types for convenience
+        pub const Error = @This().ErrorAlias;
+        pub const NetworkRequest = @This().RequestAlias;
+        pub const NetworkResponse = @This().ResponseAlias;
+        pub const NetworkEvent = @This().EventAlias;
+
+        const ErrorAlias = Error; // from outer file
+        const RequestAlias = NetworkRequest;
+        const ResponseAlias = NetworkResponse;
+        const EventAlias = NetworkEvent;
+
+        /// Forward directly to backend declarations. We intentionally do not
+        /// constrain signatures beyond name presence to keep it duck-typed.
+        pub const request = T.request;
+        pub const stream = T.stream;
+        pub const sse = T.sse;
+
+        /// Portable helper implemented here to avoid duplication.
+        pub fn download(alloc: std.mem.Allocator, req: NetworkRequest, path: []const u8) Error!void {
+            const resp = try T.request(alloc, req);
+            defer alloc.free(resp.body);
+            var file = std.fs.cwd().createFile(path, .{ .truncate = true }) catch return Error.Connection;
+            defer file.close();
+            try file.writeAll(resp.body);
+        }
+    };
+}
+
 // Thin wrappers to bridge function pointer types for curl streaming
 fn streamChunkThunk(chunk: []const u8, context: *anyopaque) void {
     // Context carries a pointer-encoded function pointer to on_chunk

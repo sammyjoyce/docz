@@ -4,7 +4,7 @@
 const std = @import("std");
 const state = @import("state.zig");
 const types = @import("types.zig");
-const router = @import("Router.zig");
+const router = @import("router.zig");
 
 pub const CliApp = struct {
     allocator: std.mem.Allocator,
@@ -73,14 +73,19 @@ pub const CliApp = struct {
     }
 
     fn parseArguments(self: *CliApp, args: []const []const u8) !types.Args {
-        const legacy_parser = @import("legacy_parser.zig");
+        const build_options = @import("build_options");
+        const ParserMod = comptime if (build_options.include_legacy)
+            @import("../legacy/Parser.zig")
+        else
+            @import("parser.zig");
+
         // The parser expects argv-style input including program name at index 0.
         var argv = try self.allocator.alloc([]const u8, args.len + 1);
         defer self.allocator.free(argv);
         argv[0] = "docz"; // synthetic argv[0]
         for (args, 0..) |a, i| argv[i + 1] = a;
 
-        var parser = legacy_parser.Parser.init(self.allocator);
+        var parser = ParserMod.Parser.init(self.allocator);
         var parsed = try parser.parse(argv);
         defer parsed.deinit();
 

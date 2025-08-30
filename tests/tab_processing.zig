@@ -603,8 +603,6 @@ test "cell buffer tab width calculation integration" {
     try expectEqual(@as(usize, 13), displayWidth(text, config8));
 }
 
-
-
 // ============================================================================
 // Cursor Positioning Tests
 // ============================================================================
@@ -627,9 +625,9 @@ test "cursor positioning in tab manager" {
     defer manager.deinit();
 
     // Test cursor positioning at various columns
-    try expectEqual(@as(usize, 8), manager.next_tab_stop(0));   // From col 0, next tab at 8
-    try expectEqual(@as(usize, 8), manager.next_tab_stop(4));   // From col 4, next tab at 8
-    try expectEqual(@as(usize, 16), manager.next_tab_stop(8));  // From col 8, next tab at 16
+    try expectEqual(@as(usize, 8), manager.next_tab_stop(0)); // From col 0, next tab at 8
+    try expectEqual(@as(usize, 8), manager.next_tab_stop(4)); // From col 4, next tab at 8
+    try expectEqual(@as(usize, 16), manager.next_tab_stop(8)); // From col 8, next tab at 16
     try expectEqual(@as(usize, 16), manager.next_tab_stop(12)); // From col 12, next tab at 16
 }
 

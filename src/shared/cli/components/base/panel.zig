@@ -5,7 +5,8 @@ const std = @import("std");
 const term_shared = @import("term_shared");
 const term_ansi = term_shared.ansi.color;
 const term_caps = term_shared.caps;
-const hyperlinks = @import("../../utils/hyperlinks.zig");
+const cli = @import("../../mod.zig");
+const hyperlinks = cli.utils.hyperlinks;
 
 const Allocator = std.mem.Allocator;
 

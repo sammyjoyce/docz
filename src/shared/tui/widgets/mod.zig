@@ -87,10 +87,12 @@ pub const Gauge = dashboard.Gauge;
 pub const Sparkline = dashboard.Sparkline;
 pub const KPICard = dashboard.KPICard;
 
-// Legacy compatibility exports
-pub const MenuItem = Menu.MenuItem;
-pub const GraphicsWidget = Graphics;
-pub const NotificationController = Rich.NotificationController;
+// Legacy compatibility exports (available via tui.widgets.legacy when -Dlegacy)
+pub const legacy = if (@import("build_options").include_legacy) struct {
+    pub const MenuItem = Menu.MenuItem;
+    pub const GraphicsWidget = Graphics;
+    pub const NotificationController = Rich.NotificationController;
+} else struct {};
 
 // Additional dashboard exports for compatibility
 pub const Chart = LineChart;

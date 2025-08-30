@@ -2007,6 +2007,11 @@ pub fn build(b: *std.Build) !void {
     const agents_list = b.option([]const u8, "agents", "Comma-separated list of agents to build") orelse "";
     const scaffold_agent = b.option(bool, "scaffold-agent", "Scaffold a new agent") orelse false;
     const optimize_binary = b.option(bool, "optimize-binary", "Enable manifest-driven binary optimization") orelse true;
+    const include_legacy = b.option(bool, "legacy", "Include legacy modules (deprecated)") orelse false;
+
+    // Build options exposed to source via @import("build_options")
+    const build_opts = b.addOptions();
+    build_opts.addOption(bool, "include_legacy", include_legacy);
 
     // Handle special build modes
     if (list_agents) {
@@ -2076,9 +2081,30 @@ pub fn build(b: *std.Build) !void {
     const shared_modules = builder.createConditionalSharedModules(manifest);
     const agent_modules = builder.createAgentModules(shared_modules);
 
+    // Attach build options to modules
+    if (shared_modules.anthropic) |m| m.addOptions("build_options", build_opts);
+    if (shared_modules.tools) |m| m.addOptions("build_options", build_opts);
+    if (shared_modules.engine) |m| m.addOptions("build_options", build_opts);
+    if (shared_modules.cli) |m| m.addOptions("build_options", build_opts);
+    if (shared_modules.tui) |m| m.addOptions("build_options", build_opts);
+    if (shared_modules.term) |m| m.addOptions("build_options", build_opts);
+    if (shared_modules.config) |m| m.addOptions("build_options", build_opts);
+    if (shared_modules.auth) |m| m.addOptions("build_options", build_opts);
+    if (shared_modules.json_reflection) |m| m.addOptions("build_options", build_opts);
+    if (shared_modules.theme) |m| m.addOptions("build_options", build_opts);
+    if (shared_modules.agent_interface) |m| m.addOptions("build_options", build_opts);
+    if (shared_modules.agent_dashboard) |m| m.addOptions("build_options", build_opts);
+    if (shared_modules.interactive_session) |m| m.addOptions("build_options", build_opts);
+    if (shared_modules.agent_main) |m| m.addOptions("build_options", build_opts);
+    if (shared_modules.agent_base) |m| m.addOptions("build_options", build_opts);
+    if (shared_modules.oauth_callback_server) |m| m.addOptions("build_options", build_opts);
+    agent_modules.entry.addOptions("build_options", build_opts);
+    agent_modules.spec.addOptions("build_options", build_opts);
+
     // Build main components
     const root_module = agent_modules.entry;
     const api_module = builder.createApiModule();
+    api_module.addOptions("build_options", build_opts);
 
     // Setup build steps
     setupMainExecutable(ctx, root_module, manifest);
@@ -2642,7 +2668,7 @@ fn printHelp() void {
     std.log.info("  zig build demo-dashboard           # Run agent dashboard demo", .{});
     std.log.info("  zig build demo-interactive         # Run interactive session demo", .{});
     std.log.info("  zig build demo-oauth               # Run OAuth callback server demo", .{});
-        std.log.info("  zig build demo-markdown-editor     # Run markdown editor demo", .{});
+    std.log.info("  zig build demo-markdown-editor     # Run markdown editor demo", .{});
     std.log.info("", .{});
     std.log.info("📚 EXAMPLES:", .{});
     std.log.info("  zig build example-stylize          # Run stylize trait system demo", .{});

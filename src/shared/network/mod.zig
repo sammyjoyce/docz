@@ -1,6 +1,10 @@
 //! Network Module
 //! Network and API communication utilities
 //!
+//! Import via this barrel; feature-gate in consumers with
+//! `@import("../shared/mod.zig").options.feature_network_anthropic` (or your
+//! own flags) and override default behavior via root `shared_options`.
+//!
 //! This module provides a common interface for network functionality,
 //! including HTTP clients, API integrations, and streaming protocols.
 
@@ -9,15 +13,27 @@ const std = @import("std");
 // Core HTTP client functionality
 pub const curl = @import("curl.zig");
 
-// Anthropic API client (prefer split; legacy kept as alias)
+// Anthropic API client (prefer split; legacy available behind -Dlegacy)
+const build_options = @import("build_options");
 pub const anthropic = @import("anthropic/mod.zig");
-pub const anthropic_legacy = @import("anthropic.zig");
+/// Deprecated: legacy monolithic client. Enable with `-Dlegacy` only.
+pub const anthropic_legacy = if (build_options.include_legacy)
+    @import("legacy/mod.zig").anthropic
+else
+    struct {};
+
+/// Aggregate legacy network shims. Included only when `-Dlegacy` is set.
+pub const legacy = if (build_options.include_legacy)
+    @import("legacy/mod.zig")
+else
+    struct {};
 
 // Server-Sent Events (SSE) parsing
 pub const sse = @import("sse.zig");
 
 // Network client interface for abstraction and testing
 pub const client = @import("client.zig");
+pub const use = client.use; // expose duck-typed client adapter at barrel
 
 // Re-export commonly used types for convenience
 

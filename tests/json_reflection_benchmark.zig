@@ -152,7 +152,7 @@ fn manualDeserialize(jsonStr: []const u8, allocator: std.mem.Allocator) !Data {
     // Find active
     if (std.mem.indexOf(u8, jsonStr, "\"active\":")) |pos| {
         const valueStart = pos + 9;
-        const valueStr = jsonStr[valueStart..valueStart + 4];
+        const valueStr = jsonStr[valueStart .. valueStart + 4];
         active = std.mem.eql(u8, valueStr, "true");
     }
 
@@ -250,8 +250,8 @@ fn reflectionDeserialize(comptime T: type, jsonStr: []const u8, allocator: std.m
     // Parse name field (reflection uses snake_case)
     if (std.mem.indexOf(u8, jsonStr, "\"name\":")) |pos| {
         const valueStart = pos + 7; // position after "name":
-        const valueEnd = std.mem.indexOf(u8, jsonStr[valueStart + 1..], "\"").? + valueStart + 1;
-        const nameSlice = jsonStr[valueStart + 1..valueEnd];
+        const valueEnd = std.mem.indexOf(u8, jsonStr[valueStart + 1 ..], "\"").? + valueStart + 1;
+        const nameSlice = jsonStr[valueStart + 1 .. valueEnd];
         result.name = try allocator.dupe(u8, nameSlice);
     } else {
         result.name = "";
@@ -260,7 +260,7 @@ fn reflectionDeserialize(comptime T: type, jsonStr: []const u8, allocator: std.m
     // Parse active field
     if (std.mem.indexOf(u8, jsonStr, "\"active\":")) |pos| {
         const valueStart = pos + 9;
-        const valueStr = jsonStr[valueStart..valueStart + 4];
+        const valueStr = jsonStr[valueStart .. valueStart + 4];
         result.active = std.mem.eql(u8, valueStr, "true");
     }
 
@@ -287,7 +287,8 @@ fn fieldNameToSnake(allocator: std.mem.Allocator, fieldName: []const u8) ![]cons
         // 2. Current char is uppercase, previous was uppercase, and next is lowercase (end of acronym)
         if (std.ascii.isUpper(c)) {
             if (std.ascii.isLower(prev) or
-                (std.ascii.isUpper(prev) and next != null and std.ascii.isLower(next.?))) {
+                (std.ascii.isUpper(prev) and next != null and std.ascii.isLower(next.?)))
+            {
                 try writer.writeByte('_');
             }
         }
@@ -345,8 +346,6 @@ fn stdlibSerialize(value: anytype, allocator: std.mem.Allocator) ![]const u8 {
     try writer.writeByte('}');
     return allocator.dupe(u8, buffer[0..fbs.pos]);
 }
-
-
 
 fn stdlibDeserialize(comptime T: type, jsonStr: []const u8, allocator: std.mem.Allocator) !T {
     return std.json.parseFromSlice(T, allocator, jsonStr, .{});

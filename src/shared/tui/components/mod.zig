@@ -2,11 +2,8 @@
 //! Shared terminal user interface components
 
 // Core components
-// Note: This is the old dashboard that has been moved to examples/
-// The new dashboard is in the dashboard/ subdirectory
-// This line is commented for migration reference
-// pub const Dashboard = @import("Dashboard.zig");
-// pub const DiffViewer = @import("DiffViewer.zig");
+// Note: Legacy Dashboard/DiffViewer moved to examples or legacy modules. Use
+// `tui.widgets.dashboard/*` for the new dashboard implementation.
 pub const Authentication = @import("Authentication.zig").Authentication;
 pub const Session = @import("Session.zig").Session;
 pub const Progress = @import("Progress.zig").Progress;

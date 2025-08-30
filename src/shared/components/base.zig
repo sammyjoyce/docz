@@ -103,6 +103,7 @@ pub const Event = union(enum) {
 
 /// Component state management
 pub const State = struct {
+    const Self = @This();
     visible: bool = true,
     enabled: bool = true,
     focused: bool = false,
@@ -110,17 +111,18 @@ pub const State = struct {
     bounds: Rect = .{ .x = 0, .y = 0, .width = 0, .height = 0 },
     zIndex: i32 = 0,
 
-    pub fn markDirty(self: *State) void {
+    pub fn markDirty(self: *Self) void {
         self.dirty = true;
     }
 
-    pub fn clearDirty(self: *State) void {
+    pub fn clearDirty(self: *Self) void {
         self.dirty = false;
     }
 };
 
 /// Context passed to component methods
 pub const Render = struct {
+    const Self = @This();
     terminal: *Terminal,
     graphics: ?*GraphicsManager,
     parentBounds: Rect,
@@ -128,13 +130,13 @@ pub const Render = struct {
     theme: *Theme,
     frameTime: i64, // For animations
 
-    pub fn clipped(self: Render, clipBounds: Rect) Render {
+    pub fn clipped(self: Self, clipBounds: Rect) Self {
         const intersection = if (self.clipRegion) |existing|
             intersectRects(existing, clipBounds)
         else
             clipBounds;
 
-        return Render{
+        return Self{
             .terminal = self.terminal,
             .graphics = self.graphics,
             .parentBounds = self.parentBounds,
@@ -416,6 +418,8 @@ fn rectsEqual(a: Rect, b: Rect) bool {
 
 /// Animation utilities
 pub const Animation = struct {
+    const Self = @This();
+
     pub fn easeOut(t: f32) f32 {
         return 1.0 - (1.0 - t) * (1.0 - t);
     }

@@ -16,16 +16,17 @@ pub const parseAndHandle = cli_mod.parser.parseAndHandle;
 
 // Re-export modules for usage
 pub const core = cli_mod.core;
-pub const legacy = cli_mod.parser;
 pub const types = cli_mod.types;
 pub const commands = cli_mod.commands;
 pub const interactive = cli_mod.interactive;
 pub const formatters = cli_mod.formatters;
 pub const utils = cli_mod.utils;
 
-// Legacy compatibility (for gradual migration)
-pub const LegacyParser = cli_mod.LegacyParser;
-pub const legacyParseArgs = cli_mod.legacyParseArgs;
+// Legacy compatibility (only when -Dlegacy)
+pub const legacy = if (@import("build_options").include_legacy)
+    cli_mod.legacy
+else
+    struct {};
 
 /// Main entry point for CLI applications
 /// Handles argument parsing and built-in commands (help, version, auth)

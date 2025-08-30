@@ -19,14 +19,15 @@ pub const Level = enum {
 };
 
 pub const Status = struct {
+    const Self = @This();
     caps: term_caps.TermCaps,
     level: Level,
     message: []const u8,
     showSpinner: bool,
     animationFrame: u32,
 
-    pub fn init(level: Level, message: []const u8) Status {
-        return Status{
+    pub fn init(level: Level, message: []const u8) Self {
+        return Self{
             .caps = term_caps.getTermCaps(),
             .level = level,
             .message = message,
@@ -35,13 +36,13 @@ pub const Status = struct {
         };
     }
 
-    pub fn setStatus(self: *Status, level: Level, message: []const u8) void {
+    pub fn setStatus(self: *Self, level: Level, message: []const u8) void {
         self.level = level;
         self.message = message;
         self.showSpinner = level == .working or level == .loading;
     }
 
-    pub fn render(self: *Status, writer: anytype) !void {
+    pub fn render(self: *Self, writer: anytype) !void {
         self.animationFrame +%= 1;
 
         // Clear line
@@ -63,7 +64,7 @@ pub const Status = struct {
         try term_ansi.resetStyle(writer, self.caps);
     }
 
-    fn renderSpinner(self: *Status, writer: anytype) !void {
+    fn renderSpinner(self: *Self, writer: anytype) !void {
         const spinners = [_][]const u8{ "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏" };
         const spinnerIdx = self.animationFrame % spinners.len;
 
@@ -76,7 +77,7 @@ pub const Status = struct {
         try writer.writeAll(spinners[spinnerIdx]);
     }
 
-    fn renderIcon(self: *Status, writer: anytype) !void {
+    fn renderIcon(self: *Self, writer: anytype) !void {
         const icon = switch (self.level) {
             .idle => "⏸️",
             .working => "⚙️",
@@ -90,7 +91,7 @@ pub const Status = struct {
         try writer.writeAll(icon);
     }
 
-    fn setLevelColor(self: *Status, writer: anytype) !void {
+    fn setLevelColor(self: *Self, writer: anytype) !void {
         if (self.caps.supportsTrueColor()) {
             switch (self.level) {
                 .idle => try term_ansi.setForegroundRgb(writer, self.caps, 128, 128, 128),
@@ -110,7 +111,7 @@ pub const Status = struct {
         }
     }
 
-    pub fn clear(self: *Status, writer: anytype) !void {
+    pub fn clear(self: *Self, writer: anytype) !void {
         try writer.writeAll("\r");
         try term_screen.clearLineAll(writer, self.caps);
     }

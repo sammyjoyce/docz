@@ -52,6 +52,22 @@ if rg -n "terminal_(writer|cursor)\.zig" src >/tmp/deprecated_term_hits 2>/dev/n
   done </tmp/deprecated_term_hits
 fi
 
+# 5) Deep imports that bypass barrels (audit)
+#    Uses the dedicated audit to produce a human-friendly report.
+if bash scripts/audit_deep_imports.sh >/tmp/audit_out 2>&1; then
+  if [[ -f audit/deep_imports_report.txt ]]; then
+    deep_count=$(grep -E '^Total:' audit/deep_imports_report.txt | awk '{print $2}' || echo 0)
+    if [[ "${deep_count:-0}" -gt 0 ]]; then
+      echo "[import-check] WARN: deep-import candidates detected (${deep_count}). See audit/deep_imports_report.txt" >&2
+      violations=1
+    fi
+  fi
+else
+  warn "deep-import audit failed; see output below"
+  cat /tmp/audit_out >&2 || true
+  violations=1
+fi
+
 if [[ "${CI_STRICT_IMPORTS:-0}" != "0" && $violations -ne 0 ]]; then
   echo "[import-check] FAIL (strict)"
   exit 1
@@ -64,4 +80,3 @@ fi
 
 echo "[import-check] PASS"
 exit 0
-

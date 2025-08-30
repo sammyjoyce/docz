@@ -3,6 +3,10 @@ const layout = @import("../layout/mod.zig");
 const event = @import("../event/mod.zig");
 const render_pkg = @import("../../render/mod.zig");
 
+// Explicit error contract for UI components.
+// Expand this set as new error cases are surfaced.
+pub const ComponentError = error{RenderFailed};
+
 // Type-erased component interface with a small vtable.
 pub const Component = struct {
     ptr: *anyopaque,
@@ -14,7 +18,8 @@ pub const Component = struct {
         deinit: ?fn (ptr: *anyopaque, allocator: std.mem.Allocator) void,
         measure: fn (ptr: *anyopaque, constraints: layout.Constraints) layout.Size,
         layout: fn (ptr: *anyopaque, rect: layout.Rect) void,
-        render: fn (ptr: *anyopaque, ctx: *render_pkg.Context) anyerror!void,
+        // Components must render using the explicit ComponentError contract.
+        render: fn (ptr: *anyopaque, ctx: *render_pkg.Context) ComponentError!void,
         event: fn (ptr: *anyopaque, ev: event.Event) Invalidate,
         debugName: fn (ptr: *anyopaque) []const u8,
     };
@@ -64,9 +69,9 @@ fn layoutImpl(comptime T: type) fn (*anyopaque, layout.Rect) void {
     }.f;
 }
 
-fn renderImpl(comptime T: type) fn (*anyopaque, *render_pkg.Context) anyerror!void {
+fn renderImpl(comptime T: type) fn (*anyopaque, *render_pkg.Context) ComponentError!void {
     return struct {
-        fn f(ptr: *anyopaque, ctx: *render_pkg.Context) anyerror!void {
+        fn f(ptr: *anyopaque, ctx: *render_pkg.Context) ComponentError!void {
             const self: *T = @ptrCast(@alignCast(ptr));
             if (@hasDecl(T, "render")) return self.render(ctx);
             return; // default no-op

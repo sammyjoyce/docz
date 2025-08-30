@@ -56,7 +56,7 @@ pub const HyperlinkMenu = struct {
 
             // Create clickable link or action
             if (item.url) |url| {
-                try self.state.hyperlink.writeLink(writer, url, item.label);
+                try self.state.hyperlink.writeLink(url, item.label);
             } else {
                 try writer.print("{s}", .{item.label});
             }

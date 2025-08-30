@@ -8,6 +8,7 @@ const draw = @import("draw.zig");
 pub const Alignment = enum { left, center, right };
 
 pub const Table = struct {
+    const Self = @This();
     allocator: std.mem.Allocator,
     headers: []const []const u8 = &[_][]const u8{},
     rows: []const []const []const u8 = &[_][]const []const u8{},
@@ -18,15 +19,15 @@ pub const Table = struct {
     sortColumn: ?u16 = null,
     sortAscending: bool = true,
 
-    pub fn init(allocator: std.mem.Allocator) Table {
+    pub fn init(allocator: std.mem.Allocator) Self {
         return .{ .allocator = allocator };
     }
 
-    pub fn asComponent(self: *Table) ui.component.Component {
+    pub fn asComponent(self: *Self) ui.component.Component {
         return ui.component.wrap(@TypeOf(self.*), self);
     }
 
-    pub fn measure(self: *Table, constraints: ui.layout.Constraints) ui.layout.Size {
+    pub fn measure(self: *Self, constraints: ui.layout.Constraints) ui.layout.Size {
         var height: u32 = 0;
         if (self.title) |_| height += 1;
         if (self.headers.len > 0) {
@@ -42,17 +43,17 @@ pub const Table = struct {
         return .{ .w = constraints.max.w, .h = height };
     }
 
-    pub fn layout(self: *Table, rectangle: ui.layout.Rect) void {
+    pub fn layout(self: *Self, rectangle: ui.layout.Rect) void {
         _ = self;
         _ = rectangle;
     }
 
-    pub fn render(self: *Table, context: *renderCtx.Context) !void {
+    pub fn render(self: *Self, context: *renderCtx.Context) ui.component.ComponentError!void {
         const rectangle = ui.layout.Rect{ .x = 0, .y = 0, .w = context.surface.size().w, .h = context.surface.size().h };
-        try draw.table(context, rectangle, self);
+        draw.table(context, rectangle, self) catch return ui.component.ComponentError.RenderFailed;
     }
 
-    pub fn event(self: *Table, inputEvent: ui.event.Event) ui.component.Component.Invalidate {
+    pub fn event(self: *Self, inputEvent: ui.event.Event) ui.component.Component.Invalidate {
         _ = self;
         _ = inputEvent;
         return .none;

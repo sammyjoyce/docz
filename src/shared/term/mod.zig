@@ -1,3 +1,6 @@
+//! Terminal subsystem barrel.
+//! Import terminal primitives via this module; avoid deep imports.
+//! Feature-gate in consumers using `@import("../mod.zig").options.feature_tui`.
 // Terminal namespace
 
 pub const ansi = @import("ansi/mod.zig");

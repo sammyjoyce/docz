@@ -261,8 +261,8 @@ pub const FileBrowser = struct {
 
         try git_process.spawn();
 
-        const stdout = git_process.stdout.?.deprecatedReader();
-        const stderr = git_process.stderr.?.deprecatedReader();
+        const stdout = git_process.stdout.?.reader();
+        const stderr = git_process.stderr.?.reader();
 
         var output_buf = std.ArrayListUnmanaged(u8){};
         defer output_buf.deinit(self.allocator);

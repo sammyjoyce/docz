@@ -20,6 +20,7 @@ pub const Error = error{
 
 /// Capability set representing what the current terminal can do
 pub const Capability = struct {
+    const Self = @This();
     hyperlinks: bool = false,
     clipboard: bool = false,
     notifications: bool = false,
@@ -27,13 +28,13 @@ pub const Capability = struct {
     truecolor: bool = false,
     mouse: bool = false,
 
-    pub fn detect(allocator: std.mem.Allocator) Capability {
+    pub fn detect(allocator: std.mem.Allocator) Self {
         // For now, return basic capabilities since term.detectCapabilities doesn't exist yet
         // This would integrate with the actual terminal detection system
         _ = allocator;
 
         // Basic capability detection - this would be improved with real detection
-        return Capability{
+        return Self{
             .hyperlinks = true, // Most modern terminals support this
             .clipboard = true, // OSC 52 is widely supported
             .notifications = true, // OSC 9 is common
@@ -46,6 +47,7 @@ pub const Capability = struct {
 
 /// Notification manager for CLI operations
 pub const Notification = struct {
+    const Self = @This();
     allocator: std.mem.Allocator,
     capabilities: Capability,
     termCaps: term.caps.TermCaps,
@@ -67,8 +69,8 @@ pub const Notification = struct {
         duration: ?u32 = null, // seconds
     };
 
-    pub fn init(allocator: std.mem.Allocator, capabilities: Capability, termCaps: term.caps.TermCaps, terminal: *term.common.Terminal) Notification {
-        return Notification{
+    pub fn init(allocator: std.mem.Allocator, capabilities: Capability, termCaps: term.caps.TermCaps, terminal: *term.common.Terminal) Self {
+        return Self{
             .allocator = allocator,
             .capabilities = capabilities,
             .termCaps = termCaps,
@@ -76,7 +78,7 @@ pub const Notification = struct {
         };
     }
 
-    pub fn send(self: *Notification, n: NotificationMessage) !void {
+    pub fn send(self: *Self, n: NotificationMessage) !void {
         if (!self.enabled) return;
 
         // Build shared Notification model
@@ -116,23 +118,24 @@ pub const Notification = struct {
 
 /// Graphics manager for visual elements
 pub const Graphics = struct {
+    const Self = @This();
     allocator: std.mem.Allocator,
     capabilities: Capability,
     terminal: *term.common.Terminal,
 
-    pub fn init(allocator: std.mem.Allocator, capabilities: Capability, terminal: *term.common.Terminal) Graphics {
-        return Graphics{
+    pub fn init(allocator: std.mem.Allocator, capabilities: Capability, terminal: *term.common.Terminal) Self {
+        return Self{
             .allocator = allocator,
             .capabilities = capabilities,
             .terminal = terminal,
         };
     }
 
-    pub fn isAvailable(self: *Graphics) bool {
+    pub fn isAvailable(self: *Self) bool {
         return self.capabilities.graphics;
     }
 
-    pub fn showProgress(self: *Graphics, progress: f32) !void {
+    pub fn showProgress(self: *Self, progress: f32) !void {
         // Render via shared progress presenter
         var data = components.Progress.init(self.allocator);
         defer data.deinit();
@@ -143,13 +146,14 @@ pub const Graphics = struct {
 
 /// Clipboard manager for copy/paste operations
 pub const Clipboard = struct {
+    const Self = @This();
     allocator: std.mem.Allocator,
     capabilities: Capability,
     termCaps: term.caps.TermCaps,
     terminal: *term.common.Terminal,
 
-    pub fn init(allocator: std.mem.Allocator, capabilities: Capability, termCaps: term.caps.TermCaps, terminal: *term.common.Terminal) Clipboard {
-        return Clipboard{
+    pub fn init(allocator: std.mem.Allocator, capabilities: Capability, termCaps: term.caps.TermCaps, terminal: *term.common.Terminal) Self {
+        return Self{
             .allocator = allocator,
             .capabilities = capabilities,
             .termCaps = termCaps,
@@ -157,7 +161,7 @@ pub const Clipboard = struct {
         };
     }
 
-    pub fn copy(self: *Clipboard, data: []const u8) !void {
+    pub fn copy(self: *Self, data: []const u8) !void {
         if (self.capabilities.clipboard) {
             try ansi_clipboard.writeClipboardDefault(self.terminal.writer, self.allocator, self.termCaps, data);
         } else {
@@ -166,20 +170,21 @@ pub const Clipboard = struct {
         }
     }
 
-    pub fn isAvailable(self: *Clipboard) bool {
+    pub fn isAvailable(self: *Self) bool {
         return self.capabilities.clipboard;
     }
 };
 
 /// Hyperlink manager for clickable links
 pub const Hyperlink = struct {
+    const Self = @This();
     allocator: std.mem.Allocator,
     capabilities: Capability,
     termCaps: term.caps.TermCaps,
     terminal: *term.common.Terminal,
 
-    pub fn init(allocator: std.mem.Allocator, capabilities: Capability, termCaps: term.caps.TermCaps, terminal: *term.common.Terminal) Hyperlink {
-        return Hyperlink{
+    pub fn init(allocator: std.mem.Allocator, capabilities: Capability, termCaps: term.caps.TermCaps, terminal: *term.common.Terminal) Self {
+        return Self{
             .allocator = allocator,
             .capabilities = capabilities,
             .termCaps = termCaps,
@@ -187,17 +192,18 @@ pub const Hyperlink = struct {
         };
     }
 
-    pub fn writeLink(self: *Hyperlink, url: []const u8, text: []const u8) !void {
+    pub fn writeLink(self: *Self, url: []const u8, text: []const u8) !void {
         try ansi_hyperlink.writeHyperlink(self.terminal.writer, self.allocator, self.termCaps, url, text);
     }
 
-    pub fn isAvailable(self: *Hyperlink) bool {
+    pub fn isAvailable(self: *Self) bool {
         return self.capabilities.hyperlinks;
     }
 };
 
 /// Main CLI context that ties everything together
 pub const Cli = struct {
+    const Self = @This();
     allocator: std.mem.Allocator,
     capabilities: Capability,
     termCaps: term.caps.TermCaps,
@@ -209,7 +215,7 @@ pub const Cli = struct {
     config: types.Config,
     verbose: bool = false,
 
-    pub fn init(allocator: std.mem.Allocator) !Cli {
+    pub fn init(allocator: std.mem.Allocator) !Self {
         // Detect terminal capabilities
         const capabilities = Capability.detect(allocator);
         const termCaps = try term.caps.detectCaps(allocator);
@@ -220,7 +226,7 @@ pub const Cli = struct {
         // Load configuration
         const config = types.Config.loadDefault(allocator);
 
-        return Cli{
+        return Self{
             .allocator = allocator,
             .capabilities = capabilities,
             .termCaps = termCaps,
@@ -233,13 +239,13 @@ pub const Cli = struct {
         };
     }
 
-    pub fn deinit(self: *Cli) void {
+    pub fn deinit(self: *Self) void {
         self.terminal.deinit();
         self.config.deinit(self.allocator);
     }
 
     /// Get a summary of available capabilities for debugging
-    pub fn capabilitySummary(self: *Cli) []const u8 {
+    pub fn capabilitySummary(self: *Self) []const u8 {
         // This could be improved to provide detailed capability info
         if (self.capabilities.hyperlinks and self.capabilities.clipboard and self.capabilities.graphics) {
             return "Full Terminal";
@@ -251,12 +257,12 @@ pub const Cli = struct {
     }
 
     /// Enable verbose mode for detailed output
-    pub fn enableVerbose(self: *Cli) void {
+    pub fn enableVerbose(self: *Self) void {
         self.verbose = true;
     }
 
     /// Check if a specific feature is available
-    pub fn hasFeature(self: *Cli, feature: enum { hyperlinks, clipboard, notifications, graphics, truecolor, mouse }) bool {
+    pub fn hasFeature(self: *Self, feature: enum { hyperlinks, clipboard, notifications, graphics, truecolor, mouse }) bool {
         return switch (feature) {
             .hyperlinks => self.capabilities.hyperlinks,
             .clipboard => self.capabilities.clipboard,
@@ -268,7 +274,7 @@ pub const Cli = struct {
     }
 
     /// Log a message if verbose mode is enabled
-    pub fn verboseLog(self: *Cli, comptime fmt: []const u8, args: anytype) void {
+    pub fn verboseLog(self: *Self, comptime fmt: []const u8, args: anytype) void {
         if (self.verbose) {
             self.terminal.printf("[VERBOSE] " ++ fmt ++ "\n", args, null) catch {};
         }

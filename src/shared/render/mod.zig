@@ -48,8 +48,51 @@
 //! 4. Provides caching for performance optimization
 //! 5. Handles color adaptation and fallbacks
 //!
+//! ## Compile-time Options
+//! Override render behavior at build root by defining:
+//!
+//!   pub const shared_options = @import("src/shared/mod.zig").Options{ .quality = .high };
+//!
+//! Or provide render-specific toggles by adding fields (your `shared_options`
+//! struct can be any type; fields are discovered with `@hasField`):
+//!   - `render_enable_braille: bool`
+//!   - `render_enable_canvas: bool`
+//!   - `render_enable_diff: bool`
+//!   - `render_default_tier: @This().RenderTier`
+//! This module will read them via `@hasDecl(root, "shared_options")`.
+//!
 
 const std = @import("std");
+const root = @import("root");
+const shared = @import("../mod.zig");
+
+// -----------------------------------------------------------------------------
+// Compile-time Options for render submodule
+// -----------------------------------------------------------------------------
+/// Render-level feature flags and defaults. You can override these by setting
+/// fields on `root.shared_options` (preferred) or by copying this struct at
+/// your own barrel and using it to gate features with `comptime` checks.
+pub const Options = struct {
+    enable_braille: bool = true,
+    enable_canvas: bool = true,
+    enable_diff: bool = true,
+    default_tier: ?RenderTier = null, // if set, forces a tier for tests/demos
+};
+
+/// Resolved render options using `root.shared_options` when available.
+pub const options: Options = blk: {
+    const defaults = Options{};
+    if (@hasDecl(root, "shared_options")) {
+        const T = @TypeOf(root.shared_options);
+        break :blk Options{
+            .enable_braille = if (@hasField(T, "render_enable_braille")) @field(root.shared_options, "render_enable_braille") else defaults.enable_braille,
+            .enable_canvas = if (@hasField(T, "render_enable_canvas")) @field(root.shared_options, "render_enable_canvas") else defaults.enable_canvas,
+            .enable_diff = if (@hasField(T, "render_enable_diff")) @field(root.shared_options, "render_enable_diff") else defaults.enable_diff,
+            .default_tier = if (@hasField(T, "render_default_tier")) @field(root.shared_options, "render_default_tier") else defaults.default_tier,
+        };
+    }
+    break :blk defaults;
+};
 const term_mod = @import("term_shared");
 pub const Painter = @import("painter.zig").Painter;
 pub const Surface = @import("surface.zig").Surface;
@@ -123,22 +166,10 @@ pub const Progress = shared_components.Progress;
 pub const renderProgress = shared_components.progress.renderProgress;
 pub const AnimatedProgress = shared_components.AnimatedProgress;
 
-// Temporarily disabled due to module conflicts
-// // Markdown and syntax highlighting modules
-// pub const markdown_renderer = @import("markdown_renderer.zig");
-// pub const syntax_highlighter = @import("syntax_highlighter.zig");
+// Note: Markdown/syntax renderers have been moved under render/legacy
+// and are only included when built with -Dlegacy.
 
-// // Markdown rendering exports
-// pub const MarkdownRenderer = markdown_renderer.MarkdownRenderer;
-// pub const MarkdownOptions = markdown_renderer.MarkdownOptions;
-// pub const renderMarkdown = markdown_renderer.renderMarkdown;
-
-// Temporarily disabled due to module conflicts
-// // Syntax highlighting exports
-// pub const highlightCode = syntax_highlighter.highlightCode;
-
-// Demo and utilities
-// pub const runDemo = @import("../../examples/demo.zig").runDemo; // disabled in library builds
+// Demo and utilities: see `examples/cli_demo/` for runnable demos.
 
 /// Convenience function to create a renderer with automatic capability detection
 pub fn createRenderer(allocator: std.mem.Allocator) !*Renderer {
@@ -160,54 +191,9 @@ pub fn initAdaptive(allocator: std.mem.Allocator) !*AdaptiveRenderer {
     return Renderer.initAdaptive(allocator);
 }
 
-/// Renderer API with component methods
-pub const RendererAPI = struct {
-    renderer: *Renderer,
+// Legacy convenience API moved to render/legacy (enabled via -Dlegacy).
 
-    pub fn init(allocator: std.mem.Allocator) !RendererAPI {
-        const renderer = try Renderer.init(allocator);
-        return RendererAPI{ .renderer = renderer };
-    }
-
-    pub fn deinit(self: *RendererAPI) void {
-        self.renderer.deinit();
-    }
-
-    pub fn renderProgress(self: *RendererAPI, progress: Progress) !void {
-        return shared_components.progress.renderProgress(self.renderer, progress);
-    }
-
-    // Table/Chart rendering moved to widgets; legacy APIs removed from RendererAPI.
-
-    pub fn getCapabilities(self: *const RendererAPI) Renderer.Capabilities {
-        return self.renderer.getCapabilities();
-    }
-
-    pub fn writeText(self: *RendererAPI, text: []const u8, color: ?term_mod.common.Color, bold: bool) !void {
-        return self.renderer.writeText(text, color, bold);
-    }
-
-    pub fn flush(self: *RendererAPI) !void {
-        return self.renderer.flush();
-    }
-
-    pub fn beginSynchronized(self: *RendererAPI) !void {
-        return self.renderer.beginSynchronized();
-    }
-
-    pub fn endSynchronized(self: *RendererAPI) !void {
-        return self.renderer.endSynchronized();
-    }
-
-    // Legacy dashboard helpers removed in new architecture.
-};
-
-// pub const Dashboard = struct {
-//     title: ?[]const u8 = null,
-//     table: ?Table = null,
-//     charts: []const Chart = &[_]Chart{},
-// };
-// }
+// Legacy dashboard helpers removed. See render/legacy/ for shims.
 
 // Tests
 test "rendering system" {
@@ -220,19 +206,71 @@ test "rendering system" {
     const info = renderer.getCapabilities();
     try testing.expect(info.tier == .minimal);
 
-    // Test renderer API
-    var api = try RendererAPI.init(testing.allocator);
-    defer api.deinit();
+    // Legacy RendererAPI covered in render.legacy tests when enabled.
+}
 
-    const apiInfo = api.getCapabilities();
-    try testing.expect(apiInfo.tier != .minimal or apiInfo.tier == .minimal); // Any tier is valid
+// Legacy shims are available under render.legacy only with -Dlegacy
+pub const legacy = if (@import("build_options").include_legacy)
+    @import("legacy/mod.zig")
+else
+    struct {};
 
-    // Test component rendering
-    const progress = Progress{
-        .value = 0.5,
-        .label = "Test",
+// -----------------------------------------------------------------------------
+// Backend Factory (Duck-typed)
+// -----------------------------------------------------------------------------
+/// Create a renderer backend binding using duck-typed polymorphism.
+///
+/// Pass any `Backend` type that exposes the following declarations. No formal
+/// interface is required; compile-time checks verify presence only:
+///  - `beginFrame(self: *Backend, width: u16, height: u16) !void`
+///  - `endFrame(self: *Backend) !void`
+///  - `drawText(self: *Backend, x: i16, y: i16, text: []const u8, style: Style) !void`
+///  - `measureText(self: *Backend, text: []const u8, style: Style) !Point`
+///  - `moveCursor(self: *Backend, x: u16, y: u16) !void`
+///  - `fillRect(self: *Backend, ctx: Render, color: Style.Color) !void`
+///  - `flush(self: *Backend) !void`
+/// Optional (if present, they will be re-exported):
+///  - `drawBox(self: *Backend, ctx: Render, box: BoxStyle) !void`
+///  - `drawLine(self: *Backend, ctx: Render, from: Point, to: Point) !void`
+///
+/// Example:
+///   const R = @import("render/mod.zig");
+///   const My = struct {
+///       pub fn beginFrame(self: *My, w: u16, h: u16) !void { _ = self; _ = w; _ = h; }
+///       pub fn endFrame(self: *My) !void { _ = self; }
+///       pub fn drawText(self: *My, x: i16, y: i16, t: []const u8, s: R.Style) !void { _ = self; _ = x; _ = y; _ = t; _ = s; }
+///       pub fn measureText(self: *My, t: []const u8, s: R.Style) !R.Point { _ = self; _ = s; return .{ .x = @intCast(t.len), .y = 1 }; }
+///       pub fn moveCursor(self: *My, x: u16, y: u16) !void { _ = self; _ = x; _ = y; }
+///       pub fn fillRect(self: *My, ctx: R.Render, c: R.Style.Color) !void { _ = self; _ = ctx; _ = c; }
+///       pub fn flush(self: *My) !void { _ = self; }
+///   };
+///   const API = R.useBackend(My);
+///   var backend = My{};
+///   try API.beginFrame(&backend, 80, 24);
+pub fn useBackend(comptime Backend: type) type {
+    comptime {
+        inline for (.{ "beginFrame", "endFrame", "drawText", "measureText", "moveCursor", "fillRect", "flush" }) |name| {
+            if (!@hasDecl(Backend, name)) @compileError("renderer backend missing required decl '" ++ name ++ "'");
+        }
+    }
+
+    return struct {
+        pub const Style = Renderer.Style;
+        pub const Render = Renderer.Render;
+        pub const BoxStyle = Renderer.BoxStyle;
+        pub const Point = Renderer.Point;
+
+        // Re-export backend fns; this preserves signatures without constraining them.
+        pub const beginFrame = Backend.beginFrame;
+        pub const endFrame = Backend.endFrame;
+        pub const drawText = Backend.drawText;
+        pub const measureText = Backend.measureText;
+        pub const moveCursor = Backend.moveCursor;
+        pub const fillRect = Backend.fillRect;
+        pub const flush = Backend.flush;
+
+        // Optionals
+        pub const drawBox = if (@hasDecl(Backend, "drawBox")) Backend.drawBox else struct {};
+        pub const drawLine = if (@hasDecl(Backend, "drawLine")) Backend.drawLine else struct {};
     };
-    try api.renderProgress(progress);
-
-    // Table/Chart legacy tests removed; covered in widgets golden tests.
 }

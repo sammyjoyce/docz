@@ -1,7 +1,10 @@
 //! Consolidated TUI Framework - Main Module
 //!
-//! This module provides an interface to all TUI components with graphics
-//! capabilities, progressive enhancement, and terminal integration.
+//! This barrel exposes the TUI framework (renderer, widgets, dashboards).
+//!
+//! - Import via barrel (no deep imports): `const tui = @import("../shared/tui/mod.zig");`
+//! - Feature-gate: `comptime if (@import("../shared/mod.zig").options.feature_tui) { ... }`
+//! - Override behavior: define `pub const shared_options = @import("../shared/mod.zig").Options{ ... };` in the root module.
 
 const std = @import("std");
 const term_shared = @import("term_shared");
@@ -92,6 +95,12 @@ pub const CommandHistory = utils.CommandHistory;
 
 // Presenters (adapters from shared headless models to TUI renderer)
 pub const presenters = @import("presenters/mod.zig");
+
+// Legacy helpers and wrappers are exposed only when -Dlegacy is set
+pub const legacy = if (@import("build_options").include_legacy)
+    @import("legacy/mod.zig")
+else
+    struct {};
 
 // Factory functions
 pub const createRenderer = renderer.createRenderer;
