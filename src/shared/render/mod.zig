@@ -62,9 +62,14 @@
 //! This module will read them via `@hasDecl(root, "shared_options")`.
 //!
 
+const shared = @import("../mod.zig");
+comptime {
+    if (!shared.options.feature_render) {
+        @compileError("render subsystem disabled; enable feature_render");
+    }
+}
 const std = @import("std");
 const root = @import("root");
-const shared = @import("../mod.zig");
 
 // -----------------------------------------------------------------------------
 // Compile-time Options for render submodule

@@ -3,6 +3,13 @@
 //! Feature-gate in consumers using `@import("../mod.zig").options.feature_tui`.
 // Terminal namespace
 
+const shared = @import("../mod.zig");
+comptime {
+    if (!shared.options.feature_tui) {
+        @compileError("terminal subsystem disabled; enable feature_tui");
+    }
+}
+
 pub const ansi = @import("ansi/mod.zig");
 pub const buffer = @import("buffer/mod.zig");
 pub const color = @import("color/mod.zig");

@@ -5,6 +5,13 @@
 //! - Feature-gate: check `@import("../shared/mod.zig").options.feature_widgets`
 //! - Override defaults: define `pub const shared_options = @import("../shared/mod.zig").Options{ ... };` at root.
 
+const shared = @import("../mod.zig");
+comptime {
+    if (!shared.options.feature_widgets) {
+        @compileError("components subsystem disabled; enable feature_widgets");
+    }
+}
+
 pub const progress = @import("progress.zig");
 pub const notification = @import("notification.zig");
 pub const base = @import("base.zig");

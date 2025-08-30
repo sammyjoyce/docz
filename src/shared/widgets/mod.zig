@@ -2,6 +2,13 @@
 //! Exposes widget families via sub-barrels; avoid importing individual files.
 //! Feature-gate at call sites via `@import("../shared/mod.zig").options.feature_widgets`.
 
+const shared = @import("../mod.zig");
+comptime {
+    if (!shared.options.feature_widgets) {
+        @compileError("widgets subsystem disabled; enable feature_widgets");
+    }
+}
+
 pub const chart = @import("chart/mod.zig");
 pub const table = @import("table/mod.zig");
 pub const progress = @import("progress/mod.zig");
