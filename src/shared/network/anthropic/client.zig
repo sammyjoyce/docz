@@ -21,6 +21,7 @@ const curl = @import("curl_shared");
 const models = @import("models.zig");
 const oauth = @import("oauth.zig");
 const stream_module = @import("stream.zig");
+const SharedContext = @import("../../context.zig").SharedContext;
 
 // Re-export commonly used types
 pub const Message = models.Message;
@@ -67,23 +68,12 @@ pub const StreamParameters = struct {
     messages: []const Message,
     maxTokens: u32 = 1024,
     temperature: f32 = 0.7,
-    onToken: *const fn ([]const u8) void,
+    onToken: *const fn (*SharedContext, []const u8) void,
     system: ?[]const u8 = null,
     topP: ?f32 = null,
     topK: ?u32 = null,
     stopSequences: ?[]const []const u8 = null,
 };
-
-/// Global refresh state for single-flight protection
-var globalRefreshState = models.RefreshLock.init();
-
-/// Global content collector for complete method (not thread-safe)
-var globalContentCollector: std.ArrayListUnmanaged(u8) = .{};
-var globalAllocator: std.mem.Allocator = undefined;
-var globalUsageInfo: Usage = .{};
-var globalMessageId: ?[]const u8 = null;
-var globalStopReason: ?[]const u8 = null;
-var globalModel: ?[]const u8 = null;
 
 /// Anthropic HTTP client with OAuth and API key support
 pub const Client = struct {
@@ -162,7 +152,7 @@ pub const Client = struct {
     }
 
     /// Refresh OAuth tokens if needed with single-flight protection
-    pub fn refreshOAuthIfNeeded(self: *Self) !void {
+    pub fn refreshOAuthIfNeeded(self: *Self, ctx: *SharedContext) !void {
         switch (self.auth) {
             .api_key => return, // No refresh needed for API key
             .oauth => |oauthCreds| {
@@ -170,18 +160,18 @@ pub const Client = struct {
                 if (!oauthCreds.willExpireSoon(300)) return;
 
                 // Single-flight protection
-                globalRefreshState.mutex.lock();
-                defer globalRefreshState.mutex.unlock();
+                ctx.anthropic.refreshLock.mutex.lock();
+                defer ctx.anthropic.refreshLock.mutex.unlock();
 
                 // Check again in case another thread refreshed while we waited
                 if (!oauthCreds.willExpireSoon(300)) return;
 
-                if (globalRefreshState.inProgress) {
+                if (ctx.anthropic.refreshLock.inProgress) {
                     return Error.RefreshInProgress;
                 }
 
-                globalRefreshState.inProgress = true;
-                defer globalRefreshState.inProgress = false;
+                ctx.anthropic.refreshLock.inProgress = true;
+                defer ctx.anthropic.refreshLock.inProgress = false;
 
                 // Perform the refresh
                 const newCreds = oauth.refreshTokens(self.allocator, oauthCreds.refreshToken) catch |err| {
@@ -208,9 +198,9 @@ pub const Client = struct {
     }
 
     /// Create a non-streaming message (complete response)
-    pub fn create(self: *Self, req: MessageParameters) !MessageResult {
+    pub fn create(self: *Self, ctx: *SharedContext, req: MessageParameters) !MessageResult {
         // Use the complete method which collects the streaming response
-        return self.complete(.{
+        return self.complete(ctx, .{
             .model = req.model,
             .messages = req.messages,
             .max_tokens = req.max_tokens,
@@ -223,15 +213,13 @@ pub const Client = struct {
     }
 
     /// Complete method for non-streaming requests (collects streaming response)
-    pub fn complete(self: *Self, params: MessageParameters) !MessageResult {
-        // Set up global collector (not thread-safe, but ok for single-threaded use)
-        globalAllocator = self.allocator;
-        globalContentCollector.clearRetainingCapacity();
-        defer globalContentCollector.deinit(self.allocator);
-        globalUsageInfo = Usage{};
-        globalMessageId = null;
-        globalStopReason = null;
-        globalModel = null;
+    pub fn complete(self: *Self, ctx: *SharedContext, params: MessageParameters) !MessageResult {
+        // Set up collector in shared context (not thread-safe)
+        ctx.anthropic.contentCollector.clearRetainingCapacity();
+        ctx.anthropic.usageInfo = Usage{};
+        ctx.anthropic.messageId = null;
+        ctx.anthropic.stopReason = null;
+        ctx.anthropic.model = null;
 
         // Create stream params with our collector callback
         const streamParams = StreamParameters{
@@ -244,7 +232,7 @@ pub const Client = struct {
             .topK = params.topK,
             .stopSequences = params.stopSequences,
             .onToken = struct {
-                fn callback(data: []const u8) void {
+                fn callback(ctx: *SharedContext, data: []const u8) void {
                     // Try to parse as JSON to extract usage and content
                     const DeltaMessage = struct {
                         id: ?[]const u8 = null,
@@ -261,89 +249,89 @@ pub const Client = struct {
                         } = null,
                     };
 
-                    const parsed = std.json.parseFromSlice(DeltaMessage, globalAllocator, data, .{}) catch {
+                    const parsed = std.json.parseFromSlice(DeltaMessage, ctx.anthropic.allocator, data, .{}) catch {
                         // If not valid JSON, treat as raw text content
-                        globalContentCollector.appendSlice(globalAllocator, data) catch return;
+                        ctx.anthropic.contentCollector.appendSlice(ctx.anthropic.allocator, data) catch return;
                         return;
                     };
                     defer parsed.deinit();
 
                     // Extract metadata
                     if (parsed.value.id) |id| {
-                        if (globalMessageId == null) {
-                            globalMessageId = globalAllocator.dupe(u8, id) catch null;
+                        if (ctx.anthropic.messageId == null) {
+                            ctx.anthropic.messageId = ctx.anthropic.allocator.dupe(u8, id) catch null;
                         }
                     }
 
                     if (parsed.value.model) |model| {
-                        if (globalModel == null) {
-                            globalModel = globalAllocator.dupe(u8, model) catch null;
+                        if (ctx.anthropic.model == null) {
+                            ctx.anthropic.model = ctx.anthropic.allocator.dupe(u8, model) catch null;
                         }
                     }
 
                     if (parsed.value.stopReason) |reason| {
-                        if (globalStopReason == null) {
-                            globalStopReason = globalAllocator.dupe(u8, reason) catch null;
+                        if (ctx.anthropic.stopReason == null) {
+                            ctx.anthropic.stopReason = ctx.anthropic.allocator.dupe(u8, reason) catch null;
                         }
                     }
 
                     // Extract content from delta if present
                     if (parsed.value.delta) |delta| {
                         if (delta.text) |text| {
-                            globalContentCollector.appendSlice(globalAllocator, text) catch return;
+                            ctx.anthropic.contentCollector.appendSlice(ctx.anthropic.allocator, text) catch return;
                         }
                     }
 
                     // Extract usage if present
                     if (parsed.value.usage) |usage| {
-                        globalUsageInfo.inputTokens = usage.inputTokens;
-                        globalUsageInfo.outputTokens = usage.outputTokens;
+                        ctx.anthropic.usageInfo.inputTokens = usage.inputTokens;
+                        ctx.anthropic.usageInfo.outputTokens = usage.outputTokens;
                     }
                 }
             }.callback,
         };
 
         // Perform streaming request
-        try self.stream(streamParams);
+        try self.stream(ctx, streamParams);
 
         // Create owned copies of the response data
-        const owned_id = try self.allocator.dupe(u8, globalMessageId orelse "unknown");
+        const owned_id = try self.allocator.dupe(u8, ctx.anthropic.messageId orelse "unknown");
         errdefer self.allocator.free(owned_id);
 
-        const owned_content = try self.allocator.dupe(u8, globalContentCollector.items);
+        const owned_content = try self.allocator.dupe(u8, ctx.anthropic.contentCollector.items);
         errdefer self.allocator.free(owned_content);
 
-        const owned_stop_reason = try self.allocator.dupe(u8, globalStopReason orelse "stop");
+        const owned_stop_reason = try self.allocator.dupe(u8, ctx.anthropic.stopReason orelse "stop");
         errdefer self.allocator.free(owned_stop_reason);
 
-        const owned_model = try self.allocator.dupe(u8, globalModel orelse params.model);
+        const owned_model = try self.allocator.dupe(u8, ctx.anthropic.model orelse params.model);
         errdefer self.allocator.free(owned_model);
 
-        // Clean up globals
-        if (globalMessageId) |id| self.allocator.free(id);
-        if (globalStopReason) |reason| self.allocator.free(reason);
-        if (globalModel) |model| self.allocator.free(model);
+        // Clean up context strings
+        if (ctx.anthropic.messageId) |id| self.allocator.free(id);
+        if (ctx.anthropic.stopReason) |reason| self.allocator.free(reason);
+        if (ctx.anthropic.model) |model| self.allocator.free(model);
 
         return MessageResult{
             .id = owned_id,
             .content = owned_content,
             .stopReason = owned_stop_reason,
             .model = owned_model,
-            .usage = globalUsageInfo,
+            .usage = ctx.anthropic.usageInfo,
             .allocator = self.allocator,
         };
     }
 
     /// Stream messages using Server-Sent Events
-    pub fn stream(self: *Self, params: StreamParameters) !void {
-        return self.streamWithRetry(params, false);
+    pub fn stream(self: *Self, ctx: *SharedContext, params: StreamParameters) !void {
+        return self.streamWithRetry(ctx, params, false);
     }
 
     /// Internal method to handle streaming with automatic retry on 401
-    fn streamWithRetry(self: *Self, params: StreamParameters, is_retry: bool) !void {
+    fn streamWithRetry(self: *Self, ctx: *SharedContext, params: StreamParameters, is_retry: bool) !void {
         // Refresh OAuth tokens if needed (unless this is already a retry)
         if (!is_retry) {
-            try self.refreshOAuthIfNeeded();
+            try self.refreshOAuthIfNeeded(ctx);
         }
 
         // Build request body
@@ -382,7 +370,7 @@ pub const Client = struct {
         };
 
         // Create streaming context
-        var streamingContext = stream_module.createStreamingContext(self.allocator, params.onToken);
+        var streamingContext = stream_module.createStreamingContext(self.allocator, ctx, params.onToken);
         defer stream_module.destroyStreamingContext(&streamingContext);
 
         // Build full URL
@@ -418,7 +406,7 @@ pub const Client = struct {
         // Check for 401 Unauthorized and retry once for OAuth; report auth error for API keys
         if (statusCode == 401 and !is_retry) {
             std.log.warn("Received 401 Unauthorized, attempting token refresh...", .{});
-            return self.streamWithRetry(params, true); // Retry once after refresh
+            return self.streamWithRetry(ctx, params, true); // Retry once after refresh
         }
 
         if (statusCode == 401) {
@@ -531,12 +519,12 @@ pub const Client = struct {
     }
 
     /// Convenience method: completion with just a prompt
-    pub fn completePrompt(self: *Self, model: []const u8, prompt: []const u8) ![]const u8 {
+    pub fn completePrompt(self: *Self, ctx: *SharedContext, model: []const u8, prompt: []const u8) ![]const u8 {
         const messages = [_]Message{
             .{ .role = .user, .content = prompt },
         };
 
-        const response = try self.complete(.{
+        const response = try self.complete(ctx, .{
             .model = model,
             .messages = &messages,
         });
