@@ -17,10 +17,10 @@
 //! - Dashboard with KPI metrics and charts
 
 const std = @import("std");
-const print = std.debug.print;
-const oauth = @import("../oauth/mod.zig");
 const auth_service = @import("../core/Service.zig");
-const network_client = @import("../../network/client.zig");
+const network = @import("../../network/mod.zig");
+const oauth = @import("../oauth/mod.zig");
+const print = std.debug.print;
 
 // Import TUI and rendering components
 const adaptive_renderer = @import("../../render/mod.zig");
@@ -340,7 +340,7 @@ pub const OAuthFlow = struct {
     renderer: *Renderer,
     theme_manager: *Theme,
     auth_service: auth_service.Service,
-    network_client: network_client.Service,
+    networkClient: network.Service,
 
     // State management
     currentState: OAuthState,
@@ -403,14 +403,15 @@ pub const OAuthFlow = struct {
 
         // Initialize services
         const auth_svc = auth_service.Service.init(allocator);
-        const net_svc = network_client.Service{};
+        var http_client = try network.curl.HTTPClient.init(allocator);
+        const net_svc = network.Service.init(allocator, http_client, .{});
 
         var self = Self{
             .allocator = allocator,
             .renderer = renderer,
             .theme_manager = theme_manager,
             .auth_service = auth_svc,
-            .network_client = net_svc,
+            .networkClient = net_svc,
             .currentState = .initializing,
             .startTime = startTime,
             .lastStateChange = startTime,
@@ -438,6 +439,7 @@ pub const OAuthFlow = struct {
         self.kpi_values.deinit();
         self.input_buffer.deinit();
         self.flow_diagram.deinit(self.allocator);
+        self.networkClient.deinit();
 
         if (self.rich_progress_bar) |*progress| {
             progress.deinit();
@@ -1239,12 +1241,12 @@ pub const OAuthFlow = struct {
         self.last_network_activity = std.time.timestamp();
 
         // Use network service to check connectivity
-        const test_request = network_client.NetworkRequest{
+        const test_request = network.Request{
             .url = "https://www.google.com",
             .timeout_ms = 5000,
         };
 
-        _ = network_client.Service.request(self.allocator, test_request) catch |err| {
+        var resp = self.networkClient.request(test_request) catch |err| {
             // Network check failed
             self.network_active = false;
             const error_msg = try std.fmt.allocPrint(self.allocator, "Network check failed: {s}", .{@errorName(err)});
@@ -1253,6 +1255,7 @@ pub const OAuthFlow = struct {
             try self.transition_to(.error_state);
             return;
         };
+        defer self.allocator.free(resp.body);
 
         self.network_active = false;
         try self.transition_to(.pkce_generation);
