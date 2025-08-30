@@ -63,6 +63,16 @@ pub const Notification = widgets.Notification;
 pub const Graphics = widgets.Graphics;
 pub const TextInputWidget = widgets.Core.TextInputWidget;
 
+// Notification convenience re-exports
+pub const initNotifications = widgets.initNotifications;
+pub const deinitNotifications = widgets.deinitNotifications;
+pub const notifyInfo = widgets.notifyInfo;
+pub const notifySuccess = widgets.notifySuccess;
+pub const notifyWarning = widgets.notifyWarning;
+pub const notifyError = widgets.notifyError;
+pub const notifyDebug = widgets.notifyDebug;
+pub const notifyCritical = widgets.notifyCritical;
+
 // Typing animation exports
 pub const TypingAnimation = typing_animation.TypingAnimation;
 pub const TypingAnimationBuilder = typing_animation.Builder;

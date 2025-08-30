@@ -18,8 +18,8 @@ pub const NotificationAction = notifications.NotificationAction;
 pub const BaseNotification = notifications.BaseNotification;
 
 // Re-export convenience functions
-pub const initGlobalManager = notifications.initGlobalManager;
-pub const deinitGlobalManager = notifications.deinitGlobalManager;
+pub const initManager = notifications.initManager;
+pub const deinitManager = notifications.deinitManager;
 pub const notify = notifications.notify;
 pub const info = notifications.info;
 pub const success = notifications.success;

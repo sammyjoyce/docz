@@ -6,6 +6,7 @@
 const std = @import("std");
 const tui = @import("mod.zig");
 const bounds_mod = @import("core/bounds.zig");
+const SharedContext = @import("../context.zig").SharedContext;
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -29,9 +30,12 @@ pub fn main() !void {
     std.debug.print("- Sixel Graphics: {}\n", .{caps.supportsSixel});
     std.debug.print("\n");
 
-    // Initialize global notification manager
-    tui.initGlobalNotifications(allocator, renderer);
-    defer tui.deinitGlobalNotifications();
+    var ctx = SharedContext.init(allocator);
+    defer ctx.deinit();
+
+    // Initialize notification manager
+    tui.initNotifications(&ctx, allocator, renderer);
+    defer tui.deinitNotifications(&ctx);
 
     // Get terminal size for layout
     const terminal_size = bounds_mod.getTerminalSize();
@@ -52,12 +56,12 @@ pub fn main() !void {
     std.debug.print("Demo 1: Advanced Notifications\n");
     std.debug.print("------------------------------\n");
 
-    try tui.notifyInfo("Demo Started", "Testing notifications with progressive enhancement");
+    try tui.notifyInfo(&ctx, "Demo Started", "Testing notifications with progressive enhancement");
 
     if (caps.supportsTruecolor) {
-        try tui.notifySuccess("Rich Colors", "Your terminal supports truecolor!");
+        try tui.notifySuccess(&ctx, "Rich Colors", "Your terminal supports truecolor!");
     } else {
-        try tui.notifyWarning("Basic Colors", "Using 256-color palette fallback");
+        try tui.notifyWarning(&ctx, "Basic Colors", "Using 256-color palette fallback");
     }
 
     // Demo 2: Progress Bars

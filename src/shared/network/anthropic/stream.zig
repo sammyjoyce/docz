@@ -4,6 +4,7 @@
 
 const std = @import("std");
 const sse = @import("sse_shared");
+const SharedContext = @import("../../context.zig").SharedContext;
 
 // ============================== Error Definitions ==============================
 
@@ -62,13 +63,15 @@ pub const ChunkState = struct {
 /// Streaming context for callback-based processing
 pub const StreamingContext = struct {
     allocator: std.mem.Allocator,
-    callback: *const fn ([]const u8) void,
+    callback: *const fn (*SharedContext, []const u8) void,
+    ctx: *SharedContext,
     buffer: std.ArrayListUnmanaged(u8),
 
-    pub fn init(allocator: std.mem.Allocator, callback: *const fn ([]const u8) void) StreamingContext {
+    pub fn init(allocator: std.mem.Allocator, ctx: *SharedContext, callback: *const fn (*SharedContext, []const u8) void) StreamingContext {
         return StreamingContext{
             .allocator = allocator,
             .callback = callback,
+            .ctx = ctx,
             .buffer = std.ArrayListUnmanaged(u8){},
         };
     }
@@ -107,7 +110,7 @@ pub fn processSseChunk(streamContext: *StreamingContext, chunk: []const u8) !voi
                 const data_content = trimmed_line[6..]; // Skip "data: "
                 if (data_content.len > 0 and !std.mem.eql(u8, data_content, "[DONE]")) {
                     // Call the user callback with the SSE data
-                    streamContext.callback(data_content);
+                    streamContext.callback(streamContext.ctx, data_content);
                 }
             }
         }
@@ -695,9 +698,10 @@ pub fn streamMessages(
 /// Create a new streaming context
 pub fn createStreamingContext(
     allocator: std.mem.Allocator,
-    callback: *const fn ([]const u8) void,
+    ctx: *SharedContext,
+    callback: *const fn (*SharedContext, []const u8) void,
 ) StreamingContext {
-    return StreamingContext.init(allocator, callback);
+    return StreamingContext.init(allocator, ctx, callback);
 }
 
 /// Destroy a streaming context and free its resources

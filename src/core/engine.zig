@@ -7,6 +7,7 @@ const std = @import("std");
 const anthropic = @import("anthropic_shared");
 const tools_mod = @import("tools_shared");
 const auth = @import("auth_shared");
+const SharedContext = @import("../shared/context.zig").SharedContext;
 
 pub const Message = anthropic.Message;
 
@@ -165,7 +166,8 @@ fn flushAllOutputs() !void {
     }
 }
 
-fn onToken(chunk: []const u8) void {
+fn onToken(ctx: *SharedContext, chunk: []const u8) void {
+    _ = ctx;
     initStdoutWriter();
     const stdout = &stdoutWriter.interface;
     stdout.writeAll(chunk) catch |err| {
@@ -223,6 +225,9 @@ pub fn runWithOptions(
 
     // Register agent-specific tools
     try spec.registerTools(&registry);
+
+    var sharedContext = SharedContext.init(allocator);
+    defer sharedContext.deinit();
 
     var messages = std.array_list.Managed(Message).init(allocator);
     defer messages.deinit();
@@ -295,7 +300,7 @@ pub fn runWithOptions(
 
     if (!options.flags.stream) {
         std.log.info("Using non-streaming mode (complete response).", .{});
-        const response = try client.complete(.{
+        const response = try client.complete(&sharedContext, .{
             .model = options.options.model,
             .maxTokens = options.options.tokensMax,
             .temperature = options.options.temperature,
@@ -316,12 +321,12 @@ pub fn runWithOptions(
             std.log.info("Estimated cost: ${d:.4} (Input: ${d:.4}, Output: ${d:.4})", .{ totalCost, inputCost, outputCost });
         }
     } else {
-        try client.stream(.{
+        try client.stream(&sharedContext, .{
             .model = options.options.model,
             .maxTokens = options.options.tokensMax,
             .temperature = options.options.temperature,
             .messages = messages.items,
-            .onToken = &onToken,
+            .onToken = onToken,
         });
     }
 
