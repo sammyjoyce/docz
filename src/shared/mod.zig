@@ -20,13 +20,13 @@
 //! Feature-gate by checking `shared.options.feature_*` at comptime.
 
 pub const cli = @import("cli/mod.zig");
-pub const tui = @import("tui/mod.zig");
-pub const render = @import("render/mod.zig");
-pub const components = @import("components/mod.zig");
+pub const tui = if (options.feature_tui) @import("tui/mod.zig") else struct {};
+pub const render = if (options.feature_render) @import("render/mod.zig") else struct {};
+pub const components = if (options.feature_widgets) @import("components/mod.zig") else struct {};
 pub const tools = @import("tools/mod.zig");
 // New guardrail barrels for refactor
-pub const ui = @import("ui/mod.zig");
-pub const widgets = @import("widgets/mod.zig");
+pub const ui = if (options.feature_tui) @import("ui/mod.zig") else struct {};
+pub const widgets = if (options.feature_widgets) @import("widgets/mod.zig") else struct {};
 const build_options = @import("build_options");
 // Network barrel re-export (module, not container struct)
 pub const network = @import("network/mod.zig");
@@ -40,7 +40,7 @@ pub const Event = network.Event;
 // Backward-compat alias
 pub const NetworkClient = network.Service;
 // Align with consolidated terminal layout
-pub const term = @import("term/mod.zig");
+pub const term = if (options.feature_tui) @import("term/mod.zig") else struct {};
 
 // Unified types - consolidated data structures
 pub const types = @import("types.zig");

@@ -6,6 +6,12 @@
 //! - Feature-gate: `comptime if (@import("../shared/mod.zig").options.feature_tui) { ... }`
 //! - Override behavior: define `pub const shared_options = @import("../shared/mod.zig").Options{ ... };` in the root module.
 
+const shared = @import("../mod.zig");
+comptime {
+    if (!shared.options.feature_tui) {
+        @compileError("TUI subsystem disabled; enable feature_tui");
+    }
+}
 const std = @import("std");
 const term_shared = @import("term_shared");
 

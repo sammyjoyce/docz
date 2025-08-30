@@ -9,15 +9,19 @@
 //! including HTTP clients, API integrations, and streaming protocols.
 
 const std = @import("std");
+const shared = @import("../mod.zig");
 
 // Core HTTP client functionality
 pub const curl = @import("curl.zig");
 
 // Anthropic API client (prefer split; legacy available behind -Dlegacy)
 const build_options = @import("build_options");
-pub const anthropic = @import("anthropic/mod.zig");
+pub const anthropic = if (shared.options.feature_network_anthropic)
+    @import("anthropic/mod.zig")
+else
+    struct {};
 /// Deprecated: legacy monolithic client. Enable with `-Dlegacy` only.
-pub const anthropic_legacy = if (build_options.include_legacy)
+pub const anthropic_legacy = if (shared.options.feature_network_anthropic and build_options.include_legacy)
     @import("legacy/mod.zig").anthropic
 else
     struct {};

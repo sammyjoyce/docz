@@ -4,6 +4,13 @@
 //! deep-import subfiles. Tests may gate TUI-dependent helpers behind
 //! `@import("../shared/mod.zig").options.feature_tui`.
 
+const shared = @import("../mod.zig");
+comptime {
+    if (!shared.options.feature_tui) {
+        @compileError("testing subsystem requires feature_tui");
+    }
+}
+
 pub const snapshot = @import("snapshot.zig");
 
 // Re-export main types for convenience
