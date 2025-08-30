@@ -12,10 +12,10 @@
 //! - Keyboard shortcuts for common actions
 
 const std = @import("std");
-const print = std.debug.print;
-const oauth = @import("../oauth/mod.zig");
 const auth_service = @import("../core/Service.zig");
-const network_client = @import("../../network/client.zig");
+const network = @import("../../network/mod.zig");
+const oauth = @import("../oauth/mod.zig");
+const print = std.debug.print;
 
 // Import TUI components
 const progress_mod = @import("../../tui/widgets/rich/progress.zig");
@@ -167,7 +167,7 @@ pub const OAuthWizard = struct {
     statusBar: StatusBar,
     textInput: ?TextInput = null,
     authService: auth_service.Service,
-    networkClient: network_client.Service,
+    networkClient: network.Service,
 
     // Terminal capabilities
     caps: ?term.caps.TermCaps = null,
@@ -230,7 +230,8 @@ pub const OAuthWizard = struct {
 
         // Initialize services
         const auth_svc = auth_service.Service.init(allocator);
-        const net_svc = network_client.Service{};
+        var http_client = try network.curl.HTTPClient.init(allocator);
+        const net_svc = network.Service.init(allocator, http_client, .{});
 
         return Self{
             .allocator = allocator,
@@ -262,6 +263,7 @@ pub const OAuthWizard = struct {
         self.focusController.deinit();
         self.pasteController.deinit();
         self.mouseController.deinit();
+        self.networkClient.deinit();
         self.manualCodeInput.deinit();
         if (self.errorMessage) |msg| {
             self.allocator.free(msg);
@@ -789,12 +791,12 @@ pub const OAuthWizard = struct {
         self.last_network_activity = std.time.timestamp();
 
         // Use network service to check connectivity
-        const test_request = network_client.NetworkRequest{
+        const test_request = network.Request{
             .url = "https://www.google.com",
             .timeout_ms = 5000,
         };
 
-        _ = network_client.Service.request(self.allocator, test_request) catch |err| {
+        var resp = self.networkClient.request(test_request) catch |err| {
             // Network check failed
             self.network_active = false;
             const error_msg = try std.fmt.allocPrint(self.allocator, "Network check failed: {s}", .{@errorName(err)});
@@ -803,6 +805,7 @@ pub const OAuthWizard = struct {
             try self.transitionTo(.error_state);
             return;
         };
+        defer self.allocator.free(resp.body);
 
         self.network_active = false;
         try self.transitionTo(.generating_pkce);
