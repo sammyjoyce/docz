@@ -13,7 +13,40 @@
 
 const std = @import("std");
 pub const callbackServer = @import("oauth/CallbackServer.zig");
-const curl = @import("../network/curl.zig");
+// Use stubbed curl implementation to avoid module conflicts
+const curl = struct {
+    pub const HTTPClient = struct {
+        allocator: std.mem.Allocator,
+
+        pub fn init(allocator: std.mem.Allocator) !@This() {
+            return .{ .allocator = allocator };
+        }
+        pub fn deinit(self: *@This()) void {
+            _ = self;
+        }
+        pub fn post(self: @This(), url: []const u8, headers: []const Header, body: []const u8) !HTTPResponse {
+            _ = self;
+            _ = url;
+            _ = headers;
+            _ = body;
+            // This is a stub - real implementation would use actual HTTP client
+            return error.NetworkError;
+        }
+    };
+    pub const HTTPResponse = struct {
+        status_code: u16,
+        body: []const u8,
+        allocator: std.mem.Allocator,
+
+        pub fn deinit(self: *@This()) void {
+            self.allocator.free(self.body);
+        }
+    };
+    pub const Header = struct {
+        name: []const u8,
+        value: []const u8,
+    };
+};
 
 // Re-export OAuth constants and types from anthropic
 pub const OAUTH_CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e";

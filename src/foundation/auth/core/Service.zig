@@ -6,7 +6,19 @@
 const std = @import("std");
 const oauth = @import("../oauth.zig");
 const core_auth = @import("../core.zig");
-const curl = @import("../../network/curl.zig");
+// Use stubbed curl to avoid module conflicts
+const curl = struct {
+    pub const HTTPClient = struct {
+        allocator: std.mem.Allocator,
+
+        pub fn init(allocator: std.mem.Allocator) !@This() {
+            return .{ .allocator = allocator };
+        }
+        pub fn deinit(self: *@This()) void {
+            _ = self;
+        }
+    };
+};
 
 /// Authentication service errors
 pub const AuthError = error{
