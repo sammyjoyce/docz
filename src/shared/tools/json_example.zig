@@ -6,7 +6,10 @@ const std = @import("std");
 const tools = @import("mod.zig");
 
 // Example 1: Simple file processing tool
-pub fn processFileTool(allocator: std.mem.Allocator, params: std.json.Value) tools.ToolError!std.json.Value {
+pub fn processFileTool(
+    allocator: std.mem.Allocator,
+    params: std.json.Value,
+) (tools.ToolError || tools.ToolJsonError)!std.json.Value {
     // Define the expected request structure
     const ProcessFileRequest = struct {
         filename: []const u8,
@@ -41,7 +44,7 @@ pub fn processFileTool(allocator: std.mem.Allocator, params: std.json.Value) too
     };
 
     // Return success response - this replaces manual JSON building
-    const responseJson = try tools.createSuccessResponse(result);
+    const responseJson = try tools.createSuccessResponse(allocator, result);
     defer allocator.free(responseJson);
 
     return try std.json.parseFromSlice(std.json.Value, allocator, responseJson, .{});
@@ -50,9 +53,12 @@ pub fn processFileTool(allocator: std.mem.Allocator, params: std.json.Value) too
 // Example 2: Tool with ZON configuration
 const config = @import("../../core/config.zon");
 
-pub fn apiCallTool(allocator: std.mem.Allocator, params: std.json.Value) tools.ToolError!std.json.Value {
+pub fn apiCallTool(
+    allocator: std.mem.Allocator,
+    params: std.json.Value,
+) (tools.ToolError || tools.ToolJsonError)!std.json.Value {
     // Convert ZON configuration to JSON at runtime
-    const apiConfig = try tools.convertZonToJson(config.api_settings);
+    const apiConfig = try tools.convertZonToJson(allocator, config.api_settings);
 
     // Define request structure
     const ApiRequest = struct {
@@ -78,14 +84,17 @@ pub fn apiCallTool(allocator: std.mem.Allocator, params: std.json.Value) tools.T
         .data = request.data,
     };
 
-    const responseJson = try tools.createSuccessResponse(apiResult);
+    const responseJson = try tools.createSuccessResponse(allocator, apiResult);
     defer allocator.free(responseJson);
 
     return try std.json.parseFromSlice(std.json.Value, allocator, responseJson, .{});
 }
 
 // Example 3: Tool with validation only
-pub fn validateDataTool(allocator: std.mem.Allocator, params: std.json.Value) tools.ToolError!std.json.Value {
+pub fn validateDataTool(
+    allocator: std.mem.Allocator,
+    params: std.json.Value,
+) (tools.ToolError || tools.ToolJsonError)!std.json.Value {
     // Define validation structure (only for validation, not parsing)
     const ValidationSchema = struct {
         name: []const u8,
@@ -98,14 +107,17 @@ pub fn validateDataTool(allocator: std.mem.Allocator, params: std.json.Value) to
 
     // If validation passes, return success
     const result = .{ .validated = true, .message = "Data is valid" };
-    const responseJson = try tools.createSuccessResponse(result);
+    const responseJson = try tools.createSuccessResponse(allocator, result);
     defer allocator.free(responseJson);
 
     return try std.json.parseFromSlice(std.json.Value, allocator, responseJson, .{});
 }
 
 // Example 4: Error handling with helpers
-pub fn riskyOperationTool(allocator: std.mem.Allocator, params: std.json.Value) tools.ToolError!std.json.Value {
+pub fn riskyOperationTool(
+    allocator: std.mem.Allocator,
+    params: std.json.Value,
+) (tools.ToolError || tools.ToolJsonError)!std.json.Value {
     const request = try tools.parseToolRequest(struct {
         operation: []const u8,
     }, params);
@@ -113,14 +125,14 @@ pub fn riskyOperationTool(allocator: std.mem.Allocator, params: std.json.Value) 
     // Simulate an operation that might fail
     if (std.mem.eql(u8, request.operation, "fail")) {
         // Return error response using helper
-        const errorResponse = try tools.createErrorResponse(tools.ToolError.ProcessingFailed, "Operation intentionally failed for demonstration");
+        const errorResponse = try tools.createErrorResponse(allocator, tools.ToolError.ProcessingFailed, "Operation intentionally failed for demonstration");
         defer allocator.free(errorResponse);
 
         return try std.json.parseFromSlice(std.json.Value, allocator, errorResponse, .{});
     }
 
     const result = .{ .operation = request.operation, .success = true };
-    const responseJson = try tools.createSuccessResponse(result);
+    const responseJson = try tools.createSuccessResponse(allocator, result);
     defer allocator.free(responseJson);
 
     return try std.json.parseFromSlice(std.json.Value, allocator, responseJson, .{});
