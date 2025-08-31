@@ -61,7 +61,7 @@ fn mapAuthError(err: auth.AuthError) anthropic.Error {
 }
 
 /// Initialize Anthropic client using the auth system
-fn initAnthropicClient(allocator: std.mem.Allocator) !anthropic.AnthropicClient {
+fn initAnthropicClient(allocator: std.mem.Allocator) !anthropic.Client {
     // Try to create auth client using available methods
     var authClient = auth.createClient(allocator) catch |err| {
         std.log.err("Failed to initialize authentication: {any}", .{err});
@@ -72,7 +72,7 @@ fn initAnthropicClient(allocator: std.mem.Allocator) !anthropic.AnthropicClient 
     // Create Anthropic client based on auth method
     switch (authClient.credentials) {
         .api_key => |apiKey| {
-            return try anthropic.AnthropicClient.init(allocator, apiKey);
+            return try anthropic.Client.init(allocator, apiKey);
         },
         .oauth => |creds| {
             const credentialsPath = "claude_oauth_creds.json";
@@ -83,7 +83,7 @@ fn initAnthropicClient(allocator: std.mem.Allocator) !anthropic.AnthropicClient 
                 .refreshToken = creds.refreshToken,
                 .expiresAt = creds.expiresAt,
             };
-            return try anthropic.AnthropicClient.initWithOAuth(allocator, anthropicCreds, credentialsPath);
+            return try anthropic.Client.initWithOAuth(allocator, anthropicCreds, credentialsPath);
         },
         .none => {
             std.log.err("No authentication method available - network access disabled for this agent.", .{});

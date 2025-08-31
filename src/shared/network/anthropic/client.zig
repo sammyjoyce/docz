@@ -30,7 +30,7 @@ pub const AuthType = models.AuthType;
 pub const Credentials = models.Credentials;
 pub const Usage = models.Usage;
 pub const Error = models.Error;
-pub const CostCalc = models.CostCalc;
+pub const CostCalc = models.CostCalculator;
 
 /// High-level request interface for messages API
 pub const MessageParameters = struct {

@@ -287,12 +287,12 @@ pub const Agent = struct {
 
     /// Create an Anthropic client using current authentication
     /// This is a convenience method for agents that need to make API calls
-    pub fn createAnthropicClient(self: *Self) !*anthropic.AnthropicClient {
+    pub fn createAnthropicClient(self: *Self) !*anthropic.Client {
         const client = self.currentAuthClient() orelse return error.AuthNotInitialized;
         // Initialize the proper network client based on auth method
         switch (client.credentials) {
             .api_key => |key| {
-                return try anthropic.AnthropicClient.init(self.allocator, key);
+                return try anthropic.Client.init(self.allocator, key);
             },
             .oauth => |oauthCreds| {
                 // Map auth.oauth.Credentials to anthropic.Credentials and use OAuth-aware init
@@ -304,7 +304,7 @@ pub const Agent = struct {
                 };
                 // Persist path used by auth core for refreshed tokens
                 const path: []const u8 = "claude_oauth_creds.json";
-                return try anthropic.AnthropicClient.initWithOAuth(self.allocator, creds, path);
+                return try anthropic.Client.initWithOAuth(self.allocator, creds, path);
             },
             .none => return error.NoCredentials,
         }

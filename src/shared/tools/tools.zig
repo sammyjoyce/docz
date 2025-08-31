@@ -344,7 +344,7 @@ fn oracleTool(ctx: *SharedContext, allocator: std.mem.Allocator, input: []const 
         return allocator.dupe(u8, response) catch ToolError.OutOfMemory;
     }
 
-    var client = anthropic.AnthropicClient.init(allocator, apiKey) catch |err| switch (err) {
+    var client = anthropic.Client.init(allocator, apiKey) catch |err| switch (err) {
         anthropic.Error.MissingAPIKey => return ToolError.AuthError,
         anthropic.Error.OutOfMemory => return ToolError.OutOfMemory,
         else => {

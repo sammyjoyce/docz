@@ -1112,6 +1112,8 @@ const ModuleBuilder = struct {
 
         const tools = self.createModule(buildConfig.PATHS.TOOLS_ZIG);
         tools.addImport("anthropic_shared", anthropic);
+        const shared_options = self.createModule("src/shared/options.zig");
+        tools.addImport("shared_options", shared_options);
 
         const config = self.createModule(buildConfig.PATHS.CONFIG_ZIG);
         const context_mod = self.createModule("src/shared/context.zig");
@@ -1237,6 +1239,7 @@ const ModuleBuilder = struct {
         modules.config = self.createModule(buildConfig.PATHS.CONFIG_ZIG);
         modules.engine = self.createModule(buildConfig.PATHS.ENGINE_ZIG);
         modules.tools = self.createModule(buildConfig.PATHS.TOOLS_ZIG);
+        const shared_options = self.createModule("src/shared/options.zig");
         var context_mod = self.createModule("src/shared/context.zig");
         // Always include json_reflection module for comptime JSON processing
         // This module provides compile-time JSON reflection utilities that are
@@ -1316,6 +1319,7 @@ const ModuleBuilder = struct {
             if (modules.tools) |tools| {
                 modules.engine.?.addImport("tools_shared", tools);
                 tools.addImport("context_shared", context_mod);
+                tools.addImport("shared_options", shared_options);
             }
 
             // Engine/TUI need SharedContext
