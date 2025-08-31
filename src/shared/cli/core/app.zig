@@ -11,6 +11,7 @@ pub const CliError = error{
     InvalidCommand,
     Io,
     Rendering,
+    Memory,
     Unknown,
 };
 
@@ -21,14 +22,10 @@ pub const CliApp = struct {
 
     pub fn init(allocator: std.mem.Allocator) CliError!CliApp {
         // Initialize context with terminal capabilities
-        var ctx = state.Cli.init(allocator) catch |err| switch (err) {
-            else => return CliError.Io,
-        };
+        var ctx = state.Cli.init(allocator) catch return CliError.Io;
 
         // Initialize command router
-        const commandRouter = router.CommandRouter.init(allocator, &ctx) catch |err| switch (err) {
-            else => return CliError.Unknown,
-        };
+        const commandRouter = router.CommandRouter.init(allocator, &ctx) catch return CliError.Unknown;
 
         return CliApp{
             .allocator = allocator,
@@ -68,24 +65,20 @@ pub const CliApp = struct {
         }
 
         // Execute command through router
-        const result = self.router.execute(parsedArgs) catch |err| switch (err) {
-            types.CliError.UnknownCommand, types.CliError.UnknownSubcommand => return CliError.InvalidCommand,
-            else => return CliError.Unknown,
+        const result = self.router.execute(parsedArgs) catch |err| return switch (err) {
+            types.CliError.UnknownCommand, types.CliError.UnknownSubcommand => CliError.InvalidCommand,
+            else => CliError.Unknown,
         };
 
         // Handle result
         if (result.success) {
             if (result.output) |output| {
-                self.state.terminal.printf("{s}", .{output}, null) catch |err| switch (err) {
-                    else => return CliError.Rendering,
-                };
+                self.state.terminal.printf("{s}", .{output}, null) catch return CliError.Rendering;
             }
             return result.exit_code;
         } else {
             if (result.errorMessage) |msg| {
-                self.state.terminal.printf("{s}\n", .{msg}, .{ .fg_color = .{ .rgb = .{ .r = 220, .g = 20, .b = 60 } } }) catch |err| switch (err) {
-                    else => return CliError.Rendering,
-                };
+                self.state.terminal.printf("{s}\n", .{msg}, .{ .fg_color = .{ .rgb = .{ .r = 220, .g = 20, .b = 60 } } }) catch return CliError.Rendering;
             }
             return result.exit_code;
         }
@@ -100,17 +93,15 @@ pub const CliApp = struct {
         const ParserError = ParserMod.CliError;
 
         // The parser expects argv-style input including program name at index 0.
-        var argv = self.allocator.alloc([]const u8, args.len + 1) catch |err| switch (err) {
-            else => return CliError.Unknown,
-        };
+        var argv = self.allocator.alloc([]const u8, args.len + 1) catch return CliError.Memory;
         defer self.allocator.free(argv);
         argv[0] = "docz"; // synthetic argv[0]
         for (args, 0..) |a, i| argv[i + 1] = a;
 
         var parser = ParserMod.Parser.init(self.allocator);
-        var parsed = parser.parse(argv) catch |err| switch (err) {
-            ParserError.UnknownCommand, ParserError.UnknownSubcommand => return CliError.InvalidCommand,
-            else => return CliError.ParseFailed,
+        var parsed = parser.parse(argv) catch |err| return switch (err) {
+            ParserError.UnknownCommand, ParserError.UnknownSubcommand => CliError.InvalidCommand,
+            else => CliError.ParseFailed,
         };
         defer parsed.deinit();
 
@@ -133,9 +124,7 @@ pub const CliApp = struct {
 
         // Positional prompt as raw message (dupe for lifetime)
         if (parsed.prompt) |p| {
-            cliArgs.rawMessage = self.allocator.dupe(u8, p) catch |err| switch (err) {
-                else => return CliError.Unknown,
-            };
+            cliArgs.rawMessage = self.allocator.dupe(u8, p) catch return CliError.Memory;
         }
 
         return cliArgs;
@@ -171,38 +160,24 @@ pub const CliApp = struct {
             \\Terminal Features:
         ;
 
-        writer.writeAll(helpText) catch |err| switch (err) {
-            else => return CliError.Io,
-        };
+        writer.writeAll(helpText) catch return CliError.Io;
 
         // Show available terminal features
         if (self.state.hasFeature(.hyperlinks)) {
-            writer.writeAll("  ✓ Hyperlinks supported\n") catch |err| switch (err) {
-                else => return CliError.Io,
-            };
+            writer.writeAll("  ✓ Hyperlinks supported\n") catch return CliError.Io;
         }
         if (self.state.hasFeature(.clipboard)) {
-            writer.writeAll("  ✓ Clipboard integration\n") catch |err| switch (err) {
-                else => return CliError.Io,
-            };
+            writer.writeAll("  ✓ Clipboard integration\n") catch return CliError.Io;
         }
         if (self.state.hasFeature(.notifications)) {
-            writer.writeAll("  ✓ System notifications\n") catch |err| switch (err) {
-                else => return CliError.Io,
-            };
+            writer.writeAll("  ✓ System notifications\n") catch return CliError.Io;
         }
         if (self.state.hasFeature(.graphics)) {
-            writer.writeAll("  ✓ Graphics\n") catch |err| switch (err) {
-                else => return CliError.Io,
-            };
+            writer.writeAll("  ✓ Graphics\n") catch return CliError.Io;
         }
 
-        writer.writeAll("\n") catch |err| switch (err) {
-            else => return CliError.Io,
-        };
-        writer.flush() catch |err| switch (err) {
-            else => return CliError.Io,
-        };
+        writer.writeAll("\n") catch return CliError.Io;
+        writer.flush() catch return CliError.Io;
     }
 
     fn showVersion(self: *CliApp) CliError!void {
@@ -211,11 +186,7 @@ pub const CliApp = struct {
         var stdoutWriter = std.fs.File.stdout().writer(&stdoutBuffer);
         const writer = &stdoutWriter.interface;
         const versionText = "docz 1.0.0\n";
-        writer.writeAll(versionText) catch |err| switch (err) {
-            else => return CliError.Io,
-        };
-        writer.flush() catch |err| switch (err) {
-            else => return CliError.Io,
-        };
+        writer.writeAll(versionText) catch return CliError.Io;
+        writer.flush() catch return CliError.Io;
     }
 };
