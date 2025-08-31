@@ -2,15 +2,18 @@
 
 const std = @import("std");
 const engine_mod = @import("engine.zig");
+const logging = @import("src/shared/logger.zig");
 
 pub const KPICard = struct {
     allocator: std.mem.Allocator,
+    logger: logging.Logger,
 
-    pub fn init(allocator: std.mem.Allocator, capability_tier: engine_mod.DashboardEngine.CapabilityTier) !*KPICard {
+    pub fn init(allocator: std.mem.Allocator, capability_tier: engine_mod.DashboardEngine.CapabilityTier, logFn: ?logging.Logger) !*KPICard {
         _ = capability_tier;
         const card = try allocator.create(KPICard);
         card.* = .{
             .allocator = allocator,
+            .logger = logFn orelse logging.defaultLogger,
         };
         return card;
     }
@@ -23,7 +26,7 @@ pub const KPICard = struct {
         _ = self;
         _ = render_pipeline;
         _ = bounds;
-        std.debug.print("💳 KPI Card Widget\n", .{});
+        self.logger("💳 KPI Card Widget\n", .{});
     }
 
     pub fn handleInput(self: *KPICard, input: anytype) !bool {

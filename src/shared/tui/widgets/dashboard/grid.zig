@@ -2,15 +2,18 @@
 
 const std = @import("std");
 const engine_mod = @import("engine.zig");
+const logging = @import("src/shared/logger.zig");
 
 pub const Grid = struct {
     allocator: std.mem.Allocator,
+    logger: logging.Logger,
 
-    pub fn init(allocator: std.mem.Allocator, capability_tier: engine_mod.DashboardEngine.CapabilityTier) !*Grid {
+    pub fn init(allocator: std.mem.Allocator, capability_tier: engine_mod.DashboardEngine.CapabilityTier, logFn: ?logging.Logger) !*Grid {
         _ = capability_tier;
         const grid = try allocator.create(Grid);
         grid.* = .{
             .allocator = allocator,
+            .logger = logFn orelse logging.defaultLogger,
         };
         return grid;
     }
@@ -23,7 +26,7 @@ pub const Grid = struct {
         _ = self;
         _ = render_pipeline;
         _ = bounds;
-        std.debug.print("📋 Grid Widget\n", .{});
+        self.logger("📋 Grid Widget\n", .{});
     }
 
     pub fn handleInput(self: *Grid, input: anytype) !bool {

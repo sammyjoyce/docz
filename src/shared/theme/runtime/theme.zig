@@ -8,6 +8,13 @@ const Settings = @import("config.zig").Settings;
 const Inheritance = @import("Inheritance.zig").Inheritance;
 const SystemTheme = @import("SystemTheme.zig").SystemTheme;
 const Validator = @import("Validator.zig").Validator;
+const logging = @import("src/shared/logger.zig");
+
+pub const Logger = logging.Logger;
+
+fn defaultLogger(fmt: []const u8, args: anytype) void {
+    logging.defaultLogger(fmt, args);
+}
 
 pub const Theme = struct {
     allocator: std.mem.Allocator,
@@ -19,6 +26,7 @@ pub const Theme = struct {
     validator: *Validator,
     configPath: []const u8,
     autoSave: bool,
+    logger: Logger,
 
     // Event callbacks
     onThemeChange: ?*const fn (*ColorScheme) void,
@@ -27,7 +35,7 @@ pub const Theme = struct {
 
     const Self = @This();
 
-    pub fn init(allocator: std.mem.Allocator) !*Self {
+    pub fn init(allocator: std.mem.Allocator, logFn: ?Logger) !*Self {
         const self = try allocator.create(Self);
         self.* = .{
             .allocator = allocator,
@@ -39,6 +47,7 @@ pub const Theme = struct {
             .validator = try Validator.init(allocator),
             .configPath = try getDefaultConfigPath(allocator),
             .autoSave = true,
+            .logger = logFn orelse defaultLogger,
             .onThemeChange = null,
             .onThemeLoaded = null,
             .onThemeError = null,
@@ -62,7 +71,7 @@ pub const Theme = struct {
         // Save config if auto-save is enabled
         if (self.autoSave) {
             self.saveConfig() catch |err| {
-                std.debug.print("Failed to save theme config: {}\n", .{err});
+                self.logger("Failed to save theme config: {}\n", .{err});
             };
         }
 
@@ -139,7 +148,7 @@ pub const Theme = struct {
             defer self.allocator.free(themePath);
 
             const theme = self.loadThemeFromFile(themePath) catch |err| {
-                std.debug.print("Failed to load theme {s}: {}\n", .{ entry.name, err });
+                self.logger("Failed to load theme {s}: {}\n", .{ entry.name, err });
                 continue;
             };
 

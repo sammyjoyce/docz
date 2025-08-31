@@ -8,6 +8,7 @@
 
 const std = @import("std");
 const engine_mod = @import("engine.zig");
+const logging = @import("src/shared/logger.zig");
 const term_caps = @import("../../term/capabilities.zig");
 const graphics_manager = @import("../../term/graphics_manager.zig");
 const term_shared = @import("../../../../term_shared.zig");
@@ -25,6 +26,7 @@ pub const LineChart = struct {
     axes: AxesConfig,
     interaction: InteractionState,
     animation: AnimationState,
+    logger: logging.Logger,
 
     pub const Point = struct {
         x: f64,
@@ -167,7 +169,7 @@ pub const LineChart = struct {
         height: u32,
     };
 
-    pub fn init(allocator: std.mem.Allocator, capability_tier: engine_mod.DashboardEngine.CapabilityTier) !*LineChart {
+    pub fn init(allocator: std.mem.Allocator, capability_tier: engine_mod.DashboardEngine.CapabilityTier, logFn: ?logging.Logger) !*LineChart {
         const chart = try allocator.create(LineChart);
 
         chart.* = .{
@@ -184,6 +186,7 @@ pub const LineChart = struct {
             .axes = .{},
             .interaction = .{},
             .animation = .{},
+            .logger = logFn orelse logging.defaultLogger,
         };
 
         return chart;
@@ -330,7 +333,7 @@ pub const LineChart = struct {
         // 4. Encode as Kitty graphics protocol image
         // 5. Output to terminal
 
-        std.debug.print("[Kitty WebGL Line Chart - {d} series]\n", .{self.series.items.len});
+        self.logger("[Kitty WebGL Line Chart - {d} series]\n", .{self.series.items.len});
     }
 
     fn renderSixelOptimized(self: *LineChart, bounds: Bounds) !void {

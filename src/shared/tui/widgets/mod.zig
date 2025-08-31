@@ -4,6 +4,15 @@
 
 const std = @import("std");
 const SharedContext = @import("context_shared").SharedContext;
+const logging = @import("src/shared/logger.zig");
+
+pub const Logger = logging.Logger;
+
+var logger: Logger = logging.defaultLogger;
+
+pub fn setLogger(l: Logger) void {
+    logger = l;
+}
 
 // Core widgets (essential functionality)
 pub const core = @import("core/mod.zig");
@@ -121,30 +130,30 @@ pub fn deinitNotifications(ctx: *SharedContext) void {
 
 pub fn notifyInfo(ctx: *SharedContext, message: []const u8) void {
     _ = ctx;
-    std.debug.print("ℹ️  {s}\n", .{message});
+    logger("ℹ️  {s}\n", .{message});
 }
 
 pub fn notifySuccess(ctx: *SharedContext, message: []const u8) void {
     _ = ctx;
-    std.debug.print("✅ {s}\n", .{message});
+    logger("✅ {s}\n", .{message});
 }
 
 pub fn notifyWarning(ctx: *SharedContext, message: []const u8) void {
     _ = ctx;
-    std.debug.print("⚠️  {s}\n", .{message});
+    logger("⚠️  {s}\n", .{message});
 }
 
 pub fn notifyError(ctx: *SharedContext, message: []const u8) void {
     _ = ctx;
-    std.debug.print("❌ {s}\n", .{message});
+    logger("❌ {s}\n", .{message});
 }
 
 pub fn notifyDebug(ctx: *SharedContext, message: []const u8) void {
     _ = ctx;
-    std.debug.print("🐛 {s}\n", .{message});
+    logger("🐛 {s}\n", .{message});
 }
 
 pub fn notifyCritical(ctx: *SharedContext, message: []const u8) void {
     _ = ctx;
-    std.debug.print("🚨 {s}\n", .{message});
+    logger("🚨 {s}\n", .{message});
 }

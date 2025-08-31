@@ -40,7 +40,8 @@ pub const options: Options = blk: {
 };
 
 // Runtime exports - always available
-pub const Theme = @import("runtime/Theme.zig").Theme;
+pub const Theme = @import("runtime/theme.zig").Theme;
+pub const Logger = @import("runtime/theme.zig").Logger;
 pub const Settings = @import("runtime/config.zig").Settings;
 pub const ColorScheme = @import("runtime/ColorScheme.zig").ColorScheme;
 pub const Color = @import("runtime/Color.zig").Color;
@@ -59,8 +60,8 @@ pub const Development = @import("tools/Development.zig").Development;
 pub const Generator = @import("tools/Generator.zig").Generator;
 
 /// Initialize the global theme manager
-pub fn init(allocator: std.mem.Allocator) !*Theme {
-    return Theme.init(allocator);
+pub fn init(allocator: std.mem.Allocator, logger: ?Logger) !*Theme {
+    return Theme.init(allocator, logger);
 }
 
 /// Quick access to common theme operations
@@ -92,7 +93,7 @@ pub const Quick = struct {
 
 test "theme manager initialization" {
     const allocator = std.testing.allocator;
-    const manager = try init(allocator);
+    const manager = try init(allocator, null);
     defer manager.deinit();
 
     try std.testing.expect(manager.themes.count() > 0);

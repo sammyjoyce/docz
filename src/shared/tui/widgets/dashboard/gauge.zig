@@ -4,6 +4,7 @@
 
 const std = @import("std");
 const engine_mod = @import("engine.zig");
+const logging = @import("src/shared/logger.zig");
 
 pub const Gauge = struct {
     allocator: std.mem.Allocator,
@@ -15,6 +16,7 @@ pub const Gauge = struct {
     thresholds: std.ArrayList(Threshold),
     style: Style,
     render_mode: RenderMode,
+    logger: logging.Logger,
 
     pub const Threshold = struct {
         value: f64,
@@ -58,7 +60,7 @@ pub const Gauge = struct {
         };
     };
 
-    pub fn init(allocator: std.mem.Allocator, capability_tier: engine_mod.DashboardEngine.CapabilityTier) !*Gauge {
+    pub fn init(allocator: std.mem.Allocator, capability_tier: engine_mod.DashboardEngine.CapabilityTier, logFn: ?logging.Logger) !*Gauge {
         const gauge = try allocator.create(Gauge);
         gauge.* = .{
             .allocator = allocator,
@@ -74,6 +76,7 @@ pub const Gauge = struct {
                 .standard => .{ .unicode = .{} },
                 .minimal => .{ .ascii = .{} },
             },
+            .logger = logFn orelse logging.defaultLogger,
         };
         return gauge;
     }
@@ -127,17 +130,17 @@ pub const Gauge = struct {
     // Implementation stubs
     fn renderRadialGraphics(self: *Gauge, bounds: anytype) !void {
         _ = bounds;
-        std.debug.print("🎯 Radial Gauge (Graphics): {d:.1}%\n", .{self.value});
+        self.logger("🎯 Radial Gauge (Graphics): {d:.1}%\n", .{self.value});
     }
 
     fn renderLinearGraphics(self: *Gauge, bounds: anytype) !void {
         _ = bounds;
-        std.debug.print("▰▰▰▰▱▱ Linear Gauge (Graphics): {d:.1}%\n", .{self.value});
+        self.logger("▰▰▰▰▱▱ Linear Gauge (Graphics): {d:.1}%\n", .{self.value});
     }
 
     fn renderSemiCircleGraphics(self: *Gauge, bounds: anytype) !void {
         _ = bounds;
-        std.debug.print("◐ Semi-Circle Gauge (Graphics): {d:.1}%\n", .{self.value});
+        self.logger("◐ Semi-Circle Gauge (Graphics): {d:.1}%\n", .{self.value});
     }
 
     fn renderRadialUnicode(self: *Gauge, bounds: anytype) !void {
@@ -145,7 +148,7 @@ pub const Gauge = struct {
         const chars = "○◔◐◕●";
         const index = @as(usize, @intFromFloat(self.value / 25.0));
         const char_index = @min(index, chars.len - 1);
-        std.debug.print("{c} Radial Gauge (Unicode): {d:.1}%\n", .{ chars[char_index], self.value });
+        self.logger("{c} Radial Gauge (Unicode): {d:.1}%\n", .{ chars[char_index], self.value });
     }
 
     fn renderLinearUnicode(self: *Gauge, bounds: anytype) !void {
@@ -154,28 +157,28 @@ pub const Gauge = struct {
         const bar_width = 20;
         const filled = @as(u32, @intFromFloat(progress * @as(f64, @floatFromInt(bar_width))));
 
-        std.debug.print("▕", .{});
+        self.logger("▕", .{});
         var i: u32 = 0;
         while (i < bar_width) : (i += 1) {
             if (i < filled) {
-                std.debug.print("█", .{});
+                self.logger("█", .{});
             } else {
-                std.debug.print("░", .{});
+                self.logger("░", .{});
             }
         }
-        std.debug.print("▏ {d:.1}%\n", .{self.value});
+        self.logger("▏ {d:.1}%\n", .{self.value});
     }
 
     fn renderSemiCircleUnicode(self: *Gauge, bounds: anytype) !void {
         _ = bounds;
-        std.debug.print("◜◝◞◟ Semi-Circle Gauge (Unicode): {d:.1}%\n", .{self.value});
+        self.logger("◜◝◞◟ Semi-Circle Gauge (Unicode): {d:.1}%\n", .{self.value});
     }
 
     fn renderRadialASCII(self: *Gauge, bounds: anytype) !void {
         _ = bounds;
         const progress = self.value / (self.max_value - self.min_value);
         const indicator = if (progress < 0.25) "|" else if (progress < 0.5) "/" else if (progress < 0.75) "-" else "\\";
-        std.debug.print("({s}) {d:.1}%\n", .{ indicator, self.value });
+        self.logger("({s}) {d:.1}%\n", .{ indicator, self.value });
     }
 
     fn renderLinearASCII(self: *Gauge, bounds: anytype) !void {
@@ -196,15 +199,15 @@ pub const Gauge = struct {
             .angle => '>',
         };
 
-        std.debug.print("{c}", .{open});
+        self.logger("{c}", .{open});
         var i: u32 = 0;
         while (i < bar_width) : (i += 1) {
             if (i < filled) {
-                std.debug.print("{c}", .{ascii_mode.fill_char});
+                self.logger("{c}", .{ascii_mode.fill_char});
             } else {
-                std.debug.print("{c}", .{ascii_mode.empty_char});
+                self.logger("{c}", .{ascii_mode.empty_char});
             }
         }
-        std.debug.print("{c} {d:.1}%\n", .{ close, self.value });
+        self.logger("{c} {d:.1}%\n", .{ close, self.value });
     }
 };
