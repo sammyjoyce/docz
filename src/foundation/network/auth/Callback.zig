@@ -69,12 +69,15 @@ pub const Result = struct {
     errorDescription: ?[]const u8 = null,
     /// Timestamp when received
     receivedAt: i64,
+    /// The redirect URI used for this flow (if a local callback server was used)
+    redirectUri: ?[]const u8 = null,
 
     pub fn deinit(self: Result, allocator: std.mem.Allocator) void {
         allocator.free(self.code);
         allocator.free(self.state);
         if (self.errorCode) |err| allocator.free(err);
         if (self.errorDescription) |desc| allocator.free(desc);
+        if (self.redirectUri) |r| allocator.free(r);
     }
 };
 
@@ -186,10 +189,7 @@ pub const Server = struct {
         // caller also defers `pkceParams.deinit(allocator)`.
         self.activeSessions.deinit();
 
-        // Stop server if running
-        if (self.server) |*server| {
-            server.deinit();
-        }
+        // Server already stopped in shutdown(); nothing else to do here.
     }
 
     /// Start the callback server
@@ -272,7 +272,8 @@ pub const Server = struct {
         }
 
         while (std.time.milliTimestamp() < deadline) {
-            if (self.resultChannel.tryReceive()) |result| {
+            if (self.resultChannel.tryReceive()) |res| {
+                var result = res;
                 // Verify state parameter
                 if (!std.mem.eql(u8, result.state, expectedState)) {
                     result.deinit(self.allocator);
@@ -292,6 +293,8 @@ pub const Server = struct {
                     print("\n{s}✅ Authorization code received!{s}\n", .{ ansi.fg.green, ansi.style.reset });
                 }
 
+                // Attach the actual redirect URI used by the local server
+                result.redirectUri = try std.fmt.allocPrint(self.allocator, "http://localhost:{d}/callback", .{self.config.port});
                 return result;
             }
 
@@ -304,6 +307,7 @@ pub const Server = struct {
     /// Accept connections loop (runs in separate thread)
     fn acceptLoop(self: *Self) void {
         while (!self.shutdownRequested.load(.seq_cst)) {
+            if (self.server == null) break;
             const connection = self.server.?.accept() catch |err| {
                 if (err == error.SocketNotListening) break;
                 std.Thread.sleep(100_000_000); // 100ms retry
@@ -719,7 +723,8 @@ pub fn integrateWithWizard(
     defer authResult.deinit(allocator);
 
     // Exchange code for tokens
-    const credentials = try oauth.exchangeCodeForTokens(allocator, authResult.code, pkceParams);
+    const redirect = authResult.redirectUri orelse oauth.OAUTH_REDIRECT_URI;
+    const credentials = try oauth.exchangeCodeForTokens(allocator, authResult.code, pkceParams, redirect);
 
     // Save credentials
     try oauth.saveCredentials(allocator, "claude_oauth_creds.json", credentials);

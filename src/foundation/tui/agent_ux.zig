@@ -57,9 +57,9 @@ const session_manager_mod = @import("../tui/components/Session.zig");
 const welcome_screen_mod = @import("../tui/components/welcome_screen.zig");
 
 // Shared infrastructure
-const term = @import("../../term/mod.zig");
+const term = @import("../../term.zig");
 const config_shared = @import("../../core/config.zig");
-const theme = @import("../../theme/mod.zig");
+const theme = @import("../../theme.zig");
 
 /// Configuration for the Agent UX framework
 pub const UXConfig = struct {

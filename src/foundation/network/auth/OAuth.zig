@@ -243,19 +243,24 @@ fn parseTokenResponse(allocator: std.mem.Allocator, jsonResponse: []const u8) !C
     defer parsed.deinit();
 
     // Check if response contains an error
-    if (parsed.value.object.get("error")) |errorField| {
-        const errorCode = errorField.string;
-        std.log.err("OAuth error response: {s}", .{errorCode});
-
-        if (std.mem.eql(u8, errorCode, "invalid_grant")) {
-            return Error.InvalidGrant;
-        } else if (std.mem.eql(u8, errorCode, "invalid_request")) {
-            return Error.InvalidFormat;
-        } else {
+    if (parsed.value == .object) {
+        if (parsed.value.object.get("error")) |errorField| {
+            var code: []const u8 = "unknown_error";
+            if (errorField == .string) {
+                code = errorField.string;
+            } else if (errorField == .object) {
+                if (errorField.object.get("type")) |t| {
+                    if (t == .string) code = t.string;
+                }
+            }
+            std.log.err("OAuth error response type: {s}", .{code});
+            if (std.mem.eql(u8, code, "invalid_grant")) return Error.InvalidGrant;
+            if (std.mem.eql(u8, code, "invalid_request")) return Error.InvalidFormat;
             return Error.AuthError;
         }
     }
 
+    if (parsed.value != .object) return Error.InvalidFormat;
     const obj = parsed.value.object;
 
     // Extract required fields with proper error handling
@@ -291,18 +296,24 @@ fn parseTokenResponse(allocator: std.mem.Allocator, jsonResponse: []const u8) !C
 }
 
 /// Exchange authorization code for tokens using PKCE flow
-pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorizationCode: []const u8, pkceParams: Pkce) !Credentials {
-    // Prepare form data for token exchange
-    const fields = [_]struct { key: []const u8, value: []const u8 }{
-        .{ .key = "grant_type", .value = "authorization_code" },
-        .{ .key = "code", .value = authorizationCode },
-        .{ .key = "redirect_uri", .value = OAUTH_REDIRECT_URI },
-        .{ .key = "code_verifier", .value = pkceParams.codeVerifier },
-        .{ .key = "client_id", .value = OAUTH_CLIENT_ID },
-    };
-
-    const formData = try encodeFormData(allocator, fields[0..]);
-    defer allocator.free(formData);
+pub fn exchangeCodeForTokens(
+    allocator: std.mem.Allocator,
+    authorizationCode: []const u8,
+    pkceParams: Pkce,
+    redirectUri: []const u8,
+) !Credentials {
+    // Prepare JSON body for token exchange (Anthropic expects JSON)
+    const body = try std.fmt.allocPrint(allocator,
+        \\{{
+        \\  "grant_type": "authorization_code",
+        \\  "code": "{s}",
+        \\  "redirect_uri": "{s}",
+        \\  "code_verifier": "{s}",
+        \\  "client_id": "{s}",
+        \\  "state": "{s}"
+        \\}}
+    , .{ authorizationCode, redirectUri, pkceParams.codeVerifier, OAUTH_CLIENT_ID, pkceParams.state });
+    defer allocator.free(body);
 
     // Initialize HTTP client
     var httpClient = try curl.HTTPClient.init(allocator);
@@ -310,8 +321,9 @@ pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorizationCode: []
 
     // Prepare headers
     const headers = [_]curl.Header{
-        .{ .name = "Content-Type", .value = "application/x-www-form-urlencoded" },
+        .{ .name = "Content-Type", .value = "application/json" },
         .{ .name = "Accept", .value = "application/json" },
+        .{ .name = "User-Agent", .value = "docz/1.0 (libcurl)" },
     };
 
     // Make POST request to token endpoint
@@ -319,7 +331,7 @@ pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorizationCode: []
         .method = .POST,
         .url = OAUTH_TOKEN_ENDPOINT,
         .headers = &headers,
-        .body = formData,
+        .body = body,
         .timeout_ms = 30000,
         .verify_ssl = true,
     };
@@ -335,9 +347,10 @@ pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorizationCode: []
         std.log.err("OAuth token exchange failed with status: {d}", .{response.status_code});
         std.log.err("Response body: {s}", .{response.body});
 
-        // Try to parse error response
-        if (std.mem.indexOf(u8, response.body, "error")) |_| {
-            _ = parseTokenResponse(allocator, response.body) catch {};
+        // Try to log error details (without panicking on structure)
+        if (std.mem.indexOf(u8, response.body, "message")) |idx| {
+            _ = idx; // suppress unused
+            std.log.err("OAuth error response: {s}", .{response.body});
         }
 
         return Error.AuthError;
@@ -489,7 +502,7 @@ pub fn setupOAuth(allocator: std.mem.Allocator) !Credentials {
     const authCode = std.mem.trim(u8, buffer[0..bytesRead], " \t\r\n");
 
     // Exchange code for tokens
-    const credentials = try exchangeCodeForTokens(allocator, authCode, pkceParams);
+    const credentials = try exchangeCodeForTokens(allocator, authCode, pkceParams, OAUTH_REDIRECT_URI);
 
     // Save credentials
     try saveCredentials(allocator, "claude_oauth_creds.json", credentials);

@@ -254,19 +254,15 @@ pub fn createTable(allocator: std.mem.Allocator, headers: []const []const u8, ro
     }
 
     // Set alignments
-    var new_alignments = try allocator.alloc(Alignment, headers.len);
+    var new_alignments: []Alignment = undefined;
     if (alignments) |aligns| {
-        const copy_len = @min(aligns.len, headers.len);
-        @memcpy(new_alignments[0..copy_len], aligns[0..copy_len]);
-        // Fill any remaining with left alignment
-        for (new_alignments[copy_len..]) |*alignment| {
-            alignment.* = Alignment.left;
-        }
+        // Preserve provided length to allow validation to detect mismatches
+        new_alignments = try allocator.alloc(Alignment, aligns.len);
+        @memcpy(new_alignments[0..aligns.len], aligns[0..aligns.len]);
     } else {
-        // Default to left alignment
-        for (new_alignments) |*alignment| {
-            alignment.* = Alignment.left;
-        }
+        // Default to left alignment, sized to header count
+        new_alignments = try allocator.alloc(Alignment, headers.len);
+        for (new_alignments) |*alignment| alignment.* = Alignment.left;
     }
 
     return Table{
@@ -538,9 +534,8 @@ pub fn repairTable(allocator: std.mem.Allocator, tbl: *Table, config: RepairConf
         // Rows / cells: build a replacement row lazily only when needed
         for (tbl.rows, 0..) |row, r_i| {
             var changed = false;
-            var new_row: []const u8 = undefined; // placeholder to satisfy comptime; we will allocate a slice of slices lazily
             // We cannot declare []const []const u8 without init; use optional to manage laziness
-            var maybe_new_row: ?[]const []const u8 = null;
+            var maybe_new_row: ?[][]const u8 = null;
 
             // First pass: detect and, upon first change, allocate and copy prefix
             for (row, 0..) |cell, j| {
@@ -581,7 +576,7 @@ pub fn repairTable(allocator: std.mem.Allocator, tbl: *Table, config: RepairConf
         var any_filled = false;
         for (tbl.rows, 0..) |row, r_i| {
             var changed = false;
-            var maybe_new_row: ?[]const []const u8 = null;
+            var maybe_new_row: ?[][]const u8 = null;
             for (row, 0..) |cell, k| {
                 if (cell.len == 0 and !changed) {
                     var alloc_row = try allocator.alloc([]const u8, row.len);
@@ -627,7 +622,10 @@ pub fn validateAndRepairTable(
     validation: ValidationConfig,
     repair: RepairConfig,
 ) Error!ValidateRepairResult {
-    const result = try validateTable(allocator, tbl, validation);
+    var before = try validateTable(allocator, tbl, validation);
     const repairs = try repairTable(allocator, tbl, repair);
-    return .{ .validation = result, .repairs_made = repairs };
+    // Re-validate after repairs for final view
+    before.deinit(allocator);
+    const after = try validateTable(allocator, tbl, validation);
+    return .{ .validation = after, .repairs_made = repairs };
 }

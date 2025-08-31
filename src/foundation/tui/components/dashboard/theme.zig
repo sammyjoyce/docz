@@ -2,8 +2,8 @@
 //! Provides theme support for the adaptive dashboard using the centralized theme system
 
 const std = @import("std");
-const theme = @import("../../../theme/mod.zig");
-const term_caps = @import("../../../term/mod.zig");
+const theme = @import("../../../theme.zig");
+const term_caps = @import("../../../term.zig");
 
 /// Dashboard-specific theme colors and styles
 pub const DashboardTheme = struct {

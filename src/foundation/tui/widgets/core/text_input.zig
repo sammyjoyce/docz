@@ -4,9 +4,9 @@ const print = std.debug.print;
 const Bounds = @import("../../core/bounds.zig").Bounds;
 const Color = @import("../../themes/default.zig").Color;
 const Box = @import("../../themes/default.zig").Box;
-const tui_mod = @import("../../mod.zig");
+const term = @import("../../../term.zig");
 const renderer_mod = @import("../../core/renderer.zig");
-const TermCaps = tui_mod.TermCaps;
+const TermCaps = term.capabilities.TermCaps;
 // Clipboard integration via OSC 52 is temporarily disabled in widgets to
 // remove direct ANSI dependencies; wire through renderer presenters instead.
 

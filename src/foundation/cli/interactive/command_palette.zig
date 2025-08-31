@@ -9,7 +9,7 @@ const term_cursor = term.cursor;
 const term_screen = term.ansi.screen;
 const term_hyperlink = term.ansi.hyperlink;
 // Prefer presenter-based notifications over direct ANSI
-const presenters = @import("../presenters/mod.zig");
+const presenters = @import("../presenters.zig");
 const term_clipboard = term.ansi.clipboard;
 const term_graphics = term.ansi.graphics;
 const term_caps = term.capabilities;

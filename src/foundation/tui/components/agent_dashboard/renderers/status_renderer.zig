@@ -9,8 +9,8 @@ const Allocator = std.mem.Allocator;
 // Import dependencies
 const state = @import("../state.zig");
 const layout = @import("../layout.zig");
-const theme = @import("../../../../theme/mod.zig");
-const term_mod = @import("../../../../term/mod.zig");
+const theme = @import("../../../../theme.zig");
+const term_mod = @import("../../../../term.zig");
 const render_mod = @import("../../../../render.zig");
 
 // Import specific term modules for drawing functions

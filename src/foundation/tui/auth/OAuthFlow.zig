@@ -394,7 +394,7 @@ pub const OAuthFlow = struct {
 
     // Progressive enhancement
     capability_level: CapabilityLevel,
-    terminal_caps: ?@import("../../render/RenderContext.zig").Capabilities = null,
+    terminal_caps: ?term.capabilities.Capabilities = null,
 
     // Rich UI components (conditionally available)
     rich_progress_bar: ?RichProgressBar = null,
@@ -409,10 +409,9 @@ pub const OAuthFlow = struct {
     pub fn init(allocator: std.mem.Allocator, renderer: *Renderer, theme_manager: *Theme) !Self {
         const startTime = std.time.timestamp();
 
-        // Detect terminal capabilities for progressive enhancement
-        const adaptive = try @import("../../render/Adaptive.zig").init(allocator);
-        defer adaptive.deinit();
-        const terminal_caps = adaptive.capabilities;
+        // Detect terminal capabilities for progressive enhancement via term barrel
+        const caps_detected = try term.capabilities.Capabilities.detect(allocator);
+        const terminal_caps = caps_detected;
         const capability_level = detectCapabilityLevel(terminal_caps);
 
         // Initialize flow diagram
@@ -495,12 +494,12 @@ pub const OAuthFlow = struct {
     }
 
     /// Detect capability level based on terminal features
-    fn detectCapabilityLevel(terminal_caps: @import("../../render/RenderContext.zig").Capabilities) CapabilityLevel {
+    fn detectCapabilityLevel(terminal_caps: term.capabilities.Capabilities) CapabilityLevel {
         if (terminal_caps.colors == .truecolor and terminal_caps.unicode and terminal_caps.mouse) {
             return .full;
-        } else if (terminal_caps.colors != .@"16" and terminal_caps.unicode) {
+        } else if (terminal_caps.colors != .basic and terminal_caps.colors != .none and terminal_caps.unicode) {
             return .rich;
-        } else if (terminal_caps.colors != .@"16") {
+        } else if (terminal_caps.colors != .basic and terminal_caps.colors != .none) {
             return .ansi;
         } else {
             return .plain;

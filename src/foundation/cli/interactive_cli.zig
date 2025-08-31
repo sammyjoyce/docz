@@ -8,7 +8,7 @@ const term = @import("../term.zig");
 const engine = @import("core_engine");
 const selected_spec = @import("agent_spec");
 const anthropic = @import("anthropic_shared");
-const auth = @import("../auth/mod.zig");
+const auth = @import("../network.zig").Auth;
 
 /// Available commands in the interactive interface
 const Command = enum {

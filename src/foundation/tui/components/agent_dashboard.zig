@@ -11,6 +11,6 @@ else
 // Planned split (stubs for future files):
 pub const state = @import("state.zig");
 pub const layout = @import("layout.zig");
-pub const renderers = @import("renderers/mod.zig");
+pub const renderers = @import("renderers.zig");
 
 // Transitional aliases have moved under the `legacy` namespace.

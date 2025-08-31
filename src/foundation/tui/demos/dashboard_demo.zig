@@ -8,7 +8,7 @@
 //! - Comprehensive terminal capability demonstration
 
 const std = @import("std");
-const tui = @import("../mod.zig");
+const tui = @import("../../tui.zig");
 const dashboard = tui.dashboard;
 
 pub fn main() !void {

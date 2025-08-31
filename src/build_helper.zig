@@ -220,7 +220,7 @@ pub fn createBuildModules(
     });
 
     // Add consolidated interface module (tier selection handled internally)
-    const interface_path = "src/shared/tui/agent_interface.zig";
+    const interface_path = "src/foundation/tui/agent_interface.zig";
 
     const interface_module = b.createModule(.{
         .root_module = b.createModule(.{
@@ -258,7 +258,7 @@ pub fn createBuildModules(
     if (config.manifest.modules.shared.cli) {
         const cli_module = b.createModule(.{
             .root_module = b.createModule(.{
-                .root_source_file = b.path("src/shared/cli/mod.zig"),
+                .root_source_file = b.path("src/foundation/cli.zig"),
             }),
             .target = target,
             .optimize = optimize,
@@ -269,7 +269,7 @@ pub fn createBuildModules(
     if (config.manifest.modules.shared.tui) {
         const tui_module = b.createModule(.{
             .root_module = b.createModule(.{
-                .root_source_file = b.path("src/shared/tui/mod.zig"),
+                .root_source_file = b.path("src/foundation/tui.zig"),
             }),
             .target = target,
             .optimize = optimize,

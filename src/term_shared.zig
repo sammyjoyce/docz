@@ -2,8 +2,8 @@
 //! Provides a convenient import path for the terminal module
 //! This file acts as an alias to maintain consistency across the codebase
 
-// Re-export the term module (consolidated module)
-pub const term = @import("shared/term/mod.zig");
+// Re-export the term module from the consolidated foundation barrel
+pub const term = @import("foundation/term.zig");
 
 // For convenience, also export common submodules directly
 // Note: These now use the consolidated hierarchy

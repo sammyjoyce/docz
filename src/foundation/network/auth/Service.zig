@@ -154,7 +154,7 @@ pub const Service = struct {
         };
         defer pkceParams.deinit(self.allocator);
 
-        const oauthCreds = try oauth.exchangeCodeForTokens(self.allocator, code, pkceParams);
+        const oauthCreds = try oauth.exchangeCodeForTokens(self.allocator, code, pkceParams, oauth.OAUTH_REDIRECT_URI);
         return Credentials{ .oauth = oauthCreds };
     }
 
