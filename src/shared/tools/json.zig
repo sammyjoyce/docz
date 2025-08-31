@@ -5,6 +5,12 @@
 const std = @import("std");
 const tools = @import("mod.zig");
 
+pub const ToolJsonError = error{
+    InvalidInput,
+    SerializationFailed,
+    OutOfMemory,
+};
+
 /// Parse and validate a tool request from JSON into a struct.
 /// Uses comptime reflection to automatically parse JSON fields into struct fields.
 /// Handles type conversion and validation automatically.
@@ -21,9 +27,9 @@ const tools = @import("mod.zig");
 ///
 /// const request = try parseToolRequest(Request, params);
 /// ```
-pub fn parseToolRequest(comptime T: type, jsonValue: std.json.Value) !T {
+pub fn parseToolRequest(comptime T: type, jsonValue: std.json.Value) (tools.ToolError || ToolJsonError)!T {
     if (jsonValue != .object) {
-        return tools.ToolError.InvalidInput;
+        return ToolJsonError.InvalidInput;
     }
 
     const object = jsonValue.object;
@@ -61,7 +67,7 @@ pub fn parseToolRequest(comptime T: type, jsonValue: std.json.Value) !T {
 /// const response = try createSuccessResponse(allocator, result);
 /// // Returns: {"success": true, "result": {"data": "processed", "count": 42}}
 /// ```
-pub fn createSuccessResponse(allocator: std.mem.Allocator, result: anytype) ![]u8 {
+pub fn createSuccessResponse(allocator: std.mem.Allocator, result: anytype) ToolJsonError![]u8 {
     var responseObj = std.json.ObjectMap.init(allocator);
     defer responseObj.deinit();
 
@@ -71,10 +77,15 @@ pub fn createSuccessResponse(allocator: std.mem.Allocator, result: anytype) ![]u
     var response = std.json.Value{ .object = responseObj };
     defer response.deinit();
 
-    var buffer = std.ArrayList(u8).initCapacity(allocator, 1024);
+    var buffer = try std.ArrayList(u8).initCapacity(allocator, 1024);
     defer buffer.deinit();
-    try response.stringify(.{}, buffer.writer());
-    return buffer.toOwnedSlice();
+    response.stringify(.{}, buffer.writer()) catch |err| {
+        return switch (err) {
+            error.OutOfMemory => ToolJsonError.OutOfMemory,
+            else => ToolJsonError.SerializationFailed,
+        };
+    };
+    return buffer.toOwnedSlice() catch ToolJsonError.OutOfMemory;
 }
 
 /// Create a standard error response with the given error and message.
@@ -85,7 +96,7 @@ pub fn createSuccessResponse(allocator: std.mem.Allocator, result: anytype) ![]u
 /// const response = try createErrorResponse(allocator, error.FileNotFound, "File does not exist");
 /// // Returns: {"success": false, "error": "FileNotFound", "message": "File does not exist"}
 /// ```
-pub fn createErrorResponse(allocator: std.mem.Allocator, err: anyerror, message: []const u8) ![]u8 {
+pub fn createErrorResponse(allocator: std.mem.Allocator, err: anyerror, message: []const u8) ToolJsonError![]u8 {
     var responseObj = std.json.ObjectMap.init(allocator);
     defer responseObj.deinit();
 
@@ -98,10 +109,15 @@ pub fn createErrorResponse(allocator: std.mem.Allocator, err: anyerror, message:
     var response = std.json.Value{ .object = responseObj };
     defer response.deinit();
 
-    var buffer = std.ArrayList(u8).initCapacity(allocator, 1024);
+    var buffer = try std.ArrayList(u8).initCapacity(allocator, 1024);
     defer buffer.deinit();
-    try response.stringify(.{}, buffer.writer());
-    return buffer.toOwnedSlice();
+    response.stringify(.{}, buffer.writer()) catch |e| {
+        return switch (e) {
+            error.OutOfMemory => ToolJsonError.OutOfMemory,
+            else => ToolJsonError.SerializationFailed,
+        };
+    };
+    return buffer.toOwnedSlice() catch ToolJsonError.OutOfMemory;
 }
 
 /// Validate that all required fields are present in the JSON value.
@@ -116,7 +132,7 @@ pub fn createErrorResponse(allocator: std.mem.Allocator, err: anyerror, message:
 ///
 /// try validateRequiredFields(RequiredFields, params);
 /// ```
-pub fn validateRequiredFields(comptime T: type, jsonValue: std.json.Value) !void {
+pub fn validateRequiredFields(comptime T: type, jsonValue: std.json.Value) tools.ToolError!void {
     if (jsonValue != .object) {
         return tools.ToolError.InvalidInput;
     }
@@ -146,23 +162,23 @@ pub fn validateRequiredFields(comptime T: type, jsonValue: std.json.Value) !void
 /// const config = @import("config.zon");
 /// const json_config = try convertZonToJson(allocator, config.my_config);
 /// ```
-pub fn convertZonToJson(allocator: std.mem.Allocator, zonData: anytype) !std.json.Value {
+pub fn convertZonToJson(allocator: std.mem.Allocator, zonData: anytype) ToolJsonError!std.json.Value {
     return try valueToJsonValue(zonData, allocator);
 }
 
 // ---------------- Internal Helper Functions ----------------
 
 /// Parse a JSON value into the specified type
-fn parseJsonValue(comptime T: type, jsonValue: std.json.Value) !T {
+fn parseJsonValue(comptime T: type, jsonValue: std.json.Value) ToolJsonError!T {
     const info = @typeInfo(T);
 
     switch (info) {
         .bool => {
-            if (jsonValue != .bool) return tools.ToolError.InvalidInput;
+            if (jsonValue != .bool) return ToolJsonError.InvalidInput;
             return jsonValue.bool;
         },
         .int => {
-            if (jsonValue != .integer) return tools.ToolError.InvalidInput;
+            if (jsonValue != .integer) return ToolJsonError.InvalidInput;
             return @intCast(jsonValue.integer);
         },
         .float => {
@@ -171,23 +187,23 @@ fn parseJsonValue(comptime T: type, jsonValue: std.json.Value) !T {
             } else if (jsonValue == .float) {
                 return @floatCast(jsonValue.float);
             } else {
-                return tools.ToolError.InvalidInput;
+                return ToolJsonError.InvalidInput;
             }
         },
         .pointer => |ptr_info| {
-            if (ptr_info.size != .slice) return tools.ToolError.InvalidInput;
-            if (ptr_info.child != u8) return tools.ToolError.InvalidInput;
+            if (ptr_info.size != .slice) return ToolJsonError.InvalidInput;
+            if (ptr_info.child != u8) return ToolJsonError.InvalidInput;
 
-            if (jsonValue != .string) return tools.ToolError.InvalidInput;
+            if (jsonValue != .string) return ToolJsonError.InvalidInput;
             return jsonValue.string;
         },
         .@"struct" => {
-            if (jsonValue != .object) return tools.ToolError.InvalidInput;
+            if (jsonValue != .object) return ToolJsonError.InvalidInput;
             return try parseStructFromJson(T, jsonValue);
         },
         .@"union" => {
             // For now, only support tagged unions with string tags
-            if (jsonValue != .object) return tools.ToolError.InvalidInput;
+            if (jsonValue != .object) return ToolJsonError.InvalidInput;
             return try parseUnionFromJson(T, jsonValue);
         },
         .optional => |opt_info| {
@@ -197,7 +213,7 @@ fn parseJsonValue(comptime T: type, jsonValue: std.json.Value) !T {
             return try parseJsonValue(opt_info.child, jsonValue);
         },
         .array => |arr_info| {
-            if (jsonValue != .array) return tools.ToolError.InvalidInput;
+            if (jsonValue != .array) return ToolJsonError.InvalidInput;
             const jsonArray = jsonValue.array;
 
             var result: T = undefined;
@@ -209,13 +225,13 @@ fn parseJsonValue(comptime T: type, jsonValue: std.json.Value) !T {
             return result;
         },
         else => {
-            return tools.ToolError.InvalidInput;
+            return ToolJsonError.InvalidInput;
         },
     }
 }
 
 /// Parse a struct from JSON object
-fn parseStructFromJson(comptime T: type, jsonValue: std.json.Value) !T {
+fn parseStructFromJson(comptime T: type, jsonValue: std.json.Value) ToolJsonError!T {
     const object = jsonValue.object;
     var result: T = undefined;
 
@@ -226,7 +242,7 @@ fn parseStructFromJson(comptime T: type, jsonValue: std.json.Value) !T {
 
         const jsonField = object.get(fieldName) orelse {
             if (isRequired) {
-                return tools.ToolError.MissingParameter;
+                return ToolJsonError.InvalidInput;
             }
             continue;
         };
@@ -239,29 +255,29 @@ fn parseStructFromJson(comptime T: type, jsonValue: std.json.Value) !T {
 }
 
 /// Parse a union from JSON object (tagged union support)
-fn parseUnionFromJson(comptime T: type, jsonValue: std.json.Value) !T {
+fn parseUnionFromJson(comptime T: type, jsonValue: std.json.Value) ToolJsonError!T {
     const object = jsonValue.object;
 
     // Look for a "type" field to determine the union variant
-    const typeField = object.get("type") orelse return tools.ToolError.InvalidInput;
-    if (typeField != .string) return tools.ToolError.InvalidInput;
+    const typeField = object.get("type") orelse return ToolJsonError.InvalidInput;
+    if (typeField != .string) return ToolJsonError.InvalidInput;
 
     const typeName = typeField.string;
     const info = @typeInfo(T).@"union";
 
     inline for (info.fields) |field| {
         if (std.mem.eql(u8, field.name, typeName)) {
-            const valueField = object.get("value") orelse return tools.ToolError.InvalidInput;
+            const valueField = object.get("value") orelse return ToolJsonError.InvalidInput;
             const parsedValue = try parseJsonValue(field.type, valueField);
             return @unionInit(T, field.name, parsedValue);
         }
     }
 
-    return tools.ToolError.InvalidInput;
+    return ToolJsonError.InvalidInput;
 }
 
 /// Convert any value to a JSON Value
-fn valueToJsonValue(value: anytype, allocator: std.mem.Allocator) !std.json.Value {
+fn valueToJsonValue(value: anytype, allocator: std.mem.Allocator) ToolJsonError!std.json.Value {
     const T = @TypeOf(value);
     const info = @typeInfo(T);
 
@@ -273,7 +289,7 @@ fn valueToJsonValue(value: anytype, allocator: std.mem.Allocator) !std.json.Valu
             if (ptr_info.size == .slice and ptr_info.child == u8) {
                 return std.json.Value{ .string = value };
             }
-            return tools.ToolError.InvalidInput;
+            return ToolJsonError.InvalidInput;
         },
         .@"struct" => {
             var object = std.json.ObjectMap.init(allocator);
@@ -307,7 +323,7 @@ fn valueToJsonValue(value: anytype, allocator: std.mem.Allocator) !std.json.Valu
             }
         },
         else => {
-            return tools.ToolError.InvalidInput;
+            return ToolJsonError.InvalidInput;
         },
     }
 }

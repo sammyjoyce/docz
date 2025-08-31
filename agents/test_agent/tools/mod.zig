@@ -36,7 +36,10 @@ pub fn testTool(allocator: std.mem.Allocator, params: std.json.Value) toolsMod.T
 
 /// Calculator tool for arithmetic operations
 /// Demonstrates the improved pattern using json_helpers
-pub fn calculator(allocator: std.mem.Allocator, params: std.json.Value) toolsMod.ToolError!std.json.Value {
+pub fn calculator(
+    allocator: std.mem.Allocator,
+    params: std.json.Value,
+) (toolsMod.ToolError || toolsMod.ToolJsonError)!std.json.Value {
     // Define the expected request structure
     const CalculatorRequest = struct {
         operation: []const u8,
@@ -46,7 +49,6 @@ pub fn calculator(allocator: std.mem.Allocator, params: std.json.Value) toolsMod
 
     // Parse and validate the request using json_helpers
     const request = toolsMod.parseToolRequest(CalculatorRequest, params) catch |err| {
-        // Return a proper error response
         const errorMsg = try toolsMod.createErrorResponse(allocator, err, "Invalid calculator request");
         defer allocator.free(errorMsg);
         return std.json.parseFromSlice(std.json.Value, allocator, errorMsg, .{});
@@ -72,7 +74,7 @@ pub fn calculator(allocator: std.mem.Allocator, params: std.json.Value) toolsMod
     };
 
     // Return success response using json_helpers
-    const responseJson = try toolsMod.createSuccessResponse(result);
+    const responseJson = try toolsMod.createSuccessResponse(allocator, result);
     defer allocator.free(responseJson);
 
     return try std.json.parseFromSlice(std.json.Value, allocator, responseJson, .{});

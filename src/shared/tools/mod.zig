@@ -37,6 +37,7 @@ pub const createSuccessResponse = json.createSuccessResponse;
 pub const createErrorResponse = json.createErrorResponse;
 pub const validateRequiredFields = json.validateRequiredFields;
 pub const convertZonToJson = json.convertZonToJson;
+pub const ToolJsonError = json.ToolJsonError;
 
 // Note: Example usage has moved to docs/examples. Legacy examples are available
 // only when building with `-Dlegacy` via `tools/legacy/*`.
