@@ -1,9 +1,9 @@
 Deep Import Audit Report
-Generated: 2025-08-30T23:52:31Z
+Generated: 2025-08-31T01:15:43Z
 
 Criteria: @import paths under src/shared that traverse parent directories and import a .zig file other than mod.zig.
 
-Total: 220
+Total: 214
 ---
 src/shared/auth/tui/OauthFlow.zig:20:const auth_service = @import("../core/Service.zig");
 src/shared/auth/tui/OauthFlow.zig:28:const notification_mod = @import("../../components/notification.zig");
@@ -40,8 +40,6 @@ src/shared/components/screen.zig:10:pub const Bounds = @import("../types.zig").B
 src/shared/components/screen.zig:6:const term_screen = @import("../term/screen.zig");
 src/shared/components/ui.zig:8:const term = @import("../term/term.zig");
 src/shared/components/ui.zig:9:const graphics = @import("../term/graphics_manager.zig");
-src/shared/network/anthropic/client.zig:24:const SharedContext = @import("../../context.zig").SharedContext;
-src/shared/network/anthropic/stream.zig:7:const SharedContext = @import("../../context.zig").SharedContext;
 src/shared/network/legacy/mod.zig:12:pub const curl = @import("../curl.zig");
 src/shared/network/legacy/mod.zig:13:pub const sse = @import("../sse.zig");
 src/shared/network/legacy/mod.zig:9:pub const anthropic = @import("../anthropic.zig");
@@ -68,7 +66,6 @@ src/shared/theme/tools/exporter.zig:5:const ColorScheme = @import("../runtime/Co
 src/shared/theme/tools/exporter.zig:6:const Color = @import("../runtime/ColorScheme.zig").Color;
 src/shared/theme/tools/exporter.zig:7:const RGB = @import("../runtime/ColorScheme.zig").RGB;
 src/shared/theme/tools/generator.zig:2:const Color = @import("../runtime/Color.zig").Color;
-src/shared/tools/tools.zig:6:const SharedContext = @import("../context.zig").SharedContext;
 src/shared/tui/agent_interface.zig:57:const screen_manager = @import("../term/screen_manager.zig");
 src/shared/tui/agent_ui.zig:10:const notification_mod = @import("../notifications.zig");
 src/shared/tui/agent_ui.zig:11:const progress_mod = @import("../widgets/rich/progress.zig");
@@ -113,10 +110,8 @@ src/shared/tui/core/renderers/rich.zig:13:const renderer_mod = @import("../rende
 src/shared/tui/core/screen.zig:5:const screen = @import("../components/screen.zig");
 src/shared/tui/core/terminal.zig:10:// pub const cursor_optimizer = @import("../../term/control/cursor.zig").CursorOptimizer;
 src/shared/tui/dashboard_demo.zig:14:const terminal_mod = @import("../term/unified.zig");
-src/shared/tui/demo.zig:9:const SharedContext = @import("../context.zig").SharedContext;
 src/shared/tui/legacy/mod.zig:6:const core_bounds = @import("../core/bounds.zig");
 src/shared/tui/legacy/mod.zig:7:const core_events = @import("../core/events.zig");
-src/shared/tui/notifications.zig:16:const SharedContext = @import("../context.zig").SharedContext;
 src/shared/tui/presenters/notification.zig:5:const notif_mod = @import("../../components/notification.zig");
 src/shared/tui/presenters/notification.zig:6:const tui = @import("../core/renderer.zig");
 src/shared/tui/presenters/progress.zig:5:const renderer_mod = @import("../core/renderer.zig");
@@ -211,7 +206,6 @@ src/shared/tui/widgets/demo.zig:12:const Color = @import("../../term/unified.zig
 src/shared/tui/widgets/demo.zig:5:const renderer_mod = @import("../core/renderer.zig");
 src/shared/tui/widgets/mod.zig:42:    pub const Notification = @import("../notifications.zig").NotificationWidget;
 src/shared/tui/widgets/mod.zig:43:    pub const NotificationController = @import("../notifications.zig").NotificationController;
-src/shared/tui/widgets/mod.zig:6:const SharedContext = @import("../../context.zig").SharedContext;
 src/shared/tui/widgets/modal.zig:10:const events_mod = @import("../core/events.zig");
 src/shared/tui/widgets/modal.zig:11:const screen_mod = @import("../core/screen.zig");
 src/shared/tui/widgets/modal.zig:12:const term_caps = @import("../../term/capabilities.zig");

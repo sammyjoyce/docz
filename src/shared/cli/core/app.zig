@@ -6,17 +6,26 @@ const state = @import("state.zig");
 const types = @import("types.zig");
 const router = @import("router.zig");
 
+pub const CliError = error{
+    ParseFailed,
+    InvalidCommand,
+    Io,
+    Rendering,
+    Memory,
+    Unknown,
+};
+
 pub const CliApp = struct {
     allocator: std.mem.Allocator,
     state: state.Cli,
     router: router.CommandRouter,
 
-    pub fn init(allocator: std.mem.Allocator) !CliApp {
+    pub fn init(allocator: std.mem.Allocator) CliError!CliApp {
         // Initialize context with terminal capabilities
-        var ctx = try state.Cli.init(allocator);
+        var ctx = state.Cli.init(allocator) catch return CliError.Io;
 
         // Initialize command router
-        const commandRouter = try router.CommandRouter.init(allocator, &ctx);
+        const commandRouter = router.CommandRouter.init(allocator, &ctx) catch return CliError.Unknown;
 
         return CliApp{
             .allocator = allocator,
@@ -31,7 +40,7 @@ pub const CliApp = struct {
     }
 
     /// Main entry point for CLI execution
-    pub fn run(self: *CliApp, args: []const []const u8) !u8 {
+    pub fn run(self: *CliApp, args: []const []const u8) CliError!u8 {
         // Parse arguments via parser
         const parsedArgs = try self.parseArguments(args);
 
@@ -56,37 +65,44 @@ pub const CliApp = struct {
         }
 
         // Execute command through router
-        const result = try self.router.execute(parsedArgs);
+        const result = self.router.execute(parsedArgs) catch |err| return switch (err) {
+            types.CliError.UnknownCommand, types.CliError.UnknownSubcommand => CliError.InvalidCommand,
+            else => CliError.Unknown,
+        };
 
         // Handle result
         if (result.success) {
             if (result.output) |output| {
-                try self.state.terminal.printf("{s}", .{output}, null);
+                self.state.terminal.printf("{s}", .{output}, null) catch return CliError.Rendering;
             }
             return result.exit_code;
         } else {
             if (result.errorMessage) |msg| {
-                try self.state.terminal.printf("{s}\n", .{msg}, .{ .fg_color = .{ .rgb = .{ .r = 220, .g = 20, .b = 60 } } });
+                self.state.terminal.printf("{s}\n", .{msg}, .{ .fg_color = .{ .rgb = .{ .r = 220, .g = 20, .b = 60 } } }) catch return CliError.Rendering;
             }
             return result.exit_code;
         }
     }
 
-    fn parseArguments(self: *CliApp, args: []const []const u8) !types.Args {
+    fn parseArguments(self: *CliApp, args: []const []const u8) CliError!types.Args {
         const build_options = @import("build_options");
         const ParserMod = comptime if (build_options.include_legacy)
             @import("../legacy/Parser.zig")
         else
             @import("parser.zig");
+        const ParserError = ParserMod.CliError;
 
         // The parser expects argv-style input including program name at index 0.
-        var argv = try self.allocator.alloc([]const u8, args.len + 1);
+        var argv = self.allocator.alloc([]const u8, args.len + 1) catch return CliError.Memory;
         defer self.allocator.free(argv);
         argv[0] = "docz"; // synthetic argv[0]
         for (args, 0..) |a, i| argv[i + 1] = a;
 
         var parser = ParserMod.Parser.init(self.allocator);
-        var parsed = try parser.parse(argv);
+        var parsed = parser.parse(argv) catch |err| return switch (err) {
+            ParserError.UnknownCommand, ParserError.UnknownSubcommand => CliError.InvalidCommand,
+            else => CliError.ParseFailed,
+        };
         defer parsed.deinit();
 
         var cliArgs = types.Args.fromConfig(self.state.config, self.allocator);
@@ -108,13 +124,13 @@ pub const CliApp = struct {
 
         // Positional prompt as raw message (dupe for lifetime)
         if (parsed.prompt) |p| {
-            cliArgs.rawMessage = try self.allocator.dupe(u8, p);
+            cliArgs.rawMessage = self.allocator.dupe(u8, p) catch return CliError.Memory;
         }
 
         return cliArgs;
     }
 
-    fn showHelp(self: *CliApp) !void {
+    fn showHelp(self: *CliApp) CliError!void {
         var stdoutBuffer: [4096]u8 = undefined;
         var stdoutWriter = std.fs.File.stdout().writer(&stdoutBuffer);
         const writer = &stdoutWriter.interface;
@@ -144,33 +160,33 @@ pub const CliApp = struct {
             \\Terminal Features:
         ;
 
-        try writer.writeAll(helpText);
+        writer.writeAll(helpText) catch return CliError.Io;
 
         // Show available terminal features
         if (self.state.hasFeature(.hyperlinks)) {
-            try writer.writeAll("  ✓ Hyperlinks supported\n");
+            writer.writeAll("  ✓ Hyperlinks supported\n") catch return CliError.Io;
         }
         if (self.state.hasFeature(.clipboard)) {
-            try writer.writeAll("  ✓ Clipboard integration\n");
+            writer.writeAll("  ✓ Clipboard integration\n") catch return CliError.Io;
         }
         if (self.state.hasFeature(.notifications)) {
-            try writer.writeAll("  ✓ System notifications\n");
+            writer.writeAll("  ✓ System notifications\n") catch return CliError.Io;
         }
         if (self.state.hasFeature(.graphics)) {
-            try writer.writeAll("  ✓ Graphics\n");
+            writer.writeAll("  ✓ Graphics\n") catch return CliError.Io;
         }
 
-        try writer.writeAll("\n");
-        try writer.flush();
+        writer.writeAll("\n") catch return CliError.Io;
+        writer.flush() catch return CliError.Io;
     }
 
-    fn showVersion(self: *CliApp) !void {
+    fn showVersion(self: *CliApp) CliError!void {
         _ = self;
         var stdoutBuffer: [4096]u8 = undefined;
         var stdoutWriter = std.fs.File.stdout().writer(&stdoutBuffer);
         const writer = &stdoutWriter.interface;
         const versionText = "docz 1.0.0\n";
-        try writer.writeAll(versionText);
-        try writer.flush();
+        writer.writeAll(versionText) catch return CliError.Io;
+        writer.flush() catch return CliError.Io;
     }
 };
