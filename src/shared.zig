@@ -3,7 +3,7 @@
 //! compile-time options hook. To override defaults project-wide,
 //! define at the root module (build root):
 //!
-//!   pub const shared_options = @import("src/shared/mod.zig").Options{
+//!   pub const shared_options = @import("src/shared.zig").Options{
 //!     .feature_tui = true,
 //!     .feature_render = true,
 //!     .feature_widgets = true,
@@ -19,19 +19,19 @@
 //! Consumers should import features via these barrels (no deep imports).
 //! Feature-gate by checking `shared.options.feature_*` at comptime.
 
-pub const cli = @import("cli/mod.zig");
-pub const tui = if (options.feature_tui) @import("tui/mod.zig") else struct {};
-pub const render = if (options.feature_render) @import("render/mod.zig") else struct {};
-pub const components = if (options.feature_widgets) @import("components/mod.zig") else struct {};
-pub const tools = @import("tools/mod.zig");
+pub const cli = @import("cli.zig");
+pub const tui = if (options.feature_tui) @import("tui.zig") else struct {};
+pub const render = if (options.feature_render) @import("render.zig") else struct {};
+pub const components = if (options.feature_widgets) @import("components.zig") else struct {};
+pub const tools = @import("tools.zig");
 // New guardrail barrels for refactor
-pub const ui = if (options.feature_tui) @import("ui/mod.zig") else struct {};
-pub const widgets = if (options.feature_widgets) @import("widgets/mod.zig") else struct {};
+pub const ui = if (options.feature_tui) @import("ui.zig") else struct {};
+pub const widgets = if (options.feature_widgets) @import("widgets.zig") else struct {};
 pub const SharedContext = @import("context.zig").SharedContext;
 const build_options = @import("build_options");
 // Network barrel re-export (module, not container struct)
-pub const network = @import("network/mod.zig");
-pub const auth = @import("auth/mod.zig");
+pub const network = @import("network.zig");
+pub const auth = @import("auth.zig");
 // Re-export commonly used network types for convenience
 pub const Service = network.Service;
 pub const ClientError = network.ClientError;
@@ -41,7 +41,7 @@ pub const Event = network.Event;
 // Backward-compat alias
 pub const NetworkClient = network.Service;
 // Align with consolidated terminal layout
-pub const term = if (options.feature_tui) @import("term/mod.zig") else struct {};
+pub const term = if (options.feature_tui) @import("term.zig") else struct {};
 
 // Unified types - consolidated data structures
 pub const types = @import("types.zig");

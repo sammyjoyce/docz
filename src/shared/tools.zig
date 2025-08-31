@@ -1,10 +1,10 @@
 //! Shared tools registry and utilities.
 //! Provides common tools that all agents can use.
 //!
-//! - Import via barrel: `const tools = @import("../shared/tools/mod.zig");`
-//! - Feature-gate in consumers using `@import("../shared/mod.zig").options.feature_widgets`
+//! - Import via barrel: `const tools = @import("../shared/tools.zig");`
+//! - Feature-gate in consumers using `@import("../shared.zig").options.feature_widgets`
 //! - Override behavior (e.g., enable/disable builtins) by defining
-//!   `pub const shared_options = @import("../shared/mod.zig").Options{ ... };` at root.
+//!   `pub const shared_options = @import("../shared.zig").Options{ ... };` at root.
 
 const shared = @import("shared_options");
 comptime {

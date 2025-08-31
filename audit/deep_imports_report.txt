@@ -1,5 +1,5 @@
 Deep Import Audit Report
-Generated: 2025-08-31T01:36:45Z
+Generated: 2025-08-31T01:37:05Z
 
 Criteria: @import paths under src/shared that traverse parent directories and import a .zig file other than mod.zig.
 
@@ -7,8 +7,8 @@ Total: 208
 ---
 src/shared/auth/core/Service.zig:7:const oauth = @import("../oauth.zig");
 src/shared/auth/core/Service.zig:8:const core_auth = @import("../core.zig");
-src/shared/auth/core/Service.zig:9:const curl = @import("../../network.zig").curl;
-src/shared/auth/oauth.zig:16:const curl = @import("../network.zig").curl;
+src/shared/auth/core/Service.zig:9:const curl = @import("../../network/curl.zig");
+src/shared/auth/oauth.zig:16:const curl = @import("../network/curl.zig");
 src/shared/auth/tui/OauthFlow.zig:20:const auth_service = @import("../core/Service.zig");
 src/shared/auth/tui/OauthFlow.zig:28:const notification_mod = @import("../../components/notification.zig");
 src/shared/auth/tui/OauthFlow.zig:29:const progress_mod = @import("../../components/progress.zig");

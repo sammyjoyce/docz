@@ -13,7 +13,7 @@
 
 const std = @import("std");
 pub const callbackServer = @import("oauth/CallbackServer.zig");
-const curl = @import("../network.zig").curl;
+const curl = @import("../network/curl.zig");
 
 // Re-export OAuth constants and types from anthropic
 pub const OAUTH_CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e";

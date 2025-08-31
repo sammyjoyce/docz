@@ -136,7 +136,7 @@ fn copyTemplateFiles(
         "spec.zig",
         "system_prompt.txt",
         "README.md",
-        "tools/mod.zig",
+        "tools.zig",
         "tools/ExampleTool.zig",
     };
 

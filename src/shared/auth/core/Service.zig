@@ -6,7 +6,7 @@
 const std = @import("std");
 const oauth = @import("../oauth.zig");
 const core_auth = @import("../core.zig");
-const curl = @import("../../network.zig").curl;
+const curl = @import("../../network/curl.zig");
 
 /// Authentication service errors
 pub const AuthError = error{
