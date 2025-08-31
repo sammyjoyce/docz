@@ -26,5 +26,5 @@ pub const StreamParams = client.StreamParams;
 
 // Note: explicit re-exports should be added incrementally as the split progresses.
 
-// Re-export curl for dependent modules
-pub const curl = @import("curl_shared");
+// Note: curl should be imported from the parent network module when needed
+// Removing re-export to avoid module conflicts

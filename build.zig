@@ -1130,6 +1130,11 @@ const ModuleBuilder = struct {
         auth.addImport("anthropic_shared", anthropic);
         auth.addImport("curl_shared", curl);
 
+        // Create auth_deps module that re-exports dependencies for auth submodules
+        const auth_deps = self.createModule("src/foundation/auth/deps.zig");
+        auth_deps.addImport("curl_shared", curl);
+        auth.addImport("auth_deps", auth_deps);
+
         // JSON reflection module for comptime JSON processing
         // Provides utilities for compile-time JSON schema validation and processing
         // Requires Zig 0.15.1+ for optimal comptime reflection performance

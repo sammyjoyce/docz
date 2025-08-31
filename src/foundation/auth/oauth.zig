@@ -13,40 +13,9 @@
 
 const std = @import("std");
 pub const callbackServer = @import("oauth/CallbackServer.zig");
-// Use stubbed curl implementation to avoid module conflicts
-const curl = struct {
-    pub const HTTPClient = struct {
-        allocator: std.mem.Allocator,
-
-        pub fn init(allocator: std.mem.Allocator) !@This() {
-            return .{ .allocator = allocator };
-        }
-        pub fn deinit(self: *@This()) void {
-            _ = self;
-        }
-        pub fn post(self: @This(), url: []const u8, headers: []const Header, body: []const u8) !HTTPResponse {
-            _ = self;
-            _ = url;
-            _ = headers;
-            _ = body;
-            // This is a stub - real implementation would use actual HTTP client
-            return error.NetworkError;
-        }
-    };
-    pub const HTTPResponse = struct {
-        status_code: u16,
-        body: []const u8,
-        allocator: std.mem.Allocator,
-
-        pub fn deinit(self: *@This()) void {
-            self.allocator.free(self.body);
-        }
-    };
-    pub const Header = struct {
-        name: []const u8,
-        value: []const u8,
-    };
-};
+// Get curl from the auth_deps module
+const deps = @import("auth_deps");
+const curl = deps.curl;
 
 // Re-export OAuth constants and types from anthropic
 pub const OAUTH_CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e";
@@ -347,7 +316,16 @@ pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorizationCode: []
     };
 
     // Make POST request to token endpoint
-    var response = httpClient.post(OAUTH_TOKEN_ENDPOINT, &headers, formData) catch |err| {
+    const request = curl.HTTPRequest{
+        .method = .POST,
+        .url = OAUTH_TOKEN_ENDPOINT,
+        .headers = &headers,
+        .body = formData,
+        .timeout_ms = 30000,
+        .verify_ssl = true,
+    };
+
+    var response = httpClient.request(request) catch |err| {
         std.log.err("Network error during OAuth token exchange: {any}", .{err});
         return Error.NetworkError;
     };
@@ -393,7 +371,16 @@ pub fn refreshTokens(allocator: std.mem.Allocator, refreshToken: []const u8) !Cr
     };
 
     // Make POST request to token endpoint
-    var response = httpClient.post(OAUTH_TOKEN_ENDPOINT, &headers, formData) catch |err| {
+    const request = curl.HTTPRequest{
+        .method = .POST,
+        .url = OAUTH_TOKEN_ENDPOINT,
+        .headers = &headers,
+        .body = formData,
+        .timeout_ms = 30000,
+        .verify_ssl = true,
+    };
+
+    var response = httpClient.request(request) catch |err| {
         std.log.err("Network error during OAuth token refresh: {any}", .{err});
         return Error.NetworkError;
     };
