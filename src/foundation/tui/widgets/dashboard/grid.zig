@@ -23,7 +23,6 @@ pub const Grid = struct {
     }
 
     pub fn render(self: *Grid, render_pipeline: anytype, bounds: anytype) !void {
-        _ = self;
         _ = render_pipeline;
         _ = bounds;
         self.logger("📋 Grid Widget\n", .{});

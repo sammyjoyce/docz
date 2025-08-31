@@ -5,17 +5,15 @@
 //! Theme and UX framework integration is available through optional imports.
 
 const std = @import("std");
-const engine = @import("engine_shared");
-const session = @import("interactive_session");
-const auth = @import("auth_shared");
-const agent_base = @import("agent_base");
+const session = @import("interactive_session.zig");
+const auth = @import("network.zig").auth;
+const agent_base = @import("agent_base.zig");
 
-const CliOptions = engine.CliOptions;
+// Engine types are provided by the caller since foundation doesn't depend on engine
 
 /// Interactive CLI options for interactive and TUI modes
 pub const InteractiveCliOptions = struct {
-    /// Base CLI options
-    base: CliOptions,
+    // Base CLI options from engine omitted (caller provides via spec)
     /// Interactive mode settings
     interactive: InteractiveOptions,
     /// TUI mode settings
@@ -93,7 +91,7 @@ fn launchAgentLauncher(allocator: std.mem.Allocator, args: [][]const u8) !void {
 
 /// Main function for agents with TUI and interactive support.
 /// Agents should call this from their main.zig with their specific spec.
-pub fn runAgent(allocator: std.mem.Allocator, spec: engine.AgentSpec) !void {
+pub fn runAgent(allocator: std.mem.Allocator, spec: anytype) !void {
     const args = try std.process.argsAlloc(allocator);
     defer std.process.argsFree(allocator, args);
 

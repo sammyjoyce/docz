@@ -62,9 +62,8 @@ fn layoutImpl(comptime T: type) fn (*anyopaque, layout.Rect) void {
             const self: *T = @ptrCast(@alignCast(ptr));
             if (@hasDecl(T, "layout")) {
                 self.layout(rect);
-            } else {
-                _ = rect;
             }
+            // rect parameter is intentionally unused when T doesn't have layout
         }
     }.f;
 }
@@ -84,7 +83,7 @@ fn eventImpl(comptime T: type) fn (*anyopaque, event.Event) Component.Invalidate
         fn f(ptr: *anyopaque, eventData: event.Event) Component.Invalidate {
             const self: *T = @ptrCast(@alignCast(ptr));
             if (@hasDecl(T, "event")) return self.event(eventData);
-            _ = eventData;
+            // eventData parameter is intentionally unused when T doesn't have event
             return .none;
         }
     }.f;

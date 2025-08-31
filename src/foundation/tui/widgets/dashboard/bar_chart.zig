@@ -23,7 +23,6 @@ pub const BarChart = struct {
     }
 
     pub fn render(self: *BarChart, render_pipeline: anytype, bounds: anytype) !void {
-        _ = self;
         _ = render_pipeline;
         _ = bounds;
         self.logger("📊 Bar Chart Widget\n", .{});

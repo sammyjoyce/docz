@@ -398,7 +398,7 @@ test "cache statistics" {
         .children_hash = 12345,
     };
 
-    const bounds = [_]Bounds{Bounds.init(0, 0, 10, 10)};
+    _ = [_]Bounds{Bounds.init(0, 0, 10, 10)}; // Test bounds creation
 
     // Miss
     _ = cache.get(key);

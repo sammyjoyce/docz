@@ -16,7 +16,8 @@ const constraint_solver = @import("../../core/constraint_solver.zig");
 // Use top-level term APIs
 const term = @import("../../../term.zig");
 const ui = @import("../../../ui.zig");
-const term_color = term_shared.term.color;
+const term_color = term.color;
+const term_cursor = term.cursor;
 
 // Type aliases for convenience
 const ConstraintSolver = constraint_solver.ConstraintSolver;
@@ -103,7 +104,7 @@ pub const DividerStyle = struct {
         };
     }
 
-    pub fn rich(caps: term_mod.capabilities.TermCaps) DividerStyle {
+    pub fn rich(caps: term.capabilities.TermCaps) DividerStyle {
         if (caps.supportsTruecolor) {
             return .{
                 .char = "│",
@@ -132,7 +133,7 @@ pub const PaneContent = struct {
 
     pub const VTable = struct {
         render: *const fn (ptr: *anyopaque, bounds: Bounds) anyerror!void,
-        handleKeyEvent: *const fn (ptr: *anyopaque, event: input_mod.InputEvent.KeyPressEvent) anyerror!bool,
+        handleKeyEvent: *const fn (ptr: *anyopaque, event: events.KeyEvent) anyerror!bool,
         handleMouseEvent: *const fn (ptr: *anyopaque, event: MouseEvent) anyerror!bool,
         onFocus: *const fn (ptr: *anyopaque) void,
         onBlur: *const fn (ptr: *anyopaque) void,
@@ -143,7 +144,7 @@ pub const PaneContent = struct {
         return self.vtable.render(self.ptr, bounds);
     }
 
-    pub fn handleKeyEvent(self: PaneContent, event: input_mod.InputEvent.KeyPressEvent) !bool {
+    pub fn handleKeyEvent(self: PaneContent, event: events.KeyEvent) !bool {
         return self.vtable.handleKeyEvent(self.ptr, event);
     }
 
@@ -535,7 +536,7 @@ pub const SplitPane = struct {
 
     /// Render the divider between panes
     fn renderDivider(self: *Self, writer: anytype) !void {
-        const caps = term_mod.capabilities.getTermCaps();
+        const caps = term.capabilities.getTermCaps();
         const color = if (self.is_dragging)
             self.divider_style.active_color
         else if (self.is_hovering)
@@ -564,13 +565,13 @@ pub const SplitPane = struct {
             }
         }
 
-        try term_mod.ansi.sgr.resetStyle(writer, caps); // Reset color using term module
+        try term.ansi.sgr.resetStyle(writer, caps); // Reset color using term module
     }
 
     /// Render empty pane placeholder
     fn renderEmptyPane(self: *Self, writer: anytype, bounds: Bounds, label: []const u8) !void {
         _ = self;
-        const caps = term_mod.capabilities.getTermCaps();
+        const caps = term.capabilities.getTermCaps();
 
         // Draw border
         const top = bounds.y;
@@ -609,13 +610,13 @@ pub const SplitPane = struct {
         const label_x = left + (bounds.width - label.len) / 2;
         const label_y = top + bounds.height / 2;
         try term_cursor.cursorPosition(writer, caps, @as(u32, @intCast(label_y + 1)), @as(u32, @intCast(label_x + 1)));
-        try term_mod.ansi.sgr.setForeground256(writer, caps, 90); // Bright black
+        try term.ansi.sgr.setForeground256(writer, caps, 90); // Bright black
         try writer.writeAll(label);
-        try term_mod.ansi.sgr.resetStyle(writer, caps); // Reset color using term module
+        try term.ansi.sgr.resetStyle(writer, caps); // Reset color using term module
     }
 
     /// Handle keyboard events
-    pub fn handleKeyEvent(self: *Self, event: input_mod.InputEvent.KeyPressEvent) !bool {
+    pub fn handleKeyEvent(self: *Self, event: events.KeyEvent) !bool {
         // Check if Alt is pressed for resize operations
         if (event.modifiers.alt) {
             switch (event.key) {
@@ -981,7 +982,7 @@ pub const SplitPane = struct {
         }.onBlur,
 
         .handleKeyEvent = struct {
-            fn handleKeyEvent(ptr: *anyopaque, event: input_mod.InputEvent.KeyPressEvent) bool {
+            fn handleKeyEvent(ptr: *anyopaque, event: events.KeyEvent) bool {
                 const self = @as(*Self, @ptrCast(@alignCast(ptr)));
                 return self.handleKeyEvent(event) catch false;
             }
@@ -1030,7 +1031,7 @@ pub const ExamplePane = struct {
         }.render,
 
         .handleKeyEvent = struct {
-            fn handleKeyEvent(ptr: *anyopaque, event: input_mod.InputEvent.KeyPressEvent) anyerror!bool {
+            fn handleKeyEvent(ptr: *anyopaque, event: events.KeyEvent) anyerror!bool {
                 _ = ptr;
                 _ = event;
                 return false;

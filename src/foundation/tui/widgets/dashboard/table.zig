@@ -7,9 +7,9 @@ const renderer_mod = @import("../../../render/renderer.zig");
 const events_mod = @import("../../core/events.zig");
 
 // Re-export all public types and functions
-pub const base = @import("base.zig");
-pub const selection = @import("selection.zig");
-pub const clipboard = @import("clipboard.zig");
+pub const base = @import("table/base.zig");
+pub const selection = @import("table/selection.zig");
+pub const clipboard = @import("table/clipboard.zig");
 
 // Re-export commonly used types for convenience
 pub const Table = TableImpl;

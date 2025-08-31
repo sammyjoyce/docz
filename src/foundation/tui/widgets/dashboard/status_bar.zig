@@ -95,8 +95,8 @@ pub const StatusBar = struct {
         };
 
         pub const Style = struct {
-            color: ?terminal_mod.Color = null,
-            backgroundColor: ?terminal_mod.Color = null,
+            color: ?term.Color = null,
+            backgroundColor: ?term.Color = null,
             bold: bool = false,
             italic: bool = false,
             blink: bool = false,
@@ -110,7 +110,7 @@ pub const StatusBar = struct {
 
             pub const Threshold = struct {
                 value: f64,
-                color: terminal_mod.Color,
+                color: term.Color,
                 style: Style = Style{},
             };
         };
@@ -202,7 +202,7 @@ pub const StatusBar = struct {
 
             // Fill with background color if configured
             if (self.config.use_colors) {
-                try renderer.setBackground(terminal_mod.Color.black);
+                try renderer.setBackground(term.Color.black);
             }
 
             for (0..ctx.bounds.width) |_| {
@@ -311,8 +311,8 @@ pub const StatusBar = struct {
                     .unit = "%",
                     .format = "CPU:{d:.0}{s}",
                     .thresholds = &[_]StatusItem.Metric.Threshold{
-                        .{ .value = 80, .color = terminal_mod.Color.yellow },
-                        .{ .value = 95, .color = terminal_mod.Color.red },
+                        .{ .value = 80, .color = term.Color.yellow },
+                        .{ .value = 95, .color = term.Color.red },
                     },
                 } },
                 .priority = 90,
@@ -326,8 +326,8 @@ pub const StatusBar = struct {
                     .unit = "%",
                     .format = "MEM:{d:.0}{s}",
                     .thresholds = &[_]StatusItem.Metric.Threshold{
-                        .{ .value = 80, .color = terminal_mod.Color.yellow },
-                        .{ .value = 90, .color = terminal_mod.Color.red },
+                        .{ .value = 80, .color = term.Color.yellow },
+                        .{ .value = 90, .color = term.Color.red },
                     },
                 } },
                 .priority = 85,
@@ -338,7 +338,7 @@ pub const StatusBar = struct {
                 try items.append(StatusItem{
                     .id = "network",
                     .content = StatusItem.Content{ .text = "NET" },
-                    .style = StatusItem.Style{ .color = terminal_mod.Color.green, .blink = true },
+                    .style = StatusItem.Style{ .color = term.Color.green, .blink = true },
                     .priority = 70,
                 });
             }
@@ -415,10 +415,10 @@ pub const StatusBar = struct {
 
         // Apply notification styling based on level
         const style = switch (notification.level) {
-            .info => renderer_mod.Style{ .foregroundColor = terminal_mod.Color.blue },
-            .warning => renderer_mod.Style{ .foregroundColor = terminal_mod.Color.yellow },
-            .err => renderer_mod.Style{ .foregroundColor = terminal_mod.Color.red, .bold = true },
-            .success => renderer_mod.Style{ .foregroundColor = terminal_mod.Color.green },
+            .info => renderer_mod.Style{ .foregroundColor = term.Color.blue },
+            .warning => renderer_mod.Style{ .foregroundColor = term.Color.yellow },
+            .err => renderer_mod.Style{ .foregroundColor = term.Color.red, .bold = true },
+            .success => renderer_mod.Style{ .foregroundColor = term.Color.green },
         };
 
         try renderer.setStyleEx(style);

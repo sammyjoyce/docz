@@ -4,7 +4,7 @@
 //! navigation controls, and interactive features.
 
 const std = @import("std");
-const render = @import("../../../render.zig");
+const render_mod = @import("../../../render.zig");
 const renderer_mod = @import("../../core/renderer.zig");
 const bounds_mod = @import("../../core/bounds.zig");
 const events_mod = @import("../../core/events.zig");
@@ -14,8 +14,8 @@ const Renderer = renderer_mod.Renderer;
 const Render = renderer_mod.Render;
 const Bounds = bounds_mod.Bounds;
 const Point = bounds_mod.Point;
-const DiffOp = render.diff.DiffOp;
-const DiffOperation = render.diff.DiffOperation;
+const DiffOp = render_mod.diff.DiffOp;
+const DiffOperation = render_mod.diff.DiffOperation;
 
 pub const DiffViewerError = error{
     InvalidInput,
@@ -101,7 +101,7 @@ pub const DiffViewer = struct {
         config: Config,
     ) !Self {
         // Compute the diff
-        const operations = try diff_mod.diffLines(allocator, original_text, modified_text);
+        const operations = try render_mod.diff.diffLines(allocator, original_text, modified_text);
 
         return Self{
             .allocator = allocator,
@@ -115,7 +115,7 @@ pub const DiffViewer = struct {
 
     /// Deinitialize the DiffViewer
     pub fn deinit(self: *Self) void {
-        diff_mod.freeOperations(self.allocator, self.operations);
+        render_mod.diff.freeOperations(self.allocator, self.operations);
     }
 
     /// Set the bounds for the viewer

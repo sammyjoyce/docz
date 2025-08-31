@@ -16,9 +16,9 @@ const LineChart = @import("chart/line.zig").LineChart;
 const BarChart = @import("chart/bar.zig").BarChart;
 const Sparkline = @import("sparkline.zig").Sparkline;
 const Grid = @import("table.zig").Table;
-const Heatmap = @import("mod.zig").Heatmap;
-const Gauge = @import("mod.zig").Gauge;
-const KPICard = @import("mod.zig").KPICard;
+const Heatmap = @import("heatmap.zig").Heatmap;
+const Gauge = @import("gauge.zig").Gauge;
+const KPICard = @import("kpi_card.zig").KPICard;
 
 // Import chart base types
 const ChartData = @import("chart/base.zig").Chart;

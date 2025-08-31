@@ -4,10 +4,11 @@
 //! with automatic capability detection and progressive enhancement.
 
 const std = @import("std");
-const mod = @import("mod.zig");
+const dashboard = @import("../dashboard.zig");
 const engine_mod = @import("engine.zig");
 const line_chart_mod = @import("line_chart.zig");
 const term = @import("../../../term.zig");
+const term_caps = term.capabilities;
 
 pub const WidgetError = error{ OutOfMemory, NotImplemented };
 
@@ -19,8 +20,8 @@ pub const DashboardBuilder = struct {
 
     pub const Config = struct {
         title: ?[]const u8 = null,
-        layout: mod.Dashboard.Layout = .responsive,
-        theme: ?mod.Dashboard.Theme = null,
+        layout: dashboard.Dashboard.Layout = .responsive,
+        theme: ?dashboard.Dashboard.Theme = null,
         capabilities: ?term_caps.TermCaps = null,
         enable_graphics: bool = true,
         enable_mouse: bool = true,
@@ -199,12 +200,12 @@ pub const DashboardBuilder = struct {
         return self;
     }
 
-    pub fn withLayout(self: *DashboardBuilder, layout: mod.Dashboard.Layout) *DashboardBuilder {
+    pub fn withLayout(self: *DashboardBuilder, layout: dashboard.Dashboard.Layout) *DashboardBuilder {
         self.config.layout = layout;
         return self;
     }
 
-    pub fn withTheme(self: *DashboardBuilder, theme: mod.Dashboard.Theme) *DashboardBuilder {
+    pub fn withTheme(self: *DashboardBuilder, theme: dashboard.Dashboard.Theme) *DashboardBuilder {
         self.config.theme = theme;
         return self;
     }
@@ -274,36 +275,36 @@ pub const DashboardBuilder = struct {
     }
 
     // Build the final dashboard
-    pub fn build(self: *DashboardBuilder) WidgetError!*mod.Dashboard {
+    pub fn build(self: *DashboardBuilder) WidgetError!*dashboard.Dashboard {
         // Create dashboard engine with detected or specified capabilities
         const caps = self.config.capabilities orelse detectCapabilities();
         const engine = try engine_mod.DashboardEngine.init(self.allocator);
 
         // Create dashboard
-        const dashboard = try mod.Dashboard.init(self.allocator, engine);
+        const dash = try dashboard.Dashboard.init(self.allocator, engine);
 
         // Apply configuration
         if (self.config.title) |title| {
-            dashboard.title = title;
+            dash.title = title;
         }
-        dashboard.layout = self.config.layout;
+        dash.layout = self.config.layout;
         if (self.config.theme) |theme| {
-            dashboard.theme = theme;
+            dash.theme = theme;
         }
 
         // Create and add widgets
         for (self.widgets.items) |widget_config| {
             const widget = try self.createWidget(engine, widget_config);
-            try dashboard.addWidget(widget);
+            try dash.addWidget(widget);
         }
 
         _ = caps; // TODO: Use capabilities in configuration
 
-        return dashboard;
+        return dash;
     }
 
-    fn createWidget(self: *DashboardBuilder, engine: *engine_mod.DashboardEngine, config: WidgetConfig) WidgetError!*mod.DashboardWidget {
-        const widget = try self.allocator.create(mod.DashboardWidget);
+    fn createWidget(self: *DashboardBuilder, engine: *engine_mod.DashboardEngine, config: WidgetConfig) WidgetError!*dashboard.DashboardWidget {
+        const widget = try self.allocator.create(dashboard.DashboardWidget);
 
         widget.* = .{
             .widget_impl = switch (config.widget_type) {

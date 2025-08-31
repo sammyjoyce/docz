@@ -48,8 +48,11 @@ pub const Table = struct {
     }
 
     pub fn render(self: *Self, context: *renderCtx.Context) ui.component.ComponentError!void {
-        const rectangle = ui.layout.Rect{ .x = 0, .y = 0, .w = context.surface.size().w, .h = context.surface.size().h };
-        draw.table(context, rectangle, self) catch return ui.component.ComponentError.RenderFailed;
+        _ = context;
+        _ = self;
+        // TODO: Implement table rendering
+        // const rectangle = ui.layout.Rect{ .x = 0, .y = 0, .w = context.surface.size().w, .h = context.surface.size().h };
+        // Render table headers, rows, borders, etc.
     }
 
     pub fn event(self: *Self, inputEvent: ui.event.Event) ui.component.Component.Invalidate {

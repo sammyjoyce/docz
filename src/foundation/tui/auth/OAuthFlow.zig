@@ -23,7 +23,7 @@ const print = std.debug.print;
 const network = @import("../../network.zig");
 const auth_service = network.Auth.Service;
 const oauth = network.Auth.OAuth;
-const render = @import("../../render.zig");
+const render_mod = @import("../../render.zig");
 const ui = @import("../../ui.zig");
 const theme = @import("../../theme.zig");
 
@@ -35,7 +35,7 @@ const tui = @import("../../tui.zig");
 const modal_system = tui.Modal;
 
 // Re-export key types for convenience
-const Renderer = render.Renderer;
+const Renderer = render_mod.Renderer;
 const Theme = theme.Theme;
 const Modal = modal_system.Modal;
 const ModalManager = modal_system.ModalManager;
@@ -420,7 +420,7 @@ pub const OAuthFlow = struct {
 
         // Initialize services
         const auth_svc = auth_service.Service.init(allocator);
-        var http_client = try network.curl.HTTPClient.init(allocator);
+        const http_client = try network.curl.HTTPClient.init(allocator);
         const net_svc = network.Service.init(allocator, http_client, .{});
 
         var self = Self{
@@ -813,7 +813,7 @@ pub const OAuthFlow = struct {
 
         // Render modals if any are active
         if (self.modal_manager) |*modal_mgr| {
-            const render_ctx = @import("../../render.zig").Render{
+            const render_ctx = render_mod.Render{
                 .bounds = .{ .x = 0, .y = 0, .width = 80, .height = 24 },
                 .style = .{},
                 .zIndex = 0,
@@ -829,7 +829,7 @@ pub const OAuthFlow = struct {
     /// Clear the entire screen
     fn clear_screen(self: *Self) !void {
         const size = try self.renderer.getSize();
-        const full_bounds = @import("../../render.zig").Bounds{
+        const full_bounds = render_mod.Bounds{
             .x = 0,
             .y = 0,
             .width = size.width,
@@ -879,14 +879,14 @@ pub const OAuthFlow = struct {
     fn drawProgress(self: *Self) !void {
         if (self.rich_progress_bar) |*progress_bar| {
             const size = try self.renderer.getSize();
-            const progress_bounds = @import("../../render.zig").Bounds{
+            const progress_bounds = render_mod.Bounds{
                 .x = 2,
                 .y = 6,
                 .width = size.width - 4,
                 .height = 3,
             };
 
-            const ctx = render.Render{
+            const ctx = render_mod.Render{
                 .bounds = progress_bounds,
                 .style = .{},
                 .zIndex = 0,
@@ -1262,7 +1262,7 @@ pub const OAuthFlow = struct {
             .timeout_ms = 5000,
         };
 
-        var resp = self.networkClient.request(test_request) catch |err| {
+        const resp = self.networkClient.request(test_request) catch |err| {
             // Network check failed
             self.network_active = false;
             const error_msg = try std.fmt.allocPrint(self.allocator, "Network check failed: {s}", .{@errorName(err)});

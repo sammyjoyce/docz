@@ -39,8 +39,8 @@ pub const Cell = struct {
     editable: bool = false,
 
     pub const CellStyle = struct {
-        foregroundColor: ?terminal_mod.Color = null,
-        backgroundColor: ?terminal_mod.Color = null,
+        foregroundColor: ?term.Color = null,
+        backgroundColor: ?term.Color = null,
         bold: bool = false,
         italic: bool = false,
         alignment: Alignment = .left,

@@ -14,6 +14,7 @@ const renderer_mod = @import("./core/renderer.zig");
 const bounds_mod = @import("./core/bounds.zig");
 const ui = @import("../ui.zig");
 const Notification = ui.Widgets.Notification;
+const SharedContext = @import("../context.zig").SharedContext;
 
 const Renderer = renderer_mod.Renderer;
 const Render = renderer_mod.Render;
@@ -28,6 +29,29 @@ pub const NotificationType = Notification.Type;
 pub const NotificationConfig = Notification.Config;
 pub const NotificationAction = Notification.Action;
 pub const BaseNotification = Notification;
+
+// Helper function to format progress bar
+fn formatProgressBar(allocator: std.mem.Allocator, progress: f32, width: usize, truecolor: bool) ![]const u8 {
+    const filled = @as(usize, @intFromFloat(@floor(progress * @as(f32, @floatFromInt(width)))));
+    const empty = width - filled;
+
+    const fill_char = if (truecolor) "█" else "=";
+    const empty_char = if (truecolor) "░" else "-";
+
+    var result = try std.ArrayList(u8).initCapacity(allocator, width * 3 + 2);
+    try result.append('[');
+    var i: usize = 0;
+    while (i < filled) : (i += 1) {
+        try result.appendSlice(fill_char);
+    }
+    i = 0;
+    while (i < empty) : (i += 1) {
+        try result.appendSlice(empty_char);
+    }
+    try result.append(']');
+
+    return result.toOwnedSlice();
+}
 
 /// TUI Notification that extends the base system with positioning and animation
 pub const NotificationWidget = struct {
@@ -269,7 +293,7 @@ pub const NotificationWidget = struct {
 
         // Create progress bar
         const bar_width = 20;
-        const progress_bar = try notification.NotificationUtils.formatProgressBar(
+        const progress_bar = try formatProgressBar(
             temp_allocator,
             progress,
             bar_width,
@@ -432,7 +456,7 @@ pub const NotificationWidget = struct {
 
     fn getBackgroundColor(self: *Self, caps: renderer_mod.TermCaps) ?Style.Color {
         // Use base color schemes for background
-        const color_scheme = notification.ColorScheme.getStandard(self.base.notification_type);
+        const color_scheme = Notification.ColorScheme.getStandard(self.base.notification_type);
         if (color_scheme.background) |bg| {
             return bg.adapt(caps);
         }

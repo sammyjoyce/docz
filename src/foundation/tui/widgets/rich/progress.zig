@@ -52,6 +52,7 @@ pub const ProgressBar = struct {
     }
 
     pub fn render(self: *Self, ctx: Render) !void {
+        _ = ctx; // TODO: Use the provided render context
         // Delegate to the UI progress widget's draw method
         const render_ctx = @import("../../../render.zig").RenderContext{
             .surface = undefined, // Will be set by renderer

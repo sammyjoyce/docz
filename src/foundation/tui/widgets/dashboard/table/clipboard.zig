@@ -15,10 +15,10 @@ const ClipboardFormat = selection.ClipboardFormat;
 /// Clipboard manager for table operations
 pub const Clipboard = struct {
     allocator: std.mem.Allocator,
-    terminal_caps: terminal_mod.TermCaps,
+    terminal_caps: term.TermCaps,
     last_copied_data: ?[]u8 = null,
 
-    pub fn init(allocator: std.mem.Allocator, caps: terminal_mod.TermCaps) Clipboard {
+    pub fn init(allocator: std.mem.Allocator, caps: term.TermCaps) Clipboard {
         return Clipboard{
             .allocator = allocator,
             .terminal_caps = caps,

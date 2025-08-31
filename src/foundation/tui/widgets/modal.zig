@@ -18,10 +18,10 @@ pub const BoxStyle = renderer_mod.BoxStyle;
 pub const Render = renderer_mod.Render;
 
 pub const Renderer = renderer_mod.Renderer;
-pub const InputEvent = input_mod.InputEvent;
+pub const InputEvent = events_mod.InputEvent;
 pub const KeyEvent = events_mod.KeyEvent;
 pub const MouseEvent = events_mod.MouseEvent;
-pub const TermCaps = term_caps.TermCaps;
+pub const TermCaps = term.capabilities.TermCaps;
 
 /// Modal type enumeration
 pub const ModalType = enum {
@@ -273,7 +273,7 @@ pub const Modal = struct {
             .bounds = .{ .x = 0, .y = 0, .width = 0, .height = 0 },
             .content_bounds = .{ .x = 0, .y = 0, .width = 0, .height = 0 },
             .menu_stack = std.ArrayList([]const MenuItem).init(allocator),
-            .caps = term_caps.getTermCaps(),
+            .caps = term.capabilities.getTermCaps(),
         };
 
         // Initialize menu items if context menu

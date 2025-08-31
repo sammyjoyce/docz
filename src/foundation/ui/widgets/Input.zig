@@ -16,6 +16,9 @@ const ComponentError = Component.ComponentError;
 // Type aliases for compatibility
 const Point = Layout.Point;
 const Rect = Layout.Rect;
+const Render = render_mod.Render;
+const Color = term.color.Color;
+const Style = render_mod.Style;
 
 /// Input features
 pub const Feature = packed struct {
@@ -57,6 +60,19 @@ pub const Config = struct {
     maxLength: ?u32 = null,
     minWidth: u32 = 20,
     maxWidth: ?u32 = null,
+};
+
+/// Component state tracking
+pub const State = struct {
+    dirty: bool = false,
+
+    pub fn markDirty(self: *State) void {
+        self.dirty = true;
+    }
+
+    pub fn clearDirty(self: *State) void {
+        self.dirty = false;
+    }
 };
 
 /// Input component

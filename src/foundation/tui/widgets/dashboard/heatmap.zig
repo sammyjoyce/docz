@@ -23,7 +23,6 @@ pub const Heatmap = struct {
     }
 
     pub fn render(self: *Heatmap, render_pipeline: anytype, bounds: anytype) !void {
-        _ = self;
         _ = render_pipeline;
         _ = bounds;
         self.logger("🔥 Heatmap Widget\n", .{});

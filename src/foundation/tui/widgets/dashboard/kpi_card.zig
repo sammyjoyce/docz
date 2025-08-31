@@ -23,7 +23,6 @@ pub const KPICard = struct {
     }
 
     pub fn render(self: *KPICard, render_pipeline: anytype, bounds: anytype) !void {
-        _ = self;
         _ = render_pipeline;
         _ = bounds;
         self.logger("💳 KPI Card Widget\n", .{});

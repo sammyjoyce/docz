@@ -50,20 +50,20 @@ pub const NotificationType = enum {
     }
 
     /// Get the appropriate color for this notification type
-    pub fn color(self: NotificationType) term_shared.term.Color {
+    pub fn color(self: NotificationType) term.Color {
         return switch (self) {
-            .info => term_shared.term.Color{ .rgb = .{ .r = 52, .g = 152, .b = 219 } }, // Blue
-            .success => term_shared.term.Color{ .rgb = .{ .r = 46, .g = 204, .b = 113 } }, // Green
-            .warning => term_shared.term.Color{ .rgb = .{ .r = 241, .g = 196, .b = 15 } }, // Yellow
-            .@"error" => term_shared.term.Color{ .rgb = .{ .r = 231, .g = 76, .b = 60 } }, // Red
-            .debug => term_shared.term.Color{ .rgb = .{ .r = 155, .g = 89, .b = 182 } }, // Purple
-            .critical => term_shared.term.Color{ .rgb = .{ .r = 192, .g = 57, .b = 43 } }, // Dark red
-            .progress => term_shared.term.Color{ .rgb = .{ .r = 255, .g = 215, .b = 0 } }, // Gold
+            .info => term.Color{ .rgb = .{ .r = 52, .g = 152, .b = 219 } }, // Blue
+            .success => term.Color{ .rgb = .{ .r = 46, .g = 204, .b = 113 } }, // Green
+            .warning => term.Color{ .rgb = .{ .r = 241, .g = 196, .b = 15 } }, // Yellow
+            .@"error" => term.Color{ .rgb = .{ .r = 231, .g = 76, .b = 60 } }, // Red
+            .debug => term.Color{ .rgb = .{ .r = 155, .g = 89, .b = 182 } }, // Purple
+            .critical => term.Color{ .rgb = .{ .r = 192, .g = 57, .b = 43 } }, // Dark red
+            .progress => term.Color{ .rgb = .{ .r = 255, .g = 215, .b = 0 } }, // Gold
         };
     }
 
     /// Convert to notification level
-    pub fn toLevel(self: NotificationType) term_shared.term.NotificationLevel {
+    pub fn toLevel(self: NotificationType) term.NotificationLevel {
         return switch (self) {
             .info => .info,
             .success => .success,
@@ -239,7 +239,7 @@ pub const SystemNotification = struct {
     pub fn send(
         writer: anytype,
         allocator: std.mem.Allocator,
-        caps: term_shared.TermCaps,
+        caps: term.capabilities.TermCaps,
         title: []const u8,
         message: []const u8,
     ) !void {
@@ -249,14 +249,15 @@ pub const SystemNotification = struct {
         const combined = try std.fmt.allocPrint(allocator, "{s}: {s}", .{ title, message });
         defer allocator.free(combined);
 
-        try ansi_notifications.writeNotification(writer, allocator, caps, combined);
+        // OSC 9 notification sequence: ESC ] 9 ; message ST
+        try writer.print("\x1b]9;{s}\x1b\\", .{combined});
     }
 
     /// Send a system notification using the base notification
     pub fn sendFromBase(
         writer: anytype,
         allocator: std.mem.Allocator,
-        caps: term_shared.TermCaps,
+        caps: term.capabilities.TermCaps,
         notification: *const Notification,
     ) !void {
         try send(writer, allocator, caps, notification.title, notification.message);
@@ -421,34 +422,34 @@ pub const ColorScheme = struct {
     const Self = @This();
     /// Get the standard color scheme for a notification type
     pub fn getStandard(notificationType: NotificationType) struct {
-        border: term_shared.term.Color,
-        background: ?term_shared.term.Color,
-        text: ?term_shared.term.Color,
+        border: term.Color,
+        background: ?term.Color,
+        text: ?term.Color,
     } {
         const base_color = notificationType.color();
 
         return .{
             .border = base_color,
             .background = switch (notificationType) {
-                .critical => term_shared.term.Color{ .rgb = .{ .r = 20, .g = 20, .b = 20 } },
+                .critical => term.Color{ .rgb = .{ .r = 20, .g = 20, .b = 20 } },
                 else => null,
             },
             .text = switch (notificationType) {
-                .info, .success, .warning, .@"error", .debug, .critical => term_shared.term.Colors.WHITE,
+                .info, .success, .warning, .@"error", .debug, .critical => term.Colors.WHITE,
             },
         };
     }
 
     /// Get muted colors for less intrusive notifications
     pub fn getMuted() struct {
-        border: term_shared.term.Color,
-        background: ?term_shared.term.Color,
-        text: ?term_shared.term.Color,
+        border: term.Color,
+        background: ?term.Color,
+        text: ?term.Color,
     } {
         return .{
-            .border = term_shared.term.Colors.BRIGHT_BLACK,
+            .border = term.Colors.BRIGHT_BLACK,
             .background = null,
-            .text = term_shared.term.Colors.WHITE,
+            .text = term.Colors.WHITE,
         };
     }
 };

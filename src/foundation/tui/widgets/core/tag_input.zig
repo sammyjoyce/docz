@@ -472,12 +472,12 @@ pub const TagInput = struct {
             try buffer.appendSlice(tag.text);
         }
 
-        try tui_mod.term.ansi.clipboard.setClipboard(buffer.items, self.caps);
+        try term.ansi.clipboard.setClipboard(buffer.items, self.caps);
     }
 
     /// Paste tags from clipboard
     fn pasteFromClipboard(self: *Self) !void {
-        if (try tui_mod.term.ansi.clipboard.getClipboard(self.caps)) |text| {
+        if (try term.ansi.clipboard.getClipboard(self.caps)) |text| {
             defer self.allocator.free(text);
             try self.pasteMultipleTags(text);
         }
