@@ -1338,9 +1338,30 @@ The phased approach minimizes disruption while establishing a maintainable, perf
 **Follow-ups**:
 - None required
 
+## Post-Consolidation Tasks
+
+### Engine Module Move
+**Status**: Completed (2025-08-31 UTC)
+**Rationale**: Engine module doesn't belong in foundation layer; it's a top-level orchestration component that uses foundation modules.
+
+**Changes Made**:
+- Moved src/foundation/engine.zig to src/engine.zig 
+- Build system already correctly references src/engine.zig (no changes needed)
+- Foundation barrel already excludes engine export (per design)
+- Agent imports use named "core_engine" module (no changes needed)
+
+**Files Modified**:
+- src/foundation/engine.zig → src/engine.zig (moved)
+
+**Build Status**: ✓ Pass - list-agents succeeds
+
+**Follow-ups**:
+- None required
+
 ## Consolidation Status Summary
 
 **Status**: COMPLETE (2025-08-31 UTC)
+**Final Commits**: bd1157a, 31ffaa0
 
 All 8 phases of the foundation consolidation plan have been successfully completed:
 
