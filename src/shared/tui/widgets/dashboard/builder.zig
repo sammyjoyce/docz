@@ -9,6 +9,8 @@ const engine_mod = @import("engine.zig");
 const line_chart_mod = @import("line_chart.zig");
 const term_caps = @import("../../term/capabilities.zig");
 
+pub const WidgetError = error{ OutOfMemory, NotImplemented };
+
 /// Fluent dashboard builder with progressive enhancement
 pub const DashboardBuilder = struct {
     allocator: std.mem.Allocator,
@@ -239,40 +241,40 @@ pub const DashboardBuilder = struct {
     }
 
     // Widget builder methods
-    pub fn addLineChart(self: *DashboardBuilder, x: u32, y: u32, width: u32, height: u32) *chartBuilder(WidgetConfig.LineChartProps) {
-        return chartBuilder(WidgetConfig.LineChartProps).init(self, .line_chart, x, y, width, height);
+    pub fn addLineChart(self: *DashboardBuilder, x: u32, y: u32, width: u32, height: u32) WidgetError!*chartBuilder(WidgetConfig.LineChartProps) {
+        return try chartBuilder(WidgetConfig.LineChartProps).init(self, .line_chart, x, y, width, height);
     }
 
-    pub fn addAreaChart(self: *DashboardBuilder, x: u32, y: u32, width: u32, height: u32) *chartBuilder(WidgetConfig.AreaChartProps) {
-        return chartBuilder(WidgetConfig.AreaChartProps).init(self, .area_chart, x, y, width, height);
+    pub fn addAreaChart(self: *DashboardBuilder, x: u32, y: u32, width: u32, height: u32) WidgetError!*chartBuilder(WidgetConfig.AreaChartProps) {
+        return try chartBuilder(WidgetConfig.AreaChartProps).init(self, .area_chart, x, y, width, height);
     }
 
-    pub fn addBarChart(self: *DashboardBuilder, x: u32, y: u32, width: u32, height: u32) *chartBuilder(WidgetConfig.BarChartProps) {
-        return chartBuilder(WidgetConfig.BarChartProps).init(self, .bar_chart, x, y, width, height);
+    pub fn addBarChart(self: *DashboardBuilder, x: u32, y: u32, width: u32, height: u32) WidgetError!*chartBuilder(WidgetConfig.BarChartProps) {
+        return try chartBuilder(WidgetConfig.BarChartProps).init(self, .bar_chart, x, y, width, height);
     }
 
-    pub fn addHeatmap(self: *DashboardBuilder, x: u32, y: u32, width: u32, height: u32) *chartBuilder(WidgetConfig.HeatmapProps) {
-        return chartBuilder(WidgetConfig.HeatmapProps).init(self, .heatmap, x, y, width, height);
+    pub fn addHeatmap(self: *DashboardBuilder, x: u32, y: u32, width: u32, height: u32) WidgetError!*chartBuilder(WidgetConfig.HeatmapProps) {
+        return try chartBuilder(WidgetConfig.HeatmapProps).init(self, .heatmap, x, y, width, height);
     }
 
-    pub fn addDataGrid(self: *DashboardBuilder, x: u32, y: u32, width: u32, height: u32) *chartBuilder(WidgetConfig.DataGridProps) {
-        return chartBuilder(WidgetConfig.DataGridProps).init(self, .data_grid, x, y, width, height);
+    pub fn addDataGrid(self: *DashboardBuilder, x: u32, y: u32, width: u32, height: u32) WidgetError!*chartBuilder(WidgetConfig.DataGridProps) {
+        return try chartBuilder(WidgetConfig.DataGridProps).init(self, .data_grid, x, y, width, height);
     }
 
-    pub fn addGauge(self: *DashboardBuilder, x: u32, y: u32, width: u32, height: u32) *chartBuilder(WidgetConfig.GaugeProps) {
-        return chartBuilder(WidgetConfig.GaugeProps).init(self, .gauge, x, y, width, height);
+    pub fn addGauge(self: *DashboardBuilder, x: u32, y: u32, width: u32, height: u32) WidgetError!*chartBuilder(WidgetConfig.GaugeProps) {
+        return try chartBuilder(WidgetConfig.GaugeProps).init(self, .gauge, x, y, width, height);
     }
 
-    pub fn addSparkline(self: *DashboardBuilder, x: u32, y: u32, width: u32, height: u32) *chartBuilder(WidgetConfig.SparklineProps) {
-        return chartBuilder(WidgetConfig.SparklineProps).init(self, .sparkline, x, y, width, height);
+    pub fn addSparkline(self: *DashboardBuilder, x: u32, y: u32, width: u32, height: u32) WidgetError!*chartBuilder(WidgetConfig.SparklineProps) {
+        return try chartBuilder(WidgetConfig.SparklineProps).init(self, .sparkline, x, y, width, height);
     }
 
-    pub fn addKPICard(self: *DashboardBuilder, x: u32, y: u32, width: u32, height: u32) *chartBuilder(WidgetConfig.KPICardProps) {
-        return chartBuilder(WidgetConfig.KPICardProps).init(self, .kpi_card, x, y, width, height);
+    pub fn addKPICard(self: *DashboardBuilder, x: u32, y: u32, width: u32, height: u32) WidgetError!*chartBuilder(WidgetConfig.KPICardProps) {
+        return try chartBuilder(WidgetConfig.KPICardProps).init(self, .kpi_card, x, y, width, height);
     }
 
     // Build the final dashboard
-    pub fn build(self: *DashboardBuilder) !*mod.Dashboard {
+    pub fn build(self: *DashboardBuilder) WidgetError!*mod.Dashboard {
         // Create dashboard engine with detected or specified capabilities
         const caps = self.config.capabilities orelse detectCapabilities();
         const engine = try engine_mod.DashboardEngine.init(self.allocator);
@@ -300,7 +302,7 @@ pub const DashboardBuilder = struct {
         return dashboard;
     }
 
-    fn createWidget(self: *DashboardBuilder, engine: *engine_mod.DashboardEngine, config: WidgetConfig) !*mod.DashboardWidget {
+    fn createWidget(self: *DashboardBuilder, engine: *engine_mod.DashboardEngine, config: WidgetConfig) WidgetError!*mod.DashboardWidget {
         const widget = try self.allocator.create(mod.DashboardWidget);
 
         widget.* = .{
@@ -345,8 +347,8 @@ pub fn chartBuilder(comptime PropsType: type) type {
         dashboard_builder: *DashboardBuilder,
         widget_config: DashboardBuilder.WidgetConfig,
 
-        pub fn init(builder: *DashboardBuilder, widget_type: DashboardBuilder.WidgetConfig.WidgetType, x: u32, y: u32, width: u32, height: u32) *Self {
-            const self = builder.allocator.create(Self) catch unreachable;
+        pub fn init(builder: *DashboardBuilder, widget_type: DashboardBuilder.WidgetConfig.WidgetType, x: u32, y: u32, width: u32, height: u32) WidgetError!*Self {
+            const self = try builder.allocator.create(Self);
             self.* = .{
                 .dashboard_builder = builder,
                 .widget_config = .{
@@ -419,14 +421,14 @@ pub fn chartBuilder(comptime PropsType: type) type {
         }
 
         // Finalize and add widget to dashboard
-        pub fn done(self: *Self) *DashboardBuilder {
-            self.dashboard_builder.widgets.append(self.widget_config) catch unreachable;
+        pub fn done(self: *Self) WidgetError!*DashboardBuilder {
+            try self.dashboard_builder.widgets.append(self.widget_config);
             self.dashboard_builder.allocator.destroy(self);
             return self.dashboard_builder;
         }
 
         // Convenience method to continue building
-        pub fn next(self: *Self) *DashboardBuilder {
+        pub fn next(self: *Self) WidgetError!*DashboardBuilder {
             return self.done();
         }
     };

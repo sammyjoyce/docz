@@ -32,63 +32,69 @@ pub fn main() !void {
     var dashboard_builder = dashboard.DashboardBuilder.init(allocator);
     defer dashboard_builder.deinit();
 
-    const demo_dashboard = try dashboard_builder
+    dashboard_builder
         .withTitle("System Performance Dashboard")
         .withCapabilities(caps)
         .enableGraphics(true)
         .enableMouse(true)
         .enableAnimations(true)
-        .withTargetFPS(60)
+        .withTargetFPS(60);
 
-        // Main line chart - CPU usage over time
-        .addLineChart(0, 0, 50, 15)
+    // Main line chart - CPU usage over time
+    var line_chart = try dashboard_builder.addLineChart(0, 0, 50, 15);
+    line_chart
         .withTitle("CPU Usage")
         .withLabels("Time (s)", "Usage (%)")
         .withGrid(true)
-        .withAnimation(true)
-        .done()
+        .withAnimation(true);
+    try line_chart.done();
 
-        // Area chart - Memory usage
-        .addAreaChart(50, 0, 30, 15)
+    // Area chart - Memory usage
+    var area_chart = try dashboard_builder.addAreaChart(50, 0, 30, 15);
+    area_chart
         .withTitle("Memory Usage")
         .withLabels("Time (s)", "Memory (GB)")
-        .withGrid(true)
-        .done()
+        .withGrid(true);
+    try area_chart.done();
 
-        // Gauge - Disk usage
-        .addGauge(0, 15, 25, 10)
-        .withTitle("Disk Usage")
-        .done()
+    // Gauge - Disk usage
+    var gauge_chart = try dashboard_builder.addGauge(0, 15, 25, 10);
+    gauge_chart
+        .withTitle("Disk Usage");
+    try gauge_chart.done();
 
-        // KPI cards for key metrics
-        .addKPICard(25, 15, 20, 5)
-        .withTitle("Uptime")
-        .done()
-        .addKPICard(25, 20, 20, 5)
-        .withTitle("Active Users")
-        .done()
+    // KPI cards for key metrics
+    var uptime_card = try dashboard_builder.addKPICard(25, 15, 20, 5);
+    uptime_card.withTitle("Uptime");
+    try uptime_card.done();
 
-        // Bar chart - Process resource usage
-        .addBarChart(45, 15, 35, 12)
+    var users_card = try dashboard_builder.addKPICard(25, 20, 20, 5);
+    users_card.withTitle("Active Users");
+    try users_card.done();
+
+    // Bar chart - Process resource usage
+    var proc_chart = try dashboard_builder.addBarChart(45, 15, 35, 12);
+    proc_chart
         .withTitle("Top Processes")
-        .withLabels("Process", "CPU %")
-        .done()
+        .withLabels("Process", "CPU %");
+    try proc_chart.done();
 
-        // Data grid - System logs
-        .addDataGrid(0, 25, 80, 10)
-        .withTitle("System Logs")
-        .done()
+    // Data grid - System logs
+    var logs_grid = try dashboard_builder.addDataGrid(0, 25, 80, 10);
+    logs_grid.withTitle("System Logs");
+    try logs_grid.done();
 
-        // Sparklines for quick metrics
-        .addSparkline(60, 0, 20, 3)
-        .withTitle("Network I/O")
-        .done()
+    // Sparklines for quick metrics
+    var net_spark = try dashboard_builder.addSparkline(60, 0, 20, 3);
+    net_spark.withTitle("Network I/O");
+    try net_spark.done();
 
-        // Heatmap - System load by core
-        .addHeatmap(0, 35, 40, 12)
-        .withTitle("CPU Core Load")
-        .done()
-        .build();
+    // Heatmap - System load by core
+    var heatmap = try dashboard_builder.addHeatmap(0, 35, 40, 12);
+    heatmap.withTitle("CPU Core Load");
+    try heatmap.done();
+
+    const demo_dashboard = try dashboard_builder.build();
 
     std.debug.print("\n📊 Dashboard Components Created:\n", .{});
 
