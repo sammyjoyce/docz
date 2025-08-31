@@ -4,6 +4,16 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
+/// Error set for workflow steps
+pub const WorkflowError = error{
+    /// Underlying IO failure while performing the step
+    Io,
+    /// Validation failure such as missing prerequisites
+    Validation,
+    /// Step exceeded allotted time
+    Timeout,
+};
+
 pub const WorkflowStepResult = struct {
     const Self = @This();
     success: bool,
@@ -40,7 +50,7 @@ pub const WorkflowStep = struct {
 
     name: []const u8,
     description: ?[]const u8 = null,
-    executeFn: *const fn (allocator: Allocator, context: ?StepContext) anyerror!WorkflowStepResult,
+    executeFn: *const fn (allocator: Allocator, context: ?StepContext) WorkflowError!WorkflowStepResult,
     context: ?StepContext = null,
     required: bool = true,
     timeoutMs: ?u32 = null,
@@ -48,7 +58,7 @@ pub const WorkflowStep = struct {
 
     pub fn init(
         name: []const u8,
-        executeFn: *const fn (allocator: Allocator, context: ?StepContext) anyerror!WorkflowStepResult,
+        executeFn: *const fn (allocator: Allocator, context: ?StepContext) WorkflowError!WorkflowStepResult,
     ) Self {
         return .{ .name = name, .executeFn = executeFn };
     }
@@ -123,7 +133,7 @@ pub const CommonSteps = struct {
     /// Delay step for testing or spacing
     pub fn delay(durationMs: u32) WorkflowStep {
         const Impl = struct {
-            fn execute(allocator: Allocator, context: ?StepContext) anyerror!WorkflowStepResult {
+            fn execute(allocator: Allocator, context: ?StepContext) WorkflowError!WorkflowStepResult {
                 _ = allocator;
                 _ = context;
                 std.time.sleep(durationMs * std.time.ns_per_ms);
@@ -138,14 +148,14 @@ pub const CommonSteps = struct {
     /// File system check step
     pub fn checkFileExists(filePath: []const u8) WorkflowStep {
         const Impl = struct {
-            fn execute(allocator: Allocator, context: ?StepContext) anyerror!WorkflowStepResult {
+            fn execute(allocator: Allocator, context: ?StepContext) WorkflowError!WorkflowStepResult {
                 _ = allocator;
                 const path = if (context) |ctx| ctx.getParam("file_path") orelse filePath else filePath;
 
                 const dir = if (context) |ctx| ctx.dir else std.fs.cwd();
                 dir.access(path, .{}) catch |err| switch (err) {
-                    error.FileNotFound => return .{ .success = false, .errorMessage = "File not found" },
-                    else => return err,
+                    error.FileNotFound => return WorkflowError.Validation,
+                    else => return WorkflowError.Io,
                 };
 
                 return .{ .success = true };
@@ -159,14 +169,14 @@ pub const CommonSteps = struct {
     /// Directory creation step
     pub fn createDirectory(dirPath: []const u8) WorkflowStep {
         const Impl = struct {
-            fn execute(allocator: Allocator, context: ?StepContext) anyerror!WorkflowStepResult {
+            fn execute(allocator: Allocator, context: ?StepContext) WorkflowError!WorkflowStepResult {
                 _ = allocator;
                 const path = if (context) |ctx| ctx.getParam("dir_path") orelse dirPath else dirPath;
 
                 const dir = if (context) |ctx| ctx.dir else std.fs.cwd();
                 dir.makeDir(path) catch |err| switch (err) {
                     error.PathAlreadyExists => {},
-                    else => return .{ .success = false, .errorMessage = "Failed to create directory" },
+                    else => return WorkflowError.Io,
                 };
 
                 return .{ .success = true };
@@ -180,12 +190,12 @@ pub const CommonSteps = struct {
     /// Environment variable check step
     pub fn checkEnvironmentVariable(varName: []const u8) WorkflowStep {
         const Impl = struct {
-            fn execute(allocator: Allocator, context: ?StepContext) anyerror!WorkflowStepResult {
+            fn execute(allocator: Allocator, context: ?StepContext) WorkflowError!WorkflowStepResult {
                 const name = if (context) |ctx| ctx.getParam("var_name") orelse varName else varName;
 
                 const val = std.process.getEnvVarOwned(allocator, name) catch |err| switch (err) {
-                    error.EnvironmentVariableNotFound => return .{ .success = false, .errorMessage = "Environment variable not found" },
-                    else => return err,
+                    error.EnvironmentVariableNotFound => return WorkflowError.Validation,
+                    else => return WorkflowError.Io,
                 };
                 allocator.free(val);
                 return .{ .success = true };
@@ -200,7 +210,7 @@ pub const CommonSteps = struct {
     pub fn checkNetworkConnectivity(host: []const u8) WorkflowStep {
         _ = host;
         const Impl = struct {
-            fn execute(allocator: Allocator, context: ?StepContext) anyerror!WorkflowStepResult {
+            fn execute(allocator: Allocator, context: ?StepContext) WorkflowError!WorkflowStepResult {
                 _ = allocator;
                 _ = context;
                 std.time.sleep(100 * std.time.ns_per_ms);
@@ -215,22 +225,22 @@ pub const CommonSteps = struct {
     /// Configuration validation step
     pub fn validateConfiguration(configPath: []const u8) WorkflowStep {
         const Impl = struct {
-            fn execute(allocator: Allocator, context: ?StepContext) anyerror!WorkflowStepResult {
+            fn execute(allocator: Allocator, context: ?StepContext) WorkflowError!WorkflowStepResult {
                 _ = context;
                 const dir = if (context) |ctx| ctx.dir else std.fs.cwd();
                 const file = dir.openFile(configPath, .{}) catch |err| switch (err) {
-                    error.FileNotFound => return .{ .success = false, .errorMessage = "Configuration file not found" },
-                    else => return err,
+                    error.FileNotFound => return WorkflowError.Validation,
+                    else => return WorkflowError.Io,
                 };
                 defer file.close();
 
                 const size = try file.getEndPos();
-                if (size == 0) return .{ .success = false, .errorMessage = "Configuration file is empty" };
+                if (size == 0) return WorkflowError.Validation;
 
                 const contents = try file.readToEndAlloc(allocator, size);
                 defer allocator.free(contents);
 
-                if (contents.len < 2) return .{ .success = false, .errorMessage = "Configuration file too small" };
+                if (contents.len < 2) return WorkflowError.Validation;
                 return .{ .success = true };
             }
         };
@@ -268,7 +278,7 @@ pub const StepBuilder = struct {
 
     pub fn execute(
         self: Self,
-        executeFn: *const fn (allocator: Allocator, context: ?StepContext) anyerror!WorkflowStepResult,
+        executeFn: *const fn (allocator: Allocator, context: ?StepContext) WorkflowError!WorkflowStepResult,
     ) WorkflowStep {
         return .{
             .name = self.step.name,

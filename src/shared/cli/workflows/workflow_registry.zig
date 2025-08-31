@@ -195,7 +195,7 @@ pub const WorkflowRegistry = struct {
 
 fn createAuthVerificationStep() WorkflowStep.WorkflowStep {
     const AuthVerifyImpl = struct {
-        fn execute(allocator: std.mem.Allocator, ctx: ?WorkflowStep.StepContext) anyerror!WorkflowStep.WorkflowStepResult {
+        fn execute(allocator: std.mem.Allocator, ctx: ?WorkflowStep.StepContext) WorkflowStep.WorkflowError!WorkflowStep.WorkflowStepResult {
             _ = allocator;
             _ = ctx;
 
@@ -213,7 +213,7 @@ fn createAuthVerificationStep() WorkflowStep.WorkflowStep {
 
 fn createConfigOptimizationStep() WorkflowStep.WorkflowStep {
     const ConfigOptimizeImpl = struct {
-        fn execute(allocator: std.mem.Allocator, ctx: ?WorkflowStep.StepContext) anyerror!WorkflowStep.WorkflowStepResult {
+        fn execute(allocator: std.mem.Allocator, ctx: ?WorkflowStep.StepContext) WorkflowStep.WorkflowError!WorkflowStep.WorkflowStepResult {
             _ = allocator;
             _ = ctx;
 
@@ -230,7 +230,7 @@ fn createConfigOptimizationStep() WorkflowStep.WorkflowStep {
 
 fn createInitialConfigStep() WorkflowStep.WorkflowStep {
     const InitConfigImpl = struct {
-        fn execute(allocator: std.mem.Allocator, ctx: ?WorkflowStep.StepContext) anyerror!WorkflowStep.WorkflowStepResult {
+        fn execute(allocator: std.mem.Allocator, ctx: ?WorkflowStep.StepContext) WorkflowStep.WorkflowError!WorkflowStep.WorkflowStepResult {
             _ = ctx;
 
             // Create configuration if it doesn't exist
