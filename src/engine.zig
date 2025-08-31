@@ -1,6 +1,8 @@
 //! Core engine for terminal AI agents.
-//! Provides shared CLI, auth, client, and run loop logic.
-//! Agent-specifics (prompts, tools) are supplied via AgentSpec.
+//! Provides run loop and client integration. Auth is headless under
+//! `foundation.network/auth/*`; interactive auth flows live in CLI/TUI
+//! (`foundation.tui.auth/*`, `foundation.cli.auth/*`). Agent prompts and
+//! tools are supplied via AgentSpec.
 
 const std = @import("std");
 // Import from foundation barrel to avoid module conflicts

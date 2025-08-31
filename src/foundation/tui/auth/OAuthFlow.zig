@@ -355,7 +355,7 @@ pub const OAuthFlow = struct {
     renderer: *Renderer,
     theme_manager: *Theme,
     auth_service: auth_service.Service,
-    networkClient: *curl.HttpClient,
+    networkClient: *network.HttpCurl,
 
     // State management
     currentState: OAuthState,

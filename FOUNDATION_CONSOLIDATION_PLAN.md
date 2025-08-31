@@ -96,3 +96,30 @@ Rules
 ## Notes
 - Prior guidance suggesting temporary compatibility layers is deprecated. Update imports during each refactor instead of adding shims.
 - Keep changes small and targeted to keep builds green.
+
+## Completion Status
+
+### Remove mod.zig Files (2025-08-31)
+**Status**: Completed
+**Rationale**: Found and removed last remaining mod.zig file violating the "no mod.zig" rule
+
+**Changes Made**:
+- Removed `src/foundation/tui/widgets/dashboard/mod.zig`
+- Updated `src/foundation/tui/widgets.zig` to import from dashboard barrel
+- Refactored `src/foundation/tui/widgets/dashboard.zig` to properly export dashboard components
+- Ensured all exports follow barrel pattern without deep imports
+
+**Files Modified**:
+- src/foundation/tui/widgets/dashboard/mod.zig (deleted)
+- src/foundation/tui/widgets.zig
+- src/foundation/tui/widgets/dashboard.zig
+
+**Tests**:
+- zig build list-agents: ✓ Pass
+- zig build validate-agents: ✓ Pass (2 valid agents)
+- zig build -Dagent=test_agent: ✗ Fail (unrelated import errors in other modules)
+
+**Follow-ups**:
+- Multiple import errors remain in TUI modules (notifications, auth, graphics)
+- Missing SharedContext and notification module definitions
+- Need to fix base.zig and other missing module references
