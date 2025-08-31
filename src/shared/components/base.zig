@@ -19,6 +19,16 @@ const GraphicsManager = graphics.Graphics;
 /// Unique identifier for components
 pub const Id = u32;
 
+/// Errors that components may produce during lifecycle and rendering
+pub const ComponentError = error{
+    OutOfMemory,
+    InitFailed,
+    RenderFailed,
+    EventHandlingFailed,
+    UpdateFailed,
+    ChildrenNotSupported,
+};
+
 /// Event types that components can handle
 pub const Event = union(enum) {
     key: Key,
@@ -157,7 +167,7 @@ pub const Component = struct {
     /// Virtual table for component methods
     pub const VTable = struct {
         // Lifecycle
-        init: *const fn (impl: *anyopaque, allocator: std.mem.Allocator) anyerror!void,
+        init: *const fn (impl: *anyopaque, allocator: std.mem.Allocator) ComponentError!void,
         deinit: *const fn (impl: *anyopaque) void,
 
         // State management
@@ -165,19 +175,19 @@ pub const Component = struct {
         setState: *const fn (impl: *anyopaque, state: State) void,
 
         // Rendering
-        render: *const fn (impl: *anyopaque, ctx: Render) anyerror!void,
+        render: *const fn (impl: *anyopaque, ctx: Render) ComponentError!void,
         measure: *const fn (impl: *anyopaque, available: Rect) Rect,
 
         // Event handling
-        handleEvent: *const fn (impl: *anyopaque, event: Event) anyerror!bool,
+        handleEvent: *const fn (impl: *anyopaque, event: Event) ComponentError!bool,
 
         // Layout and children
-        addChild: ?*const fn (impl: *anyopaque, child: *Component) anyerror!void,
+        addChild: ?*const fn (impl: *anyopaque, child: *Component) ComponentError!void,
         removeChild: ?*const fn (impl: *anyopaque, child: *Component) void,
         getChildren: ?*const fn (impl: *anyopaque) []const *Component,
 
         // Animation
-        update: ?*const fn (impl: *anyopaque, dt: f32) anyerror!void,
+        update: ?*const fn (impl: *anyopaque, dt: f32) ComponentError!void,
     };
 
     vtable: *const VTable,
@@ -185,7 +195,7 @@ pub const Component = struct {
     id: Id,
 
     // Public interface methods
-    pub inline fn init(self: *Self, allocator: std.mem.Allocator) !void {
+    pub inline fn init(self: *Self, allocator: std.mem.Allocator) ComponentError!void {
         return self.vtable.init(self.impl, allocator);
     }
 
@@ -201,7 +211,7 @@ pub const Component = struct {
         return self.vtable.setState(self.impl, state);
     }
 
-    pub inline fn render(self: *Self, ctx: Render) !void {
+    pub inline fn render(self: *Self, ctx: Render) ComponentError!void {
         const state = self.getState();
         if (!state.visible) return;
 
@@ -212,18 +222,18 @@ pub const Component = struct {
         return self.vtable.measure(self.impl, available);
     }
 
-    pub inline fn handleEvent(self: *Self, event: Event) !bool {
+    pub inline fn handleEvent(self: *Self, event: Event) ComponentError!bool {
         const state = self.getState();
         if (!state.enabled) return false;
 
         return self.vtable.handleEvent(self.impl, event);
     }
 
-    pub inline fn addChild(self: *Self, child: *Component) !void {
+    pub inline fn addChild(self: *Self, child: *Component) ComponentError!void {
         if (self.vtable.addChild) |add_fn| {
             return add_fn(self.impl, child);
         }
-        return error.ChildrenNotSupported;
+        return ComponentError.ChildrenNotSupported;
     }
 
     pub inline fn removeChild(self: *Self, child: *Component) void {
@@ -239,7 +249,7 @@ pub const Component = struct {
         return &[_]*Component{};
     }
 
-    pub inline fn update(self: *Self, dt: f32) !void {
+    pub inline fn update(self: *Self, dt: f32) ComponentError!void {
         if (self.vtable.update) |update_fn| {
             return update_fn(self.impl, dt);
         }
@@ -302,12 +312,12 @@ pub const Registry = struct {
         self.components.deinit();
     }
 
-    pub fn addComponent(self: *Self, component: *Component) !void {
+    pub fn addComponent(self: *Self, component: *Component) ComponentError!void {
         component.id = self.nextId;
         self.nextId += 1;
 
         try component.init(self.allocator);
-        try self.components.append(component);
+        self.components.append(component) catch return ComponentError.OutOfMemory;
     }
 
     pub fn removeComponent(self: *Self, component: *Component) void {
@@ -337,14 +347,14 @@ pub const Registry = struct {
         }
     }
 
-    pub fn handleEvent(self: *Self, event: Event) !bool {
+    pub fn handleEvent(self: *Self, event: Event) ComponentError!bool {
         // Try focused component first
         if (self.focusedComponent) |focused| {
             if (try focused.handleEvent(event)) return true;
         }
 
         // Then try other components in reverse z-order (top to bottom)
-        const sorted_components = try self.allocator.dupe(*Component, self.components.items);
+        const sorted_components = self.allocator.dupe(*Component, self.components.items) catch return ComponentError.OutOfMemory;
         defer self.allocator.free(sorted_components);
 
         std.sort.sort(*Component, sorted_components, {}, compareZIndex);
@@ -358,9 +368,9 @@ pub const Registry = struct {
         return false;
     }
 
-    pub fn render(self: *Self, ctx: Render) !void {
+    pub fn render(self: *Self, ctx: Render) ComponentError!void {
         // Sort components by z-index for proper layering
-        const sorted_components = try self.allocator.dupe(*Component, self.components.items);
+        const sorted_components = self.allocator.dupe(*Component, self.components.items) catch return ComponentError.OutOfMemory;
         defer self.allocator.free(sorted_components);
 
         std.sort.sort(*Component, sorted_components, {}, compareZIndexReverse);
@@ -373,7 +383,7 @@ pub const Registry = struct {
         }
     }
 
-    pub fn update(self: *Self, dt: f32) !void {
+    pub fn update(self: *Self, dt: f32) ComponentError!void {
         for (self.components.items) |component| {
             try component.update(dt);
         }

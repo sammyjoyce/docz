@@ -73,6 +73,7 @@ pub const Event = base.Event;
 pub const Theme = base.Theme;
 pub const Animation = base.Animation;
 pub const Render = base.Render;
+pub const ComponentError = base.ComponentError;
 
 // Note: Additional UI context helpers are available under legacy shims
 // when building with -Dlegacy.

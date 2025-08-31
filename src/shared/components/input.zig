@@ -13,6 +13,7 @@ const State = base.State;
 const Render = base.Render;
 const Event = base.Event;
 const Theme = base.Theme;
+const ComponentError = base.ComponentError;
 
 const Terminal = term.Terminal;
 const Style = term.Style;
@@ -46,7 +47,7 @@ pub const Validation = union(enum) {
 };
 
 /// Callback type for suggestion providers
-pub const SuggestionProvider = *const fn (input: []const u8, allocator: std.mem.Allocator) anyerror![]Suggestion;
+pub const SuggestionProvider = *const fn (input: []const u8, allocator: std.mem.Allocator) ComponentError![]Suggestion;
 
 /// Callback type for validators
 pub const Validator = *const fn (input: []const u8) Validation;
@@ -103,8 +104,8 @@ pub const Input = struct {
         .update = update,
     };
 
-    pub fn create(allocator: std.mem.Allocator, config: Config) !*Component {
-        const self = try allocator.create(Self);
+    pub fn create(allocator: std.mem.Allocator, config: Config) ComponentError!*Component {
+        const self = allocator.create(Self) catch return ComponentError.OutOfMemory;
         self.* = Self{
             .allocator = allocator,
             .state = State{},
@@ -113,7 +114,7 @@ pub const Input = struct {
             .history = std.ArrayList([]const u8).init(allocator),
         };
 
-        const component = try allocator.create(Component);
+        const component = allocator.create(Component) catch return ComponentError.OutOfMemory;
         component.* = Component{
             .vtable = &vtable,
             .impl = self,
@@ -155,7 +156,7 @@ pub const Input = struct {
 
     // Component implementation
 
-    fn init(impl: *anyopaque, allocator: std.mem.Allocator) anyerror!void {
+    fn init(impl: *anyopaque, allocator: std.mem.Allocator) ComponentError!void {
         _ = allocator;
         const self: *Self = @ptrCast(@alignCast(impl));
         self.state = State{};
@@ -185,32 +186,25 @@ pub const Input = struct {
         self.state = state;
     }
 
-    fn render(impl: *anyopaque, ctx: Render) anyerror!void {
+    fn render(impl: *anyopaque, ctx: Render) ComponentError!void {
         const self: *Self = @ptrCast(@alignCast(impl));
 
-        // Move to component position
-        try ctx.terminal.moveTo(self.state.bounds.x, self.state.bounds.y);
+        ctx.terminal.moveTo(self.state.bounds.x, self.state.bounds.y) catch return ComponentError.RenderFailed;
 
-        // Render input field background and border
-        try self.renderInputField(ctx);
+        self.renderInputField(ctx) catch return ComponentError.RenderFailed;
+        self.renderContent(ctx) catch return ComponentError.RenderFailed;
 
-        // Render content
-        try self.renderContent(ctx);
-
-        // Render cursor if focused
         if (self.state.focused) {
-            try self.renderCursor(ctx);
+            self.renderCursor(ctx) catch return ComponentError.RenderFailed;
         }
 
-        // Render suggestions if available
         if (self.showSuggestions and self.suggestions != null) {
-            try self.renderSuggestions(ctx);
+            self.renderSuggestions(ctx) catch return ComponentError.RenderFailed;
         }
 
-        // Render validation feedback
         switch (self.validationResult) {
-            .warning => |msg| try self.renderValidation(ctx, msg, ctx.theme.colors.warning),
-            .@"error" => |msg| try self.renderValidation(ctx, msg, ctx.theme.colors.errorColor),
+            .warning => |msg| self.renderValidation(ctx, msg, ctx.theme.colors.warning) catch return ComponentError.RenderFailed,
+            .@"error" => |msg| self.renderValidation(ctx, msg, ctx.theme.colors.errorColor) catch return ComponentError.RenderFailed,
             .valid => {},
         }
     }
@@ -246,15 +240,15 @@ pub const Input = struct {
         };
     }
 
-    fn handleEvent(impl: *anyopaque, event: Event) anyerror!bool {
+    fn handleEvent(impl: *anyopaque, event: Event) ComponentError!bool {
         const self: *Self = @ptrCast(@alignCast(impl));
 
         switch (event) {
             .key => |key_event| {
-                return try self.handleKeyEvent(key_event);
+                return self.handleKeyEvent(key_event);
             },
             .mouse => |mouse_event| {
-                return try self.handleMouseEvent(mouse_event);
+                return self.handleMouseEvent(mouse_event);
             },
             .focus => |focus_event| {
                 if (focus_event.gained) {
@@ -269,21 +263,20 @@ pub const Input = struct {
         }
     }
 
-    fn update(impl: *anyopaque, dt: f32) anyerror!void {
+    fn update(impl: *anyopaque, dt: f32) ComponentError!void {
         const self: *Self = @ptrCast(@alignCast(impl));
 
         // Update cursor blink animation
         self.cursorBlinkTime += dt;
         if (self.cursorBlinkTime >= 1.0) {
             self.cursorBlinkTime = 0.0;
-            self.state.markDirty(); // Trigger redraw for cursor blink
+            self.state.markDirty();
         }
 
-        // Update focused animation
         if (self.state.focused) {
             self.focusedTime += dt;
             if (self.focusedTime < 0.5) {
-                self.state.markDirty(); // Animate focus transition
+                self.state.markDirty();
             }
         }
     }
@@ -480,7 +473,7 @@ pub const Input = struct {
 
     // Event handling methods
 
-    fn handleKeyEvent(self: *Self, key_event: Event.Key) !bool {
+    fn handleKeyEvent(self: *Self, key_event: Event.Key) ComponentError!bool {
         switch (key_event.key) {
             .char => {
                 // Insert character (this is simplified - real implementation would handle Unicode properly)
@@ -567,7 +560,7 @@ pub const Input = struct {
         }
     }
 
-    fn handleMouseEvent(self: *Self, mouse_event: Event.Mouse) !bool {
+    fn handleMouseEvent(self: *Self, mouse_event: Event.Mouse) ComponentError!bool {
         // Convert screen coordinates to component-relative coordinates
         const bounds = self.state.bounds;
         const relative_x = mouse_event.pos.x - bounds.x;
@@ -654,12 +647,12 @@ pub const Input = struct {
 
     // Helper methods
 
-    fn insertChar(self: *Self, char: u8) !bool {
+    fn insertChar(self: *Self, char: u8) ComponentError!bool {
         if (self.config.maxLength) |max_len| {
             if (self.buffer.items.len >= max_len) return true;
         }
 
-        try self.buffer.insert(self.cursorPosition, char);
+        self.buffer.insert(self.cursorPosition, char) catch return ComponentError.OutOfMemory;
         self.cursorPosition += 1;
         self.updateScrollOffset();
         self.state.markDirty();
@@ -685,7 +678,7 @@ pub const Input = struct {
         }
     }
 
-    fn updateSuggestions(self: *Self) !void {
+    fn updateSuggestions(self: *Self) ComponentError!void {
         if (self.config.features.autocomplete and self.config.suggestionProvider != null) {
             if (self.suggestions) |previous_suggestions| {
                 self.allocator.free(previous_suggestions);
@@ -705,7 +698,7 @@ pub const Input = struct {
         self.showSuggestions = false;
     }
 
-    fn navigateHistory(self: *Self, direction: i32) !void {
+    fn navigateHistory(self: *Self, direction: i32) ComponentError!void {
         if (self.history.items.len == 0) return;
 
         if (self.historyIndex == null) {
@@ -720,14 +713,14 @@ pub const Input = struct {
         }
 
         if (self.historyIndex) |idx| {
-            try self.setText(self.history.items[idx]);
+            self.setText(self.history.items[idx]) catch return ComponentError.EventHandlingFailed;
         }
     }
 
-    fn applySuggestion(self: *Self, index: usize) !void {
+    fn applySuggestion(self: *Self, index: usize) ComponentError!void {
         if (self.suggestions) |suggestions| {
             if (index < suggestions.len) {
-                try self.setText(suggestions[index].text);
+                self.setText(suggestions[index].text) catch return ComponentError.EventHandlingFailed;
                 self.showSuggestions = false;
                 self.clearSuggestions();
             }
@@ -736,7 +729,7 @@ pub const Input = struct {
 };
 
 /// Example suggestion provider for demonstration
-pub fn defaultSuggestionProvider(input: []const u8, allocator: std.mem.Allocator) ![]Suggestion {
+pub fn defaultSuggestionProvider(input: []const u8, allocator: std.mem.Allocator) ComponentError![]Suggestion {
     // Demonstration suggestions
     if (input.len == 0) return &[_]Suggestion{};
 
@@ -744,20 +737,20 @@ pub fn defaultSuggestionProvider(input: []const u8, allocator: std.mem.Allocator
 
     // Add some common completions based on input
     if (std.mem.startsWith(u8, "hello", input)) {
-        try suggestions.append(Suggestion{
+        suggestions.append(Suggestion{
             .text = "hello world",
             .description = "Classic greeting",
             .icon = "👋",
-        });
+        }) catch return ComponentError.OutOfMemory;
     }
 
     if (std.mem.startsWith(u8, "git", input)) {
-        try suggestions.append(Suggestion{ .text = "git status", .description = "Show repository status" });
-        try suggestions.append(Suggestion{ .text = "git commit", .description = "Create a commit" });
-        try suggestions.append(Suggestion{ .text = "git push", .description = "Push to remote" });
+        suggestions.append(Suggestion{ .text = "git status", .description = "Show repository status" }) catch return ComponentError.OutOfMemory;
+        suggestions.append(Suggestion{ .text = "git commit", .description = "Create a commit" }) catch return ComponentError.OutOfMemory;
+        suggestions.append(Suggestion{ .text = "git push", .description = "Push to remote" }) catch return ComponentError.OutOfMemory;
     }
 
-    return suggestions.toOwnedSlice();
+    return suggestions.toOwnedSlice() catch return ComponentError.OutOfMemory;
 }
 
 /// Example validator for demonstration
