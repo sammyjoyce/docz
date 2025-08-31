@@ -4,7 +4,7 @@
 
 const std = @import("std");
 const sse = @import("sse_shared");
-const SharedContext = @import("../../context.zig").SharedContext;
+const SharedContext = @import("context_shared").SharedContext;
 
 // ============================== Error Definitions ==============================
 

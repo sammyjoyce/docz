@@ -6,7 +6,7 @@
 //! - Override behavior (e.g., enable/disable builtins) by defining
 //!   `pub const shared_options = @import("../shared/mod.zig").Options{ ... };` at root.
 
-const shared = @import("../mod.zig");
+const shared = @import("shared_options");
 comptime {
     if (!shared.options.feature_widgets) {
         @compileError("tools subsystem disabled; enable feature_widgets");

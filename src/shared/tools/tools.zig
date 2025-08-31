@@ -3,7 +3,7 @@
 const std = @import("std");
 // Import anthropic conditionally - this will be handled by the build system
 const anthropic = @import("anthropic_shared");
-const SharedContext = @import("../context.zig").SharedContext;
+const SharedContext = @import("context_shared").SharedContext;
 
 /// Error set for tool operations.
 pub const ToolError = error{
@@ -344,7 +344,7 @@ fn oracleTool(ctx: *SharedContext, allocator: std.mem.Allocator, input: []const 
         return allocator.dupe(u8, response) catch ToolError.OutOfMemory;
     }
 
-    var client = anthropic.AnthropicClient.init(allocator, apiKey) catch |err| switch (err) {
+    var client = anthropic.Client.init(allocator, apiKey) catch |err| switch (err) {
         anthropic.Error.MissingAPIKey => return ToolError.AuthError,
         anthropic.Error.OutOfMemory => return ToolError.OutOfMemory,
         else => {

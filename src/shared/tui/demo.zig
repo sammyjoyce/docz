@@ -6,7 +6,7 @@
 const std = @import("std");
 const tui = @import("mod.zig");
 const bounds_mod = @import("core/bounds.zig");
-const SharedContext = @import("../context.zig").SharedContext;
+const SharedContext = @import("context_shared").SharedContext;
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};

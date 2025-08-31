@@ -1,5 +1,5 @@
 const std = @import("std");
-const models = @import("network/anthropic/models.zig");
+const models = @import("anthropic_shared").models;
 
 pub const SharedContext = struct {
     anthropic: Anthropic,
@@ -50,10 +50,11 @@ pub const SharedContext = struct {
     };
 
     pub const Tools = struct {
-        tokenBuffer: std.ArrayList(u8),
+        // Managed array list per Zig 0.15.1; holds allocator internally
+        tokenBuffer: std.array_list.Managed(u8),
 
         pub fn init(allocator: std.mem.Allocator) Tools {
-            return .{ .tokenBuffer = std.ArrayList(u8).init(allocator) };
+            return .{ .tokenBuffer = std.array_list.Managed(u8).init(allocator) };
         }
 
         pub fn deinit(self: *Tools) void {

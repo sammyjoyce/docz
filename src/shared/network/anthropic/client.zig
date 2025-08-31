@@ -21,7 +21,7 @@ const curl = @import("curl_shared");
 const models = @import("models.zig");
 const oauth = @import("oauth.zig");
 const stream_module = @import("stream.zig");
-const SharedContext = @import("../../context.zig").SharedContext;
+const SharedContext = @import("context_shared").SharedContext;
 
 // Re-export commonly used types
 pub const Message = models.Message;
@@ -30,7 +30,7 @@ pub const AuthType = models.AuthType;
 pub const Credentials = models.Credentials;
 pub const Usage = models.Usage;
 pub const Error = models.Error;
-pub const CostCalc = models.CostCalc;
+pub const CostCalc = models.CostCalculator;
 
 /// High-level request interface for messages API
 pub const MessageParameters = struct {
@@ -232,7 +232,7 @@ pub const Client = struct {
             .topK = params.topK,
             .stopSequences = params.stopSequences,
             .onToken = struct {
-                fn callback(ctx: *SharedContext, data: []const u8) void {
+                fn callback(innerCtx: *SharedContext, data: []const u8) void {
                     // Try to parse as JSON to extract usage and content
                     const DeltaMessage = struct {
                         id: ?[]const u8 = null,
@@ -249,43 +249,43 @@ pub const Client = struct {
                         } = null,
                     };
 
-                    const parsed = std.json.parseFromSlice(DeltaMessage, ctx.anthropic.allocator, data, .{}) catch {
+                    const parsed = std.json.parseFromSlice(DeltaMessage, innerCtx.anthropic.allocator, data, .{}) catch {
                         // If not valid JSON, treat as raw text content
-                        ctx.anthropic.contentCollector.appendSlice(ctx.anthropic.allocator, data) catch return;
+                        innerCtx.anthropic.contentCollector.appendSlice(innerCtx.anthropic.allocator, data) catch return;
                         return;
                     };
                     defer parsed.deinit();
 
                     // Extract metadata
                     if (parsed.value.id) |id| {
-                        if (ctx.anthropic.messageId == null) {
-                            ctx.anthropic.messageId = ctx.anthropic.allocator.dupe(u8, id) catch null;
+                        if (innerCtx.anthropic.messageId == null) {
+                            innerCtx.anthropic.messageId = innerCtx.anthropic.allocator.dupe(u8, id) catch null;
                         }
                     }
 
                     if (parsed.value.model) |model| {
-                        if (ctx.anthropic.model == null) {
-                            ctx.anthropic.model = ctx.anthropic.allocator.dupe(u8, model) catch null;
+                        if (innerCtx.anthropic.model == null) {
+                            innerCtx.anthropic.model = innerCtx.anthropic.allocator.dupe(u8, model) catch null;
                         }
                     }
 
                     if (parsed.value.stopReason) |reason| {
-                        if (ctx.anthropic.stopReason == null) {
-                            ctx.anthropic.stopReason = ctx.anthropic.allocator.dupe(u8, reason) catch null;
+                        if (innerCtx.anthropic.stopReason == null) {
+                            innerCtx.anthropic.stopReason = innerCtx.anthropic.allocator.dupe(u8, reason) catch null;
                         }
                     }
 
                     // Extract content from delta if present
                     if (parsed.value.delta) |delta| {
                         if (delta.text) |text| {
-                            ctx.anthropic.contentCollector.appendSlice(ctx.anthropic.allocator, text) catch return;
+                            innerCtx.anthropic.contentCollector.appendSlice(innerCtx.anthropic.allocator, text) catch return;
                         }
                     }
 
                     // Extract usage if present
                     if (parsed.value.usage) |usage| {
-                        ctx.anthropic.usageInfo.inputTokens = usage.inputTokens;
-                        ctx.anthropic.usageInfo.outputTokens = usage.outputTokens;
+                        innerCtx.anthropic.usageInfo.inputTokens = usage.inputTokens;
+                        innerCtx.anthropic.usageInfo.outputTokens = usage.outputTokens;
                     }
                 }
             }.callback,
@@ -307,10 +307,19 @@ pub const Client = struct {
         const owned_model = try self.allocator.dupe(u8, ctx.anthropic.model orelse params.model);
         errdefer self.allocator.free(owned_model);
 
-        // Clean up context strings
-        if (ctx.anthropic.messageId) |id| self.allocator.free(id);
-        if (ctx.anthropic.stopReason) |reason| self.allocator.free(reason);
-        if (ctx.anthropic.model) |model| self.allocator.free(model);
+        // Clean up context strings using the same allocator that allocated them
+        if (ctx.anthropic.messageId) |id| {
+            ctx.anthropic.allocator.free(id);
+            ctx.anthropic.messageId = null;
+        }
+        if (ctx.anthropic.stopReason) |reason| {
+            ctx.anthropic.allocator.free(reason);
+            ctx.anthropic.stopReason = null;
+        }
+        if (ctx.anthropic.model) |model| {
+            ctx.anthropic.allocator.free(model);
+            ctx.anthropic.model = null;
+        }
 
         return MessageResult{
             .id = owned_id,

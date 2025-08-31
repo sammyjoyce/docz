@@ -3,7 +3,7 @@
 //! Organizes widgets by category and provides exports
 
 const std = @import("std");
-const SharedContext = @import("../../context.zig").SharedContext;
+const SharedContext = @import("context_shared").SharedContext;
 
 // Core widgets (essential functionality)
 pub const core = @import("core/mod.zig");
@@ -111,7 +111,8 @@ pub const StatusBar = struct {
 
 // Global notification functions (placeholders)
 pub fn initNotifications(ctx: *SharedContext, allocator: std.mem.Allocator) !void {
-    _ = ctx; _ = allocator;
+    _ = ctx;
+    _ = allocator;
 }
 
 pub fn deinitNotifications(ctx: *SharedContext) void {
