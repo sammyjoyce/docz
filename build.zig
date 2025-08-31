@@ -11,8 +11,8 @@ const buildConfig = struct {
         const CLI_ZON = "src/shared/cli/cli.zon";
         const TERMCAPS_ZON = "src/shared/term/caps.zon";
         const ANSI_ZON = "src/shared/term/ansi.zon";
-        const ANTHROPIC_ZIG = "src/shared/network/anthropic/mod.zig";
-        const TOOLS_ZIG = "src/shared/tools/mod.zig";
+        const ANTHROPIC_ZIG = "src/shared/network/anthropic.zig";
+        const TOOLS_ZIG = "src/shared/tools.zig";
         const ENGINE_ZIG = "src/core/engine.zig";
         const CONFIG_ZIG = "src/core/config.zig";
         const AGENT_INTERFACE_ZIG = "src/shared/tui/agent_interface.zig";
@@ -20,11 +20,11 @@ const buildConfig = struct {
         const INTERACTIVE_SESSION_ZIG = "src/core/interactive_session.zig";
         const AGENT_MAIN_ZIG = "src/core/agent_main.zig";
         const AGENT_BASE_ZIG = "src/core/agent_base.zig";
-        const CLI_ZIG = "src/shared/cli/mod.zig";
-        const AUTH_ZIG = "src/shared/auth/mod.zig";
+        const CLI_ZIG = "src/shared/cli.zig";
+        const AUTH_ZIG = "src/shared/auth.zig";
         const OAUTH_CALLBACK_SERVER_ZIG = "src/shared/auth/oauth/callback_server.zig";
         const EXAMPLE_OAUTH_CALLBACK = "examples/oauth_callback.zig";
-        const TUI_ZIG = "src/shared/tui/mod.zig";
+        const TUI_ZIG = "src/shared/tui.zig";
         const SCAFFOLD_TOOL = "src/tools/agent_scaffold.zig";
     };
 
@@ -1129,14 +1129,14 @@ const ModuleBuilder = struct {
         // JSON reflection module for comptime JSON processing
         // Provides utilities for compile-time JSON schema validation and processing
         // Requires Zig 0.15.1+ for optimal comptime reflection performance
-        const json_reflection = self.createModule("src/shared/json_reflection/mod.zig");
+        const json_reflection = self.createModule("src/shared/json_reflection.zig");
 
         // OAuth callback server module
         const oauth_callback_server = self.createModule(buildConfig.PATHS.OAUTH_CALLBACK_SERVER_ZIG);
         oauth_callback_server.addImport("auth_shared", auth);
 
         // Terminal capability module aggregator shared across CLI and TUI
-        const term = self.createModule("src/shared/term/mod.zig");
+        const term = self.createModule("src/shared/term.zig");
         term.addImport("shared_types", self.createModule("src/shared/types.zig"));
 
         const engine = self.createModule(buildConfig.PATHS.ENGINE_ZIG);
@@ -1187,7 +1187,7 @@ const ModuleBuilder = struct {
         tui.addImport("context_shared", context_mod);
 
         // Theme manager module
-        const theme = self.createModule("src/shared/theme/mod.zig");
+        const theme = self.createModule("src/shared/theme.zig");
         theme.addImport("term_shared", term);
         theme.addImport("cli_themes", cli);
         theme.addImport("tui_themes", tui);
@@ -1244,7 +1244,7 @@ const ModuleBuilder = struct {
         // Always include json_reflection module for comptime JSON processing
         // This module provides compile-time JSON reflection utilities that are
         // useful for all agents and tools, regardless of their specific capabilities
-        modules.json_reflection = self.createModule("src/shared/json_reflection/mod.zig");
+        modules.json_reflection = self.createModule("src/shared/json_reflection.zig");
         // Always include anthropic module (will be stub when network access disabled)
         modules.anthropic = self.createModule(buildConfig.PATHS.ANTHROPIC_ZIG);
         if (modules.anthropic) |anthropic| {
@@ -1360,10 +1360,10 @@ const ModuleBuilder = struct {
             // Include terminal modules if terminal UI is needed
             if (m.capabilities.core_features.terminal_ui) {
                 std.log.info("   🖥️  Including terminal modules (term, cli, tui, theme, dashboard)", .{});
-                modules.term = self.createModule("src/shared/term/mod.zig");
+                modules.term = self.createModule("src/shared/term.zig");
                 modules.cli = self.createModule(buildConfig.PATHS.CLI_ZIG);
                 modules.tui = self.createModule(buildConfig.PATHS.TUI_ZIG);
-                modules.theme = self.createModule("src/shared/theme/mod.zig");
+                modules.theme = self.createModule("src/shared/theme.zig");
                 modules.agent_dashboard = self.createModule(buildConfig.PATHS.AGENT_DASHBOARD_ZIG);
                 // Include components for CLI and TUI functionality
                 // Add terminal dependencies
@@ -1401,7 +1401,7 @@ const ModuleBuilder = struct {
                 // Basic CLI without full TUI stack; still include term for capabilities and OSC helpers
                 std.log.info("   🚫 Excluding advanced terminal modules (basic CLI only)", .{});
                 modules.cli = self.createModule(buildConfig.PATHS.CLI_ZIG);
-                modules.term = self.createModule("src/shared/term/mod.zig");
+                modules.term = self.createModule("src/shared/term.zig");
                 if (modules.term) |term| {
                     modules.cli.?.addImport("term_shared", term);
                 }
@@ -1410,7 +1410,7 @@ const ModuleBuilder = struct {
 
             // Ensure components are available for CLI/TUI notifications and progress
             if (modules.components == null) {
-                modules.components = self.createModule("src/shared/components/mod.zig");
+                modules.components = self.createModule("src/shared/components.zig");
                 if (modules.term) |term| modules.components.?.addImport("term_shared", term);
                 if (modules.theme) |theme| modules.components.?.addImport("theme", theme);
             }
@@ -1420,7 +1420,7 @@ const ModuleBuilder = struct {
             // Include render modules if media processing is needed
             if (m.capabilities.core_features.media_processing) {
                 std.log.info("   🎨 Including render modules (render, components)", .{});
-                modules.render = self.createModule("src/shared/render/mod.zig");
+                modules.render = self.createModule("src/shared/render.zig");
                 // components may already be created above; ensure dependencies are present
                 if (modules.term) |term| if (modules.render) |render| render.addImport("term_shared", term);
 
@@ -1463,14 +1463,14 @@ const ModuleBuilder = struct {
                 anthropic.addImport("sse_shared", self.createModule("src/shared/network/sse.zig"));
             }
             modules.auth = self.createModule(buildConfig.PATHS.AUTH_ZIG);
-            modules.json_reflection = self.createModule("src/shared/json_reflection/mod.zig");
+            modules.json_reflection = self.createModule("src/shared/json_reflection.zig");
             modules.oauth_callback_server = self.createModule(buildConfig.PATHS.OAUTH_CALLBACK_SERVER_ZIG);
-            modules.term = self.createModule("src/shared/term/mod.zig");
+            modules.term = self.createModule("src/shared/term.zig");
             modules.cli = self.createModule(buildConfig.PATHS.CLI_ZIG);
             modules.tui = self.createModule(buildConfig.PATHS.TUI_ZIG);
-            modules.render = self.createModule("src/shared/render/mod.zig");
-            modules.components = self.createModule("src/shared/components/mod.zig");
-            modules.theme = self.createModule("src/shared/theme/mod.zig");
+            modules.render = self.createModule("src/shared/render.zig");
+            modules.components = self.createModule("src/shared/components.zig");
+            modules.theme = self.createModule("src/shared/theme.zig");
             modules.agent_dashboard = self.createModule(buildConfig.PATHS.AGENT_DASHBOARD_ZIG);
             modules.agent_main = self.createModule(buildConfig.PATHS.AGENT_MAIN_ZIG);
             modules.agent_base = self.createModule(buildConfig.PATHS.AGENT_BASE_ZIG);
