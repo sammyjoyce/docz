@@ -13,7 +13,7 @@ const std = @import("std");
 const renderer_mod = @import("./core/renderer.zig");
 const bounds_mod = @import("./core/bounds.zig");
 const shared = @import("../mod.zig");
-const SharedContext = @import("../context.zig").SharedContext;
+const SharedContext = @import("context_shared").SharedContext;
 const components_shared = shared.components;
 const notification = components_shared.notification;
 

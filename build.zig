@@ -1114,6 +1114,10 @@ const ModuleBuilder = struct {
         tools.addImport("anthropic_shared", anthropic);
 
         const config = self.createModule(buildConfig.PATHS.CONFIG_ZIG);
+        const context_mod = self.createModule("src/shared/context.zig");
+        context_mod.addImport("anthropic_shared", anthropic);
+        anthropic.addImport("context_shared", context_mod);
+        tools.addImport("context_shared", context_mod);
 
         // Auth module is only needed when network access is available
         const auth = self.createModule(buildConfig.PATHS.AUTH_ZIG);
@@ -1137,6 +1141,7 @@ const ModuleBuilder = struct {
         engine.addImport("anthropic_shared", anthropic);
         engine.addImport("tools_shared", tools);
         engine.addImport("auth_shared", auth);
+        engine.addImport("context_shared", context_mod);
 
         // New core modules for enhanced UX
         const agent_interface = self.createModule(buildConfig.PATHS.AGENT_INTERFACE_ZIG);
@@ -1177,6 +1182,7 @@ const ModuleBuilder = struct {
         const tui = self.createModule(buildConfig.PATHS.TUI_ZIG);
         tui.addImport("term_shared", term);
         tui.addImport("shared_types", self.createModule("src/shared/types.zig"));
+        tui.addImport("context_shared", context_mod);
 
         // Theme manager module
         const theme = self.createModule("src/shared/theme/mod.zig");
@@ -1231,6 +1237,7 @@ const ModuleBuilder = struct {
         modules.config = self.createModule(buildConfig.PATHS.CONFIG_ZIG);
         modules.engine = self.createModule(buildConfig.PATHS.ENGINE_ZIG);
         modules.tools = self.createModule(buildConfig.PATHS.TOOLS_ZIG);
+        var context_mod = self.createModule("src/shared/context.zig");
         // Always include json_reflection module for comptime JSON processing
         // This module provides compile-time JSON reflection utilities that are
         // useful for all agents and tools, regardless of their specific capabilities
@@ -1240,6 +1247,8 @@ const ModuleBuilder = struct {
         if (modules.anthropic) |anthropic| {
             anthropic.addImport("curl_shared", self.createModule("src/shared/network/curl.zig"));
             anthropic.addImport("sse_shared", self.createModule("src/shared/network/sse.zig"));
+            anthropic.addImport("context_shared", context_mod);
+            context_mod.addImport("anthropic_shared", anthropic);
         }
 
         // Always include new core modules for enhanced UX
@@ -1303,9 +1312,16 @@ const ModuleBuilder = struct {
                 modules.engine.?.addImport("anthropic_shared", anthropic);
             }
 
-            // Add tools dependency to engine
+            // Add tools + context dependencies
             if (modules.tools) |tools| {
                 modules.engine.?.addImport("tools_shared", tools);
+                tools.addImport("context_shared", context_mod);
+            }
+
+            // Engine/TUI need SharedContext
+            modules.engine.?.addImport("context_shared", context_mod);
+            if (modules.tui) |tui| {
+                tui.addImport("context_shared", context_mod);
             }
 
             // Add dependencies for interactive session

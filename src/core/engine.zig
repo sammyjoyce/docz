@@ -7,7 +7,7 @@ const std = @import("std");
 const anthropic = @import("anthropic_shared");
 const tools_mod = @import("tools_shared");
 const auth = @import("auth_shared");
-const SharedContext = @import("../shared/context.zig").SharedContext;
+const SharedContext = @import("context_shared").SharedContext;
 
 pub const Message = anthropic.Message;
 

@@ -3,7 +3,7 @@
 const std = @import("std");
 // Import anthropic conditionally - this will be handled by the build system
 const anthropic = @import("anthropic_shared");
-const SharedContext = @import("../context.zig").SharedContext;
+const SharedContext = @import("context_shared").SharedContext;
 
 /// Error set for tool operations.
 pub const ToolError = error{
