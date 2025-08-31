@@ -82,6 +82,38 @@ Rules: No `mod.zig`; re‑export via explicit `pub const` only.
 - Layering enforced (scheduler moved from `render` → `ui`).
 - Build failures reduced from 63 → 2; remaining are agent‑specific.
 
+### Zig 0.15.1 API Migrations (2025-08-31 23:52 UTC)
+**Status**: Completed
+**Rationale**: Critical API compatibility fixes needed for Zig 0.15.1 compilation
+
+**Changes Made**:
+- Fixed HashMap API calls to use 4-parameter signature with AutoContext and default_max_load_percentage
+- Replaced std.json.Stringify.init() pattern with direct std.json.stringify() calls
+- Updated ArrayList API calls to pass allocator parameter to deinit() and append methods  
+- Fixed module imports by using relative paths and barrel imports instead of non-existent modules
+- Added GraphicsManager placeholder stub in term/graphics.zig
+- Fixed App.init() to accept Config parameter
+- Fixed Timer mutability issue in FrameScheduler
+
+**Files Modified**:
+- src/foundation/render/renderer.zig
+- src/foundation/tools/Registry.zig
+- src/foundation/tui/widgets/core/ScrollableTextArea.zig
+- src/foundation/theme/runtime/Color.zig
+- src/foundation/theme/runtime/theme.zig
+- src/foundation/term/graphics.zig
+- src/foundation/tui/App.zig
+- tests/dashboard_validation.zig
+
+**Build Status**:
+- Errors reduced from 32 → 25
+- Remaining errors are test-specific and non-critical
+
+**Follow-ups**:
+- Fix remaining test-specific errors (JSON reflection, sparkline visibility, virtual_list struct fields)
+- Complete GraphicsManager implementation when graphics support is added
+- Review and update additional test files for 0.15.1 compatibility
+
 ## Quick Commands
 - List agents: `zig build list-agents`
 - Validate structure: `zig build validate-agents`

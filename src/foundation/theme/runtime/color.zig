@@ -2,8 +2,8 @@
 //! Consolidated color primitives that support all terminal contexts (CLI, TUI, Renderer)
 
 const std = @import("std");
-const term_shared = @import("term_shared");
-const ansi_color = term_shared.term.color;
+const term = @import("../../term.zig");
+const ansi_color = term.color;
 
 /// Unified Color type that supports all terminal contexts
 pub const Color = struct {

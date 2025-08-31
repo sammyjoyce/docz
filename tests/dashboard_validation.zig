@@ -11,7 +11,7 @@ test "Dashboard initialization with double buffering" {
     const allocator = testing.allocator;
 
     // Initialize TUI App with double buffering
-    var app = try tui.App.init(allocator);
+    var app = try tui.App.init(allocator, .{});
     defer app.deinit();
 
     // Verify buffers are created
@@ -31,7 +31,7 @@ test "Dashboard widget rendering with RenderContext" {
 
     const ctx = render.RenderContext{
         .allocator = allocator,
-        .surface = &surface,
+        .surface = @ptrCast(&surface),
         .theme = null,
         .caps = .{
             .colors = .@"256",
@@ -51,7 +51,7 @@ test "Dashboard widget rendering with RenderContext" {
 test "Dashboard frame scheduler adaptive quality" {
     const allocator = testing.allocator;
 
-    var app = try tui.App.init(allocator);
+    var app = try tui.App.init(allocator, .{});
     defer app.deinit();
 
     // Test frame scheduler
@@ -81,7 +81,7 @@ test "Dashboard frame scheduler adaptive quality" {
 test "Dashboard double buffer swap and diff" {
     const allocator = testing.allocator;
 
-    var app = try tui.App.init(allocator);
+    var app = try tui.App.init(allocator, .{});
     defer app.deinit();
 
     // Draw to back buffer
@@ -145,7 +145,7 @@ test "Dashboard sparkline widget" {
 test "Dashboard capabilities detection" {
     const allocator = testing.allocator;
 
-    var app = try tui.App.init(allocator);
+    var app = try tui.App.init(allocator, .{});
     defer app.deinit();
 
     // Test capability detection for different terminal types
@@ -180,7 +180,7 @@ test "Dashboard build integration" {
 test "Dashboard double buffering performance" {
     const allocator = testing.allocator;
 
-    var app = try tui.App.init(allocator);
+    var app = try tui.App.init(allocator, .{});
     defer app.deinit();
 
     // Simulate rendering a dashboard frame
@@ -210,7 +210,7 @@ test "Dashboard widgets with TUI App integration" {
     const allocator = testing.allocator;
 
     // Create TUI app for dashboard
-    var app = try tui.App.init(allocator);
+    var app = try tui.App.init(allocator, .{});
     defer app.deinit();
 
     // Create dashboard engine

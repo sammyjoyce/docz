@@ -69,7 +69,7 @@ pub const FrameScheduler = struct {
     quality_level: u8, // 0-100
 
     pub fn init(fps: u32, vsync: bool, adaptive: bool) !FSelf {
-        const timer = try std.time.Timer.start();
+        var timer = try std.time.Timer.start();
         const frame_budget = if (fps > 0)
             @divFloor(1_000_000_000, fps)
         else

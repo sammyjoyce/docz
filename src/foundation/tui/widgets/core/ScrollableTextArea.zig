@@ -181,16 +181,16 @@ pub const ScrollableTextArea = struct {
 
     /// Deinitialize and free resources
     pub fn deinit(self: *Self) void {
-        self.content.deinit();
-        self.lines.deinit();
-        self.search_query.deinit();
-        self.search_matches.deinit();
+        self.content.deinit(self.allocator);
+        self.lines.deinit(self.allocator);
+        self.search_query.deinit(self.allocator);
+        self.search_matches.deinit(self.allocator);
     }
 
     /// Set text content
     pub fn setText(self: *Self, text: []const u8) !void {
         self.content.clearRetainingCapacity();
-        try self.content.appendSlice(text);
+        try self.content.appendSlice(self.allocator, text);
         try self.updateLines();
         self.modified = false;
         self.cursor_line = 0;
@@ -509,7 +509,7 @@ pub const ScrollableTextArea = struct {
         var i: usize = 0;
         while (i < self.content.items.len) {
             if (self.content.items[i] == '\n') {
-                try self.lines.append(self.content.items[line_start..i]);
+                try self.lines.append(self.allocator, self.content.items[line_start..i]);
                 line_start = i + 1;
             }
             i += 1;
@@ -517,9 +517,9 @@ pub const ScrollableTextArea = struct {
 
         // Add final line if content doesn't end with newline
         if (line_start < self.content.items.len) {
-            try self.lines.append(self.content.items[line_start..]);
+            try self.lines.append(self.allocator, self.content.items[line_start..]);
         } else if (self.content.items.len == 0) {
-            try self.lines.append("");
+            try self.lines.append(self.allocator, "");
         }
 
         // Update line number width
