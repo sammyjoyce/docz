@@ -3,7 +3,7 @@
 //! and eliminate boilerplate code.
 
 const std = @import("std");
-const tools = @import("mod.zig");
+const tools = @import("../tools.zig");
 
 pub const ToolJsonError = error{
     InvalidInput,

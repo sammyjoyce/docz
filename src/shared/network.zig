@@ -9,34 +9,34 @@
 //! including HTTP clients, API integrations, and streaming protocols.
 
 const std = @import("std");
-const shared = @import("../mod.zig");
+const shared = @import("../shared.zig");
 
 // Core HTTP client functionality
-pub const curl = @import("curl.zig");
+pub const curl = @import("network/curl.zig");
 
 // Anthropic API client (prefer split; legacy available behind -Dlegacy)
 const build_options = @import("build_options");
 pub const anthropic = if (shared.options.feature_network_anthropic)
-    @import("anthropic/mod.zig")
+    @import("network/anthropic.zig")
 else
     struct {};
 /// Deprecated: legacy monolithic client. Enable with `-Dlegacy` only.
 pub const anthropic_legacy = if (shared.options.feature_network_anthropic and build_options.include_legacy)
-    @import("legacy/mod.zig").anthropic
+    @import("network/legacy.zig").anthropic
 else
     struct {};
 
 /// Aggregate legacy network shims. Included only when `-Dlegacy` is set.
 pub const legacy = if (build_options.include_legacy)
-    @import("legacy/mod.zig")
+    @import("network/legacy.zig")
 else
     struct {};
 
 // Server-Sent Events (SSE) parsing
-pub const sse = @import("sse.zig");
+pub const sse = @import("network/sse.zig");
 
 // Network client interface for abstraction and testing
-pub const client = @import("client.zig");
+pub const client = @import("network/client.zig");
 pub const use = client.use; // expose duck-typed client adapter at barrel
 
 // Re-export commonly used types for convenience

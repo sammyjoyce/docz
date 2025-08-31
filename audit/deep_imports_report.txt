@@ -1,10 +1,14 @@
 Deep Import Audit Report
-Generated: 2025-08-31T01:31:09Z
+Generated: 2025-08-31T01:36:45Z
 
 Criteria: @import paths under src/shared that traverse parent directories and import a .zig file other than mod.zig.
 
-Total: 202
+Total: 208
 ---
+src/shared/auth/core/Service.zig:7:const oauth = @import("../oauth.zig");
+src/shared/auth/core/Service.zig:8:const core_auth = @import("../core.zig");
+src/shared/auth/core/Service.zig:9:const curl = @import("../../network.zig").curl;
+src/shared/auth/oauth.zig:16:const curl = @import("../network.zig").curl;
 src/shared/auth/tui/OauthFlow.zig:20:const auth_service = @import("../core/Service.zig");
 src/shared/auth/tui/OauthFlow.zig:28:const notification_mod = @import("../../components/notification.zig");
 src/shared/auth/tui/OauthFlow.zig:29:const progress_mod = @import("../../components/progress.zig");
@@ -40,6 +44,7 @@ src/shared/components/screen.zig:10:pub const Bounds = @import("../types.zig").B
 src/shared/components/screen.zig:6:const term_screen = @import("../term/screen.zig");
 src/shared/components/ui.zig:8:const term = @import("../term/term.zig");
 src/shared/components/ui.zig:9:const graphics = @import("../term/graphics_manager.zig");
+src/shared/network.zig:12:const shared = @import("../shared.zig");
 src/shared/network/legacy.zig:12:pub const curl = @import("../curl.zig");
 src/shared/network/legacy.zig:13:pub const sse = @import("../sse.zig");
 src/shared/network/legacy.zig:9:pub const anthropic = @import("../anthropic.zig");
@@ -66,6 +71,7 @@ src/shared/theme/tools/exporter.zig:5:const ColorScheme = @import("../runtime/Co
 src/shared/theme/tools/exporter.zig:6:const Color = @import("../runtime/ColorScheme.zig").Color;
 src/shared/theme/tools/exporter.zig:7:const RGB = @import("../runtime/ColorScheme.zig").RGB;
 src/shared/theme/tools/generator.zig:2:const Color = @import("../runtime/Color.zig").Color;
+src/shared/tools/json.zig:6:const tools = @import("../tools.zig");
 src/shared/tui/agent_interface.zig:57:const screen_manager = @import("../term/screen_manager.zig");
 src/shared/tui/agent_ui.zig:10:const notification_mod = @import("../notifications.zig");
 src/shared/tui/agent_ui.zig:11:const progress_mod = @import("../widgets/rich/progress.zig");

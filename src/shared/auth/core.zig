@@ -1,10 +1,10 @@
 //! Core authentication types and functions
 
 const std = @import("std");
-const oauth = @import("../oauth/mod.zig");
+const oauth = @import("oauth.zig");
 
 // Re-export the UI-free service
-pub const Service = @import("Service.zig").Service;
+pub const Service = @import("core/Service.zig").Service;
 
 /// Authentication error types
 pub const AuthError = error{

@@ -4,9 +4,9 @@
 //! wrapping the existing OAuth and credential management logic.
 
 const std = @import("std");
-const oauth = @import("../oauth/mod.zig");
-const core_auth = @import("mod.zig");
-const curl = @import("../mod.zig").curl;
+const oauth = @import("../oauth.zig");
+const core_auth = @import("../core.zig");
+const curl = @import("../../network.zig").curl;
 
 /// Authentication service errors
 pub const AuthError = error{
