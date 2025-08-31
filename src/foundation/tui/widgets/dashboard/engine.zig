@@ -29,8 +29,8 @@ const Bounds = @import("../../core/bounds.zig").Bounds;
 const Point = @import("../../core/bounds.zig").Point;
 
 // Import terminal types
-const tui_mod = @import("../../mod.zig");
-const terminal = tui_mod.term.common;
+const term = @import("../../../term.zig");
+const terminal = term;
 
 /// Main dashboard engine coordinating all dashboard functionality
 pub const DashboardEngine = struct {

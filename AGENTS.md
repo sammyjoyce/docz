@@ -10,7 +10,7 @@
 ## Directory & Build Layout (must match)
 	•	agents/<name>/: main.zig (CLI entry), spec.zig (prompt+tools), agent.zig (impl); optional: config.zon, system_prompt.txt, tools.zon, tools/, common/, examples/, README.md.
 	•	src/core/: engine.zig, config.zig, agent_base.zig, agent_main.zig.
-	•	src/foundation/: cli/, tui/, render/, ui/, network/, tools/, auth/, term/; each namespace exports via a module‑named barrel file (no `mod.zig`). JSON reflection is consolidated into `src/foundation/tools.zig`.
+	•	src/foundation/: cli/, tui/, render/, ui/, network/, tools/, term/; each namespace exports via a module‑named barrel file (no `mod.zig`). JSON reflection is consolidated into `src/foundation/tools.zig`. Authentication is headless under `network/auth/*`; interactive flows live under `tui/auth/*` and `cli/auth/*`.
 	•	examples/, tests/.
 	•	Build commands:
 	◦	zig build -Dagent=<name> [run|run-agent|install-agent|test]
@@ -58,7 +58,7 @@ shared/term/input (primitives) → shared/components/input.zig (abstraction) →
 	•	components/ (shared UI incl. unified input)
 	•	network/ (HTTP clients, Anthropic/Claude, SSE)
 	•	tools/ (registry, metadata, agent attribution)
-	•	auth/ (OAuth + API keys; TUI flows; CLI commands)
+	•	network/auth/ (headless auth clients); flows in `tui/auth/` and `cli/auth/`
 	•	tools/ (registry, schemas, JSON reflection)
 	•	term/ (terminal caps, low‑level input/mouse)
 

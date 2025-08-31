@@ -7,6 +7,7 @@
 
 pub const ansi = @import("term/ansi.zig");
 pub const buffer = @import("term/buffer.zig");
+pub const capabilities = @import("term/capabilities.zig");
 pub const color = @import("term/color.zig");
 pub const control = @import("term/control.zig");
 pub const core = @import("term/core.zig");

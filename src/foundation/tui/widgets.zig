@@ -44,14 +44,14 @@ pub const Core = struct {
 
 // Rich widgets
 pub const Rich = struct {
-    pub const ProgressBar = @import("rich/progress.zig").ProgressBar;
+    pub const ProgressBar = @import("widgets/rich/progress.zig").ProgressBar;
     pub const Notification = @import("notifications.zig").NotificationWidget;
     pub const NotificationController = @import("notifications.zig").NotificationController;
-    pub const Graphics = @import("rich/graphics.zig").GraphicsWidget;
+    pub const Graphics = @import("widgets/rich/graphics.zig").GraphicsWidget;
 };
 
 // Dashboard widgets
-pub const dashboard = @import("widgets/dashboard/mod.zig");
+pub const dashboard = @import("widgets/dashboard.zig");
 
 // Convenience re-exports
 pub const Menu = Core.Menu;
@@ -75,9 +75,9 @@ pub const VirtualListConfig = core.Config;
 pub const ArraySource = core.ArraySource;
 pub const ScrollableTextArea = Core.ScrollableTextArea;
 pub const ScrollableContainer = Core.ScrollableContainer;
-pub const Tag = @import("core/tag_input.zig").Tag;
-pub const TagCategory = @import("core/tag_input.zig").TagCategory;
-pub const TagInputConfig = @import("core/tag_input.zig").TagInputConfig;
+pub const Tag = @import("tui/widgets/core/tag_input.zig").Tag;
+pub const TagCategory = @import("tui/widgets/core/tag_input.zig").TagCategory;
+pub const TagInputConfig = @import("tui/widgets/core/tag_input.zig").TagInputConfig;
 pub const ProgressBar = Rich.ProgressBar;
 pub const Notification = Rich.Notification;
 pub const Graphics = Rich.Graphics;

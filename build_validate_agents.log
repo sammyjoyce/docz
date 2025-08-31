@@ -1,0 +1,62 @@
+info: 🚀 Build Configuration:
+info:    Profile: standard
+info:    Features:
+info:      ├─ CLI Framework: ✓
+info:      ├─ Terminal UI: ✓
+info:      ├─ Network Layer: ✓
+info:      ├─ Anthropic Provider: ✓
+info:      ├─ Authentication: ✓
+info:      ├─ Sixel Graphics: ✗
+info:      └─ Theme Dev Tools: ✗
+info: ✅ Agent 'markdown' validated successfully
+info:    📋 Name: markdown
+info:    📝 Description: Enterprise-grade markdown systems architect & quality guardian
+info:    🔖 Version: 2.0.0
+info:    👤 Author: AI Assistant
+info: ⚡ Binary optimization enabled - only required modules will be included
+info: ⚡ Feature flags for 'Markdown Architect Pro':
+info:    ✓ Network access enabled
+info:    ✓ File processing enabled
+info:    ✓ System commands enabled
+info:    ✓ Streaming responses enabled
+info:    ✓ JSON tools enabled
+info:    ✓ Chainable tools enabled
+info: ⚡ Feature flags for 'Markdown Architect Pro':
+info:    ✓ Network access enabled
+info:    ✓ File processing enabled
+info:    ✓ System commands enabled
+info:    ✓ Streaming responses enabled
+info:    ✓ JSON tools enabled
+info:    ✓ Chainable tools enabled
+info: ⚡ Feature flags for 'Markdown Architect Pro':
+info:    ✓ Network access enabled
+info:    ✓ File processing enabled
+info:    ✓ System commands enabled
+info:    ✓ Streaming responses enabled
+info:    ✓ JSON tools enabled
+info:    ✓ Chainable tools enabled
+info: ⚡ Feature flags for 'Markdown Architect Pro':
+info:    ✓ Network access enabled
+info:    ✓ File processing enabled
+info:    ✓ System commands enabled
+info:    ✓ Streaming responses enabled
+info:    ✓ JSON tools enabled
+info:    ✓ Chainable tools enabled
+info: ⚡ Feature flags for 'Markdown Architect Pro':
+info:    ✓ Network access enabled
+info:    ✓ File processing enabled
+info:    ✓ System commands enabled
+info:    ✓ Streaming responses enabled
+info:    ✓ JSON tools enabled
+info:    ✓ Chainable tools enabled
+info: ✅ Build configured for agent 'Markdown Architect Pro' v2.0.0
+info:    📦 Binary size optimized based on manifest capabilities
+info: 🔍 Validating all agents...
+info: 
+info: ✅ Agent 'test_agent': Valid (Example agent demonstrating tool integration, JSON tools, and basic functionality)
+info: ✅ Agent 'markdown': Valid (Enterprise-grade markdown systems architect & quality guardian)
+info: 
+info: 📊 Validation Summary:
+info:   ✅ Valid agents: 2
+info:   ❌ Invalid agents: 0
+info:   📁 Total agents: 2

@@ -27,7 +27,7 @@ const term = @import("../../../term.zig");
 const Style = @import("../../core/style.zig").Style;
 const Bounds = @import("../../core/bounds.zig").Bounds;
 const Widget = @import("../base.zig").Widget;
-const Event = @import("../../core/event.zig").Event;
+const Event = @import("../../core/events.zig").Event;
 const Renderer = @import("../../core/renderer.zig").Renderer;
 const InputEvent = @import("../../core/renderer.zig").InputEvent;
 

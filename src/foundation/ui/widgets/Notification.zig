@@ -11,8 +11,7 @@
 //! - Common sanitization and formatting utilities
 
 const std = @import("std");
-const term_shared = @import("term_shared");
-const ansi_notifications = term_shared.ansi.notification;
+const term = @import("../../term.zig");
 
 /// Common notification types with semantic meaning
 pub const NotificationType = enum {

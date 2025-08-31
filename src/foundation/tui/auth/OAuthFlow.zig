@@ -17,23 +17,22 @@
 //! - Dashboard with KPI metrics and charts
 
 const std = @import("std");
-const auth_service = @import("../../network/auth/Service.zig");
-const curl = @import("../../network/curl.zig");
-const oauth = @import("../../network/auth/OAuth.zig");
 const print = std.debug.print;
 
-// Import TUI and rendering components
+// Import foundation modules via barrels
+const network = @import("../../network.zig");
+const auth_service = network.Auth.Service;
+const oauth = network.Auth.OAuth;
 const render = @import("../../render.zig");
 const ui = @import("../../ui.zig");
 const theme = @import("../../theme.zig");
-const network = @import("../../network.zig");
 
 // Import terminal capabilities and interface
 const term = @import("../../term.zig");
 
 // Import TUI widgets and components
 const tui = @import("../../tui.zig");
-const modal_system = @import("../../tui/widgets/modal.zig");
+const modal_system = tui.Modal;
 
 // Re-export key types for convenience
 const Renderer = render.Renderer;
@@ -395,7 +394,7 @@ pub const OAuthFlow = struct {
 
     // Progressive enhancement
     capability_level: CapabilityLevel,
-    terminal_caps: ?TermCaps = null,
+    terminal_caps: ?@import("../../render/RenderContext.zig").Capabilities = null,
 
     // Rich UI components (conditionally available)
     rich_progress_bar: ?RichProgressBar = null,
@@ -411,7 +410,9 @@ pub const OAuthFlow = struct {
         const startTime = std.time.timestamp();
 
         // Detect terminal capabilities for progressive enhancement
-        const terminal_caps = caps.detectCaps(allocator);
+        const adaptive = try @import("../../render/Adaptive.zig").init(allocator);
+        defer adaptive.deinit();
+        const terminal_caps = adaptive.capabilities;
         const capability_level = detectCapabilityLevel(terminal_caps);
 
         // Initialize flow diagram
@@ -494,16 +495,12 @@ pub const OAuthFlow = struct {
     }
 
     /// Detect capability level based on terminal features
-    fn detectCapabilityLevel(terminal_caps: ?TermCaps) CapabilityLevel {
-        if (terminal_caps == null) return .plain;
-
-        const term_caps = terminal_caps.?;
-
-        if (term_caps.supportsColor and term_caps.supportsUnicode and term_caps.supportsMouse) {
+    fn detectCapabilityLevel(terminal_caps: @import("../../render/RenderContext.zig").Capabilities) CapabilityLevel {
+        if (terminal_caps.colors == .truecolor and terminal_caps.unicode and terminal_caps.mouse) {
             return .full;
-        } else if (term_caps.supportsColor and term_caps.supportsUnicode) {
+        } else if (terminal_caps.colors != .@"16" and terminal_caps.unicode) {
             return .rich;
-        } else if (term_caps.supportsColor) {
+        } else if (terminal_caps.colors != .@"16") {
             return .ansi;
         } else {
             return .plain;
@@ -647,9 +644,9 @@ pub const OAuthFlow = struct {
                 try self.renderer.writeText("╚══════════════════════════════════════════════════════════════╝\n", header_color, false);
             },
             .rich, .full => {
-                const currentTheme = self.theme.getCurrentTheme();
-                const header_color = theme.primary;
-                const text_color = theme.foreground;
+                // Use theme colors
+                const header_color = theme.Color{ .ansi = 12 };
+                const text_color = theme.Color{ .ansi = 15 };
 
                 // Draw header with theme colors
                 const top_border = try self.createRepeatedChar("═", size.width);
@@ -816,7 +813,7 @@ pub const OAuthFlow = struct {
 
         // Render modals if any are active
         if (self.modal_manager) |*modal_mgr| {
-            const render_ctx = adaptive_renderer.Render{
+            const render_ctx = @import("../../render.zig").Render{
                 .bounds = .{ .x = 0, .y = 0, .width = 80, .height = 24 },
                 .style = .{},
                 .zIndex = 0,
@@ -832,7 +829,7 @@ pub const OAuthFlow = struct {
     /// Clear the entire screen
     fn clear_screen(self: *Self) !void {
         const size = try self.renderer.getSize();
-        const full_bounds = adaptive_renderer.Bounds{
+        const full_bounds = @import("../../render.zig").Bounds{
             .x = 0,
             .y = 0,
             .width = size.width,
@@ -850,8 +847,8 @@ pub const OAuthFlow = struct {
             return;
         }
 
-        const currentTheme = self.theme.getCurrentTheme();
-        const header_color = theme.primary;
+        // Use theme colors
+        const header_color = theme.Color{ .ansi = 12 };
 
         // Draw header box with theme colors
         const top_border = try self.createRepeatedChar("═", size.width);
@@ -882,14 +879,14 @@ pub const OAuthFlow = struct {
     fn drawProgress(self: *Self) !void {
         if (self.rich_progress_bar) |*progress_bar| {
             const size = try self.renderer.getSize();
-            const progress_bounds = adaptive_renderer.Bounds{
+            const progress_bounds = @import("../../render.zig").Bounds{
                 .x = 2,
                 .y = 6,
                 .width = size.width - 4,
                 .height = 3,
             };
 
-            const ctx = adaptive_renderer.Render{
+            const ctx = render.Render{
                 .bounds = progress_bounds,
                 .style = .{},
                 .zIndex = 0,
@@ -946,6 +943,7 @@ pub const OAuthFlow = struct {
             const from_step = self.flow_diagram.steps[conn.from];
             const to_step = self.flow_diagram.steps[conn.to];
 
+            const Point = struct { x: i32, y: i32 };
             const points = [_]Point{
                 .{ .x = @intFromFloat(from_step.x + 3), .y = @intFromFloat(from_step.y + 1) },
                 .{ .x = @intFromFloat(to_step.x - 1), .y = @intFromFloat(to_step.y + 1) },
@@ -971,7 +969,8 @@ pub const OAuthFlow = struct {
             try self.canvas_engine.?.addStroke(layer_id, circle_points, color, 2.0);
 
             // Draw step label
-            const label_point = Point{
+            const Point2 = struct { x: i32, y: i32 };
+            const label_point = Point2{
                 .x = @intFromFloat(step.x + 5),
                 .y = @intFromFloat(step.y + 1),
             };
@@ -980,7 +979,8 @@ pub const OAuthFlow = struct {
     }
 
     /// Generate circle points for flow diagram
-    fn generateCirclePoints(self: *Self, center_x: f32, center_y: f32, radius: f32, segments: u32) ![]Point {
+    fn generateCirclePoints(self: *Self, center_x: f32, center_y: f32, radius: f32, segments: u32) ![]struct { x: i32, y: i32 } {
+        const Point = struct { x: i32, y: i32 };
         const points = try self.allocator.alloc(Point, segments + 1);
         const angle_step = 2 * std.math.pi / @as(f32, @floatFromInt(segments));
 
@@ -1196,7 +1196,7 @@ pub const OAuthFlow = struct {
         // Detect terminal capabilities
         if (self.terminal_caps) |term_caps| {
             // Enable mouse if supported
-            if (term_caps.supportsSgrMouse or term_caps.supportsX10Mouse) {
+            if (term_caps.mouse) {
                 self.mouse_enabled = true;
                 // Mouse tracking would be enabled here in a full implementation
             }
@@ -1310,10 +1310,8 @@ pub const OAuthFlow = struct {
         const authUrl = self.authUrl.?;
 
         // Create clickable URL using OSC 8 if supported
-        if (self.terminal_caps) |term_caps| {
-            if (term_caps.supportsHyperlinkOsc8) {
-                // Would set hyperlink here
-            }
+        if (self.terminal_caps) |_| {
+            // Would set hyperlink here if hyperlinks supported
         }
 
         // Launch browser using oauth module

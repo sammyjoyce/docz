@@ -1,8 +1,8 @@
 //! Text input widget with focus, paste, and mouse support
 //! Demonstrates the new input capabilities from the TUI system
 const std = @import("std");
-const tui = @import("../../mod.zig");
-const input_system = @import("../../core/input/mod.zig");
+const tui = @import("../../../tui.zig");
+const input_system = @import("../../core/input.zig");
 const term = @import("../../../term.zig");
 
 /// Text input widget with comprehensive input support

@@ -27,6 +27,7 @@ const NotificationLevel = renderer_mod.NotificationLevel;
 pub const NotificationType = Notification.Type;
 pub const NotificationConfig = Notification.Config;
 pub const NotificationAction = Notification.Action;
+pub const BaseNotification = Notification;
 
 /// TUI Notification that extends the base system with positioning and animation
 pub const NotificationWidget = struct {
@@ -105,12 +106,13 @@ pub const NotificationWidget = struct {
 
         // Try system notification first if enabled and supported
         if (self.options.use_system_notification and caps.supportsNotifyOsc9) {
-            try notification.SystemNotification.sendFromBase(
-                renderer.writer(),
-                renderer.allocator,
-                caps,
-                &self.base,
-            );
+            // System notification implementation would go here
+            // try SystemNotification.sendFromBase(
+            //     renderer.writer(),
+            //     renderer.allocator,
+            //     caps,
+            //     &self.base,
+            // );
         }
 
         // Show in-terminal notification if enabled

@@ -12,10 +12,9 @@
 //! - Keyboard shortcuts for common actions
 
 const std = @import("std");
-const auth_service = @import("../../network/auth/Service.zig");
-const curl = @import("../../network/curl.zig");
-const oauth = @import("../../network/auth/OAuth.zig");
 const network = @import("../../network.zig");
+const auth_service = network.Auth.Service;
+const oauth = network.Auth.OAuth;
 const print = std.debug.print;
 
 // Import terminal capabilities
@@ -24,7 +23,7 @@ const term = @import("../../term.zig");
 const tui_mod = @import("../../tui.zig");
 
 // Import TUI components
-const progress_mod = @import("../../tui/widgets/rich/progress.zig");
+const progress_mod = tui_mod.widgets.rich.progress;
 const notification_mod = struct {
     pub const Notification = tui_mod.Notification;
     pub const NotificationController = struct {
@@ -43,7 +42,7 @@ const notification_mod = struct {
 const text_input = struct {
     pub const TextInput = tui_mod.TextInput;
 };
-const status_bar = @import("../../tui/widgets/dashboard/status_bar.zig");
+const status_bar = tui_mod.dashboard.status_bar;
 const renderer_mod = tui_mod.renderer;
 const bounds_mod = tui_mod.bounds;
 const input_system = tui_mod.events;
@@ -247,7 +246,7 @@ pub const OAuthWizard = struct {
 
         // Initialize services
         const auth_svc = auth_service.Service.init(allocator);
-        var http_client = try network.HttpCurl.init(allocator);
+        const http_client = try network.HttpCurl.init(allocator);
         const net_svc = auth_service.Service.init(allocator, http_client, .{});
 
         return Self{
@@ -813,7 +812,7 @@ pub const OAuthWizard = struct {
             .timeout_ms = 5000,
         };
 
-        var resp = self.networkClient.request(test_request) catch |err| {
+        const resp = self.networkClient.request(test_request) catch |err| {
             // Network check failed
             self.network_active = false;
             const error_msg = try std.fmt.allocPrint(self.allocator, "Network check failed: {s}", .{@errorName(err)});

@@ -23,15 +23,14 @@
 //!
 //! Architecture Flow:
 //!   term/input/ (primitives) → components/input.zig (input) → tui/core/input/ (TUI features)
-pub const events = @import("events.zig");
-pub const focus = @import("focus.zig");
-pub const paste = @import("paste.zig");
-pub const mouse = @import("mouse.zig");
+pub const events = @import("input/events.zig");
+pub const focus = @import("input/focus.zig");
+pub const paste = @import("input/paste.zig");
+pub const mouse = @import("input/mouse.zig");
 
 // Re-export input types from the input system
-const shared = @import("../../../mod.zig");
-const components = shared.components;
-pub const input = components.input;
+const ui = @import("../../ui.zig");
+pub const input = ui.Widgets.Input;
 pub const Key = input.Key;
 pub const Modifiers = input.Modifiers;
 pub const MouseButton = input.MouseButton;

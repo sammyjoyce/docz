@@ -1,8 +1,8 @@
 //! Event handling system for TUI components
 //! Uses the foundation input system for comprehensive input support
 const std = @import("std");
-const shared = @import("../../../mod.zig");
-const shared_input = shared.components.input;
+const ui = @import("../../../ui.zig");
+const shared_input = ui.Widgets.Input;
 
 // Re-export shared input types
 pub const InputEvent = shared_input.Event;
