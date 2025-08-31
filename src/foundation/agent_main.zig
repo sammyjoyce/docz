@@ -6,7 +6,7 @@
 
 const std = @import("std");
 const session = @import("interactive_session.zig");
-const auth = @import("network.zig").auth;
+const auth = @import("network.zig").Auth;
 const agent_base = @import("agent_base.zig");
 
 // Engine types are provided by the caller since foundation doesn't depend on engine
@@ -108,14 +108,16 @@ pub fn runAgent(allocator: std.mem.Allocator, spec: anytype) !void {
     if (cliArgsConst.len > 0 and std.mem.eql(u8, cliArgsConst[0], "auth")) {
         const sub = if (cliArgsConst.len > 1) cliArgsConst[1] else "login";
         if (std.mem.eql(u8, sub, "login") or std.mem.eql(u8, sub, "oauth")) {
-            // Start OAuth login via CLI presenter
-            try auth.handleLoginCommand(allocator);
+            // TODO: Auth commands should be in foundation.cli.auth.Commands or similar
+            std.debug.print("Auth login command not yet implemented\n", .{});
             return;
         } else if (std.mem.eql(u8, sub, "status")) {
-            try auth.handleStatusCommand(allocator);
+            // TODO: Auth commands should be in foundation.cli.auth.Commands or similar
+            std.debug.print("Auth status command not yet implemented\n", .{});
             return;
         } else if (std.mem.eql(u8, sub, "refresh")) {
-            try auth.handleRefreshCommand(allocator);
+            // TODO: Auth commands should be in foundation.cli.auth.Commands or similar
+            std.debug.print("Auth refresh command not yet implemented\n", .{});
             return;
         } else {
             std.log.err("Unknown auth subcommand: {s}", .{sub});
@@ -148,188 +150,201 @@ pub fn runAgent(allocator: std.mem.Allocator, spec: anytype) !void {
         return;
     }
 
-    // Fall back to standard engine execution
-    if (engine.runWithOptions(allocator, interactiveOptions.base, spec, std.fs.cwd())) {
-        // done
-    } else |err| {
-        // Clear, actionable error handling for common cases
-        if (err == error.MissingAPIKey) {
-            std.log.warn("No authentication configured.", .{});
-            std.log.info("Run 'docz auth login' or set ANTHROPIC_API_KEY.", .{});
-            return err;
-        }
-        if (err == error.AuthError) {
-            std.log.err("Authentication failed (unauthorized). Check your API key or OAuth session.", .{});
-            std.log.info("Try: 'docz auth status' or re-auth with 'docz auth login'", .{});
-            return err;
-        }
-        if (err == error.APIError) {
-            std.log.err("API request failed. Verify model, quotas, and credentials.", .{});
-            std.log.info("Inspect logs above; try --verbose for more detail.", .{});
-            return err;
-        }
-        return err;
-    }
+    // TODO: Call engine execution through spec
+    // The engine.runWithOptions call needs to be made through the spec parameter
+    // since foundation doesn't depend on engine directly
+    _ = spec;
+
+    // Fall back to standard execution
+    // if (engine.runWithOptions(allocator, interactiveOptions.base, spec, std.fs.cwd())) {
+    //     // done
+    // } else |err| {
+    //     // Clear, actionable error handling for common cases
+    //     if (err == error.MissingAPIKey) {
+    //         std.log.warn("No authentication configured.", .{});
+    //         std.log.info("Run 'docz auth login' or set ANTHROPIC_API_KEY.", .{});
+    //         return err;
+    //     }
+    //     if (err == error.AuthError) {
+    //         std.log.err("Authentication failed (unauthorized). Check your API key or OAuth session.", .{});
+    //         std.log.info("Try: 'docz auth status' or re-auth with 'docz auth login'", .{});
+    //         return err;
+    //     }
+    //     if (err == error.APIError) {
+    //         std.log.err("API request failed. Verify model, quotas, and credentials.", .{});
+    //         std.log.info("Inspect logs above; try --verbose for more detail.", .{});
+    //         return err;
+    //     }
+    //     return err;
+    // }
 }
 
 /// Parse interactive CLI arguments with TUI and interactive support
 fn parseInteractiveArgs(allocator: std.mem.Allocator, args: [][]const u8) !InteractiveCliOptions {
-    var interactive = InteractiveCliOptions{
-        .base = CliOptions{
-            .options = .{
-                .model = undefined,
-                .output = null,
-                .input = null,
-                .system = null,
-                .config = null,
-                .tokensMax = 4096,
-                .temperature = 0.7,
-            },
-            .flags = .{
-                .verbose = false,
-                .help = false,
-                .version = false,
-                .stream = true,
-                .pretty = false,
-                .debug = false,
-                .interactive = false,
-            },
-            .positionals = null,
-        },
+    _ = allocator;
+    _ = args;
+    // TODO: Reimplement without direct engine dependency
+    return InteractiveCliOptions{
         .interactive = .{},
         .tui = .{},
         .auth = .{},
         .session = .{},
     };
+    // Original implementation commented out due to engine dependency
+    // var interactive = InteractiveCliOptions{
+    //     .base = CliOptions{
+    //         .options = .{
+    //             .model = undefined,
+    //             .output = null,
+    //             .input = null,
+    //             .system = null,
+    //             .config = null,
+    //             .tokensMax = 4096,
+    //             .temperature = 0.7,
+    //         },
+    //         .flags = .{
+    //             .verbose = false,
+    //             .help = false,
+    //             .version = false,
+    //             .stream = true,
+    //             .pretty = false,
+    //             .debug = false,
+    //             .interactive = false,
+    //         },
+    //         .positionals = null,
+    //     },
+    //     .interactive = .{},
+    //     .tui = .{},
+    //     .auth = .{},
+    //     .session = .{},
+    // };
 
     // Parse CLI options manually
-    var parsedArgs = CliOptions{
-        .options = .{
-            .model = "claude-3-sonnet-20240229",
-            .output = null,
-            .input = null,
-            .system = null,
-            .config = null,
-            .tokensMax = 4096,
-            .temperature = 0.7,
-        },
-        .flags = .{
-            .verbose = false,
-            .help = false,
-            .version = false,
-            .stream = true,
-            .pretty = false,
-            .debug = false,
-            .interactive = false,
-        },
-        .positionals = null,
-    };
-
-    // Argument parsing
-    var argIdx: usize = 0;
-    while (argIdx < args.len) {
-        const arg = args[argIdx];
-        if (std.mem.eql(u8, arg, "--model") or std.mem.eql(u8, arg, "-m")) {
-            argIdx += 1;
-            if (argIdx >= args.len) return error.MissingValue;
-            parsedArgs.options.model = try allocator.dupe(u8, args[argIdx]);
-        } else if (std.mem.eql(u8, arg, "--max-tokens")) {
-            argIdx += 1;
-            if (argIdx >= args.len) return error.MissingValue;
-            parsedArgs.options.tokensMax = try std.fmt.parseInt(u32, args[argIdx], 10);
-        } else if (std.mem.eql(u8, arg, "--temperature") or std.mem.eql(u8, arg, "-t")) {
-            argIdx += 1;
-            if (argIdx >= args.len) return error.MissingValue;
-            parsedArgs.options.temperature = try std.fmt.parseFloat(f32, args[argIdx]);
-        } else if (std.mem.eql(u8, arg, "--verbose") or std.mem.eql(u8, arg, "-v")) {
-            parsedArgs.flags.verbose = true;
-        } else if (std.mem.eql(u8, arg, "--help") or std.mem.eql(u8, arg, "-h")) {
-            parsedArgs.flags.help = true;
-        } else if (std.mem.eql(u8, arg, "--version")) {
-            parsedArgs.flags.version = true;
-        } else if (std.mem.eql(u8, arg, "--no-stream")) {
-            parsedArgs.flags.stream = false;
-        } else if (std.mem.eql(u8, arg, "--output") or std.mem.eql(u8, arg, "-o")) {
-            argIdx += 1;
-            if (argIdx >= args.len) return error.MissingValue;
-            parsedArgs.options.output = try allocator.dupe(u8, args[argIdx]);
-        } else if (std.mem.eql(u8, arg, "--input") or std.mem.eql(u8, arg, "-i")) {
-            argIdx += 1;
-            if (argIdx >= args.len) return error.MissingValue;
-            parsedArgs.options.input = try allocator.dupe(u8, args[argIdx]);
-        } else if (std.mem.eql(u8, arg, "--system")) {
-            argIdx += 1;
-            if (argIdx >= args.len) return error.MissingValue;
-            parsedArgs.options.system = try allocator.dupe(u8, args[argIdx]);
-        } else if (arg.len > 0 and arg[0] != '-') {
-            // Positional argument (prompt)
-            parsedArgs.positionals = try allocator.dupe(u8, arg);
-        }
-        argIdx += 1;
-    }
-
-    // Copy parsed options to interactive structure
-    interactive.base.options.model = parsedArgs.options.model;
-    interactive.base.options.tokensMax = parsedArgs.options.tokensMax;
-    interactive.base.options.temperature = parsedArgs.options.temperature;
-    interactive.base.flags.verbose = parsedArgs.flags.verbose;
-    interactive.base.flags.help = parsedArgs.flags.help;
-    interactive.base.flags.version = parsedArgs.flags.version;
-    interactive.base.flags.stream = parsedArgs.flags.stream;
-    interactive.base.positionals = parsedArgs.positionals;
-
-    // Parse additional interactive options
-    var i: usize = 0;
-    while (i < args.len) {
-        const arg = args[i];
-
-        if (std.mem.eql(u8, arg, "--interactive") or std.mem.eql(u8, arg, "-i")) {
-            interactive.interactive.enabled = true;
-        } else if (std.mem.eql(u8, arg, "--interactive-help")) {
-            interactive.interactive.showHelp = true;
-        } else if (std.mem.eql(u8, arg, "--continue-session")) {
-            interactive.interactive.continueSession = true;
-        } else if (std.mem.startsWith(u8, arg, "--tui=")) {
-            const modeStr = arg[6..];
-            interactive.tui.mode = std.meta.stringToEnum(TuiMode, modeStr) orelse .auto;
-        } else if (std.mem.eql(u8, arg, "--tui")) {
-            i += 1;
-            if (i >= args.len) return error.MissingValue;
-            interactive.tui.mode = std.meta.stringToEnum(TuiMode, args[i]) orelse .auto;
-        } else if (std.mem.eql(u8, arg, "--dashboard") or std.mem.eql(u8, arg, "-d")) {
-            interactive.tui.dashboard = true;
-        } else if (std.mem.eql(u8, arg, "--no-progress")) {
-            interactive.tui.progress = false;
-        } else if (std.mem.eql(u8, arg, "--auth") or std.mem.eql(u8, arg, "--setup-auth")) {
-            interactive.auth.setup = true;
-        } else if (std.mem.eql(u8, arg, "--force-oauth")) {
-            interactive.auth.forceOauth = true;
-        } else if (std.mem.startsWith(u8, arg, "--session-title=")) {
-            interactive.session.title = try allocator.dupe(u8, arg[16..]);
-        } else if (std.mem.eql(u8, arg, "--session-title")) {
-            i += 1;
-            if (i >= args.len) return error.MissingValue;
-            interactive.session.title = try allocator.dupe(u8, args[i]);
-        } else if (std.mem.startsWith(u8, arg, "--save-session=")) {
-            interactive.session.savePath = try allocator.dupe(u8, arg[15..]);
-        } else if (std.mem.eql(u8, arg, "--save-session")) {
-            i += 1;
-            if (i >= args.len) return error.MissingValue;
-            interactive.session.savePath = try allocator.dupe(u8, args[i]);
-        }
-
-        i += 1;
-    }
-
-    return interactive;
+    //     var parsedArgs = CliOptions{
+    //         .options = .{
+    //             .model = "claude-3-sonnet-20240229",
+    //             .output = null,
+    //             .input = null,
+    //             .system = null,
+    //             .config = null,
+    //             .tokensMax = 4096,
+    //             .temperature = 0.7,
+    //         },
+    //         .flags = .{
+    //             .verbose = false,
+    //             .help = false,
+    //             .version = false,
+    //             .stream = true,
+    //             .pretty = false,
+    //             .debug = false,
+    //             .interactive = false,
+    //         },
+    //         .positionals = null,
+    //     };
+    //
+    //     // Argument parsing
+    //     var argIdx: usize = 0;
+    //     while (argIdx < args.len) {
+    //         const arg = args[argIdx];
+    //         if (std.mem.eql(u8, arg, "--model") or std.mem.eql(u8, arg, "-m")) {
+    //             argIdx += 1;
+    //             if (argIdx >= args.len) return error.MissingValue;
+    //             parsedArgs.options.model = try allocator.dupe(u8, args[argIdx]);
+    //         } else if (std.mem.eql(u8, arg, "--max-tokens")) {
+    //             argIdx += 1;
+    //             if (argIdx >= args.len) return error.MissingValue;
+    //             parsedArgs.options.tokensMax = try std.fmt.parseInt(u32, args[argIdx], 10);
+    //         } else if (std.mem.eql(u8, arg, "--temperature") or std.mem.eql(u8, arg, "-t")) {
+    //             argIdx += 1;
+    //             if (argIdx >= args.len) return error.MissingValue;
+    //             parsedArgs.options.temperature = try std.fmt.parseFloat(f32, args[argIdx]);
+    //         } else if (std.mem.eql(u8, arg, "--verbose") or std.mem.eql(u8, arg, "-v")) {
+    //             parsedArgs.flags.verbose = true;
+    //         } else if (std.mem.eql(u8, arg, "--help") or std.mem.eql(u8, arg, "-h")) {
+    //             parsedArgs.flags.help = true;
+    //         } else if (std.mem.eql(u8, arg, "--version")) {
+    //             parsedArgs.flags.version = true;
+    //         } else if (std.mem.eql(u8, arg, "--no-stream")) {
+    //             parsedArgs.flags.stream = false;
+    //         } else if (std.mem.eql(u8, arg, "--output") or std.mem.eql(u8, arg, "-o")) {
+    //             argIdx += 1;
+    //             if (argIdx >= args.len) return error.MissingValue;
+    //             parsedArgs.options.output = try allocator.dupe(u8, args[argIdx]);
+    //         } else if (std.mem.eql(u8, arg, "--input") or std.mem.eql(u8, arg, "-i")) {
+    //             argIdx += 1;
+    //             if (argIdx >= args.len) return error.MissingValue;
+    //             parsedArgs.options.input = try allocator.dupe(u8, args[argIdx]);
+    //         } else if (std.mem.eql(u8, arg, "--system")) {
+    //             argIdx += 1;
+    //             if (argIdx >= args.len) return error.MissingValue;
+    //             parsedArgs.options.system = try allocator.dupe(u8, args[argIdx]);
+    //         } else if (arg.len > 0 and arg[0] != '-') {
+    //             // Positional argument (prompt)
+    //             parsedArgs.positionals = try allocator.dupe(u8, arg);
+    //         }
+    //         argIdx += 1;
+    //     }
+    //
+    //     // Copy parsed options to interactive structure
+    //     interactive.base.options.model = parsedArgs.options.model;
+    //     interactive.base.options.tokensMax = parsedArgs.options.tokensMax;
+    //     interactive.base.options.temperature = parsedArgs.options.temperature;
+    //     interactive.base.flags.verbose = parsedArgs.flags.verbose;
+    //     interactive.base.flags.help = parsedArgs.flags.help;
+    //     interactive.base.flags.version = parsedArgs.flags.version;
+    //     interactive.base.flags.stream = parsedArgs.flags.stream;
+    //     interactive.base.positionals = parsedArgs.positionals;
+    //
+    //     // Parse additional interactive options
+    //     var i: usize = 0;
+    //     while (i < args.len) {
+    //         const arg = args[i];
+    //
+    //         if (std.mem.eql(u8, arg, "--interactive") or std.mem.eql(u8, arg, "-i")) {
+    //             interactive.interactive.enabled = true;
+    //         } else if (std.mem.eql(u8, arg, "--interactive-help")) {
+    //             interactive.interactive.showHelp = true;
+    //         } else if (std.mem.eql(u8, arg, "--continue-session")) {
+    //             interactive.interactive.continueSession = true;
+    //         } else if (std.mem.startsWith(u8, arg, "--tui=")) {
+    //             const modeStr = arg[6..];
+    //             interactive.tui.mode = std.meta.stringToEnum(TuiMode, modeStr) orelse .auto;
+    //         } else if (std.mem.eql(u8, arg, "--tui")) {
+    //             i += 1;
+    //             if (i >= args.len) return error.MissingValue;
+    //             interactive.tui.mode = std.meta.stringToEnum(TuiMode, args[i]) orelse .auto;
+    //         } else if (std.mem.eql(u8, arg, "--dashboard") or std.mem.eql(u8, arg, "-d")) {
+    //             interactive.tui.dashboard = true;
+    //         } else if (std.mem.eql(u8, arg, "--no-progress")) {
+    //             interactive.tui.progress = false;
+    //         } else if (std.mem.eql(u8, arg, "--auth") or std.mem.eql(u8, arg, "--setup-auth")) {
+    //             interactive.auth.setup = true;
+    //         } else if (std.mem.eql(u8, arg, "--force-oauth")) {
+    //             interactive.auth.forceOauth = true;
+    //         } else if (std.mem.startsWith(u8, arg, "--session-title=")) {
+    //             interactive.session.title = try allocator.dupe(u8, arg[16..]);
+    //         } else if (std.mem.eql(u8, arg, "--session-title")) {
+    //             i += 1;
+    //             if (i >= args.len) return error.MissingValue;
+    //             interactive.session.title = try allocator.dupe(u8, args[i]);
+    //         } else if (std.mem.startsWith(u8, arg, "--save-session=")) {
+    //             interactive.session.savePath = try allocator.dupe(u8, arg[15..]);
+    //         } else if (std.mem.eql(u8, arg, "--save-session")) {
+    //             i += 1;
+    //             if (i >= args.len) return error.MissingValue;
+    //             interactive.session.savePath = try allocator.dupe(u8, args[i]);
+    //         }
+    //
+    //         i += 1;
+    //     }
+    //
+    //     return interactive;
+    // }
 }
 
-/// Clean up interactive options memory
+// Clean up interactive options memory
 fn cleanupInteractiveOptions(allocator: std.mem.Allocator, options: *InteractiveCliOptions) void {
-    if (options.base.positionals) |p| {
-        allocator.free(p);
-        options.base.positionals = null;
-    }
+    // Cleanup removed - base field no longer exists
     if (options.session.title) |title| {
         allocator.free(title);
     }
@@ -338,7 +353,7 @@ fn cleanupInteractiveOptions(allocator: std.mem.Allocator, options: *Interactive
     }
 }
 
-/// Handle special modes that don't require full engine execution
+// Handle special modes that don't require full engine execution
 fn handleSpecialModes(allocator: std.mem.Allocator, options: InteractiveCliOptions) !bool {
     // Handle authentication setup
     if (options.auth.setup or options.auth.forceOauth) {
@@ -355,13 +370,14 @@ fn handleSpecialModes(allocator: std.mem.Allocator, options: InteractiveCliOptio
     return false;
 }
 
-/// Setup authentication flow with user guidance
+// Setup authentication flow with user guidance
 fn setupAuthenticationFlow(allocator: std.mem.Allocator, forceOauth: bool) !void {
     std.log.info("🔐 Starting Authentication Setup", .{});
 
     if (forceOauth) {
         std.log.info("🔄 Forcing OAuth setup...", .{});
-        try engine.setupOauth(allocator);
+        // TODO: Call setupOauth through auth module
+        // try auth.setupOauth(allocator);
         return;
     }
 

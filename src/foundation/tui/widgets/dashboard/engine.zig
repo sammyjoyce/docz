@@ -1198,3 +1198,6 @@ fn ringBuffer(comptime T: type) type {
         }
     };
 }
+
+// Export alias for backward compatibility
+pub const Engine = DashboardEngine;

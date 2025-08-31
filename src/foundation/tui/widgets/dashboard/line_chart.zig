@@ -8,7 +8,7 @@
 
 const std = @import("std");
 const engine_mod = @import("engine.zig");
-const logging = @import("foundation").logger;
+const logging = @import("../../../logger.zig");
 const term = @import("../../../term.zig");
 const color_palette = term.color.palettes;
 

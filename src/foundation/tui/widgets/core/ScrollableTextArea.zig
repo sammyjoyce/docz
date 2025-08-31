@@ -72,7 +72,7 @@ pub const SearchMatch = struct {
     line: usize,
     start_col: usize,
     end_col: usize,
-    style: Style = .{ .bg = .{ .indexed = 11 } }, // Yellow background
+    style: Style = .{ .bg = .{ .ansi256 = 11 } }, // Yellow background
 };
 
 /// Syntax highlighting token
@@ -114,9 +114,9 @@ pub const Config = struct {
     /// Highlight current line
     highlight_current_line: bool = false,
     /// Current line highlight style
-    current_line_style: Style = .{ .bg = .{ .indexed = 236 } }, // Light gray
+    current_line_style: Style = .{ .bg = .{ .ansi256 = 236 } }, // Light gray
     /// Selection style
-    selection_style: Style = .{ .bg = .{ .indexed = 4 } }, // Blue background
+    selection_style: Style = .{ .bg = .{ .ansi256 = 4 } }, // Blue background
     /// Search match style
     search_match_style: Style = .{ .bg = .{ .indexed = 11 } }, // Yellow background
     /// Line number style
@@ -144,7 +144,7 @@ pub const ScrollableTextArea = struct {
     /// Text selection
     selection: ?Selection = null,
     /// Viewport bounds
-    viewport: Bounds = .{},
+    viewport: Bounds = .{ .x = 0, .y = 0, .width = 0, .height = 0 },
     /// Search query
     search_query: ArrayList(u8),
     /// Search matches

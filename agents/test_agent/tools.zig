@@ -52,7 +52,9 @@ pub fn calculator(
     const request = toolsMod.parseToolRequest(CalculatorRequest, params) catch |err| {
         const errorMsg = try toolsMod.createErrorResponse(allocator, err, "Invalid calculator request");
         defer allocator.free(errorMsg);
-        return std.json.parseFromSlice(std.json.Value, allocator, errorMsg, .{});
+        const parsed = try std.json.parseFromSlice(std.json.Value, allocator, errorMsg, .{});
+        defer parsed.deinit();
+        return parsed.value;
     };
 
     // Perform the calculation

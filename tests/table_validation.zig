@@ -5,7 +5,8 @@ const expectEqualSlices = std.testing.expectEqualSlices;
 const expectError = std.testing.expectError;
 const allocator = std.testing.allocator;
 
-const table = @import("agents/markdown/lib/table.zig");
+const foundation = @import("foundation");
+const table = foundation.markdown.table;
 
 test "tableValidationValidTablePasses" {
     // Create a well-formed table
@@ -243,10 +244,10 @@ test "table_validate_and_repair_combined" {
 
     // Perform combined validate and repair
     var combinedResult = try table.validateAndRepairTable(allocator, &testTable, validation_config, repair_config);
-    defer combinedResult[0].deinit(allocator);
+    defer combinedResult.validation.deinit(allocator);
 
-    const finalValidation = combinedResult[0];
-    const repairsMade = combinedResult[1];
+    const finalValidation = combinedResult.validation;
+    const repairsMade = combinedResult.repairs_made;
 
     try expect(repairsMade > 0);
     try expect(finalValidation.is_valid or finalValidation.issues.len < initialResult.issues.len);

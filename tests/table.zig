@@ -3,7 +3,8 @@ const expect = std.testing.expect;
 const expectEqual = std.testing.expectEqual;
 const allocator = std.testing.allocator;
 
-const table = @import("agents/markdown/lib/table.zig");
+const foundation = @import("foundation");
+const table = foundation.markdown.table;
 
 test "tableValidation" {
     // Create a table

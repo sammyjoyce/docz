@@ -11,7 +11,6 @@
 
 const std = @import("std");
 const term = @import("../term.zig");
-const tui = @import("../tui.zig");
 const theme_mod = @import("../theme.zig");
 const Allocator = std.mem.Allocator;
 

@@ -29,6 +29,39 @@ pub const canvas = @import("core/canvas.zig");
 // Backward compatibility alias
 pub const canvas_engine = canvas;
 
+// VirtualList support types
+pub const Item = struct {
+    id: usize,
+    content: []const u8,
+};
+
+pub const DataSource = struct {
+    items: []const Item,
+
+    pub fn getItem(self: *const DataSource, index: usize) ?Item {
+        if (index >= self.items.len) return null;
+        return self.items[index];
+    }
+
+    pub fn getCount(self: *const DataSource) usize {
+        return self.items.len;
+    }
+};
+
+pub const Config = struct {
+    item_height: u32 = 1,
+    visible_items: u32 = 10,
+    scroll_offset: u32 = 0,
+};
+
+pub const ArraySource = struct {
+    items: []const Item,
+
+    pub fn init(items: []const Item) ArraySource {
+        return .{ .items = items };
+    }
+};
+
 // Global initialization functions
 pub fn init(allocator: std.mem.Allocator) !void {
     _ = allocator;

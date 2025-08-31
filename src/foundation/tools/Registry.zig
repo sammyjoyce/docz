@@ -1,9 +1,11 @@
 //! Tools registry and built-in tools.
 
 const std = @import("std");
-// Import anthropic conditionally - this will be handled by the build system
-const anthropic = @import("anthropic_shared");
-const SharedContext = @import("context_shared").SharedContext;
+
+const network = @import("../network.zig");
+const context = @import("../context.zig");
+const anthropic = network.Anthropic;
+const SharedContext = context.SharedContext;
 
 /// Error set for tool operations.
 pub const ToolError = error{
@@ -437,8 +439,12 @@ pub fn createJsonToolWrapper(jsonFunc: JsonFunction) ToolFn {
             const value = StoredFunction.func(allocator, parsed.value) catch |err| return err;
 
             // Serialize result to string
-            const out = std.json.stringifyAlloc(allocator, value, .{}) catch return ToolError.UnexpectedError;
-            return out;
+            var buffer = std.ArrayList(u8){};
+            std.json.stringify(value, .{}, buffer.writer()) catch {
+                buffer.deinit(allocator);
+                return ToolError.UnexpectedError;
+            };
+            return buffer.toOwnedSlice(allocator) catch return ToolError.UnexpectedError;
         }
     }.wrapper;
 }

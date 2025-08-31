@@ -465,17 +465,18 @@ pub fn repairTable(allocator: std.mem.Allocator, tbl: *Table, config: RepairConf
 
 /// Combined validate + repair helper that returns a tuple of
 /// (ValidationResult, repairs_made) for convenient testing.
+pub const ValidateRepairResult = struct {
+    validation: ValidationResult,
+    repairs_made: usize,
+};
+
 pub fn validateAndRepairTable(
     allocator: std.mem.Allocator,
     tbl: *Table,
     validation: ValidationConfig,
     repair: RepairConfig,
-) Error!@TypeOf(.{ ValidationResult{
-    .is_valid = true,
-    .issues = &[_]ValidationIssue{},
-    .suggestions = &[_][]const u8{},
-}, @as(usize, 0) }) {
-    var result = try validateTable(allocator, tbl, validation);
+) Error!ValidateRepairResult {
+    const result = try validateTable(allocator, tbl, validation);
     const repairs = try repairTable(allocator, tbl, repair);
-    return .{ result, repairs };
+    return .{ .validation = result, .repairs_made = repairs };
 }

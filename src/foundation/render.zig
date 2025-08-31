@@ -142,7 +142,6 @@ pub const DiffRect = diffCoalesce.Rect;
 pub const coalesceSpansToRects = diffCoalesce.coalesceSpansToRects;
 pub const Memory = @import("render/memory.zig").Memory;
 pub const Terminal = @import("render/terminal.zig").Terminal;
-pub const Scheduler = @import("render/scheduler.zig").Scheduler;
 
 // Legacy compatibility aliases
 // Legacy aliases removed per 2025-08-31 policy: use Memory/Terminal directly

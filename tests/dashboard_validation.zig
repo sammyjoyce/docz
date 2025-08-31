@@ -29,7 +29,7 @@ test "Dashboard widget rendering with RenderContext" {
     var surface = try render.Surface.init(allocator, 80, 24);
     defer surface.deinit();
 
-    var ctx = render.RenderContext{
+    const ctx = render.RenderContext{
         .allocator = allocator,
         .surface = &surface,
         .theme = null,
@@ -122,7 +122,6 @@ test "Dashboard sparkline widget" {
 
     // Import sparkline through TUI barrel
     const Sparkline = tui.Sparkline;
-    const DashboardEngine = tui.DashboardEngine;
 
     // Create sparkline with capability tier
     var sparkline = try Sparkline.init(allocator, .standard);
@@ -192,7 +191,7 @@ test "Dashboard double buffering performance" {
     var i: usize = 0;
     while (i < 100) : (i += 1) {
         const idx = i % back.cells.len;
-        back.cells[idx].char = @intCast(u21, 'A' + (i % 26));
+        back.cells[idx].char = @as(u21, @intCast('A' + (i % 26)));
         back.cells[idx].dirty = true;
     }
 
@@ -200,7 +199,7 @@ test "Dashboard double buffering performance" {
     try app.present();
 
     const end_time = std.time.nanoTimestamp();
-    const elapsed = @intCast(u64, end_time - start_time);
+    const elapsed = @as(u64, @intCast(end_time - start_time));
 
     // Frame should complete within budget for dashboard updates
     // Allow 50ms for test environment variance

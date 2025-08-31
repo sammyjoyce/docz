@@ -7,8 +7,9 @@
 
 const std = @import("std");
 
-// Tool registration and management (main type)
-pub const Registry = @import("tools/Registry.zig");
+// Tool registry module and primary type
+const registry_mod = @import("tools/Registry.zig");
+pub const Registry = registry_mod.Registry; // expose the struct type as tools.Registry
 
 // Runtime JSON utilities namespace
 pub const JSON = @import("tools/JSON.zig");
@@ -22,13 +23,16 @@ pub const Reflection = @import("tools/Reflection.zig");
 // Runtime validation utilities (main type)
 pub const Validation = @import("tools/Validation.zig");
 
-// Convenience re-exports from Registry
-pub const Tool = Registry.Tool;
-pub const ToolError = Registry.ToolError;
-pub const JsonFunction = Registry.JsonFunction;
-pub const registerBuiltins = Registry.registerBuiltins;
-pub const registerJsonTool = Registry.registerJsonTool;
-pub const registerJsonToolWithRequiredFields = Registry.registerJsonToolWithRequiredFields;
+// Markdown table utilities
+pub const table = @import("tools/table.zig");
+
+// Convenience re-exports from Registry module
+pub const Tool = registry_mod.Tool;
+pub const ToolError = registry_mod.ToolError;
+pub const JsonFunction = registry_mod.JsonFunction;
+pub const registerBuiltins = registry_mod.registerBuiltins;
+pub const registerJsonTool = registry_mod.registerJsonTool;
+pub const registerJsonToolWithRequiredFields = registry_mod.registerJsonToolWithRequiredFields;
 
 // Convenience re-exports from JSON
 pub const ToolJsonError = JSON.ToolJsonError;

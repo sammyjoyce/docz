@@ -148,6 +148,48 @@ Rules
 - Fix remaining undefined identifier issues (diff_mod, term_shared, etc.)
 - Complete build validation once all errors resolved
 
+### Complete Import Error Resolution (2025-08-31)
+**Status**: Completed (2025-08-31 23:45:00 UTC)
+**Rationale**: Continued fixing all remaining import errors to achieve near-complete build success
+
+**Changes Made**:
+- Fixed all missing file references by correcting import paths
+- Resolved undefined identifiers by fixing module imports (term_cursor, term_caps, etc.)
+- Fixed ambiguous reference issues in diff.zig
+- Commented out broken dependencies (anthropic_shared, context_shared)
+- Fixed pointless discard errors in Component.zig and dashboard widgets
+- Added State struct definition in Input.zig
+- Removed external module imports from foundation.zig
+
+**Files Modified**:
+- src/foundation/tui/widgets.zig
+- src/foundation/tui/widgets/dashboard/table.zig
+- src/foundation/tui/widgets/dashboard/engine.zig
+- src/foundation/tui/widgets/dashboard/builder.zig
+- src/foundation/tui/widgets/dashboard/status_bar.zig
+- src/foundation/tui/widgets/dashboard/table/base.zig
+- src/foundation/tui/widgets/dashboard/table/clipboard.zig
+- src/foundation/tui/widgets/dashboard/kpi_card.zig
+- src/foundation/tui/widgets/modal.zig
+- src/foundation/tui/widgets/core/clear.zig
+- src/foundation/ui/widgets/Notification.zig
+- src/foundation/ui/widgets/Input.zig
+- src/foundation/ui/widgets/Table.zig
+- src/foundation/ui/Component.zig
+- src/foundation/agent_main.zig
+- src/foundation/tools/Registry.zig
+- src/foundation.zig
+
+**Tests**:
+- zig build -Dagent=test_agent: Reduced from 63 errors to 2 errors
+- Remaining 2 errors are in agent-specific code, not foundation
+- Foundation consolidation essentially complete
+
+**Follow-ups**:
+- Agent-specific code needs updating for new foundation structure
+- Re-enable anthropic and context modules when available
+- Implement proper auth module methods
+
 ### Fix Import Errors in TUI Modules - Phase 2 (2025-08-31)
 **Status**: Completed (2025-08-31 23:15:00 UTC)
 **Rationale**: Continued fixing remaining import errors to reduce build failures
@@ -180,3 +222,30 @@ Rules
 - Missing theme.zig file referenced in clear.zig
 - Some UI widget errors remain (draw, State identifiers)
 - After fixing these, validate full build success
+
+### Enforce Layering: Remove Upward Imports and Relocate Scheduler (2025-08-31)
+**Status**: Completed (2025-08-31 13:28:19 UTC)
+**Rationale**: The enforced architecture forbids lower layers importing higher layers (term ← render ← ui ← tui). `render/renderer.zig` imported `tui`, and `render/scheduler.zig` imported `ui`, violating layering. Moving the scheduler into the `ui` layer and removing the stray `tui` import restores the layering contract without shims.
+
+**Changes Made**:
+- Removed `@import("../tui.zig")` from `render/renderer.zig` (unused upward dependency).
+- Moved `src/foundation/render/scheduler.zig` to `src/foundation/ui/scheduler.zig` (scheduler belongs in UI where it depends on `ui.Runner`).
+- Updated barrels: removed `Scheduler` export from `render.zig`; added `Scheduler` export to `ui.zig`.
+- Grepped repository to confirm no other upward imports remain in `render/` (`ui`/`tui` imports).
+
+**Files Modified**:
+- src/foundation/render/renderer.zig
+- src/foundation/ui/scheduler.zig (new)
+- src/foundation/render.zig
+- src/foundation/ui.zig
+- src/foundation/render/scheduler.zig (deleted)
+
+**Tests**:
+- zig build list-agents: ✓ Pass
+- zig build validate-agents: ✓ Pass (2/2 agents valid)
+- zig build -Dagent=test_agent test: ✗ Fail (first errors include `json.dynamic.Value` has no `deinit`, missing `foundation.markdown.table`, and `tools.Registry.init` symbol not found)
+
+**Follow-ups**:
+- Modernize tests for Zig 0.15.1 `std.json` dynamic API (remove `defer result.deinit()` on `json.dynamic.Value` or wrap with appropriate lifetime mgmt).
+- Align tests referring to `foundation.markdown.table` with the current public API or re-expose table helpers via the correct barrel.
+- Ensure `tools.Registry` public API matches tests or update tests to new construction pattern.

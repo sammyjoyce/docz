@@ -518,7 +518,7 @@ test "json reflection benchmark" {
 
     const config = Benchmark{
         .iterations = 100,
-        .warmup_iterations = 10,
+        .warmupIterations = 10,
     };
 
     // Run benchmarks

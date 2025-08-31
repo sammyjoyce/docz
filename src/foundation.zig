@@ -32,6 +32,11 @@ pub const agent_registry = @import("foundation/agent_registry.zig");
 pub const interactive_session = @import("foundation/interactive_session.zig");
 pub const session = @import("foundation/session.zig");
 
+// Markdown utilities now properly consolidated into foundation/tools
+pub const markdown = struct {
+    pub const table = tools.table;
+};
+
 // Re-export commonly used types for convenience
 pub const Config = config.Config;
 pub const Tool = tools.Tool;

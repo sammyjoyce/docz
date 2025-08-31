@@ -101,16 +101,15 @@ fn parseToolRequest(comptime T: type, json_value: std.json.Value) !T {
         // Check if field is required (no default value)
         const is_required = field.default_value_ptr == null;
 
-        const json_field = obj.get(field_name) orelse {
-            if (is_required) {
-                return ToolError.MissingParameter;
-            }
-            continue;
-        };
-
-        // Parse the JSON value into the field type
-        const parsed_value = try parseJsonValue(field.type, json_field);
-        @field(result, field_name) = parsed_value;
+        const maybe_field = obj.get(field_name);
+        if (maybe_field) |json_field| {
+            // Parse the JSON value into the field type
+            const parsed_value = try parseJsonValue(field.type, json_field);
+            @field(result, field_name) = parsed_value;
+        } else {
+            if (is_required) return ToolError.MissingParameter;
+            // Optional field missing: leave default-initialized
+        }
     }
 
     return result;
@@ -120,33 +119,33 @@ fn createSuccessResponse(result: anytype) ![]u8 {
     const allocator = std.heap.page_allocator;
 
     var responseObj = std.json.ObjectMap.init(allocator);
-    defer responseObj.deinit();
-
     try responseObj.put("success", std.json.Value{ .bool = true });
     try responseObj.put("result", try valueToJsonValue(result, allocator));
 
-    var response = std.json.Value{ .object = responseObj };
-    defer response.deinit();
-
-    return try std.json.stringifyAlloc(allocator, response, .{});
+    const response = std.json.Value{ .object = responseObj };
+    var buf = std.ArrayList(u8).init(allocator);
+    defer buf.deinit();
+    try std.json.stringify(response, .{}, buf.writer());
+    responseObj.deinit();
+    return buf.toOwnedSlice();
 }
 
 fn createErrorResponse(err: anyerror, message: []const u8) ![]u8 {
     const allocator = std.heap.page_allocator;
 
     var responseObj = std.json.ObjectMap.init(allocator);
-    defer responseObj.deinit();
-
     const errorName = @errorName(err);
 
     try responseObj.put("success", std.json.Value{ .bool = false });
     try responseObj.put("error", std.json.Value{ .string = errorName });
     try responseObj.put("message", std.json.Value{ .string = message });
 
-    var response = std.json.Value{ .object = responseObj };
-    defer response.deinit();
-
-    return try std.json.stringifyAlloc(allocator, response, .{});
+    const response = std.json.Value{ .object = responseObj };
+    var buf = std.ArrayList(u8).init(allocator);
+    defer buf.deinit();
+    try std.json.stringify(response, .{}, buf.writer());
+    responseObj.deinit();
+    return buf.toOwnedSlice();
 }
 
 // Helper functions for JSON parsing
@@ -384,8 +383,9 @@ test "toolRegistryIntegrationWithNewJsonTools" {
     const jsonValue = try std.json.parseFromSlice(std.json.Value, allocator, testInput, .{});
     defer jsonValue.deinit();
 
-    const result = try toolFn.?(allocator, jsonValue.value);
-    defer result.deinit();
+    var result = try toolFn.?(allocator, jsonValue.value);
+    // Free contained ObjectMap explicitly
+    result.object.deinit();
 
     // Verify the result
     try testing.expectEqualStrings("Integration test", result.object.get("processed_message").?.string);
@@ -439,8 +439,8 @@ test "errorPropagationThroughToolSystem" {
     const json_value3 = try std.json.parseFromSlice(std.json.Value, allocator, success_input, .{});
     defer json_value3.deinit();
 
-    const success_result = try tool_fn(allocator, json_value3.value);
-    defer success_result.deinit();
+    var success_result = try tool_fn(allocator, json_value3.value);
+    success_result.object.deinit();
 
     try testing.expectEqual(true, success_result.object.get("success").?.bool);
 }
@@ -488,8 +488,8 @@ test "memoryManagementAndCleanup" {
     defer json_value.deinit();
 
     const tool_fn = registry.get("cleanup_test").?;
-    const result = try tool_fn(allocator, json_value.value);
-    defer result.deinit();
+    var result = try tool_fn(allocator, json_value.value);
+    result.object.deinit();
 
     // Verify result is valid JSON
     try testing.expect(result.object.get("processed_message") != null);

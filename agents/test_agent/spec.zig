@@ -16,7 +16,7 @@ fn buildSystemPromptImpl(allocator: std.mem.Allocator, options: engine.CliOption
     return agent.loadSystemPrompt();
 }
 
-fn registerToolsImpl(registry: *toolsMod.Registry) !void {
+fn registerToolsImpl(registry: *toolsMod.Registry.Registry) !void {
     // Register test_agent-specific tools using the new system
     const tools = @import("tools.zig");
 

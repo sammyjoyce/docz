@@ -77,18 +77,18 @@ pub fn createSuccessResponse(allocator: std.mem.Allocator, result: anytype) Tool
     try responseObj.put("success", std.json.Value{ .bool = true });
     try responseObj.put("result", try valueToJsonValue(result, allocator));
 
-    var response = std.json.Value{ .object = responseObj };
-    defer response.deinit();
+    const response = std.json.Value{ .object = responseObj };
 
-    var buffer = try std.ArrayList(u8).initCapacity(allocator, 1024);
-    defer buffer.deinit();
+    var buffer = std.ArrayList(u8){};
+    try buffer.ensureTotalCapacity(allocator, 1024);
+    defer buffer.deinit(allocator);
     response.stringify(.{}, buffer.writer()) catch |err| {
         return switch (err) {
             error.OutOfMemory => ToolJsonError.OutOfMemory,
             else => ToolJsonError.SerializationFailed,
         };
     };
-    return buffer.toOwnedSlice() catch ToolJsonError.OutOfMemory;
+    return buffer.toOwnedSlice(allocator) catch ToolJsonError.OutOfMemory;
 }
 
 /// Create a standard error response with the given error and message.
@@ -113,18 +113,18 @@ pub fn createErrorResponse(
     try responseObj.put("error", std.json.Value{ .string = errorName });
     try responseObj.put("message", std.json.Value{ .string = message });
 
-    var response = std.json.Value{ .object = responseObj };
-    defer response.deinit();
+    const response = std.json.Value{ .object = responseObj };
 
-    var buffer = try std.ArrayList(u8).initCapacity(allocator, 1024);
-    defer buffer.deinit();
-    response.stringify(.{}, buffer.writer()) catch |e| {
+    var buffer = std.ArrayList(u8){};
+    try buffer.ensureTotalCapacity(allocator, 1024);
+    defer buffer.deinit(allocator);
+    std.json.stringify(response, .{}, buffer.writer()) catch |e| {
         return switch (e) {
             error.OutOfMemory => ToolJsonError.OutOfMemory,
             else => ToolJsonError.SerializationFailed,
         };
     };
-    return buffer.toOwnedSlice() catch ToolJsonError.OutOfMemory;
+    return buffer.toOwnedSlice(allocator) catch ToolJsonError.OutOfMemory;
 }
 
 /// Validate that all required fields are present in the JSON value.
@@ -382,11 +382,13 @@ pub const JsonReflector = struct {
 
             /// Serializes a struct instance to a JSON string.
             pub fn serialize(allocator: std.mem.Allocator, instance: T, options: std.json.StringifyOptions) Error![]const u8 {
-                const jsonString = std.json.Stringify.valueAlloc(allocator, instance, options) catch |err| {
+                var buffer = std.ArrayList(u8){};
+                std.json.stringify(instance, options, buffer.writer()) catch |err| {
+                    buffer.deinit(allocator);
                     std.log.warn("JSON serialization failed: {any}", .{err});
                     return Error.SerializationFailed;
                 };
-                return jsonString;
+                return buffer.toOwnedSlice(allocator) catch Error.SerializationFailed;
             }
 
             /// Serializes a struct instance to a JSON value.

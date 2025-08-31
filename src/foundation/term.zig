@@ -20,3 +20,4 @@ pub const unicode = @import("term/unicode.zig");
 
 // Re-export main terminal functionality
 pub const term = @import("term/term.zig");
+pub const Terminal = io.Terminal;

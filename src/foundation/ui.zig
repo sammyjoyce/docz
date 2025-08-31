@@ -12,6 +12,7 @@ pub const Component = @import("ui/Component.zig");
 pub const Layout = @import("ui/Layout.zig");
 pub const Event = @import("ui/Event.zig");
 pub const Runner = @import("ui/Runner.zig");
+pub const Scheduler = @import("ui/scheduler.zig").Scheduler;
 
 // Standard widgets namespace - lazy loading
 pub const Widgets = struct {
