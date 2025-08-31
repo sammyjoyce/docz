@@ -1,27 +1,29 @@
 const std = @import("std");
-const ui = @import("mod.zig");
-const render = @import("../render/mod.zig");
+const Component = @import("Component.zig");
+const Layout = @import("Layout.zig");
+const Event = @import("Event.zig");
+const render = @import("../render.zig");
 
 /// Helper to render a UI component using a render.MemoryRenderer without violating
 /// layering (lives in ui/, can import both ui and render).
 pub fn renderToMemory(
     allocator: std.mem.Allocator,
     memoryRenderer: *render.MemoryRenderer,
-    component: ui.component.Component,
-) ui.component.ComponentError![]render.DirtySpan {
+    component: Component.Component,
+) Component.ComponentError![]render.DirtySpan {
     // Prepare back buffer and context
     // Clear happens inside renderer
     var context = render.Context.init(memoryRenderer.back, null);
 
     // Basic measure/layout: fill available space for now
     const dimensions = memoryRenderer.size();
-    const constraints = ui.layout.Constraints{ .max = .{ .w = dimensions.w, .h = dimensions.h } };
+    const constraints = Layout.Constraints{ .max = .{ .w = dimensions.w, .h = dimensions.h } };
     _ = component.vtable.measure(component.ptr, constraints);
     component.vtable.layout(component.ptr, .{ .x = 0, .y = 0, .w = dimensions.w, .h = dimensions.h });
-    component.vtable.render(component.ptr, &context) catch return ui.component.ComponentError.RenderFailed;
+    component.vtable.render(component.ptr, &context) catch return Component.ComponentError.RenderFailed;
 
     // Diff back vs front and swap
-    const spans = render.diff_surface.computeDirtySpans(allocator, memoryRenderer.front, memoryRenderer.back) catch return ui.component.ComponentError.RenderFailed;
+    const spans = render.diff_surface.computeDirtySpans(allocator, memoryRenderer.front, memoryRenderer.back) catch return Component.ComponentError.RenderFailed;
     const temporary = memoryRenderer.front;
     memoryRenderer.front = memoryRenderer.back;
     memoryRenderer.back = temporary;
@@ -33,10 +35,10 @@ pub fn renderToMemory(
 pub fn renderToTerminal(
     allocator: std.mem.Allocator,
     termRenderer: *render.TermRenderer,
-    component: ui.component.Component,
-) ui.component.ComponentError![]render.DirtySpan {
+    component: Component.Component,
+) Component.ComponentError![]render.DirtySpan {
     const dimensions = termRenderer.size();
-    const constraints = ui.layout.Constraints{ .max = .{ .w = dimensions.w, .h = dimensions.h } };
+    const constraints = Layout.Constraints{ .max = .{ .w = dimensions.w, .h = dimensions.h } };
     _ = component.vtable.measure(component.ptr, constraints);
     component.vtable.layout(component.ptr, .{ .x = 0, .y = 0, .w = dimensions.w, .h = dimensions.h });
     const spans = termRenderer.renderWith(struct {
@@ -45,7 +47,7 @@ pub fn renderToTerminal(
             // We cannot capture component by reference in comptime; call through closure pattern
             return component.vtable.render(component.ptr, context);
         }
-    }.paint) catch return ui.component.ComponentError.RenderFailed;
+    }.paint) catch return Component.ComponentError.RenderFailed;
     _ = allocator; // unused; kept for symmetry with renderToMemory
     return spans;
 }

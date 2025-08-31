@@ -5,12 +5,11 @@
 //! document outline navigation, and integrated diff viewer.
 
 const std = @import("std");
-const agent_ui_framework = @import("../../src/foundation/tui/agent_ui.zig");
-const renderer_mod = @import("../../src/foundation/tui/core/renderer.zig");
-const bounds_mod = @import("../../src/foundation/tui/core/bounds.zig");
-const theme = @import("../../src/foundation/theme/mod.zig");
-const input_system = @import("../../src/foundation/components/input.zig");
-const markdown_renderer = @import("../../src/foundation/render/markdown_renderer.zig");
+const agent_ui_framework = @import("foundation").tui.agent_ui;
+const tui = @import("foundation").tui;
+// Theme types are available via the TUI barrel
+// Components (Input) come from the consolidated UI barrel
+const Input = @import("foundation").ui.Widgets.Input;
 const diff_viewer = @import("../../examples/diff_viewer.zig");
 
 const StandardUIPatterns = agent_ui_framework.StandardUIPatterns;
@@ -18,12 +17,11 @@ const MarkdownEditor = agent_ui_framework.MarkdownEditor;
 const OAuthIntegration = agent_ui_framework.OAuthIntegration;
 const KeyboardShortcuts = agent_ui_framework.KeyboardShortcuts;
 const NotificationType = agent_ui_framework.NotificationType;
-const Renderer = renderer_mod.Renderer;
-const Render = renderer_mod.Render;
-const Style = renderer_mod.Style;
-const Bounds = renderer_mod.Bounds;
-const Theme = theme.Theme;
-const Input = input_system.Input;
+const Renderer = tui.Renderer;
+const Render = tui.Render;
+const Style = tui.Style;
+const Bounds = tui.Bounds;
+const Theme = tui.Theme;
 
 /// Interactive markdown session configuration
 pub const InteractiveMarkdownConfig = struct {

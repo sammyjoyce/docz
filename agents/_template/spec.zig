@@ -9,7 +9,8 @@
 const std = @import("std");
 const engine = @import("core_engine");
 const impl = @import("agent.zig");
-const toolsMod = @import("tools_shared");
+const foundation = @import("foundation");
+const toolsMod = foundation.tools;
 
 /// ============================================================================
 /// SYSTEM PROMPT BUILDING

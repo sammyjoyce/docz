@@ -8,7 +8,7 @@ const base = @import("base.zig");
 const graphics = @import("graphics.zig");
 const line = @import("line.zig");
 const bar = @import("bar.zig");
-const graphics_manager = @import("../../../../term/graphics_manager.zig");
+const term = @import("../../../../term.zig");
 const renderer_mod = @import("../../../core/renderer.zig");
 
 const ChartData = base.Chart;

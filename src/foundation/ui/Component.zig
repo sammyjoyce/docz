@@ -1,7 +1,7 @@
 const std = @import("std");
-const layout = @import("../layout/mod.zig");
-const event = @import("../event/mod.zig");
-const render_pkg = @import("../../render/mod.zig");
+const layout = @import("Layout.zig");
+const event = @import("Event.zig");
+const render_pkg = @import("../render.zig");
 
 // Explicit error contract for UI components.
 // Expand this set as new error cases are surfaced.

@@ -231,8 +231,9 @@
 //! This pattern should be used for all new tools and is recommended for refactoring existing ones.
 
 const std = @import("std");
-const toolsMod = @import("tools_shared");
-const JsonReflector = @import("json_reflection").JsonReflector;
+const foundation = @import("foundation");
+const toolsMod = foundation.tools;
+const JsonReflector = toolsMod.JsonReflector;
 
 /// Request structure for the example tool.
 /// This replaces manual parameter extraction and provides compile-time type safety.

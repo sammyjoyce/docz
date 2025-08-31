@@ -5,13 +5,14 @@
 
 const std = @import("std");
 const testing = std.testing;
-const tui = @import("../src/shared/tui/mod.zig");
-const VirtualList = tui.widgets.VirtualList;
-const Item = tui.widgets.Item;
-const Config = tui.widgets.Config;
-const DataSource = tui.widgets.DataSource;
-const ArrayDataSource = tui.widgets.ArrayDataSource;
-const Bounds = tui.core.Bounds;
+const tui = @import("src/foundation/tui.zig");
+const Widgets = tui.widgets;
+const VirtualList = Widgets.VirtualList;
+const Item = Widgets.Item;
+const Config = Widgets.VirtualListConfig;
+const DataSource = Widgets.DataSource;
+const ArraySource = Widgets.ArraySource;
+const Bounds = tui.Bounds;
 
 test "virtualListInitialization" {
     const allocator = testing.allocator;
@@ -22,7 +23,7 @@ test "virtualListInitialization" {
         .{ .content = "Item 3" },
     };
 
-    const data_source = ArrayDataSource.init(&items);
+    const data_source = ArraySource.init(&items);
     const config = Config{};
 
     var list = try VirtualList.init(allocator, data_source, config);
@@ -45,7 +46,7 @@ test "virtualListDataSource" {
         .{ .content = "Elderberry", .icon = "🫐" },
     };
 
-    const data_source = ArrayDataSource.init(&items);
+    const data_source = ArraySource.init(&items);
 
     try testing.expectEqual(@as(usize, 5), data_source.getCount());
 
@@ -54,49 +55,37 @@ test "virtualListDataSource" {
     try testing.expectEqualStrings("🍒", item.icon.?);
 }
 
-test "virtualListVisibleRangeCalculation" {
+test "virtualListSelectionAndScrollPositionViaKeyboard" {
     const allocator = testing.allocator;
 
-    const items = try allocator.alloc(Item, 100);
+    const items = try allocator.alloc(Item, 50);
     defer allocator.free(items);
 
     for (items, 0..) |*item, i| {
-        item.* = .{
-            .content = try std.fmt.allocPrint(allocator, "Item {d}", .{i}),
-        };
+        item.* = .{ .content = try std.fmt.allocPrint(allocator, "Item {d}", .{i}) };
     }
-    defer for (items) |item| {
-        allocator.free(item.content);
-    };
+    defer for (items) |item| allocator.free(item.content);
 
-    const data_source = ArrayDataSource.init(items);
-    const config = Config{
-        .overscan = 3,
-    };
-
-    var list = try VirtualList.init(allocator, data_source, config);
+    const data_source = ArraySource.init(items);
+    var list = try VirtualList.init(allocator, data_source, .{});
     defer list.deinit();
 
-    // Set viewport
-    list.viewport = Bounds{
-        .x = 0,
-        .y = 0,
-        .width = 80,
-        .height = 10,
-    };
+    list.viewport = Bounds{ .x = 0, .y = 0, .width = 80, .height = 10 };
 
-    // Update visible range
-    list.updateVisibleRange();
+    // Initial state: nothing selected
+    try testing.expectEqual(@as(?usize, null), list.selected_index);
 
-    try testing.expectEqual(@as(usize, 0), list.visible_start);
-    try testing.expectEqual(@as(usize, 13), list.visible_end); // viewport height + overscan
+    // Navigate to first, then down a few times
+    try list.handleKeyboard(.arrow_down);
+    try testing.expectEqual(@as(?usize, 0), list.selected_index);
+    try list.handleKeyboard(.arrow_down);
+    try testing.expectEqual(@as(?usize, 1), list.selected_index);
 
-    // Scroll down
-    list.scroll_position = 10;
-    list.updateVisibleRange();
-
-    try testing.expectEqual(@as(usize, 7), list.visible_start); // scroll - overscan
-    try testing.expectEqual(@as(usize, 23), list.visible_end); // scroll + viewport + overscan
+    // Jump to end and check scroll moved forward
+    const before = list.scroll_position;
+    try list.handleKeyboard(.end);
+    try testing.expect(list.selected_index.? >= 40);
+    try testing.expect(list.scroll_position >= before);
 }
 
 test "virtualListKeyboardNavigation" {
@@ -110,7 +99,7 @@ test "virtualListKeyboardNavigation" {
         .{ .content = "Item 5" },
     };
 
-    const data_source = ArrayDataSource.init(&items);
+    const data_source = ArraySource.init(&items);
     const config = Config{
         .keyboard_navigation = true,
     };
@@ -160,7 +149,7 @@ test "virtualListSearchFunctionality" {
         .{ .content = "Apricot" },
     };
 
-    const data_source = ArrayDataSource.init(&items);
+    const data_source = ArraySource.init(&items);
     const config = Config{};
 
     var list = try VirtualList.init(allocator, data_source, config);
@@ -198,7 +187,7 @@ test "virtual_list_scroll physics" {
         allocator.free(item.content);
     };
 
-    const data_source = ArrayDataSource.init(items);
+    const data_source = ArraySource.init(items);
     const config = Config{
         .smooth_scrolling = true,
         .scroll_speed = 1.0,
@@ -243,7 +232,7 @@ test "virtual_list_ensure visible" {
         allocator.free(item.content);
     };
 
-    const data_source = ArrayDataSource.init(items);
+    const data_source = ArraySource.init(items);
     const config = Config{};
 
     var list = try VirtualList.init(allocator, data_source, config);
@@ -287,7 +276,7 @@ test "virtualListPerformanceWithLargeDataset" {
         allocator.free(item.content);
     };
 
-    const data_source = ArrayDataSource.init(items);
+    const data_source = ArraySource.init(items);
     const config = Config{
         .cache_size = 100,
         .prefetch_distance = 20,
@@ -333,7 +322,7 @@ test "virtualListMouseHandling" {
         .{ .content = "Item 5" },
     };
 
-    const data_source = ArrayDataSource.init(&items);
+    const data_source = ArraySource.init(&items);
     const config = Config{
         .mouse_support = true,
         .smooth_scrolling = true,

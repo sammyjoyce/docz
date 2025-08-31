@@ -4,7 +4,8 @@ const std = @import("std");
 const engine = @import("core_engine");
 const AgentSpec = engine.AgentSpec;
 const impl = @import("agent.zig");
-const toolsMod = @import("tools_shared");
+const foundation = @import("foundation");
+const toolsMod = foundation.tools;
 
 fn buildSystemPromptImpl(allocator: std.mem.Allocator, options: engine.CliOptions) ![]const u8 {
     _ = options; // reserved for future use (e.g., config path)
@@ -17,7 +18,7 @@ fn buildSystemPromptImpl(allocator: std.mem.Allocator, options: engine.CliOption
 
 fn registerToolsImpl(registry: *toolsMod.Registry) !void {
     // Register test_agent-specific tools using the new system
-    const tools = @import("tools/mod.zig");
+    const tools = @import("tools.zig");
 
     // Register tools individually with metadata
     try toolsMod.registerJsonTool(registry, "test_tool", "Test tool that demonstrates agent functionality", tools.testTool, "test_agent");

@@ -1,5 +1,5 @@
 const std = @import("std");
-const models = @import("anthropic_shared").models;
+const models = @import("network_shared").Anthropic.Models;
 
 pub const SharedContext = struct {
     anthropic: Anthropic,

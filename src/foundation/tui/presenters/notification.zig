@@ -2,11 +2,11 @@
 //! Maps shared Notification to the TUI renderer's drawNotification API.
 
 const std = @import("std");
-const notif_mod = @import("../../components/notification.zig");
+const ui = @import("../../ui.zig");
 const tui = @import("../core/renderer.zig");
 
-const Notification = notif_mod.Notification;
-const NotificationType = notif_mod.NotificationType;
+const Notification = ui.Widgets.Notification.Notification;
+const NotificationType = ui.Widgets.Notification.NotificationType;
 const Renderer = tui.Renderer;
 const Render = tui.Render;
 const NotificationLevel = tui.NotificationLevel;

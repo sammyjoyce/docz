@@ -3,11 +3,11 @@
 //! date ranges, event markers, and customizable styles.
 
 const std = @import("std");
-const term_shared = @import("term_shared");
+const term_shared = @import("../../../term.zig");
 const term_ansi = term_shared.term.color;
 const TerminalColor = term_shared.term.ansi.color.types.TerminalColor;
-const term_cursor = @import("term_shared").cursor;
-const term_mod = @import("term_shared");
+const term_cursor = @import("../../../term.zig").cursor;
+const term_mod = @import("../../../term.zig");
 const shared = @import("../../../mod.zig");
 
 const input_mod = shared.components.input;

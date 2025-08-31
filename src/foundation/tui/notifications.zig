@@ -12,10 +12,8 @@
 const std = @import("std");
 const renderer_mod = @import("./core/renderer.zig");
 const bounds_mod = @import("./core/bounds.zig");
-const shared = @import("../mod.zig");
-const SharedContext = @import("context_shared").SharedContext;
-const components_shared = shared.components;
-const notification = components_shared.notification;
+const ui = @import("../ui.zig");
+const Notification = ui.Widgets.Notification;
 
 const Renderer = renderer_mod.Renderer;
 const Render = renderer_mod.Render;
@@ -26,17 +24,16 @@ const Bounds = renderer_mod.Bounds;
 const NotificationLevel = renderer_mod.NotificationLevel;
 
 // Re-export base types for convenience
-pub const NotificationType = notification.NotificationType;
-pub const NotificationConfig = notification.NotificationConfig;
-pub const NotificationAction = notification.NotificationAction;
-pub const BaseNotification = notification.BaseNotification;
+pub const NotificationType = Notification.Type;
+pub const NotificationConfig = Notification.Config;
+pub const NotificationAction = Notification.Action;
 
 /// TUI Notification that extends the base system with positioning and animation
 pub const NotificationWidget = struct {
     const Self = @This();
 
-    // Base notification data
-    base: BaseNotification,
+    // Base notification widget from UI
+    base: *Notification,
 
     // TUI-specific options
     options: Options,

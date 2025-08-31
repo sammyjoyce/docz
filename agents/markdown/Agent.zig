@@ -16,7 +16,7 @@ pub const Markdown = struct {
     /// Agent configuration structure - extends the standard AgentConfig
     pub const Config = struct {
         // Include standard agent configuration
-        agentConfig: @import("config_shared").AgentConfig,
+        agentConfig: @import("foundation").config.AgentConfig,
 
         // Add agent-specific configuration fields here
         textWrapWidth: u32 = 80,
@@ -30,7 +30,8 @@ pub const Markdown = struct {
 
         /// Load configuration from file with defaults fallback
         pub fn loadFromFile(allocator: Allocator, path: []const u8) !Config {
-            const config_utils = @import("config_shared");
+            const foundation = @import("foundation");
+            const config_utils = foundation.config;
             const defaults = Config{
                 .agentConfig = config_utils.createValidatedAgentConfig("markdown", "Markdown document processing agent", "Developer"),
                 .textWrapWidth = 80,
@@ -47,7 +48,8 @@ pub const Markdown = struct {
 
         /// Get the standard agent config path for this agent
         pub fn getConfigPath(allocator: Allocator) ![]const u8 {
-            const config_utils = @import("config_shared");
+            const foundation = @import("foundation");
+            const config_utils = foundation.config;
             return config_utils.getAgentConfigPath(allocator, "markdown");
         }
     };

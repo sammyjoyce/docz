@@ -2,15 +2,18 @@
 //! Layer: network (standalone, no UI dependencies)
 
 const std = @import("std");
+const deps = @import("internal/deps.zig");
+comptime {
+    deps.assertLayer(.network);
+}
 
 // Provider-agnostic HTTP interface
 pub const Http = @import("network/Http.zig");
 pub const HttpCurl = @import("network/HttpCurl.zig");
-pub const SSE = @import("network/sse.zig");
+pub const SSE = @import("network/SSE.zig");
 
 // Legacy compatibility - will be deprecated
 pub const curl = @import("network/curl.zig");
-pub const client = @import("network/client.zig");
 
 // Unified error handling
 pub const Error = Http.Error;
@@ -51,9 +54,6 @@ pub const Anthropic = struct {
 // Anthropic OAuth is separate to avoid module conflicts
 pub const AnthropicAuth = @import("network/providers/anthropic/Auth.zig");
 
-// Legacy anthropic import - to be deprecated
-pub const anthropic = @import("network/anthropic.zig");
-
 // Legacy compatibility exports (will be removed after migration)
 pub const HTTPError = curl.HTTPError;
 pub const HTTPMethod = curl.HTTPMethod;
@@ -67,13 +67,6 @@ pub const ServerSentEventField = SSE.ServerSentEventField;
 pub const ServerSentEvent = SSE.ServerSentEvent;
 pub const SSEEventBuilder = SSE.SSEEventBuilder;
 pub const ServerSentEventConfig = SSE.ServerSentEventConfig;
-
-// Client types (legacy)
-pub const Service = client.Service;
-pub const ClientError = client.Error;
-pub const Request = client.NetworkRequest;
-pub const Response = client.NetworkResponse;
-pub const Event = client.NetworkEvent;
 
 /// Initialize the network module
 pub fn init() void {

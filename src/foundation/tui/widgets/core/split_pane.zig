@@ -14,10 +14,8 @@ const mouse_mod = @import("../../core/input/mouse.zig");
 const focus_mod = @import("../../core/input/focus.zig");
 const constraint_solver = @import("../../core/constraint_solver.zig");
 // Use top-level term APIs
-const term_cursor = @import("../../../term/cursor.zig");
-const term_mod = @import("../../../term/mod.zig");
-const input_mod = @import("../../../components/input.zig");
-const term_shared = @import("../../../../term_shared.zig");
+const term = @import("../../../term.zig");
+const ui = @import("../../../ui.zig");
 const term_color = term_shared.term.color;
 
 // Type aliases for convenience

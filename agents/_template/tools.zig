@@ -8,7 +8,8 @@
 //! - Comprehensive documentation
 
 const std = @import("std");
-const toolsMod = @import("tools_shared");
+const foundation = @import("foundation");
+const toolsMod = foundation.tools;
 
 /// ============================================================================
 /// TOOL FUNCTION EXPORTS

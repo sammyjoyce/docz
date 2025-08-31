@@ -14,8 +14,8 @@ This guide documents the comptime reflection approach for JSON serialization/des
 
 ## Core Modules
 
-### `src/shared/json_reflection.zig`
-Provides the foundation for JSON reflection with automatic field name conversion and basic serialization/deserialization.
+### `src/foundation/tools.zig`
+Provides the unified tools API including JSON reflection (compile-time in `tools/Reflection.zig`) and runtime helpers (`tools/JSON.zig`). Import via the build module name `tools_shared`.
 
 ### `src/shared/tools/json_helpers.zig`
 Tool-specific utilities for parsing JSON parameters, creating standardized responses, and validation.
@@ -64,7 +64,7 @@ pub fn createUserResponseOld(allocator: std.mem.Allocator, user: User) ![]const 
 ### 2. Use Reflection-Based Serialization
 
 ```zig
-const JsonReflector = @import("../shared/json_reflection/mod.zig").JsonReflector;
+const JsonReflector = @import("tools_shared").JsonReflector;
 
 // Generate mapper for your struct
 const UserMapper = JsonReflector.mapper(UserProfile);
@@ -86,7 +86,7 @@ pub fn deserializeUser(allocator: std.mem.Allocator, json_str: []const u8) !User
 ### 3. Tool Parameter Parsing
 
 ```zig
-const json_helpers = @import("../shared/tools/json_helpers.zig");
+const tools = @import("tools_shared");
 
 pub fn processUserTool(allocator: std.mem.Allocator, params: std.json.Value) ![]const u8 {
     // Define expected parameter structure
@@ -100,14 +100,14 @@ pub fn processUserTool(allocator: std.mem.Allocator, params: std.json.Value) ![]
     };
 
     // Parse and validate parameters
-    const request = try json_helpers.parseToolRequest(Request, params);
+    const request = try tools.parseToolRequest(Request, params);
     defer request.deinit();
 
     // Process the request...
     const result = try processUserAction(request.value);
 
     // Create standardized response
-    return try json_helpers.createSuccessResponse(result);
+    return try tools.createSuccessResponse(std.heap.page_allocator, result);
 }
 ```
 

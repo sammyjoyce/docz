@@ -2,11 +2,12 @@
 //! Register all your agent-specific tools here.
 
 const std = @import("std");
-const toolsMod = @import("tools_shared");
-const JsonReflector = @import("json_reflection").JsonReflector;
+const foundation = @import("foundation");
+const toolsMod = foundation.tools;
+const JsonReflector = toolsMod.JsonReflector;
 
 // Tool Implementation
-pub const Tool = @import("Tool.zig");
+pub const Tool = @import("tools/Tool.zig");
 
 /// Test tool function demonstrating the new json_reflection approach.
 /// This replaces manual ObjectMap building with type-safe structs.

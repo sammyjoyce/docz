@@ -10,7 +10,7 @@
 ## Directory & Build Layout (must match)
 	•	agents/<name>/: main.zig (CLI entry), spec.zig (prompt+tools), agent.zig (impl); optional: config.zon, system_prompt.txt, tools.zon, tools/, common/, examples/, README.md.
 	•	src/core/: engine.zig, config.zig, agent_base.zig, agent_main.zig.
-	•	src/shared/: cli/, tui/, render/, components/, network/, tools/, auth/, json_reflection/, term/; each namespace exports via a module‑named barrel file (no `mod.zig`), e.g. `src/shared/api.zig` re‑exports `src/shared/api/*`.
+	•	src/foundation/: cli/, tui/, render/, ui/, network/, tools/, auth/, term/; each namespace exports via a module‑named barrel file (no `mod.zig`). JSON reflection is consolidated into `src/foundation/tools.zig`.
 	•	examples/, tests/.
 	•	Build commands:
 	◦	zig build -Dagent=<name> [run|run-agent|install-agent|test]
@@ -59,7 +59,7 @@ shared/term/input (primitives) → shared/components/input.zig (abstraction) →
 	•	network/ (HTTP clients, Anthropic/Claude, SSE)
 	•	tools/ (registry, metadata, agent attribution)
 	•	auth/ (OAuth + API keys; TUI flows; CLI commands)
-	•	json_reflection/ (schema validation, typed JSON)
+	•	tools/ (registry, schemas, JSON reflection)
 	•	term/ (terminal caps, low‑level input/mouse)
 
 ## Error Handling (hard rules)
@@ -209,6 +209,14 @@ Validate agent structure:
 ```bash
 zig build validate-agents
 ```
+
+### Feature Flags & Profiles
+- Profiles: `-Dprofile=minimal|standard|full` (default: `standard`).
+- Explicit features: `-Dfeatures=cli,tui,network,anthropic,auth,sixel,theme-dev`.
+- Keep profile defaults: `-Dfeatures=all`.
+- Per-flag overrides: `-Denable-<name>=true|false` (wins last).
+- Dependency rules: `auth`/`anthropic` imply `network` unless `-Denable-network=false`.
+- See docs/FEATURE_FLAGS.md for full examples and recipes.
 
 ### Common Tasks
 

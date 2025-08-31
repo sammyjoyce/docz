@@ -5,7 +5,7 @@
 
 const std = @import("std");
 const engine_mod = @import("engine.zig");
-const term_mod = @import("term_shared");
+const term_mod = @import("../../../term.zig");
 const term_sgr = term_mod.ansi.sgr;
 const Color = term_mod.ansi.color.Color;
 

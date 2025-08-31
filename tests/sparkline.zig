@@ -1,6 +1,6 @@
 const std = @import("std");
-const Sparkline = @import("src/shared/tui/widgets/dashboard/sparkline.zig").Sparkline;
-const engine_mod = @import("src/shared/tui/widgets/dashboard/engine.zig");
+const Sparkline = @import("src/foundation/tui/widgets/dashboard/sparkline.zig").Sparkline;
+const engine_mod = @import("src/foundation/tui/widgets/dashboard/engine.zig");
 
 test "sparklineInit" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};

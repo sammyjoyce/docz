@@ -13,7 +13,7 @@
 //! - TUI-specific event types and conversions
 //! - Legacy compatibility layer for existing TUI widgets
 //!
-//! This layer depends on the input system from src/shared/components/input.zig
+//! This layer depends on the input system from foundation/ui/widgets/Input.zig
 //! and adds TUI-specific features on top of it.
 //!
 //! Usage:

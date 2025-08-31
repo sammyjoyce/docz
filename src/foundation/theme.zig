@@ -3,12 +3,17 @@
 //! accessibility features, and cross-platform support
 //!
 //! Compile-time Options
-//! - Define `pub const shared_options = @import("src/shared/mod.zig").Options{ ... };` at root,
+//! - Define `pub const theme_options = ThemeOptions{ ... };` at root,
 //!   or provide any struct; fields are discovered with `@hasField`.
 //! - This module reads optional fields: `theme_enable_tools`,
 //!   `theme_enable_accessibility`, `theme_default_scheme`.
 
 const std = @import("std");
+const deps = @import("internal/deps.zig");
+// Theme participates below render/ui; treat as render-adjacent for fences.
+comptime {
+    deps.assertLayer(.render);
+}
 const builtin = @import("builtin");
 const term = @import("term_shared");
 const root = @import("root");

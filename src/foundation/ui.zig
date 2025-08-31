@@ -1,17 +1,30 @@
-//! UI package barrel: component interface, layout and events.
-//! Public surface intentionally minimal and stable.
-//!
-//! Import via this barrel. If you need to feature-gate, use
-//! `@import("../shared/mod.zig").options.feature_tui` in consumers.
+//! Base UI framework with component model and standard widgets.
+//! Layer: ui (may import: render, term)
 
-const shared = @import("../mod.zig");
+const std = @import("std");
+const deps = @import("internal/deps.zig");
 comptime {
-    if (!shared.options.feature_tui) {
-        @compileError("ui subsystem disabled; enable feature_tui");
-    }
+    deps.assertLayer(.ui);
 }
 
-pub const component = @import("component/mod.zig");
-pub const layout = @import("layout/mod.zig");
-pub const event = @import("event/mod.zig");
-pub const theme = @import("theme/mod.zig");
+// Core component model - explicit exports only
+pub const Component = @import("ui/Component.zig");
+pub const Layout = @import("ui/Layout.zig");
+pub const Event = @import("ui/Event.zig");
+pub const Runner = @import("ui/Runner.zig");
+
+// Standard widgets namespace - lazy loading
+pub const Widgets = struct {
+    pub const Progress = @import("ui/widgets/Progress.zig");
+    pub const Input = @import("ui/widgets/Input.zig");
+    pub const Notification = @import("ui/widgets/Notification.zig");
+    pub const Chart = @import("ui/widgets/Chart.zig");
+    pub const Table = @import("ui/widgets/Table.zig");
+    pub const Status = @import("ui/widgets/Status.zig");
+};
+
+// Temporary compatibility (remove after migration)
+pub const widgets = Widgets;
+pub const component = Component;
+pub const layout = Layout;
+pub const event = Event;

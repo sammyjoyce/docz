@@ -1,5 +1,5 @@
 //! Event handling system for TUI components
-//! Uses the shared input system from @src/shared/input for comprehensive input support
+//! Uses the foundation input system for comprehensive input support
 const std = @import("std");
 const shared = @import("../../../mod.zig");
 const shared_input = shared.components.input;

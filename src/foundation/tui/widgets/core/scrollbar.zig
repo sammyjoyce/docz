@@ -2,7 +2,7 @@
 //! Supports vertical/horizontal orientations, mouse interaction, and multiple styles
 
 const std = @import("std");
-const term_shared = @import("term_shared");
+const term_shared = @import("../../../term.zig");
 const rich_cellbuf = term_shared.cellbuf;
 const term_caps = term_shared.caps;
 

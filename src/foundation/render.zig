@@ -51,7 +51,7 @@
 //! ## Compile-time Options
 //! Override render behavior at build root by defining:
 //!
-//!   pub const shared_options = @import("src/shared/mod.zig").Options{ .quality = .high };
+//!   pub const render_options = RenderOptions{ .quality = .high };
 //!
 //! Or provide render-specific toggles by adding fields (your `shared_options`
 //! struct can be any type; fields are discovered with `@hasField`):
@@ -62,7 +62,11 @@
 //! This module will read them via `@hasDecl(root, "shared_options")`.
 //!
 
-const shared = @import("../mod.zig");
+const deps = @import("internal/deps.zig");
+comptime {
+    deps.assertLayer(.render);
+}
+const shared = @import("../shared.zig");
 comptime {
     if (!shared.options.feature_render) {
         @compileError("render subsystem disabled; enable feature_render");
@@ -108,6 +112,7 @@ pub const TermSurface = @import("surface.zig").TermSurface;
 pub const Renderer = @import("renderer.zig").Renderer;
 pub const AdaptiveRenderer = Renderer.AdaptiveRenderer; // Legacy compatibility
 pub const RenderTier = Renderer.RenderTier;
+pub const RenderContext = @import("RenderContext.zig");
 pub const Theme = Renderer.Theme;
 pub const cacheKey = Renderer.cacheKey;
 pub const QualityTiers = @import("quality_tiers.zig").QualityTiers;

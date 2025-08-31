@@ -4,7 +4,7 @@
 
 const std = @import("std");
 const bounds_mod = @import("../../../core/bounds.zig");
-const terminal_mod = @import("../../../../term/unified.zig");
+const term = @import("../../../../term.zig");
 
 pub const Point = bounds_mod.Point;
 pub const Bounds = bounds_mod.Bounds;

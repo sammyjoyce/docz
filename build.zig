@@ -11,7 +11,7 @@ const buildConfig = struct {
         const CLI_ZON = "src/foundation/cli/cli.zon";
         const TERMCAPS_ZON = "src/foundation/term/caps.zon";
         const ANSI_ZON = "src/foundation/term/ansi.zon";
-        const ANTHROPIC_ZIG = "src/foundation/network/anthropic.zig";
+        // Anthropic is now part of network module
         const TOOLS_ZIG = "src/foundation/tools.zig";
         const ENGINE_ZIG = "src/foundation/engine.zig";
         const CONFIG_ZIG = "src/foundation/config.zig";
@@ -21,8 +21,8 @@ const buildConfig = struct {
         const AGENT_MAIN_ZIG = "src/foundation/agent_main.zig";
         const AGENT_BASE_ZIG = "src/foundation/agent_base.zig";
         const CLI_ZIG = "src/foundation/cli.zig";
-        const AUTH_ZIG = "src/foundation/auth.zig";
-        const OAUTH_CALLBACK_SERVER_ZIG = "src/foundation/auth/oauth/callback_server.zig";
+        const AUTH_ZIG = "src/foundation/network.zig";
+        const OAUTH_CALLBACK_SERVER_ZIG = "src/foundation/network/auth/Callback.zig";
         const EXAMPLE_OAUTH_CALLBACK = "examples/oauth_callback.zig";
         const TUI_ZIG = "src/foundation/tui.zig";
         const SCAFFOLD_TOOL = "src/tools/agent_scaffold.zig";
@@ -609,6 +609,17 @@ const AgentManifest = struct {
     },
 };
 
+// Feature configuration structure
+const FeatureConfig = struct {
+    tui: bool,
+    cli: bool,
+    network: bool,
+    anthropic: bool,
+    auth: bool,
+    sixel: bool,
+    theme_dev: bool,
+};
+
 // Build context for organizing related data
 const BuildState = struct {
     b: *std.Build,
@@ -617,12 +628,13 @@ const BuildState = struct {
     selected_agent: []const u8,
     agent_paths: AgentPaths,
     theme_dev: bool,
+    features: FeatureConfig,
     const AgentPaths = struct {
         dir: []const u8,
         main: []const u8,
         spec: []const u8,
     };
-    pub fn init(b: *std.Build) !BuildState {
+    pub fn init(b: *std.Build, features: FeatureConfig) !BuildState {
         // Check if we're running tests - if so, use a dummy agent
         const is_test = b.args != null and b.args.?.len > 0 and std.mem.eql(u8, b.args.?[0], "test");
         const selected_agent = if (is_test) "test_agent" else b.option([]const u8, "agent", "Agent to build (e.g. 'markdown')") orelse buildConfig.DEFAULT_AGENT;
@@ -640,6 +652,7 @@ const BuildState = struct {
                 .spec = try std.fmt.allocPrint(b.allocator, "{s}/spec.zig", .{agent_dir}),
             },
             .theme_dev = theme_dev,
+            .features = features,
         };
     }
 };
@@ -1108,50 +1121,42 @@ const ModuleBuilder = struct {
         const curl = self.createModule("src/foundation/network/curl.zig");
         const sse = self.createModule("src/foundation/network/sse.zig");
 
-        // Always create anthropic module - it will be a stub when network access is disabled
-        const anthropic = self.createModule(buildConfig.PATHS.ANTHROPIC_ZIG);
-        // Provide sibling network modules to the anthropic submodule as named imports
-        anthropic.addImport("curl_shared", curl);
-        anthropic.addImport("sse_shared", sse);
+        // Create network module with Anthropic provider support
+        const network = self.createModule(buildConfig.PATHS.AUTH_ZIG);
+        network.addImport("curl_shared", curl);
+        network.addImport("sse_shared", sse);
 
         const tools = self.createModule(buildConfig.PATHS.TOOLS_ZIG);
-        tools.addImport("anthropic_shared", anthropic);
+        tools.addImport("network_shared", network);
         const shared_options = self.createModule("src/foundation/options.zig");
         tools.addImport("shared_options", shared_options);
 
         const config = self.createModule(buildConfig.PATHS.CONFIG_ZIG);
         const context_mod = self.createModule("src/foundation/context.zig");
-        context_mod.addImport("anthropic_shared", anthropic);
-        anthropic.addImport("context_shared", context_mod);
+        context_mod.addImport("network_shared", network);
+        network.addImport("context_shared", context_mod);
         tools.addImport("context_shared", context_mod);
 
         // Auth module is only needed when network access is available
-        const auth = self.createModule(buildConfig.PATHS.AUTH_ZIG);
-        auth.addImport("anthropic_shared", anthropic);
-        auth.addImport("curl_shared", curl);
+        // Auth is now part of network module
 
-        // Create auth_deps module that re-exports dependencies for auth submodules
-        const auth_deps = self.createModule("src/foundation/auth/deps.zig");
-        auth_deps.addImport("curl_shared", curl);
-        auth.addImport("auth_deps", auth_deps);
+        // Auth is now part of network module - auth_deps no longer needed
 
-        // JSON reflection module for comptime JSON processing
-        // Provides utilities for compile-time JSON schema validation and processing
-        // Requires Zig 0.15.1+ for optimal comptime reflection performance
-        const json_reflection = self.createModule("src/foundation/json_reflection.zig");
+        // JSON reflection has been merged into tools (src/foundation/tools.zig).
+        // No separate json_reflection module remains; use tools.Shared.JsonReflector instead.
 
         // OAuth callback server module
         const oauth_callback_server = self.createModule(buildConfig.PATHS.OAUTH_CALLBACK_SERVER_ZIG);
-        oauth_callback_server.addImport("auth_shared", auth);
+        oauth_callback_server.addImport("network_shared", network);
 
         // Terminal capability module aggregator shared across CLI and TUI
         const term = self.createModule("src/foundation/term.zig");
         term.addImport("shared_types", self.createModule("src/foundation/types.zig"));
 
         const engine = self.createModule(buildConfig.PATHS.ENGINE_ZIG);
-        engine.addImport("anthropic_shared", anthropic);
+        engine.addImport("network_shared", network);
         engine.addImport("tools_shared", tools);
-        engine.addImport("auth_shared", auth);
+        engine.addImport("auth_shared", network);
         engine.addImport("context_shared", context_mod);
 
         // New core modules for enhanced UX
@@ -1168,22 +1173,27 @@ const ModuleBuilder = struct {
         const interactive_session = self.createModule(buildConfig.PATHS.INTERACTIVE_SESSION_ZIG);
         interactive_session.addImport("engine_shared", engine);
         interactive_session.addImport("cli_shared", self.createModule(buildConfig.PATHS.CLI_ZIG));
-        interactive_session.addImport("auth_shared", auth);
+        interactive_session.addImport("auth_shared", network);
 
         const agent_main = self.createModule(buildConfig.PATHS.AGENT_MAIN_ZIG);
         agent_main.addImport("config_shared", config);
         agent_main.addImport("engine_shared", engine);
         agent_main.addImport("tools_shared", tools);
         agent_main.addImport("cli_shared", self.createModule(buildConfig.PATHS.CLI_ZIG));
+        agent_main.addImport("interactive_session", interactive_session);
+        agent_main.addImport("auth_shared", network);
 
         const agent_base = self.createModule(buildConfig.PATHS.AGENT_BASE_ZIG);
         agent_base.addImport("config_shared", config);
         agent_base.addImport("engine_shared", engine);
         agent_base.addImport("tools_shared", tools);
         agent_base.addImport("interactive_session", interactive_session);
-        agent_base.addImport("auth_shared", auth);
-        agent_base.addImport("anthropic_shared", anthropic);
+        agent_base.addImport("auth_shared", network);
+        agent_base.addImport("network_shared", network);
         agent_base.addImport("agent_main", agent_main);
+
+        // Add agent_base to agent_main after it's defined
+        agent_main.addImport("agent_base", agent_base);
 
         // CLI depends on terminal capabilities
         const cli = self.createModule(buildConfig.PATHS.CLI_ZIG);
@@ -1202,15 +1212,15 @@ const ModuleBuilder = struct {
         theme.addImport("tui_themes", tui);
 
         return .{
-            .anthropic = anthropic,
+            .network = network,
             .tools = tools,
             .engine = engine,
             .cli = cli,
             .tui = tui,
             .term = term,
             .config = config,
-            .auth = auth,
-            .json_reflection = json_reflection,
+            .auth = network, // Auth is now part of network
+            // json_reflection removed; consolidated into tools
             .theme = theme,
             .agent_interface = agent_interface,
             .agent_dashboard = agent_dashboard,
@@ -1224,7 +1234,7 @@ const ModuleBuilder = struct {
     /// Create conditional shared modules based on agent manifest capabilities
     fn createConditionalSharedModules(self: ModuleBuilder, manifest: ?AgentManifest) ConditionalSharedModules {
         var modules = ConditionalSharedModules{
-            .anthropic = null,
+            .network = null,
             .tools = null,
             .engine = null,
             .cli = null,
@@ -1232,7 +1242,6 @@ const ModuleBuilder = struct {
             .term = null,
             .config = null,
             .auth = null,
-            .json_reflection = null,
             .render = null,
             .components = null,
             .theme = null,
@@ -1250,21 +1259,22 @@ const ModuleBuilder = struct {
         modules.tools = self.createModule(buildConfig.PATHS.TOOLS_ZIG);
         const shared_options = self.createModule("src/foundation/options.zig");
         var context_mod = self.createModule("src/foundation/context.zig");
-        // Always include json_reflection module for comptime JSON processing
-        // This module provides compile-time JSON reflection utilities that are
-        // useful for all agents and tools, regardless of their specific capabilities
-        modules.json_reflection = self.createModule("src/foundation/json_reflection.zig");
-        // Create network modules once for reuse
+        // json_reflection consolidated into tools; no separate module here
+        // Create network modules once for reuse (gated by build features)
         const curl = self.createModule("src/foundation/network/curl.zig");
         const sse = self.createModule("src/foundation/network/sse.zig");
 
-        // Always include anthropic module (will be stub when network access disabled)
-        modules.anthropic = self.createModule(buildConfig.PATHS.ANTHROPIC_ZIG);
-        if (modules.anthropic) |anthropic| {
-            anthropic.addImport("curl_shared", curl);
-            anthropic.addImport("sse_shared", sse);
-            anthropic.addImport("context_shared", context_mod);
-            context_mod.addImport("anthropic_shared", anthropic);
+        // Network module includes Anthropic provider support
+        if (self.ctx.features.network) {
+            modules.network = self.createModule(buildConfig.PATHS.AUTH_ZIG);
+            if (modules.network) |net| {
+                net.addImport("curl_shared", curl);
+                net.addImport("sse_shared", sse);
+                net.addImport("context_shared", context_mod);
+                context_mod.addImport("network_shared", net);
+            }
+        } else {
+            std.log.info("   🚫 Excluding network modules (build flag off)", .{});
         }
 
         // Always include new core modules for enhanced UX
@@ -1273,9 +1283,11 @@ const ModuleBuilder = struct {
         modules.agent_main = self.createModule(buildConfig.PATHS.AGENT_MAIN_ZIG);
         modules.agent_base = self.createModule(buildConfig.PATHS.AGENT_BASE_ZIG);
 
-        // Always include auth module (will be stub when network access disabled)
-        modules.auth = self.createModule(buildConfig.PATHS.AUTH_ZIG);
-        modules.oauth_callback_server = self.createModule(buildConfig.PATHS.OAUTH_CALLBACK_SERVER_ZIG);
+        // Auth lives under network; include only when network feature is enabled
+        if (self.ctx.features.network) {
+            modules.auth = self.createModule(buildConfig.PATHS.AUTH_ZIG);
+            modules.oauth_callback_server = self.createModule(buildConfig.PATHS.OAUTH_CALLBACK_SERVER_ZIG);
+        }
 
         // Add dependencies for core modules
         if (modules.agent_interface) |interface| {
@@ -1311,21 +1323,23 @@ const ModuleBuilder = struct {
             if (modules.interactive_session) |session| {
                 agent_base.addImport("interactive_session", session);
             }
-            if (modules.anthropic) |anthropic| {
-                agent_base.addImport("anthropic_shared", anthropic);
+            if (modules.network) |net| {
+                agent_base.addImport("network_shared", net);
             }
-            // Always add auth_shared dependency (auth module is always created now)
-            agent_base.addImport("auth_shared", modules.auth.?);
+            // Add auth_shared dependency only when auth module is available (when network is enabled)
+            if (modules.auth) |auth| {
+                agent_base.addImport("auth_shared", auth);
+            }
         }
 
         if (manifest) |*m| {
             std.log.info("🔧 Building with manifest-driven modules for agent '{s}'", .{m.agent.name});
             std.log.info("   📋 Capabilities: file={any}, network={any}, terminal={any}, media={any}", .{ m.capabilities.core_features.file_processing, m.capabilities.core_features.network_access, m.capabilities.core_features.terminal_ui, m.capabilities.core_features.media_processing });
 
-            // Add anthropic dependency to tools and engine
-            if (modules.anthropic) |anthropic| {
-                modules.tools.?.addImport("anthropic_shared", anthropic);
-                modules.engine.?.addImport("anthropic_shared", anthropic);
+            // Add network dependency to tools and engine
+            if (modules.network) |net| {
+                modules.tools.?.addImport("network_shared", net);
+                modules.engine.?.addImport("network_shared", net);
             }
 
             // Add tools + context dependencies
@@ -1346,18 +1360,18 @@ const ModuleBuilder = struct {
                 if (modules.auth) |auth| {
                     session.addImport("auth_shared", auth);
                 }
-                if (modules.anthropic) |anthropic| {
-                    session.addImport("anthropic_shared", anthropic);
+                if (modules.network) |network| {
+                    session.addImport("network_shared", network);
                 }
             }
 
-            if (m.capabilities.core_features.network_access) {
+            if (m.capabilities.core_features.network_access and self.ctx.features.network) {
                 std.log.info("   🌐 Including auth module (network access enabled)", .{});
 
                 // Add network dependencies
-                if (modules.anthropic) |anthropic| {
+                if (modules.network) |network| {
                     if (modules.auth) |auth| {
-                        auth.addImport("anthropic_shared", anthropic);
+                        auth.addImport("network_shared", network);
                         modules.engine.?.addImport("auth_shared", auth);
                     }
                 }
@@ -1370,20 +1384,24 @@ const ModuleBuilder = struct {
                 std.log.info("   🚫 Auth module included but network access disabled (stub mode)", .{});
             }
 
-            // Include terminal modules if terminal UI is needed
-            if (m.capabilities.core_features.terminal_ui) {
+            // Include terminal modules if terminal UI is needed and enabled via build flags
+            if (m.capabilities.core_features.terminal_ui and self.ctx.features.tui) {
                 std.log.info("   🖥️  Including terminal modules (term, cli, tui, theme, dashboard)", .{});
                 modules.term = self.createModule("src/foundation/term.zig");
-                modules.cli = self.createModule(buildConfig.PATHS.CLI_ZIG);
+                if (self.ctx.features.cli) {
+                    modules.cli = self.createModule(buildConfig.PATHS.CLI_ZIG);
+                }
                 modules.tui = self.createModule(buildConfig.PATHS.TUI_ZIG);
                 modules.theme = self.createModule("src/foundation/theme.zig");
                 modules.agent_dashboard = self.createModule(buildConfig.PATHS.AGENT_DASHBOARD_ZIG);
                 // Include components for CLI and TUI functionality
                 // Add terminal dependencies
                 if (modules.term) |term| {
-                    modules.cli.?.addImport("term_shared", term);
-                    modules.tui.?.addImport("term_shared", term);
-                    modules.tui.?.addImport("shared_types", self.createModule("src/foundation/types.zig"));
+                    if (modules.cli) |cli| cli.addImport("term_shared", term);
+                    if (modules.tui) |tui| {
+                        tui.addImport("term_shared", term);
+                        tui.addImport("shared_types", self.createModule("src/foundation/types.zig"));
+                    }
                     modules.theme.?.addImport("term_shared", term);
                 }
 
@@ -1401,9 +1419,7 @@ const ModuleBuilder = struct {
                 }
 
                 // Add theme dependencies
-                if (modules.cli) |cli| {
-                    modules.theme.?.addImport("cli_themes", cli);
-                }
+                if (modules.cli) |cli| modules.theme.?.addImport("cli_themes", cli);
                 if (modules.tui) |tui| {
                     modules.theme.?.addImport("tui_themes", tui);
                     // Allow TUI code to import theme by name
@@ -1413,17 +1429,19 @@ const ModuleBuilder = struct {
             } else {
                 // Basic CLI without full TUI stack; still include term for capabilities and OSC helpers
                 std.log.info("   🚫 Excluding advanced terminal modules (basic CLI only)", .{});
-                modules.cli = self.createModule(buildConfig.PATHS.CLI_ZIG);
-                modules.term = self.createModule("src/foundation/term.zig");
-                if (modules.term) |term| {
-                    modules.cli.?.addImport("term_shared", term);
+                if (self.ctx.features.cli) {
+                    modules.cli = self.createModule(buildConfig.PATHS.CLI_ZIG);
+                }
+                if (self.ctx.features.cli or self.ctx.features.tui) {
+                    modules.term = self.createModule("src/foundation/term.zig");
+                    if (modules.term) |term| if (modules.cli) |cli_mod| cli_mod.addImport("term_shared", term);
                 }
                 if (modules.agent_main) |am| if (modules.cli) |cli_mod| am.addImport("cli_shared", cli_mod);
             }
 
             // Ensure components are available for CLI/TUI notifications and progress
             if (modules.components == null) {
-                modules.components = self.createModule("src/foundation/components.zig");
+                modules.components = self.createModule("src/foundation/ui.zig");
                 if (modules.term) |term| modules.components.?.addImport("term_shared", term);
                 if (modules.theme) |theme| modules.components.?.addImport("theme", theme);
             }
@@ -1431,7 +1449,7 @@ const ModuleBuilder = struct {
             // Do not include heavy render module unless media processing is enabled
 
             // Include render modules if media processing is needed
-            if (m.capabilities.core_features.media_processing) {
+            if (m.capabilities.core_features.media_processing and self.ctx.features.tui) {
                 std.log.info("   🎨 Including render modules (render, components)", .{});
                 modules.render = self.createModule("src/foundation/render.zig");
                 // components may already be created above; ensure dependencies are present
@@ -1470,35 +1488,44 @@ const ModuleBuilder = struct {
         } else {
             // Fallback: include all modules if no manifest
             std.log.info("🔧 Building with all modules (no manifest found)", .{});
-            const curl_fallback = self.createModule("src/foundation/network/curl.zig");
-            const sse_fallback = self.createModule("src/foundation/network/sse.zig");
-            modules.anthropic = self.createModule(buildConfig.PATHS.ANTHROPIC_ZIG);
-            if (modules.anthropic) |anthropic| {
-                anthropic.addImport("curl_shared", curl_fallback);
-                anthropic.addImport("sse_shared", sse_fallback);
+            if (self.ctx.features.network) {
+                const curl_fallback = self.createModule("src/foundation/network/curl.zig");
+                const sse_fallback = self.createModule("src/foundation/network/sse.zig");
+                modules.network = self.createModule("src/foundation/network.zig");
+                if (modules.network) |network| {
+                    network.addImport("curl_shared", curl_fallback);
+                    network.addImport("sse_shared", sse_fallback);
+                }
+                modules.auth = self.createModule(buildConfig.PATHS.AUTH_ZIG);
+                if (modules.auth) |auth| {
+                    auth.addImport("curl_shared", curl_fallback);
+                }
+                modules.oauth_callback_server = self.createModule(buildConfig.PATHS.OAUTH_CALLBACK_SERVER_ZIG);
             }
-            modules.auth = self.createModule(buildConfig.PATHS.AUTH_ZIG);
-            if (modules.auth) |auth| {
-                auth.addImport("curl_shared", curl_fallback);
+            if (self.ctx.features.cli or self.ctx.features.tui) {
+                modules.term = self.createModule("src/foundation/term.zig");
             }
-            modules.json_reflection = self.createModule("src/foundation/json_reflection.zig");
-            modules.oauth_callback_server = self.createModule(buildConfig.PATHS.OAUTH_CALLBACK_SERVER_ZIG);
-            modules.term = self.createModule("src/foundation/term.zig");
-            modules.cli = self.createModule(buildConfig.PATHS.CLI_ZIG);
-            modules.tui = self.createModule(buildConfig.PATHS.TUI_ZIG);
-            modules.render = self.createModule("src/foundation/render.zig");
-            modules.components = self.createModule("src/foundation/components.zig");
-            modules.theme = self.createModule("src/foundation/theme.zig");
+            if (self.ctx.features.cli) {
+                modules.cli = self.createModule(buildConfig.PATHS.CLI_ZIG);
+            }
+            if (self.ctx.features.tui) {
+                modules.tui = self.createModule(buildConfig.PATHS.TUI_ZIG);
+                modules.render = self.createModule("src/foundation/render.zig");
+                modules.components = self.createModule("src/foundation/ui.zig");
+            }
+            if (self.ctx.features.cli or self.ctx.features.tui) {
+                modules.theme = self.createModule("src/foundation/theme.zig");
+            }
             modules.agent_dashboard = self.createModule(buildConfig.PATHS.AGENT_DASHBOARD_ZIG);
             modules.agent_main = self.createModule(buildConfig.PATHS.AGENT_MAIN_ZIG);
             modules.agent_base = self.createModule(buildConfig.PATHS.AGENT_BASE_ZIG);
 
             // Add all dependencies
-            if (modules.anthropic) |anthropic| {
-                modules.tools.?.addImport("anthropic_shared", anthropic);
-                modules.engine.?.addImport("anthropic_shared", anthropic);
+            if (modules.network) |network| {
+                modules.tools.?.addImport("network_shared", network);
+                modules.engine.?.addImport("network_shared", network);
                 if (modules.auth) |auth| {
-                    auth.addImport("anthropic_shared", anthropic);
+                    auth.addImport("network_shared", network);
                     modules.engine.?.addImport("auth_shared", auth);
                 }
             }
@@ -1556,11 +1583,14 @@ const ModuleBuilder = struct {
         const entry = self.createModule(self.ctx.agent_paths.main);
 
         // Add required imports
+        // Provide consolidated foundation barrel as a single import point
+        const foundation_mod = self.createModule("src/foundation.zig");
+        entry.addImport("foundation", foundation_mod);
         if (shared.engine) |engine| entry.addImport("core_engine", engine);
         if (shared.cli) |cli| entry.addImport("cli_shared", cli);
         if (shared.tools) |tools| entry.addImport("tools_shared", tools);
         if (shared.config) |config| entry.addImport("config_shared", config);
-        if (shared.json_reflection) |json_reflection| entry.addImport("json_reflection", json_reflection);
+        // json_reflection import removed; tools_shared provides JsonReflector
 
         // Add optional imports based on available modules
         if (shared.tui) |tui| entry.addImport("tui_shared", tui);
@@ -1575,6 +1605,7 @@ const ModuleBuilder = struct {
         // Skip oauth callback server in minimal builds
 
         const spec = self.createModule(self.ctx.agent_paths.spec);
+        spec.addImport("foundation", foundation_mod);
         if (shared.engine) |engine| spec.addImport("core_engine", engine);
         if (shared.tools) |tools| spec.addImport("tools_shared", tools);
 
@@ -1623,12 +1654,12 @@ const ModuleBuilder = struct {
     fn addSharedImports(self: ModuleBuilder, mod: *std.Build.Module, shared: SharedModules) void {
         _ = self;
         mod.addImport("core_engine", shared.engine);
-        mod.addImport("anthropic_shared", shared.anthropic);
+        mod.addImport("network_shared", shared.anthropic);
         mod.addImport("cli_shared", shared.cli);
         mod.addImport("tui_shared", shared.tui);
         mod.addImport("tools_shared", shared.tools);
         mod.addImport("config_shared", shared.config);
-        mod.addImport("json_reflection", shared.json_reflection);
+        // json_reflection removed from shared imports
         mod.addImport("theme", shared.theme);
     }
 
@@ -1660,15 +1691,15 @@ const ConfigModules = struct {
 };
 
 const SharedModules = struct {
-    anthropic: *std.Build.Module,
+    network: *std.Build.Module,
     tools: *std.Build.Module,
     engine: *std.Build.Module,
     cli: *std.Build.Module,
     tui: *std.Build.Module,
     term: *std.Build.Module,
     config: *std.Build.Module,
-    auth: *std.Build.Module,
-    json_reflection: *std.Build.Module,
+    auth: *std.Build.Module, // Points to network module for compatibility
+    // json_reflection removed
     theme: *std.Build.Module,
     agent_interface: *std.Build.Module,
     agent_dashboard: *std.Build.Module,
@@ -1679,15 +1710,15 @@ const SharedModules = struct {
 };
 
 const ConditionalSharedModules = struct {
-    anthropic: ?*std.Build.Module,
+    network: ?*std.Build.Module,
     tools: ?*std.Build.Module,
     engine: ?*std.Build.Module,
     cli: ?*std.Build.Module,
     tui: ?*std.Build.Module,
     term: ?*std.Build.Module,
     config: ?*std.Build.Module,
-    auth: ?*std.Build.Module,
-    json_reflection: ?*std.Build.Module,
+    auth: ?*std.Build.Module, // Points to network module for compatibility
+    // json_reflection removed
     render: ?*std.Build.Module,
     components: ?*std.Build.Module,
     theme: ?*std.Build.Module,
@@ -2047,9 +2078,137 @@ pub fn build(b: *std.Build) !void {
     const optimize_binary = b.option(bool, "optimize-binary", "Enable manifest-driven binary optimization") orelse true;
     const include_legacy = b.option(bool, "legacy", "Include legacy modules (deprecated)") orelse false;
 
+    // ========================================================================
+    // FEATURE FLAGS - Control which foundation modules are compiled
+    // ========================================================================
+
+    // Parse feature string (comma-separated list)
+    const features_str = b.option([]const u8, "features", "Comma-separated features to include: tui,cli,network,anthropic,sixel,all (default: all)") orelse "all";
+
+    // Parse individual feature flags (these override the features string)
+    const enable_tui = b.option(bool, "enable-tui", "Enable terminal UI components") orelse null;
+    const enable_cli = b.option(bool, "enable-cli", "Enable CLI framework") orelse null;
+    const enable_network = b.option(bool, "enable-network", "Enable network layer") orelse null;
+    const enable_anthropic = b.option(bool, "enable-anthropic", "Enable Anthropic provider") orelse null;
+    const enable_auth = b.option(bool, "enable-auth", "Enable authentication system") orelse null;
+    const enable_sixel = b.option(bool, "enable-sixel", "Enable Sixel graphics") orelse null;
+    const enable_theme_dev = b.option(bool, "enable-theme-dev", "Enable theme development tools") orelse null;
+
+    // Parse build profile
+    const build_profile = b.option([]const u8, "profile", "Build profile: minimal, standard, full (default: standard)") orelse "standard";
+
+    // Feature configuration structure (renamed to avoid shadowing)
+    const LocalFeatureConfig = struct {
+        tui: bool,
+        cli: bool,
+        network: bool,
+        anthropic: bool,
+        auth: bool,
+        sixel: bool,
+        theme_dev: bool,
+    };
+
+    // Determine feature configuration based on profile and overrides
+    const feature_config = blk: {
+        // Start with profile defaults
+        var config = if (std.mem.eql(u8, build_profile, "minimal"))
+            LocalFeatureConfig{
+                .tui = false,
+                .cli = true,
+                .network = false,
+                .anthropic = false,
+                .auth = false,
+                .sixel = false,
+                .theme_dev = false,
+            }
+        else if (std.mem.eql(u8, build_profile, "full"))
+            LocalFeatureConfig{
+                .tui = true,
+                .cli = true,
+                .network = true,
+                .anthropic = true,
+                .auth = true,
+                .sixel = true,
+                .theme_dev = true,
+            }
+        else // standard profile
+            LocalFeatureConfig{
+                .tui = true,
+                .cli = true,
+                .network = true,
+                .anthropic = true,
+                .auth = true,
+                .sixel = false,
+                .theme_dev = false,
+            };
+
+        // Apply features string if not "all"
+        if (!std.mem.eql(u8, features_str, "all")) {
+            // Reset all features first
+            config = LocalFeatureConfig{
+                .tui = false,
+                .cli = false,
+                .network = false,
+                .anthropic = false,
+                .auth = false,
+                .sixel = false,
+                .theme_dev = false,
+            };
+
+            // Parse comma-separated features
+            var it = std.mem.tokenizeScalar(u8, features_str, ',');
+            while (it.next()) |feature| {
+                if (std.mem.eql(u8, feature, "tui")) config.tui = true else if (std.mem.eql(u8, feature, "cli")) config.cli = true else if (std.mem.eql(u8, feature, "network")) config.network = true else if (std.mem.eql(u8, feature, "anthropic")) config.anthropic = true else if (std.mem.eql(u8, feature, "auth")) config.auth = true else if (std.mem.eql(u8, feature, "sixel")) config.sixel = true else if (std.mem.eql(u8, feature, "theme-dev")) config.theme_dev = true;
+            }
+        }
+
+        // Apply individual flag overrides
+        if (enable_tui) |val| config.tui = val;
+        if (enable_cli) |val| config.cli = val;
+        if (enable_network) |val| config.network = val;
+        if (enable_anthropic) |val| config.anthropic = val;
+        if (enable_auth) |val| config.auth = val;
+        if (enable_sixel) |val| config.sixel = val;
+        if (enable_theme_dev) |val| config.theme_dev = val;
+
+        // Dependency enforcement (only if flags weren't explicitly set)
+        if (config.anthropic and enable_network == null) config.network = true; // Anthropic requires network
+        if (config.auth and enable_network == null) config.network = true; // Auth requires network
+
+        // If network is explicitly disabled, also disable dependent features
+        if (enable_network) |val| {
+            if (!val) {
+                config.anthropic = false;
+                config.auth = false;
+            }
+        }
+
+        break :blk config;
+    };
+
+    // Log feature configuration
+    std.log.info("🚀 Build Configuration:", .{});
+    std.log.info("   Profile: {s}", .{build_profile});
+    std.log.info("   Features:", .{});
+    std.log.info("     ├─ CLI Framework: {s}", .{if (feature_config.cli) "✓" else "✗"});
+    std.log.info("     ├─ Terminal UI: {s}", .{if (feature_config.tui) "✓" else "✗"});
+    std.log.info("     ├─ Network Layer: {s}", .{if (feature_config.network) "✓" else "✗"});
+    std.log.info("     ├─ Anthropic Provider: {s}", .{if (feature_config.anthropic) "✓" else "✗"});
+    std.log.info("     ├─ Authentication: {s}", .{if (feature_config.auth) "✓" else "✗"});
+    std.log.info("     ├─ Sixel Graphics: {s}", .{if (feature_config.sixel) "✓" else "✗"});
+    std.log.info("     └─ Theme Dev Tools: {s}", .{if (feature_config.theme_dev) "✓" else "✗"});
+
     // Build options exposed to source via @import("build_options")
     const build_opts = b.addOptions();
     build_opts.addOption(bool, "include_legacy", include_legacy);
+    build_opts.addOption(bool, "enable_tui", feature_config.tui);
+    build_opts.addOption(bool, "enable_cli", feature_config.cli);
+    build_opts.addOption(bool, "enable_network", feature_config.network);
+    build_opts.addOption(bool, "enable_anthropic", feature_config.anthropic);
+    build_opts.addOption(bool, "enable_auth", feature_config.auth);
+    build_opts.addOption(bool, "enable_sixel", feature_config.sixel);
+    build_opts.addOption(bool, "enable_theme_dev", feature_config.theme_dev);
+    build_opts.addOption([]const u8, "build_profile", build_profile);
 
     // Handle special build modes
     if (list_agents) {
@@ -2100,7 +2259,16 @@ pub fn build(b: *std.Build) !void {
     // Note: scaffold-agent is handled via command line options in the main build function
 
     // Normal single agent build
-    const ctx = try BuildState.init(b);
+    const global_feature_config = FeatureConfig{
+        .tui = feature_config.tui,
+        .cli = feature_config.cli,
+        .network = feature_config.network,
+        .anthropic = feature_config.anthropic,
+        .auth = feature_config.auth,
+        .sixel = feature_config.sixel,
+        .theme_dev = feature_config.theme_dev,
+    };
+    const ctx = try BuildState.init(b, global_feature_config);
     const builder = ModuleBuilder.init(ctx, &registry);
 
     // Validate the selected agent before building
@@ -2115,12 +2283,12 @@ pub fn build(b: *std.Build) !void {
         std.log.info("⚡ Binary optimization enabled - only required modules will be included", .{});
     }
 
-    // Create conditional shared modules based on manifest
+    // Create conditional shared modules based on manifest and feature flags
     const shared_modules = builder.createConditionalSharedModules(manifest);
     const agent_modules = builder.createAgentModules(shared_modules);
 
     // Attach build options to modules
-    if (shared_modules.anthropic) |m| m.addOptions("build_options", build_opts);
+    if (shared_modules.network) |m| m.addOptions("build_options", build_opts);
     if (shared_modules.tools) |m| m.addOptions("build_options", build_opts);
     if (shared_modules.engine) |m| m.addOptions("build_options", build_opts);
     if (shared_modules.cli) |m| m.addOptions("build_options", build_opts);
@@ -2128,7 +2296,7 @@ pub fn build(b: *std.Build) !void {
     if (shared_modules.term) |m| m.addOptions("build_options", build_opts);
     if (shared_modules.config) |m| m.addOptions("build_options", build_opts);
     if (shared_modules.auth) |m| m.addOptions("build_options", build_opts);
-    if (shared_modules.json_reflection) |m| m.addOptions("build_options", build_opts);
+    // No json_reflection options; consolidated into tools
     if (shared_modules.theme) |m| m.addOptions("build_options", build_opts);
     if (shared_modules.agent_interface) |m| m.addOptions("build_options", build_opts);
     if (shared_modules.agent_dashboard) |m| m.addOptions("build_options", build_opts);
@@ -2152,6 +2320,7 @@ pub fn build(b: *std.Build) !void {
     setupTestSuite(ctx, api_module);
     setupFormatting(ctx);
     setupImportBoundaryChecks(ctx);
+    setupFeatureCombinationTests(ctx);
     setupAgentCommands(ctx, builder);
     try setupReleaseBuilds(ctx, manifest);
 
@@ -2564,6 +2733,15 @@ fn buildMultipleAgents(b: *std.Build, all_agents: bool, agents_list: []const u8)
                 .spec = try std.fmt.allocPrint(b.allocator, "agents/{s}/spec.zig", .{agent_name}),
             },
             .theme_dev = false,
+            .features = FeatureConfig{
+                .tui = false,
+                .cli = false,
+                .network = false,
+                .anthropic = false,
+                .auth = false,
+                .sixel = false,
+                .theme_dev = false,
+            },
         };
         defer b.allocator.free(agent_ctx.agent_paths.dir);
         defer b.allocator.free(agent_ctx.agent_paths.main);
@@ -2780,9 +2958,9 @@ fn setupDemoTargets(ctx: BuildState, shared_modules: ConditionalSharedModules) v
 
         // Provide imports expected by auth/oauth and network modules
         if (shared_modules.auth) |auth| oauth_module.addImport("auth_shared", auth);
-        if (shared_modules.anthropic) |anth| oauth_module.addImport("anthropic_shared", anth);
+        if (shared_modules.network) |net| oauth_module.addImport("network_shared", net);
         oauth_module.addImport("network_shared", ctx.b.addModule("network_shared", .{
-            .root_source_file = ctx.b.path("src/foundation/network/mod.zig"),
+            .root_source_file = ctx.b.path("src/foundation/network.zig"),
             .target = ctx.target,
             .optimize = ctx.optimize,
         }));
@@ -2954,6 +3132,14 @@ fn setupImportBoundaryChecks(ctx: BuildState) void {
     ctx.b.getInstallStep().dependOn(check_step);
 }
 
+/// Adds a build step to run the feature matrix script that exercises
+/// different `-Dprofile` and `-Dfeatures` combinations and records results.
+fn setupFeatureCombinationTests(ctx: BuildState) void {
+    const feat_step = ctx.b.step("test-feature-combinations", "Run feature flag combination matrix and size checks");
+    const runner = ctx.b.addSystemCommand(&.{ "bash", "test_feature_combinations.sh" });
+    feat_step.dependOn(&runner.step);
+}
+
 fn setupReleaseBuilds(ctx: BuildState, manifest: ?AgentManifest) !void {
     const release_step = ctx.b.step("release", "Install and archive release binaries");
 
@@ -2988,6 +3174,7 @@ fn buildReleaseForTarget(
         .selected_agent = ctx.selected_agent,
         .agent_paths = ctx.agent_paths,
         .theme_dev = ctx.theme_dev,
+        .features = ctx.features,
     };
 
     // Create registry for release build

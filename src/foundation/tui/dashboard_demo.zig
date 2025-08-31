@@ -11,7 +11,7 @@
 
 const std = @import("std");
 const tui = @import("mod.zig");
-const terminal_mod = @import("../term/unified.zig");
+const term = @import("../term.zig");
 
 const Dashboard = tui.Dashboard;
 const Chart = tui.Chart;

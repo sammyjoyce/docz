@@ -10,10 +10,10 @@ const bounds_mod = @import("../core/bounds.zig");
 const notification_mod = @import("../notifications.zig");
 const progress_mod = @import("../widgets/rich/progress.zig");
 const text_input_mod = @import("../widgets/rich/text_input.zig");
-const theme = @import("../../theme/mod.zig");
-const input_system = @import("../../components/input.zig");
-const oauth_mod = @import("../../auth/oauth/mod.zig");
-const markdown_renderer = @import("../../render/markdown.zig");
+const theme = @import("../../theme.zig");
+const ui = @import("../../ui.zig");
+const network = @import("../../network.zig");
+const render = @import("../../render.zig");
 
 const Renderer = renderer_mod.Renderer;
 const Render = renderer_mod.Render;
@@ -23,7 +23,7 @@ const NotificationType = notification_mod.NotificationType;
 const ProgressBar = progress_mod.ProgressBar;
 const TextInput = text_input_mod.TextInput;
 const Theme = theme.Theme;
-const InputManager = input_system.InputManager;
+const InputManager = ui.Widgets.Input.InputManager;
 
 /// Standard UI patterns that all agents can use
 pub const StandardUIPatterns = struct {

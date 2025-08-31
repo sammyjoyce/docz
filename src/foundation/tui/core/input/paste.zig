@@ -77,14 +77,14 @@ pub const Paste = struct {
 
     /// Enable bracketed paste mode using consolidated mode functions
     pub fn enableBracketedPaste(writer: anytype, caps: anytype) !void {
-        const term_mod = @import("term_shared");
+        const term_mod = @import("../../../term.zig");
         const TermCaps = term_mod.caps.TermCaps;
         try term_mod.ansi.mode.enableBracketedPaste(writer, @as(TermCaps, caps));
     }
 
     /// Disable bracketed paste mode using consolidated mode functions
     pub fn disableBracketedPaste(writer: anytype, caps: anytype) !void {
-        const term_mod = @import("term_shared");
+        const term_mod = @import("../../../term.zig");
         const TermCaps = term_mod.caps.TermCaps;
         try term_mod.ansi.mode.disableBracketedPaste(writer, @as(TermCaps, caps));
     }

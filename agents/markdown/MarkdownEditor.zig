@@ -138,26 +138,27 @@ const Mutex = Thread.Mutex;
 
 // Core modules
 const agent_interface = @import("agent_interface");
-const config = @import("config_shared");
+const config = foundation.config;
 
 // Shared infrastructure
-const tui = @import("tui_shared");
-const term = @import("term_shared");
-const theme = @import("../../src/foundation/theme/mod.zig");
-const render = @import("render_shared");
-const components = @import("components_shared");
+const foundation = @import("foundation");
+const tui = foundation.tui;
+const term = foundation.term;
+const theme = foundation.theme;
+const render = foundation.render;
+const ui = foundation.ui;
 
 // UI components
-const input_component = @import("../../src/foundation/components/input.zig");
-const split_pane = @import("../../src/foundation/tui/widgets/core/split_pane.zig");
-const file_tree = tui.widgets.core.file_tree;
-const modal = @import("../../src/foundation/tui/widgets/modal.zig");
-const canvas_mod = @import("../../src/foundation/tui/core/canvas.zig");
+const input_component = ui.Widgets.Input;
+const split_pane = tui.split_pane;
+const file_tree = tui.file_tree;
+const modal = tui.Modal;
+const canvas_mod = tui.canvas;
 // Backward compatibility alias
 const canvas_engine = canvas_mod;
 
 // Markdown agent specific
-const markdown_tools = @import("tools/mod.zig");
+const markdown_tools = @import("tools.zig");
 const ContentEditor = @import("tools/content_editor.zig");
 const Validate = @import("tools/validate.zig");
 const document_tool = @import("tools/document.zig");

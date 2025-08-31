@@ -1,5 +1,5 @@
 const std = @import("std");
-const agentMain = @import("agent_main");
+const agentMain = @import("foundation").agent_main;
 const spec = @import("spec.zig");
 
 pub fn main() !void {

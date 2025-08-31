@@ -7,53 +7,61 @@
 
 const std = @import("std");
 const renderer_mod = @import("../../core/renderer.zig");
-const progress_mod = @import("../../components/progress.zig");
+const ui = @import("../../../ui.zig");
+const Progress = ui.Widgets.Progress;
 
 const Renderer = renderer_mod.Renderer;
 const Render = renderer_mod.Render;
 const Style = renderer_mod.Style;
 const BoxStyle = renderer_mod.BoxStyle;
-const Progress = progress_mod.Progress;
-const ProgressRenderer = progress_mod.ProgressRenderer;
-const ProgressStyle = progress_mod.ProgressStyle;
 
 /// Progress bar that adapts to terminal capabilities
 pub const ProgressBar = struct {
     const Self = @This();
 
-    data: Progress,
-    style: ProgressStyle,
+    progress: *Progress,
+    renderer: *Renderer,
 
-    pub fn init(allocator: std.mem.Allocator, label: ?[]const u8, style: ProgressStyle) !Self {
-        var data = Progress.init(allocator);
+    pub fn init(allocator: std.mem.Allocator, label: ?[]const u8) !Self {
+        const progress = try allocator.create(Progress);
+        progress.* = Progress.init(allocator);
         if (label) |l| {
-            data.label = try allocator.dupe(u8, l);
+            progress.label = try allocator.dupe(u8, l);
         }
-        data.show_percentage = true;
-        data.show_eta = false;
+        progress.show_percentage = true;
+        progress.show_eta = false;
+
+        const renderer = try allocator.create(Renderer);
+        renderer.* = try Renderer.init(allocator);
 
         return Self{
-            .data = data,
-            .style = style,
+            .progress = progress,
+            .renderer = renderer,
         };
     }
 
     pub fn deinit(self: *Self) void {
-        self.data.deinit();
+        self.progress.deinit();
+        self.renderer.deinit();
+        self.progress.allocator.destroy(self.progress);
+        self.renderer.allocator.destroy(self.renderer);
     }
 
-    pub fn setProgress(self: *Self, progress: f32) !void {
-        try self.data.setProgress(progress);
+    pub fn setProgress(self: *Self, value: f32) !void {
+        self.progress.value = value;
     }
 
-    pub fn render(self: *Self, renderer: *Renderer, ctx: Render) !void {
-        var output = std.ArrayList(u8).init(renderer.allocator);
-        defer output.deinit();
-
-        var progress_renderer = ProgressRenderer.init(renderer.allocator);
-        try progress_renderer.render(&self.data, self.style, output.writer(), ctx.bounds.width);
-
-        try renderer.drawText(ctx, output.items);
+    pub fn render(self: *Self, ctx: Render) !void {
+        // Delegate to the UI progress widget's draw method
+        const render_ctx = @import("../../../render.zig").RenderContext{
+            .surface = undefined, // Will be set by renderer
+            .theme = undefined,
+            .caps = .{},
+            .quality = .medium,
+            .frame_budget_ns = 16_666_667,
+            .allocator = self.renderer.allocator,
+        };
+        try self.progress.draw(&render_ctx);
     }
 };
 

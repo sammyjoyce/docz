@@ -1,7 +1,7 @@
 //! TUI RenderEngine Abstraction Layer
 //!
 //! This provides a rendering interface that leverages the rich terminal capabilities
-//! available in src/shared/term while maintaining compatibility with limited terminals through
+//! available in foundation/term while maintaining compatibility with limited terminals through
 //! progressive enhancement. Also includes a widget system for building
 //! interactive terminal user interfaces.
 
@@ -20,7 +20,7 @@ pub const Size = struct {
 };
 
 // Re-export Rect as BoundsI16 for backward compatibility
-pub const Rect = @import("shared_types").BoundsI16;
+pub const Rect = @import("../../types.zig").BoundsI16;
 
 /// Style information for rendering
 pub const Style = struct {
@@ -428,7 +428,7 @@ pub const InputEvent = union(enum) {
     };
 
     // Re-export shared types for backward compatibility
-    pub const MouseEvent = @import("shared_types").MouseEvent;
+    pub const MouseEvent = @import("../../types.zig").MouseEvent;
 
     pub const Key = enum {
         char,
@@ -460,11 +460,11 @@ pub const InputEvent = union(enum) {
     };
 
     // Re-export unified types for backward compatibility
-    pub const Modifiers = @import("shared_types").Modifiers;
+    pub const Modifiers = @import("../../types.zig").Modifiers;
 
     // Re-export unified types for backward compatibility
-    pub const MouseButton = @import("shared_types").MouseButton;
-    pub const MouseAction = @import("shared_types").MouseAction;
+    pub const MouseButton = @import("../../types.zig").MouseButton;
+    pub const MouseAction = @import("../../types.zig").MouseAction;
 };
 
 /// Theme system for consistent styling

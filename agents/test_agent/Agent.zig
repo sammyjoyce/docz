@@ -14,7 +14,7 @@ pub const Test = struct {
     /// Agent configuration structure - extends the standard AgentConfig
     pub const Config = struct {
         // Include standard agent configuration
-        agentConfig: @import("config_shared").AgentConfig,
+        agentConfig: @import("foundation").config.AgentConfig,
 
         // Add agent-specific configuration fields here
         maxOperations: u32 = 100,
@@ -22,7 +22,7 @@ pub const Test = struct {
 
         /// Load configuration from file with defaults fallback
         pub fn loadFromFile(allocator: Allocator, path: []const u8) !Config {
-            const config_utils = @import("config_shared");
+            const config_utils = @import("foundation").config;
             const defaults = Config{
                 .agentConfig = config_utils.createValidatedAgentConfig("test_agent", "Example agent demonstrating best practices", "Developer"),
                 .maxOperations = 100,
@@ -33,7 +33,7 @@ pub const Test = struct {
 
         /// Get the standard agent config path for this agent
         pub fn getConfigPath(allocator: Allocator) ![]const u8 {
-            const config_utils = @import("config_shared");
+            const config_utils = @import("foundation").config;
             return config_utils.getAgentConfigPath(allocator, "test_agent");
         }
     };

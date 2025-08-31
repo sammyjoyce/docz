@@ -3,7 +3,7 @@
 
 const std = @import("std");
 const screen = @import("../components/screen.zig");
-const Bounds = @import("shared_types").BoundsU32;
+const Bounds = @import("../../types.zig").BoundsU32;
 
 // Re-export screen functionality
 pub const Control = screen.Control;

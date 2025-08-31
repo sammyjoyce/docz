@@ -5,7 +5,7 @@
 const std = @import("std");
 const base = @import("base.zig");
 const selection = @import("selection.zig");
-const terminal_mod = @import("../../../../term/unified.zig");
+const term = @import("../../../../term.zig");
 const renderer_mod = @import("../../../../tui/core/renderer.zig");
 
 const Selection = base.Selection;

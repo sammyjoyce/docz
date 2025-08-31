@@ -482,8 +482,8 @@ pub fn registerJsonToolWithRequiredFields(
 
             // Validate required fields
             const fieldMap = parsed.value.object;
-            // Reuse schema helper to validate fields
-            const schemas = @import("json_schemas.zig");
+            // Reuse schema helper to validate fields (consolidated into Schemas.zig)
+            const schemas = @import("Schemas.zig");
             schemas.validateRequiredFields(fieldMap, Stored.request) catch return ToolError.MissingParameter;
 
             const result = Stored.func(allocator, parsed.value) catch |err| return err;

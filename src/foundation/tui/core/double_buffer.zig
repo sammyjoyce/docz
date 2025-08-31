@@ -1,5 +1,5 @@
 const std = @import("std");
-const term_shared = @import("term_shared");
+const term_shared = @import("../../term.zig");
 const Cell = term_shared.cellbuf.Cell;
 const Style = term_shared.cellbuf.Style;
 const Color = term_shared.cellbuf.Color;

@@ -35,19 +35,15 @@ const Allocator = std.mem.Allocator;
 const Thread = std.Thread;
 const Mutex = Thread.Mutex;
 
-// Core modules
-const config = @import("config_shared");
-const engine = @import("engine_shared");
-
-// Shared infrastructure modules
-const tui = @import("tui_shared");
-const cli = @import("cli_shared");
-const term = @import("term_shared");
-const auth = @import("auth_shared");
-const render = @import("render_shared");
-const theme = @import("../theme/mod.zig");
-const shared = @import("../mod.zig");
-const network = shared.network;
+// Foundation modules - using barrel exports
+const tui = @import("../tui.zig");
+const term = @import("../term.zig");
+const theme = @import("../theme.zig");
+const render = @import("../render.zig");
+const network = @import("../network.zig");
+const ui = @import("../ui.zig");
+const tools = @import("../tools.zig");
+const cli = @import("../cli.zig");
 const tools_mod = @import("tools_shared");
 
 // Re-export CliOptions from engine to avoid duplication
@@ -59,9 +55,9 @@ const input_components = shared.components;
 const mouse_mod = input_components.input.Mouse;
 
 // File tree widget
-const file_tree_mod = @import("tui_shared").widgets.base.file_tree;
-const focus_mod = @import("tui_shared").base.input;
-const term_shared = @import("term_shared");
+const file_tree_mod = @import("../tui.zig").widgets.base.file_tree;
+const focus_mod = @import("../tui.zig").base.input;
+const term_shared = @import("../term.zig");
 const term_ansi = term_shared.term.color;
 
 // Component imports

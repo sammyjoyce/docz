@@ -2,13 +2,14 @@
 //! Provides enhanced UX with progressive disclosure, tool discovery, and workflow automation
 
 const std = @import("std");
-const tui = @import("../../src/foundation/tui/mod.zig");
-const components = @import("../../src/foundation/components/mod.zig");
-const tools_mod = @import("../../src/foundation/tools/mod.zig");
-const render_mod = @import("../../src/foundation/render/mod.zig");
+const foundation = @import("foundation");
+const tui = foundation.tui;
+const ui = foundation.ui;
+const tools_mod = foundation.tools;
+const render_mod = foundation.render;
 
 // Import markdown-specific modules
-const markdown_tools = @import("tools/mod.zig");
+const markdown_tools = @import("tools.zig");
 const Agent = @import("agent.zig");
 
 /// User experience level for progressive disclosure

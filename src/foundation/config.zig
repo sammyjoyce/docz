@@ -1,8 +1,128 @@
 //! Shared configuration utilities for all agents.
 //! Provides standardized configuration loading with defaults fallback.
+//! Also provides compile-time feature configuration for foundation modules.
 
 const std = @import("std");
+const builtin = @import("builtin");
+const root = @import("root");
 const Allocator = std.mem.Allocator;
+
+// ============================================================================
+// COMPILE-TIME FEATURE CONFIGURATION
+// ============================================================================
+
+/// Access build options if available
+const build_options = if (@hasDecl(root, "build_options"))
+    root.build_options
+else
+    @import("build_options");
+
+/// Allow root to override foundation settings
+pub const options = if (@hasDecl(root, "foundation_options"))
+    root.foundation_options
+else
+    .{};
+
+/// Feature detection using build options and @hasDecl
+pub const has_tui = if (@hasDecl(build_options, "enable_tui"))
+    build_options.enable_tui
+else if (@hasDecl(options, "enable_tui"))
+    options.enable_tui
+else
+    true; // Default to enabled
+
+pub const has_cli = if (@hasDecl(build_options, "enable_cli"))
+    build_options.enable_cli
+else if (@hasDecl(options, "enable_cli"))
+    options.enable_cli
+else
+    true; // Default to enabled
+
+pub const has_network = if (@hasDecl(build_options, "enable_network"))
+    build_options.enable_network
+else if (@hasDecl(options, "enable_network"))
+    options.enable_network
+else
+    true; // Default to enabled
+
+pub const has_anthropic = if (@hasDecl(build_options, "enable_anthropic"))
+    build_options.enable_anthropic
+else if (@hasDecl(options, "enable_anthropic"))
+    options.enable_anthropic
+else
+    true; // Default to enabled
+
+pub const has_auth = if (@hasDecl(build_options, "enable_auth"))
+    build_options.enable_auth
+else if (@hasDecl(options, "enable_auth"))
+    options.enable_auth
+else
+    true; // Default to enabled
+
+pub const has_sixel = if (@hasDecl(build_options, "enable_sixel"))
+    build_options.enable_sixel
+else if (@hasDecl(options, "enable_sixel"))
+    options.enable_sixel
+else
+    false; // Default to disabled
+
+pub const has_theme_dev = if (@hasDecl(build_options, "enable_theme_dev"))
+    build_options.enable_theme_dev
+else if (@hasDecl(options, "enable_theme_dev"))
+    options.enable_theme_dev
+else
+    false; // Default to disabled
+
+/// Build profile detection
+pub const build_profile = if (@hasDecl(build_options, "build_profile"))
+    build_options.build_profile
+else if (@hasDecl(options, "build_profile"))
+    options.build_profile
+else
+    "standard";
+
+/// Compile-time provider selection
+pub const providers = if (@hasDecl(options, "providers"))
+    options.providers
+else
+    .{ .anthropic = has_anthropic };
+
+/// Assert feature availability at compile time
+pub fn assertFeatureEnabled(comptime feature: []const u8) void {
+    comptime {
+        if (std.mem.eql(u8, feature, "tui") and !has_tui)
+            @compileError("TUI feature is disabled. Enable with -Denable-tui=true");
+        if (std.mem.eql(u8, feature, "cli") and !has_cli)
+            @compileError("CLI feature is disabled. Enable with -Denable-cli=true");
+        if (std.mem.eql(u8, feature, "network") and !has_network)
+            @compileError("Network feature is disabled. Enable with -Denable-network=true");
+        if (std.mem.eql(u8, feature, "anthropic") and !has_anthropic)
+            @compileError("Anthropic provider is disabled. Enable with -Denable-anthropic=true");
+        if (std.mem.eql(u8, feature, "auth") and !has_auth)
+            @compileError("Auth feature is disabled. Enable with -Denable-auth=true");
+        if (std.mem.eql(u8, feature, "sixel") and !has_sixel)
+            @compileError("Sixel graphics is disabled. Enable with -Denable-sixel=true");
+        if (std.mem.eql(u8, feature, "theme_dev") and !has_theme_dev)
+            @compileError("Theme dev tools are disabled. Enable with -Denable-theme-dev=true");
+    }
+}
+
+/// Log enabled features at compile time (for debugging)
+pub fn logFeatures() void {
+    std.log.info("Foundation Feature Configuration:", .{});
+    std.log.info("  Profile: {s}", .{build_profile});
+    std.log.info("  CLI: {}", .{has_cli});
+    std.log.info("  TUI: {}", .{has_tui});
+    std.log.info("  Network: {}", .{has_network});
+    std.log.info("  Anthropic: {}", .{has_anthropic});
+    std.log.info("  Auth: {}", .{has_auth});
+    std.log.info("  Sixel: {}", .{has_sixel});
+    std.log.info("  Theme Dev: {}", .{has_theme_dev});
+}
+
+// ============================================================================
+// RUNTIME CONFIGURATION UTILITIES
+// ============================================================================
 
 /// Load configuration from ZON file with defaults fallback.
 /// If the file doesn't exist or fails to parse, returns the provided defaults.

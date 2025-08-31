@@ -4,7 +4,7 @@
 //! and interactive dashboard components with progressive enhancement.
 
 const std = @import("std");
-const term_shared = @import("term_shared");
+const term_shared = @import("../../../term.zig");
 const term_caps = term_shared.caps;
 const graphics_manager = term_shared.graphics_manager;
 const color_palette = term_shared.color.palettes;

@@ -3,7 +3,7 @@
 /// Provides interface for TUI/CLI applications
 /// Compatible with Zig 0.15.1
 const std = @import("std");
-const term_shared = @import("term_shared");
+const term_shared = @import("../../term.zig");
 
 pub const cellbuf = term_shared.cellbuf;
 // TODO: Implement cursor optimizer

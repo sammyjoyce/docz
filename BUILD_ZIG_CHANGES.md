@@ -3,6 +3,26 @@
 ## Overview
 Updated build.zig to integrate new UX enhancement modules and features into the build system.
 
+## Feature Flags & Profiles (2025-08-31)
+
+The build supports a profile mechanism and explicit feature flags for selective compilation:
+
+- Profiles: `-Dprofile=minimal|standard|full` (default: `standard`).
+- Features string: `-Dfeatures=<csv>` where `<csv>` ⟂ `{cli,tui,network,anthropic,auth,sixel,theme-dev}`.
+- Keep profile defaults without overriding: `-Dfeatures=all`.
+- Per-flag overrides: `-Denable-tui/cli/network/anthropic/auth/sixel/theme-dev` with `=true|false`.
+
+Rules and precedence:
+- Precedence: profile → features string → per-flag overrides.
+- Enabling `auth` or `anthropic` implies `network` unless explicitly disabled via `-Denable-network=false`.
+- Explicitly disabling `network` forces `auth` and `anthropic` off.
+
+Diagnostics:
+- The configure step prints a feature matrix summarizing the active settings.
+- A helper step `zig build test-feature-combinations` runs a common matrix (see `test_feature_combinations.sh`).
+
+See `docs/FEATURE_FLAGS.md` for examples and recipes.
+
 ## Key Changes Made
 
 ### 1. Added New Core Module Paths

@@ -4,7 +4,7 @@
 
 const std = @import("std");
 const engine_mod = @import("engine.zig");
-const logging = @import("src/shared/logger.zig");
+const logging = @import("../../../../logger.zig");
 
 pub const Gauge = struct {
     allocator: std.mem.Allocator,

@@ -66,30 +66,30 @@ const Mutex = Thread.Mutex;
 
 // Core modules
 const agent_interface = @import("agent_interface");
-const config = @import("config_shared");
+const config = @import("foundation").config;
 
 // Shared infrastructure
-const tui = @import("tui_shared");
-const term = @import("../../src/term_shared.zig");
-const theme = @import("../../src/foundation/theme/mod.zig");
-const render = @import("render_shared");
-const components = @import("components_shared");
+const tui = @import("foundation").tui;
+const render = @import("foundation").render;
+const ui = @import("foundation").ui;
 
-// TUI components
-const dashboard = @import("../../src/foundation/tui/components/dashboard/mod.zig");
-const command_palette = @import("../../src/foundation/tui/components/command_palette.zig");
-const notification_system = @import("../../src/foundation/tui/notifications.zig");
-const progress_tracker = @import("../../src/foundation/tui/components/progress_tracker.zig");
-const modal = @import("../../src/foundation/tui/widgets/modal.zig");
+// TUI components - use barrel exports from foundation.tui
+const dashboard = tui.dashboard;
+const notification_system = tui.notifications;
+const modal = tui.Modal;
+const split_pane = tui.split_pane;
+const file_tree = tui.file_tree;
+const canvas_mod = tui.canvas;
 
-// UI components
-const input_component = @import("../../src/foundation/components/input.zig");
-const split_pane = @import("../../src/foundation/tui/widgets/core/split_pane.zig");
-const file_tree = @import("../../src/foundation/tui/widgets/core/file_tree.zig");
-const canvas_mod = @import("../../src/foundation/tui/core/canvas.zig");
+// UI components - use barrel exports from foundation.ui
+const input_component = components.Widgets.Input;
+
+// Command palette and progress tracker from TUI components
+const command_palette = tui.components.CommandPalette;
+const progress_tracker = tui.components.ProgressTracker;
 
 // Markdown agent specific
-const markdown_tools = @import("tools/mod.zig");
+const markdown_tools = @import("tools.zig");
 const ContentEditor = @import("tools/content_editor.zig");
 const Validate = @import("tools/validate.zig");
 const document_tool = @import("tools/document.zig");
@@ -1993,7 +1993,7 @@ pub const ToolInfo = struct {
 pub const Layout = struct {
     allocator: Allocator,
     config: LayoutConfig,
-    terminal_size: term.TerminalSize,
+    terminal_size: tui.TerminalSize,
 
     pub fn init(allocator: Allocator, layout_config: LayoutConfig) !*LayoutManager {
         const self = try allocator.create(LayoutManager);
@@ -2009,7 +2009,7 @@ pub const Layout = struct {
         self.allocator.destroy(self);
     }
 
-    pub fn updateSize(self: *LayoutManager, size: term.TerminalSize) !void {
+    pub fn updateSize(self: *LayoutManager, size: tui.TerminalSize) !void {
         self.terminal_size = size;
     }
 

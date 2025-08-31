@@ -3,13 +3,13 @@
 
 const std = @import("std");
 const renderer_mod = @import("../core/renderer.zig");
-const progress_mod = @import("../../components/progress.zig");
+const ui = @import("../../ui.zig");
 
 const Renderer = renderer_mod.Renderer;
 const Render = renderer_mod.Render;
-const Progress = progress_mod.Progress;
-const ProgressRenderer = progress_mod.ProgressRenderer;
-const ProgressStyle = progress_mod.ProgressStyle;
+const Progress = ui.Widgets.Progress.Progress;
+const ProgressRenderer = ui.Widgets.Progress.ProgressRenderer;
+const ProgressStyle = ui.Widgets.Progress.ProgressStyle;
 
 /// Draw a progress bar using the shared ProgressRenderer directly.
 /// This provides better performance and more control than going through the widget wrapper.

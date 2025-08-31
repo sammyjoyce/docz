@@ -3,7 +3,7 @@
 const std = @import("std");
 const tui = @import("../../mod.zig");
 const input_system = @import("../../core/input/mod.zig");
-const term = @import("../../../term/unified.zig");
+const term = @import("../../../term.zig");
 
 /// Text input widget with comprehensive input support
 pub const TextInput = struct {

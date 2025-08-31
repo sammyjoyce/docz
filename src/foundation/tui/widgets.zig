@@ -3,8 +3,10 @@
 //! Organizes widgets by category and provides exports
 
 const std = @import("std");
-const SharedContext = @import("context_shared").SharedContext;
-const logging = @import("src/shared/logger.zig");
+const SharedContext = @import("../context.zig").SharedContext;
+// Use foundation logger barrel (replaces removed src/shared/logger.zig)
+const logging = @import("../logger.zig");
+const ui = @import("../ui.zig");
 
 pub const Logger = logging.Logger;
 
@@ -36,13 +38,8 @@ pub const Core = struct {
     pub const ScrollableTextArea = @import("core/ScrollableTextArea.zig").ScrollableTextArea;
     pub const ScrollableContainer = @import("core/container.zig").Container;
 
-    // Placeholder implementations for widgets to be extracted
-    pub const Table = struct {
-        pub fn init(allocator: std.mem.Allocator) !@This() {
-            _ = allocator;
-            return .{};
-        }
-    };
+    // Use consolidated UI Table widget instead of TUI placeholder
+    pub const Table = ui.Widgets.Table.Table;
 };
 
 // Rich widgets

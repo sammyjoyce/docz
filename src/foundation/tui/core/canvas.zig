@@ -6,8 +6,7 @@
 //! with the original canvas_engine API.
 
 const std = @import("std");
-const graphics_manager = @import("../term/graphics_manager.zig");
-const unified = @import("../term/unified.zig");
+const term = @import("../../term.zig");
 
 /// Canvas with layer management and real-time interaction
 /// Maintains backward compatibility with CanvasEngine API

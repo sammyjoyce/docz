@@ -2,7 +2,7 @@
 //! Extracted from monolithic tui.zig for better modularity
 
 const std = @import("std");
-const term_shared = @import("term_shared");
+const term_shared = @import("../../../term.zig");
 const TermCaps = term_shared.TermCaps;
 const print = std.debug.print;
 

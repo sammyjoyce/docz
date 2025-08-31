@@ -3,10 +3,10 @@
 //! Supports keyboard navigation, mouse interaction, filtering, and async loading
 
 const std = @import("std");
-const term_shared = @import("term_shared");
+const term_shared = @import("../../../term.zig");
 const term_ansi = term_shared.ansi.color;
 const term_caps = term_shared.caps;
-const tui = @import("tui_shared");
+const tui = @import("../../../tui.zig");
 const focus_mod = tui.core.input.focus;
 const mouse_mod = tui.core.input.mouse;
 const renderer_mod = tui.core.renderer;

@@ -11,7 +11,7 @@
 
 const std = @import("std");
 const renderer_mod = @import("../renderer.zig");
-const term_mod = @import("term_shared");
+const term_mod = @import("../../../term.zig");
 const term_caps = term_mod.caps;
 const components = @import("../../../components/mod.zig");
 

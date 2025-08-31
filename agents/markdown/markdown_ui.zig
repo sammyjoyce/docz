@@ -5,12 +5,11 @@
 //! document outline navigation, and integrated diff viewer.
 
 const std = @import("std");
-const agent_ui_framework = @import("../../src/foundation/tui/agent_ui.zig");
-const renderer_mod = @import("../../src/foundation/tui/core/renderer.zig");
-const bounds_mod = @import("../../src/foundation/tui/core/bounds.zig");
-const theme = @import("../../src/foundation/theme/mod.zig");
-const input_system = @import("../../src/foundation/components/input.zig");
-const markdown_renderer = @import("../../src/foundation/render/markdown_renderer.zig");
+const agent_ui_framework = @import("foundation").tui.agent_ui;
+const renderer_mod = @import("foundation").tui.renderer;
+const bounds_mod = @import("foundation").tui.bounds;
+const theme = @import("theme");
+const ui = @import("foundation").ui;
 const diff_viewer = @import("../../examples/diff_viewer.zig");
 
 const StandardUIPatterns = agent_ui_framework.StandardUIPatterns;
@@ -23,7 +22,7 @@ const Render = renderer_mod.Render;
 const Style = renderer_mod.Style;
 const Bounds = renderer_mod.Bounds;
 const Theme = theme.Theme;
-const InputManager = input_system.InputManager;
+const InputManager = components.Widgets.Input;
 
 /// Interactive markdown session configuration
 pub const InteractiveMarkdownConfig = struct {

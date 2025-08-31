@@ -17,7 +17,7 @@ const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 const AutoHashMap = std.AutoHashMap;
 
-const term = @import("term_shared");
+const term = @import("../../../term.zig");
 const Style = @import("../../core/style.zig").Style;
 const Bounds = @import("../../core/bounds.zig").Bounds;
 const Widget = @import("../base.zig").Widget;

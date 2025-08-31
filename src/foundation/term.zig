@@ -3,7 +3,11 @@
 //! Feature-gate in consumers using `@import("../mod.zig").options.feature_tui`.
 // Terminal namespace
 
-const shared = @import("../mod.zig");
+const deps = @import("internal/deps.zig");
+comptime {
+    deps.assertLayer(.term);
+}
+const shared = @import("../shared.zig");
 comptime {
     if (!shared.options.feature_tui) {
         @compileError("terminal subsystem disabled; enable feature_tui");

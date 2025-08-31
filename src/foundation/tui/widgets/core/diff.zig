@@ -4,18 +4,18 @@
 //! navigation controls, and interactive features.
 
 const std = @import("std");
-const diff_mod = @import("render_shared").diff;
+const render = @import("../../../render.zig");
 const renderer_mod = @import("../../core/renderer.zig");
 const bounds_mod = @import("../../core/bounds.zig");
 const events_mod = @import("../../core/events.zig");
-const tui_mod = @import("../../mod.zig");
+const tui_mod = @import("../../../tui.zig");
 
 const Renderer = renderer_mod.Renderer;
 const Render = renderer_mod.Render;
 const Bounds = bounds_mod.Bounds;
 const Point = bounds_mod.Point;
-const DiffOp = diff_mod.DiffOp;
-const DiffOperation = diff_mod.DiffOperation;
+const DiffOp = render.diff.DiffOp;
+const DiffOperation = render.diff.DiffOperation;
 
 pub const DiffViewerError = error{
     InvalidInput,

@@ -61,7 +61,8 @@
 
 const std = @import("std");
 const json = std.json;
-const JsonReflector = @import("json_reflection").JsonReflector;
+const tools_mod = @import("foundation").tools;
+const JsonReflector = tools_mod.JsonReflector;
 const fs = @import("../lib/fs.zig");
 const text = @import("../lib/text.zig");
 const link = @import("../lib/link.zig");

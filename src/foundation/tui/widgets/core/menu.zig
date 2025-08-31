@@ -2,7 +2,7 @@
 //! Extracted from monolithic tui.zig with terminal capability support
 
 const std = @import("std");
-const term_shared = @import("term_shared");
+const term_shared = @import("../../../term.zig");
 const term_ansi = term_shared.ansi.color;
 const term_hyperlink = term_shared.ansi.hyperlink;
 const term_caps = term_shared.caps;

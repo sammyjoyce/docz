@@ -44,10 +44,10 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 
 // Core TUI modules
-const tui = @import("../tui/mod.zig");
-const renderer_mod = @import("../tui/core/renderer.zig");
-const input_mod = @import("../tui/core/input/mod.zig");
-const events_mod = @import("../tui/core/events.zig");
+const tui = @import("../tui.zig");
+const renderer_mod = @import("core/renderer.zig");
+const input_mod = @import("core/input.zig");
+const events_mod = @import("core/events.zig");
 const bounds_mod = @import("../tui/core/bounds.zig");
 
 // Component modules

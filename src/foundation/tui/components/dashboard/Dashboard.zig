@@ -1,5 +1,5 @@
 //! Adaptive Dashboard - Modern terminal dashboard with progressive enhancement
-//! Fully leverages src/shared/term capabilities for rich visualizations
+//! Fully leverages foundation/term capabilities for rich visualizations
 
 const std = @import("std");
 const term_mod = @import("../../term");

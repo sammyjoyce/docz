@@ -1,5 +1,5 @@
 const std = @import("std");
-const term = @import("term_shared");
+const term = @import("../../term.zig");
 const CellBuffer = term.cellbuf.CellBuffer;
 
 // Point in 2D space with u32 coordinates

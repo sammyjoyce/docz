@@ -2,9 +2,9 @@
 //! Provides pixel-precise mouse tracking and rich interaction support
 const std = @import("std");
 const shared = @import("../../../mod.zig");
-const shared_input = @import("term_shared").input;
+const shared_input = @import("../../../term.zig").input;
 const term_mouse = shared_input;
-const caps_mod = @import("term_shared").capabilities;
+const caps_mod = @import("../../../term.zig").capabilities;
 
 // Re-export shared mouse types
 pub const MouseButton = shared_input.MouseButton;
@@ -213,7 +213,7 @@ pub const TUIMouse = struct {
 
     /// Enable mouse tracking with specified protocol
     pub fn enableMouseTracking(writer: anytype, protocol: MouseProtocol, term_caps: anytype) !void {
-        const term_mod = @import("term_shared");
+        const term_mod = @import("../../../term.zig");
         const TermCaps = term_mod.caps.TermCaps;
         const mode_mod = term_mod.ansi.mode;
 
@@ -232,7 +232,7 @@ pub const TUIMouse = struct {
 
     /// Disable mouse tracking
     pub fn disableMouseTracking(writer: anytype, term_caps: anytype) !void {
-        const term_mod = @import("term_shared");
+        const term_mod = @import("../../../term.zig");
         const TermCaps = term_mod.caps.TermCaps;
         try term_mod.ansi.mode.disableMouseTracking(writer, @as(TermCaps, term_caps));
     }

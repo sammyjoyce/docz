@@ -3,7 +3,8 @@
 const std = @import("std");
 const engine = @import("core_engine");
 const impl = @import("agent.zig");
-const tools_mod = @import("tools_shared");
+const foundation = @import("foundation");
+const tools_mod = foundation.tools;
 
 fn buildSystemPromptImpl(allocator: std.mem.Allocator, options: engine.CliOptions) ![]const u8 {
     _ = options; // reserved for future use (e.g., config path)

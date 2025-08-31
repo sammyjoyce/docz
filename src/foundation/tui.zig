@@ -6,17 +6,24 @@
 //! - Feature-gate: `comptime if (@import("../shared/mod.zig").options.feature_tui) { ... }`
 //! - Override behavior: define `pub const shared_options = @import("../shared/mod.zig").Options{ ... };` in the root module.
 
-const shared = @import("../mod.zig");
-comptime {
-    if (!shared.options.feature_tui) {
-        @compileError("TUI subsystem disabled; enable feature_tui");
-    }
-}
 const std = @import("std");
-const term_shared = @import("term_shared");
+const deps = @import("internal/deps.zig");
+comptime {
+    deps.assertLayer(.tui);
+}
+
+// Import consolidated foundation modules
+const ui = @import("ui.zig");
+const render = @import("render.zig");
+const term = @import("term.zig");
+const theme = @import("theme.zig");
+
+// Core TUI functionality
+pub const App = @import("tui/App.zig");
+pub const Screen = @import("tui/Screen.zig");
 
 // Base system components
-pub const base = @import("core/mod.zig");
+pub const base = @import("tui/core.zig");
 pub const events = base.events;
 pub const bounds = base.bounds;
 pub const renderer = base.renderer;
@@ -27,23 +34,45 @@ pub const easing = base.easing;
 pub const typing_animation = base.typing_animation;
 
 // Widget system - organized by category
-pub const widgets = @import("widgets/mod.zig");
+pub const widgets = @import("tui/widgets.zig");
 
-// Themes and styling
-pub const themes = @import("../theme/mod.zig");
+// Themes and styling - use foundation theme module
+pub const themes = theme;
 
 // Utilities
-pub const utils = @import("utils/mod.zig");
+pub const utils = @import("tui/utils.zig");
 
 // Dashboard system - graphics capabilities
-pub const dashboard = @import("widgets/dashboard/mod.zig");
+// Prefer importing dashboard elements via widgets.zig barrel exports.
+// A dedicated dashboard barrel can be added when the API stabilizes.
+pub const dashboard = @import("tui/widgets.zig").dashboard;
+
+// Commonly used TUI components re-exported for agents to avoid deep imports
+// during the consolidation phase. These are thin passthroughs to keep agent
+// code from depending on internal file paths.
+pub const notifications = @import("tui/notifications.zig");
+
+// Minimal components surface needed by existing agents (no deep imports)
+pub const components = struct {
+    pub const CommandPalette = @import("tui/components/command_palette.zig").CommandPalette;
+    pub const ProgressTracker = @import("tui/components/progress_tracker.zig").ProgressTracker;
+};
+
+// Frequently referenced widget modules
+pub const Modal = @import("tui/widgets/modal.zig");
+
+// Core widget shortcuts used by agents (temporary convenience exports)
+// These aliases help migrate agents off deep imports without exposing
+// the entire internal tree.
+pub const split_pane = @import("tui/widgets/core/split_pane.zig");
+pub const file_tree = @import("tui/widgets/core/file_tree.zig");
+
+// Agent UI helper surface (used by markdown agent)
+pub const agent_ui = @import("tui/agent_ui.zig");
 
 // Auth UI components namespace (TitleCase)
 pub const Auth = struct {
-    pub const AuthStatus = @import("tui/auth/AuthStatus.zig");
-    pub const CodeInput = @import("tui/auth/CodeInput.zig");
     pub const OAuthFlow = @import("tui/auth/OAuthFlow.zig");
-    pub const OAuthWizard = @import("tui/auth/OAuthWizard.zig");
 
     // Convenience function to run OAuth wizard
     pub fn runOAuthWizard(allocator: std.mem.Allocator) !void {
@@ -54,6 +83,8 @@ pub const Auth = struct {
 };
 
 // Agent interface system is available as a separate module
+// Re-export agent_interface so agents do not deep-import files.
+pub const agent_interface = @import("tui/agent_interface.zig");
 
 // Convenience re-exports for backward compatibility
 pub const Bounds = bounds.Bounds;
@@ -122,10 +153,10 @@ pub const DefaultTheme = themes.ColorScheme;
 // Utility exports
 pub const CommandHistory = utils.CommandHistory;
 
-// Terminal capabilities - accessed through term_shared dependency
+// Terminal capabilities - accessed through foundation term module
 
 // Presenters (adapters from shared headless models to TUI renderer)
-pub const presenters = @import("presenters/mod.zig");
+pub const presenters = @import("tui/presenters.zig");
 
 // Legacy helpers and wrappers are exposed only when -Dlegacy is set
 pub const legacy = if (@import("build_options").include_legacy)
@@ -150,8 +181,8 @@ pub fn deinitTui() void {
 }
 
 // Progressive enhancement detection
-pub fn detectCapabilities() term_shared.caps.TermCaps {
-    return term_shared.caps.getTermCaps();
+pub fn detectCapabilities() term.Capabilities {
+    return term.detectCapabilities();
 }
 
 // Convenience functions for quick setup

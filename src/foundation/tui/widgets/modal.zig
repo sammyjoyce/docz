@@ -9,7 +9,7 @@ const renderer_mod = @import("../core/renderer.zig");
 const input_mod = @import("../core/input/mod.zig");
 const events_mod = @import("../core/events.zig");
 const screen_mod = @import("../core/screen.zig");
-const term_caps = @import("../../term/capabilities.zig");
+const term = @import("../../term.zig");
 
 pub const Point = bounds_mod.Point;
 pub const Bounds = bounds_mod.Bounds;

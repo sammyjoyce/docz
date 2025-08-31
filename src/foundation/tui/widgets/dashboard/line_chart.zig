@@ -8,13 +8,12 @@
 
 const std = @import("std");
 const engine_mod = @import("engine.zig");
-const logging = @import("src/shared/logger.zig");
-const term_caps = @import("../../term/capabilities.zig");
-const graphics_manager = @import("../../term/graphics_manager.zig");
-const term_shared = @import("../../../../term_shared.zig");
-const color_palette = term_shared.term.color.palettes;
+const logging = @import("../../../../logger.zig");
+const term = @import("../../../../term.zig");
+const color_palette = term.color.palettes;
 
-const braille = @import("../../render/braille.zig");
+const render = @import("../../../../render.zig");
+const braille = render.braille;
 
 /// Line chart with progressive enhancement
 pub const LineChart = struct {

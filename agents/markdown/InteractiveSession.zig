@@ -51,32 +51,32 @@ const Mutex = Thread.Mutex;
 
 // Core modules
 const agent_interface = @import("agent_interface");
-const config = @import("config_shared");
+const config = @import("foundation").config;
 
 // Shared infrastructure
-const tui = @import("tui_shared");
-const term = @import("term_shared");
-const theme = @import("../../src/foundation/theme/mod.zig");
-const render = @import("render_shared");
-const components = @import("components_shared");
+const tui = @import("foundation").tui;
+const term = @import("foundation").term;
+const theme = @import("theme");
+const render = @import("foundation").render;
+const ui = @import("foundation").ui;
 
 // Dashboard and UI components
-const dashboard = @import("../../src/foundation/tui/components/dashboard/mod.zig");
-const command_palette = @import("../../src/foundation/tui/components/command_palette.zig");
-const notification_system = @import("../../src/foundation/tui/components/notification_system.zig");
-const progress_tracker = @import("../../src/foundation/tui/components/progress_tracker.zig");
+const dashboard = tui.dashboard;
+const command_palette = tui.components.CommandPalette;
+const notification_system = tui.notifications;
+const progress_tracker = tui.components.ProgressTracker;
 
 // UI components
-const input_component = @import("../../src/foundation/components/input.zig");
-const split_pane = @import("../../src/foundation/tui/widgets/core/split_pane.zig");
-const file_tree = @import("../../src/foundation/tui/widgets/core/file_tree.zig");
-const modal = @import("../../src/foundation/tui/widgets/modal.zig");
-const canvas_mod = @import("../../src/foundation/tui/core/canvas.zig");
+const input_component = ui.Widgets.Input;
+const split_pane = tui.split_pane;
+const file_tree = tui.file_tree;
+const modal = tui.Modal;
+const canvas_mod = tui.canvas;
 // Backward compatibility alias
 const canvas_engine = canvas_mod;
 
 // Markdown agent specific
-const markdown_tools = @import("tools/mod.zig");
+const markdown_tools = @import("tools.zig");
 const ContentEditor = @import("tools/content_editor.zig");
 const Validate = @import("tools/validate.zig");
 const document_tool = @import("tools/document.zig");

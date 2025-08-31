@@ -6,7 +6,7 @@ const std = @import("std");
 const renderer_mod = @import("../../core/renderer.zig");
 const bounds_mod = @import("../../core/bounds.zig");
 const events_mod = @import("../../core/events.zig");
-const terminal_mod = @import("../../../term/unified.zig");
+const term = @import("../../../term.zig");
 
 const Renderer = renderer_mod.Renderer;
 const Render = renderer_mod.Render;

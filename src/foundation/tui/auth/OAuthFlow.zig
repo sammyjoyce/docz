@@ -23,28 +23,19 @@ const oauth = @import("../../network/auth/OAuth.zig");
 const print = std.debug.print;
 
 // Import TUI and rendering components
-const adaptive_renderer = @import("../../render/mod.zig");
-const components_mod = @import("../../components/mod.zig");
-const notification_mod = @import("../../components/notification.zig");
-const progress_mod = @import("../../components/progress.zig");
-const input_mod = @import("../../components/input.zig");
-const input_component_mod = @import("../../components/Input.zig");
-const theme = @import("../../theme/mod.zig");
+const render = @import("../../render.zig");
+const ui = @import("../../ui.zig");
+const theme = @import("../../theme.zig");
 
 // Import terminal capabilities and interface
-const term_mod = @import("../../term/mod.zig");
-const term_interface = term_mod.core;
-const caps = term_mod.caps;
+const term = @import("../../term.zig");
 
 // Import TUI widgets and components
-const tui_mod = @import("../../tui/mod.zig");
-const canvas_engine = tui_mod.canvas_engine;
+const tui = @import("../../tui.zig");
 const modal_system = @import("../../tui/widgets/modal.zig");
-const dashboard_mod = @import("../../tui/widgets/dashboard/mod.zig");
-const rich_widgets = @import("../../tui/widgets/rich/mod.zig");
 
 // Re-export key types for convenience
-const Renderer = adaptive_renderer.Renderer;
+const Renderer = render.Renderer;
 const NotificationType = notification_mod.NotificationType;
 const NotificationConfig = notification_mod.NotificationConfig;
 const BaseNotification = notification_mod.BaseNotification;

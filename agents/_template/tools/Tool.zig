@@ -7,7 +7,8 @@
 //! It shows how tools used to work before the JSON-based improvements.
 
 const std = @import("std");
-const toolsMod = @import("tools_shared");
+const foundation = @import("foundation");
+const toolsMod = foundation.tools;
 
 /// Legacy tool function using raw string input/output.
 /// This pattern is DEPRECATED - use JSON-based tools instead.

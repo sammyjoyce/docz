@@ -85,28 +85,28 @@ const Mutex = Thread.Mutex;
 
 // Core modules
 const agent_interface = @import("agent_interface");
-const config = @import("config_shared");
+const config = @import("foundation").config;
 const markdown_editor = @import("Editor.zig");
 const MarkdownEditor = markdown_editor.MarkdownEditor;
 const MarkdownEditorConfig = markdown_editor.MarkdownEditorConfig;
 
 // Shared infrastructure
-const tui = @import("tui_shared");
-const term = @import("term_shared");
-const theme = @import("../../src/foundation/theme/mod.zig");
-const render = @import("render_shared");
-const components = @import("components_shared");
+const tui = @import("foundation").tui;
+const term = @import("foundation").term;
+const theme = @import("theme");
+const render = @import("foundation").render;
+const ui = @import("foundation").ui;
 
 // Rich UI components
-const diff_viewer = @import("../../src/foundation/tui/widgets/core/diff_viewer.zig");
-const file_tree = @import("../../src/foundation/tui/widgets/core/file_tree.zig");
-const tabs = @import("../../src/foundation/tui/widgets/core/tabs.zig");
-const tag_input = @import("../../src/foundation/tui/widgets/core/tag_input.zig");
-const breadcrumb_trail = @import("../../src/foundation/cli/components/base/BreadcrumbTrail.zig");
-const agent_dashboard = @import("../../src/foundation/tui/components/agent_dashboard/mod.zig");
+const diff_viewer = tui.widgets.Core.DiffViewer;
+const file_tree = tui.file_tree;
+const tabs = tui.widgets.Core.TabContainer;
+const tag_input = tui.widgets.Core.TagInput;
+const breadcrumb_trail = cli.components.BreadcrumbTrail;
+const agent_dashboard = @import("agent_dashboard");
 
 // Markdown agent specific
-const markdown_tools = @import("tools/mod.zig");
+const markdown_tools = @import("tools.zig");
 const Content = @import("tools/Content.zig");
 const Validate = @import("tools/validate.zig");
 const document_tool = @import("tools/document.zig");

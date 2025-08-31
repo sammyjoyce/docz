@@ -1,7 +1,7 @@
 const std = @import("std");
 const Surface = @import("surface.zig");
 const Theme = @import("../theme.zig");
-const QualityTiers = @import("quality_tiers.zig");
+const Renderer = @import("renderer.zig").Renderer;
 
 pub const Capabilities = struct {
     graphics: GraphicsSupport = .none,
@@ -29,7 +29,7 @@ const Self = @This();
 surface: *Surface,
 theme: *Theme,
 caps: Capabilities,
-quality: QualityTiers.Tier,
+quality: Renderer.RenderTier,
 frame_budget_ns: u64,
 allocator: std.mem.Allocator,
 
@@ -43,7 +43,7 @@ pub fn init(
         .surface = surface,
         .theme = theme,
         .caps = Capabilities{},
-        .quality = .balanced,
+        .quality = .standard,
         .frame_budget_ns = 16_666_667, // 60 FPS
     };
 }
@@ -63,9 +63,9 @@ pub fn setFrameBudget(self: *Self, budget_ns: u64) void {
 
 fn updateQualityTier(self: *Self) void {
     self.quality = switch (self.caps.graphics) {
-        .kitty, .iterm2 => .fancy,
-        .sixel => .balanced,
-        .none => if (self.caps.colors == .truecolor) .balanced else .simple,
+        .kitty, .iterm2 => .rich,
+        .sixel => .standard,
+        .none => if (self.caps.colors == .truecolor) .standard else .minimal,
     };
 }
 
@@ -82,7 +82,7 @@ pub fn canUseUnicode(self: *const Self) bool {
 }
 
 pub fn shouldSimplify(self: *const Self) bool {
-    return self.quality == .simple;
+    return self.quality == .minimal;
 }
 
 pub fn getColorDepth(self: *const Self) u8 {
