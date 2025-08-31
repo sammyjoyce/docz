@@ -15,6 +15,7 @@ const Registry = base.Registry;
 const Render = base.Render;
 const Event = base.Event;
 const Theme = base.Theme;
+const ComponentError = base.ComponentError;
 const NotificationLevel = term.NotificationLevel;
 const Terminal = term.Terminal;
 const Color = term.Color;
@@ -75,21 +76,21 @@ pub const UI = struct {
     }
 
     /// Show a notification using the best available method
-    pub fn notify(self: *Self, level: NotificationLevel, title: []const u8, message: []const u8) !void {
+    pub fn notify(self: *Self, level: NotificationLevel, title: []const u8, message: []const u8) ComponentError!void {
         switch (self.mode) {
             .cli, .hybrid => {
                 // For CLI mode, use immediate terminal notification
-                try self.terminal.notification(level, title, message);
+                self.terminal.notification(level, title, message) catch return ComponentError.RenderFailed;
             },
             .tui => {
                 // For TUI mode, create a notification component
-                const notificationComponent = try Notification.create(self.allocator, Config{
+                const notificationComponent = Notification.create(self.allocator, Config{
                     .level = level,
-                    .title = try self.allocator.dupe(u8, title),
-                    .message = try self.allocator.dupe(u8, message),
-                    .duration = 3000, // 3 seconds
+                    .title = self.allocator.dupe(u8, title) catch return ComponentError.OutOfMemory,
+                    .message = self.allocator.dupe(u8, message) catch return ComponentError.OutOfMemory,
+                    .duration = 3000,
                     .autoDismiss = true,
-                });
+                }) catch |e| return e;
 
                 try self.componentManager.addComponent(notificationComponent);
             },
@@ -97,32 +98,31 @@ pub const UI = struct {
     }
 
     /// Show a progress bar using the best method for the current mode
-    pub fn showProgress(self: *Self, progressValue: f32, label: ?[]const u8) !?*Component {
+    pub fn showProgress(self: *Self, progressValue: f32, label: ?[]const u8) ComponentError!?*Component {
         switch (self.mode) {
             .cli => {
                 // For CLI mode, create an inline progress bar
-                const progressComponent = try progress.ProgressBar.create(self.allocator, .{
+                const progressComponent = progress.ProgressBar.create(self.allocator, .{
                     .progress = progressValue,
                     .label = label,
                     .style = .auto,
                     .animated = false, // No animation in CLI mode
-                });
+                }) catch |e| return e;
 
-                // Render immediately
                 const ctx = self.createRender(term.Rect{ .x = 0, .y = 0, .width = 80, .height = 1 });
-                try progressComponent.render(ctx);
-                try self.terminal.flush();
+                progressComponent.render(ctx) catch return ComponentError.RenderFailed;
+                self.terminal.flush() catch return ComponentError.RenderFailed;
 
                 return progressComponent;
             },
             .tui, .hybrid => {
                 // For TUI mode, add to component manager
-                const progressComponent = try progress.ProgressBar.create(self.allocator, .{
+                const progressComponent = progress.ProgressBar.create(self.allocator, .{
                     .progress = progressValue,
                     .label = label,
                     .style = .auto,
                     .animated = true,
-                });
+                }) catch |e| return e;
 
                 try self.componentManager.addComponent(progressComponent);
                 return progressComponent;
@@ -131,32 +131,30 @@ pub const UI = struct {
     }
 
     /// Update a progress bar's value
-    pub fn updateProgress(self: *Self, progressComponent: *Component, progressValue: f32) void {
-        // Extract the ProgressBar from the component
+    pub fn updateProgress(self: *Self, progressComponent: *Component, progressValue: f32) ComponentError!void {
         const progress_impl: *progress.ProgressBar = @ptrCast(@alignCast(progressComponent.impl));
-        progress_impl.setProgress(progressValue);
+        try progress_impl.setProgress(progressValue);
 
         if (self.mode == .cli) {
-            // In CLI mode, re-render immediately
             const ctx = self.createRender(term.Rect{ .x = 0, .y = 0, .width = 80, .height = 1 });
-            progressComponent.render(ctx) catch {};
-            self.terminal.flush() catch {};
+            progressComponent.render(ctx) catch return ComponentError.RenderFailed;
+            self.terminal.flush() catch return ComponentError.RenderFailed;
         }
     }
 
     /// Handle input events (mainly for TUI mode)
-    pub fn handleEvent(self: *Self, event: Event) !bool {
+    pub fn handleEvent(self: *Self, event: Event) ComponentError!bool {
         return self.componentManager.handleEvent(event);
     }
 
     /// Render all components (mainly for TUI mode)
-    pub fn render(self: *Self, bounds: term.Rect) !void {
+    pub fn render(self: *Self, bounds: term.Rect) ComponentError!void {
         const ctx = self.createRender(bounds);
         try self.componentManager.render(ctx);
     }
 
     /// Update animations and time-based components
-    pub fn update(self: *Self, dt: f32) !void {
+    pub fn update(self: *Self, dt: f32) ComponentError!void {
         try self.componentManager.update(dt);
     }
 
@@ -200,8 +198,8 @@ pub const Notification = struct {
         .update = update,
     };
 
-    pub fn create(allocator: std.mem.Allocator, config: Config) !*Component {
-        const self = try allocator.create(Self);
+    pub fn create(allocator: std.mem.Allocator, config: Config) ComponentError!*Component {
+        const self = allocator.create(Self) catch return ComponentError.OutOfMemory;
         self.* = Self{
             .allocator = allocator,
             .state = base.State{},
@@ -209,7 +207,7 @@ pub const Notification = struct {
             .creationTime = std.time.timestamp(),
         };
 
-        const component = try allocator.create(Component);
+        const component = allocator.create(Component) catch return ComponentError.OutOfMemory;
         component.* = Component{
             .vtable = &vtable,
             .impl = self,
@@ -219,7 +217,7 @@ pub const Notification = struct {
         return component;
     }
 
-    fn init(impl: *anyopaque, allocator: std.mem.Allocator) anyerror!void {
+    fn init(impl: *anyopaque, allocator: std.mem.Allocator) ComponentError!void {
         _ = allocator;
         const self: *Self = @ptrCast(@alignCast(impl));
         self.state = base.State{
@@ -243,7 +241,7 @@ pub const Notification = struct {
         self.state = state;
     }
 
-    fn render(impl: *anyopaque, ctx: Render) anyerror!void {
+    fn render(impl: *anyopaque, ctx: Render) ComponentError!void {
         const self: *Self = @ptrCast(@alignCast(impl));
 
         // Get notification colors based on level
@@ -274,49 +272,49 @@ pub const Notification = struct {
         const current_y = @as(i32, @intFromFloat(@as(f32, @floatFromInt(start_y)) + (@as(f32, @floatFromInt(target_y - start_y)) * eased_t)));
 
         // Move to animated position
-        try ctx.terminal.moveTo(self.state.bounds.x, current_y);
+        ctx.terminal.moveTo(self.state.bounds.x, current_y) catch return ComponentError.RenderFailed;
 
         // Render notification content
         var content = std.ArrayList(u8).init(self.allocator);
         defer content.deinit();
 
-        try content.writer().print("┌─ {s} {s} ", .{ level_icon, self.config.title });
+        content.writer().print("┌─ {s} {s} ", .{ level_icon, self.config.title }) catch return ComponentError.RenderFailed;
 
         // Add padding to fill width
         const content_width = self.config.title.len + 6; // Icon + title + spacing
         const padding_needed = @max(0, self.state.bounds.width -| content_width -| 3); // -3 for border chars
         var i: u32 = 0;
         while (i < padding_needed) : (i += 1) {
-            try content.append('─');
+            content.append('─') catch return ComponentError.RenderFailed;
         }
-        try content.append('┐');
+        content.append('┐') catch return ComponentError.RenderFailed;
 
         // Render title line
         const title_style = term.Style{ .fg_color = level_color, .bold = true };
-        try ctx.terminal.print(content.items, title_style);
+        ctx.terminal.print(content.items, title_style) catch return ComponentError.RenderFailed;
 
         // Move to next line for message
-        try ctx.terminal.moveTo(self.state.bounds.x, current_y + 1);
+        ctx.terminal.moveTo(self.state.bounds.x, current_y + 1) catch return ComponentError.RenderFailed;
 
         const message_style = term.Style{ .fg_color = ctx.theme.colors.foreground };
-        try ctx.terminal.printf("│ {s}", .{self.config.message}, message_style);
+        ctx.terminal.printf("│ {s}", .{self.config.message}, message_style) catch return ComponentError.RenderFailed;
 
         // Add padding for message line
         const message_padding = @max(0, self.state.bounds.width -| self.config.message.len -| 3);
         i = 0;
         while (i < message_padding) : (i += 1) {
-            try ctx.terminal.print(" ", message_style);
+            ctx.terminal.print(" ", message_style) catch return ComponentError.RenderFailed;
         }
-        try ctx.terminal.print("│", title_style);
+        ctx.terminal.print("│", title_style) catch return ComponentError.RenderFailed;
 
         // Bottom border
-        try ctx.terminal.moveTo(self.state.bounds.x, current_y + 2);
-        try ctx.terminal.print("└", title_style);
+        ctx.terminal.moveTo(self.state.bounds.x, current_y + 2) catch return ComponentError.RenderFailed;
+        ctx.terminal.print("└", title_style) catch return ComponentError.RenderFailed;
         i = 0;
         while (i < self.state.bounds.width - 2) : (i += 1) {
-            try ctx.terminal.print("─", title_style);
+            ctx.terminal.print("─", title_style) catch return ComponentError.RenderFailed;
         }
-        try ctx.terminal.print("┘", title_style);
+        ctx.terminal.print("┘", title_style) catch return ComponentError.RenderFailed;
     }
 
     fn measure(impl: *anyopaque, available: term.Rect) term.Rect {
@@ -334,7 +332,7 @@ pub const Notification = struct {
         };
     }
 
-    fn handleEvent(impl: *anyopaque, event: Event) anyerror!bool {
+    fn handleEvent(impl: *anyopaque, event: Event) ComponentError!bool {
         const self: *Self = @ptrCast(@alignCast(impl));
 
         // Allow dismissing notifications with Escape or Enter
@@ -351,7 +349,7 @@ pub const Notification = struct {
         return false;
     }
 
-    fn update(impl: *anyopaque, dt: f32) anyerror!void {
+    fn update(impl: *anyopaque, dt: f32) ComponentError!void {
         const self: *Self = @ptrCast(@alignCast(impl));
         _ = dt;
 

@@ -21,6 +21,7 @@ const Component = base.Component;
 const State = base.State;
 const Render = base.Render;
 const Event = base.Event;
+const ComponentError = base.ComponentError;
 
 // Optional integration with render module removed for minimal builds.
 // Functions that require a renderer import it locally to avoid module coupling.
@@ -337,11 +338,11 @@ pub const Bar = struct {
         .update = update,
     };
 
-    pub fn create(allocator: std.mem.Allocator, config: Config) !*Component {
-        const self = try allocator.create(Self);
+    pub fn create(allocator: std.mem.Allocator, config: Config) ComponentError!*Component {
+        const self = allocator.create(Self) catch return ComponentError.OutOfMemory;
         var data = Progress.init(allocator);
-        try data.setProgress(config.progress);
-        data.label = if (config.label) |l| try allocator.dupe(u8, l) else null;
+        data.setProgress(config.progress) catch return ComponentError.InitFailed;
+        data.label = if (config.label) |l| allocator.dupe(u8, l) catch return ComponentError.OutOfMemory else null;
         data.showPercentage = config.showPercentage;
         data.showEta = config.showEta;
         data.showRate = config.showRate;
@@ -353,7 +354,7 @@ pub const Bar = struct {
             .data = data,
         };
 
-        const component = try allocator.create(Component);
+        const component = allocator.create(Component) catch return ComponentError.OutOfMemory;
         component.* = Component{
             .vtable = &vtable,
             .impl = self,
@@ -370,7 +371,7 @@ pub const Bar = struct {
 
     // Component implementation
 
-    fn init(impl: *anyopaque, allocator: std.mem.Allocator) anyerror!void {
+    fn init(impl: *anyopaque, allocator: std.mem.Allocator) ComponentError!void {
         _ = allocator;
         const self: *Self = @ptrCast(@alignCast(impl));
         self.state = State{};
@@ -394,11 +395,11 @@ pub const Bar = struct {
         self.state = state;
     }
 
-    fn render(impl: *anyopaque, ctx: Render) anyerror!void {
+    fn render(impl: *anyopaque, ctx: Render) ComponentError!void {
         const self: *Self = @ptrCast(@alignCast(impl));
 
         // Move to component position
-        try ctx.terminal.moveTo(self.state.bounds.x, self.state.bounds.y);
+        ctx.terminal.moveTo(self.state.bounds.x, self.state.bounds.y) catch return ComponentError.RenderFailed;
 
         // Create a writer for the terminal
         var buffer = std.ArrayList(u8).init(self.allocator);
@@ -408,10 +409,10 @@ pub const Bar = struct {
         var renderer = Renderer.init(self.allocator);
 
         // Render the progress bar
-        try renderer.render(&self.data, self.config.style, writer, self.state.bounds.width);
+        renderer.render(&self.data, self.config.style, writer, self.state.bounds.width) catch return ComponentError.RenderFailed;
 
         // Print the rendered progress bar
-        try ctx.terminal.print(buffer.items, null);
+        ctx.terminal.print(buffer.items, null) catch return ComponentError.RenderFailed;
     }
 
     fn measure(impl: *anyopaque, available: base.Rect) base.Rect {
@@ -429,13 +430,13 @@ pub const Bar = struct {
         };
     }
 
-    fn handleEvent(impl: *anyopaque, event: Event) anyerror!bool {
+    fn handleEvent(impl: *anyopaque, event: Event) ComponentError!bool {
         _ = impl;
         _ = event;
         return false; // Progress bars don't handle events
     }
 
-    fn update(impl: *anyopaque, dt: f32) anyerror!void {
+    fn update(impl: *anyopaque, dt: f32) ComponentError!void {
         const self: *Self = @ptrCast(@alignCast(impl));
         _ = dt;
 
