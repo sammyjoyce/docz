@@ -38,6 +38,21 @@ pub const utils = @import("utils/mod.zig");
 // Dashboard system - graphics capabilities
 pub const dashboard = @import("widgets/dashboard/mod.zig");
 
+// Auth UI components namespace (TitleCase)
+pub const Auth = struct {
+    pub const AuthStatus = @import("tui/auth/AuthStatus.zig");
+    pub const CodeInput = @import("tui/auth/CodeInput.zig");
+    pub const OAuthFlow = @import("tui/auth/OAuthFlow.zig");
+    pub const OAuthWizard = @import("tui/auth/OAuthWizard.zig");
+
+    // Convenience function to run OAuth wizard
+    pub fn runOAuthWizard(allocator: std.mem.Allocator) !void {
+        const wizard = try OAuthWizard.init(allocator);
+        defer wizard.deinit();
+        return wizard.run();
+    }
+};
+
 // Agent interface system is available as a separate module
 
 // Convenience re-exports for backward compatibility

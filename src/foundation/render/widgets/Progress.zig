@@ -1,10 +1,12 @@
 const std = @import("std");
-const render = @import("../../render/mod.zig");
-const ui = @import("../../ui/mod.zig");
+const Context = @import("../Context.zig");
+const Surface = @import("../surface.zig");
 
 /// Draw a single-line progress bar into the given rectangle.
 /// Layout: optional label, space, then bar composed of '=' for filled and '-' for unfilled.
-pub fn progress(context: *render.Context, rectangle: ui.layout.Rect, value: f32, label: ?[]const u8) !void {
+pub const Rect = struct { x: i32, y: i32, w: u32, h: u32 };
+
+pub fn progress(context: *Context, rectangle: Rect, value: f32, label: ?[]const u8) !void {
     if (rectangle.w == 0 or rectangle.h == 0) return;
     var x: i32 = rectangle.x;
     const y: i32 = rectangle.y;
@@ -36,12 +38,9 @@ pub fn progress(context: *render.Context, rectangle: ui.layout.Rect, value: f32,
 
 test "drawProgress with label clips and fills proportionally" {
     const allocator = std.testing.allocator;
-    var surface = try render.MemorySurface.init(allocator, 12, 1);
-    defer {
-        surface.deinit(allocator);
-        allocator.destroy(surface);
-    }
-    var context = render.Context.init(surface, null);
+    var surface = try Surface.MemorySurface.init(allocator, 12, 1);
+    defer surface.deinit(allocator);
+    var context = Context.init(surface, allocator);
     try progress(&context, .{ .x = 0, .y = 0, .w = 12, .h = 1 }, 0.25, "P:");
     const dump = try surface.toString(allocator);
     defer allocator.free(dump);

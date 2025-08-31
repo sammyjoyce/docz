@@ -1,10 +1,21 @@
 const std = @import("std");
-const render = @import("../../render/mod.zig");
-const ui = @import("../../ui/mod.zig");
-const mod = @import("mod.zig");
+const Context = @import("../Context.zig");
+const Surface = @import("../surface.zig");
+
+pub const Rect = struct { x: i32, y: i32, w: u32, h: u32 };
+
+pub const Table = struct {
+    title: ?[]const u8 = null,
+    headers: []const []const u8 = &.{},
+    rows: []const []const []const u8 = &.{},
+    columnWidths: ?[]const u16 = null,
+    columnAlignments: ?[]const Alignment = null,
+};
+
+pub const Alignment = enum { left, center, right };
 
 /// Draw a featureful ASCII table with optional title, borders, alignments.
-pub fn table(context: *render.Context, rectangle: ui.layout.Rect, tableData: *const mod.Table) !void {
+pub fn table(context: *Context, rectangle: Rect, tableData: *const Table) !void {
     if (rectangle.w == 0 or rectangle.h == 0) return;
     const headers = tableData.headers;
     const rows = tableData.rows;
@@ -77,7 +88,7 @@ fn calculateWidths(buffer: []u16, headers: []const []const u8, rows: []const []c
     }
 }
 
-fn drawHorizontalBorder(context: *render.Context, rectangle: ui.layout.Rect, y: i32, widths: []const u16, cornerChar: u8, horizontalChar: u8) !void {
+fn drawHorizontalBorder(context: *Context, rectangle: Rect, y: i32, widths: []const u16, cornerChar: u8, horizontalChar: u8) !void {
     var x: i32 = rectangle.x;
     if (x >= rectangle.x + @as(i32, @intCast(rectangle.w))) return;
     try context.putChar(x, y, cornerChar);
@@ -96,7 +107,7 @@ fn drawHorizontalBorder(context: *render.Context, rectangle: ui.layout.Rect, y: 
     if (x < rectangle.x + @as(i32, @intCast(rectangle.w))) try context.putChar(x, y, cornerChar);
 }
 
-fn drawRow(context: *render.Context, rectangle: ui.layout.Rect, y: i32, widths: []const u16, cells: []const []const u8, alignments: ?[]const mod.Alignment) !void {
+fn drawRow(context: *Context, rectangle: Rect, y: i32, widths: []const u16, cells: []const []const u8, alignments: ?[]const Alignment) !void {
     var x: i32 = rectangle.x;
     try context.putChar(x, y, '|');
     x += 1;
@@ -117,7 +128,7 @@ fn drawRow(context: *render.Context, rectangle: ui.layout.Rect, y: i32, widths: 
     }
 }
 
-fn alignTruncate(text: []const u8, width: u16, alignment: mod.Alignment) []const u8 {
+fn alignTruncate(text: []const u8, width: u16, alignment: Alignment) []const u8 {
     // Produce a temporary aligned string in stack buffer; for now, just left pad/trunc.
     // Because we cannot allocate here, we pad/truncate by selecting a slice or by using a static temp.
     // Simplified: return a slice of a static buffer per call is unsafe; instead, left-align by truncation,
@@ -128,7 +139,7 @@ fn alignTruncate(text: []const u8, width: u16, alignment: mod.Alignment) []const
     return text;
 }
 
-fn writeClipped(context: *render.Context, rectangle: ui.layout.Rect, startX: i32, y: i32, text: []const u8) !void {
+fn writeClipped(context: *Context, rectangle: Rect, startX: i32, y: i32, text: []const u8) !void {
     var x = startX;
     var textIndex: usize = 0;
     while (textIndex < text.len and x < rectangle.x + @as(i32, @intCast(rectangle.w))) : (textIndex += 1) {
@@ -139,16 +150,14 @@ fn writeClipped(context: *render.Context, rectangle: ui.layout.Rect, startX: i32
 
 test "drawTable draws header, borders and one row (golden)" {
     const allocator = std.testing.allocator;
-    var surface = try render.MemorySurface.init(allocator, 22, 5);
-    defer {
-        surface.deinit(allocator);
-        allocator.destroy(surface);
-    }
-    var context = render.Context.init(surface, null);
-    var testTable = mod.Table.init(allocator);
-    testTable.headers = &[_][]const u8{ "H1", "H2" };
+    var surface = try Surface.MemorySurface.init(allocator, 22, 5);
+    defer surface.deinit(allocator);
+    var context = Context.init(surface, allocator);
     const firstRow = [_][]const u8{ "A", "B" };
-    testTable.rows = &[_][]const []const u8{firstRow[0..]};
+    var testTable = Table{
+        .headers = &[_][]const u8{ "H1", "H2" },
+        .rows = &[_][]const []const u8{firstRow[0..]},
+    };
     try table(&context, .{ .x = 0, .y = 0, .w = 22, .h = 5 }, &testTable);
     const dump = try surface.toString(allocator);
     defer allocator.free(dump);

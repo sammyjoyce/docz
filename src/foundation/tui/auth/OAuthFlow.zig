@@ -17,10 +17,9 @@
 //! - Dashboard with KPI metrics and charts
 
 const std = @import("std");
-const auth_service = @import("../core/Service.zig");
-const deps = @import("auth_deps");
-const curl = deps.curl;
-const oauth = @import("../oauth/mod.zig");
+const auth_service = @import("../../network/auth/Service.zig");
+const curl = @import("../../network/curl.zig");
+const oauth = @import("../../network/auth/OAuth.zig");
 const print = std.debug.print;
 
 // Import TUI and rendering components

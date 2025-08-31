@@ -4,8 +4,8 @@
 //! that integrate with the CLI framework.
 
 const std = @import("std");
-const core = @import("core.zig");
-const oauth = @import("oauth.zig");
+const core = @import("../../network/auth/Core.zig");
+const oauth = @import("../../network/auth/OAuth.zig");
 
 /// Authentication command types
 pub const AuthCommand = enum {

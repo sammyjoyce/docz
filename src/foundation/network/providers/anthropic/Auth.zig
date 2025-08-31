@@ -1,8 +1,8 @@
 //! OAuth helpers for Anthropic client
 
 const std = @import("std");
-const curl = @import("curl_shared");
-const models = @import("models.zig");
+const curl = @import("../../curl.zig");
+const models = @import("Models.zig");
 
 pub const oauthClientId = "9d1c250a-e61b-44d9-88ed-5944d1962f5e";
 pub const oauthAuthorizationUrl = "https://claude.ai/oauth/authorize";

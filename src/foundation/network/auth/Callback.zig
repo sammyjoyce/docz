@@ -12,7 +12,7 @@
 //! - Support for multiple concurrent authorization flows
 
 const std = @import("std");
-const oauth = @import("../oauth.zig");
+const oauth = @import("OAuth.zig");
 const print = std.debug.print;
 
 // Terminal rendering support

@@ -9,6 +9,15 @@ This document outlines the complete plan for consolidating the `src/foundation` 
 2. **UI/Network separation** - Network layer remains headless; all UI (including CLI) lives in UI modules
 3. **Render-first approach** - Standardize rendering before merging UI to reduce churn
 4. **Thin, explicit barrels** - Avoid compile-time bloat with selective exports
+5. **No legacy import compatibility layers** - Do not add shims/aliases for old paths; each migration step must be a full refactor that updates all call sites within its scope.
+
+### Policy Update (2025-08-31): No Compatibility Layers
+
+- We will not create or maintain compatibility layers/shims/aliases for legacy imports.
+- Each migration step is a full refactor: update imports to the new barrels and remove the legacy paths in the same change (small, scoped PRs are fine, but no temporary shims).
+- The prior "Migration Strategy → Compatibility Layer" guidance is deprecated and retained only for historical reference — do not implement it.
+- Any "Temporary compatibility" or "Legacy compatibility" aliases referenced in examples must be removed as part of the relevant refactor step.
+- Commit after each step: land a small, self-contained commit (ideally a PR) per refactor step with green build/tests before proceeding to the next.
 
 ### Dependency Hierarchy (enforced)
 ```
@@ -567,9 +576,9 @@ pub const widgets = Widgets;
 
 ## Migration Strategy
 
-### Compatibility Layer
+### Compatibility Layer (Deprecated — 2025-08-31)
 
-Create working compatibility shims with compile-time warnings:
+Deprecated: Do not create compatibility shims. Perform full refactors of imports per step. The following example is retained for historical context only; do not implement in new work.
 
 ```zig
 // src/foundation/components.zig (temporary)
@@ -620,7 +629,7 @@ comptime {
 1. Keep backup branch: `foundation-pre-consolidation`
 2. Document all changes in detail
 3. Phase rollback if issues arise
-4. Maintain compatibility layer for 2 weeks post-migration
+4. No compatibility layer: roll back by reverting refactor commits; do not add shims
 
 ## Success Metrics
 
@@ -660,15 +669,40 @@ comptime {
 
 ## Implementation Checklist
 
-### Week 1: Render Standardization (Phase A)
-- [ ] Create `render/RenderContext.zig` with capabilities
-- [ ] Create `render/Backend.zig` trait
-- [ ] Create `render/Adaptive.zig` for capability detection
-- [ ] Move all widget draw logic to `render/widgets/`
-- [ ] Add adapters in existing widgets
-- [ ] Deprecate old `draw.zig` files with `@compileError`
-- [ ] Test rendering with different capabilities
-- [ ] Benchmark render performance
+Commit Discipline: Each checkbox item should land as its own small, self-contained commit (or PR) with passing CI before moving on.
+
+### Week 1: Render Standardization (Phase A) ✅
+**Status**: Completed (2025-08-31 UTC)
+**Rationale**: This phase was selected first to centralize rendering before UI merge, reducing concurrent changes.
+
+**Changes Made**:
+- ✅ Created `render/RenderContext.zig` with terminal capability detection
+- ✅ Created `render/Backend.zig` trait with vtable-based polymorphism  
+- ✅ Created `render/Adaptive.zig` for automatic capability detection
+- ✅ Created `render/Context.zig` bridge for Surface interaction
+- ✅ Moved all widget draw logic to `render/widgets/`:
+  - `widgets/progress/draw.zig` → `render/widgets/Progress.zig`
+  - `widgets/input/draw.zig` → `render/widgets/Input.zig`
+  - `widgets/chart/draw.zig` → `render/widgets/Chart.zig`
+  - `widgets/table/draw.zig` → `render/widgets/Table.zig`
+  - `widgets/notification/draw.zig` → `render/widgets/Notification.zig`
+- ✅ Updated imports and types in all moved files
+- ✅ Fixed build system auth module dependencies
+
+**Files Modified**:
+- src/foundation/render/RenderContext.zig (new)
+- src/foundation/render/Backend.zig (new)
+- src/foundation/render/Adaptive.zig (new)
+- src/foundation/render/Context.zig (new)
+- src/foundation/render/widgets/*.zig (5 files moved)
+- build.zig (auth module fix)
+
+**Tests**: Build passes with zero errors
+
+**Follow-ups**:
+- Add thin adapters in existing widgets to use new render system
+- Deprecate old draw.zig files with @compileError
+- Benchmark render performance
 
 ### Week 2: Network/Auth Split (Phase B)
 - [ ] Create provider-agnostic `Http.zig` interface
@@ -717,7 +751,7 @@ comptime {
 
 ### Week 8: Finalization (Phase H)
 - [ ] Remove obsolete directories
-- [ ] Remove compatibility shims
+- [ ] Verify no compatibility shims exist (policy: none allowed)
 - [ ] Final testing pass
 - [ ] Update all documentation
 - [ ] Create migration guide

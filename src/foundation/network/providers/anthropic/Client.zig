@@ -17,11 +17,20 @@
 //! - curl.zig for HTTP operations
 
 const std = @import("std");
-const curl = @import("curl_shared");
-const models = @import("models.zig");
-const oauth = @import("oauth.zig");
-const stream_module = @import("stream.zig");
-const SharedContext = @import("context_shared").SharedContext;
+const curl = @import("../../curl.zig");
+const models = @import("Models.zig");
+const oauth = @import("Auth.zig"); // Needed for token refresh
+const stream_module = @import("Stream.zig");
+
+// Simple SharedContext to avoid circular dependencies
+pub const SharedContext = struct {
+    allocator: std.mem.Allocator,
+    data: *anyopaque,
+
+    pub fn init(allocator: std.mem.Allocator) SharedContext {
+        return .{ .allocator = allocator, .data = undefined };
+    }
+};
 
 // Re-export commonly used types
 pub const Message = models.Message;

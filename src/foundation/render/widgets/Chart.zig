@@ -1,9 +1,11 @@
 const std = @import("std");
-const render = @import("../../render/mod.zig");
-const ui = @import("../../ui/mod.zig");
+const Context = @import("../Context.zig");
+const Surface = @import("../surface.zig");
+
+pub const Rect = struct { x: i32, y: i32, w: u32, h: u32 };
 
 /// Draw a single-line sparkline using block characters based on values 0..1.
-pub fn sparkline(context: *render.Context, rectangle: ui.layout.Rect, values: []const f32) !void {
+pub fn sparkline(context: *Context, rectangle: Rect, values: []const f32) !void {
     if (rectangle.w == 0 or rectangle.h == 0) return;
     if (values.len == 0) return;
     const blocks = [_]u21{ '▁', '▂', '▃', '▄', '▅', '▆', '▇', '█' };
@@ -26,12 +28,9 @@ fn clampZeroOne(value: f32) f32 {
 
 test "drawSparkline renders gradient blocks for values (golden)" {
     const allocator = std.testing.allocator;
-    var surface = try render.MemorySurface.init(allocator, 3, 1);
-    defer {
-        surface.deinit(allocator);
-        allocator.destroy(surface);
-    }
-    var context = render.Context.init(surface, null);
+    var surface = try Surface.MemorySurface.init(allocator, 3, 1);
+    defer surface.deinit(allocator);
+    var context = Context.init(surface, allocator);
     const values = [_]f32{ 0.0, 0.5, 1.0 };
     try sparkline(&context, .{ .x = 0, .y = 0, .w = 3, .h = 1 }, values[0..]);
     const dump = try surface.toString(allocator);

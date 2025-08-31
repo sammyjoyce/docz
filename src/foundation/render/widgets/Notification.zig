@@ -1,9 +1,10 @@
 const std = @import("std");
-const render = @import("../../render/mod.zig");
+const Context = @import("../Context.zig");
+const Surface = @import("../surface.zig");
 
 pub const Severity = enum { info, success, warning, @"error", debug, critical };
 
-pub fn notification(context: *render.Context, rectangle: Rectangle, severity: Severity, title: []const u8, message: []const u8) !void {
+pub fn notification(context: *Context, rectangle: Rectangle, severity: Severity, title: []const u8, message: []const u8) !void {
     // Minimal paint: icon + title on first line; message on second (if fits)
     const icon = switch (severity) {
         .info => "i",
@@ -36,8 +37,9 @@ pub fn notification(context: *render.Context, rectangle: Rectangle, severity: Se
 }
 
 pub const Rectangle = struct { x: i32, y: i32, w: u32, h: u32 };
+pub const Rect = Rectangle;
 
-fn writeClipped(context: *render.Context, rectangle: Rectangle, startX: i32, startY: i32, text: []const u8, length: usize) !void {
+fn writeClipped(context: *Context, rectangle: Rectangle, startX: i32, startY: i32, text: []const u8, length: usize) !void {
     var x = startX;
     var textIndex: usize = 0;
     while (textIndex < length) : (textIndex += 1) {
@@ -51,13 +53,10 @@ fn writeClipped(context: *render.Context, rectangle: Rectangle, startX: i32, sta
 
 test "notification renderer draws icon, title, and message" {
     const allocator = std.testing.allocator;
-    var surface = try render.MemorySurface.init(allocator, 20, 3);
-    defer {
-        surface.deinit(allocator);
-        allocator.destroy(surface);
-    }
+    var surface = try Surface.MemorySurface.init(allocator, 20, 3);
+    defer surface.deinit(allocator);
 
-    var context = render.Context.init(surface, null);
+    var context = Context.init(surface, allocator);
 
     const rectangle = Rectangle{ .x = 0, .y = 0, .w = 20, .h = 3 };
     try notification(&context, rectangle, .warning, "Title", "Message here");

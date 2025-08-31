@@ -3,8 +3,10 @@
 //! for the Anthropic API client.
 
 const std = @import("std");
-const sse = @import("sse_shared");
-const SharedContext = @import("context_shared").SharedContext;
+const sse = @import("../../sse.zig");
+
+// Import SharedContext from Client to avoid circular dependencies
+const SharedContext = @import("Client.zig").SharedContext;
 
 // ============================== Error Definitions ==============================
 

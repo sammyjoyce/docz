@@ -1,14 +1,13 @@
-//! UI-free Authentication Module
+//! UI-free Authentication Service
 //!
 //! This module provides a clean, UI-free interface for authentication operations,
 //! wrapping the existing OAuth and credential management logic.
 
 const std = @import("std");
-const oauth = @import("../oauth/mod.zig");
-const core_auth = @import("mod.zig");
-const curl = @import("../mod.zig").curl;
+const oauth = @import("OAuth.zig");
+const core_auth = @import("Core.zig");
 
-/// Authentication errors
+/// Authentication service errors
 pub const AuthError = error{
     MissingAPIKey,
     InvalidAPIKey,
@@ -23,16 +22,16 @@ pub const AuthError = error{
     RefreshInProgress,
 };
 
-/// Generic authentication credentials
+/// Generic authentication credentials for the service
 pub const Credentials = union(core_auth.AuthMethod) {
-    apiKey: []const u8,
+    api_key: []const u8,
     oauth: oauth.Credentials,
     none: void,
 
     /// Check if credentials are valid/not expired
     pub fn isValid(self: Credentials) bool {
         return switch (self) {
-            .apiKey => |key| key.len > 0,
+            .api_key => |key| key.len > 0,
             .oauth => |creds| !creds.isExpired(),
             .none => false,
         };
@@ -41,7 +40,7 @@ pub const Credentials = union(core_auth.AuthMethod) {
     /// Get the authentication method type
     pub fn getMethod(self: Credentials) core_auth.AuthMethod {
         return switch (self) {
-            .apiKey => .apiKey,
+            .api_key => .api_key,
             .oauth => .oauth,
             .none => .none,
         };
@@ -50,27 +49,27 @@ pub const Credentials = union(core_auth.AuthMethod) {
     /// Free any allocated memory in credentials
     pub fn deinit(self: Credentials, allocator: std.mem.Allocator) void {
         switch (self) {
-            .apiKey => |key| allocator.free(key),
+            .api_key => |key| allocator.free(key),
             .oauth => |creds| creds.deinit(allocator),
             .none => {},
         }
     }
 };
 
-/// Authentication module providing UI-free operations
-pub const Auth = struct {
+/// Authentication service providing UI-free operations
+pub const Service = struct {
     allocator: std.mem.Allocator,
 
-    /// Initialize the authentication module
-    pub fn init(allocator: std.mem.Allocator) Auth {
-        return Auth{
+    /// Initialize the authentication service
+    pub fn init(allocator: std.mem.Allocator) Service {
+        return Service{
             .allocator = allocator,
         };
     }
 
     /// Load credentials from file or environment
     /// First tries OAuth credentials from file, then API key from environment
-    pub fn loadCredentials(self: Auth) AuthError!Credentials {
+    pub fn loadCredentials(self: Service) AuthError!Credentials {
         // Try OAuth first
         const oauthPath = "claude_oauth_creds.json";
         if (self.loadCredentialsFromFile(oauthPath)) |credentials| {
@@ -101,7 +100,7 @@ pub const Auth = struct {
                     }
 
                     const finalKey = if (validLen < apiKey.len) try self.allocator.realloc(sanitizedKey, validLen) else sanitizedKey;
-                    return Credentials{ .apiKey = finalKey };
+                    return Credentials{ .api_key = finalKey };
                 } else {
                     return AuthError.InvalidAPIKey;
                 }
@@ -112,12 +111,12 @@ pub const Auth = struct {
     }
 
     /// Save credentials to file
-    pub fn saveCredentials(self: Auth, creds: Credentials) AuthError!void {
+    pub fn saveCredentials(self: Service, creds: Credentials) AuthError!void {
         switch (creds) {
             .oauth => |oauthCreds| {
                 try oauth.saveCredentials(self.allocator, "claude_oauth_creds.json", oauthCreds);
             },
-            .apiKey => {
+            .api_key => {
                 // API keys are typically stored in environment, not file
                 return AuthError.InvalidFormat;
             },
@@ -126,7 +125,7 @@ pub const Auth = struct {
     }
 
     /// Generate OAuth login URL with PKCE
-    pub fn loginUrl(self: Auth, state: []const u8) AuthError![]u8 {
+    pub fn loginUrl(self: Service, state: []const u8) AuthError![]u8 {
         var pkceParams = try oauth.generatePkceParams(self.allocator);
         defer pkceParams.deinit(self.allocator);
 
@@ -136,10 +135,10 @@ pub const Auth = struct {
 
         const scopes = [_][]const u8{ "org:create_api_key", "user:profile", "user:inference" };
         const provider = oauth.Provider{
-            .clientId = oauth.oauthClientId,
-            .authorizationUrl = oauth.oauthAuthorizationUrl,
-            .tokenUrl = oauth.oauthTokenEndpoint,
-            .redirectUri = oauth.oauthRedirectUri,
+            .clientId = oauth.OAUTH_CLIENT_ID,
+            .authorizationUrl = oauth.OAUTH_AUTHORIZATION_URL,
+            .tokenUrl = oauth.OAUTH_TOKEN_ENDPOINT,
+            .redirectUri = oauth.OAUTH_REDIRECT_URI,
             .scopes = &scopes,
         };
 
@@ -147,7 +146,7 @@ pub const Auth = struct {
     }
 
     /// Exchange authorization code for tokens
-    pub fn exchangeCode(self: Auth, code: []const u8, pkceVerifier: []const u8) AuthError!Credentials {
+    pub fn exchangeCode(self: Service, code: []const u8, pkceVerifier: []const u8) AuthError!Credentials {
         const pkceParams = oauth.Pkce{
             .codeVerifier = try self.allocator.dupe(u8, pkceVerifier),
             .codeChallenge = try self.allocator.dupe(u8, ""), // Not needed for exchange
@@ -160,7 +159,7 @@ pub const Auth = struct {
     }
 
     /// Refresh OAuth tokens
-    pub fn refresh(self: Auth, creds: Credentials) AuthError!Credentials {
+    pub fn refresh(self: Service, creds: Credentials) AuthError!Credentials {
         switch (creds) {
             .oauth => |oauthCreds| {
                 if (oauthCreds.willExpireSoon(300)) {
@@ -185,14 +184,14 @@ pub const Auth = struct {
     }
 
     /// Check authentication status
-    pub fn status(self: Auth, creds: Credentials) AuthError!bool {
+    pub fn status(self: Service, creds: Credentials) AuthError!bool {
         // Suppress unused parameter warning
         _ = &self;
         return creds.isValid();
     }
 
     /// Load credentials from file (internal helper)
-    fn loadCredentialsFromFile(self: Auth, filePath: []const u8) AuthError!Credentials {
+    fn loadCredentialsFromFile(self: Service, filePath: []const u8) AuthError!Credentials {
         const file = std.fs.cwd().openFile(filePath, .{}) catch |err| switch (err) {
             error.FileNotFound => return AuthError.FileNotFound,
             else => return AuthError.FileNotFound,
