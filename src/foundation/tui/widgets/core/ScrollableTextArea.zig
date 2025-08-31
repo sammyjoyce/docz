@@ -525,7 +525,7 @@ pub const ScrollableTextArea = struct {
         // Update line number width
         if (self.config.show_line_numbers) {
             const max_line = self.lines.items.len;
-            self.line_number_width = if (max_line == 0) 1 else std.math.log10(@as(f64, @floatFromInt(max_line))) + 2;
+            self.line_number_width = if (max_line == 0) 1 else @as(usize, @intFromFloat(std.math.log10(@as(f64, @floatFromInt(max_line))))) + 2;
         } else {
             self.line_number_width = 0;
         }

@@ -318,7 +318,7 @@ pub const Sparkline = struct {
         try std.io.getStdOut().writer().writeAll("\n");
     }
 
-    fn calculateMinMax(self: *const Sparkline) struct { min: f64, max: f64 } {
+    pub fn calculateMinMax(self: *const Sparkline) struct { min: f64, max: f64 } {
         if (self.min_value) |min_val| {
             if (self.max_value) |max_val| {
                 return .{ .min = min_val, .max = max_val };
@@ -344,7 +344,7 @@ pub const Sparkline = struct {
         return .{ .min = min_val, .max = max_val };
     }
 
-    fn calculateTrend(self: *const Sparkline) f64 {
+    pub fn calculateTrend(self: *const Sparkline) f64 {
         if (self.data.len < 2) return 0.0;
 
         const first_half = self.data[0..@max(1, self.data.len / 2)];

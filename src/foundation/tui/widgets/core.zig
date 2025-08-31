@@ -1,18 +1,18 @@
 //! Core TUI widgets module
 //! Basic interactive components that work across all terminal types
 
-pub const menu = @import("menu.zig");
-pub const section = @import("section.zig");
-pub const text_input = @import("TextInput.zig");
-pub const tabs = @import("tabs.zig");
-pub const calendar = @import("calendar.zig");
-pub const file_tree = @import("file_tree.zig");
-pub const logo = @import("logo.zig");
-pub const block = @import("block.zig");
-pub const clear = @import("clear.zig");
-pub const scrollbar = @import("scrollbar.zig");
-pub const virtual_list = @import("VirtualList.zig");
-pub const scrollable_text_area = @import("ScrollableTextArea.zig");
+pub const menu = @import("core/menu.zig");
+pub const section = @import("core/section.zig");
+pub const text_input = @import("core/TextInput.zig");
+pub const tabs = @import("core/tabs.zig");
+pub const calendar = @import("core/calendar.zig");
+pub const file_tree = @import("core/file_tree.zig");
+pub const logo = @import("core/logo.zig");
+pub const block = @import("core/block.zig");
+pub const clear = @import("core/clear.zig");
+pub const scrollbar = @import("core/scrollbar.zig");
+pub const virtual_list = @import("core/VirtualList.zig");
+pub const scrollable_text_area = @import("core/ScrollableTextArea.zig");
 
 // Re-export main types
 pub const Menu = menu.Menu;
@@ -74,7 +74,7 @@ pub const SyntaxToken = scrollable_text_area.SyntaxToken;
 pub const SyntaxHighlightFn = scrollable_text_area.SyntaxHighlightFn;
 
 // ScrollableContainer widget exports
-pub const scrollable_container = @import("container.zig");
+pub const scrollable_container = @import("core/container.zig");
 pub const ScrollableContainer = scrollable_container.Container;
 pub const ScrollDirection = scrollable_container.ScrollDirection;
 pub const ScrollBehavior = scrollable_container.ScrollBehavior;

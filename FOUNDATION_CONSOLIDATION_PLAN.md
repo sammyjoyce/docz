@@ -114,6 +114,37 @@ Rules: No `mod.zig`; re‑export via explicit `pub const` only.
 - Complete GraphicsManager implementation when graphics support is added
 - Review and update additional test files for 0.15.1 compatibility
 
+### Test-Specific Compilation Fixes (2025-08-31)
+**Status**: Completed
+**Rationale**: Fix remaining test compilation errors to restore CI gate functionality
+
+**Changes Made**:
+- Fixed JSON Stringify API calls to use new Zig 0.15.1 patterns
+- Made sparkline functions public (calculateTrend, calculateMinMax)
+- Fixed virtual_list struct field inconsistencies between test expectations and implementation
+- Corrected widget import paths (widgets/core.zig now properly imports from core/ subdirectory)
+- Fixed calendar.zig imports to use foundation modules instead of non-existent mod.zig
+- Updated ScrollableTextArea log10 result type casting for usize
+
+**Files Modified**:
+- tests/json_reflection_integration.zig
+- src/foundation/tui/widgets/dashboard/sparkline.zig
+- tests/virtual_list.zig
+- src/foundation/tui/widgets.zig
+- src/foundation/tui/widgets/core.zig
+- src/foundation/tui/widgets/core/calendar.zig
+- src/foundation/tui/widgets/core/ScrollableTextArea.zig
+- src/foundation/tools/Registry.zig
+
+**Build Status**:
+- Errors reduced from 23 → 10
+- Remaining errors are in test files and non-critical Registry/App issues
+
+**Follow-ups**:
+- Complete remaining ArrayList API migrations for full 0.15.1 compliance
+- Fix dashboard_validation.zig theme field initialization
+- Address json_reflection_benchmark field access errors
+
 ## Quick Commands
 - List agents: `zig build list-agents`
 - Validate structure: `zig build validate-agents`
@@ -121,3 +152,27 @@ Rules: No `mod.zig`; re‑export via explicit `pub const` only.
 - Tests: `zig build -Dagent=<name> test`
 - Format: `zig fmt src/**/*.zig build.zig build.zig.zon`
 
+### VirtualList API/Test Alignment
+**Status**: Completed (2025-08-31 14:33:10 UTC)
+**Rationale**: Resolves broad VirtualList test failures by aligning tests and widget API with the refactored Item and event types, removing reliance on deprecated fields and 0.15.1-incompatible containers.
+
+**Changes Made**:
+- Updated tests to remove `Item.id` usage and rely on indices/content
+- Switched VirtualList to unmanaged ArrayList pattern with allocator arguments (0.15.1)
+- Made `updateScrollPhysics`, `updateVisibleRange`, and `ensureVisible` public for testability
+- Replaced deprecated color style fields (`.indexed`) with ANSI variants in defaults and scrollbar
+- Fixed default `viewport` initialization and item height handling
+- Accepted generic mouse event shape in `handleMouse` to match tests
+
+**Files Modified**:
+- tests/virtual_list.zig
+- src/foundation/tui/widgets/core/VirtualList.zig
+
+**Tests**:
+- VirtualList compile errors eliminated; remaining suite still blocked by unrelated 0.15.1 and theme issues
+- Ran `zig build -Dagent=markdown test`: VirtualList-related errors resolved; build halted on other modules
+
+**Follow-ups**:
+- Port remaining 0.15.1 container usages (`std.ArrayList.init` → unmanaged) in Tools Registry, TUI App, ScrollableTextArea
+- Update theme runtime Color to match `term/color.zig` (remove `.types.*`, use `.rgb/.ansi/.ansi256`)
+- Address JSON reflection tests (ArrayList API + benchmark struct fields)

@@ -439,10 +439,11 @@ pub fn createJsonToolWrapper(jsonFunc: JsonFunction) ToolFn {
             const value = StoredFunction.func(allocator, parsed.value) catch |err| return err;
 
             // Serialize result to string
-            var buffer = std.ArrayList(u8){};
-            defer buffer.deinit(allocator);
-            std.json.stringify(value, .{}, buffer.writer()) catch return ToolError.UnexpectedError;
-            return buffer.toOwnedSlice(allocator) catch return ToolError.UnexpectedError;
+            var buffer = std.ArrayList(u8).init(allocator);
+            defer buffer.deinit();
+            var stringify = std.json.Stringify.init(buffer.writer());
+            stringify.write(value) catch return ToolError.UnexpectedError;
+            return buffer.toOwnedSlice() catch return ToolError.UnexpectedError;
         }
     }.wrapper;
 }
@@ -491,10 +492,11 @@ pub fn registerJsonToolWithRequiredFields(
             schemas.validateRequiredFields(fieldMap, Stored.request) catch return ToolError.MissingParameter;
 
             const result = Stored.func(allocator, parsed.value) catch |err| return err;
-            var buffer = std.ArrayList(u8){};
-            defer buffer.deinit(allocator);
-            try std.json.stringify(result, .{}, buffer.writer());
-            const out = buffer.toOwnedSlice(allocator) catch return ToolError.UnexpectedError;
+            var buffer = std.ArrayList(u8).init(allocator);
+            defer buffer.deinit();
+            var stringify = std.json.Stringify.init(buffer.writer());
+            try stringify.write(result);
+            const out = buffer.toOwnedSlice() catch return ToolError.UnexpectedError;
             return out;
         }
     }.run;

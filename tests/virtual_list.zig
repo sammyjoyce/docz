@@ -39,11 +39,11 @@ test "virtualListDataSource" {
     const allocator = testing.allocator;
 
     const items = [_]Item{
-        .{ .content = "Apple", .icon = "🍎" },
-        .{ .content = "Banana", .icon = "🍌" },
-        .{ .content = "Cherry", .icon = "🍒" },
-        .{ .content = "Date", .icon = "🌴" },
-        .{ .content = "Elderberry", .icon = "🫐" },
+        .{ .content = "Apple" },
+        .{ .content = "Banana" },
+        .{ .content = "Cherry" },
+        .{ .content = "Date" },
+        .{ .content = "Elderberry" },
     };
 
     const data_source = ArraySource.init(&items);
@@ -52,7 +52,6 @@ test "virtualListDataSource" {
 
     const item = data_source.getItem(2, allocator).?;
     try testing.expectEqualStrings("Cherry", item.content);
-    try testing.expectEqualStrings("🍒", item.icon.?);
 }
 
 test "virtualListSelectionAndScrollPositionViaKeyboard" {
@@ -179,9 +178,7 @@ test "virtual_list_scroll physics" {
     defer allocator.free(items);
 
     for (items, 0..) |*item, i| {
-        item.* = .{
-            .content = try std.fmt.allocPrint(allocator, "Item {d}", .{i}),
-        };
+        item.* = .{ .content = try std.fmt.allocPrint(allocator, "Item {d}", .{i}) };
     }
     defer for (items) |item| {
         allocator.free(item.content);
@@ -224,9 +221,7 @@ test "virtual_list_ensure visible" {
     defer allocator.free(items);
 
     for (items, 0..) |*item, i| {
-        item.* = .{
-            .content = try std.fmt.allocPrint(allocator, "Item {d}", .{i}),
-        };
+        item.* = .{ .content = try std.fmt.allocPrint(allocator, "Item {d}", .{i}) };
     }
     defer for (items) |item| {
         allocator.free(item.content);
@@ -268,9 +263,7 @@ test "virtualListPerformanceWithLargeDataset" {
     defer allocator.free(items);
 
     for (items, 0..) |*item, i| {
-        item.* = .{
-            .content = try std.fmt.allocPrint(allocator, "Item {d}", .{i}),
-        };
+        item.* = .{ .content = try std.fmt.allocPrint(allocator, "Item {d}", .{i}) };
     }
     defer for (items) |item| {
         allocator.free(item.content);

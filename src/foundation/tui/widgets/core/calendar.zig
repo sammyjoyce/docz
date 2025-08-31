@@ -8,9 +8,7 @@ const term_ansi = term_shared.term.color;
 const TerminalColor = term_shared.term.ansi.color.types.TerminalColor;
 const term_cursor = @import("../../../term.zig").cursor;
 const term_mod = @import("../../../term.zig");
-const shared = @import("../../../mod.zig");
-
-const input_mod = shared.components.input;
+const input_mod = @import("../../core/input.zig");
 const print = std.debug.print;
 
 /// Date representation
@@ -364,7 +362,7 @@ pub const Calendar = struct {
     }
 
     /// Handle keyboard input
-    pub fn handleKeyPress(self: *Calendar, key: input_mod.InputEvent.KeyPressEvent) !bool {
+    pub fn handleKeyPress(self: *Calendar, key: input_mod.events.InputEvent.KeyPressEvent) !bool {
         if (!self.focused or !self.visible) return false;
 
         const current_hover = self.hover_date orelse Date.init(
@@ -498,7 +496,7 @@ pub const Calendar = struct {
     }
 
     /// Handle mouse input
-    pub fn handleMouseEvent(self: *Calendar, x: u16, y: u16, button: input_mod.MouseButton) !bool {
+    pub fn handleMouseEvent(self: *Calendar, x: u16, y: u16, button: input_mod.mouse.MouseButton) !bool {
         if (!self.visible) return false;
 
         // Check if click is within calendar bounds

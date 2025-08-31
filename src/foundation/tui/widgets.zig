@@ -17,7 +17,7 @@ pub fn setLogger(l: Logger) void {
 }
 
 // Core widgets (essential functionality)
-pub const core = @import("core.zig");
+pub const core = @import("widgets/core.zig");
 pub const Core = struct {
     // Consolidate from existing modular components
     pub const Menu = @import("widgets/core/menu.zig").Menu;

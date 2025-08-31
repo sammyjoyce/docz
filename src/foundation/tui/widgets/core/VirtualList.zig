@@ -14,7 +14,7 @@
 
 const std = @import("std");
 const Allocator = std.mem.Allocator;
-const ArrayList = std.ArrayList;
+const ArrayList = std.ArrayListUnmanaged;
 const AutoHashMap = std.AutoHashMap;
 
 const term = @import("../../../term.zig");
@@ -22,7 +22,7 @@ const Style = @import("../../core/style.zig").Style;
 const Bounds = @import("../../core/bounds.zig").Bounds;
 // Widget base type not needed - removed unused import
 const events = @import("../../core/events.zig");
-const Event = events.KeyEvent; // Assuming VirtualList handles key events
+const Key = events.KeyEvent.Key;
 const Renderer = @import("../../core/renderer.zig").Renderer;
 
 /// Data source interface for virtual list
@@ -100,8 +100,8 @@ pub const Config = struct {
     highlight_selection: bool = true,
     /// Selection style
     selection_style: Style = .{
-        .bg = .{ .indexed = 4 }, // blue background
-        .fg = .{ .indexed = 7 }, // white text
+        .bg = .{ .ansi = 4 }, // blue background (ANSI index)
+        .fg = .{ .ansi = 7 }, // white text (ANSI index)
     },
 };
 
@@ -118,7 +118,7 @@ pub const VirtualList = struct {
     /// Selected item index
     selected_index: ?usize = null,
     /// Viewport bounds
-    viewport: Bounds = .{},
+    viewport: Bounds = .{ .x = 0, .y = 0, .width = 0, .height = 0 },
     /// Item cache
     cache: AutoHashMap(usize, Item),
     /// Visible range
@@ -128,7 +128,7 @@ pub const VirtualList = struct {
     last_update: i64 = 0,
     /// Focus state
     focused: bool = false,
-    /// Search query
+    /// Search query (unmanaged for 0.15.1)
     search_query: ArrayList(u8),
     /// Filtered indices (when searching)
     filtered_indices: ?ArrayList(usize) = null,
@@ -143,7 +143,7 @@ pub const VirtualList = struct {
             .config = config,
             .data_source = data_source,
             .cache = AutoHashMap(usize, Item).init(allocator),
-            .search_query = ArrayList(u8).init(allocator),
+            .search_query = .{},
             .allocator = allocator,
             .last_update = std.time.milliTimestamp(),
         };
@@ -152,14 +152,14 @@ pub const VirtualList = struct {
     /// Deinitialize and free resources
     pub fn deinit(self: *Self) void {
         self.cache.deinit();
-        self.search_query.deinit();
+        self.search_query.deinit(self.allocator);
         if (self.filtered_indices) |*indices| {
-            indices.deinit();
+            indices.deinit(self.allocator);
         }
     }
 
     /// Update scroll position with momentum
-    fn updateScrollPhysics(self: *Self) void {
+    pub fn updateScrollPhysics(self: *Self) void {
         if (!self.config.smooth_scrolling) return;
 
         const now = std.time.milliTimestamp();
@@ -205,7 +205,7 @@ pub const VirtualList = struct {
     }
 
     /// Calculate visible range
-    fn updateVisibleRange(self: *Self) void {
+    pub fn updateVisibleRange(self: *Self) void {
         const item_count = self.getItemCount();
         if (item_count == 0) {
             self.visible_start = 0;
@@ -237,7 +237,7 @@ pub const VirtualList = struct {
     }
 
     /// Handle keyboard input
-    pub fn handleKeyboard(self: *Self, key: term.Key) !void {
+    pub fn handleKeyboard(self: *Self, key: Key) !void {
         if (!self.config.keyboard_navigation) return;
 
         const item_count = self.getItemCount();
@@ -299,7 +299,13 @@ pub const VirtualList = struct {
     }
 
     /// Handle mouse input
-    pub fn handleMouse(self: *Self, event: term.MouseEvent) !void {
+    pub fn handleMouse(self: *Self, event: anytype) !void {
+        comptime {
+            const E = @TypeOf(event);
+            if (!@hasField(E, "type") or !@hasField(E, "x") or !@hasField(E, "y")) {
+                @compileError("handleMouse expects a struct with fields: type, x, y");
+            }
+        }
         if (!self.config.mouse_support) return;
 
         switch (event.type) {
@@ -326,7 +332,7 @@ pub const VirtualList = struct {
     }
 
     /// Ensure item is visible
-    fn ensureVisible(self: *Self, index: usize) void {
+    pub fn ensureVisible(self: *Self, index: usize) void {
         const idx_f = @as(f32, @floatFromInt(index));
         const viewport_height = @as(f32, @floatFromInt(self.viewport.height));
 
@@ -342,30 +348,30 @@ pub const VirtualList = struct {
     /// Search items
     pub fn search(self: *Self, query: []const u8) !void {
         self.search_query.clearRetainingCapacity();
-        try self.search_query.appendSlice(query);
+        try self.search_query.appendSlice(self.allocator, query);
 
         if (query.len == 0) {
             if (self.filtered_indices) |*indices| {
-                indices.deinit();
+                indices.deinit(self.allocator);
                 self.filtered_indices = null;
             }
             return;
         }
 
         // Build filtered indices
-        var indices = ArrayList(usize).init(self.allocator);
+        var indices: ArrayList(usize) = .{};
         const total_count = self.data_source.getCount();
 
         for (0..total_count) |i| {
             if (self.data_source.getItem(i, self.allocator)) |item| {
                 if (std.mem.indexOf(u8, item.content, query) != null) {
-                    try indices.append(i);
+                    try indices.append(self.allocator, i);
                 }
             }
         }
 
         if (self.filtered_indices) |*old| {
-            old.deinit();
+            old.deinit(self.allocator);
         }
         self.filtered_indices = indices;
 
@@ -429,7 +435,8 @@ pub const VirtualList = struct {
                 try renderer.renderText(suffix_x, @intCast(y), suffix, style);
             }
 
-            y += item.height orelse self.config.item_height;
+            const row_h: u16 = if (item.height == 0) self.config.item_height else item.height;
+            y += row_h;
         }
 
         // Render scrollbar
@@ -450,14 +457,14 @@ pub const VirtualList = struct {
 
         // Render scrollbar track
         for (0..bounds.height) |i| {
-            try renderer.renderText(scrollbar_x, bounds.y + @as(u16, @intCast(i)), "│", .{ .fg = .{ .indexed = 8 } });
+            try renderer.renderText(scrollbar_x, bounds.y + @as(u16, @intCast(i)), "│", .{ .fg = .{ .ansi = 8 } });
         }
 
         // Render scrollbar thumb
         for (0..scrollbar_height) |i| {
             const y = bounds.y + scrollbar_pos + @as(u16, @intCast(i));
             if (y < bounds.y + bounds.height) {
-                try renderer.renderText(scrollbar_x, y, "█", .{ .fg = .{ .indexed = 7 } });
+                try renderer.renderText(scrollbar_x, y, "█", .{ .fg = .{ .ansi = 7 } });
             }
         }
     }

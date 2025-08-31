@@ -7,17 +7,18 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 
 // Use session and auth modules
-const session = @import("interactive_session");
-const auth = @import("auth_shared");
-const anthropic = @import("anthropic_shared");
-const agent_main = @import("agent_main");
+const session = @import("interactive_session.zig");
+const network = @import("network.zig");
+const auth = network.Auth;
+const anthropic = network.Anthropic;
+const agent_main = @import("agent_main.zig");
 
 /// Base agent structure with common functionality.
 /// Agents can embed this struct or use composition to inherit base functionality.
 pub const Agent = struct {
     allocator: Allocator,
     sessionManager: ?*session.Sessions = null,
-    authClient: ?*auth.AuthClient = null,
+    authClient: ?*auth.Core.AuthClient = null,
     sessionStats: session.SessionStats = .{},
 
     const Self = @This();
@@ -206,8 +207,9 @@ pub const Agent = struct {
             return error.AlreadyInitialized;
         }
 
-        const clientPtr = try self.allocator.create(auth.AuthClient);
-        clientPtr.* = try auth.createClient(self.allocator);
+        const clientPtr = try self.allocator.create(auth.Core.AuthClient);
+        // Use Core.createClient which handles loading credentials properly
+        clientPtr.* = try auth.Core.createClient(self.allocator);
         self.authClient = clientPtr;
         self.sessionStats.authAttempts += 1;
 
@@ -215,7 +217,7 @@ pub const Agent = struct {
     }
 
     /// Check authentication status
-    pub fn authStatus(self: *Self) !auth.AuthMethod {
+    pub fn authStatus(self: *Self) !auth.Core.AuthMethod {
         if (self.authClient) |client| {
             if (client.credentials.isValid()) {
                 return client.credentials.getMethod();
@@ -255,15 +257,15 @@ pub const Agent = struct {
     pub fn setupOauth(self: *Self) !void {
         self.sessionStats.authAttempts += 1;
 
-        const credentials = try auth.oauth.setupOAuth(self.allocator);
+        const credentials = try auth.setupOAuth(self.allocator);
 
         // Create new auth client with the credentials
         if (self.authClient) |clientPtr| {
             clientPtr.deinit();
         }
 
-        const clientPtr = try self.allocator.create(auth.AuthClient);
-        clientPtr.* = auth.AuthClient.init(self.allocator, auth.AuthCredentials{ .oauth = credentials });
+        const clientPtr = try self.allocator.create(auth.Core.AuthClient);
+        clientPtr.* = auth.Core.AuthClient.init(self.allocator, auth.Core.AuthCredentials{ .oauth = credentials });
         self.authClient = clientPtr;
 
         std.log.info("✅ OAuth setup completed successfully!", .{});
@@ -418,21 +420,21 @@ pub const SessionHelpers = struct {
 pub const AuthHelpers = struct {
     /// Check if OAuth is available and valid
     pub fn hasValidOauth(allocator: Allocator) bool {
-        var client = auth.createClient(allocator) catch return false;
+        var client = auth.Core.createClient(allocator) catch return false;
         defer client.deinit();
         return client.isOAuth() and client.credentials.isValid();
     }
 
     /// Check if API key authentication is available
     pub fn hasValidApiKey(allocator: Allocator) bool {
-        var client = auth.createClient(allocator) catch return false;
+        var client = auth.Core.createClient(allocator) catch return false;
         defer client.deinit();
         return client.credentials.getMethod() == .api_key and client.credentials.isValid();
     }
 
     /// Get current authentication status as a formatted string
     pub fn getStatusText(allocator: Allocator) ![]const u8 {
-        var client = try auth.createClient(allocator);
+        var client = try auth.Core.createClient(allocator);
         defer client.deinit();
 
         return switch (client.credentials) {
