@@ -64,10 +64,10 @@ pub fn createUserResponseOld(allocator: std.mem.Allocator, user: User) ![]const 
 ### 2. Use Reflection-Based Serialization
 
 ```zig
-const json_reflection = @import("../shared/json_reflection.zig");
+const JsonReflector = @import("../shared/json_reflection/mod.zig").JsonReflector;
 
 // Generate mapper for your struct
-const UserMapper = json_reflection.generateJsonMapper(UserProfile);
+const UserMapper = JsonReflector.mapper(UserProfile);
 
 // Serialize struct to JSON
 pub fn serializeUser(allocator: std.mem.Allocator, user: UserProfile) ![]const u8 {
@@ -275,7 +275,7 @@ pub const UserResponse = struct {
 };
 
 // 2. Generate mapper (once, at module level)
-const UserMapper = json_reflection.generateJsonMapper(UserResponse);
+const UserMapper = JsonReflector.mapper(UserResponse);
 
 // 3. Use for serialization (simple)
 pub fn createUserResponseNew(allocator: std.mem.Allocator, user: User) ![]const u8 {
@@ -381,7 +381,7 @@ pub fn handleFileOperation(allocator: std.mem.Allocator, request: json_schemas.F
 
 ```zig
 pub fn safeJsonOperation(allocator: std.mem.Allocator, json_str: []const u8) !UserProfile {
-    return json_reflection.generateJsonMapper(UserProfile).fromJson(allocator, json_str) catch |err| {
+    return JsonReflector.mapper(UserProfile).fromJson(allocator, json_str) catch |err| {
         return switch (err) {
             error.MalformedJson => tools_mod.ToolError.MalformedJSON,
             error.InvalidFieldType => tools_mod.ToolError.InvalidInput,
@@ -412,8 +412,8 @@ pub const APIClient = struct {
         error_message: ?[]const u8,
     };
 
-    const LoginMapper = json_reflection.generateJsonMapper(LoginRequest);
-    const ResponseMapper = json_reflection.generateJsonMapper(LoginResponse);
+    const LoginMapper = JsonReflector.mapper(LoginRequest);
+    const ResponseMapper = JsonReflector.mapper(LoginResponse);
 
     pub fn login(self: *APIClient, request: LoginRequest) !LoginResponse {
         // Serialize request
@@ -451,7 +451,7 @@ pub const AppConfig = struct {
     },
 };
 
-const ConfigMapper = json_reflection.generateJsonMapper(AppConfig);
+const ConfigMapper = JsonReflector.mapper(AppConfig);
 
 pub fn loadConfig(allocator: std.mem.Allocator, config_path: []const u8) !AppConfig {
     const config_content = try std.fs.cwd().readFileAlloc(allocator, config_path, 1 << 20);
@@ -489,8 +489,8 @@ pub const ProcessingPipeline = struct {
         processing_time_ms: u64 = 0,
     };
 
-    const DocMapper = json_reflection.generateJsonMapper(Document);
-    const StepMapper = json_reflection.generateJsonMapper(ProcessingStep);
+    const DocMapper = JsonReflector.mapper(Document);
+    const StepMapper = JsonReflector.mapper(ProcessingStep);
 
     pub fn processDocument(self: *ProcessingPipeline, doc_json: []const u8) ![]const u8 {
         // Parse input document
@@ -565,8 +565,8 @@ pub const EventLogger = struct {
         source_system: []const u8,
     };
 
-    const EventMapper = json_reflection.generateJsonMapper(LogEvent);
-    const BatchMapper = json_reflection.generateJsonMapper(LogBatch);
+    const EventMapper = JsonReflector.mapper(LogEvent);
+    const BatchMapper = JsonReflector.mapper(LogBatch);
 
     pub fn logEvent(self: *EventLogger, event: LogEvent) !void {
         const event_json = try EventMapper.toJson(self.allocator, event, .{});

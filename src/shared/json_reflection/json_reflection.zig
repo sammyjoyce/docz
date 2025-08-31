@@ -12,141 +12,144 @@
 
 const std = @import("std");
 
-/// Converts a camelCase field name to snake_case for JSON compatibility.
-/// This is the same function as in term/reflection.zig but specialized for JSON use.
-pub fn fieldNameToJson(fieldName: []const u8) []const u8 {
-    if (fieldName.len == 0) return "";
+/// Entry point for JSON reflection utilities.
+pub const JsonReflector = struct {
+    const Self = @This();
 
-    // Implementation for common cases
-    if (std.mem.eql(u8, fieldName, "userName")) {
-        return "user_name";
-    } else if (std.mem.eql(u8, fieldName, "XMLHttpRequest")) {
-        return "xml_http_request";
-    } else if (std.mem.eql(u8, fieldName, "APIV2")) {
-        return "api_v2";
-    } else if (std.mem.eql(u8, fieldName, "createdAt")) {
-        return "created_at";
+    /// Converts a camelCase field name to snake_case for JSON compatibility.
+    /// This is the same function as in term/reflection.zig but specialized for JSON use.
+    pub fn fieldNameToJson(fieldName: []const u8) []const u8 {
+        if (fieldName.len == 0) return "";
+
+        // Implementation for common cases
+        if (std.mem.eql(u8, fieldName, "userName")) {
+            return "user_name";
+        } else if (std.mem.eql(u8, fieldName, "XMLHttpRequest")) {
+            return "xml_http_request";
+        } else if (std.mem.eql(u8, fieldName, "APIV2")) {
+            return "api_v2";
+        } else if (std.mem.eql(u8, fieldName, "createdAt")) {
+            return "created_at";
+        }
+
+        // For other cases, return as-is for now
+        return fieldName;
     }
 
-    // For other cases, return as-is for now
-    return fieldName;
-}
+    /// Generates a JSON deserializer that maps snake_case JSON fields to PascalCase struct fields.
+    /// This eliminates manual field extraction and provides compile-time type safety.
+    pub fn deserializer(comptime T: type) type {
+        return struct {
+            pub const Error = error{MalformedJson};
 
-/// Generates a JSON deserializer that maps snake_case JSON fields to PascalCase struct fields.
-/// This eliminates manual field extraction and provides compile-time type safety.
-pub fn generateJsonDeserializer(comptime T: type) type {
-    return struct {
-        pub const Error = error{MalformedJson};
+            /// Deserializes a JSON value into the target struct type.
+            /// This function handles the conversion from JSON to the strongly-typed struct.
+            ///
+            /// Parameters:
+            ///   allocator: Memory allocator for string allocation during parsing
+            ///   jsonValue: JSON value to deserialize
+            ///
+            /// Returns: Parsed struct with deinit() method for cleanup
+            /// Errors: Error if deserialization fails
+            pub fn deserialize(allocator: std.mem.Allocator, jsonValue: std.json.Value) Error!std.json.Parsed(T) {
+                const parsed = std.json.parseFromValue(T, allocator, jsonValue, .{}) catch {
+                    return Error.MalformedJson;
+                };
+                return parsed;
+            }
 
-        /// Deserializes a JSON value into the target struct type.
-        /// This function handles the conversion from JSON to the strongly-typed struct.
-        ///
-        /// Parameters:
-        ///   allocator: Memory allocator for string allocation during parsing
-        ///   jsonValue: JSON value to deserialize
-        ///
-        /// Returns: Parsed struct with deinit() method for cleanup
-        /// Errors: Error if deserialization fails
-        pub fn deserialize(allocator: std.mem.Allocator, jsonValue: std.json.Value) Error!std.json.Parsed(T) {
-            const parsed = std.json.parseFromValue(T, allocator, jsonValue, .{}) catch |err| {
-                _ = err;
-                return Error.MalformedJson;
-            };
-            return parsed;
-        }
+            /// Validates that a JSON object contains all required fields for the struct.
+            /// This is useful for providing better error messages before deserialization.
+            ///
+            /// Parameters:
+            ///   jsonObj: JSON object to validate
+            ///
+            /// Returns: true if valid, false otherwise
+            pub fn validateJsonObject(jsonObj: std.json.ObjectMap) bool {
+                inline for (std.meta.fields(T)) |field| {
+                    const jsonFieldName = Self.fieldNameToJson(field.name);
 
-        /// Validates that a JSON object contains all required fields for the struct.
-        /// This is useful for providing better error messages before deserialization.
-        ///
-        /// Parameters:
-        ///   jsonObj: JSON object to validate
-        ///
-        /// Returns: true if valid, false otherwise
-        pub fn validateJsonObject(jsonObj: std.json.ObjectMap) bool {
-            inline for (std.meta.fields(T)) |field| {
-                const jsonFieldName = fieldNameToJson(field.name);
-
-                // Check if required field exists
-                if (!field.is_comptime and field.default_value == null) {
-                    if (jsonObj.get(jsonFieldName) == null) {
-                        return false;
+                    // Check if required field exists
+                    if (!field.is_comptime and field.default_value == null) {
+                        if (jsonObj.get(jsonFieldName) == null) {
+                            return false;
+                        }
                     }
                 }
+                return true;
             }
-            return true;
-        }
-    };
-}
+        };
+    }
 
-/// Generates a JSON serializer that maps PascalCase struct fields to snake_case JSON fields.
-/// This eliminates manual ObjectMap building and provides compile-time type safety.
-pub fn generateJsonSerializer(comptime T: type) type {
-    return struct {
-        pub const Error = error{SerializationFailed};
+    /// Generates a JSON serializer that maps PascalCase struct fields to snake_case JSON fields.
+    /// This eliminates manual ObjectMap building and provides compile-time type safety.
+    pub fn serializer(comptime T: type) type {
+        return struct {
+            pub const Error = error{SerializationFailed};
 
-        /// Serializes a struct instance to a JSON string.
-        /// Automatically maps PascalCase struct fields to snake_case JSON fields.
-        ///
-        /// Parameters:
-        ///   allocator: Memory allocator for JSON string allocation
-        ///   instance: Struct instance to serialize
-        ///   options: JSON serialization options
-        ///
-        /// Returns: JSON string representation
-        /// Errors: Error if serialization fails
-        pub fn serialize(allocator: std.mem.Allocator, instance: T, options: std.json.StringifyOptions) Error![]const u8 {
-            const jsonString = std.json.stringifyAlloc(allocator, instance, options) catch |err| {
-                std.log.warn("JSON serialization failed: {any}", .{err});
-                return Error.SerializationFailed;
-            };
-            return jsonString;
-        }
+            /// Serializes a struct instance to a JSON string.
+            /// Automatically maps PascalCase struct fields to snake_case JSON fields.
+            ///
+            /// Parameters:
+            ///   allocator: Memory allocator for JSON string allocation
+            ///   instance: Struct instance to serialize
+            ///   options: JSON serialization options
+            ///
+            /// Returns: JSON string representation
+            /// Errors: Error if serialization fails
+            pub fn serialize(allocator: std.mem.Allocator, instance: T, options: std.json.Stringify.Options) Error![]const u8 {
+                const jsonString = std.json.Stringify.valueAlloc(allocator, instance, options) catch |err| {
+                    std.log.warn("JSON serialization failed: {any}", .{err});
+                    return Error.SerializationFailed;
+                };
+                return jsonString;
+            }
 
-        /// Serializes a struct instance to a JSON value.
-        /// This is useful when you need to build complex JSON responses.
-        ///
-        /// Parameters:
-        ///   allocator: Memory allocator for JSON value allocation
-        ///   instance: Struct instance to serialize
-        ///
-        /// Returns: JSON value representation
-        /// Errors: Error if serialization fails
-        pub fn serializeToValue(allocator: std.mem.Allocator, instance: T) Error!std.json.Value {
-            const jsonString = try serialize(allocator, instance, .{});
-            defer allocator.free(jsonString);
-            const parsed = std.json.parseFromSlice(std.json.Value, allocator, jsonString, .{}) catch |err| {
-                _ = err;
-                return Error.SerializationFailed;
-            };
-            defer parsed.deinit();
-            return parsed.value;
-        }
-    };
-}
+            /// Serializes a struct instance to a JSON value.
+            /// This is useful when you need to build complex JSON responses.
+            ///
+            /// Parameters:
+            ///   allocator: Memory allocator for JSON value allocation
+            ///   instance: Struct instance to serialize
+            ///
+            /// Returns: JSON value representation
+            /// Errors: Error if serialization fails
+            pub fn serializeToValue(allocator: std.mem.Allocator, instance: T) Error!std.json.Value {
+                const jsonString = try serialize(allocator, instance, .{});
+                defer allocator.free(jsonString);
+                const parsed = std.json.parseFromSlice(std.json.Value, allocator, jsonString, .{}) catch {
+                    return Error.SerializationFailed;
+                };
+                defer parsed.deinit();
+                return parsed.value;
+            }
+        };
+    }
 
-/// Convenience function that generates both serializer and deserializer for a type.
-/// This is the most common usage pattern.
-pub fn generateJsonMapper(comptime T: type) type {
-    return struct {
-        pub const Deserializer = generateJsonDeserializer(T);
-        pub const Serializer = generateJsonSerializer(T);
+    /// Convenience function that generates both serializer and deserializer for a type.
+    /// This is the most common usage pattern.
+    pub fn mapper(comptime T: type) type {
+        return struct {
+            pub const Deserializer = Self.deserializer(T);
+            pub const Serializer = Self.serializer(T);
 
-        /// Convenience method to deserialize JSON to struct
-        pub fn fromJson(allocator: std.mem.Allocator, jsonValue: std.json.Value) Deserializer.Error!std.json.Parsed(T) {
-            return Deserializer.deserialize(allocator, jsonValue);
-        }
+            /// Convenience method to deserialize JSON to struct
+            pub fn fromJson(allocator: std.mem.Allocator, jsonValue: std.json.Value) Deserializer.Error!std.json.Parsed(T) {
+                return Deserializer.deserialize(allocator, jsonValue);
+            }
 
-        /// Convenience method to serialize struct to JSON string
-        pub fn toJson(allocator: std.mem.Allocator, instance: T, options: std.json.StringifyOptions) Serializer.Error![]const u8 {
-            return Serializer.serialize(allocator, instance, options);
-        }
+            /// Convenience method to serialize struct to JSON string
+            pub fn toJson(allocator: std.mem.Allocator, instance: T, options: std.json.Stringify.Options) Serializer.Error![]const u8 {
+                return Serializer.serialize(allocator, instance, options);
+            }
 
-        /// Convenience method to serialize struct to JSON value
-        pub fn toJsonValue(allocator: std.mem.Allocator, instance: T) Serializer.Error!std.json.Value {
-            return Serializer.serializeToValue(allocator, instance);
-        }
-    };
-}
+            /// Convenience method to serialize struct to JSON value
+            pub fn toJsonValue(allocator: std.mem.Allocator, instance: T) Serializer.Error!std.json.Value {
+                return Serializer.serializeToValue(allocator, instance);
+            }
+        };
+    }
+};
 
 // ============================================================================
 // EXAMPLE USAGE PATTERNS
@@ -201,11 +204,11 @@ pub const ComplexExample = struct {
 // ============================================================================
 
 test "fieldNameToJson conversion" {
-    try std.testing.expectEqualStrings("message", fieldNameToJson("message"));
-    try std.testing.expectEqualStrings("user_name", fieldNameToJson("userName"));
-    try std.testing.expectEqualStrings("xml_http_request", fieldNameToJson("XMLHttpRequest"));
-    try std.testing.expectEqualStrings("api_v2", fieldNameToJson("APIV2"));
-    try std.testing.expectEqualStrings("created_at", fieldNameToJson("createdAt"));
+    try std.testing.expectEqualStrings("message", JsonReflector.fieldNameToJson("message"));
+    try std.testing.expectEqualStrings("user_name", JsonReflector.fieldNameToJson("userName"));
+    try std.testing.expectEqualStrings("xml_http_request", JsonReflector.fieldNameToJson("XMLHttpRequest"));
+    try std.testing.expectEqualStrings("api_v2", JsonReflector.fieldNameToJson("APIV2"));
+    try std.testing.expectEqualStrings("created_at", JsonReflector.fieldNameToJson("createdAt"));
 }
 
 test "Example deserialization" {
@@ -227,7 +230,7 @@ test "Example deserialization" {
     defer jsonValue.deinit();
 
     // Test deserialization
-    const Mapper = generateJsonMapper(Example);
+    const Mapper = JsonReflector.mapper(Example);
     const result = try Mapper.fromJson(allocator, jsonValue.value);
     defer result.deinit();
 
@@ -252,7 +255,7 @@ test "Example serialization" {
     };
 
     // Test serialization
-    const Mapper = generateJsonMapper(Example);
+    const Mapper = JsonReflector.mapper(Example);
     const jsonString = try Mapper.toJson(allocator, instance, .{ .whitespace = .indent_2 });
     defer allocator.free(jsonString);
 

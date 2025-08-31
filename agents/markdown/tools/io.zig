@@ -12,7 +12,7 @@
 //! - Compile-time guarantees that required fields are present
 //!
 //! ### 2. Automatic JSON Serialization
-//! - Uses `json_reflection.generateJsonMapper()` for automatic field mapping
+//! - Uses `JsonReflector.mapper()` for automatic field mapping
 //! - Automatic conversion between PascalCase structs and snake_case JSON
 //! - No more manual `put()` calls or field extraction errors
 //!
@@ -61,7 +61,7 @@
 
 const std = @import("std");
 const json = std.json;
-const json_reflection = @import("../../../src/shared/json_reflection/mod.zig");
+const JsonReflector = @import("json_reflection").JsonReflector;
 const fs = @import("../lib/fs.zig");
 const text = @import("../lib/text.zig");
 const link = @import("../lib/link.zig");
@@ -361,7 +361,7 @@ pub fn execute(allocator: std.mem.Allocator, params: json.Value) !json.Value {
             .error_message = @errorName(err),
         };
 
-        const Mapper = json_reflection.generateJsonMapper(BaseResponse);
+        const Mapper = JsonReflector.mapper(BaseResponse);
         return Mapper.toJsonValue(allocator, error_response);
     };
 }
@@ -394,7 +394,7 @@ fn executeInternal(allocator: std.mem.Allocator, params: json.Value) !json.Value
 /// - Clear separation of concerns
 fn readFile(allocator: std.mem.Allocator, params: json.Value) !json.Value {
     // Parse request using json_reflection - eliminates manual field extraction
-    const RequestMapper = json_reflection.generateJsonMapper(ReadFileRequest);
+    const RequestMapper = JsonReflector.mapper(ReadFileRequest);
     const request = try RequestMapper.fromJson(allocator, params);
     defer request.deinit();
 
@@ -421,7 +421,7 @@ fn readFile(allocator: std.mem.Allocator, params: json.Value) !json.Value {
     }
 
     // Serialize response using json_reflection - automatic field mapping
-    const ResponseMapper = json_reflection.generateJsonMapper(ReadFileResponse);
+    const ResponseMapper = JsonReflector.mapper(ReadFileResponse);
     return ResponseMapper.toJsonValue(allocator, response);
 }
 
@@ -434,7 +434,7 @@ fn readFile(allocator: std.mem.Allocator, params: json.Value) !json.Value {
 /// - Better error handling for missing files
 fn readMultiple(allocator: std.mem.Allocator, params: json.Value) !json.Value {
     // Parse request using json_reflection
-    const RequestMapper = json_reflection.generateJsonMapper(ReadMultipleRequest);
+    const RequestMapper = JsonReflector.mapper(ReadMultipleRequest);
     const request = try RequestMapper.fromJson(allocator, params);
     defer request.deinit();
 
@@ -489,7 +489,7 @@ fn readMultiple(allocator: std.mem.Allocator, params: json.Value) !json.Value {
     };
 
     // Serialize response using json_reflection
-    const ResponseMapper = json_reflection.generateJsonMapper(ReadMultipleResponse);
+    const ResponseMapper = JsonReflector.mapper(ReadMultipleResponse);
     return try ResponseMapper.toJsonValue(allocator, response);
 }
 
@@ -502,7 +502,7 @@ fn readMultiple(allocator: std.mem.Allocator, params: json.Value) !json.Value {
 /// - Better error handling for invalid section identifiers
 fn readSection(allocator: std.mem.Allocator, params: json.Value) !json.Value {
     // Parse request using json_reflection
-    const RequestMapper = json_reflection.generateJsonMapper(ReadSectionRequest);
+    const RequestMapper = JsonReflector.mapper(ReadSectionRequest);
     const request = try RequestMapper.fromJson(allocator, params);
     defer request.deinit();
 
@@ -535,7 +535,7 @@ fn readSection(allocator: std.mem.Allocator, params: json.Value) !json.Value {
     };
 
     // Serialize response using json_reflection
-    const ResponseMapper = json_reflection.generateJsonMapper(ReadSectionResponse);
+    const ResponseMapper = JsonReflector.mapper(ReadSectionResponse);
     return try ResponseMapper.toJsonValue(allocator, response);
 }
 
@@ -548,7 +548,7 @@ fn readSection(allocator: std.mem.Allocator, params: json.Value) !json.Value {
 /// - More maintainable code structure
 fn searchContent(allocator: std.mem.Allocator, params: json.Value) !json.Value {
     // Parse request using json_reflection
-    const RequestMapper = json_reflection.generateJsonMapper(SearchContentRequest);
+    const RequestMapper = JsonReflector.mapper(SearchContentRequest);
     const request = try RequestMapper.fromJson(allocator, params);
     defer request.deinit();
 
@@ -628,7 +628,7 @@ fn searchContent(allocator: std.mem.Allocator, params: json.Value) !json.Value {
     };
 
     // Serialize response using json_reflection
-    const ResponseMapper = json_reflection.generateJsonMapper(SearchContentResponse);
+    const ResponseMapper = JsonReflector.mapper(SearchContentResponse);
     return try ResponseMapper.toJsonValue(allocator, response);
 }
 
@@ -640,7 +640,7 @@ fn searchContent(allocator: std.mem.Allocator, params: json.Value) !json.Value {
 /// - Consistent error handling
 fn searchPattern(allocator: std.mem.Allocator, params: json.Value) !json.Value {
     // Parse original request
-    const RequestMapper = json_reflection.generateJsonMapper(SearchContentRequest);
+    const RequestMapper = JsonReflector.mapper(SearchContentRequest);
     const original_request = try RequestMapper.fromJson(allocator, params);
     defer original_request.deinit();
 
@@ -659,7 +659,7 @@ fn searchPattern(allocator: std.mem.Allocator, params: json.Value) !json.Value {
     };
 
     // Serialize modified request and delegate to searchContent
-    const ModifiedMapper = json_reflection.generateJsonMapper(SearchContentRequest);
+    const ModifiedMapper = JsonReflector.mapper(SearchContentRequest);
     const modified_params = try ModifiedMapper.toJsonValue(allocator, modified_request);
     defer modified_params.deinit();
 
@@ -675,7 +675,7 @@ fn searchPattern(allocator: std.mem.Allocator, params: json.Value) !json.Value {
 /// - Better memory management for results
 fn findReferences(allocator: std.mem.Allocator, params: json.Value) !json.Value {
     // Parse request using json_reflection
-    const RequestMapper = json_reflection.generateJsonMapper(FindReferencesRequest);
+    const RequestMapper = JsonReflector.mapper(FindReferencesRequest);
     const request = try RequestMapper.fromJson(allocator, params);
     defer request.deinit();
 
@@ -732,7 +732,7 @@ fn findReferences(allocator: std.mem.Allocator, params: json.Value) !json.Value 
     };
 
     // Serialize response using json_reflection
-    const ResponseMapper = json_reflection.generateJsonMapper(FindReferencesResponse);
+    const ResponseMapper = JsonReflector.mapper(FindReferencesResponse);
     return try ResponseMapper.toJsonValue(allocator, response);
 }
 
@@ -745,7 +745,7 @@ fn findReferences(allocator: std.mem.Allocator, params: json.Value) !json.Value 
 /// - Better error handling for inaccessible files
 fn listDirectory(allocator: std.mem.Allocator, params: json.Value) !json.Value {
     // Parse request using json_reflection
-    const RequestMapper = json_reflection.generateJsonMapper(ListDirectoryRequest);
+    const RequestMapper = JsonReflector.mapper(ListDirectoryRequest);
     const request = try RequestMapper.fromJson(allocator, params);
     defer request.deinit();
 
@@ -806,7 +806,7 @@ fn listDirectory(allocator: std.mem.Allocator, params: json.Value) !json.Value {
     };
 
     // Serialize response using json_reflection
-    const ResponseMapper = json_reflection.generateJsonMapper(ListDirectoryResponse);
+    const ResponseMapper = JsonReflector.mapper(ListDirectoryResponse);
     return try ResponseMapper.toJsonValue(allocator, response);
 }
 
@@ -819,7 +819,7 @@ fn listDirectory(allocator: std.mem.Allocator, params: json.Value) !json.Value {
 /// - Better memory management
 fn findFiles(allocator: std.mem.Allocator, params: json.Value) !json.Value {
     // Parse request using json_reflection
-    const RequestMapper = json_reflection.generateJsonMapper(FindFilesRequest);
+    const RequestMapper = JsonReflector.mapper(FindFilesRequest);
     const request = try RequestMapper.fromJson(allocator, params);
     defer request.deinit();
 
@@ -852,7 +852,7 @@ fn findFiles(allocator: std.mem.Allocator, params: json.Value) !json.Value {
     };
 
     // Serialize response using json_reflection
-    const ResponseMapper = json_reflection.generateJsonMapper(FindFilesResponse);
+    const ResponseMapper = JsonReflector.mapper(FindFilesResponse);
     return try ResponseMapper.toJsonValue(allocator, response);
 }
 
@@ -865,7 +865,7 @@ fn findFiles(allocator: std.mem.Allocator, params: json.Value) !json.Value {
 /// - Consistent response structure
 fn getWorkspaceTree(allocator: std.mem.Allocator, params: json.Value) !json.Value {
     // Parse request using json_reflection
-    const RequestMapper = json_reflection.generateJsonMapper(GetWorkspaceTreeRequest);
+    const RequestMapper = JsonReflector.mapper(GetWorkspaceTreeRequest);
     const request = try RequestMapper.fromJson(allocator, params);
     defer request.deinit();
 
@@ -880,7 +880,7 @@ fn getWorkspaceTree(allocator: std.mem.Allocator, params: json.Value) !json.Valu
     };
 
     // Serialize response using json_reflection
-    const ResponseMapper = json_reflection.generateJsonMapper(GetWorkspaceTreeResponse);
+    const ResponseMapper = JsonReflector.mapper(GetWorkspaceTreeResponse);
     return try ResponseMapper.toJsonValue(allocator, response);
 }
 
