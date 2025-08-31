@@ -150,30 +150,67 @@ pub const Registry = struct {
     }
 
     pub fn deinit(self: *Registry) void {
+        // Free keys from the tool map
+        var it = self.map.iterator();
+        while (it.next()) |entry| {
+            self.allocator.free(entry.key_ptr.*);
+        }
         self.map.deinit();
+
+        // Free metadata strings and keys
+        var it2 = self.metadata.iterator();
+        while (it2.next()) |entry| {
+            // free key string
+            self.allocator.free(entry.key_ptr.*);
+            // Free value-owned strings
+            self.allocator.free(entry.value_ptr.name);
+            self.allocator.free(entry.value_ptr.description);
+            self.allocator.free(entry.value_ptr.category);
+            self.allocator.free(entry.value_ptr.version);
+            self.allocator.free(entry.value_ptr.agent);
+        }
         self.metadata.deinit();
     }
 
     /// Register a tool with basic information
     pub fn register(self: *Registry, name: []const u8, func: ToolFn) !void {
-        const ownedName = try self.allocator.dupe(u8, name);
-        errdefer self.allocator.free(ownedName);
-        try self.map.put(ownedName, func);
+        // Keep map key separate from metadata storage to simplify cleanup
+        const map_key = try self.allocator.dupe(u8, name);
+        errdefer self.allocator.free(map_key);
+        try self.map.put(map_key, func);
 
-        // Create default metadata
+        // Create default metadata with independent string ownership
+        const meta_name = try self.allocator.dupe(u8, name);
+        errdefer self.allocator.free(meta_name);
+        const meta_key = try self.allocator.dupe(u8, name);
+        errdefer self.allocator.free(meta_key);
+
+        const desc = try self.allocator.dupe(u8, "Tool function");
+        errdefer self.allocator.free(desc);
+        const category = try self.allocator.dupe(u8, "general");
+        errdefer self.allocator.free(category);
+        const version = try self.allocator.dupe(u8, "1.0");
+        errdefer self.allocator.free(version);
+        const agent = try self.allocator.dupe(u8, "shared");
+        errdefer self.allocator.free(agent);
+
         const meta = Tool{
-            .name = ownedName,
-            .description = "Tool function",
+            .name = meta_name,
+            .description = desc,
             .func = func,
-            .category = "general",
-            .version = "1.0",
-            .agent = "shared",
+            .category = category,
+            .version = version,
+            .agent = agent,
         };
-        try self.metadata.put(ownedName, meta);
+        try self.metadata.put(meta_key, meta);
     }
 
     /// Register a tool with full metadata
     pub fn registerWithMeta(self: *Registry, meta: Tool) !void {
+        // Independent ownership for key and value fields to avoid double-free
+        const key_name = try self.allocator.dupe(u8, meta.name);
+        errdefer self.allocator.free(key_name);
+
         const ownedName = try self.allocator.dupe(u8, meta.name);
         errdefer self.allocator.free(ownedName);
 
@@ -199,7 +236,7 @@ pub const Registry = struct {
             .version = ownedVersion,
             .agent = ownedAgent,
         };
-        try self.metadata.put(ownedName, ownedMeta);
+        try self.metadata.put(key_name, ownedMeta);
     }
 
     /// Register multiple tools from a module using comptime reflection

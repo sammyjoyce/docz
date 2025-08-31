@@ -270,7 +270,7 @@ pub const Validator = struct {
             return std.math.pow(f32, (value + 0.055) / 1.055, 2.4);
         }
     }
-    
+
     fn rgbToHsl(c: RGB) struct { h: f32, s: f32, l: f32 } {
         const rf: f32 = @as(f32, @floatFromInt(c.r)) / 255.0;
         const gf: f32 = @as(f32, @floatFromInt(c.g)) / 255.0;

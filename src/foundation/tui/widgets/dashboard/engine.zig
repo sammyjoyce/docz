@@ -918,11 +918,11 @@ pub const PerformanceOptimizer = struct {
     frame_budget: FrameBudget,
     render_scheduler: RenderScheduler,
 
-        pub const FrameBudget = struct {
-            target_fps: u32 = 60,
-            max_frame_time_ns: u64,
-            frame_times: *ringBuffer(u64),
-            quality_level: f32 = 1.0,
+    pub const FrameBudget = struct {
+        target_fps: u32 = 60,
+        max_frame_time_ns: u64,
+        frame_times: *ringBuffer(u64),
+        quality_level: f32 = 1.0,
 
         pub fn init(allocator: std.mem.Allocator, target_fps: u32) !FrameBudget {
             return .{

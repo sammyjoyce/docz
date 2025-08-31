@@ -197,21 +197,21 @@ fn ansi256ToRgb(idx: u8) Rgb {
 
 fn ansi16ToRgb(idx: u8) Rgb {
     const table = [_]Rgb{
-        .{ .r = 0, .g = 0, .b = 0 },       // 0 black
-        .{ .r = 205, .g = 0, .b = 0 },     // 1 red
-        .{ .r = 0, .g = 205, .b = 0 },     // 2 green
-        .{ .r = 205, .g = 205, .b = 0 },   // 3 yellow
-        .{ .r = 0, .g = 0, .b = 238 },     // 4 blue
-        .{ .r = 205, .g = 0, .b = 205 },   // 5 magenta
-        .{ .r = 0, .g = 205, .b = 205 },   // 6 cyan
+        .{ .r = 0, .g = 0, .b = 0 }, // 0 black
+        .{ .r = 205, .g = 0, .b = 0 }, // 1 red
+        .{ .r = 0, .g = 205, .b = 0 }, // 2 green
+        .{ .r = 205, .g = 205, .b = 0 }, // 3 yellow
+        .{ .r = 0, .g = 0, .b = 238 }, // 4 blue
+        .{ .r = 205, .g = 0, .b = 205 }, // 5 magenta
+        .{ .r = 0, .g = 205, .b = 205 }, // 6 cyan
         .{ .r = 229, .g = 229, .b = 229 }, // 7 white
         .{ .r = 127, .g = 127, .b = 127 }, // 8 bright black
-        .{ .r = 255, .g = 0, .b = 0 },     // 9 bright red
-        .{ .r = 0, .g = 255, .b = 0 },     // 10 bright green
-        .{ .r = 255, .g = 255, .b = 0 },   // 11 bright yellow
-        .{ .r = 92, .g = 92, .b = 255 },   // 12 bright blue
-        .{ .r = 255, .g = 0, .b = 255 },   // 13 bright magenta
-        .{ .r = 0, .g = 255, .b = 255 },   // 14 bright cyan
+        .{ .r = 255, .g = 0, .b = 0 }, // 9 bright red
+        .{ .r = 0, .g = 255, .b = 0 }, // 10 bright green
+        .{ .r = 255, .g = 255, .b = 0 }, // 11 bright yellow
+        .{ .r = 92, .g = 92, .b = 255 }, // 12 bright blue
+        .{ .r = 255, .g = 0, .b = 255 }, // 13 bright magenta
+        .{ .r = 0, .g = 255, .b = 255 }, // 14 bright cyan
         .{ .r = 255, .g = 255, .b = 255 }, // 15 bright white
     };
     return if (idx < table.len) table[idx] else table[0];
@@ -256,17 +256,29 @@ fn hslToRgb(hsl: Hsl) Rgb {
     var gf: f32 = 0.0;
     var bf: f32 = 0.0;
     if (hprime < 1.0) {
-        rf = c; gf = x; bf = 0.0;
+        rf = c;
+        gf = x;
+        bf = 0.0;
     } else if (hprime < 2.0) {
-        rf = x; gf = c; bf = 0.0;
+        rf = x;
+        gf = c;
+        bf = 0.0;
     } else if (hprime < 3.0) {
-        rf = 0.0; gf = c; bf = x;
+        rf = 0.0;
+        gf = c;
+        bf = x;
     } else if (hprime < 4.0) {
-        rf = 0.0; gf = x; bf = c;
+        rf = 0.0;
+        gf = x;
+        bf = c;
     } else if (hprime < 5.0) {
-        rf = x; gf = 0.0; bf = c;
+        rf = x;
+        gf = 0.0;
+        bf = c;
     } else {
-        rf = c; gf = 0.0; bf = x;
+        rf = c;
+        gf = 0.0;
+        bf = x;
     }
     const m = hsl.l - c / 2.0;
     const r = @as(u8, @intFromFloat(@round((rf + m) * 255.0)));

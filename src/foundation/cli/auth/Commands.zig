@@ -34,7 +34,7 @@ pub fn runAuthCommand(allocator: std.mem.Allocator, command: AuthCommand) !void 
 pub fn handleLoginCommand(allocator: std.mem.Allocator) !void {
     std.log.info("Starting OAuth authentication setup...", .{});
     // Prefer the local callback server flow for seamless login (no manual code paste)
-    _ = try oauth.completeOAuthFlow(allocator);
+    try oauth.completeOAuthFlow(allocator);
 }
 
 /// Handle status command

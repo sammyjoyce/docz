@@ -292,17 +292,29 @@ fn hslToRgb(hsl: ThemeColor.Hsl) RGB {
     var gf: f32 = 0.0;
     var bf: f32 = 0.0;
     if (hprime < 1.0) {
-        rf = c; gf = x; bf = 0.0;
+        rf = c;
+        gf = x;
+        bf = 0.0;
     } else if (hprime < 2.0) {
-        rf = x; gf = c; bf = 0.0;
+        rf = x;
+        gf = c;
+        bf = 0.0;
     } else if (hprime < 3.0) {
-        rf = 0.0; gf = c; bf = x;
+        rf = 0.0;
+        gf = c;
+        bf = x;
     } else if (hprime < 4.0) {
-        rf = 0.0; gf = x; bf = c;
+        rf = 0.0;
+        gf = x;
+        bf = c;
     } else if (hprime < 5.0) {
-        rf = x; gf = 0.0; bf = c;
+        rf = x;
+        gf = 0.0;
+        bf = c;
     } else {
-        rf = c; gf = 0.0; bf = x;
+        rf = c;
+        gf = 0.0;
+        bf = x;
     }
     const m = hsl.l - c / 2.0;
     const r = @as(u8, @intFromFloat(@round((rf + m) * 255.0)));

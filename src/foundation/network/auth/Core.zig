@@ -132,20 +132,7 @@ pub const AuthClient = struct {
 
 /// Create an authentication client from available sources
 pub fn createClient(allocator: std.mem.Allocator) AuthError!AuthClient {
-    // Try OAuth first
-    const oauthPath = "claude_oauth_creds.json";
-    if (loadCredentials(allocator, oauthPath)) |credentials| {
-        if (credentials.isValid()) {
-            std.log.info("Using OAuth authentication", .{});
-            return AuthClient.initWithPath(allocator, credentials, oauthPath) catch |err| {
-                credentials.deinit(allocator);
-                return err;
-            };
-        }
-        credentials.deinit(allocator);
-    } else |_| {}
-
-    // Try API key from environment
+    // Prefer API key from environment (works for API usage)
     if (std.process.getEnvVarOwned(allocator, "ANTHROPIC_API_KEY")) |apiKey| {
         if (apiKey.len > 0) {
             // Validate and sanitize the API key
@@ -182,6 +169,19 @@ pub fn createClient(allocator: std.mem.Allocator) AuthError!AuthClient {
         } else {
             allocator.free(apiKey);
         }
+    } else |_| {}
+
+    // Then try OAuth credentials on disk (for future consumer flows)
+    const oauthPath = "claude_oauth_creds.json";
+    if (loadCredentials(allocator, oauthPath)) |credentials| {
+        if (credentials.isValid()) {
+            std.log.info("Using OAuth authentication", .{});
+            return AuthClient.initWithPath(allocator, credentials, oauthPath) catch |err| {
+                credentials.deinit(allocator);
+                return err;
+            };
+        }
+        credentials.deinit(allocator);
     } else |_| {}
 
     std.log.err("No authentication method available", .{});

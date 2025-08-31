@@ -736,7 +736,7 @@ pub fn integrateWithWizard(
 }
 
 /// Complete OAuth flow with callback server
-pub fn completeOAuthFlow(allocator: std.mem.Allocator) !oauth.Credentials {
+pub fn completeOAuthFlow(allocator: std.mem.Allocator) !void {
     print("\n{s}Starting OAuth setup with callback server...{s}\n", .{ ansi.style.bold, ansi.style.reset });
 
     // Generate PKCE parameters
@@ -744,7 +744,10 @@ pub fn completeOAuthFlow(allocator: std.mem.Allocator) !oauth.Credentials {
     defer pkceParams.deinit(allocator);
 
     // Run the integrated flow
-    return try integrateWithWizard(allocator, pkceParams);
+    var creds = try integrateWithWizard(allocator, pkceParams);
+    defer creds.deinit(allocator);
+    // Credentials already saved inside integrateWithWizard
+    return;
 }
 
 test "callback server initialization" {
