@@ -31,17 +31,17 @@
 //! ## Example Usage
 //!
 //! ```zig
-//! var layout = Layout.init(allocator, .row, container_bounds);
+//! var layout = try Layout.init(allocator, .row, container_bounds);
 //! layout.setAlignment(.space_between);
 //! layout.setGap(2);
 //!
 //! // Add children with different size types
-//! const btn1 = layout.addChild(.{ .fixed = 10 }) catch unreachable;
-//! const btn2 = layout.addChild(.{ .percentage = 0.3 }) catch unreachable;
-//! const btn3 = layout.addChild(.{ .fill = {} }) catch unreachable;
-//! const btn4 = layout.addChild(.{ .min = 20 }) catch unreachable;
-//! const btn5 = layout.addChild(.{ .max = 50 }) catch unreachable;
-//! const btn6 = layout.addChild(.{ .ratio = .{ .numerator = 2, .denominator = 3 } }) catch unreachable;
+//! const btn1 = try layout.addChild(.{ .fixed = 10 });
+//! const btn2 = try layout.addChild(.{ .percentage = 0.3 });
+//! const btn3 = try layout.addChild(.{ .fill = {} });
+//! const btn4 = try layout.addChild(.{ .min = 20 });
+//! const btn5 = try layout.addChild(.{ .max = 50 });
+//! const btn6 = try layout.addChild(.{ .ratio = .{ .numerator = 2, .denominator = 3 } });
 //!
 //! layout.layout();
 //!
@@ -53,7 +53,10 @@
 
 const std = @import("std");
 const Bounds = @import("bounds.zig").Bounds;
-const LayoutCache = @import("layout_cache.zig").LayoutCache;
+const layout_cache = @import("layout_cache.zig");
+const LayoutCache = layout_cache.LayoutCache;
+
+pub const LayoutError = error{OutOfMemory};
 
 /// Layout direction for flexbox-style layouts
 pub const Direction = enum {
@@ -106,7 +109,7 @@ pub const Layout = struct {
     cache: ?*LayoutCache,
     enable_cache: bool,
 
-    const LayoutItem = struct {
+    pub const LayoutItem = struct {
         size: Size,
         min_width: ?u32,
         min_height: ?u32,
@@ -115,7 +118,8 @@ pub const Layout = struct {
         computed_bounds: Bounds,
     };
 
-    pub fn init(allocator: std.mem.Allocator, direction: Direction, bounds: Bounds) Layout {
+    pub fn init(allocator: std.mem.Allocator, direction: Direction, bounds: Bounds) LayoutError!Layout {
+        const children = try std.ArrayList(LayoutItem).initCapacity(allocator, 4);
         return Layout{
             .allocator = allocator,
             .direction = direction,
@@ -123,14 +127,15 @@ pub const Layout = struct {
             .padding = 0,
             .gap = 0,
             .alignment = .start,
-            .children = std.ArrayList(LayoutItem).initCapacity(allocator, 4) catch unreachable,
+            .children = children,
             .cache = null,
             .enable_cache = false,
         };
     }
 
     /// Initialize layout with caching enabled
-    pub fn initWithCache(allocator: std.mem.Allocator, direction: Direction, bounds: Bounds, cache: *LayoutCache) Layout {
+    pub fn initWithCache(allocator: std.mem.Allocator, direction: Direction, bounds: Bounds, cache: *LayoutCache) LayoutError!Layout {
+        const children = try std.ArrayList(LayoutItem).initCapacity(allocator, 4);
         return Layout{
             .allocator = allocator,
             .direction = direction,
@@ -138,7 +143,7 @@ pub const Layout = struct {
             .padding = 0,
             .gap = 0,
             .alignment = .start,
-            .children = std.ArrayList(LayoutItem).initCapacity(allocator, 4) catch unreachable,
+            .children = children,
             .cache = cache,
             .enable_cache = true,
         };
@@ -180,7 +185,7 @@ pub const Layout = struct {
         self.invalidateCache();
     }
 
-    pub fn addChild(self: *Layout, size: Size) !usize {
+    pub fn addChild(self: *Layout, size: Size) LayoutError!usize {
         const item = LayoutItem{
             .size = size,
             .min_width = null,
@@ -219,7 +224,7 @@ pub const Layout = struct {
         // Check cache first if enabled
         if (self.enable_cache and self.cache != null) {
             const children_hash = LayoutCache.hashChildren(self.children.items);
-            const key = LayoutCache.CacheKey{
+            const key = layout_cache.CacheKey{
                 .bounds = self.bounds,
                 .direction = self.direction,
                 .padding = self.padding,
@@ -247,7 +252,7 @@ pub const Layout = struct {
         // Store in cache if enabled
         if (self.enable_cache and self.cache != null) {
             const children_hash = LayoutCache.hashChildren(self.children.items);
-            const key = LayoutCache.CacheKey{
+            const key = layout_cache.CacheKey{
                 .bounds = self.bounds,
                 .direction = self.direction,
                 .padding = self.padding,
@@ -543,7 +548,7 @@ pub const Layout = struct {
 
 // Tests for new constraint types
 test "min constraint" {
-    var layout = Layout.init(std.testing.allocator, .row, Bounds.init(0, 0, 100, 20));
+    var layout = try Layout.init(std.testing.allocator, .row, Bounds.init(0, 0, 100, 20));
     defer layout.deinit();
 
     // Add a min constraint child
@@ -555,7 +560,7 @@ test "min constraint" {
 }
 
 test "max constraint" {
-    var layout = Layout.init(std.testing.allocator, .row, Bounds.init(0, 0, 100, 20));
+    var layout = try Layout.init(std.testing.allocator, .row, Bounds.init(0, 0, 100, 20));
     defer layout.deinit();
 
     // Add a max constraint child
@@ -567,7 +572,7 @@ test "max constraint" {
 }
 
 test "ratio constraint" {
-    var layout = Layout.init(std.testing.allocator, .row, Bounds.init(0, 0, 100, 20));
+    var layout = try Layout.init(std.testing.allocator, .row, Bounds.init(0, 0, 100, 20));
     defer layout.deinit();
 
     // Add ratio constraint children
