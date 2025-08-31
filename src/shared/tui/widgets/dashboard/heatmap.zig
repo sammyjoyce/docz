@@ -2,15 +2,18 @@
 
 const std = @import("std");
 const engine_mod = @import("engine.zig");
+const logging = @import("src/shared/logger.zig");
 
 pub const Heatmap = struct {
     allocator: std.mem.Allocator,
+    logger: logging.Logger,
 
-    pub fn init(allocator: std.mem.Allocator, capability_tier: engine_mod.DashboardEngine.CapabilityTier) !*Heatmap {
+    pub fn init(allocator: std.mem.Allocator, capability_tier: engine_mod.DashboardEngine.CapabilityTier, logFn: ?logging.Logger) !*Heatmap {
         _ = capability_tier;
         const heatmap = try allocator.create(Heatmap);
         heatmap.* = .{
             .allocator = allocator,
+            .logger = logFn orelse logging.defaultLogger,
         };
         return heatmap;
     }
@@ -23,7 +26,7 @@ pub const Heatmap = struct {
         _ = self;
         _ = render_pipeline;
         _ = bounds;
-        std.debug.print("🔥 Heatmap Widget\n", .{});
+        self.logger("🔥 Heatmap Widget\n", .{});
     }
 
     pub fn handleInput(self: *Heatmap, input: anytype) !bool {

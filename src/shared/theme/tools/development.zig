@@ -160,7 +160,7 @@ pub const Development = struct {
         try writer.writeAll("## Usage\n\n");
         try writer.writeAll("```zig\n");
         try writer.writeAll("// In your application\n");
-        try writer.print("const theme = try Theme.init(allocator);\n", .{});
+        try writer.print("const theme = try Theme.init(allocator, null);\n", .{});
         try writer.print("try theme.switchTheme(\"{s}\");\n", .{theme.name});
         try writer.writeAll("```\n");
 

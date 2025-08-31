@@ -2,15 +2,18 @@
 
 const std = @import("std");
 const engine_mod = @import("engine.zig");
+const logging = @import("src/shared/logger.zig");
 
 pub const BarChart = struct {
     allocator: std.mem.Allocator,
+    logger: logging.Logger,
 
-    pub fn init(allocator: std.mem.Allocator, capability_tier: engine_mod.DashboardEngine.CapabilityTier) !*BarChart {
+    pub fn init(allocator: std.mem.Allocator, capability_tier: engine_mod.DashboardEngine.CapabilityTier, logFn: ?logging.Logger) !*BarChart {
         _ = capability_tier;
         const chart = try allocator.create(BarChart);
         chart.* = .{
             .allocator = allocator,
+            .logger = logFn orelse logging.defaultLogger,
         };
         return chart;
     }
@@ -23,7 +26,7 @@ pub const BarChart = struct {
         _ = self;
         _ = render_pipeline;
         _ = bounds;
-        std.debug.print("📊 Bar Chart Widget\n", .{});
+        self.logger("📊 Bar Chart Widget\n", .{});
     }
 
     pub fn handleInput(self: *BarChart, input: anytype) !bool {
