@@ -2,8 +2,7 @@
 
 const std = @import("std");
 const ui = @import("../../ui/mod.zig");
-const renderCtx = @import("../../render/mod.zig");
-const draw = @import("draw.zig");
+const render = @import("../../render.zig");
 
 pub const Chart = struct {
     const Self = @This();
@@ -30,9 +29,17 @@ pub const Chart = struct {
         _ = rectangle;
     }
 
-    pub fn render(self: *Self, context: *renderCtx.Context) ui.component.ComponentError!void {
-        const rectangle = ui.layout.Rect{ .x = 0, .y = 0, .w = context.surface.size().w, .h = 1 };
-        draw.sparkline(context, rectangle, self.values) catch return ui.component.ComponentError.RenderFailed;
+    pub fn render(self: *Self, ctx: *render.Context) ui.component.ComponentError!void {
+        // Use the render layer's chart widget renderer
+        const rect = render.widgets.Chart.Rect{
+            .x = 0,
+            .y = 0,
+            .w = 80, // Default width - should come from layout
+            .h = 1,
+        };
+
+        // Call the sparkline function from render/widgets/Chart.zig
+        render.widgets.Chart.sparkline(ctx, rect, self.values) catch return ui.component.ComponentError.RenderFailed;
     }
 
     pub fn event(self: *Self, inputEvent: ui.event.Event) ui.component.Component.Invalidate {

@@ -2,7 +2,7 @@
 //! Demonstrates the unified CliApp entry surface
 
 const std = @import("std");
-const cli = @import("mod.zig");
+const cli = @import("../cli.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};

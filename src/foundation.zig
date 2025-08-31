@@ -3,9 +3,9 @@
 
 const std = @import("std");
 
-// Core modules - always available
+// Core modules - always available (engine is imported by agents directly to avoid
+// duplicate module inclusion of the same source file under different names)
 pub const config = @import("foundation/config.zig");
-pub const engine = @import("foundation/engine.zig");
 pub const tools = @import("foundation/tools.zig");
 pub const context = @import("foundation/context.zig");
 pub const logger = @import("foundation/logger.zig");
@@ -34,7 +34,6 @@ pub const session = @import("foundation/session.zig");
 
 // Re-export commonly used types for convenience
 pub const Config = config.Config;
-pub const Engine = engine.Engine;
 pub const Tool = tools.Tool;
 pub const Component = ui.Component;
 pub const App = tui.App;

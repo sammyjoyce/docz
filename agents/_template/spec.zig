@@ -65,8 +65,8 @@ fn registerToolsImpl(registry: *toolsMod.Registry) !void {
     // This is the recommended approach for Zig 0.15.1+ as it provides
     // better type safety and clearer tool definitions
 
-    // Import the tools module to access individual tool functions
-    const tools = @import("tools/mod.zig");
+    // Import the agent's tools aggregator
+    const tools = @import("tools.zig");
 
     // Register the tool with comprehensive metadata
     try toolsMod.registerJsonTool(registry, "example", // tool_name (unique identifier)

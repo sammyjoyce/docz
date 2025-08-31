@@ -4,16 +4,16 @@ const Layout = @import("Layout.zig");
 const Event = @import("Event.zig");
 const render = @import("../render.zig");
 
-/// Helper to render a UI component using a render.MemoryRenderer without violating
+/// Helper to render a UI component using a render.Memory without violating
 /// layering (lives in ui/, can import both ui and render).
 pub fn renderToMemory(
     allocator: std.mem.Allocator,
-    memoryRenderer: *render.MemoryRenderer,
+    memoryRenderer: *render.Memory,
     component: Component.Component,
-) Component.ComponentError![]render.DirtySpan {
+) Component.ComponentError![]render.DiffSpan {
     // Prepare back buffer and context
     // Clear happens inside renderer
-    var context = render.Context.init(memoryRenderer.back, null);
+    var context = render.RenderContext.init(memoryRenderer.back, null);
 
     // Basic measure/layout: fill available space for now
     const dimensions = memoryRenderer.size();
@@ -30,13 +30,13 @@ pub fn renderToMemory(
     return spans;
 }
 
-/// Render a Component to the terminal via render.TermRenderer. Performs a
+/// Render a Component to the terminal via render.Terminal. Performs a
 /// measure+layout pass and then delegates paint to the renderer.
 pub fn renderToTerminal(
     allocator: std.mem.Allocator,
-    termRenderer: *render.TermRenderer,
+    termRenderer: *render.Terminal,
     component: Component.Component,
-) Component.ComponentError![]render.DirtySpan {
+) Component.ComponentError![]render.DiffSpan {
     const dimensions = termRenderer.size();
     const constraints = Layout.Constraints{ .max = .{ .w = dimensions.w, .h = dimensions.h } };
     _ = component.vtable.measure(component.ptr, constraints);

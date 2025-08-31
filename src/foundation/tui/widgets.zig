@@ -5,7 +5,7 @@
 const std = @import("std");
 const SharedContext = @import("../context.zig").SharedContext;
 // Use foundation logger barrel (replaces removed src/shared/logger.zig)
-const logging = @import("../logger.zig");
+const logging = @import("foundation").logger;
 const ui = @import("../ui.zig");
 
 pub const Logger = logging.Logger;

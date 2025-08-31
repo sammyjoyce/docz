@@ -8,7 +8,7 @@ const Settings = @import("config.zig").Settings;
 const Inheritance = @import("Inheritance.zig").Inheritance;
 const SystemTheme = @import("SystemTheme.zig").SystemTheme;
 const Validator = @import("Validator.zig").Validator;
-const logging = @import("../../logger.zig");
+const logging = @import("foundation").logger;
 
 pub const Logger = logging.Logger;
 

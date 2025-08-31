@@ -2,7 +2,7 @@
 //! Single entry point that replaces the multiple CLI implementations
 
 const std = @import("std");
-const cli = @import("mod.zig");
+const cli = @import("../cli.zig");
 
 /// Main entry point for the CLI
 pub fn main() !void {

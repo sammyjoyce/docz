@@ -13,7 +13,7 @@ const buildConfig = struct {
         const ANSI_ZON = "src/foundation/term/ansi.zon";
         // Anthropic is now part of network module
         const TOOLS_ZIG = "src/foundation/tools.zig";
-        const ENGINE_ZIG = "src/foundation/engine.zig";
+        const ENGINE_ZIG = "src/engine.zig";
         const CONFIG_ZIG = "src/foundation/config.zig";
         const AGENT_INTERFACE_ZIG = "src/foundation/tui/agent_interface.zig";
         const AGENT_DASHBOARD_ZIG = "src/foundation/tui/components/agent_dashboard.zig";
@@ -1253,329 +1253,34 @@ const ModuleBuilder = struct {
             .oauth_callback_server = null,
         };
 
-        // Always include core modules
-        modules.config = self.createModule(buildConfig.PATHS.CONFIG_ZIG);
+        // When using foundation barrel, only create engine module (not in foundation)
+        // All other modules are available through the foundation barrel
         modules.engine = self.createModule(buildConfig.PATHS.ENGINE_ZIG);
-        modules.tools = self.createModule(buildConfig.PATHS.TOOLS_ZIG);
-        const shared_options = self.createModule("src/foundation/options.zig");
-        var context_mod = self.createModule("src/foundation/context.zig");
-        // json_reflection consolidated into tools; no separate module here
-        // Create network modules once for reuse (gated by build features)
-        const curl = self.createModule("src/foundation/network/curl.zig");
-        const sse = self.createModule("src/foundation/network/sse.zig");
 
-        // Network module includes Anthropic provider support
-        if (self.ctx.features.network) {
-            modules.network = self.createModule(buildConfig.PATHS.AUTH_ZIG);
-            if (modules.network) |net| {
-                net.addImport("curl_shared", curl);
-                net.addImport("sse_shared", sse);
-                net.addImport("context_shared", context_mod);
-                context_mod.addImport("network_shared", net);
-            }
-        } else {
-            std.log.info("   🚫 Excluding network modules (build flag off)", .{});
-        }
+        // Engine needs its imports satisfied
+        const tools = self.createModule(buildConfig.PATHS.TOOLS_ZIG);
+        const network = self.createModule(buildConfig.PATHS.AUTH_ZIG);
+        const context_mod = self.createModule("src/foundation/context.zig");
 
-        // Always include new core modules for enhanced UX
-        modules.agent_interface = self.createModule(buildConfig.PATHS.AGENT_INTERFACE_ZIG);
-        modules.interactive_session = self.createModule(buildConfig.PATHS.INTERACTIVE_SESSION_ZIG);
-        modules.agent_main = self.createModule(buildConfig.PATHS.AGENT_MAIN_ZIG);
-        modules.agent_base = self.createModule(buildConfig.PATHS.AGENT_BASE_ZIG);
+        modules.engine.?.addImport("tools_shared", tools);
+        modules.engine.?.addImport("anthropic_shared", network);
+        modules.engine.?.addImport("auth_shared", network);
+        modules.engine.?.addImport("context_shared", context_mod);
+        modules.engine.?.addImport("network_shared", network);
 
-        // Auth lives under network; include only when network feature is enabled
-        if (self.ctx.features.network) {
-            modules.auth = self.createModule(buildConfig.PATHS.AUTH_ZIG);
-            modules.oauth_callback_server = self.createModule(buildConfig.PATHS.OAUTH_CALLBACK_SERVER_ZIG);
-        }
+        // Tools needs its imports
+        tools.addImport("context_shared", context_mod);
+        tools.addImport("shared_options", self.createModule("src/foundation/options.zig"));
+        tools.addImport("anthropic_shared", network);
+        tools.addImport("network_shared", network);
 
-        // Add dependencies for core modules
-        if (modules.agent_interface) |interface| {
-            interface.addImport("config_shared", modules.config.?);
-            interface.addImport("engine_shared", modules.engine.?);
-            interface.addImport("tools_shared", modules.tools.?);
-        }
+        // Network needs context
+        network.addImport("context_shared", context_mod);
+        network.addImport("curl_shared", self.createModule("src/foundation/network/curl.zig"));
+        network.addImport("sse_shared", self.createModule("src/foundation/network/sse.zig"));
 
-        if (modules.interactive_session) |session| {
-            session.addImport("engine_shared", modules.engine.?);
-            session.addImport("config_shared", modules.config.?);
-        }
-
-        if (modules.agent_main) |agent_main| {
-            agent_main.addImport("config_shared", modules.config.?);
-            agent_main.addImport("engine_shared", modules.engine.?);
-            agent_main.addImport("tools_shared", modules.tools.?);
-            if (modules.interactive_session) |interactive_session| {
-                agent_main.addImport("interactive_session", interactive_session);
-            }
-            if (modules.agent_base) |agent_base| {
-                agent_main.addImport("agent_base", agent_base);
-            }
-            if (modules.auth) |auth| {
-                agent_main.addImport("auth_shared", auth);
-            }
-        }
-
-        if (modules.agent_base) |agent_base| {
-            agent_base.addImport("config_shared", modules.config.?);
-            agent_base.addImport("engine_shared", modules.engine.?);
-            agent_base.addImport("tools_shared", modules.tools.?);
-            if (modules.interactive_session) |session| {
-                agent_base.addImport("interactive_session", session);
-            }
-            if (modules.network) |net| {
-                agent_base.addImport("network_shared", net);
-            }
-            // Add auth_shared dependency only when auth module is available (when network is enabled)
-            if (modules.auth) |auth| {
-                agent_base.addImport("auth_shared", auth);
-            }
-        }
-
-        if (manifest) |*m| {
-            std.log.info("🔧 Building with manifest-driven modules for agent '{s}'", .{m.agent.name});
-            std.log.info("   📋 Capabilities: file={any}, network={any}, terminal={any}, media={any}", .{ m.capabilities.core_features.file_processing, m.capabilities.core_features.network_access, m.capabilities.core_features.terminal_ui, m.capabilities.core_features.media_processing });
-
-            // Add network dependency to tools and engine
-            if (modules.network) |net| {
-                modules.tools.?.addImport("network_shared", net);
-                modules.engine.?.addImport("network_shared", net);
-            }
-
-            // Add tools + context dependencies
-            if (modules.tools) |tools| {
-                modules.engine.?.addImport("tools_shared", tools);
-                tools.addImport("context_shared", context_mod);
-                tools.addImport("shared_options", shared_options);
-            }
-
-            // Engine/TUI need SharedContext
-            modules.engine.?.addImport("context_shared", context_mod);
-            if (modules.tui) |tui| {
-                tui.addImport("context_shared", context_mod);
-            }
-
-            // Add dependencies for interactive session
-            if (modules.interactive_session) |session| {
-                if (modules.auth) |auth| {
-                    session.addImport("auth_shared", auth);
-                }
-                if (modules.network) |network| {
-                    session.addImport("network_shared", network);
-                }
-            }
-
-            if (m.capabilities.core_features.network_access and self.ctx.features.network) {
-                std.log.info("   🌐 Including auth module (network access enabled)", .{});
-
-                // Add network dependencies
-                if (modules.network) |network| {
-                    if (modules.auth) |auth| {
-                        auth.addImport("network_shared", network);
-                        modules.engine.?.addImport("auth_shared", auth);
-                    }
-                }
-                if (modules.auth) |auth| {
-                    if (modules.oauth_callback_server) |oauth_server| {
-                        oauth_server.addImport("auth_shared", auth);
-                    }
-                }
-            } else {
-                std.log.info("   🚫 Auth module included but network access disabled (stub mode)", .{});
-            }
-
-            // Include terminal modules if terminal UI is needed and enabled via build flags
-            if (m.capabilities.core_features.terminal_ui and self.ctx.features.tui) {
-                std.log.info("   🖥️  Including terminal modules (term, cli, tui, theme, dashboard)", .{});
-                modules.term = self.createModule("src/foundation/term.zig");
-                if (self.ctx.features.cli) {
-                    modules.cli = self.createModule(buildConfig.PATHS.CLI_ZIG);
-                }
-                modules.tui = self.createModule(buildConfig.PATHS.TUI_ZIG);
-                modules.theme = self.createModule("src/foundation/theme.zig");
-                modules.agent_dashboard = self.createModule(buildConfig.PATHS.AGENT_DASHBOARD_ZIG);
-                // Include components for CLI and TUI functionality
-                // Add terminal dependencies
-                if (modules.term) |term| {
-                    if (modules.cli) |cli| cli.addImport("term_shared", term);
-                    if (modules.tui) |tui| {
-                        tui.addImport("term_shared", term);
-                        tui.addImport("shared_types", self.createModule("src/foundation/types.zig"));
-                    }
-                    modules.theme.?.addImport("term_shared", term);
-                }
-
-                // Add dashboard dependencies
-                if (modules.agent_dashboard) |dashboard| {
-                    if (modules.tui) |tui| {
-                        dashboard.addImport("tui_shared", tui);
-                    }
-                    if (modules.term) |term| {
-                        dashboard.addImport("term_shared", term);
-                    }
-                    if (modules.agent_interface) |interface| {
-                        dashboard.addImport("agent_interface", interface);
-                    }
-                }
-
-                // Add theme dependencies
-                if (modules.cli) |cli| modules.theme.?.addImport("cli_themes", cli);
-                if (modules.tui) |tui| {
-                    modules.theme.?.addImport("tui_themes", tui);
-                    // Allow TUI code to import theme by name
-                    tui.addImport("theme", modules.theme.?);
-                }
-                if (modules.agent_main) |am| if (modules.cli) |cli_mod| am.addImport("cli_shared", cli_mod);
-            } else {
-                // Basic CLI without full TUI stack; still include term for capabilities and OSC helpers
-                std.log.info("   🚫 Excluding advanced terminal modules (basic CLI only)", .{});
-                if (self.ctx.features.cli) {
-                    modules.cli = self.createModule(buildConfig.PATHS.CLI_ZIG);
-                }
-                if (self.ctx.features.cli or self.ctx.features.tui) {
-                    modules.term = self.createModule("src/foundation/term.zig");
-                    if (modules.term) |term| if (modules.cli) |cli_mod| cli_mod.addImport("term_shared", term);
-                }
-                if (modules.agent_main) |am| if (modules.cli) |cli_mod| am.addImport("cli_shared", cli_mod);
-            }
-
-            // Ensure components are available for CLI/TUI notifications and progress
-            if (modules.components == null) {
-                modules.components = self.createModule("src/foundation/ui.zig");
-                if (modules.term) |term| modules.components.?.addImport("term_shared", term);
-                if (modules.theme) |theme| modules.components.?.addImport("theme", theme);
-            }
-            if (modules.cli) |cli| if (modules.components) |components| cli.addImport("components_shared", components);
-            // Do not include heavy render module unless media processing is enabled
-
-            // Include render modules if media processing is needed
-            if (m.capabilities.core_features.media_processing and self.ctx.features.tui) {
-                std.log.info("   🎨 Including render modules (render, components)", .{});
-                modules.render = self.createModule("src/foundation/render.zig");
-                // components may already be created above; ensure dependencies are present
-                if (modules.term) |term| if (modules.render) |render| render.addImport("term_shared", term);
-
-                // Components depend on theme for themes
-                if (modules.components) |components| {
-                    if (modules.theme) |theme| {
-                        components.addImport("theme", theme);
-                    }
-                }
-
-                // Add components dependency to render module
-                if (modules.render) |render| {
-                    if (modules.components) |components| {
-                        render.addImport("components_shared", components);
-                    }
-                    if (modules.theme) |theme| {
-                        render.addImport("theme", theme);
-                    }
-                }
-            } else {
-                std.log.info("   🚫 Excluding render modules (no media processing)", .{});
-            }
-
-            // Log tool integration features
-            if (m.tools.integration.json_tools) {
-                std.log.info("   🔧 JSON tools enabled", .{});
-            }
-            if (m.tools.integration.streaming_tools) {
-                std.log.info("   📡 Streaming tools enabled", .{});
-            }
-            if (m.tools.integration.chainable_tools) {
-                std.log.info("   🔗 Chainable tools enabled", .{});
-            }
-        } else {
-            // Fallback: include all modules if no manifest
-            std.log.info("🔧 Building with all modules (no manifest found)", .{});
-            if (self.ctx.features.network) {
-                const curl_fallback = self.createModule("src/foundation/network/curl.zig");
-                const sse_fallback = self.createModule("src/foundation/network/sse.zig");
-                modules.network = self.createModule("src/foundation/network.zig");
-                if (modules.network) |network| {
-                    network.addImport("curl_shared", curl_fallback);
-                    network.addImport("sse_shared", sse_fallback);
-                }
-                modules.auth = self.createModule(buildConfig.PATHS.AUTH_ZIG);
-                if (modules.auth) |auth| {
-                    auth.addImport("curl_shared", curl_fallback);
-                }
-                modules.oauth_callback_server = self.createModule(buildConfig.PATHS.OAUTH_CALLBACK_SERVER_ZIG);
-            }
-            if (self.ctx.features.cli or self.ctx.features.tui) {
-                modules.term = self.createModule("src/foundation/term.zig");
-            }
-            if (self.ctx.features.cli) {
-                modules.cli = self.createModule(buildConfig.PATHS.CLI_ZIG);
-            }
-            if (self.ctx.features.tui) {
-                modules.tui = self.createModule(buildConfig.PATHS.TUI_ZIG);
-                modules.render = self.createModule("src/foundation/render.zig");
-                modules.components = self.createModule("src/foundation/ui.zig");
-            }
-            if (self.ctx.features.cli or self.ctx.features.tui) {
-                modules.theme = self.createModule("src/foundation/theme.zig");
-            }
-            modules.agent_dashboard = self.createModule(buildConfig.PATHS.AGENT_DASHBOARD_ZIG);
-            modules.agent_main = self.createModule(buildConfig.PATHS.AGENT_MAIN_ZIG);
-            modules.agent_base = self.createModule(buildConfig.PATHS.AGENT_BASE_ZIG);
-
-            // Add all dependencies
-            if (modules.network) |network| {
-                modules.tools.?.addImport("network_shared", network);
-                modules.engine.?.addImport("network_shared", network);
-                if (modules.auth) |auth| {
-                    auth.addImport("network_shared", network);
-                    modules.engine.?.addImport("auth_shared", auth);
-                }
-            }
-            if (modules.auth) |auth| {
-                if (modules.oauth_callback_server) |oauth_server| {
-                    oauth_server.addImport("auth_shared", auth);
-                }
-            }
-            if (modules.term) |term| {
-                modules.cli.?.addImport("term_shared", term);
-                modules.tui.?.addImport("term_shared", term);
-                modules.tui.?.addImport("shared_types", self.createModule("src/foundation/types.zig"));
-                if (modules.theme) |theme| {
-                    theme.addImport("term_shared", term);
-                }
-            }
-            if (modules.cli) |cli| {
-                if (modules.theme) |theme| {
-                    theme.addImport("cli_themes", cli);
-                }
-            }
-            if (modules.tui) |tui| {
-                if (modules.theme) |theme| {
-                    theme.addImport("tui_themes", tui);
-                }
-                if (modules.agent_dashboard) |dashboard| {
-                    dashboard.addImport("tui_shared", tui);
-                }
-                if (modules.theme) |theme| {
-                    // Allow TUI code to import theme by name
-                    tui.addImport("theme", theme);
-                }
-            }
-            if (modules.render) |render| {
-                if (modules.theme) |theme| {
-                    render.addImport("theme", theme);
-                }
-            }
-            if (modules.components) |components| {
-                if (modules.theme) |theme| {
-                    components.addImport("theme", theme);
-                }
-            }
-            if (modules.agent_interface) |interface| {
-                if (modules.agent_dashboard) |dashboard| {
-                    dashboard.addImport("agent_interface", interface);
-                }
-            }
-        }
-
+        // Don't expose these as shared modules to avoid conflicts with foundation barrel
+        // Return early - we only need the engine module when using foundation barrel
         return modules;
     }
 
@@ -1586,28 +1291,34 @@ const ModuleBuilder = struct {
         // Provide consolidated foundation barrel as a single import point
         const foundation_mod = self.createModule("src/foundation.zig");
         entry.addImport("foundation", foundation_mod);
+        // Engine must be imported separately to avoid duplicate module inclusion
         if (shared.engine) |engine| entry.addImport("core_engine", engine);
-        if (shared.cli) |cli| entry.addImport("cli_shared", cli);
-        if (shared.tools) |tools| entry.addImport("tools_shared", tools);
-        if (shared.config) |config| entry.addImport("config_shared", config);
+        // Don't import modules that are already in foundation barrel to avoid conflicts
+        // if (shared.cli) |cli| entry.addImport("cli_shared", cli);
+        // if (shared.tools) |tools| entry.addImport("tools_shared", tools);
+        // if (shared.config) |config| entry.addImport("config_shared", config);
         // json_reflection import removed; tools_shared provides JsonReflector
 
         // Add optional imports based on available modules
-        if (shared.tui) |tui| entry.addImport("tui_shared", tui);
-        if (shared.auth) |auth| entry.addImport("auth_shared", auth);
-        if (shared.render) |render| entry.addImport("render_shared", render);
-        if (shared.components) |components| entry.addImport("components_shared", components);
-        if (shared.agent_interface) |interface| entry.addImport("agent_interface", interface);
-        if (shared.agent_dashboard) |dashboard| entry.addImport("agent_dashboard", dashboard);
-        if (shared.interactive_session) |session| entry.addImport("interactive_session", session);
-        if (shared.agent_main) |agent_main| entry.addImport("agent_main", agent_main);
-        if (shared.agent_base) |agent_base| entry.addImport("agent_base", agent_base);
+        // Don't import modules that are already in foundation barrel to avoid conflicts
+        // if (shared.tui) |tui| entry.addImport("tui_shared", tui);
+        // if (shared.auth) |auth| entry.addImport("auth_shared", auth);
+        // if (shared.render) |render| entry.addImport("render_shared", render);
+        // if (shared.components) |components| entry.addImport("components_shared", components);
+        // Comment out agent modules temporarily - they have conflicting dependencies
+        // if (shared.agent_interface) |interface| entry.addImport("agent_interface", interface);
+        // if (shared.agent_dashboard) |dashboard| entry.addImport("agent_dashboard", dashboard);
+        // if (shared.interactive_session) |session| entry.addImport("interactive_session", session);
+        // if (shared.agent_main) |agent_main| entry.addImport("agent_main", agent_main);
+        // if (shared.agent_base) |agent_base| entry.addImport("agent_base", agent_base);
         // Skip oauth callback server in minimal builds
 
         const spec = self.createModule(self.ctx.agent_paths.spec);
         spec.addImport("foundation", foundation_mod);
+        // Engine must be imported separately to avoid duplicate module inclusion
         if (shared.engine) |engine| spec.addImport("core_engine", engine);
-        if (shared.tools) |tools| spec.addImport("tools_shared", tools);
+        // Don't import tools separately - it's in foundation barrel
+        // if (shared.tools) |tools| spec.addImport("tools_shared", tools);
 
         return .{ .entry = entry, .spec = spec };
     }
@@ -2318,6 +2029,7 @@ pub fn build(b: *std.Build) !void {
     setupDemoTargets(ctx, shared_modules);
     setupExampleTargets(ctx, shared_modules);
     setupTestSuite(ctx, api_module);
+    setupAgentTests(ctx, agent_modules.entry, agent_modules.spec, shared_modules);
     setupFormatting(ctx);
     setupImportBoundaryChecks(ctx);
     setupFeatureCombinationTests(ctx);
@@ -2877,6 +2589,7 @@ fn printHelp() void {
     std.log.info("", .{});
     std.log.info("🛠️  DEVELOPMENT:", .{});
     std.log.info("  zig build test                     # Run tests", .{});
+    std.log.info("  zig build -Dagent=<name> test-agent  # Run tests for selected agent", .{});
     std.log.info("  zig build fmt                      # Format code", .{});
     std.log.info("  zig build release                  # Create release builds", .{});
     std.log.info("", .{});
@@ -3116,6 +2829,41 @@ fn setupTestSuite(ctx: BuildState, api_module: *std.Build.Module) void {
     linkSystemDependencies(tests);
     const tests_run = ctx.b.addRunArtifact(tests);
     tests_step.dependOn(&tests_run.step);
+}
+
+/// Run tests scoped to the selected agent by compiling the agent entry module in test mode.
+fn setupAgentTests(
+    ctx: BuildState,
+    agent_entry: *std.Build.Module,
+    agent_spec: *std.Build.Module,
+    shared_modules: ConditionalSharedModules,
+) void {
+    // Selected agent only
+    const agent_tests_step = ctx.b.step("test-agent", "Run tests for the selected agent");
+    const agent_tests = ctx.b.addTest(.{ .root_module = agent_entry });
+    // Provide the same imports the executable would see so agent tests can resolve foundation deps
+    if (shared_modules.engine) |m| agent_entry.addImport("core_engine", m);
+    if (shared_modules.tools) |m| agent_entry.addImport("tools_shared", m);
+    if (shared_modules.config) |m| agent_entry.addImport("config_shared", m);
+    if (shared_modules.tui) |m| agent_entry.addImport("tui_shared", m);
+    if (shared_modules.cli) |m| agent_entry.addImport("cli_shared", m);
+    if (shared_modules.term) |m| agent_entry.addImport("term_shared", m);
+    if (shared_modules.network) |m| agent_entry.addImport("network_shared", m);
+    if (shared_modules.auth) |m| agent_entry.addImport("auth_shared", m);
+    if (shared_modules.agent_interface) |m| agent_entry.addImport("agent_interface", m);
+    if (shared_modules.agent_dashboard) |m| agent_entry.addImport("agent_dashboard", m);
+    if (shared_modules.interactive_session) |m| agent_entry.addImport("interactive_session", m);
+    if (shared_modules.agent_main) |m| agent_entry.addImport("agent_main", m);
+    if (shared_modules.agent_base) |m| agent_entry.addImport("agent_base", m);
+
+    // Mirror imports on spec so spec-level tests (if any) can run when included
+    if (shared_modules.engine) |m| agent_spec.addImport("core_engine", m);
+    if (shared_modules.tools) |m| agent_spec.addImport("tools_shared", m);
+    if (shared_modules.config) |m| agent_spec.addImport("config_shared", m);
+
+    linkSystemDependencies(agent_tests);
+    const run_agent_tests = ctx.b.addRunArtifact(agent_tests);
+    agent_tests_step.dependOn(&run_agent_tests.step);
 }
 
 fn setupFormatting(ctx: BuildState) void {

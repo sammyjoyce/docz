@@ -110,7 +110,6 @@ pub const TermSurface = @import("surface.zig").TermSurface;
 
 // Core exports - Renderer System
 pub const Renderer = @import("renderer.zig").Renderer;
-pub const AdaptiveRenderer = Renderer.AdaptiveRenderer; // Legacy compatibility
 pub const RenderTier = Renderer.RenderTier;
 pub const RenderContext = @import("RenderContext.zig");
 pub const Theme = Renderer.Theme;
@@ -151,8 +150,7 @@ pub const Terminal = @import("terminal.zig").Terminal;
 pub const Scheduler = @import("scheduler.zig").Scheduler;
 
 // Legacy compatibility aliases
-pub const MemoryRenderer = Memory;
-pub const TermRenderer = Terminal;
+// Legacy aliases removed per 2025-08-31 policy: use Memory/Terminal directly
 
 // Braille graphics module
 pub const braille = @import("braille.zig");
@@ -176,6 +174,15 @@ pub const Progress = shared_components.Progress;
 pub const renderProgress = shared_components.progress.renderProgress;
 pub const AnimatedProgress = shared_components.AnimatedProgress;
 
+// Widget namespace for render/widgets/* implementations
+pub const widgets = struct {
+    pub const Progress = @import("render/widgets/Progress.zig");
+    pub const Input = @import("render/widgets/Input.zig");
+    pub const Notification = @import("render/widgets/Notification.zig");
+    pub const Chart = @import("render/widgets/Chart.zig");
+    pub const Table = @import("render/widgets/Table.zig");
+};
+
 // Note: Markdown/syntax renderers have been moved under render/legacy
 // and are only included when built with -Dlegacy.
 
@@ -196,10 +203,7 @@ pub fn createRendererWithTheme(allocator: std.mem.Allocator, theme: Theme) !*Ren
     return Renderer.initWithTheme(allocator, theme);
 }
 
-/// Backward compatibility functions
-pub fn initAdaptive(allocator: std.mem.Allocator) !*AdaptiveRenderer {
-    return Renderer.initAdaptive(allocator);
-}
+// Backward-compatibility helpers removed; prefer Renderer.init*/factory APIs
 
 // Legacy convenience API moved to render/legacy (enabled via -Dlegacy).
 

@@ -12,9 +12,6 @@ pub const Http = @import("network/Http.zig");
 pub const HttpCurl = @import("network/HttpCurl.zig");
 pub const SSE = @import("network/SSE.zig");
 
-// Legacy compatibility - will be deprecated
-pub const curl = @import("network/curl.zig");
-
 // Unified error handling
 pub const Error = Http.Error;
 pub const asNetworkError = @import("network/auth/Errors.zig").asNetwork;
@@ -53,13 +50,6 @@ pub const Anthropic = struct {
 
 // Anthropic OAuth is separate to avoid module conflicts
 pub const AnthropicAuth = @import("network/providers/anthropic/Auth.zig");
-
-// Legacy compatibility exports (will be removed after migration)
-pub const HTTPError = curl.HTTPError;
-pub const HTTPMethod = curl.HTTPMethod;
-pub const Header = curl.Header;
-pub const HTTPRequest = curl.HTTPRequest;
-pub const HTTPResponse = curl.HTTPResponse;
 
 // SSE types
 pub const ServerSentEventError = SSE.ServerSentEventError;

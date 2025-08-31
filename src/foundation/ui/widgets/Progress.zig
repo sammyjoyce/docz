@@ -65,18 +65,17 @@ pub const Progress = struct {
 
     pub fn render(self: *Self, ctx: *render.Context) Component.ComponentError!void {
         // Delegate to the render layer's progress widget renderer
-        const renderer = render.widgets.Progress{
-            .value = self.value,
-            .label = self.label,
-            .style = switch (self.style) {
-                .ascii => .ascii,
-                .unicode => .unicode,
-                .gradient => .gradient,
-            },
-            .show_percentage = self.show_percentage,
+        // Get the current rendering bounds (assuming ctx has bounds information)
+        // For now, use a default rectangle - this would typically come from the layout system
+        const rect = render.widgets.Progress.Rect{
+            .x = 0,
+            .y = 0,
+            .w = 80, // Default width
+            .h = 1,
         };
 
-        renderer.render(ctx) catch return Component.ComponentError.RenderFailed;
+        // Call the progress function from render/widgets/Progress.zig
+        render.widgets.Progress.progress(ctx, rect, self.value, self.label) catch return Component.ComponentError.RenderFailed;
     }
 
     pub fn event(self: *Self, ev: Event.Event) Component.Component.Invalidate {

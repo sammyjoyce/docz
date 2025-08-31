@@ -22,9 +22,3 @@ pub const Widgets = struct {
     pub const Table = @import("ui/widgets/Table.zig");
     pub const Status = @import("ui/widgets/Status.zig");
 };
-
-// Temporary compatibility (remove after migration)
-pub const widgets = Widgets;
-pub const component = Component;
-pub const layout = Layout;
-pub const event = Event;
