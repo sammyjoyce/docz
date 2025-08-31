@@ -3,8 +3,7 @@
 
 const std = @import("std");
 const ColorScheme = @import("ColorScheme.zig").ColorScheme;
-const Color = @import("ColorScheme.zig").Color;
-const RGB = @import("ColorScheme.zig").RGB;
+const Color = @import("color.zig").Color;
 
 pub const Inheritance = struct {
     allocator: std.mem.Allocator,

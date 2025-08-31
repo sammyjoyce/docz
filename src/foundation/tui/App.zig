@@ -138,7 +138,7 @@ pub const FrameScheduler = struct {
     }
 
     /// Sleep to maintain frame rate
-    pub fn sleep(self: *Self) void {
+    pub fn sleep(self: *FSelf) void {
         if (!self.vsync) return;
 
         const now = self.timer.read();
@@ -149,12 +149,12 @@ pub const FrameScheduler = struct {
     }
 
     /// Get current quality level for adaptive rendering
-    pub fn getQualityLevel(self: *const Self) u8 {
+    pub fn getQualityLevel(self: *const FSelf) u8 {
         return self.quality_level;
     }
 
     /// Get current metrics
-    pub fn getMetrics(self: *const Self) Metrics {
+    pub fn getMetrics(self: *const FSelf) Metrics {
         return self.metrics;
     }
 };
@@ -233,8 +233,8 @@ pub fn init(allocator: std.mem.Allocator, config: Config) !Self {
         .config = config,
         .running = false,
         .terminal = terminal,
-        .event_queue = std.ArrayList(ui.Event).init(allocator),
-        .components = std.ArrayList(*ui.Component).init(allocator),
+        .event_queue = std.ArrayList(ui.Event){},
+        .components = std.ArrayList(*ui.Component){},
         .focused_component = null,
         .frame_scheduler = frame_scheduler,
     };
@@ -244,14 +244,14 @@ pub fn init(allocator: std.mem.Allocator, config: Config) !Self {
 pub fn deinit(self: *Self) void {
     self.front_buffer.deinit();
     self.back_buffer.deinit();
-    self.event_queue.deinit();
-    self.components.deinit();
+    self.event_queue.deinit(self.allocator);
+    self.components.deinit(self.allocator);
     self.allocator.destroy(self.terminal);
 }
 
 /// Add a component to the application
 pub fn addComponent(self: *Self, component: *ui.Component) !void {
-    try self.components.append(component);
+    try self.components.append(self.allocator, component);
     if (self.focused_component == null) {
         self.focused_component = 0;
     }
@@ -303,7 +303,7 @@ pub fn run(self: *Self) Error!void {
 fn processEvents(self: *Self) Error!void {
     // Poll for terminal events (non-blocking)
     while (self.terminal.pollEvent()) |event| {
-        try self.event_queue.append(event);
+        try self.event_queue.append(self.allocator, event);
 
         // Dispatch to focused component
         if (self.focused_component) |idx| {

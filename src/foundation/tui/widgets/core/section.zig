@@ -3,7 +3,7 @@
 
 const std = @import("std");
 const term_shared = @import("../../../term.zig");
-const TermCaps = term_shared.TermCaps;
+const TermCaps = term_shared.capabilities.TermCaps;
 const print = std.debug.print;
 
 /// Enhanced Section widget with collapsible content and rich styling

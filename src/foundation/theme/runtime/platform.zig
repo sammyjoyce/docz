@@ -4,8 +4,8 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const ColorScheme = @import("ColorScheme.zig").ColorScheme;
-const Color = @import("ColorScheme.zig").Color;
-const RGB = @import("ColorScheme.zig").RGB;
+const ThemeColor = @import("color.zig");
+const Color = ThemeColor.Color;
 
 pub const Platform = struct {
     allocator: std.mem.Allocator,
@@ -232,16 +232,12 @@ pub const Platform = struct {
 
     fn toGrayscale(self: *Self, color: Color) Color {
         _ = self;
-        const gray = @as(u8, @intFromFloat(0.299 * @as(f32, @floatFromInt(color.rgb.r)) +
-            0.587 * @as(f32, @floatFromInt(color.rgb.g)) +
-            0.114 * @as(f32, @floatFromInt(color.rgb.b))));
+        const rgb = color.rgb();
+        const gray = @as(u8, @intFromFloat(0.299 * @as(f32, @floatFromInt(rgb.r)) +
+            0.587 * @as(f32, @floatFromInt(rgb.g)) +
+            0.114 * @as(f32, @floatFromInt(rgb.b))));
 
-        return Color.init(
-            color.name,
-            RGB.init(gray, gray, gray),
-            color.ansi256,
-            color.ansi16,
-        );
+        return Color.fromRgb(color.name, gray, gray, gray, color.alpha);
     }
 
     /// Get platform-specific configuration directory

@@ -261,30 +261,30 @@ pub const Registry = struct {
 
     /// List all registered tools
     pub fn listTools(self: *Registry, allocator: std.mem.Allocator) ![]Tool {
-        var tools = std.ArrayList(Tool).init(allocator);
-        defer tools.deinit();
+        var tools = std.ArrayList(Tool){};
+        defer tools.deinit(allocator);
 
         var iterator = self.metadata.iterator();
         while (iterator.next()) |entry| {
-            try tools.append(entry.value_ptr.*);
+            try tools.append(allocator, entry.value_ptr.*);
         }
 
-        return tools.toOwnedSlice();
+        return tools.toOwnedSlice(allocator);
     }
 
     /// List tools by agent
     pub fn listToolsByAgent(self: *Registry, allocator: std.mem.Allocator, agentName: []const u8) ![]Tool {
-        var tools = std.ArrayList(Tool).init(allocator);
-        defer tools.deinit();
+        var tools = std.ArrayList(Tool){};
+        defer tools.deinit(allocator);
 
         var iterator = self.metadata.iterator();
         while (iterator.next()) |entry| {
             if (std.mem.eql(u8, entry.value_ptr.agent, agentName)) {
-                try tools.append(entry.value_ptr.*);
+                try tools.append(allocator, entry.value_ptr.*);
             }
         }
 
-        return tools.toOwnedSlice();
+        return tools.toOwnedSlice(allocator);
     }
 };
 
@@ -346,9 +346,9 @@ fn oracleTool(ctx: *SharedContext, allocator: std.mem.Allocator, input: []const 
         return allocator.dupe(u8, response) catch ToolError.OutOfMemory;
     }
 
-    var client = anthropic.Client.init(allocator, apiKey) catch |err| switch (err) {
-        anthropic.Error.MissingAPIKey => return ToolError.AuthError,
-        anthropic.Error.OutOfMemory => return ToolError.OutOfMemory,
+    var client = anthropic.Client.Client.init(allocator, apiKey) catch |err| switch (err) {
+        anthropic.Models.Error.MissingAPIKey => return ToolError.AuthError,
+        anthropic.Models.Error.OutOfMemory => return ToolError.OutOfMemory,
         else => {
             // If anthropic client initialization fails for any other reason,
             // return a stub response indicating network access is disabled
@@ -358,7 +358,17 @@ fn oracleTool(ctx: *SharedContext, allocator: std.mem.Allocator, input: []const 
     };
 
     ctx.tools.tokenBuffer.clearRetainingCapacity();
-    const tokenCallback = &tokenCallbackImpl;
+    // Bridge callback: use provider context's user_data to reach our higher-level ctx
+    const Callback = struct {
+        fn onToken(ac: *anthropic.Client.SharedContext, chunk: []const u8) void {
+            if (ac.user_data) |p| {
+                const user_ctx: *SharedContext = @ptrCast(@alignCast(p));
+                user_ctx.tools.tokenBuffer.appendSlice(chunk) catch |appendError| {
+                    std.log.err("Failed to append token chunk: {any}", .{appendError});
+                };
+            }
+        }
+    };
 
     // Read and prepend anthropic_spoof.txt to system prompt
     const spoofContent = blk: {
@@ -402,18 +412,21 @@ fn oracleTool(ctx: *SharedContext, allocator: std.mem.Allocator, input: []const 
         , .{currentDate}) catch return ToolError.OutOfMemory;
     defer allocator.free(systemPrompt);
 
-    client.stream(ctx, .{
+    var ac = anthropic.Client.SharedContext.init(allocator);
+    defer ac.deinit();
+    ac.user_data = ctx;
+    client.stream(&ac, .{
         .model = "claude-3-sonnet-20240229",
         .messages = &[_]anthropic.Message{
             .{ .role = .system, .content = systemPrompt },
             .{ .role = .user, .content = promptText },
         },
-        .onToken = tokenCallback,
+        .onToken = &Callback.onToken,
     }) catch |err| switch (err) {
-        anthropic.Error.NetworkError => return ToolError.NetworkError,
-        anthropic.Error.APIError => return ToolError.APIError,
-        anthropic.Error.AuthError => return ToolError.AuthError,
-        anthropic.Error.OutOfMemory => return ToolError.OutOfMemory,
+        anthropic.Models.Error.NetworkError => return ToolError.NetworkError,
+        anthropic.Models.Error.APIError => return ToolError.APIError,
+        anthropic.Models.Error.AuthError => return ToolError.AuthError,
+        anthropic.Models.Error.OutOfMemory => return ToolError.OutOfMemory,
         else => return ToolError.UnexpectedError,
     };
 
@@ -439,11 +452,12 @@ pub fn createJsonToolWrapper(jsonFunc: JsonFunction) ToolFn {
             const value = StoredFunction.func(allocator, parsed.value) catch |err| return err;
 
             // Serialize result to string
-            var buffer = std.ArrayList(u8).init(allocator);
-            defer buffer.deinit();
-            var stringify = std.json.Stringify.init(buffer.writer());
-            stringify.write(value) catch return ToolError.UnexpectedError;
-            return buffer.toOwnedSlice() catch return ToolError.UnexpectedError;
+            var buffer = std.ArrayList(u8){};
+            defer buffer.deinit(allocator);
+            var aw: std.Io.Writer.Allocating = .fromArrayList(allocator, &buffer);
+            std.json.Stringify.value(value, .{}, &aw.writer) catch return ToolError.UnexpectedError;
+            buffer = aw.toArrayList();
+            return buffer.toOwnedSlice(allocator) catch return ToolError.UnexpectedError;
         }
     }.wrapper;
 }
@@ -492,11 +506,12 @@ pub fn registerJsonToolWithRequiredFields(
             schemas.validateRequiredFields(fieldMap, Stored.request) catch return ToolError.MissingParameter;
 
             const result = Stored.func(allocator, parsed.value) catch |err| return err;
-            var buffer = std.ArrayList(u8).init(allocator);
-            defer buffer.deinit();
-            var stringify = std.json.Stringify.init(buffer.writer());
-            try stringify.write(result);
-            const out = buffer.toOwnedSlice() catch return ToolError.UnexpectedError;
+            var buffer = std.ArrayList(u8){};
+            defer buffer.deinit(allocator);
+            var aw: std.Io.Writer.Allocating = .fromArrayList(allocator, &buffer);
+            std.json.Stringify.value(result, .{}, &aw.writer) catch return ToolError.UnexpectedError;
+            buffer = aw.toArrayList();
+            const out = buffer.toOwnedSlice(allocator) catch return ToolError.UnexpectedError;
             return out;
         }
     }.run;

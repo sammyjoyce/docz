@@ -8,8 +8,8 @@
 //! - Manages buffered output for performance
 
 const std = @import("std");
-const term_shared = @import("term_shared");
-const terminal = term_shared.common;
+const term = @import("../../term.zig");
+const terminal = term; // align to barrel; Terminal type exported via term.io
 
 /// Rendering strategies based on terminal capabilities
 pub const RenderStrategy = enum {

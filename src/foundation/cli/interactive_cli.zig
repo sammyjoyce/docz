@@ -2,9 +2,9 @@
 //! Provides command palette and user experience
 
 const std = @import("std");
-const components = @import("../components/mod.zig");
-const tui = @import("tui/mod.zig");
-const term = @import("term_shared");
+const components = @import("../components.zig");
+const tui = @import("../tui.zig");
+const term = @import("../term.zig");
 const engine = @import("core_engine");
 const selected_spec = @import("agent_spec");
 const anthropic = @import("anthropic_shared");

@@ -12,8 +12,7 @@
 //! - Multiple display styles (minimal, detailed, system)
 
 const std = @import("std");
-const term_shared = @import("term_shared");
-const term = term_shared.term;
+const term = @import("../term.zig");
 const terminal_bridge = @import("./core/terminal_bridge.zig");
 const components = @import("components_shared");
 const presenters = @import("presenters.zig");
@@ -536,7 +535,7 @@ pub const Notification = struct {
         return StyleElements{ .icon = icon, .style = style };
     }
 
-    fn renderBorder(self: *Self, border_type: BorderType, title: []const u8, message: ?[]const u8, style: term.Style, caps: term_shared.TermCaps) !void {
+    fn renderBorder(self: *Self, border_type: BorderType, title: []const u8, message: ?[]const u8, style: term.Style, caps: term.capabilities.TermCaps) !void {
         const border_chars = if (caps.supportsTruecolor) switch (border_type) {
             .top => .{ "┌─", "─┐" },
             .middle => .{ "├─", "─┤" },
@@ -560,7 +559,7 @@ pub const Notification = struct {
         try self.bridge.print("\n", null);
     }
 
-    fn renderTitleLineStyled(self: *Self, icon: []const u8, title: []const u8, style: term.Style, caps: term_shared.TermCaps) !void {
+    fn renderTitleLineStyled(self: *Self, icon: []const u8, title: []const u8, style: term.Style, caps: term.capabilities.TermCaps) !void {
         try style.apply(self.bridge.writer(), caps);
         try self.bridge.print("│ ", null);
         try self.bridge.print(icon, null);
@@ -570,7 +569,7 @@ pub const Notification = struct {
         try self.bridge.print(" │\n", null);
     }
 
-    fn renderMessageLineStyled(self: *Self, message: []const u8, style: term.Style, caps: term_shared.TermCaps) !void {
+    fn renderMessageLineStyled(self: *Self, message: []const u8, style: term.Style, caps: term.capabilities.TermCaps) !void {
         try style.apply(self.bridge.writer(), caps);
         try self.bridge.print("│   ", null);
         try self.bridge.print(message, null);
@@ -656,7 +655,7 @@ const StyleElements = struct {
 /// Notification handler with multiple delivery methods
 pub const NotificationHandler = struct {
     allocator: std.mem.Allocator,
-    caps: term_shared.caps.TermCaps,
+    caps: term.capabilities.TermCaps,
     activeNotifications: std.ArrayList(BaseNotification),
     ids: std.ArrayList(u64),
     notificationCounter: u64,
@@ -668,7 +667,7 @@ pub const NotificationHandler = struct {
     pub fn init(allocator: std.mem.Allocator) NotificationHandler {
         return NotificationHandler{
             .allocator = allocator,
-            .caps = term_shared.caps.getTermCaps(),
+            .caps = .{}, // placeholder; capability detection wired elsewhere
             .activeNotifications = std.ArrayList(BaseNotification).init(allocator),
             .ids = std.ArrayList(u64).init(allocator),
             .notificationCounter = 0,

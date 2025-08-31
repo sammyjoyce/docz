@@ -2,8 +2,8 @@
 //! Provides rich formatting, adaptive colors, hyperlinks, clipboard integration
 
 const std = @import("std");
-// const components = @import("../../components/mod.zig");
-const termMod = @import("term_shared");
+// const components = @import("../../components.zig");
+const termMod = @import("../../term.zig");
 const term = termMod.term;
 
 // Minimal TUI replacements

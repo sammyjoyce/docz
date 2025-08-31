@@ -3,8 +3,9 @@
 
 const std = @import("std");
 const ColorScheme = @import("ColorScheme.zig").ColorScheme;
-const Color = @import("ColorScheme.zig").Color;
-const RGB = @import("ColorScheme.zig").RGB;
+const ThemeColor = @import("color.zig");
+const Color = ThemeColor.Color;
+const RGB = ThemeColor.Rgb;
 
 pub const ColorBlindness = struct {
     allocator: std.mem.Allocator,
@@ -107,8 +108,8 @@ pub const ColorBlindness = struct {
     // Helper functions
 
     fn simulateColorBlindnessOnColor(self: *Self, color: Color, cb_type: ColorBlindnessType) Color {
-        const simulated_rgb = self.simulateColorBlindnessOnRGB(color.rgb, cb_type);
-        return Color.init(color.name, simulated_rgb, color.ansi256, color.ansi16);
+        const simulated_rgb = self.simulateColorBlindnessOnRGB(color.rgb(), cb_type);
+        return Color.fromRgb(color.name, simulated_rgb.r, simulated_rgb.g, simulated_rgb.b, color.alpha);
     }
 
     fn simulateColorBlindnessOnRGB(self: *Self, rgb: RGB, cb_type: ColorBlindnessType) RGB {
@@ -168,11 +169,11 @@ pub const ColorBlindness = struct {
         const new_b = matrix[2][0] * r_lin + matrix[2][1] * g_lin + matrix[2][2] * b_lin;
 
         // Convert back to sRGB
-        return RGB.init(
-            @as(u8, @intFromFloat(@min(255, @max(0, gammaCompress(new_r) * 255)))),
-            @as(u8, @intFromFloat(@min(255, @max(0, gammaCompress(new_g) * 255)))),
-            @as(u8, @intFromFloat(@min(255, @max(0, gammaCompress(new_b) * 255)))),
-        );
+        return .{
+            .r = @as(u8, @intFromFloat(@min(255, @max(0, gammaCompress(new_r) * 255)))),
+            .g = @as(u8, @intFromFloat(@min(255, @max(0, gammaCompress(new_g) * 255)))),
+            .b = @as(u8, @intFromFloat(@min(255, @max(0, gammaCompress(new_b) * 255)))),
+        };
     }
 
     fn gammaExpand(value: f32) f32 {
@@ -194,65 +195,70 @@ pub const ColorBlindness = struct {
     fn shiftToOrange(self: *Self, color: Color) Color {
         _ = self;
         // Shift reds toward orange for better protanopia visibility
-        const hsl = color.rgb.toHSL();
+        const hsl = rgbToHsl(color.rgb());
         var adjusted = hsl;
         if (hsl.h < 30 or hsl.h > 330) { // Red range
             adjusted.h = 30; // Orange
         }
-        return Color.init(color.name, adjusted.toRGB(), color.ansi256, color.ansi16);
+        const rgb = hslToRgb(adjusted);
+        return Color.fromRgb(color.name, rgb.r, rgb.g, rgb.b, color.alpha);
     }
 
     fn enhanceBlue(self: *Self, color: Color) Color {
         _ = self;
         // Enhance blue component for protanopia
-        var adjusted = color.rgb;
+        var adjusted = color.rgb();
         adjusted.b = @min(255, adjusted.b + 50);
-        return Color.init(color.name, adjusted, color.ansi256, color.ansi16);
+        return Color.fromRgb(color.name, adjusted.r, adjusted.g, adjusted.b, color.alpha);
     }
 
     fn shiftToBlue(self: *Self, color: Color) Color {
         _ = self;
         // Shift greens toward blue for deuteranopia
-        const hsl = color.rgb.toHSL();
+        const hsl = rgbToHsl(color.rgb());
         var adjusted = hsl;
         if (hsl.h > 90 and hsl.h < 150) { // Green range
             adjusted.h = 210; // Blue
         }
-        return Color.init(color.name, adjusted.toRGB(), color.ansi256, color.ansi16);
+        const rgb = hslToRgb(adjusted);
+        return Color.fromRgb(color.name, rgb.r, rgb.g, rgb.b, color.alpha);
     }
 
     fn enhanceOrange(self: *Self, color: Color) Color {
         _ = self;
         // Enhance orange for deuteranopia
-        const hsl = color.rgb.toHSL();
+        const hsl = rgbToHsl(color.rgb());
         var adjusted = hsl;
         if (hsl.h > 30 and hsl.h < 90) { // Yellow range
             adjusted.h = 30; // Orange
             adjusted.s = @min(1.0, adjusted.s * 1.2);
         }
-        return Color.init(color.name, adjusted.toRGB(), color.ansi256, color.ansi16);
+        const rgb = hslToRgb(adjusted);
+        return Color.fromRgb(color.name, rgb.r, rgb.g, rgb.b, color.alpha);
     }
 
     fn shiftToGreen(self: *Self, color: Color) Color {
         _ = self;
         // Shift blues toward green for tritanopia
-        const hsl = color.rgb.toHSL();
+        const hsl = rgbToHsl(color.rgb());
         var adjusted = hsl;
         if (hsl.h > 180 and hsl.h < 270) { // Blue range
             adjusted.h = 120; // Green
         }
-        return Color.init(color.name, adjusted.toRGB(), color.ansi256, color.ansi16);
+        const rgb = hslToRgb(adjusted);
+        return Color.fromRgb(color.name, rgb.r, rgb.g, rgb.b, color.alpha);
     }
 
     fn shiftToRed(self: *Self, color: Color) Color {
         _ = self;
         // Shift blues toward red for tritanopia
-        const hsl = color.rgb.toHSL();
+        const hsl = rgbToHsl(color.rgb());
         var adjusted = hsl;
         if (hsl.h > 180 and hsl.h < 270) { // Blue range
             adjusted.h = 0; // Red
         }
-        return Color.init(color.name, adjusted.toRGB(), color.ansi256, color.ansi16);
+        const rgb = hslToRgb(adjusted);
+        return Color.fromRgb(color.name, rgb.r, rgb.g, rgb.b, color.alpha);
     }
 
     fn createMonochromeTheme(self: *Self, theme: *ColorScheme) !*ColorScheme {
@@ -275,7 +281,65 @@ pub const ColorBlindness = struct {
     fn toGrayscale(self: *Self, color: Color, brightness: f32) Color {
         _ = self;
         const gray_value = @as(u8, @intFromFloat(brightness * 255));
-        const gray_rgb = RGB.init(gray_value, gray_value, gray_value);
-        return Color.init(color.name, gray_rgb, color.ansi256, color.ansi16);
+        return Color.fromRgb(color.name, gray_value, gray_value, gray_value, color.alpha);
     }
 };
+
+// Local helpers for HSL conversion
+fn rgbToHsl(c: RGB) ThemeColor.Hsl {
+    const rf: f32 = @as(f32, @floatFromInt(c.r)) / 255.0;
+    const gf: f32 = @as(f32, @floatFromInt(c.g)) / 255.0;
+    const bf: f32 = @as(f32, @floatFromInt(c.b)) / 255.0;
+    const maxc = @max(rf, @max(gf, bf));
+    const minc = @min(rf, @min(gf, bf));
+    const delta = maxc - minc;
+    var h: f32 = 0.0;
+    var s: f32 = 0.0;
+    const l: f32 = (maxc + minc) / 2.0;
+    if (delta != 0.0) {
+        s = if (l > 0.5) delta / (2.0 - maxc - minc) else delta / (maxc + minc);
+        if (maxc == rf) {
+            h = (gf - bf) / delta + (if (gf < bf) 6.0 else 0.0);
+        } else if (maxc == gf) {
+            h = (bf - rf) / delta + 2.0;
+        } else {
+            h = (rf - gf) / delta + 4.0;
+        }
+        h *= 60.0;
+    }
+    return .{ .h = h, .s = s, .l = l };
+}
+
+fn hslToRgb(hsl: ThemeColor.Hsl) RGB {
+    if (hsl.s == 0.0) {
+        const v = @as(u8, @intFromFloat(@round(hsl.l * 255.0)));
+        return .{ .r = v, .g = v, .b = v };
+    }
+    const c = (1.0 - @abs(2.0 * hsl.l - 1.0)) * hsl.s;
+    var hh = hsl.h;
+    while (hh < 0.0) hh += 360.0;
+    while (hh >= 360.0) hh -= 360.0;
+    const hprime = hh / 60.0;
+    const x = c * (1.0 - @abs(@mod(hprime, 2.0) - 1.0));
+    var rf: f32 = 0.0;
+    var gf: f32 = 0.0;
+    var bf: f32 = 0.0;
+    if (hprime < 1.0) {
+        rf = c; gf = x; bf = 0.0;
+    } else if (hprime < 2.0) {
+        rf = x; gf = c; bf = 0.0;
+    } else if (hprime < 3.0) {
+        rf = 0.0; gf = c; bf = x;
+    } else if (hprime < 4.0) {
+        rf = 0.0; gf = x; bf = c;
+    } else if (hprime < 5.0) {
+        rf = x; gf = 0.0; bf = c;
+    } else {
+        rf = c; gf = 0.0; bf = x;
+    }
+    const m = hsl.l - c / 2.0;
+    const r = @as(u8, @intFromFloat(@round((rf + m) * 255.0)));
+    const g = @as(u8, @intFromFloat(@round((gf + m) * 255.0)));
+    const b = @as(u8, @intFromFloat(@round((bf + m) * 255.0)));
+    return .{ .r = r, .g = g, .b = b };
+}

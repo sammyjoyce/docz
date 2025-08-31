@@ -2,8 +2,8 @@
 //! Main interface for CLI functionality with all features
 
 const std = @import("std");
-const components = @import("../components/mod.zig");
-const cli_mod = @import("mod.zig");
+const components = @import("../components.zig");
+const cli_mod = @import("../cli.zig");
 
 // Core CLI functionality
 pub const Parser = cli_mod.parser.Parser;
@@ -22,7 +22,7 @@ pub const formatters = cli_mod.formatters;
 pub const hyperlinks = cli_mod.hyperlinks;
 
 // TUI integration
-pub const tui = @import("tui/mod.zig");
+pub const tui = @import("../tui.zig");
 pub const Section = tui.Section;
 pub const Menu = tui.Menu;
 pub const MenuItem = tui.MenuItem;
@@ -31,8 +31,9 @@ pub const NotificationHandler = interactive.notification_manager.NotificationHan
 pub const GraphicsWidget = tui.GraphicsWidget;
 
 // Terminal capabilities
-pub const TermCaps = @import("term_shared").caps.TermCaps;
-pub const getTermCaps = @import("term_shared").caps.getTermCaps;
+const term = @import("../term.zig");
+pub const TermCaps = term.capabilities.TermCaps;
+pub const getTermCaps = struct {};
 
 // Advanced features
 pub const HyperlinkBuilder = hyperlinks.hyperlinks.HyperlinkBuilder;

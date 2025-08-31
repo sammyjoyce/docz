@@ -1112,7 +1112,7 @@ pub const OAuthWizard = struct {
 /// Convenience function to run the OAuth wizard
 pub fn runOAuthWizard(allocator: std.mem.Allocator) !oauth.Credentials {
     // Create renderer
-    const renderer = try renderer_mod.createRenderer(allocator);
+    const renderer = try renderer_mod.createRenderEngine(allocator);
     defer renderer.deinit();
 
     // Create and run wizard

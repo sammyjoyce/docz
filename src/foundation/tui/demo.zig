@@ -4,7 +4,7 @@
 //! based on terminal capabilities.
 
 const std = @import("std");
-const tui = @import("mod.zig");
+const tui = @import("../tui.zig");
 const bounds_mod = @import("core/bounds.zig");
 const SharedContext = @import("../context.zig").SharedContext;
 

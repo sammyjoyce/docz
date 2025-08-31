@@ -91,7 +91,7 @@ pub const Exporter = struct {
     }
 
     fn writeJSONColor(self: *Self, writer: anytype, name: []const u8, color: Color, is_last: bool) !void {
-        const hex = try color.rgb.toHex(self.allocator);
+        const hex = try color.toHex(self.allocator);
         defer self.allocator.free(hex);
 
         try writer.print("    \"{s}\": \"{s}\"", .{ name, hex });
@@ -122,7 +122,7 @@ pub const Exporter = struct {
     }
 
     fn writeYamlColor(self: *Self, writer: anytype, name: []const u8, color: Color) !void {
-        const hex = try color.rgb.toHex(self.allocator);
+        const hex = try color.toHex(self.allocator);
         defer self.allocator.free(hex);
 
         try writer.print("  {s}: \"{s}\"\n", .{ name, hex });
@@ -148,7 +148,7 @@ pub const Exporter = struct {
     }
 
     fn writeTomlColor(self: *Self, writer: anytype, name: []const u8, color: Color) !void {
-        const hex = try color.rgb.toHex(self.allocator);
+        const hex = try color.toHex(self.allocator);
         defer self.allocator.free(hex);
 
         try writer.print("{s} = \"{s}\"\n", .{ name, hex });
@@ -182,7 +182,7 @@ pub const Exporter = struct {
     }
 
     fn writeCssVariable(self: *Self, writer: anytype, name: []const u8, color: Color) !void {
-        const hex = try color.rgb.toHex(self.allocator);
+        const hex = try color.toHex(self.allocator);
         defer self.allocator.free(hex);
 
         try writer.print("  {s}: {s};\n", .{ name, hex });
@@ -224,9 +224,10 @@ pub const Exporter = struct {
         try writer.print("  <key>{s}</key>\n", .{name});
         try writer.writeAll("  <dict>\n");
 
-        const r = @as(f32, @floatFromInt(color.rgb.r)) / 255.0;
-        const g = @as(f32, @floatFromInt(color.rgb.g)) / 255.0;
-        const b = @as(f32, @floatFromInt(color.rgb.b)) / 255.0;
+        const rgb = color.rgb();
+        const r = @as(f32, @floatFromInt(rgb.r)) / 255.0;
+        const g = @as(f32, @floatFromInt(rgb.g)) / 255.0;
+        const b = @as(f32, @floatFromInt(rgb.b)) / 255.0;
 
         try writer.print("    <key>Red Component</key>\n    <real>{d}</real>\n", .{r});
         try writer.print("    <key>Green Component</key>\n    <real>{d}</real>\n", .{g});
@@ -243,13 +244,13 @@ pub const Exporter = struct {
         try writer.writeAll("{\n");
         try writer.print("  \"name\": \"{s}\",\n", .{theme.name});
 
-        const bg_hex = try theme.background.rgb.toHex(self.allocator);
+        const bg_hex = try theme.background.toHex(self.allocator);
         defer self.allocator.free(bg_hex);
-        const fg_hex = try theme.foreground.rgb.toHex(self.allocator);
+        const fg_hex = try theme.foreground.toHex(self.allocator);
         defer self.allocator.free(fg_hex);
-        const cursor_hex = try theme.cursor.rgb.toHex(self.allocator);
+        const cursor_hex = try theme.cursor.toHex(self.allocator);
         defer self.allocator.free(cursor_hex);
-        const selection_hex = try theme.selection.rgb.toHex(self.allocator);
+        const selection_hex = try theme.selection.toHex(self.allocator);
         defer self.allocator.free(selection_hex);
 
         try writer.print("  \"background\": \"{s}\",\n", .{bg_hex});
@@ -351,13 +352,15 @@ pub const Exporter = struct {
         try writer.print("highlight {s}", .{group});
 
         if (fg) |color| {
-            try writer.print(" guifg=#{x:0>2}{x:0>2}{x:0>2}", .{ color.rgb.r, color.rgb.g, color.rgb.b });
-            try writer.print(" ctermfg={}", .{color.ansi256});
+            const fg_rgb = color.rgb();
+            try writer.print(" guifg=#{x:0>2}{x:0>2}{x:0>2}", .{ fg_rgb.r, fg_rgb.g, fg_rgb.b });
+            try writer.print(" ctermfg={}", .{color.ansi256()});
         }
 
         if (bg) |color| {
-            try writer.print(" guibg=#{x:0>2}{x:0>2}{x:0>2}", .{ color.rgb.r, color.rgb.g, color.rgb.b });
-            try writer.print(" ctermbg={}", .{color.ansi256});
+            const bg_rgb = color.rgb();
+            try writer.print(" guibg=#{x:0>2}{x:0>2}{x:0>2}", .{ bg_rgb.r, bg_rgb.g, bg_rgb.b });
+            try writer.print(" ctermbg={}", .{color.ansi256()});
         }
 
         try writer.writeAll("\n");

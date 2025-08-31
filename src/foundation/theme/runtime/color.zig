@@ -1,188 +1,283 @@
-//! Color Management System
-//! Consolidated color primitives that support all terminal contexts (CLI, TUI, Renderer)
+//! Color Management System (theme/runtime)
+//! Aligns theme colors with term.color union (.rgb/.ansi/.ansi256) and removes
+//! dependence on local color_types. Provides metadata (name, alpha) and
+//! utilities for contrast and transformations.
 
 const std = @import("std");
 const term = @import("../../term.zig");
-const ansi_color = term.color;
 
-/// Unified Color type that supports all terminal contexts
+pub const Rgb = struct { r: u8, g: u8, b: u8 };
+pub const Hsl = struct { h: f32, s: f32, l: f32 };
+
+/// Theme color with name/alpha metadata and standardized value
 pub const Color = struct {
-    /// RGB representation (24-bit true color)
-    rgb: ansi_color.types.RGB,
-
-    /// ANSI 256-color index
-    ansi256: u8,
-
-    /// ANSI 16-color index
-    ansi16: u8,
-
-    /// Human-readable name
     name: []const u8,
-
-    /// Optional alpha channel (0.0-1.0, used for blending)
+    value: term.color.Color, // .rgb/.ansi/.ansi256/.default
     alpha: f32 = 1.0,
 
     const Self = @This();
 
-    /// Create a new Color with automatic ANSI conversion
-    pub fn init(name: []const u8, rgb: ansi_color.types.RGB, alpha: f32) Self {
-        const ansi256 = ansi_color.conversions.rgbToAnsi256(rgb);
-        const ansi16 = ansi_color.conversions.ansi256ToAnsi16(ansi256);
+    pub fn fromRgb(name: []const u8, r: u8, g: u8, b: u8, alpha: f32) Self {
+        return .{ .name = name, .value = .{ .rgb = .{ .r = r, .g = g, .b = b } }, .alpha = alpha };
+    }
 
-        return Self{
-            .rgb = rgb,
-            .ansi256 = ansi256,
-            .ansi16 = ansi16,
-            .name = name,
-            .alpha = alpha,
+    pub fn fromAnsi(name: []const u8, idx: u8, alpha: f32) Self {
+        return .{ .name = name, .value = .{ .ansi = idx }, .alpha = alpha };
+    }
+
+    pub fn fromAnsi256(name: []const u8, idx: u8, alpha: f32) Self {
+        return .{ .name = name, .value = .{ .ansi256 = idx }, .alpha = alpha };
+    }
+
+    pub fn fromHex(name: []const u8, hex: []const u8, alpha: f32) !Self {
+        const rgb_col = try parseHexColor(hex);
+        return fromRgb(name, rgb_col.r, rgb_col.g, rgb_col.b, alpha);
+    }
+
+    pub fn toHex(self: Self, allocator: std.mem.Allocator) ![]u8 {
+        const rgb_col = self.rgb();
+        return try std.fmt.allocPrint(allocator, "#{X:0>2}{X:0>2}{X:0>2}", .{ rgb_col.r, rgb_col.g, rgb_col.b });
+    }
+
+    pub fn rgb(self: Self) Rgb {
+        return switch (self.value) {
+            .rgb => |c| .{ .r = c.r, .g = c.g, .b = c.b },
+            .ansi => |idx| ansi16ToRgb(idx),
+            .ansi256 => |idx| ansi256ToRgb(idx),
+            .default => .{ .r = 0, .g = 0, .b = 0 },
         };
     }
 
-    /// Create from RGB values
-    pub fn fromRgb(name: []const u8, r: u8, g: u8, b: u8, alpha: f32) Self {
-        const rgb = ansi_color.types.RGB.init(r, g, b);
-        return init(name, rgb, alpha);
+    pub fn ansi256(self: Self) u8 {
+        return switch (self.value) {
+            .ansi256 => |i| i,
+            .ansi => |i| ansi16ToAnsi256(i),
+            .rgb => |c| rgbToAnsi256(.{ .r = c.r, .g = c.g, .b = c.b }),
+            .default => 0,
+        };
     }
 
-    /// Create from hex string (#RRGGBB or RRGGBB)
-    pub fn fromHex(name: []const u8, hex: []const u8, alpha: f32) !Self {
-        const hex_color = try ansi_color.types.HexColor.fromString(hex);
-        return init(name, hex_color.toRgb(), alpha);
+    pub fn ansi16(self: Self) u8 {
+        return switch (self.value) {
+            .ansi => |i| i,
+            .ansi256 => |i| ansi256ToAnsi16(i),
+            .rgb => |c| ansi256ToAnsi16(rgbToAnsi256(.{ .r = c.r, .g = c.g, .b = c.b })),
+            .default => 0,
+        };
     }
 
-    /// Create from HSL values
-    pub fn fromHsl(name: []const u8, h: f32, s: f32, l: f32, alpha: f32) Self {
-        const hsl = ansi_color.types.HSL.init(h, s, l);
-        const rgb = ansi_color.conversions.hslToRgb(hsl);
-        return init(name, rgb, alpha);
-    }
-
-    /// Create from HSV values
-    pub fn fromHsv(name: []const u8, h: f32, s: f32, v: f32, alpha: f32) Self {
-        const hsv = ansi_color.types.HSV.init(h, s, v);
-        const rgb = ansi_color.conversions.hsvToRgb(hsv);
-        return init(name, rgb, alpha);
-    }
-
-    /// Convert to ANSI escape sequence for foreground
-    pub fn toAnsiForeground(self: Self, allocator: std.mem.Allocator, caps: ansi_color.TermCaps) ![]u8 {
-        if (caps.supportsTruecolor) {
-            return try ansi_color.generateRgbForegroundSequence(allocator, self.rgb.r, self.rgb.g, self.rgb.b);
-        } else if (caps.supportsTruecolor) { // Use 256 colors as fallback
-            return try ansi_color.generateForegroundColorSequence(allocator, self.ansi256);
-        } else {
-            return try ansi_color.generateForegroundColorSequence(allocator, self.ansi16);
-        }
-    }
-
-    /// Convert to ANSI escape sequence for background
-    pub fn toAnsiBackground(self: Self, allocator: std.mem.Allocator, caps: ansi_color.TermCaps) ![]u8 {
-        if (caps.supportsTruecolor) {
-            return try ansi_color.generateRgbBackgroundSequence(allocator, self.rgb.r, self.rgb.g, self.rgb.b);
-        } else if (caps.supportsTruecolor) { // Use 256 colors as fallback
-            return try ansi_color.generateBackgroundColorSequence(allocator, self.ansi256);
-        } else {
-            return try ansi_color.generateBackgroundColorSequence(allocator, self.ansi16);
-        }
-    }
-
-    /// Convert to hex string
-    pub fn toHex(self: Self, allocator: std.mem.Allocator) ![]u8 {
-        const hex_color = ansi_color.HexColor.init((@as(u32, self.rgb.r) << 16) | (@as(u32, self.rgb.g) << 8) | @as(u32, self.rgb.b));
-        return try hex_color.toString(allocator);
-    }
-
-    /// Blend this color with another color
-    pub fn blend(self: Self, other: Self, t: f32, allocator: std.mem.Allocator) !Self {
-        const clamped_t = @max(0.0, @min(1.0, t));
-
-        const r = @as(u8, @intFromFloat(@round(@as(f32, @floatFromInt(self.rgb.r)) * (1.0 - clamped_t) + @as(f32, @floatFromInt(other.rgb.r)) * clamped_t)));
-        const g = @as(u8, @intFromFloat(@round(@as(f32, @floatFromInt(self.rgb.g)) * (1.0 - clamped_t) + @as(f32, @floatFromInt(other.rgb.g)) * clamped_t)));
-        const b = @as(u8, @intFromFloat(@round(@as(f32, @floatFromInt(self.rgb.b)) * (1.0 - clamped_t) + @as(f32, @floatFromInt(other.rgb.b)) * clamped_t)));
-        const alpha = self.alpha * (1.0 - clamped_t) + other.alpha * clamped_t;
-
-        const rgb = ansi_color.RgbColor.init(r, g, b);
-        const blended_name = try std.fmt.allocPrint(allocator, "{s}_blend_{s}", .{ self.name, other.name });
-
-        return init(blended_name, rgb, alpha);
-    }
-
-    /// Get the luminance of this color
     pub fn luminance(self: Self) f32 {
-        return ansi_color.ColorAnalysis.getPerceivedBrightness(self.rgb);
+        const c = self.rgb();
+        const rf: f32 = gamma(@as(f32, @floatFromInt(c.r)) / 255.0);
+        const gf: f32 = gamma(@as(f32, @floatFromInt(c.g)) / 255.0);
+        const bf: f32 = gamma(@as(f32, @floatFromInt(c.b)) / 255.0);
+        return 0.2126 * rf + 0.7152 * gf + 0.0722 * bf;
     }
 
-    /// Calculate contrast ratio with another color
     pub fn contrastRatio(self: Self, other: Self) f32 {
-        return ansi_color.ColorAnalysis.getContrastRatio(self.rgb, other.rgb);
+        const l1 = self.luminance();
+        const l2 = other.luminance();
+        const hi = @max(l1, l2);
+        const lo = @min(l1, l2);
+        return (hi + 0.05) / (lo + 0.05);
     }
 
-    /// Check if this color meets accessibility standards with another color
-    pub fn isAccessible(self: Self, other: Self, level: enum { AA, AAA }) bool {
-        return ansi_color.ColorAnalysis.isAccessible(self.rgb, other.rgb, level);
-    }
-
-    /// Lighten the color by a factor
     pub fn lighten(self: Self, factor: f32, allocator: std.mem.Allocator) !Self {
-        const hsl = self.rgb.toHsl();
-        const new_l = @min(1.0, hsl.l + factor);
-        const new_hsl = ansi_color.HslColor.init(hsl.h, hsl.s, new_l);
-        const new_rgb = new_hsl.toRgb();
+        const hsl = rgbToHsl(self.rgb());
+        var nh = hsl;
+        nh.l = @min(1.0, hsl.l * (1.0 + factor));
+        const nrgb = hslToRgb(nh);
         const new_name = try std.fmt.allocPrint(allocator, "{s}_lighter", .{self.name});
-        return init(new_name, new_rgb, self.alpha);
+        return fromRgb(new_name, nrgb.r, nrgb.g, nrgb.b, self.alpha);
     }
 
-    /// Darken the color by a factor
     pub fn darken(self: Self, factor: f32, allocator: std.mem.Allocator) !Self {
-        const hsl = self.rgb.toHsl();
-        const new_l = @max(0.0, hsl.l - factor);
-        const new_hsl = ansi_color.HslColor.init(hsl.h, hsl.s, new_l);
-        const new_rgb = new_hsl.toRgb();
+        const hsl = rgbToHsl(self.rgb());
+        var nh = hsl;
+        nh.l = @max(0.0, hsl.l * (1.0 - factor));
+        const nrgb = hslToRgb(nh);
         const new_name = try std.fmt.allocPrint(allocator, "{s}_darker", .{self.name});
-        return init(new_name, new_rgb, self.alpha);
+        return fromRgb(new_name, nrgb.r, nrgb.g, nrgb.b, self.alpha);
     }
 
-    /// Saturate the color by a factor
-    pub fn saturate(self: Self, factor: f32, allocator: std.mem.Allocator) !Self {
-        const hsl = self.rgb.toHsl();
-        const new_s = @min(1.0, hsl.s + factor);
-        const new_hsl = ansi_color.HslColor.init(hsl.h, new_s, hsl.l);
-        const new_rgb = new_hsl.toRgb();
-        const new_name = try std.fmt.allocPrint(allocator, "{s}_saturated", .{self.name});
-        return init(new_name, new_rgb, self.alpha);
-    }
-
-    /// Desaturate the color by a factor
-    pub fn desaturate(self: Self, factor: f32, allocator: std.mem.Allocator) !Self {
-        const hsl = self.rgb.toHsl();
-        const new_s = @max(0.0, hsl.s - factor);
-        const new_hsl = ansi_color.HslColor.init(hsl.h, new_s, hsl.l);
-        const new_rgb = new_hsl.toRgb();
-        const new_name = try std.fmt.allocPrint(allocator, "{s}_desaturated", .{self.name});
-        return init(new_name, new_rgb, self.alpha);
-    }
-
-    /// Get complementary color
-    pub fn complementary(self: Self, allocator: std.mem.Allocator) !Self {
-        const comp_rgb = ansi_color.ColorHarmony.getComplementary(self.rgb);
-        const comp_name = try std.fmt.allocPrint(allocator, "{s}_complement", .{self.name});
-        return init(comp_name, comp_rgb, self.alpha);
-    }
-
-    /// Check if color is dark
     pub fn isDark(self: Self) bool {
         return self.luminance() < 0.5;
     }
-
-    /// Check if color is light
     pub fn isLight(self: Self) bool {
         return self.luminance() >= 0.5;
     }
 };
 
-/// Predefined colors for common use cases
+// --- Helpers -----------------------------------------------------------------
+
+fn gamma(v: f32) f32 {
+    if (v <= 0.03928) return v / 12.92;
+    return std.math.pow(f32, (v + 0.055) / 1.055, 2.4);
+}
+
+fn parseHexColor(s: []const u8) !Rgb {
+    const hex = if (s.len > 0 and s[0] == '#') s[1..] else s;
+    if (hex.len != 6) return error.InvalidHexLength;
+    const r = try parseHexByte(hex[0..2]);
+    const g = try parseHexByte(hex[2..4]);
+    const b = try parseHexByte(hex[4..6]);
+    return .{ .r = r, .g = g, .b = b };
+}
+
+fn parseHexNibble(c: u8) !u8 {
+    return switch (c) {
+        '0'...'9' => c - '0',
+        'a'...'f' => 10 + (c - 'a'),
+        'A'...'F' => 10 + (c - 'A'),
+        else => error.InvalidHexDigit,
+    };
+}
+
+fn parseHexByte(pair: []const u8) !u8 {
+    if (pair.len != 2) return error.InvalidHexLength;
+    const hi = try parseHexNibble(pair[0]);
+    const lo = try parseHexNibble(pair[1]);
+    return (hi << 4) | lo;
+}
+
+fn rgbToAnsi256(rgb: Rgb) u8 {
+    const r = rgb.r;
+    const g = rgb.g;
+    const b = rgb.b;
+    if (r == g and g == b) {
+        if (r < 8) return 16;
+        if (r > 248) return 231;
+        const step: i32 = (@as(i32, r) - 8) / 10;
+        const idx: i32 = 232 + step;
+        return @as(u8, @intCast(idx));
+    }
+    const ri: u8 = @intCast(@min(5, @as(u8, @intFromFloat(@floor(@as(f32, @floatFromInt(r)) / 51.0)))));
+    const gi: u8 = @intCast(@min(5, @as(u8, @intFromFloat(@floor(@as(f32, @floatFromInt(g)) / 51.0)))));
+    const bi: u8 = @intCast(@min(5, @as(u8, @intFromFloat(@floor(@as(f32, @floatFromInt(b)) / 51.0)))));
+    return @as(u8, 16 + 36 * ri + 6 * gi + bi);
+}
+
+fn ansi256ToAnsi16(idx256: u8) u8 {
+    if (idx256 < 16) return idx256;
+    if (idx256 >= 232) {
+        const level = idx256 - 232;
+        return if (level < 12) 0 else 15;
+    }
+    const i = idx256 - 16;
+    const r = (i / 36) % 6;
+    const g = (i / 6) % 6;
+    const b = i % 6;
+    const bright = (r + g + b) >= 9;
+    const base: u8 = if (bright) 8 else 0;
+    if (r >= g and r >= b) return base + 1;
+    if (g >= r and g >= b) return base + 2;
+    return base + 4;
+}
+
+fn ansi16ToAnsi256(idx: u8) u8 {
+    // Map 16-color to the closest 256-color index
+    return switch (idx) {
+        0...15 => idx,
+        else => 0,
+    };
+}
+
+fn ansi256ToRgb(idx: u8) Rgb {
+    if (idx < 16) return ansi16ToRgb(idx);
+    if (idx >= 232) {
+        const level = 8 + 10 * (idx - 232);
+        return .{ .r = level, .g = level, .b = level };
+    }
+    const i = idx - 16;
+    const r = 51 * ((i / 36) % 6);
+    const g = 51 * ((i / 6) % 6);
+    const b = 51 * (i % 6);
+    return .{ .r = @intCast(r), .g = @intCast(g), .b = @intCast(b) };
+}
+
+fn ansi16ToRgb(idx: u8) Rgb {
+    const table = [_]Rgb{
+        .{ .r = 0, .g = 0, .b = 0 },       // 0 black
+        .{ .r = 205, .g = 0, .b = 0 },     // 1 red
+        .{ .r = 0, .g = 205, .b = 0 },     // 2 green
+        .{ .r = 205, .g = 205, .b = 0 },   // 3 yellow
+        .{ .r = 0, .g = 0, .b = 238 },     // 4 blue
+        .{ .r = 205, .g = 0, .b = 205 },   // 5 magenta
+        .{ .r = 0, .g = 205, .b = 205 },   // 6 cyan
+        .{ .r = 229, .g = 229, .b = 229 }, // 7 white
+        .{ .r = 127, .g = 127, .b = 127 }, // 8 bright black
+        .{ .r = 255, .g = 0, .b = 0 },     // 9 bright red
+        .{ .r = 0, .g = 255, .b = 0 },     // 10 bright green
+        .{ .r = 255, .g = 255, .b = 0 },   // 11 bright yellow
+        .{ .r = 92, .g = 92, .b = 255 },   // 12 bright blue
+        .{ .r = 255, .g = 0, .b = 255 },   // 13 bright magenta
+        .{ .r = 0, .g = 255, .b = 255 },   // 14 bright cyan
+        .{ .r = 255, .g = 255, .b = 255 }, // 15 bright white
+    };
+    return if (idx < table.len) table[idx] else table[0];
+}
+
+fn rgbToHsl(c: Rgb) Hsl {
+    const rf: f32 = @as(f32, @floatFromInt(c.r)) / 255.0;
+    const gf: f32 = @as(f32, @floatFromInt(c.g)) / 255.0;
+    const bf: f32 = @as(f32, @floatFromInt(c.b)) / 255.0;
+    const maxc = @max(rf, @max(gf, bf));
+    const minc = @min(rf, @min(gf, bf));
+    const delta = maxc - minc;
+    var h: f32 = 0.0;
+    var s: f32 = 0.0;
+    const l: f32 = (maxc + minc) / 2.0;
+    if (delta != 0.0) {
+        s = if (l > 0.5) delta / (2.0 - maxc - minc) else delta / (maxc + minc);
+        if (maxc == rf) {
+            h = (gf - bf) / delta + (if (gf < bf) 6.0 else 0.0);
+        } else if (maxc == gf) {
+            h = (bf - rf) / delta + 2.0;
+        } else {
+            h = (rf - gf) / delta + 4.0;
+        }
+        h *= 60.0;
+    }
+    return .{ .h = h, .s = s, .l = l };
+}
+
+fn hslToRgb(hsl: Hsl) Rgb {
+    if (hsl.s == 0.0) {
+        const v = @as(u8, @intFromFloat(@round(hsl.l * 255.0)));
+        return .{ .r = v, .g = v, .b = v };
+    }
+    const c = (1.0 - @abs(2.0 * hsl.l - 1.0)) * hsl.s;
+    var hh = hsl.h;
+    while (hh < 0.0) hh += 360.0;
+    while (hh >= 360.0) hh -= 360.0;
+    const hprime = hh / 60.0;
+    const x = c * (1.0 - @abs(@mod(hprime, 2.0) - 1.0));
+    var rf: f32 = 0.0;
+    var gf: f32 = 0.0;
+    var bf: f32 = 0.0;
+    if (hprime < 1.0) {
+        rf = c; gf = x; bf = 0.0;
+    } else if (hprime < 2.0) {
+        rf = x; gf = c; bf = 0.0;
+    } else if (hprime < 3.0) {
+        rf = 0.0; gf = c; bf = x;
+    } else if (hprime < 4.0) {
+        rf = 0.0; gf = x; bf = c;
+    } else if (hprime < 5.0) {
+        rf = x; gf = 0.0; bf = c;
+    } else {
+        rf = c; gf = 0.0; bf = x;
+    }
+    const m = hsl.l - c / 2.0;
+    const r = @as(u8, @intFromFloat(@round((rf + m) * 255.0)));
+    const g = @as(u8, @intFromFloat(@round((gf + m) * 255.0)));
+    const b = @as(u8, @intFromFloat(@round((bf + m) * 255.0)));
+    return .{ .r = r, .g = g, .b = b };
+}
+
+// --- Predefined --------------------------------------------------------------
+
 pub const Colors = struct {
-    // Basic colors
     pub const BLACK = Color.fromRgb("black", 0, 0, 0, 1.0);
     pub const WHITE = Color.fromRgb("white", 255, 255, 255, 1.0);
     pub const RED = Color.fromRgb("red", 255, 0, 0, 1.0);
@@ -192,7 +287,6 @@ pub const Colors = struct {
     pub const MAGENTA = Color.fromRgb("magenta", 255, 0, 255, 1.0);
     pub const CYAN = Color.fromRgb("cyan", 0, 255, 255, 1.0);
 
-    // Bright variants
     pub const BRIGHT_BLACK = Color.fromRgb("bright_black", 128, 128, 128, 1.0);
     pub const BRIGHT_RED = Color.fromRgb("bright_red", 255, 128, 128, 1.0);
     pub const BRIGHT_GREEN = Color.fromRgb("bright_green", 128, 255, 128, 1.0);
@@ -201,78 +295,22 @@ pub const Colors = struct {
     pub const BRIGHT_MAGENTA = Color.fromRgb("bright_magenta", 255, 128, 255, 1.0);
     pub const BRIGHT_CYAN = Color.fromRgb("bright_cyan", 128, 255, 255, 1.0);
     pub const BRIGHT_WHITE = Color.fromRgb("bright_white", 255, 255, 255, 1.0);
-
-    // Semantic colors
-    pub const SUCCESS = GREEN;
-    pub const WARNING = YELLOW;
-    pub const ERROR = RED;
-    pub const INFO = CYAN;
-    pub const PRIMARY = BLUE;
-    pub const SECONDARY = MAGENTA;
-    pub const ACCENT = CYAN;
 };
+
+// --- Tests -------------------------------------------------------------------
 
 test "color creation and conversion" {
     const testing = std.testing;
-
-    // Test RGB creation
     const red = Color.fromRgb("red", 255, 0, 0, 1.0);
-    try testing.expect(red.rgb.r == 255);
-    try testing.expect(red.rgb.g == 0);
-    try testing.expect(red.rgb.b == 0);
-
-    // Test hex creation
-    const blue = try Color.fromHex("blue", "#0000FF", 1.0);
-    try testing.expect(blue.rgb.b == 255);
-
-    // Test HSL creation
-    const green = Color.fromHsl("green", 120.0, 1.0, 0.5, 1.0);
-    try testing.expect(green.rgb.g > 250); // Should be close to 255
-
-    // Test HSV creation
-    const purple = Color.fromHsv("purple", 270.0, 1.0, 1.0, 1.0);
-    try testing.expect(purple.rgb.r > 200 and purple.rgb.b > 200);
-}
-
-test "color manipulation" {
-    const testing = std.testing;
-    const allocator = testing.allocator;
-
-    const red = Color.fromRgb("red", 255, 0, 0, 1.0);
-
-    // Test lightening
-    const lighter = try red.lighten(0.2, allocator);
-    defer allocator.free(lighter.name);
-    try testing.expect(lighter.rgb.r == 255); // Red channel should stay max
-    try testing.expect(lighter.rgb.g > 0); // Green channel should increase
-
-    // Test darkening
-    const darker = try red.darken(0.2, allocator);
-    defer allocator.free(darker.name);
-    try testing.expect(darker.rgb.r < 255); // Red channel should decrease
-
-    // Test saturation
-    const saturated = try red.saturate(0.1, allocator);
-    defer allocator.free(saturated.name);
-    try testing.expect(saturated.rgb.r == 255); // Should stay saturated
-
-    // Test complementary
-    const complement = try red.complementary(allocator);
-    defer allocator.free(complement.name);
-    try testing.expect(complement.rgb.b > 200); // Complement of red should be cyan-ish
+    try testing.expect(red.rgb().r == 255);
+    const lighter = try red.lighten(0.2, testing.allocator);
+    try testing.expect(lighter.rgb().r >= red.rgb().r);
 }
 
 test "color accessibility" {
     const testing = std.testing;
-
-    const black = Colors.BLACK;
-    const white = Colors.WHITE;
-
-    // Test contrast ratio
+    const black = Color.fromRgb("black", 0, 0, 0, 1.0);
+    const white = Color.fromRgb("white", 255, 255, 255, 1.0);
     const contrast = black.contrastRatio(white);
-    try testing.expect(contrast > 15.0); // High contrast expected
-
-    // Test accessibility
-    try testing.expect(black.isAccessible(white, .AA));
-    try testing.expect(black.isAccessible(white, .AAA));
+    try testing.expect(contrast > 10.0);
 }

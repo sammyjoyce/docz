@@ -73,9 +73,7 @@ pub const Auth = struct {
 
     // Convenience function to run OAuth wizard
     pub fn runOAuthWizard(allocator: std.mem.Allocator) !void {
-        const wizard = try OAuthWizard.init(allocator);
-        defer wizard.deinit();
-        return wizard.run();
+        _ = try OAuthWizard.runOAuthWizard(allocator);
     }
 };
 

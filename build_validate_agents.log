@@ -51,12 +51,71 @@ info:    ✓ JSON tools enabled
 info:    ✓ Chainable tools enabled
 info: ✅ Build configured for agent 'Markdown Architect Pro' v2.0.0
 info:    📦 Binary size optimized based on manifest capabilities
-info: 🔍 Validating all agents...
-info: 
-info: ✅ Agent 'test_agent': Valid (Example agent demonstrating tool integration, JSON tools, and basic functionality)
-info: ✅ Agent 'markdown': Valid (Enterprise-grade markdown systems architect & quality guardian)
-info: 
-info: 📊 Validation Summary:
-info:   ✅ Valid agents: 2
-info:   ❌ Invalid agents: 0
-info:   📁 Total agents: 2
+test
++- run test
+   +- compile test Debug native 10 errors
+/Users/sam/.zvm/0.15.1/lib/std/json/static.zig:570:44: error: type 'f64' cannot represent integer value '9223372036854775807'
+                    if (f > std.math.maxInt(T)) return error.Overflow;
+                            ~~~~~~~~~~~~~~~^~~
+referenced by:
+    innerParseFromValue__anon_49789: /Users/sam/.zvm/0.15.1/lib/std/json/static.zig:663:72
+    parseFromValueLeaky__anon_49715: /Users/sam/.zvm/0.15.1/lib/std/json/static.zig:186:31
+    4 reference(s) hidden; use '-freference-trace=6' to see all references
+src/foundation/tui/widgets/dashboard/engine.zig:79:31: error: root source file struct 'foundation.term.capabilities' has no member named 'getTermCaps'
+        const caps = term_caps.getTermCaps();
+                     ~~~~~~~~~^~~~~~~~~~~~
+src/foundation/term/capabilities.zig:1:1: note: struct declared here
+//! Terminal capability detection and management
+^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+tests/dashboard_validation.zig:18:41: error: comparison of '*foundation.tui.App.Surface' with null
+    try testing.expect(app.front_buffer != null);
+                       ~~~~~~~~~~~~~~~~~^~~~~~~
+tests/dashboard_validation.zig:35:10: error: expected type '*foundation.theme', found '@TypeOf(null)'
+        .theme = null,
+        ~^~~~~~~~~~~~
+tests/dashboard_validation.zig:61:35: error: root source file struct 'foundation.render' has no member named 'Quality'
+    try testing.expectEqual(render.Quality.high, scheduler.current_quality);
+                            ~~~~~~^~~~~~~~
+src/foundation/render.zig:1:1: note: struct declared here
+//! Rendering System
+^~~~~~~~~~~~~~~~~~~~
+tests/dashboard_validation.zig:90:31: error: no field named 'fg' in struct 'foundation.render.renderer.Renderer.Style'
+    back.cells[0].style = .{ .fg = .{ .rgb = .{ .r = 255, .g = 0, .b = 0 } } };
+                              ^~
+src/foundation/render/renderer.zig:217:23: note: struct declared here
+    pub const Style = struct {
+                      ^~~~~~
+tests/dashboard_validation.zig:152:22: error: no field named 'capabilities' in struct 'foundation.tui.App'
+    const caps = app.capabilities;
+                     ^~~~~~~~~~~~
+src/foundation/tui/App.zig:1:1: note: struct declared here
+//! TUI application framework with double buffering support.
+^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+tests/dashboard_validation.zig:195:25: error: no field named 'dirty' in struct 'foundation.tui.App.Surface.Cell'
+        back.cells[idx].dirty = true;
+                        ^~~~~
+src/foundation/tui/App.zig:169:22: note: struct declared here
+    pub const Cell = struct {
+                     ^~~~~~
+tests/json_reflection_benchmark.zig:481:24: error: no field named 'serialization_time_ns' in struct 'json_reflection_benchmark.Performance'
+        results.manual.serialization_time_ns,
+                       ^~~~~~~~~~~~~~~~~~~~~
+tests/json_reflection_benchmark.zig:71:21: note: struct declared here
+const Performance = struct {
+                    ^~~~~~
+tests/json_reflection_integration.zig:126:32: error: struct 'array_list.Aligned(u8,null)' has no member named 'init'
+    var buf = std.ArrayList(u8).init(allocator);
+              ~~~~~~~~~~~~~~~~~^~~~~
+/Users/sam/.zvm/0.15.1/lib/std/array_list.zig:606:12: note: struct declared here
+    return struct {
+           ^~~~~~
+error: the following command failed with 10 compilation errors:
+/Users/sam/.zvm/0.15.1/zig test -lcurl -ODebug --dep foundation --dep build_options -Mroot=/Users/sam/code/docz/tests/all_tests.zig -ODebug -Mfoundation=/Users/sam/code/docz/src/foundation.zig -Mbuild_options=.zig-cache/c/25566ec213761e7e9ea622b988e40c16/options.zig -lc --cache-dir .zig-cache --global-cache-dir /Users/sam/.cache/zig --name test --zig-lib-dir /Users/sam/.zvm/0.15.1/lib/ --listen=-
+
+Build Summary: 1/4 steps succeeded; 1 failed
+test transitive failure
++- run test transitive failure
+   +- compile test Debug native 10 errors
+
+error: the following build command failed with exit code 1:
+.zig-cache/o/6ca6121869a449b159bc64978a4b4cd8/build /Users/sam/.zvm/0.15.1/zig /Users/sam/.zvm/0.15.1/lib /Users/sam/code/docz .zig-cache /Users/sam/.cache/zig --seed 0xaca6bcad -Z689d3cee2ac81efc -Dagent=markdown test

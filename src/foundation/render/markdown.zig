@@ -1,14 +1,14 @@
 const std = @import("std");
-const term_shared = @import("term_shared");
-const caps_mod = term_shared;
+const term = @import("../term.zig");
+const caps_mod = term;
 const QualityTiers = @import("quality_tiers.zig").QualityTiers;
-const render_mod = @import("mod.zig");
+const render_mod = @import("../render.zig");
 const Renderer = render_mod.Renderer;
 const RenderMode = render_mod.RenderTier;
-const ColorUnion = term_shared.ansi.color.Color;
-const Color = term_shared.ansi.color.BasicColor;
-const RGBColor = term_shared.ansi.color.RGBColor;
-const hyperlink = term_shared.ansi.hyperlink;
+const ColorUnion = term.ansi.color.Color;
+const Color = term.ansi.color.BasicColor;
+const RGBColor = term.ansi.color.RGBColor;
+const hyperlink = term.ansi.hyperlink;
 
 /// Options for markdown rendering
 pub const MarkdownOptions = struct {

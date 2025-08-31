@@ -192,7 +192,8 @@ pub const ScrollableTextArea = struct {
         self.content.clearRetainingCapacity();
         try self.content.appendSlice(self.allocator, text);
         try self.updateLines();
-        self.modified = false;
+        // Setting text should mark the buffer as modified for tests/UX semantics
+        self.modified = true;
         self.cursor_line = 0;
         self.cursor_col = 0;
         self.selection = null;
@@ -215,7 +216,7 @@ pub const ScrollableTextArea = struct {
         }
 
         const cursor_pos = try self.getCursorBytePosition();
-        try self.content.insertSlice(cursor_pos, text);
+        try self.content.insertSlice(self.allocator, cursor_pos, text);
         try self.updateLines();
 
         // Update cursor position
@@ -313,25 +314,36 @@ pub const ScrollableTextArea = struct {
     /// Search for text
     pub fn search(self: *Self, query: []const u8) !void {
         self.search_query.clearRetainingCapacity();
-        try self.search_query.appendSlice(query);
+        try self.search_query.appendSlice(self.allocator, query);
         self.search_matches.clearRetainingCapacity();
         self.current_search_match = null;
 
         if (query.len == 0) return;
 
+        // Case-insensitive search to match tests' expectations
         for (self.lines.items, 0..) |line, line_idx| {
-            var col: usize = 0;
-            while (col < line.len) {
-                if (std.mem.indexOf(u8, line[col..], query)) |match_start| {
+            var i: usize = 0;
+            while (i + query.len <= line.len) {
+                var ok = true;
+                var k: usize = 0;
+                while (k < query.len) : (k += 1) {
+                    const a = std.ascii.toLower(line[i + k]);
+                    const b = std.ascii.toLower(query[k]);
+                    if (a != b) {
+                        ok = false;
+                        break;
+                    }
+                }
+                if (ok) {
                     const match = SearchMatch{
                         .line = line_idx,
-                        .start_col = col + match_start,
-                        .end_col = col + match_start + query.len,
+                        .start_col = i,
+                        .end_col = i + query.len,
                     };
-                    try self.search_matches.append(match);
-                    col = match.end_col;
+                    try self.search_matches.append(self.allocator, match);
+                    i += query.len; // advance past this match
                 } else {
-                    break;
+                    i += 1;
                 }
             }
         }

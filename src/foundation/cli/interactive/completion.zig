@@ -2,12 +2,12 @@
 //! Leverages @src/term for rich terminal interactions
 
 const std = @import("std");
-const term_shared = @import("term_shared");
-const term_ansi = term_shared.ansi.color;
-const term_cursor = term_shared.cursor;
-const term_screen = term_shared.ansi.screen;
-const term_hyperlink = term_shared.ansi.hyperlink;
-const term_caps = term_shared.caps;
+const term = @import("../../term.zig");
+const term_ansi = term.ansi.color;
+const term_cursor = term.cursor;
+const term_screen = term.ansi.screen;
+const term_hyperlink = term.ansi.hyperlink;
+const term_caps = term.capabilities;
 const Allocator = std.mem.Allocator;
 const print = std.debug.print;
 
@@ -199,7 +199,7 @@ pub const CompletionEngine = struct {
             .filteredItems = std.ArrayList(CompletionItem).init(allocator),
             .selectedIndex = 0,
             .matcher = FuzzyMatcher{},
-            .caps = term_caps.getTermCaps(),
+            .caps = .{},
             .allocator = allocator,
             .showPreviews = true,
             .showIcons = true,

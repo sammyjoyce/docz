@@ -3,19 +3,19 @@
 
 const std = @import("std");
 const completion = @import("completion.zig");
-const term_shared = @import("term_shared");
-const term_ansi = term_shared.ansi.color;
-const term_cursor = term_shared.cursor;
-const term_screen = term_shared.ansi.screen;
-const term_hyperlink = term_shared.ansi.hyperlink;
+const term = @import("../../term.zig");
+const term_ansi = term.ansi.color;
+const term_cursor = term.cursor;
+const term_screen = term.ansi.screen;
+const term_hyperlink = term.ansi.hyperlink;
 // Prefer presenter-based notifications over direct ANSI
 const presenters = @import("../presenters/mod.zig");
-const term_clipboard = term_shared.ansi.clipboard;
-const term_graphics = term_shared.ansi.graphics;
-const term_caps = term_shared.caps;
-const term_mode = term_shared.ansi.mode;
-const term_input = term_shared.input.types;
-const keys = term_shared.input.keys;
+const term_clipboard = term.ansi.clipboard;
+const term_graphics = term.ansi.graphics;
+const term_caps = term.capabilities;
+const term_mode = term.ansi.mode;
+const term_input = term.input; // types submodule removed in new barrel
+const keys = term.input; // keys exposed via input in new barrel
 const Allocator = std.mem.Allocator;
 
 pub const CommandPaletteAction = enum {
@@ -72,7 +72,7 @@ pub const CommandPalette = struct {
             .completion_engine = try completion.CompletionEngine.init(allocator),
             .input_buffer = std.ArrayList(u8).init(allocator),
             .prompt = prompt,
-            .caps = term_caps.getTermCaps(),
+            .caps = .{}, // capability detection will be wired via bridge
             .allocator = allocator,
             .is_active = false,
             .show_graphics_preview = false,

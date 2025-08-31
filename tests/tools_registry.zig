@@ -16,10 +16,13 @@ test "registerJsonTool wraps and invokes JSON tool" {
     // Simple JSON tool: adds two integers
     const addTool = struct {
         fn run(allocator_: std.mem.Allocator, params: std.json.Value) tools.ToolError!std.json.Value {
-            const Req = struct { a: i64, b: i64 };
-            const parsed = std.json.parseFromValue(Req, allocator_, params, .{}) catch return tools.ToolError.MalformedJSON;
-            defer parsed.deinit();
-            const sum: i64 = parsed.value.a + parsed.value.b;
+            _ = allocator_;
+            if (params != .object) return tools.ToolError.MalformedJSON;
+            const obj = params.object;
+            const a_val = obj.get("a") orelse return tools.ToolError.MalformedJSON;
+            const b_val = obj.get("b") orelse return tools.ToolError.MalformedJSON;
+            if (a_val != .integer or b_val != .integer) return tools.ToolError.MalformedJSON;
+            const sum: i64 = @intCast(a_val.integer + b_val.integer);
             return std.json.Value{ .integer = sum };
         }
     }.run;

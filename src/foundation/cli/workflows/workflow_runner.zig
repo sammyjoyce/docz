@@ -6,7 +6,7 @@ const term_shared = @import("term_shared");
 const term_ansi = term_shared.ansi.color;
 const term_caps = term_shared.caps;
 const notifications = @import("../notifications.zig");
-const ProgressBar = @import("../components/mod.zig").ProgressBar;
+const ProgressBar = @import("../components.zig").ProgressBar;
 const WorkflowStepMod = @import("workflow_step.zig");
 const Allocator = std.mem.Allocator;
 

@@ -8,8 +8,8 @@
 //! - Manages buffered output for performance
 
 const std = @import("std");
-const term_shared = @import("term_shared");
-const terminal = term_shared.common;
+const term = @import("../../term.zig");
+const terminal = term;
 
 /// Rendering strategies based on terminal capabilities
 pub const RenderStrategy = enum {
@@ -82,8 +82,8 @@ pub const Bridge = struct {
     capabilities_cache_ms: i64 = 5000, // 5 second cache
 
     pub fn init(allocator: std.mem.Allocator, config: Config) !Self {
-        var term = try terminal.Terminal.init(allocator);
-        const capabilities = term.getCapabilities();
+        var term_handle = try terminal.Terminal.init(allocator);
+        const capabilities = term_handle.getCapabilities();
 
         // Initialize dashboard terminal if graphics are supported
         var dashboard_terminal: ?terminal.DashboardTerminal = null;
@@ -95,7 +95,7 @@ pub const Bridge = struct {
 
         return Self{
             .allocator = allocator,
-            .terminal = term,
+            .terminal = term_handle,
             .dashboard_terminal = dashboard_terminal,
             .config = config,
             .capabilities = capabilities,

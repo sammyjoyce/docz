@@ -4,14 +4,14 @@ const std = @import("std");
 // Implements the 5 official tools as defined in tools.zon
 
 // Official Tools (from tools.zon)
-pub const Io = @import("io.zig");
-pub const ContentEditor = @import("content_editor.zig");
-pub const Validate = @import("validate.zig");
-pub const Document = @import("document.zig");
-pub const Workflow = @import("workflow.zig");
+pub const Io = @import("tools/io.zig");
+pub const ContentEditor = @import("tools/content_editor.zig");
+pub const Validate = @import("tools/validate.zig");
+pub const Document = @import("tools/document.zig");
+pub const Workflow = @import("tools/workflow.zig");
 
 // Extended Tools
-pub const File = @import("file.zig");
+pub const File = @import("tools/file.zig");
 
 // Official Tool Registry
 pub const ToolRegistry = struct {

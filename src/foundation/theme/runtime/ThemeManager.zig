@@ -5,9 +5,9 @@ const std = @import("std");
 const builtin = @import("builtin");
 const ColorScheme = @import("ColorScheme.zig").ColorScheme;
 const Settings = @import("config.zig").Settings;
-const Inheritance = @import("Inheritance.zig").Inheritance;
-const SystemTheme = @import("Theme.zig").Theme;
-const Validator = @import("Validator.zig").Validator;
+const Inheritance = @import("inheritance.zig").Inheritance;
+const SystemTheme = @import("theme.zig").Theme;
+const Validator = @import("validator.zig").Validator;
 const logging = @import("foundation").logger;
 
 pub const Logger = logging.Logger;

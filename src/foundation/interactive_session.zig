@@ -4,7 +4,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const session = @import("session.zig");
-const term = @import("term_shared");
+const term = @import("term.zig");
 
 // Re-export session types for use by other modules
 pub const Sessions = session.Sessions;

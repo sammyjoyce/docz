@@ -3,7 +3,7 @@ const Painter = @import("painter.zig").Painter;
 const surface = @import("surface.zig");
 const diffSurface = @import("diff_surface.zig");
 const diffCoalesce = @import("diff_coalesce.zig");
-const term = @import("term_shared");
+const term = @import("../term.zig");
 
 /// Terminal renderer: renders to a back buffer, diffs vs front, and applies
 /// dirty spans to the terminal using cursor-positioned writes.

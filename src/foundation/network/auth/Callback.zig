@@ -179,9 +179,11 @@ pub const Server = struct {
         self.shutdown();
 
         // Clean up sessions
-        for (self.activeSessions.items) |session| {
-            session.pkceParams.deinit(self.allocator);
-        }
+        // NOTE: The server does not own PKCE buffers.
+        // Ownership stays with the caller that generated them
+        // (e.g., completeOAuthFlow). We intentionally do not free
+        // `session.pkceParams` here to avoid double-free when the
+        // caller also defers `pkceParams.deinit(allocator)`.
         self.activeSessions.deinit();
 
         // Stop server if running
@@ -192,8 +194,27 @@ pub const Server = struct {
 
     /// Start the callback server
     pub fn start(self: *Self) !void {
-        const address = try std.net.Address.parseIp("127.0.0.1", self.config.port);
-        self.server = try std.net.Address.listen(address, .{});
+        // Try preferred port; fall back across a small range if busy
+        var chosen_port: u16 = self.config.port;
+        var attempts: u16 = 0;
+        const max_attempts: u16 = 20; // 20 consecutive ports
+
+        while (attempts < max_attempts) : (attempts += 1) {
+            const address = try std.net.Address.parseIp("127.0.0.1", chosen_port);
+            const maybe = std.net.Address.listen(address, .{}) catch |err| switch (err) {
+                error.AddressInUse => {
+                    chosen_port += 1;
+                    continue; // try next port
+                },
+                else => return err,
+            };
+            self.server = maybe;
+            // Record the actual port used so downstream messages/URLs are correct
+            if (chosen_port != self.config.port) self.config.port = chosen_port;
+            break;
+        }
+
+        if (self.server == null) return error.AddressInUse;
 
         if (self.config.verbose) {
             print("🚀 OAuth callback server started on http://localhost:{d}\n", .{self.config.port});
@@ -664,7 +685,8 @@ pub fn runCallbackServer(
     defer allocator.free(authUrl);
 
     // Update redirect URI to use local callback server
-    const localRedirect = try std.fmt.allocPrint(allocator, "http://localhost:{d}/callback", .{serverConfig.port});
+    // Use the actual bound port (may differ if we had to fall back)
+    const localRedirect = try std.fmt.allocPrint(allocator, "http://localhost:{d}/callback", .{server.config.port});
     defer allocator.free(localRedirect);
 
     // Replace redirect URI in auth URL

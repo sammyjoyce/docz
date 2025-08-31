@@ -8,8 +8,8 @@ const BrailleCanvas = @import("braille.zig").BrailleCanvas;
 // const UnicodeImageRenderer = @import("../term/unicode_image.zig");
 
 // Use the new consolidated color API
-const term_shared = @import("term_shared");
-const Color = term_shared.term.color.Color;
+const term = @import("../term.zig");
+const Color = term.term.color.Color;
 
 /// Resolution modes for the canvas, ordered from highest to lowest fidelity
 pub const ResolutionMode = enum {

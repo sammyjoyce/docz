@@ -3,8 +3,9 @@
 
 const std = @import("std");
 const ColorScheme = @import("ColorScheme.zig").ColorScheme;
-const Color = @import("ColorScheme.zig").Color;
-const RGB = @import("ColorScheme.zig").RGB;
+const ThemeColor = @import("color.zig");
+const Color = ThemeColor.Color;
+const RGB = ThemeColor.Rgb;
 
 pub const Severity = enum {
     err,
@@ -166,24 +167,24 @@ pub const Validator = struct {
     // Validation functions
 
     fn validateMinimumContrast(theme: *ColorScheme) bool {
-        const contrast = ColorScheme.calculateContrast(theme.foreground.rgb, theme.background.rgb);
+        const contrast = ColorScheme.calculateContrast(theme.foreground.rgb(), theme.background.rgb());
         return contrast >= 4.5; // WCAG AA standard
     }
 
     fn validateEnhancedContrast(theme: *ColorScheme) bool {
-        const contrast = ColorScheme.calculateContrast(theme.foreground.rgb, theme.background.rgb);
+        const contrast = ColorScheme.calculateContrast(theme.foreground.rgb(), theme.background.rgb());
         return contrast >= 7.0; // WCAG AAA standard
     }
 
     fn validateColorDistinction(theme: *ColorScheme) bool {
         // Check that semantic colors are distinguishable
         const colors = [_]RGB{
-            theme.primary.rgb,
-            theme.secondary.rgb,
-            theme.success.rgb,
-            theme.warning.rgb,
-            theme.errorColor.rgb,
-            theme.info.rgb,
+            theme.primary.rgb(),
+            theme.secondary.rgb(),
+            theme.success.rgb(),
+            theme.warning.rgb(),
+            theme.errorColor.rgb(),
+            theme.info.rgb(),
         };
 
         // Check each pair of colors
@@ -217,7 +218,7 @@ pub const Validator = struct {
         };
 
         for (colors) |color| {
-            const hsl = color.rgb.toHSL();
+            const hsl = rgbToHsl(color);
             // Check for extreme saturation
             if (hsl.s > 0.95 or hsl.s < 0.05) {
                 return false;
@@ -233,11 +234,11 @@ pub const Validator = struct {
 
     fn validateColorBlindSafe(theme: *ColorScheme) bool {
         // Simplified check - ensure red/green are not the only distinguishing colors
-        const redGreenDistance = calculateColorDistance(theme.errorColor.rgb, theme.success.rgb);
+        const redGreenDistance = calculateColorDistance(theme.errorColor.rgb(), theme.success.rgb());
 
         // Also check brightness difference
-        const redLum = calculateLuminance(theme.errorColor.rgb);
-        const greenLum = calculateLuminance(theme.success.rgb);
+        const redLum = calculateLuminance(theme.errorColor.rgb());
+        const greenLum = calculateLuminance(theme.success.rgb());
         const lumDiff = @abs(redLum - greenLum);
 
         // Colors should be distinguishable by more than just hue
@@ -268,5 +269,29 @@ pub const Validator = struct {
         } else {
             return std.math.pow(f32, (value + 0.055) / 1.055, 2.4);
         }
+    }
+    
+    fn rgbToHsl(c: RGB) struct { h: f32, s: f32, l: f32 } {
+        const rf: f32 = @as(f32, @floatFromInt(c.r)) / 255.0;
+        const gf: f32 = @as(f32, @floatFromInt(c.g)) / 255.0;
+        const bf: f32 = @as(f32, @floatFromInt(c.b)) / 255.0;
+        const maxc = @max(rf, @max(gf, bf));
+        const minc = @min(rf, @min(gf, bf));
+        const delta = maxc - minc;
+        var h: f32 = 0.0;
+        var s: f32 = 0.0;
+        const l: f32 = (maxc + minc) / 2.0;
+        if (delta != 0.0) {
+            s = if (l > 0.5) delta / (2.0 - maxc - minc) else delta / (maxc + minc);
+            if (maxc == rf) {
+                h = (gf - bf) / delta + (if (gf < bf) 6.0 else 0.0);
+            } else if (maxc == gf) {
+                h = (bf - rf) / delta + 2.0;
+            } else {
+                h = (rf - gf) / delta + 4.0;
+            }
+            h *= 60.0;
+        }
+        return .{ .h = h, .s = s, .l = l };
     }
 };

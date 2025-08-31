@@ -104,6 +104,50 @@ pub fn runAgent(allocator: std.mem.Allocator, spec: anytype) !void {
         cliArgsConst[i] = std.mem.sliceTo(arg, 0);
     }
 
+    // Quick routing for oauth command directly
+    if (cliArgsConst.len > 0 and std.mem.eql(u8, cliArgsConst[0], "oauth")) {
+        const oauth = @import("network/auth/OAuth.zig");
+
+        std.debug.print("🔐 Starting OAuth authentication flow...\n", .{});
+
+        // Generate PKCE parameters
+        const pkce = try oauth.generatePkceParams(allocator);
+        defer pkce.deinit(allocator);
+
+        // Build authorization URL using the helper function
+        const authUrl = try oauth.buildAuthorizationUrl(allocator, pkce);
+        defer allocator.free(authUrl);
+
+        // Print the URL for manual navigation
+        std.debug.print("\n📋 Please open this URL in your browser:\n\n", .{});
+        std.debug.print("{s}\n\n", .{authUrl});
+
+        // Try to open browser automatically
+        const openCmd: ?[]const u8 = switch (@import("builtin").os.tag) {
+            .macos => "open",
+            .linux => "xdg-open",
+            .windows => "start",
+            else => null,
+        };
+
+        if (openCmd) |cmd| {
+            var child = std.process.Child.init(&[_][]const u8{ cmd, authUrl }, allocator);
+            _ = child.spawnAndWait() catch |err| {
+                std.debug.print("⚠️  Could not open browser automatically: {}\n", .{err});
+            };
+        }
+
+        std.debug.print("📝 Instructions:\n", .{});
+        std.debug.print("1. Authorize the application in your browser\n", .{});
+        std.debug.print("2. Copy the authorization code from the redirect URL\n", .{});
+        std.debug.print("3. Run: docz auth complete <CODE>\n", .{});
+        std.debug.print("\n");
+        std.debug.print("State: {s}\n", .{pkce.state});
+        std.debug.print("Verifier: {s}\n", .{pkce.codeVerifier});
+
+        return;
+    }
+
     // Quick routing for explicit subcommands (e.g., `auth login`)
     if (cliArgsConst.len > 0 and std.mem.eql(u8, cliArgsConst[0], "auth")) {
         const sub = if (cliArgsConst.len > 1) cliArgsConst[1] else "login";

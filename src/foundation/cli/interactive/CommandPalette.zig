@@ -3,7 +3,7 @@
 
 const std = @import("std");
 const completion = @import("completion.zig");
-const termShared = @import("term_shared");
+const termShared = @import("../../term.zig");
 const termAnsi = termShared.ansi.color;
 const termCursor = termShared.cursor;
 const termScreen = termShared.ansi.screen;
@@ -12,7 +12,7 @@ const termHyperlink = termShared.ansi.hyperlink;
 const presenters = @import("../presenters/mod.zig");
 const termClipboard = termShared.ansi.clipboard;
 const termGraphics = termShared.ansi.graphics;
-const termCaps = termShared.caps;
+const termCaps = termShared.capabilities;
 const termMode = termShared.ansi.mode;
 const termInput = termShared.input.types;
 const keys = termShared.input.keys;
@@ -72,7 +72,7 @@ pub const Palette = struct {
             .completionEngine = try completion.CompletionEngine.init(allocator),
             .inputBuffer = std.ArrayList(u8).init(allocator),
             .prompt = prompt,
-            .caps = termCaps.getTermCaps(),
+            .caps = .{},
             .allocator = allocator,
             .isActive = false,
             .showGraphicsPreview = false,

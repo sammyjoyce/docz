@@ -97,7 +97,7 @@ pub const options: Options = blk: {
     }
     break :blk defaults;
 };
-const term_mod = @import("term_shared");
+const term_mod = @import("term.zig");
 pub const Painter = @import("render/painter.zig").Painter;
 pub const Surface = @import("render/surface.zig").Surface;
 pub const MemorySurface = @import("render/surface.zig").MemorySurface;

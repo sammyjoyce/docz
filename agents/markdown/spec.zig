@@ -2,7 +2,7 @@
 
 const std = @import("std");
 const engine = @import("core_engine");
-const impl = @import("agent.zig");
+const impl = @import("Agent.zig");
 const foundation = @import("foundation");
 const tools_mod = foundation.tools;
 
@@ -16,7 +16,8 @@ fn buildSystemPromptImpl(allocator: std.mem.Allocator, options: engine.CliOption
 }
 
 fn registerToolsImpl(registry: *tools_mod.Registry) !void {
-    _ = registry; // Tools disabled for minimal auth setup build
+    _ = registry; // Tools temporarily disabled to fix build
+    // TODO: Fix tool registration - tools need to export proper execute functions
 }
 
 pub const SPEC: engine.AgentSpec = .{

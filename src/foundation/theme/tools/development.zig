@@ -71,15 +71,15 @@ pub const Development = struct {
 
     fn previewColor(self: *Self, writer: anytype, name: []const u8, color: Color) !void {
         _ = self;
-        const hex = try color.rgb.toHex(std.heap.page_allocator);
+        const hex = try color.toHex(std.heap.page_allocator);
         defer std.heap.page_allocator.free(hex);
 
         try writer.print("{s:<12} {s} RGB({:3}, {:3}, {:3})\n", .{
             name,
             hex,
-            color.rgb.r,
-            color.rgb.g,
-            color.rgb.b,
+            color.rgb().r,
+            color.rgb().g,
+            color.rgb().b,
         });
     }
 
@@ -111,7 +111,7 @@ pub const Development = struct {
     }
 
     fn previewAccessibility(self: *Self, writer: anytype, theme: *ColorScheme) !void {
-        const contrast = ColorScheme.calculateContrast(theme.foreground.rgb, theme.background.rgb);
+        const contrast = ColorScheme.calculateContrast(theme.foreground.rgb(), theme.background.rgb());
         try writer.print("Contrast Ratio: {d:.2}:1\n", .{contrast});
         try writer.print("WCAG Level: {s}\n", .{theme.wcagLevel});
 
@@ -147,7 +147,7 @@ pub const Development = struct {
         try self.documentColor(writer, "Info", theme.info, "Information messages");
 
         try writer.writeAll("\n## Accessibility\n\n");
-        const contrast = ColorScheme.calculateContrast(theme.foreground.rgb, theme.background.rgb);
+        const contrast = ColorScheme.calculateContrast(theme.foreground.rgb(), theme.background.rgb());
         try writer.print("- **Contrast Ratio:** {d:.2}:1\n", .{contrast});
         try writer.print("- **WCAG Level:** {s}\n", .{theme.wcagLevel});
 
@@ -168,15 +168,15 @@ pub const Development = struct {
     }
 
     fn documentColor(self: *Self, writer: anytype, name: []const u8, color: Color, usage: []const u8) !void {
-        const hex = try color.rgb.toHex(self.allocator);
+        const hex = try color.toHex(self.allocator);
         defer self.allocator.free(hex);
 
         try writer.print("| {s} | {s} | ({}, {}, {}) | {s} |\n", .{
             name,
             hex,
-            color.rgb.r,
-            color.rgb.g,
-            color.rgb.b,
+            color.rgb().r,
+            color.rgb().g,
+            color.rgb().b,
             usage,
         });
     }
@@ -201,8 +201,8 @@ pub const Development = struct {
 
         for (cbTypes) |cbType| {
             const distinguishable = self.cbAdapter.areColorsDistinguishable(
-                theme.foreground.rgb,
-                theme.background.rgb,
+                theme.foreground.rgb(),
+                theme.background.rgb(),
                 cbType,
             );
             const sectionName = try std.fmt.allocPrint(self.allocator, "{s} Safety", .{@tagName(cbType)});

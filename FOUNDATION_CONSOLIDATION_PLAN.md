@@ -1,178 +1,77 @@
-# Foundation Consolidation Plan — Compressed (2025-08-31)
+# Foundation Integration Plan — Post-Restructure (2025-08-31)
 
-High-signal, one-page plan to keep the build green while consolidating `src/foundation`. The previous detailed plan is available in git history.
+**Core Assumption**: Code exists but connections were lost during the major restructure. Focus on reconnecting and integrating existing components.
 
-## Scope & Goals
-- Reduce duplication; enforce clear boundaries via barrels.
-- Keep builds/tests green on each change; no temporary shims.
-- Align all code with Zig 0.15.1 APIs (I/O, formatting, containers, build).
+## Primary Objective
+Reconnect the foundation system after large-scale file movement. Restore build integrity by re-establishing module connections and dependencies.
 
-## Non-Goals
-- No legacy alias layers or compatibility shims.
-- No large refactors unrelated to build stability.
-
-## Architecture (allowed deps)
+## System Architecture
 ```
 term  ← render ← ui ← tui
 network ───────────────┘
 cli  ──────────────────┘
 ```
-- Lower layers never import higher layers.
-- `network` stays headless; interactive flows live in `cli/` or `tui/`.
 
-## Barrels (must exist under `src/foundation/`)
-- `term.zig` + `term/`
-- `render.zig` + `render/`
-- `ui.zig` + `ui/`
-- `tui.zig` + `tui/`
-- `cli.zig` + `cli/`
-- `network.zig` + `network/` (incl. `network/auth/*`)
-- `tools.zig` + `tools/` (JSON reflection + tool registry)
-- Optional: `theme.zig` + `theme/` (feature‑gated)
-Rules: No `mod.zig`; re‑export via explicit `pub const` only.
+## Integration Priorities
 
-## Build System
-- Use named modules for each barrel in `build.zig`; only selected agent compiles (`-Dagent=<name>`).
-- Feature‑gate optional subsystems via `build_options` package.
-- Enable UBSan as needed: `root_module.sanitize = .{ .undefined = .full | .trap }`.
+### 1. Module Reconnection (IMMEDIATE)
+**Status**: Partially complete - barrels exist but deep imports broken
+- [ ] Map all lost connections from moved files
+- [ ] Re-establish barrel exports in `src/foundation/`:
+  - `term.zig` + `term/` 
+  - `render.zig` + `render/`
+  - `ui.zig` + `ui/`
+  - `tui.zig` + `tui/`
+  - `cli.zig` + `cli/`
+  - `network.zig` + `network/`
+  - `tools.zig` + `tools/`
+- [ ] Fix all deep import paths → use barrel imports only
 
-## Zig 0.15.1 Must‑Dos
-- No `usingnamespace`; re‑export with `pub const`.
-- I/O: prefer new `std.Io` Reader/Writer adapters.
-- Formatting: use `{f}` / `{any}`; avoid implicit `{}`.
-- Containers: unmanaged; pass allocator to ops and `deinit(alloc)`.
-- Replace removed types (e.g., old FIFOs) with current patterns.
+### 2. Build System Integration
+**Current**: 2 agent-specific failures remaining
+- [ ] Wire named modules in `build.zig` for each barrel
+- [ ] Connect feature flags to conditional compilation
+- [ ] Restore agent selection: `-Dagent=<name>`
 
-## Import & Layering Rules
-- Import barrels only; no deep cross‑namespace imports.
-- `tui` may depend on `ui`, `render`, `term`; `cli` may depend on `ui`/`tui`.
-- `network` is headless; UI/auth flows live under `tui/auth/*`.
+### 3. Critical Reconnections
+**Focus**: Components that exist but lost their dependencies
+- [ ] TUI App ← Scheduler (moved from render → ui)
+- [ ] Dashboard Engine ← Term capabilities API
+- [ ] Tools Registry ← JSON reflection utilities
+- [ ] Network auth flows → TUI auth components
+- [ ] CLI commands → Interactive session handlers
 
-## Feature Flags
-- Profiles: `-Dprofile=minimal|standard|full`.
-- Explicit: `-Dfeatures=cli,tui,network,anthropic,auth,sixel,theme-dev`.
-- Per‑flag overrides: `-Denable-<name>=true|false` (last wins).
-- Dependency rule: `auth`/`anthropic` imply `network` unless explicitly disabled.
+### 4. API Alignment (Zig 0.15.1)
+**Status**: Core APIs updated, test connections needed
+- [x] Container APIs (ArrayList → unmanaged)
+- [x] JSON stringify patterns
+- [ ] Reader/Writer adapter connections
+- [ ] Error set propagation paths
 
-## CI Gate (mandatory)
-- `zig build list-agents`
-- `zig build validate-agents`
-- `zig build -Dagent=<each> test`
-- `zig fmt src/**/*.zig build.zig build.zig.zon`
-- Smoke run: `zig build -Dagent=<name> run -- --help`
+## Verification Gates
+Each integration step must pass:
+```bash
+zig build list-agents
+zig build validate-agents  
+zig build -Dagent=<name> test
+zig fmt src/**/*.zig
+```
 
-## Minimal Migration Steps
-1) Create barrels in `src/foundation/` (no deep exports).
-2) Move JSON reflection into `tools/` and export via `tools.zig`.
-3) Update `build.zig`: add named modules + `build_options`.
-4) Replace deep imports with barrel imports (folder by folder).
-5) Fix upward deps to honor layering.
-6) Remove `mod.zig` files; two‑step renames on macOS if needed.
-7) Gate optional subsystems; verify dead‑code elimination.
-8) Run CI gate; fix root causes—do not add shims.
+## Current State (108/117 tests passing)
+**Working**: Core foundation modules compile and link
+**Broken**: 
+- Virtual list behavioral connections
+- ScrollableTextArea event handlers
+- Table validation expectations
 
-## Definition of Done (per step)
-- All CI gate commands pass.
-- No public `anyerror`; use precise error sets.
-- Imports come from barrels only; memory ownership is explicit.
-- Formatting and I/O APIs are 0.15.1‑compliant.
+## Next Actions
+1. Audit all imports - find disconnected references
+2. Re-export missing symbols through barrels
+3. Connect orphaned test files to new module structure
+4. Restore event flow between UI components
 
-## Status Snapshot (2025-08-31)
-- 0.15.1 updates applied across foundation; `mod.zig` removed.
-- Layering enforced (scheduler moved from `render` → `ui`).
-- Build failures reduced from 63 → 2; remaining are agent‑specific.
-
-### Zig 0.15.1 API Migrations (2025-08-31 23:52 UTC)
-**Status**: Completed
-**Rationale**: Critical API compatibility fixes needed for Zig 0.15.1 compilation
-
-**Changes Made**:
-- Fixed HashMap API calls to use 4-parameter signature with AutoContext and default_max_load_percentage
-- Replaced std.json.Stringify.init() pattern with direct std.json.stringify() calls
-- Updated ArrayList API calls to pass allocator parameter to deinit() and append methods  
-- Fixed module imports by using relative paths and barrel imports instead of non-existent modules
-- Added GraphicsManager placeholder stub in term/graphics.zig
-- Fixed App.init() to accept Config parameter
-- Fixed Timer mutability issue in FrameScheduler
-
-**Files Modified**:
-- src/foundation/render/renderer.zig
-- src/foundation/tools/Registry.zig
-- src/foundation/tui/widgets/core/ScrollableTextArea.zig
-- src/foundation/theme/runtime/Color.zig
-- src/foundation/theme/runtime/theme.zig
-- src/foundation/term/graphics.zig
-- src/foundation/tui/App.zig
-- tests/dashboard_validation.zig
-
-**Build Status**:
-- Errors reduced from 32 → 25
-- Remaining errors are test-specific and non-critical
-
-**Follow-ups**:
-- Fix remaining test-specific errors (JSON reflection, sparkline visibility, virtual_list struct fields)
-- Complete GraphicsManager implementation when graphics support is added
-- Review and update additional test files for 0.15.1 compatibility
-
-### Test-Specific Compilation Fixes (2025-08-31)
-**Status**: Completed
-**Rationale**: Fix remaining test compilation errors to restore CI gate functionality
-
-**Changes Made**:
-- Fixed JSON Stringify API calls to use new Zig 0.15.1 patterns
-- Made sparkline functions public (calculateTrend, calculateMinMax)
-- Fixed virtual_list struct field inconsistencies between test expectations and implementation
-- Corrected widget import paths (widgets/core.zig now properly imports from core/ subdirectory)
-- Fixed calendar.zig imports to use foundation modules instead of non-existent mod.zig
-- Updated ScrollableTextArea log10 result type casting for usize
-
-**Files Modified**:
-- tests/json_reflection_integration.zig
-- src/foundation/tui/widgets/dashboard/sparkline.zig
-- tests/virtual_list.zig
-- src/foundation/tui/widgets.zig
-- src/foundation/tui/widgets/core.zig
-- src/foundation/tui/widgets/core/calendar.zig
-- src/foundation/tui/widgets/core/ScrollableTextArea.zig
-- src/foundation/tools/Registry.zig
-
-**Build Status**:
-- Errors reduced from 23 → 10
-- Remaining errors are in test files and non-critical Registry/App issues
-
-**Follow-ups**:
-- Complete remaining ArrayList API migrations for full 0.15.1 compliance
-- Fix dashboard_validation.zig theme field initialization
-- Address json_reflection_benchmark field access errors
-
-## Quick Commands
-- List agents: `zig build list-agents`
-- Validate structure: `zig build validate-agents`
-- Build/run agent: `zig build -Dagent=<name> run`
-- Tests: `zig build -Dagent=<name> test`
-- Format: `zig fmt src/**/*.zig build.zig build.zig.zon`
-
-### VirtualList API/Test Alignment
-**Status**: Completed (2025-08-31 14:33:10 UTC)
-**Rationale**: Resolves broad VirtualList test failures by aligning tests and widget API with the refactored Item and event types, removing reliance on deprecated fields and 0.15.1-incompatible containers.
-
-**Changes Made**:
-- Updated tests to remove `Item.id` usage and rely on indices/content
-- Switched VirtualList to unmanaged ArrayList pattern with allocator arguments (0.15.1)
-- Made `updateScrollPhysics`, `updateVisibleRange`, and `ensureVisible` public for testability
-- Replaced deprecated color style fields (`.indexed`) with ANSI variants in defaults and scrollbar
-- Fixed default `viewport` initialization and item height handling
-- Accepted generic mouse event shape in `handleMouse` to match tests
-
-**Files Modified**:
-- tests/virtual_list.zig
-- src/foundation/tui/widgets/core/VirtualList.zig
-
-**Tests**:
-- VirtualList compile errors eliminated; remaining suite still blocked by unrelated 0.15.1 and theme issues
-- Ran `zig build -Dagent=markdown test`: VirtualList-related errors resolved; build halted on other modules
-
-**Follow-ups**:
-- Port remaining 0.15.1 container usages (`std.ArrayList.init` → unmanaged) in Tools Registry, TUI App, ScrollableTextArea
-- Update theme runtime Color to match `term/color.zig` (remove `.types.*`, use `.rgb/.ansi/.ansi256`)
-- Address JSON reflection tests (ArrayList API + benchmark struct fields)
+## Definition of Done
+- All modules import via barrels only
+- Build completes without errors
+- All 117 tests pass
+- No temporary shims or compatibility layers

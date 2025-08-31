@@ -22,13 +22,49 @@ const models = @import("Models.zig");
 const oauth = @import("Auth.zig"); // Needed for token refresh
 const stream_module = @import("Stream.zig");
 
-// Simple SharedContext to avoid circular dependencies
+// Shared context used during requests/streaming. Mirrors the subset of
+// fields the client needs from the higher-level foundation context while
+// avoiding circular imports.
 pub const SharedContext = struct {
-    allocator: std.mem.Allocator,
-    data: *anyopaque,
+    pub const Anthropic = struct {
+        refreshLock: models.RefreshLock,
+        contentCollector: std.ArrayListUnmanaged(u8),
+        usageInfo: models.Usage,
+        messageId: ?[]const u8,
+        stopReason: ?[]const u8,
+        model: ?[]const u8,
+        allocator: std.mem.Allocator,
+
+        pub fn init(allocator: std.mem.Allocator) Anthropic {
+            return .{
+                .refreshLock = models.RefreshLock.init(),
+                .contentCollector = .{},
+                .usageInfo = models.Usage{},
+                .messageId = null,
+                .stopReason = null,
+                .model = null,
+                .allocator = allocator,
+            };
+        }
+
+        pub fn deinit(self: *Anthropic) void {
+            self.contentCollector.deinit(self.allocator);
+            if (self.messageId) |id| self.allocator.free(id);
+            if (self.stopReason) |reason| self.allocator.free(reason);
+            if (self.model) |model| self.allocator.free(model);
+        }
+    };
+
+    // Optional user data pointer for higher-level integrations
+    user_data: ?*anyopaque = null,
+    anthropic: Anthropic,
 
     pub fn init(allocator: std.mem.Allocator) SharedContext {
-        return .{ .allocator = allocator, .data = undefined };
+        return .{ .user_data = null, .anthropic = Anthropic.init(allocator) };
+    }
+
+    pub fn deinit(self: *SharedContext) void {
+        self.anthropic.deinit();
     }
 };
 

@@ -55,19 +55,15 @@ pub const DashboardEngine = struct {
         /// Plain text, no mouse, full redraws
         minimal,
 
-        pub fn detectFromCaps(caps: term_caps.TermCaps) CapabilityTier {
-            const has_kitty = caps.supportsKittyGraphics() catch false;
-            const has_sixel = caps.supportsSixel() catch false;
-            const has_truecolor = caps.supportsTruecolor() catch false;
-            const has_mouse = caps.supportsMouseTracking() catch false;
+        pub fn detectFromCaps(caps: term_caps.Capabilities) CapabilityTier {
+            const has_kitty = caps.graphics == .kitty;
+            const has_sixel = caps.graphics == .sixel;
+            const has_truecolor = caps.colors == .truecolor;
+            const has_mouse = caps.mouse;
 
-            if (has_kitty and has_truecolor and has_mouse) {
-                return .high;
-            } else if (has_sixel or (has_truecolor and has_mouse)) {
-                return .rich;
-            } else if (caps.supports256Color() catch false and has_mouse) {
-                return .standard;
-            }
+            if (has_kitty and has_truecolor and has_mouse) return .high;
+            if (has_sixel or (has_truecolor and has_mouse)) return .rich;
+            if ((caps.colors == .@"256" or has_truecolor) and has_mouse) return .standard;
             return .minimal;
         }
     };
@@ -75,8 +71,9 @@ pub const DashboardEngine = struct {
     pub fn init(allocator: std.mem.Allocator) !*DashboardEngine {
         const engine = try allocator.create(DashboardEngine);
 
-        // Detect terminal capabilities
-        const caps = term_caps.getTermCaps();
+        // Detect terminal capabilities (0.15.1-capable API)
+        var caps = try term_caps.Capabilities.detect(allocator);
+        defer caps.deinit(allocator);
         const tier = CapabilityTier.detectFromCaps(caps);
 
         engine.* = .{
@@ -921,11 +918,11 @@ pub const PerformanceOptimizer = struct {
     frame_budget: FrameBudget,
     render_scheduler: RenderScheduler,
 
-    pub const FrameBudget = struct {
-        target_fps: u32 = 60,
-        max_frame_time_ns: u64,
-        frame_times: ringBuffer(u64),
-        quality_level: f32 = 1.0,
+        pub const FrameBudget = struct {
+            target_fps: u32 = 60,
+            max_frame_time_ns: u64,
+            frame_times: *ringBuffer(u64),
+            quality_level: f32 = 1.0,
 
         pub fn init(allocator: std.mem.Allocator, target_fps: u32) !FrameBudget {
             return .{

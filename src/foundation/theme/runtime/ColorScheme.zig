@@ -2,7 +2,9 @@
 //! Represents a complete color scheme with all semantic colors
 
 const std = @import("std");
-const Color = @import("Color.zig").Color;
+const ThemeColor = @import("color.zig");
+const Color = ThemeColor.Color;
+pub const RGB = ThemeColor.Rgb;
 
 /// Complete color scheme
 pub const ColorScheme = struct {
@@ -39,6 +41,8 @@ pub const ColorScheme = struct {
     brightWhite: Color,
 
     // Semantic colors
+    primary: Color,
+    secondary: Color,
     focus: Color,
     subtle: Color,
     tertiary: Color,
@@ -89,6 +93,8 @@ pub const ColorScheme = struct {
             .brightMagenta = Color.fromRgb("bright_magenta", 255, 85, 255, 1.0),
             .brightCyan = Color.fromRgb("bright_cyan", 85, 255, 255, 1.0),
             .brightWhite = Color.fromRgb("bright_white", 255, 255, 255, 1.0),
+            .primary = Color.fromRgb("primary", 0, 123, 255, 1.0),
+            .secondary = Color.fromRgb("secondary", 108, 117, 125, 1.0),
             .focus = Color.fromRgb("focus", 0, 123, 255, 1.0),
             .subtle = Color.fromRgb("subtle", 108, 117, 125, 1.0),
             .tertiary = Color.fromRgb("tertiary", 173, 181, 189, 1.0),
@@ -254,12 +260,13 @@ pub const ColorScheme = struct {
 
     fn writeColorToZon(self: *Self, writer: anytype, name: []const u8, color: Color) !void {
         _ = self;
+        const rgb = color.rgb();
         try writer.print("        .{s} = .{{ .name = \"{s}\", .r = {}, .g = {}, .b = {}, .alpha = {} }},\n", .{
             name,
             color.name,
-            color.rgb.r,
-            color.rgb.g,
-            color.rgb.b,
+            rgb.r,
+            rgb.g,
+            rgb.b,
             color.alpha,
         });
     }
@@ -425,8 +432,26 @@ pub const ColorScheme = struct {
     }
 
     /// Calculate contrast ratio between two colors
-    pub fn calculateContrast(color1: Color, color2: Color) f32 {
-        return color1.contrastRatio(color2);
+    pub fn calculateContrast(color1: RGB, color2: RGB) f32 {
+        // WCAG relative luminance contrast ratio
+        const rf1: f32 = gamma(@as(f32, @floatFromInt(color1.r)) / 255.0);
+        const gf1: f32 = gamma(@as(f32, @floatFromInt(color1.g)) / 255.0);
+        const bf1: f32 = gamma(@as(f32, @floatFromInt(color1.b)) / 255.0);
+        const l1 = 0.2126 * rf1 + 0.7152 * gf1 + 0.0722 * bf1;
+
+        const rf2: f32 = gamma(@as(f32, @floatFromInt(color2.r)) / 255.0);
+        const gf2: f32 = gamma(@as(f32, @floatFromInt(color2.g)) / 255.0);
+        const bf2: f32 = gamma(@as(f32, @floatFromInt(color2.b)) / 255.0);
+        const l2 = 0.2126 * rf2 + 0.7152 * gf2 + 0.0722 * bf2;
+
+        const hi = @max(l1, l2);
+        const lo = @min(l1, l2);
+        return (hi + 0.05) / (lo + 0.05);
+    }
+
+    fn gamma(v: f32) f32 {
+        if (v <= 0.03928) return v / 12.92;
+        return std.math.pow(f32, (v + 0.055) / 1.055, 2.4);
     }
 };
 
@@ -493,15 +518,15 @@ test "ZON parsing" {
     try testing.expectEqualStrings("AA", theme.wcagLevel);
 
     // Verify some colors
-    try testing.expectEqual(@as(u8, 30), theme.background.rgb.r);
-    try testing.expectEqual(@as(u8, 30), theme.background.rgb.g);
-    try testing.expectEqual(@as(u8, 30), theme.background.rgb.b);
+    try testing.expectEqual(@as(u8, 30), theme.background.rgb().r);
+    try testing.expectEqual(@as(u8, 30), theme.background.rgb().g);
+    try testing.expectEqual(@as(u8, 30), theme.background.rgb().b);
 
-    try testing.expectEqual(@as(u8, 220), theme.foreground.rgb.r);
-    try testing.expectEqual(@as(u8, 220), theme.foreground.rgb.g);
-    try testing.expectEqual(@as(u8, 220), theme.foreground.rgb.b);
+    try testing.expectEqual(@as(u8, 220), theme.foreground.rgb().r);
+    try testing.expectEqual(@as(u8, 220), theme.foreground.rgb().g);
+    try testing.expectEqual(@as(u8, 220), theme.foreground.rgb().b);
 
-    try testing.expectEqual(@as(u8, 0), theme.focus.rgb.r);
-    try testing.expectEqual(@as(u8, 123), theme.focus.rgb.g);
-    try testing.expectEqual(@as(u8, 255), theme.focus.rgb.b);
+    try testing.expectEqual(@as(u8, 0), theme.focus.rgb().r);
+    try testing.expectEqual(@as(u8, 123), theme.focus.rgb().g);
+    try testing.expectEqual(@as(u8, 255), theme.focus.rgb().b);
 }

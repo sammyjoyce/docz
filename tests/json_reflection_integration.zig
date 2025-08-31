@@ -11,6 +11,7 @@
 
 const std = @import("std");
 const testing = std.testing;
+const json = std.json;
 
 // ============================================================================
 // MOCK MODULES AND HELPERS FOR INTEGRATION TESTING
@@ -115,37 +116,51 @@ fn parseToolRequest(comptime T: type, json_value: std.json.Value) !T {
     return result;
 }
 
+fn writeAnyAsJson(writer: anytype, value: anytype) !void {
+    const T = @TypeOf(value);
+    const info = @typeInfo(T);
+    switch (info) {
+        .bool => try writer.print("{s}", .{if (value) "true" else "false"}),
+        .int, .comptime_int => try writer.print("{d}", .{value}),
+        .float, .comptime_float => try writer.print("{d}", .{value}),
+        .pointer => |ptr| {
+            if (ptr.size == .slice and ptr.child == u8) {
+                try writer.print("\"{s}\"", .{value});
+            } else {
+                @compileError("Unsupported pointer type in writeAnyAsJson");
+            }
+        },
+        .@"struct" => |sinfo| {
+            try writer.writeByte('{');
+            inline for (sinfo.fields, 0..) |field, i| {
+                if (i > 0) try writer.writeByte(',');
+                try writer.print("\"{s}\":", .{field.name});
+                try writeAnyAsJson(writer, @field(value, field.name));
+            }
+            try writer.writeByte('}');
+        },
+        else => @compileError("Unsupported type in writeAnyAsJson: " ++ @typeName(T)),
+    }
+}
+
 fn createSuccessResponse(result: anytype) ![]u8 {
     const allocator = std.heap.page_allocator;
-
-    var responseObj = std.json.ObjectMap.init(allocator);
-    try responseObj.put("success", std.json.Value{ .bool = true });
-    try responseObj.put("result", try valueToJsonValue(result, allocator));
-
-    const response = std.json.Value{ .object = responseObj };
-    var buf = std.ArrayList(u8).init(allocator);
-    defer buf.deinit();
-    try std.json.stringify(response, .{}, buf.writer());
-    responseObj.deinit();
-    return buf.toOwnedSlice();
+    var buf = try std.ArrayList(u8).initCapacity(allocator, 0);
+    defer buf.deinit(allocator);
+    var w = buf.writer(allocator);
+    try w.writeAll("{\"success\":true,\"result\":");
+    try writeAnyAsJson(w, result);
+    try w.writeByte('}');
+    return buf.toOwnedSlice(allocator);
 }
 
 fn createErrorResponse(err: anyerror, message: []const u8) ![]u8 {
     const allocator = std.heap.page_allocator;
-
-    var responseObj = std.json.ObjectMap.init(allocator);
-    const errorName = @errorName(err);
-
-    try responseObj.put("success", std.json.Value{ .bool = false });
-    try responseObj.put("error", std.json.Value{ .string = errorName });
-    try responseObj.put("message", std.json.Value{ .string = message });
-
-    const response = std.json.Value{ .object = responseObj };
-    var buf = std.ArrayList(u8).init(allocator);
-    defer buf.deinit();
-    try std.json.stringify(response, .{}, buf.writer());
-    responseObj.deinit();
-    return buf.toOwnedSlice();
+    var buf = try std.ArrayList(u8).initCapacity(allocator, 0);
+    defer buf.deinit(allocator);
+    var w = buf.writer(allocator);
+    try w.print("{{\"success\":false,\"error\":\"{s}\",\"message\":\"{s}\"}}", .{ @errorName(err), message });
+    return buf.toOwnedSlice(allocator);
 }
 
 // Helper functions for JSON parsing
@@ -297,14 +312,12 @@ test "jsonReflectionSystemBasicSerializationAndDeserialization" {
     const jsonValue = std.json.Value{ .object = jsonObj };
 
     // Test deserialization
-    const deserialized = try std.json.parseFromValue(TestData, allocator, jsonValue, .{});
-    defer deserialized.deinit();
-
+    const parsed = try parseToolRequest(TestData, jsonValue);
     // Verify round trip
-    try testing.expectEqualStrings(original.message, deserialized.value.message);
-    try testing.expectEqual(original.count, deserialized.value.count);
-    try testing.expectEqual(original.enabled, deserialized.value.enabled);
-    try testing.expectEqualStrings(original.optional_field.?, deserialized.value.optional_field.?);
+    try testing.expectEqualStrings(original.message, parsed.message);
+    try testing.expectEqual(original.count, parsed.count);
+    try testing.expectEqual(original.enabled, parsed.enabled);
+    try testing.expectEqualStrings(original.optional_field.?, parsed.optional_field.?);
 }
 
 test "jsonHelpersIntegrationWithToolSystem" {

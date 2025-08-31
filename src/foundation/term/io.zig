@@ -55,4 +55,21 @@ pub const Terminal = struct {
         _ = self;
         // TODO: Implement flush
     }
+
+    /// Clear terminal screen
+    pub fn clear(self: *Self) !void {
+        _ = self;
+        // TODO: Implement clear; noop for tests
+    }
+
+    /// Write a single styled cell at position. Style is generic to avoid
+    /// coupling `term` to render types during consolidation.
+    pub fn writeCell(self: *Self, x: u32, y: u32, ch: u21, style: anytype) !void {
+        _ = self;
+        _ = x;
+        _ = y;
+        _ = ch;
+        _ = style;
+        // TODO: Implement terminal cell write; noop for tests
+    }
 };

@@ -37,8 +37,9 @@ pub const Capabilities = struct {
     pub fn detect(allocator: std.mem.Allocator) !Capabilities {
         var caps = Capabilities{};
 
-        // Check if we're in a terminal
-        caps.is_terminal = std.io.getStdOut().isTty();
+        // Check if we're in a terminal (portable)
+        const posix = std.posix;
+        caps.is_terminal = posix.isatty(posix.STDOUT_FILENO);
         if (!caps.is_terminal) return caps;
 
         // Get TERM environment variable

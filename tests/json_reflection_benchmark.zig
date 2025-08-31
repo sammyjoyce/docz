@@ -478,34 +478,34 @@ fn generateReport(
         \\
     , .{
         // Struct results
-        results.manual.serialization_time_ns,
-        results.manual.memory_used_bytes,
-        results.manual.allocations_count,
-        results.reflection.serialization_time_ns,
-        results.reflection.memory_used_bytes,
-        results.reflection.allocations_count,
-        results.stdlib.serialization_time_ns,
-        results.stdlib.memory_used_bytes,
-        results.stdlib.allocations_count,
+        results.manual.serializationTimeNs,
+        results.manual.memoryUsedBytes,
+        results.manual.allocationsCount,
+        results.reflection.serializationTimeNs,
+        results.reflection.memoryUsedBytes,
+        results.reflection.allocationsCount,
+        results.stdlib.serializationTimeNs,
+        results.stdlib.memoryUsedBytes,
+        results.stdlib.allocationsCount,
 
         // ComplexStruct results
-        mediumResults.manual.serialization_time_ns,
-        mediumResults.manual.memory_used_bytes,
-        mediumResults.manual.allocations_count,
-        mediumResults.reflection.serialization_time_ns,
-        mediumResults.reflection.memory_used_bytes,
-        mediumResults.reflection.allocations_count,
-        mediumResults.stdlib.serialization_time_ns,
-        mediumResults.stdlib.memory_used_bytes,
-        mediumResults.stdlib.allocations_count,
+        mediumResults.manual.serializationTimeNs,
+        mediumResults.manual.memoryUsedBytes,
+        mediumResults.manual.allocationsCount,
+        mediumResults.reflection.serializationTimeNs,
+        mediumResults.reflection.memoryUsedBytes,
+        mediumResults.reflection.allocationsCount,
+        mediumResults.stdlib.serializationTimeNs,
+        mediumResults.stdlib.memoryUsedBytes,
+        mediumResults.stdlib.allocationsCount,
 
         // Analysis calculations
-        @as(f64, @floatFromInt(results.manual.serialization_time_ns)) / @as(f64, @floatFromInt(results.reflection.serialization_time_ns)),
-        @as(f64, @floatFromInt(mediumResults.manual.serialization_time_ns)) / @as(f64, @floatFromInt(mediumResults.reflection.serialization_time_ns)),
-        @as(f64, @floatFromInt(results.reflection.serialization_time_ns * 100)) / @as(f64, @floatFromInt(results.stdlib.serialization_time_ns)),
-        @as(f64, @floatFromInt(mediumResults.reflection.serialization_time_ns * 100)) / @as(f64, @floatFromInt(mediumResults.stdlib.serialization_time_ns)),
-        @as(f64, @floatFromInt(results.reflection.memory_used_bytes * 100)) / @as(f64, @floatFromInt(results.manual.memory_used_bytes)),
-        @as(f64, @floatFromInt(mediumResults.reflection.memory_used_bytes * 100)) / @as(f64, @floatFromInt(mediumResults.manual.memory_used_bytes)),
+        @as(f64, @floatFromInt(results.manual.serializationTimeNs)) / @as(f64, @floatFromInt(results.reflection.serializationTimeNs)),
+        @as(f64, @floatFromInt(mediumResults.manual.serializationTimeNs)) / @as(f64, @floatFromInt(mediumResults.reflection.serializationTimeNs)),
+        @as(f64, @floatFromInt(results.reflection.serializationTimeNs * 100)) / @as(f64, @floatFromInt(results.stdlib.serializationTimeNs)),
+        @as(f64, @floatFromInt(mediumResults.reflection.serializationTimeNs * 100)) / @as(f64, @floatFromInt(mediumResults.stdlib.serializationTimeNs)),
+        @as(f64, @floatFromInt(results.reflection.memoryUsedBytes * 100)) / @as(f64, @floatFromInt(results.manual.memoryUsedBytes)),
+        @as(f64, @floatFromInt(mediumResults.reflection.memoryUsedBytes * 100)) / @as(f64, @floatFromInt(mediumResults.manual.memoryUsedBytes)),
     }) catch unreachable;
 
     return buffer[0..fbs.pos];

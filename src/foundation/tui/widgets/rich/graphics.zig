@@ -329,13 +329,13 @@ pub fn displayImageFromFile(allocator: std.mem.Allocator, file_path: []const u8,
 
 /// Check if graphics are supported in current terminal
 pub fn isGraphicsSupported() bool {
-    const caps = term_caps.getTermCaps();
+    const caps: term_caps.TermCaps = .{};
     return caps.supportsKittyGraphics or caps.supportsSixel;
 }
 
 /// Get the best supported graphics protocol
 pub fn getBestGraphicsProtocol() ?[]const u8 {
-    const caps = term_caps.getTermCaps();
+    const caps: term_caps.TermCaps = .{};
     if (caps.supportsKittyGraphics) return "kitty";
     if (caps.supportsSixel) return "sixel";
     return null;

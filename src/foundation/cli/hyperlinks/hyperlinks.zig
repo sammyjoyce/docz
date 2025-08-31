@@ -2,9 +2,9 @@
 //! Builds on @src/term/ansi/hyperlink.zig with additional convenience functions
 
 const std = @import("std");
-const term_shared = @import("term_shared");
-const term_hyperlink = term_shared.ansi.hyperlink;
-const term_caps = term_shared.caps;
+const term = @import("../../term.zig");
+const term_hyperlink = term.ansi.hyperlink;
+const term_caps = term.capabilities;
 const Allocator = std.mem.Allocator;
 
 /// Hyperlink builder with intelligent fallbacks
@@ -14,7 +14,7 @@ pub const HyperlinkBuilder = struct {
 
     pub fn init(allocator: Allocator) HyperlinkBuilder {
         return HyperlinkBuilder{
-            .caps = term_caps.getTermCaps(),
+            .caps = .{},
             .allocator = allocator,
         };
     }

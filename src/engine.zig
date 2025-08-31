@@ -7,10 +7,14 @@
 const std = @import("std");
 // Import from foundation barrel to avoid module conflicts
 const foundation = @import("foundation");
-const anthropic = foundation.network;
+// Use the provider-specific Anthropic namespace from the network barrel
+const anthropic = foundation.network.Anthropic;
+const AnthError = anthropic.Models.Error;
 const tools_mod = foundation.tools;
-const auth = foundation.network;
-const SharedContext = foundation.context.SharedContext;
+// Headless auth core (no UI dependencies)
+const auth_core = foundation.network.Auth.Core;
+const auth = foundation.network.Auth;
+const SharedContext = anthropic.Client.SharedContext;
 
 pub const Message = anthropic.Message;
 
@@ -49,24 +53,24 @@ pub const AgentSpec = struct {
 };
 
 /// Map auth errors to anthropic errors
-fn mapAuthError(err: auth.AuthError) anthropic.Error {
+fn mapAuthError(err: auth_core.AuthError) AnthError {
     return switch (err) {
-        auth.AuthError.MissingAPIKey => anthropic.Error.MissingAPIKey,
-        auth.AuthError.InvalidAPIKey => anthropic.Error.AuthError,
-        auth.AuthError.InvalidCredentials => anthropic.Error.AuthError,
-        auth.AuthError.TokenExpired => anthropic.Error.TokenExpired,
-        auth.AuthError.AuthenticationFailed => anthropic.Error.AuthError,
-        auth.AuthError.NetworkError => anthropic.Error.NetworkError,
-        auth.AuthError.FileNotFound => anthropic.Error.AuthError,
-        auth.AuthError.InvalidFormat => anthropic.Error.AuthError,
-        auth.AuthError.OutOfMemory => anthropic.Error.OutOfMemory,
+        auth_core.AuthError.MissingAPIKey => AnthError.MissingAPIKey,
+        auth_core.AuthError.InvalidAPIKey => AnthError.AuthError,
+        auth_core.AuthError.InvalidCredentials => AnthError.AuthError,
+        auth_core.AuthError.TokenExpired => AnthError.TokenExpired,
+        auth_core.AuthError.AuthenticationFailed => AnthError.AuthError,
+        auth_core.AuthError.NetworkError => AnthError.NetworkError,
+        auth_core.AuthError.FileNotFound => AnthError.AuthError,
+        auth_core.AuthError.InvalidFormat => AnthError.AuthError,
+        auth_core.AuthError.OutOfMemory => AnthError.OutOfMemory,
     };
 }
 
 /// Initialize Anthropic client using the auth system
-fn initAnthropicClient(allocator: std.mem.Allocator) !anthropic.Client {
+fn initAnthropicClient(allocator: std.mem.Allocator) !anthropic.Client.Client {
     // Try to create auth client using available methods
-    var authClient = auth.createClient(allocator) catch |err| {
+    var authClient = auth_core.createClient(allocator) catch |err| {
         std.log.err("Failed to initialize authentication: {any}", .{err});
         return mapAuthError(err);
     };
@@ -75,30 +79,30 @@ fn initAnthropicClient(allocator: std.mem.Allocator) !anthropic.Client {
     // Create Anthropic client based on auth method
     switch (authClient.credentials) {
         .api_key => |apiKey| {
-            return try anthropic.Client.init(allocator, apiKey);
+            return try anthropic.Client.Client.init(allocator, apiKey);
         },
         .oauth => |creds| {
             const credentialsPath = "claude_oauth_creds.json";
             // Convert oauth Credentials to anthropic Credentials
-            const anthropicCreds = anthropic.Credentials{
+            const anthropicCreds = anthropic.Models.Credentials{
                 .type = creds.type,
                 .accessToken = creds.accessToken,
                 .refreshToken = creds.refreshToken,
                 .expiresAt = creds.expiresAt,
             };
-            return try anthropic.Client.initWithOAuth(allocator, anthropicCreds, credentialsPath);
+            return try anthropic.Client.Client.initWithOAuth(allocator, anthropicCreds, credentialsPath);
         },
         .none => {
             std.log.err("No authentication method available - network access disabled for this agent.", .{});
-            return anthropic.Error.MissingAPIKey;
+            return AnthError.MissingAPIKey;
         },
     }
 }
 
 /// Start OAuth flow using the auth system
 pub fn setupOauth(allocator: std.mem.Allocator) !void {
-    // Use flow with local callback server for better UX
-    const credentials = try auth.oauth.completeOAuthFlow(allocator);
+    const oauth = foundation.network.Auth.OAuth;
+    const credentials = try oauth.setupOAuth(allocator);
     defer credentials.deinit(allocator);
 
     std.log.info("✅ OAuth setup completed successfully!", .{});
@@ -107,12 +111,23 @@ pub fn setupOauth(allocator: std.mem.Allocator) !void {
 
 /// Display current authentication status using the auth system
 pub fn showAuthStatus(allocator: std.mem.Allocator) !void {
-    try auth.tui.showAuthStatus(allocator);
+    // Minimal status without TUI dependencies
+    var client = auth_core.createClient(allocator) catch |err| {
+        std.log.err("Auth status: not configured ({any})", .{err});
+        return err;
+    };
+    defer client.deinit();
+    const method = client.credentials.getMethod();
+    std.log.info("Auth status: {s}", .{switch (method) {
+        .oauth => "OAuth",
+        .api_key => "API key",
+        .none => "None",
+    }});
 }
 
 /// Refresh authentication tokens using the auth system
 pub fn refreshAuth(allocator: std.mem.Allocator) !void {
-    var client = try auth.createClient(allocator);
+    var client = try auth_core.createClient(allocator);
     defer client.deinit();
 
     try client.refresh();
@@ -169,7 +184,7 @@ fn flushAllOutputs() !void {
     }
 }
 
-fn onToken(ctx: *SharedContext, chunk: []const u8) void {
+fn onToken(ctx: *anthropic.Client.SharedContext, chunk: []const u8) void {
     _ = ctx;
     initStdoutWriter();
     const stdout = &stdoutWriter.interface;
@@ -211,7 +226,20 @@ pub fn runWithOptions(
     spec: AgentSpec,
     dir: std.fs.Dir,
 ) !void {
-    var client = try initAnthropicClient(allocator);
+    // Initialize client; if missing credentials, launch TUI/CLI auth flow
+    var client: anthropic.Client.Client = blk_client: {
+        const c0 = initAnthropicClient(allocator) catch |err| blk_retry: {
+            if (err != AnthError.MissingAPIKey) return err;
+            std.log.info("🔐 No credentials found. Starting CLI OAuth login...", .{});
+            const cli_mod = foundation.cli;
+            cli_mod.Auth.handleLoginCommand(allocator) catch |e2| {
+                std.log.err("Auth setup failed: {any}", .{e2});
+                return err;
+            };
+            break :blk_retry try initAnthropicClient(allocator);
+        };
+        break :blk_client c0;
+    };
     defer client.deinit();
 
     if (client.isOAuthSession()) {
@@ -229,7 +257,7 @@ pub fn runWithOptions(
     // Register agent-specific tools
     try spec.registerTools(&registry);
 
-    var sharedContext = SharedContext.init(allocator);
+    var sharedContext = anthropic.Client.SharedContext.init(allocator);
     defer sharedContext.deinit();
 
     var messages = std.array_list.Managed(Message).init(allocator);

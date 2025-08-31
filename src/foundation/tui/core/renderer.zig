@@ -7,11 +7,31 @@
 
 const std = @import("std");
 const bounds_mod = @import("bounds.zig");
-const tui_mod = @import("../../tui.zig");
+const term_mod = @import("../../term.zig");
 
 pub const Point = bounds_mod.Point;
 pub const Bounds = bounds_mod.Bounds;
-pub const TerminalCapabilities = tui_mod.TerminalCapabilities;
+/// Simplified terminal capabilities used by the renderer
+pub const TerminalCapabilities = struct {
+    supportsTruecolor: bool = false,
+    supportsHyperlinkOsc8: bool = false,
+    supportsClipboardOsc52: bool = false,
+    supportsWorkingDirOsc7: bool = false,
+    supportsTitleOsc012: bool = false,
+    supportsNotifyOsc9: bool = false,
+    supportsFinalTermOsc133: bool = false,
+    supportsITerm2Osc1337: bool = false,
+    supportsColorOsc10_12: bool = false,
+    supportsKittyKeyboard: bool = false,
+    supportsKittyGraphics: bool = false,
+    supportsSixel: bool = false,
+    supportsModifyOtherKeys: bool = false,
+    supportsXtwinops: bool = false,
+    supportsBracketedPaste: bool = false,
+    supportsFocusEvents: bool = false,
+    supportsSgrMouse: bool = false,
+    supportsSgrPixelMouse: bool = false,
+};
 
 // Additional geometric types for widget system
 pub const Size = struct {
@@ -348,8 +368,8 @@ fn getLevelColor(level: NotificationLevel, caps: TerminalCapabilities) Style.Col
 
 /// Factory function to create appropriate renderer based on terminal capabilities
 pub fn createRenderEngine(allocator: std.mem.Allocator) !RenderEngine {
-    // Try to detect terminal capabilities, use safe defaults on error
-    const caps = tui_mod.detectCapabilities() catch blk: {
+    // Try to detect terminal capabilities via term module; use safe defaults on error
+    const caps = termDetect(allocator) catch blk: {
         // If capability detection fails, create safe fallback capabilities
         break :blk TerminalCapabilities{
             .supportsTruecolor = false,
@@ -409,6 +429,16 @@ pub fn createRenderEngine(allocator: std.mem.Allocator) !RenderEngine {
         const fallback_renderer = @import("renderers/fallback.zig");
         return try fallback_renderer.create(allocator, caps);
     }
+}
+
+fn termDetect(allocator: std.mem.Allocator) !TerminalCapabilities {
+    const base = term_mod.capabilities.Capabilities.detect(allocator) catch return error.DetectionFailed;
+    var caps = TerminalCapabilities{};
+    caps.supportsTruecolor = base.colors == .truecolor;
+    caps.supportsKittyGraphics = base.graphics == .kitty;
+    caps.supportsSixel = base.graphics == .sixel;
+    // Minimal defaults; extend as term module grows
+    return caps;
 }
 
 // ============================================================================

@@ -11,7 +11,7 @@ const state = @import("../state.zig");
 const layout = @import("../layout.zig");
 const theme = @import("../../../../theme/mod.zig");
 const term_mod = @import("../../../../term/mod.zig");
-const render_mod = @import("../../../../render/mod.zig");
+const render_mod = @import("../../../../render.zig");
 
 // Type aliases
 const DashboardStore = state.DashboardStore;

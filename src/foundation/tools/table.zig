@@ -418,6 +418,24 @@ pub fn validateTable(allocator: std.mem.Allocator, tbl: *const Table, config: Va
         }
     }
 
+    // Detect empty cells (warning-level)
+    if (config.check_empty_cells and tbl.headers.len > 0) {
+        for (tbl.rows, 0..) |row, row_idx| {
+            for (row, 0..) |cell, col_idx| {
+                if (cell.len == 0) {
+                    const msg = try std.fmt.allocPrint(allocator, "Empty cell at row {}, column {}", .{ row_idx, col_idx });
+                    try issues.append(ValidationIssue{
+                        .issue_type = .empty_cells,
+                        .severity = .warning,
+                        .message = msg,
+                        .row_index = row_idx,
+                        .column_index = col_idx,
+                    });
+                }
+            }
+        }
+    }
+
     const is_valid = blk: {
         for (issues.items) |issue| {
             if (issue.severity == .err) {
@@ -458,6 +476,139 @@ pub fn repairTable(allocator: std.mem.Allocator, tbl: *Table, config: RepairConf
 
         allocator.free(old_alignments);
         repairs_made += 1;
+    }
+
+    // Column count consistency: trim or pad rows
+    if (config.fix_column_consistency) {
+        for (tbl.rows, 0..) |*row_ptr, row_idx| {
+            const row = row_ptr.*;
+            if (row.len != expected_columns) {
+                // Build a new row with the expected column count
+                var new_row = try allocator.alloc([]const u8, expected_columns);
+                defer {
+                    // If we fail before assigning, free to avoid leaking. When successful, defer runs after swap and old row freed.
+                }
+
+                const copy_len = @min(row.len, expected_columns);
+                // Copy or dupe cells up to copy_len
+                for (0..copy_len) |i| {
+                    // If the cell is owned by the table, we can reuse the slice pointer directly.
+                    // We are not creating new allocations for existing cells here.
+                    new_row[i] = row[i];
+                }
+
+                // Pad missing cells with placeholder
+                if (expected_columns > copy_len) {
+                    for (copy_len..expected_columns) |col| {
+                        new_row[col] = try allocator.dupe(u8, config.empty_cell_placeholder);
+                    }
+                }
+
+                // If there are extra cells, free the extras
+                if (row.len > expected_columns) {
+                    for (expected_columns..row.len) |j| {
+                        allocator.free(row[j]);
+                    }
+                }
+
+                // Replace the row
+                allocator.free(row);
+                row_ptr.* = new_row;
+                repairs_made += 1;
+                _ = row_idx; // silence unused variable on some toolchains
+            }
+        }
+    }
+
+    // Trim whitespace in-place for headers and cells
+    if (config.trim_whitespace) {
+        var any_trimmed = false;
+
+        // Headers: assign via indexing to avoid const-pointer iteration
+        for (tbl.headers, 0..) |hdr, i| {
+            const trimmed = std.mem.trim(u8, hdr, " \t");
+            if (trimmed.len != hdr.len or !std.mem.eql(u8, trimmed, hdr)) {
+                const dup = try allocator.dupe(u8, trimmed);
+                allocator.free(tbl.headers[i]);
+                tbl.headers[i] = dup;
+                any_trimmed = true;
+            }
+        }
+
+        // Rows / cells: build a replacement row lazily only when needed
+        for (tbl.rows, 0..) |row, r_i| {
+            var changed = false;
+            var new_row: []const u8 = undefined; // placeholder to satisfy comptime; we will allocate a slice of slices lazily
+            // We cannot declare []const []const u8 without init; use optional to manage laziness
+            var maybe_new_row: ?[]const []const u8 = null;
+
+            // First pass: detect and, upon first change, allocate and copy prefix
+            for (row, 0..) |cell, j| {
+                const trimmed = std.mem.trim(u8, cell, " \t");
+                if (!changed and (trimmed.len != cell.len or !std.mem.eql(u8, trimmed, cell))) {
+                    // Allocate new row and copy prefix
+                    var alloc_row = try allocator.alloc([]const u8, row.len);
+                    @memcpy(alloc_row[0..j], row[0..j]);
+                    maybe_new_row = alloc_row;
+                    changed = true;
+                }
+                if (changed) {
+                    var alloc_row = maybe_new_row.?;
+                    if (trimmed.len != cell.len or !std.mem.eql(u8, trimmed, cell)) {
+                        const dup = try allocator.dupe(u8, trimmed);
+                        allocator.free(cell);
+                        alloc_row[j] = dup;
+                    } else {
+                        alloc_row[j] = cell;
+                    }
+                }
+            }
+
+            if (changed) {
+                // Finish copying any trailing cells if j never triggered change (handled above)
+                // Replace the row
+                allocator.free(tbl.rows[r_i]);
+                tbl.rows[r_i] = maybe_new_row.?;
+                any_trimmed = true;
+            }
+        }
+
+        if (any_trimmed) repairs_made += 1;
+    }
+
+    // Fill empty cells with placeholder
+    if (config.fill_empty_cells and config.empty_cell_placeholder.len > 0) {
+        var any_filled = false;
+        for (tbl.rows, 0..) |row, r_i| {
+            var changed = false;
+            var maybe_new_row: ?[]const []const u8 = null;
+            for (row, 0..) |cell, k| {
+                if (cell.len == 0 and !changed) {
+                    var alloc_row = try allocator.alloc([]const u8, row.len);
+                    @memcpy(alloc_row[0..k], row[0..k]);
+                    maybe_new_row = alloc_row;
+                    changed = true;
+                }
+                if (changed) {
+                    var alloc_row = maybe_new_row.?;
+                    if (cell.len == 0) {
+                        const dup = try allocator.dupe(u8, config.empty_cell_placeholder);
+                        // Old cell is owned; free it
+                        allocator.free(cell);
+                        alloc_row[k] = dup;
+                        any_filled = true;
+                    } else {
+                        alloc_row[k] = cell;
+                    }
+                }
+            }
+
+            if (changed) {
+                allocator.free(tbl.rows[r_i]);
+                tbl.rows[r_i] = maybe_new_row.?;
+            }
+        }
+        if (any_filled) repairs_made += 1;
     }
 
     return repairs_made;
