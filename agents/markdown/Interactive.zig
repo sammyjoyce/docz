@@ -115,7 +115,8 @@ const document_tool = @import("tools/document.zig");
 const fs = @import("support/fs.zig");
 const link = @import("support/link.zig");
 const meta = @import("support/meta.zig");
-const table = @import("support/table.zig");
+const foundation = @import("foundation");
+const table = foundation.tools.table;
 const template = @import("support/template.zig");
 const text = @import("support/text.zig");
 

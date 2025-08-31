@@ -6,8 +6,8 @@
 const std = @import("std");
 const engine_mod = @import("engine.zig");
 const term_mod = @import("../../../term.zig");
-const term_sgr = term_mod.ansi.sgr;
-const Color = term_mod.ansi.color.Color;
+const term_sgr = term_mod.ansi;
+const Color = term_mod.color.Color;
 
 pub const Sparkline = struct {
     allocator: std.mem.Allocator,

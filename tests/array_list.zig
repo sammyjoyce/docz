@@ -5,11 +5,11 @@ test "arrayListFunctionality" {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    var list: std.ArrayList(u8) = .init(allocator);
-    defer list.deinit();
+    var list = std.ArrayList(u8){};
+    defer list.deinit(allocator);
 
-    try list.appendSlice("test");
-    const writer = list.writer();
+    try list.appendSlice(allocator, "test");
+    const writer = list.writer(allocator);
     try writer.writeAll(" works");
 
     try std.testing.expectEqualSlices(u8, "test works", list.items);

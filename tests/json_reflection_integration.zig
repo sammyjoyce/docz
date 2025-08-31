@@ -123,11 +123,12 @@ fn createSuccessResponse(result: anytype) ![]u8 {
     try responseObj.put("result", try valueToJsonValue(result, allocator));
 
     const response = std.json.Value{ .object = responseObj };
-    var buf = std.ArrayList(u8).init(allocator);
-    defer buf.deinit();
-    try std.json.stringify(response, .{}, buf.writer());
+    var buf = std.ArrayList(u8){};
+    defer buf.deinit(allocator);
+    var stringify = std.json.Stringify.init(buf.writer(allocator), .{});
+    try stringify.write(response);
     responseObj.deinit();
-    return buf.toOwnedSlice();
+    return buf.toOwnedSlice(allocator);
 }
 
 fn createErrorResponse(err: anyerror, message: []const u8) ![]u8 {
@@ -141,11 +142,12 @@ fn createErrorResponse(err: anyerror, message: []const u8) ![]u8 {
     try responseObj.put("message", std.json.Value{ .string = message });
 
     const response = std.json.Value{ .object = responseObj };
-    var buf = std.ArrayList(u8).init(allocator);
-    defer buf.deinit();
-    try std.json.stringify(response, .{}, buf.writer());
+    var buf = std.ArrayList(u8){};
+    defer buf.deinit(allocator);
+    var stringify = std.json.Stringify.init(buf.writer(allocator), .{});
+    try stringify.write(response);
     responseObj.deinit();
-    return buf.toOwnedSlice();
+    return buf.toOwnedSlice(allocator);
 }
 
 // Helper functions for JSON parsing

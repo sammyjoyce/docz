@@ -398,15 +398,15 @@ fn benchmarkMediumStruct(allocator: std.mem.Allocator, config: Benchmark) !Resul
 
     // Manual approach
     const manual_metrics = try measurePerformance(manualSerializeMedium, .{ testData, allocator }, allocator, config);
-    std.debug.assert(manual_metrics.serialization_time_ns > 0); // Use the variable
+    std.debug.assert(manual_metrics.serializationTimeNs > 0); // Use the variable
 
     // Reflection approach
     const reflection_metrics = try measurePerformance(reflectionSerialize, .{ testData, allocator }, allocator, config);
-    std.debug.assert(reflection_metrics.serialization_time_ns > 0); // Use the variable
+    std.debug.assert(reflection_metrics.serializationTimeNs > 0); // Use the variable
 
     // Stdlib approach
     const stdlib_metrics = try measurePerformance(stdlibSerialize, .{ testData, allocator }, allocator, config);
-    std.debug.assert(stdlib_metrics.serialization_time_ns > 0); // Use the variable
+    std.debug.assert(stdlib_metrics.serializationTimeNs > 0); // Use the variable
 
     return Results{
         .manual = manual_metrics,

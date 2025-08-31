@@ -4,7 +4,7 @@ const expectEqual = std.testing.expectEqual;
 const allocator = std.testing.allocator;
 
 const foundation = @import("foundation");
-const table = foundation.markdown.table;
+const table = foundation.tools.table;
 
 test "tableValidation" {
     // Create a table

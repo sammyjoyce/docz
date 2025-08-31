@@ -8,13 +8,13 @@ test "arrayListInitMethods" {
     // Test different ArrayList initialization methods
 
     // Method 1
-    var list1 = std.ArrayList(u8).init(allocator);
-    defer list1.deinit();
+    var list1 = std.ArrayList(u8){};
+    defer list1.deinit(allocator);
 
     // Method 2
     var list2: std.ArrayList(u8) = undefined;
-    list2 = std.ArrayList(u8).init(allocator);
-    defer list2.deinit();
+    list2 = std.ArrayList(u8){};
+    defer list2.deinit(allocator);
 
     // Verify both methods work
     try std.testing.expect(list1.capacity == 0);

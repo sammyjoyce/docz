@@ -168,7 +168,7 @@ pub const Surface = struct {
 
     pub const Cell = struct {
         char: u21,
-        style: render.Style,
+        style: render_mod.Style,
     };
 
     pub fn init(allocator: std.mem.Allocator) !*Surface {

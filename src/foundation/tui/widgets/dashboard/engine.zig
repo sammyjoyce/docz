@@ -5,11 +5,11 @@
 
 const std = @import("std");
 const term_shared = @import("../../../term.zig");
-const term_caps = term_shared.caps;
-const graphics_manager = term_shared.graphics_manager;
-const color_palette = term_shared.color.palettes;
-const mouse = term_shared.input.mouse;
-const terminal_graphics = term_shared.unicode.image_renderer;
+const term_caps = term_shared.capabilities;
+const graphics_manager = term_shared.graphics;
+const color_palette = term_shared.color;
+const mouse = term_shared.input;
+const terminal_graphics = term_shared.unicode;
 
 // Import widget types
 const LineChart = @import("chart/line.zig").LineChart;

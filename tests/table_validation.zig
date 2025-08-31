@@ -6,7 +6,7 @@ const expectError = std.testing.expectError;
 const allocator = std.testing.allocator;
 
 const foundation = @import("foundation");
-const table = foundation.markdown.table;
+const table = foundation.tools.table;
 
 test "tableValidationValidTablePasses" {
     // Create a well-formed table

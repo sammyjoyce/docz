@@ -66,7 +66,7 @@ pub const Renderer = struct {
     /// Cache for rendered content to avoid recomputation
     pub const Cache = struct {
         allocator: Allocator,
-        entries: std.HashMap(u64, Entry, std.HashMap.DefaultRender(u64), 80),
+        entries: std.HashMap(u64, Entry, std.hash_map.AutoContext(u64), std.hash_map.default_max_load_percentage),
 
         const Entry = struct {
             content: []u8,
@@ -77,7 +77,7 @@ pub const Renderer = struct {
         pub fn init(allocator: Allocator) Cache {
             return Cache{
                 .allocator = allocator,
-                .entries = std.HashMap(u64, Entry, std.HashMap.DefaultRender(u64), 80).init(allocator),
+                .entries = std.HashMap(u64, Entry, std.hash_map.AutoContext(u64), std.hash_map.default_max_load_percentage).init(allocator),
             };
         }
 

@@ -440,10 +440,8 @@ pub fn createJsonToolWrapper(jsonFunc: JsonFunction) ToolFn {
 
             // Serialize result to string
             var buffer = std.ArrayList(u8){};
-            std.json.stringify(value, .{}, buffer.writer()) catch {
-                buffer.deinit(allocator);
-                return ToolError.UnexpectedError;
-            };
+            defer buffer.deinit(allocator);
+            std.json.stringify(value, .{}, buffer.writer(allocator)) catch return ToolError.UnexpectedError;
             return buffer.toOwnedSlice(allocator) catch return ToolError.UnexpectedError;
         }
     }.wrapper;
@@ -493,7 +491,10 @@ pub fn registerJsonToolWithRequiredFields(
             schemas.validateRequiredFields(fieldMap, Stored.request) catch return ToolError.MissingParameter;
 
             const result = Stored.func(allocator, parsed.value) catch |err| return err;
-            const out = std.json.stringifyAlloc(allocator, result, .{ .whitespace = false }) catch return ToolError.UnexpectedError;
+            var buffer = std.ArrayList(u8){};
+            defer buffer.deinit(allocator);
+            try std.json.stringify(result, .{}, buffer.writer(allocator));
+            const out = buffer.toOwnedSlice(allocator) catch return ToolError.UnexpectedError;
             return out;
         }
     }.run;

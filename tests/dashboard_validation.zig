@@ -26,8 +26,8 @@ test "Dashboard widget rendering with RenderContext" {
     const allocator = testing.allocator;
 
     // Create a render context
-    var surface = try render.Surface.init(allocator, 80, 24);
-    defer surface.deinit();
+    var surface = try render.MemorySurface.init(allocator, 80, 24);
+    defer surface.deinit(allocator);
 
     const ctx = render.RenderContext{
         .allocator = allocator,

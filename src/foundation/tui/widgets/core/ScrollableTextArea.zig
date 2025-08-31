@@ -118,9 +118,9 @@ pub const Config = struct {
     /// Selection style
     selection_style: Style = .{ .bg = .{ .ansi256 = 4 } }, // Blue background
     /// Search match style
-    search_match_style: Style = .{ .bg = .{ .indexed = 11 } }, // Yellow background
+    search_match_style: Style = .{ .bg = .{ .ansi = 11 } }, // Yellow background
     /// Line number style
-    line_number_style: Style = .{ .fg = .{ .indexed = 8 } }, // Gray
+    line_number_style: Style = .{ .fg = .{ .ansi = 8 } }, // Gray
     /// Enable mouse support
     mouse_support: bool = true,
     /// Enable keyboard navigation
@@ -170,10 +170,10 @@ pub const ScrollableTextArea = struct {
     pub fn init(allocator: Allocator, config: Config) !Self {
         return Self{
             .config = config,
-            .content = ArrayList(u8).init(allocator),
-            .lines = ArrayList([]const u8).init(allocator),
-            .search_query = ArrayList(u8).init(allocator),
-            .search_matches = ArrayList(SearchMatch).init(allocator),
+            .content = ArrayList(u8){},
+            .lines = ArrayList([]const u8){},
+            .search_query = ArrayList(u8){},
+            .search_matches = ArrayList(SearchMatch){},
             .allocator = allocator,
             .last_update = std.time.milliTimestamp(),
         };
