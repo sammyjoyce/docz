@@ -1,14 +1,29 @@
-# Foundation Module Consolidation Plan
+# Foundation Module Consolidation Plan v2
 
 ## Executive Summary
 
-This document outlines the complete plan for consolidating the `src/foundation` directory to eliminate duplication, improve maintainability, and establish clear module boundaries. The consolidation will reduce ~14 overlapping UI/component modules to 6 focused modules with clear responsibilities.
+This document outlines the complete plan for consolidating the `src/foundation` directory to eliminate duplication, improve maintainability, and establish clear module boundaries with enforced layering rules. The consolidation will reduce ~14 overlapping UI/component modules to 7 focused modules with clear responsibilities and strict dependency management.
 
-### Naming Convention Updates
-- **Files with main types**: Use TitleCase (e.g., `Component.zig`, `Progress.zig`)
-- **Namespaces in barrels**: Use TitleCase (e.g., `Auth`, `Widgets`, `Anthropic`)
-- **Subdirectories for namespaces**: Use TitleCase when they represent a namespace
-- **Backward compatibility**: Provide lowercase aliases during migration (e.g., `pub const widgets = Widgets;`)
+**Core Principles**:
+1. **Strict layering with import fences** - Lower layers never depend on higher layers
+2. **UI/Network separation** - Network layer remains headless; all UI (including CLI) lives in UI modules
+3. **Render-first approach** - Standardize rendering before merging UI to reduce churn
+4. **Thin, explicit barrels** - Avoid compile-time bloat with selective exports
+
+### Dependency Hierarchy (enforced)
+```
+term  ← render ← ui ← tui (app)
+network ────────┘      ↑
+cli  ──────────────────┘
+```
+
+### Naming Conventions
+- **Directories**: lowercase (e.g., `ui/widgets`, `network/auth`)
+- **Files with single struct**: TitleCase (e.g., `Progress.zig` exports `Progress` struct)
+- **Multi-export files**: lowercase (e.g., `utils.zig`, `helpers.zig`)
+- **Acronyms**: Consistent casing (`OAuth` not `Oauth`, `HTTP` not `Http`)
+- **Two-step renames**: Use temp names on macOS to avoid case-insensitive FS issues
+- **Moves via git**: Perform file moves with `git mv` first to preserve history and enable rename detection; for case-only renames on macOS, use a two-step rename (e.g., `Name_tmp` → final) with `git mv`.
 
 ## Current Problems
 
@@ -23,21 +38,61 @@ This document outlines the complete plan for consolidating the `src/foundation` 
 - **Progress bars**: 4 different implementations
 - **Input handling**: 3 different implementations  
 - **Notifications**: 3 different implementations
-- **Rendering**: Multiple independent render paths
+- **Rendering**: Multiple independent render paths without abstraction
 - **Theme integration**: Inconsistent across modules
+- **Error handling**: Different error sets per module
 
-### 3. Unclear Module Boundaries
+### 3. Architectural Issues
+- No enforced layering rules (circular dependencies possible)
+- Auth CLI mixed with network layer (UI in wrong layer)
+- No provider-agnostic HTTP client interface (hardcoded to cURL)
+- Inconsistent OAuth vs Oauth naming
+- Missing compile-time feature flags for binary size control
 - No clear distinction between `components/` and `widgets/`
 - `tui/` reimplements base widgets instead of reusing
 - JSON handling split between `tools/` and `json_reflection/`
 
+## Design Principles (Aligned with Zig 0.15.1 Idioms)
+
+1. **Explicit Dependency Injection**: All dependencies (allocators, loggers, etc.) passed explicitly
+2. **Narrow Error Sets**: Each module defines specific, meaningful error sets for its API
+3. **Compile-Time Configuration**: Use `@hasDecl`, `build_options`, and comptime parameters
+4. **@This() Pattern**: Use `const Self = @This()` for self-reference in structs
+5. **No usingnamespace**: Explicit imports only, thin barrels with named exports
+6. **Duck-Typed Polymorphism**: Use compile-time reflection for generic interfaces
+7. **Single-Entry Structs**: Modules organized around primary struct types
+8. **Clear pub Boundaries**: Only expose necessary APIs, keep helpers private
+
 ## Target Architecture
+
+### Layering Rules & Import Fences
+
+```zig
+// src/foundation/internal/deps.zig
+pub const Layer = enum(u8) { term, render, ui, tui, network, cli };
+
+fn allows(importer: Layer, importee: Layer) bool {
+    return switch (importer) {
+        .term => false,  // Bottom layer, no dependencies
+        .render => importee == .term,
+        .ui => importee == .render or importee == .term,
+        .tui => importee != .cli,  // Can import everything except CLI
+        .network => false,  // Standalone, no UI dependencies
+        .cli => true,  // Top layer, can import anything
+    };
+}
+
+pub fn assertCanImport(importer: Layer, importee: Layer, comptime msg: []const u8) void {
+    comptime if (!allows(importer, importee)) @compileError(msg);
+}
+```
 
 ### Module Structure
 
-Each module follows the barrel export pattern:
+Each module follows the thin barrel export pattern:
 - Barrel file at foundation level: `src/foundation/MODULE.zig`
-- Module contents in subdirectory: `src/foundation/MODULE/*`
+- Module contents in subdirectory: `src/foundation/module/*` (lowercase)
+- Explicit exports, no glob re-exports or `usingnamespace`
 
 ```
 src/foundation/
@@ -84,6 +139,11 @@ src/foundation/
 ├── tui/               # Terminal UI specialization (refactored)
 │   ├── App.zig        # TUI application framework (main type)
 │   ├── Screen.zig     # Screen management (main type)
+│   ├── auth/          # Auth-specific TUI components (moved from auth/tui/)
+│   │   ├── AuthStatus.zig    # Auth status display
+│   │   ├── CodeInput.zig     # OAuth code input widget
+│   │   ├── OAuthFlow.zig     # OAuth flow UI component
+│   │   └── OAuthWizard.zig   # OAuth setup wizard
 │   ├── widgets/       # TUI-SPECIFIC widgets only
 │   │   ├── Dashboard/
 │   │   ├── Modal.zig        # Modal dialog type
@@ -91,9 +151,12 @@ src/foundation/
 │   └── layouts/       # TUI layout system
 │
 ├── cli.zig            # Barrel export for cli/*
-├── cli/               # CLI framework (mostly unchanged)
+├── cli/               # CLI framework with auth UI
 │   ├── commands/
 │   ├── core/
+│   ├── auth/          # Auth CLI UI (moved from network/auth/CLI.zig)
+│   │   ├── Commands.zig    # Auth CLI commands
+│   │   └── Interactive.zig # Interactive auth flows
 │   └── ...
 │
 ├── tools.zig          # Barrel export for tools/* (merged)
@@ -105,15 +168,16 @@ src/foundation/
 │   └── Validation.zig # Runtime validation
 │
 ├── network.zig        # Barrel export for network/* (merged with auth)
-├── network/           # Network & authentication (consolidated)
-│   ├── Client.zig     # HTTP client interface (main type)
-│   ├── Curl.zig       # cURL implementation (main type)
-│   ├── SSE.zig        # Server-sent events (main type)
-│   ├── auth/          # Generic authentication
+├── network/           # Network & authentication (headless)
+│   ├── Http.zig       # HTTP client interface (provider-agnostic)
+│   ├── HttpCurl.zig   # cURL implementation of Http interface
+│   ├── SSE.zig        # Server-sent events with iterator API
+│   ├── auth/          # Core authentication mechanics (headless)
 │   │   ├── Core.zig   # Auth interfaces, credentials
-│   │   ├── OAuth.zig  # OAuth 2.0 implementation
+│   │   ├── OAuth.zig  # OAuth 2.0 implementation (not Oauth)
 │   │   ├── Callback.zig # OAuth callback server
-│   │   └── CLI.zig    # Auth CLI commands
+│   │   ├── Service.zig # Auth service management
+│   │   └── Errors.zig # Unified auth error set
 │   └── providers/     # Provider-specific implementations
 │       └── anthropic/
 │           ├── Client.zig  # Anthropic API client
@@ -127,26 +191,26 @@ src/foundation/
     └── Snapshot.zig   # Snapshot testing (main type)
 ```
 
-### Barrel Export Examples
+### Barrel Export Examples (Thin & Explicit)
 
-Each barrel file follows this pattern:
+Each barrel file uses explicit exports without `usingnamespace`:
 
 ```zig
 // src/foundation/ui.zig
 //! Base UI framework with component model and standard widgets.
-//! 
-//! Import via this barrel; avoid deep-importing subfiles.
-//! Feature-gate in consumers via options if needed.
+//! Layer: ui (may import: render, term)
 
 const std = @import("std");
+const deps = @import("internal/deps.zig");
+comptime deps.assertCanImport(.ui, .render, "ui may only import render/term");
 
-// Core component model
+// Core component model - explicit exports only
 pub const Component = @import("ui/Component.zig");
 pub const Layout = @import("ui/Layout.zig");
 pub const Event = @import("ui/Event.zig");
 pub const Runner = @import("ui/Runner.zig");
 
-// Standard widgets namespace (TitleCase)
+// Standard widgets namespace - lazy loading
 pub const Widgets = struct {
     pub const Progress = @import("ui/widgets/Progress.zig");
     pub const Input = @import("ui/widgets/Input.zig");
@@ -156,30 +220,38 @@ pub const Widgets = struct {
     pub const Status = @import("ui/widgets/Status.zig");
 };
 
-// Convenience re-export for common pattern
+// Temporary compatibility (remove after migration)
 pub const widgets = Widgets;
+comptime if (@import("builtin").mode == .Debug) {
+    @compileLog("ui.widgets lowercase alias is deprecated");
+}
 ```
 
 ```zig
 // src/foundation/network.zig
 //! Network operations with integrated authentication support.
-//! 
-//! Import via this barrel; avoid deep-importing subfiles.
-//! Provides HTTP clients, authentication, and provider-specific APIs.
+//! Layer: network (standalone, no UI dependencies)
 
 const std = @import("std");
+const deps = @import("internal/deps.zig");
+comptime deps.assertCanImport(.network, .network, "network is standalone");
 
-// Core network functionality
-pub const Client = @import("network/Client.zig");
-pub const Curl = @import("network/Curl.zig");
+// Provider-agnostic HTTP interface
+pub const Http = @import("network/Http.zig");
+pub const HttpCurl = @import("network/HttpCurl.zig");
 pub const SSE = @import("network/SSE.zig");
 
-// Authentication namespace (TitleCase)
+// Unified error handling
+pub const Error = Http.Error;
+pub const asNetworkError = @import("network/errors.zig").asNetwork;
+
+// Authentication namespace - headless only
 pub const Auth = struct {
     pub const Core = @import("network/auth/Core.zig");
-    pub const OAuth = @import("network/auth/OAuth.zig");
+    pub const OAuth = @import("network/auth/OAuth.zig");  // NOT Oauth
     pub const Callback = @import("network/auth/Callback.zig");
-    pub const CLI = @import("network/auth/CLI.zig");
+    pub const Service = @import("network/auth/Service.zig");
+    pub const Errors = @import("network/auth/Errors.zig");
     
     // Convenience re-exports
     pub const AuthMethod = Core.AuthMethod;
@@ -187,6 +259,8 @@ pub const Auth = struct {
     pub const AuthError = Core.AuthError;
     pub const setupOAuth = OAuth.setupOAuth;
     pub const refreshTokens = OAuth.refreshTokens;
+    
+    // NOTE: Auth TUI components are in tui.Auth namespace
 };
 
 // Provider-specific implementations (TitleCase namespace)
@@ -209,45 +283,180 @@ pub const HTTPMethod = Curl.HTTPMethod;
 pub const Header = Curl.Header;
 ```
 
-## Consolidation Phases
+```zig
+// src/foundation/tui.zig
+//! Terminal UI specialization with auth components.
+//! 
+//! Import via this barrel; avoid deep-importing subfiles.
+//! Includes auth-specific TUI components for OAuth flows.
 
-### Phase 1: Network/Auth Consolidation (Week 1)
+const std = @import("std");
 
-#### Merge: `auth/` + `network/` → Enhanced `network/`
+// Core TUI functionality
+pub const App = @import("tui/App.zig");
+pub const Screen = @import("tui/Screen.zig");
+
+// Auth UI components namespace (TitleCase)
+pub const Auth = struct {
+    pub const AuthStatus = @import("tui/auth/AuthStatus.zig");
+    pub const CodeInput = @import("tui/auth/CodeInput.zig");
+    pub const OAuthFlow = @import("tui/auth/OAuthFlow.zig");
+    pub const OAuthWizard = @import("tui/auth/OAuthWizard.zig");
+    
+    // Convenience function to run OAuth wizard
+    pub fn runOAuthWizard(allocator: std.mem.Allocator) !void {
+        const wizard = try OAuthWizard.init(allocator);
+        defer wizard.deinit();
+        return wizard.run();
+    }
+};
+
+// TUI-specific widgets namespace
+pub const Widgets = struct {
+    pub const Modal = @import("tui/widgets/Modal.zig");
+    pub const CommandPalette = @import("tui/widgets/CommandPalette.zig");
+    // Dashboard components would be here
+};
+
+// Legacy compatibility
+pub const auth = Auth;
+pub const widgets = Widgets;
+```
+
+## Consolidation Phases (Reordered for Reduced Risk)
+
+### Phase 1: Render Standardization First (Week 1)
+
+#### Rationale: Centralizing rendering before UI merge reduces concurrent changes
 
 **Steps:**
-1. Move generic auth components to `network/auth/`:
-   - `auth/core.zig` → `network/auth/core.zig`
-   - `auth/oauth.zig` → `network/auth/oauth.zig`
-   - `auth/oauth/CallbackServer.zig` → `network/auth/callback.zig`
-   - `auth/cli.zig` → `network/auth/cli.zig`
+1. Create unified `render/` structure:
+   - `render/RenderContext.zig` with capabilities, theme, quality tiers
+   - `render/Backend.zig` trait using comptime duck typing
+   - `render/Adaptive.zig` for terminal capability detection
+   - `render/Quality.zig` for quality tiers enum
 
-2. Move Anthropic-specific auth to `network/providers/anthropic/`:
+2. Move all widget draw logic to `render/widgets/`:
+   - `widgets/progress/draw.zig` → `render/widgets/Progress.zig`
+   - `widgets/input/draw.zig` → `render/widgets/Input.zig`
+   - `widgets/chart/draw.zig` → `render/widgets/Chart.zig`
+   - `widgets/table/draw.zig` → `render/widgets/Table.zig`
+
+3. Add thin adapters in existing widgets to use `render/`
+
+4. Introduce `RenderContext` using @This() pattern:
+   ```zig
+   pub const RenderContext = struct {
+       const Self = @This();
+       surface: *Surface,
+       theme: *Theme,
+       caps: Capabilities,
+       quality: Quality.Tier,
+       frame_budget_ns: u64,
+       allocator: std.mem.Allocator,  // Explicit dependency injection
+       
+       pub fn init(allocator: std.mem.Allocator, surface: *Surface) Self {
+           return .{
+               .allocator = allocator,
+               .surface = surface,
+               // ...
+           };
+       }
+   };
+   ```
+
+**Benefits:**
+- All draw code centralized before touching UI state APIs
+- Single render path established early
+- Easier to test rendering in isolation
+
+### Phase 2: Network/Auth Split & CLI Migration (Week 2)
+
+#### Merge: `auth/` + `network/` → Headless `network/` + UI Migration
+
+**Steps:**
+1. Introduce provider-agnostic HTTP client:
+   ```zig
+   // network/Http.zig
+   pub const HttpClient = struct {
+       pub const Error = error{ Transport, Timeout, Status, Protocol };
+       pub fn request(self: *Self, req: Request, alloc: Allocator) Error!Response;
+   };
+   ```
+
+2. Move generic auth components to `network/auth/` (headless):
+   - `auth/core.zig` → `network/auth/Core.zig`
+   - `auth/oauth.zig` → `network/auth/OAuth.zig` (fix naming)
+   - `auth/oauth/CallbackServer.zig` → `network/auth/Callback.zig`
+   - `auth/core/Service.zig` → `network/auth/Service.zig`
+
+3. Move Auth CLI to proper UI layer:
+   - `auth/cli.zig` → `cli/auth/Commands.zig` (UI belongs in CLI)
+
+4. Move auth TUI components to `tui/auth/`:
+   - `auth/tui.zig` → Remove (functionality split)
+   - `auth/tui/AuthStatus.zig` → `tui/auth/AuthStatus.zig`
+   - `auth/tui/CodeInput.zig` → `tui/auth/CodeInput.zig`
+   - `auth/tui/OauthFlow.zig` → `tui/auth/OAuthFlow.zig` (fix casing)
+   - `auth/tui/OauthWizard.zig` → `tui/auth/OAuthWizard.zig` (fix casing)
+
+5. Move Anthropic-specific auth to `network/providers/anthropic/`:
    - Consolidate OAuth constants from both modules
    - Merge duplicate Credentials types
-   - Move Anthropic OAuth logic to `network/providers/anthropic/auth.zig`
+   - Move Anthropic OAuth logic to `network/providers/anthropic/Auth.zig`
 
-3. Update `network.zig` barrel export with auth namespace
+6. Create unified error adapters:
+   ```zig
+   // network/auth/Errors.zig
+   pub fn asNetwork(err: Auth.Error) Http.Error { ... }
+   pub fn fromNetwork(err: Http.Error) Auth.Error { ... }
+   ```
 
-4. Remove `src/foundation/auth/` directory and `auth.zig` barrel
+4. Update barrel exports:
+   - `network.zig` with auth namespace (network mechanics only)
+   - `tui.zig` with auth namespace (UI components)
+
+5. Remove `src/foundation/auth/` directory and `auth.zig` barrel
 
 **Benefits:**
 - Eliminates circular dependencies between auth and network
+- Proper separation of concerns: network mechanics vs UI
 - Groups related functionality (auth needs network for HTTP)
 - Clearer provider-specific vs generic auth code
 - Reduces module count by 1
 
-### Phase 2: UI Layer Consolidation (Week 2-3)
+### Phase 3: UI Layer Consolidation (Week 3)
 
 #### Merge: `ui/` + `widgets/` + `components/` → Enhanced `ui/`
 
 **Steps:**
-1. Create unified widget implementations in `ui/widgets/`:
-   - Merge 4 progress implementations → `ui/widgets/progress.zig`
-   - Merge 3 input implementations → `ui/widgets/input.zig`
-   - Merge 3 notification implementations → `ui/widgets/notification.zig`
+1. Establish component contract with error handling:
+   ```zig
+   pub const Component = struct {
+       const Self = @This();
+       
+       pub fn event(self: *Self, e: ui.Event) ui.Error!void {
+           // Handle event, may fail with EventQueueFull
+       }
+       
+       pub fn layout(self: *Self, bounds: ui.Rect, allocator: std.mem.Allocator) ui.Error!ui.Size {
+           // Layout with explicit allocator dependency
+       }
+       
+       pub fn draw(self: *Self, ctx: *render.RenderContext) render.Error!void {
+           // Draw may fail with RenderFailed
+       }
+   };
+   ```
+
+2. Create unified widget implementations in `ui/widgets/`:
+   - Merge 4 progress implementations → `ui/widgets/Progress.zig`
+   - Merge 3 input implementations → `ui/widgets/Input.zig`
+   - Merge 3 notification implementations → `ui/widgets/Notification.zig`
    - Move chart, table from `widgets/` → `ui/widgets/`
    - Move status from `components/` → `ui/widgets/`
+
+3. Ensure widgets delegate rendering to `render/widgets/`
 
 2. Update `ui.zig` barrel export with new structure
 
@@ -261,38 +470,22 @@ pub const Header = Curl.Header;
 - Terminal capability support
 - Existing usage patterns in agents
 
-### Phase 3: Tool System Unification (Week 3)
+### Phase 4: Tool System Unification (Week 4)
 
 #### Merge: `tools/` + `json_reflection/` → Enhanced `tools/`
 
 **Steps:**
-1. Move `json_reflection/json_reflection.zig` → `tools/reflection.zig`
-2. Consolidate JSON utilities into `tools/json.zig`
-3. Create unified tool registration API in `tools/registry.zig`
-4. Update `tools.zig` barrel export
+1. Split compile-time vs runtime:
+   - `json_reflection/json_reflection.zig` → `tools/Reflection.zig` (compile-time)
+   - Runtime JSON → `tools/JSON.zig` (runtime validation)
+
+2. Create zero-copy JSON readers for hot paths
+
+3. Create unified tool registration API in `tools/Registry.zig`
+
+4. Update `tools.zig` barrel export with thin namespaces
+
 5. Remove `src/foundation/json_reflection/` directory
-
-### Phase 4: Render System Standardization (Week 4)
-
-#### Enhance: `render/` as the standard rendering backend
-
-**Steps:**
-1. Move widget `draw.zig` files → `render/widgets/`:
-   - `widgets/chart/draw.zig` → `render/widgets/chart.zig`
-   - `widgets/table/draw.zig` → `render/widgets/table.zig`
-   - `widgets/progress/draw.zig` → `render/widgets/progress.zig`
-
-2. Create standard `RenderContext` interface:
-   ```zig
-   pub const RenderContext = struct {
-       surface: *Surface,
-       quality: QualityTier,
-       capabilities: Capabilities,
-       theme: *Theme,
-   };
-   ```
-
-3. Update all UI components to use `render/` for drawing
 
 ### Phase 5: TUI Refactoring (Week 5)
 
@@ -303,22 +496,68 @@ pub const Header = Curl.Header;
    - Use `ui/widgets/` for progress, input, text, etc.
    - Keep only TUI-specific widgets (dashboard, modal, command palette)
 
-2. Update TUI to use consolidated modules:
-   - Import base widgets from `ui.widgets`
+2. Implement double buffering with explicit allocator:
+   ```zig
+   pub const App = struct {
+       const Self = @This();
+       allocator: std.mem.Allocator,
+       front_buffer: *Surface,
+       back_buffer: *Surface,
+       frame_budget_ns: u64 = 16_666_667, // 60 FPS
+       
+       pub fn init(allocator: std.mem.Allocator) !Self {
+           const front = try Surface.init(allocator);
+           errdefer front.deinit();
+           const back = try Surface.init(allocator);
+           return .{
+               .allocator = allocator,
+               .front_buffer = front,
+               .back_buffer = back,
+               .frame_budget_ns = 16_666_667,
+           };
+       }
+       
+       pub fn present(self: *Self) tui.Error!void {
+           try self.diff_and_write();
+           self.swap_buffers();
+       }
+   };
+   ```
+
+3. Update TUI to use consolidated modules:
+   - Import base widgets from `ui.Widgets`
    - Use `render/` for all rendering
    - Use `theme/` for theming
    - Use `term/` for terminal operations
 
-3. Update `tui.zig` barrel export
+### Phase 6: Build System & Feature Flags (Week 6)
 
-### Phase 6: Agent Updates (Week 6)
+**Steps:**
+1. Add compile-time feature flags in `build.zig`:
+   ```zig
+   const features = b.option([]const []const u8, "features", 
+       "Comma-separated features: tui,cli,anthropic,sixel") orelse &.{"all"};
+   ```
+
+2. Gate modules based on flags:
+   ```zig
+   pub const enable_tui = @hasDecl(@import("root"), "enable_tui");
+   pub const enable_network = @hasDecl(@import("root"), "enable_network");
+   ```
+
+3. Create build configurations:
+   - Minimal: core + cli only
+   - Standard: core + cli + tui + network
+   - Full: all features including providers
+
+### Phase 7: Agent Updates & Migration (Week 7)
 
 **Steps:**
 1. Update all agent imports to use new paths
 2. Test each agent thoroughly
 3. Update agent documentation
 
-### Phase 7: Cleanup & Documentation (Week 7)
+### Phase 8: Cleanup & Documentation (Week 8)
 
 **Steps:**
 1. Remove all obsolete directories
@@ -330,19 +569,43 @@ pub const Header = Curl.Header;
 
 ### Compatibility Layer
 
-Create temporary compatibility shims during transition:
+Create working compatibility shims with compile-time warnings:
 
 ```zig
 // src/foundation/components.zig (temporary)
-//! Compatibility shim - will be removed after migration
-//! All components have moved to ui/widgets/
+pub const progress = @import("ui.zig").Widgets.Progress;
+pub const input = @import("ui.zig").Widgets.Input;
 
-pub const progress = @import("ui.zig").widgets.Progress;
-pub const input = @import("ui.zig").widgets.Input;
-pub const notification = @import("ui.zig").widgets.Notification;
+comptime {
+    @compileLog("components.zig is deprecated; import ui.Widgets.* instead");
+}
+```
 
-pub const @"This module is deprecated" = 
-    "Please import from ui.widgets instead";
+### Import Migration Map with Compile-Time Validation
+
+```zig
+// src/foundation/migrate_imports.zig
+pub const ImportMap = struct {
+    old: []const u8,
+    new: []const u8,
+    deprecated: bool = false,
+};
+
+pub const migrations = [_]ImportMap{
+    .{ .old = "components.progress", .new = "ui.Widgets.Progress" },
+    .{ .old = "widgets.chart", .new = "ui.Widgets.Chart" },
+    .{ .old = "auth.oauth", .new = "network.Auth.OAuth" },
+    .{ .old = "network.auth.CLI", .new = "cli.auth.Commands" },
+};
+
+// Compile-time validation that new paths exist
+comptime {
+    for (migrations) |m| {
+        if (m.deprecated) continue;
+        // Validate at compile time that new import paths are valid
+        _ = @field(@import("foundation"), m.new);
+    }
+}
 ```
 
 ### Testing Strategy
@@ -364,71 +627,95 @@ pub const @"This module is deprecated" =
 ### Quantitative
 - **File reduction**: ~70 UI files → ~35-40 files
 - **Code duplication**: 4 progress implementations → 1
-- **Module count**: 15 overlapping modules → 5 focused modules (auth merged into network)
-- **Binary size**: Expected 10-15% reduction
+- **Module count**: 15 overlapping modules → 7 focused modules
+- **Binary size**: 10-15% reduction (20-30% with feature flags)
+- **Compile time per slab**: <2s for term, render, ui; <5s for tui, network
+- **Steady-state TUI CPU**: <1% when idle on modern laptop
+- **Frame efficiency**: 50% reduction in bytes written per frame (dirty-rect)
 
 ### Qualitative
+- Enforced layering with zero circular dependencies
+- Provider-agnostic network layer
+- Unified error handling with adapters
 - Clear module boundaries and responsibilities
-- Improved code discoverability
-- Easier maintenance and testing
-- Better documentation structure
+- Terminal capability matrix testing
+- Consistent OAuth naming (not Oauth)
 
-## Risk Analysis
+## Risk Analysis & Mitigations
 
 ### High Risk
-- **Breaking agent compatibility**: Mitigated by phased approach and testing
-- **Performance regression**: Mitigated by benchmarking critical paths
+- **Case-only renames on macOS**: Prefer `git mv`; if the filesystem blocks a case-only change, do a two-step rename (e.g., `name_tmp` → final) using `git mv` so the VCS tracks the change.
+- **Breaking agent compatibility**: Phased approach with comprehensive testing
+- **Performance regression**: Benchmark before each phase, establish gates
 
 ### Medium Risk
-- **API changes**: Mitigated by compatibility layer
-- **Missing functionality**: Mitigated by careful analysis of all implementations
+- **Barrel compile-time drag**: Use thin, explicit exports; avoid `usingnamespace`
+- **Network/UI coupling**: Move CLI auth to `cli/`; enforce import fences
+- **OAuth edge cases**: Test clock skew, 429 backoff, token refresh failures
 
 ### Low Risk
-- **Documentation gaps**: Mitigated by documentation phase
-- **Build system issues**: Mitigated by incremental updates
+- **Import cycle creation**: Prevented by layer assertions at compile time
+- **Documentation gaps**: Generate from new structure
+- **Build system issues**: Feature flags allow incremental migration
 
 ## Implementation Checklist
 
-### Week 1: Network/Auth Merge
-- [ ] Create comprehensive test suite
-- [ ] Document current API usage
-- [ ] Move auth components to network/auth/
-- [ ] Move Anthropic OAuth to network/providers/anthropic/
-- [ ] Update network.zig barrel with auth namespace
-- [ ] Test authentication flows
-- [ ] Remove auth/ directory
+### Week 1: Render Standardization (Phase A)
+- [ ] Create `render/RenderContext.zig` with capabilities
+- [ ] Create `render/Backend.zig` trait
+- [ ] Create `render/Adaptive.zig` for capability detection
+- [ ] Move all widget draw logic to `render/widgets/`
+- [ ] Add adapters in existing widgets
+- [ ] Deprecate old `draw.zig` files with `@compileError`
+- [ ] Test rendering with different capabilities
+- [ ] Benchmark render performance
 
-### Week 2-3: UI Consolidation
+### Week 2: Network/Auth Split (Phase B)
+- [ ] Create provider-agnostic `Http.zig` interface
+- [ ] Rename `Client.zig` → `Http.zig`, `Curl.zig` → `HttpCurl.zig`
+- [ ] Move auth to `network/auth/` (headless only)
+- [ ] Move Auth CLI to `cli/auth/`
+- [ ] Move auth TUI to `tui/auth/`
+- [ ] Fix all OAuth naming (not Oauth)
+- [ ] Create unified error adapters
+- [ ] Test auth flows end-to-end
+- [ ] Remove old auth/ directory
+
+### Week 3: UI Consolidation (Phase C)
 - [ ] Merge widget implementations
 - [ ] Update ui.zig barrel
 - [ ] Test UI components
 - [ ] Update affected agents
 
-### Week 3: Tools Merge
+### Week 4: Tools Merge (Phase D)
+- [ ] Split compile-time vs runtime reflection
 - [ ] Merge tools and json_reflection
 - [ ] Create unified tool API
 - [ ] Test tool registration
 - [ ] Update documentation
 
-### Week 4: Render Standardization
-- [ ] Move widget renderers
-- [ ] Create standard render interface
-- [ ] Test rendering paths
-- [ ] Update components to use render/
-
-### Week 5: TUI Refactoring
-- [ ] Remove duplicate widgets
+### Week 5: TUI Refactoring (Phase E)
+- [ ] Remove duplicate widgets from TUI
+- [ ] Implement double buffering
+- [ ] Add frame scheduler with budget
 - [ ] Update TUI imports
 - [ ] Test TUI components
 - [ ] Validate dashboard functionality
 
-### Week 6: Agent Migration
+### Week 6: Build System (Phase F)
+- [ ] Add feature flags to build.zig
+- [ ] Create build configurations
+- [ ] Test different feature combinations
+- [ ] Measure binary sizes
+- [ ] Document feature flag usage
+
+### Week 7: Agent Migration (Phase G)
 - [ ] Update all agent imports
 - [ ] Run agent test suite
 - [ ] Fix any breakages
 - [ ] Update agent docs
 
-### Week 7: Finalization
+### Week 8: Finalization (Phase H)
 - [ ] Remove obsolete directories
 - [ ] Remove compatibility shims
 - [ ] Final testing pass
@@ -441,23 +728,38 @@ pub const @"This module is deprecated" =
 
 | Source | Destination | Action |
 |--------|-------------|--------|
+| **Render Consolidation (Phase 1)** | | |
+| `widgets/*/draw.zig` | `render/widgets/*.zig` | Move draw logic |
+| - | `render/RenderContext.zig` | Create new |
+| - | `render/Backend.zig` | Create new |
+| - | `render/Adaptive.zig` | Create new |
 | **Auth → Network Migration** | | |
-| `auth/core.zig` | `network/auth/Core.zig` | Move & rename to TitleCase |
-| `auth/oauth.zig` | `network/auth/OAuth.zig` | Move & rename to TitleCase |
+| `auth/core.zig` | `network/auth/Core.zig` | Move & TitleCase |
+| `auth/oauth.zig` | `network/auth/OAuth.zig` | Move & fix casing |
 | `auth/oauth/CallbackServer.zig` | `network/auth/Callback.zig` | Move & rename |
-| `auth/cli.zig` | `network/auth/CLI.zig` | Move & rename to TitleCase |
+| `auth/core/Service.zig` | `network/auth/Service.zig` | Move & TitleCase |
+| **Auth CLI → CLI Migration** | | |
+| `auth/cli.zig` | `cli/auth/Commands.zig` | Move to CLI layer |
 | `network/anthropic/oauth.zig` | `network/providers/anthropic/Auth.zig` | Move & merge with auth OAuth |
+| **Auth TUI → TUI Migration** | | |
+| `auth/tui/AuthStatus.zig` | `tui/auth/AuthStatus.zig` | Move to TUI |
+| `auth/tui/CodeInput.zig` | `tui/auth/CodeInput.zig` | Move to TUI |
+| `auth/tui/OauthFlow.zig` | `tui/auth/OAuthFlow.zig` | Move & fix casing |
+| `auth/tui/OauthWizard.zig` | `tui/auth/OAuthWizard.zig` | Move & fix casing |
+| `auth/tui.zig` | - | Remove (split between modules) |
+| **Network Interface** | | |
+| `network/client.zig` | `network/Http.zig` | Rename to protocol |
+| `network/curl.zig` | `network/HttpCurl.zig` | Rename to impl |
 | **UI Consolidation** | | |
-| `widgets/progress.zig` | `ui/widgets/Progress.zig` | Merge & rename to TitleCase |
-| `widgets/input.zig` | `ui/widgets/Input.zig` | Merge & rename to TitleCase |
-| `widgets/chart.zig` | `ui/widgets/Chart.zig` | Move & rename to TitleCase |
-| `widgets/table.zig` | `ui/widgets/Table.zig` | Move & rename to TitleCase |
-| `components/notification.zig` | `ui/widgets/Notification.zig` | Merge & rename to TitleCase |
-| `components/status.zig` | `ui/widgets/Status.zig` | Move & rename to TitleCase |
+| `widgets/progress.zig` | `ui/widgets/Progress.zig` | Merge & TitleCase |
+| `widgets/input.zig` | `ui/widgets/Input.zig` | Merge & TitleCase |
+| `widgets/chart.zig` | `ui/widgets/Chart.zig` | Move & TitleCase |
+| `widgets/table.zig` | `ui/widgets/Table.zig` | Move & TitleCase |
+| `components/notification.zig` | `ui/widgets/Notification.zig` | Merge & TitleCase |
+| `components/status.zig` | `ui/widgets/Status.zig` | Move & TitleCase |
 | **Tools Consolidation** | | |
-| `json_reflection/json_reflection.zig` | `tools/Reflection.zig` | Move & rename to TitleCase |
-| **Render Consolidation** | | |
-| `widgets/*/draw.zig` | `render/widgets/*.zig` | Move (keep draw logic) |
+| `json_reflection/json_reflection.zig` | `tools/Reflection.zig` | Split compile-time |
+| - | `tools/JSON.zig` | Runtime validation |
 
 ### Directories to Remove
 
@@ -467,6 +769,84 @@ pub const @"This module is deprecated" =
 - `src/foundation/json_reflection/` (after merge into tools)
 - Duplicate widgets in `src/foundation/tui/widgets/core/`
 
+## Compile-Time Configuration Pattern
+
+Following Zig's idiomatic patterns, the foundation will support compile-time configuration through:
+
+```zig
+// src/foundation/config.zig
+const root = @import("root");
+const builtin = @import("builtin");
+
+// Allow root to override foundation settings
+pub const options = if (@hasDecl(root, "foundation_options"))
+    root.foundation_options
+else
+    .{};
+
+// Feature detection using @hasDecl
+pub const has_tui = @hasDecl(options, "enable_tui") and options.enable_tui;
+pub const has_network = @hasDecl(options, "enable_network") and options.enable_network;
+
+// Compile-time provider selection
+pub const providers = if (@hasDecl(options, "providers"))
+    options.providers
+else
+    .{ .anthropic = true };
+```
+
+This allows applications to configure the foundation at compile time without modifying its source.
+
+## Testing & Validation Strategy
+
+### Snapshot Testing
+- Golden tests for terminal output post-render
+- Capability matrix tests (truecolor vs 256 vs 16 colors)
+- Different terminal widths/heights
+
+### Performance Gates
+- Cold compile time per module
+- Binary size by feature combination
+- Steady-state TUI CPU at idle
+- Network throughput and backoff behavior
+- Frame render efficiency (bytes written)
+
+### Terminal Capability Matrix with Compile-Time Detection
+```zig
+// Using @hasDecl for capability detection
+pub fn detectCapabilities(comptime Terminal: type) Capabilities {
+    return .{
+        .graphics = if (@hasDecl(Terminal, "kitty_graphics"))
+            .kitty
+        else if (@hasDecl(Terminal, "sixel"))
+            .sixel
+        else
+            .none,
+        .colors = if (@hasDecl(Terminal, "truecolor"))
+            .truecolor
+        else if (@hasDecl(Terminal, "colors_256"))
+            .@"256"
+        else
+            .@"16",
+    };
+}
+
+// Test matrix using reflection
+const test_terminals = .{
+    .{ "kitty", struct { pub const kitty_graphics = true; pub const truecolor = true; } },
+    .{ "wezterm", struct { pub const sixel = true; pub const truecolor = true; } },
+    .{ "linux", struct {} },  // No special capabilities
+};
+```
+
 ## Conclusion
 
-This consolidation plan will transform the foundation layer from a fragmented collection of overlapping modules into a clean, well-organized architecture with clear responsibilities. The phased approach ensures minimal disruption while the compatibility layer provides a smooth transition path. The result will be a more maintainable, performant, and understandable codebase.
+This consolidation plan transforms the foundation layer from a fragmented collection into a clean, layered architecture with:
+- **Strict dependency management** via import fences
+- **Render-first approach** to reduce migration risk
+- **Provider-agnostic interfaces** for flexibility
+- **Thin, explicit barrels** for compile-time efficiency
+- **Proper UI/Network separation** with CLI in correct layer
+- **Comprehensive testing** including capability matrices
+
+The phased approach minimizes disruption while establishing a maintainable, performant foundation for future development.
