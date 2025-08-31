@@ -8,13 +8,13 @@
 const std = @import("std");
 
 // Core authentication types and logic
-pub const core = @import("core/mod.zig");
+pub const core = @import("auth/core.zig");
 
 // OAuth-specific implementations
-pub const oauth = @import("oauth/mod.zig");
+pub const oauth = @import("auth/oauth.zig");
 
 // CLI commands for authentication
-pub const cli = @import("cli/mod.zig");
+pub const cli = @import("auth/cli.zig");
 
 // Re-export commonly used types for convenience
 pub const AuthMethod = core.AuthMethod;

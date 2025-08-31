@@ -22,7 +22,7 @@ pub const registerJsonTool = @import("tools.zig").registerJsonTool;
 pub const registerJsonToolWithRequiredFields = @import("tools.zig").registerJsonToolWithRequiredFields;
 
 // JSON schema definitions for tool request/response handling
-pub const json_schemas = @import("json_schemas.zig");
+pub const json_schemas = @import("tools/json_schemas.zig");
 pub const ToolResponse = json_schemas.ToolResponse;
 pub const FileOperation = json_schemas.FileOperation;
 pub const TextProcessing = json_schemas.TextProcessing;
@@ -31,7 +31,7 @@ pub const Directory = json_schemas.Directory;
 pub const Validation = json_schemas.Validation;
 
 // JSON utilities for simplifying tool development
-pub const json = @import("json.zig");
+pub const json = @import("tools/json.zig");
 pub const parseToolRequest = json.parseToolRequest;
 pub const createSuccessResponse = json.createSuccessResponse;
 pub const createErrorResponse = json.createErrorResponse;
