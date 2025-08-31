@@ -77,7 +77,7 @@
 //! const message = params.object.get("message").?.string;
 //!
 //! // NEW: Automatic deserialization
-//! const RequestMapper = json_reflection.generateJsonMapper(Request);
+//! const RequestMapper = JsonReflector.mapper(Request);
 //! const parsed = try RequestMapper.fromJson(allocator, params);
 //! defer parsed.deinit();
 //! const request = parsed.value;
@@ -96,7 +96,7 @@
 //!     .success = true,
 //!     .metadata = .{ .processed_at = std.time.timestamp() },
 //! };
-//! const ResponseMapper = json_reflection.generateJsonMapper(Response);
+//! const ResponseMapper = JsonReflector.mapper(Response);
 //! return ResponseMapper.toJsonValue(allocator, response);
 //! ```
 //!
@@ -232,7 +232,7 @@
 
 const std = @import("std");
 const toolsMod = @import("tools_shared");
-const json_reflection = @import("json_reflection");
+const JsonReflector = @import("json_reflection").JsonReflector;
 
 /// Request structure for the example tool.
 /// This replaces manual parameter extraction and provides compile-time type safety.
@@ -302,7 +302,7 @@ pub fn execute(allocator: std.mem.Allocator, params: std.json.Value) toolsMod.To
     // ============================================================================
 
     // Generate JSON mapper for our Request struct at compile time
-    const RequestMapper = json_reflection.generateJsonMapper(Request);
+    const RequestMapper = JsonReflector.mapper(Request);
 
     // Deserialize JSON to struct - this replaces all manual field extraction
     const parsed = RequestMapper.fromJson(allocator, params) catch
@@ -382,7 +382,7 @@ pub fn execute(allocator: std.mem.Allocator, params: std.json.Value) toolsMod.To
     };
 
     // Generate JSON mapper for our Response struct at compile time
-    const ResponseMapper = json_reflection.generateJsonMapper(Response);
+    const ResponseMapper = JsonReflector.mapper(Response);
 
     // Serialize struct to JSON value - this replaces manual ObjectMap building
     const json_response = ResponseMapper.toJsonValue(allocator, response) catch
@@ -473,7 +473,7 @@ pub fn complexExecute(allocator: std.mem.Allocator, params: std.json.Value) tool
     // COMPLEX DESERIALIZATION
     // ============================================================================
 
-    const ComplexMapper = json_reflection.generateJsonMapper(ComplexRequest);
+    const ComplexMapper = JsonReflector.mapper(ComplexRequest);
     const parsed = ComplexMapper.fromJson(allocator, params) catch
         return toolsMod.ToolError.MalformedJSON;
     defer parsed.deinit();
@@ -581,7 +581,7 @@ pub fn complexExecute(allocator: std.mem.Allocator, params: std.json.Value) tool
     // COMPLEX SERIALIZATION
     // ============================================================================
 
-    const ResponseMapper = json_reflection.generateJsonMapper(ComplexResponse);
+    const ResponseMapper = JsonReflector.mapper(ComplexResponse);
     const json_response = ResponseMapper.toJsonValue(allocator, complex_response) catch
         return toolsMod.ToolError.ExecutionFailed;
 

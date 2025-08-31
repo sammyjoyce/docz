@@ -3,6 +3,7 @@
 
 const std = @import("std");
 const toolsMod = @import("tools_shared");
+const JsonReflector = @import("json_reflection").JsonReflector;
 
 // Tool Implementation
 pub const Tool = @import("Tool.zig");
@@ -29,8 +30,7 @@ pub fn testTool(allocator: std.mem.Allocator, params: std.json.Value) toolsMod.T
     };
 
     // Generate JSON mapper and serialize
-    const json_reflection = @import("json_reflection");
-    const ResponseMapper = json_reflection.generateJsonMapper(TestResponse);
+    const ResponseMapper = JsonReflector.mapper(TestResponse);
     return ResponseMapper.toJsonValue(allocator, response);
 }
 
