@@ -33,38 +33,6 @@ pub const saveCredentials = core.saveCredentials;
 pub const setupOAuth = oauth.setupOAuth;
 pub const refreshTokens = oauth.refreshTokens;
 
-// Note: curl re-export is stubbed here to avoid deep dependency;
-// prefer `@import("shared/network/mod.zig").curl` in new code.
-pub const curl = struct {
-    pub const HTTPResponse = struct {
-        status_code: u16,
-        body: []const u8,
-        pub fn deinit(self: @This()) void {
-            _ = self;
-        }
-    };
-
-    pub const HTTPClient = struct {
-        pub fn init(_: std.mem.Allocator) !@This() {
-            return @This(){};
-        }
-        pub fn deinit(self: @This()) void {
-            _ = self;
-        }
-        pub fn post(self: @This(), url: []const u8, headers: []const Header, body: []const u8) !HTTPResponse {
-            _ = self;
-            _ = url;
-            _ = headers;
-            _ = body;
-            return .{ .status_code = 200, .body = "{}" }; // Stub response
-        }
-    };
-    pub const Header = struct {
-        name: []const u8,
-        value: []const u8,
-    };
-};
-
 // Re-export callback server types and functions
 pub const Server = oauth.Server;
 pub const Config = oauth.Config;

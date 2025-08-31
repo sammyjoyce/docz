@@ -13,13 +13,13 @@ comptime {
     }
 }
 
-pub const Registry = @import("tools.zig").Registry;
-pub const registerBuiltins = @import("tools.zig").registerBuiltins;
-pub const ToolError = @import("tools.zig").ToolError;
-pub const Tool = @import("tools.zig").Tool;
-pub const JsonFunction = @import("tools.zig").JsonFunction;
-pub const registerJsonTool = @import("tools.zig").registerJsonTool;
-pub const registerJsonToolWithRequiredFields = @import("tools.zig").registerJsonToolWithRequiredFields;
+pub const Registry = @import("tools/tools.zig").Registry;
+pub const registerBuiltins = @import("tools/tools.zig").registerBuiltins;
+pub const ToolError = @import("tools/tools.zig").ToolError;
+pub const Tool = @import("tools/tools.zig").Tool;
+pub const JsonFunction = @import("tools/tools.zig").JsonFunction;
+pub const registerJsonTool = @import("tools/tools.zig").registerJsonTool;
+pub const registerJsonToolWithRequiredFields = @import("tools/tools.zig").registerJsonToolWithRequiredFields;
 
 // JSON schema definitions for tool request/response handling
 pub const json_schemas = @import("tools/json_schemas.zig");

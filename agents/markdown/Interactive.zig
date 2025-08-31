@@ -51,12 +51,12 @@
 //! ## Integration Points
 //!
 //! This editor integrates with:
-//! - `src/shared/tui/widgets/core/diff_viewer.zig` - Document diff viewing
-//! - `src/shared/tui/widgets/core/file_tree.zig` - File navigation
-//! - `src/shared/tui/widgets/core/tabs.zig` - Multi-document management
-//! - `src/shared/tui/widgets/core/tag_input.zig` - Document tagging
-//! - `src/shared/cli/components/base/breadcrumb_trail.zig` - Navigation trail
-//! - `src/shared/tui/components/agent_dashboard.zig` - Dashboard framework integration
+//! - `src/foundation/tui/widgets/core/diff_viewer.zig` - Document diff viewing
+//! - `src/foundation/tui/widgets/core/file_tree.zig` - File navigation
+//! - `src/foundation/tui/widgets/core/tabs.zig` - Multi-document management
+//! - `src/foundation/tui/widgets/core/tag_input.zig` - Document tagging
+//! - `src/foundation/cli/components/base/breadcrumb_trail.zig` - Navigation trail
+//! - `src/foundation/tui/components/agent_dashboard.zig` - Dashboard framework integration
 //!
 //! ## Architecture
 //!
@@ -93,17 +93,17 @@ const MarkdownEditorConfig = markdown_editor.MarkdownEditorConfig;
 // Shared infrastructure
 const tui = @import("tui_shared");
 const term = @import("term_shared");
-const theme = @import("../../src/shared/theme/mod.zig");
+const theme = @import("../../src/foundation/theme/mod.zig");
 const render = @import("render_shared");
 const components = @import("components_shared");
 
 // Rich UI components
-const diff_viewer = @import("../../src/shared/tui/widgets/core/diff_viewer.zig");
-const file_tree = @import("../../src/shared/tui/widgets/core/file_tree.zig");
-const tabs = @import("../../src/shared/tui/widgets/core/tabs.zig");
-const tag_input = @import("../../src/shared/tui/widgets/core/tag_input.zig");
-const breadcrumb_trail = @import("../../src/shared/cli/components/base/BreadcrumbTrail.zig");
-const agent_dashboard = @import("../../src/shared/tui/components/agent_dashboard/mod.zig");
+const diff_viewer = @import("../../src/foundation/tui/widgets/core/diff_viewer.zig");
+const file_tree = @import("../../src/foundation/tui/widgets/core/file_tree.zig");
+const tabs = @import("../../src/foundation/tui/widgets/core/tabs.zig");
+const tag_input = @import("../../src/foundation/tui/widgets/core/tag_input.zig");
+const breadcrumb_trail = @import("../../src/foundation/cli/components/base/BreadcrumbTrail.zig");
+const agent_dashboard = @import("../../src/foundation/tui/components/agent_dashboard/mod.zig");
 
 // Markdown agent specific
 const markdown_tools = @import("tools/mod.zig");

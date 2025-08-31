@@ -143,16 +143,16 @@ const config = @import("config_shared");
 // Shared infrastructure
 const tui = @import("tui_shared");
 const term = @import("term_shared");
-const theme = @import("../../src/shared/theme/mod.zig");
+const theme = @import("../../src/foundation/theme/mod.zig");
 const render = @import("render_shared");
 const components = @import("components_shared");
 
 // UI components
-const input_component = @import("../../src/shared/components/input.zig");
-const split_pane = @import("../../src/shared/tui/widgets/core/split_pane.zig");
+const input_component = @import("../../src/foundation/components/input.zig");
+const split_pane = @import("../../src/foundation/tui/widgets/core/split_pane.zig");
 const file_tree = tui.widgets.core.file_tree;
-const modal = @import("../../src/shared/tui/widgets/modal.zig");
-const canvas_mod = @import("../../src/shared/tui/core/canvas.zig");
+const modal = @import("../../src/foundation/tui/widgets/modal.zig");
+const canvas_mod = @import("../../src/foundation/tui/core/canvas.zig");
 // Backward compatibility alias
 const canvas_engine = canvas_mod;
 

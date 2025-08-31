@@ -56,22 +56,22 @@ const config = @import("config_shared");
 // Shared infrastructure
 const tui = @import("tui_shared");
 const term = @import("term_shared");
-const theme = @import("../../src/shared/theme/mod.zig");
+const theme = @import("../../src/foundation/theme/mod.zig");
 const render = @import("render_shared");
 const components = @import("components_shared");
 
 // Dashboard and UI components
-const dashboard = @import("../../src/shared/tui/components/dashboard/mod.zig");
-const command_palette = @import("../../src/shared/tui/components/command_palette.zig");
-const notification_system = @import("../../src/shared/tui/components/notification_system.zig");
-const progress_tracker = @import("../../src/shared/tui/components/progress_tracker.zig");
+const dashboard = @import("../../src/foundation/tui/components/dashboard/mod.zig");
+const command_palette = @import("../../src/foundation/tui/components/command_palette.zig");
+const notification_system = @import("../../src/foundation/tui/components/notification_system.zig");
+const progress_tracker = @import("../../src/foundation/tui/components/progress_tracker.zig");
 
 // UI components
-const input_component = @import("../../src/shared/components/input.zig");
-const split_pane = @import("../../src/shared/tui/widgets/core/split_pane.zig");
-const file_tree = @import("../../src/shared/tui/widgets/core/file_tree.zig");
-const modal = @import("../../src/shared/tui/widgets/modal.zig");
-const canvas_mod = @import("../../src/shared/tui/core/canvas.zig");
+const input_component = @import("../../src/foundation/components/input.zig");
+const split_pane = @import("../../src/foundation/tui/widgets/core/split_pane.zig");
+const file_tree = @import("../../src/foundation/tui/widgets/core/file_tree.zig");
+const modal = @import("../../src/foundation/tui/widgets/modal.zig");
+const canvas_mod = @import("../../src/foundation/tui/core/canvas.zig");
 // Backward compatibility alias
 const canvas_engine = canvas_mod;
 

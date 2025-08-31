@@ -2,10 +2,10 @@
 //! Provides UX with progressive disclosure, tool discovery, and workflow automation
 
 const std = @import("std");
-const tui = @import("../../src/shared/tui/mod.zig");
-const components = @import("../../src/shared/components/mod.zig");
-const tools_mod = @import("../../src/shared/tools/mod.zig");
-const render_mod = @import("../../src/shared/render/mod.zig");
+const tui = @import("../../src/foundation/tui/mod.zig");
+const components = @import("../../src/foundation/components/mod.zig");
+const tools_mod = @import("../../src/foundation/tools/mod.zig");
+const render_mod = @import("../../src/foundation/render/mod.zig");
 
 // Import markdown-specific modules
 const markdown_tools = @import("tools/mod.zig");
