@@ -403,7 +403,7 @@ pub const AuthCommands = struct {
 
 // Workflow step implementations
 
-fn generateAuthURL(allocator: Allocator, context: ?workflow_step.StepContext) anyerror!workflow_step.WorkflowStepResult {
+fn generateAuthURL(allocator: Allocator, context: ?workflow_step.StepContext) workflow_step.WorkflowError!workflow_step.WorkflowStepResult {
     _ = allocator;
     _ = context;
 
@@ -412,7 +412,7 @@ fn generateAuthURL(allocator: Allocator, context: ?workflow_step.StepContext) an
     return .{ .success = true, .outputData = "https://api.anthropic.com/oauth/authorize?client_id=demo&response_type=code" };
 }
 
-fn openBrowser(allocator: Allocator, context: ?workflow_step.StepContext) anyerror!workflow_step.WorkflowStepResult {
+fn openBrowser(allocator: Allocator, context: ?workflow_step.StepContext) workflow_step.WorkflowError!workflow_step.WorkflowStepResult {
     _ = allocator;
     _ = context;
 
@@ -421,7 +421,7 @@ fn openBrowser(allocator: Allocator, context: ?workflow_step.StepContext) anyerr
     return .{ .success = true };
 }
 
-fn waitForCallback(allocator: Allocator, context: ?workflow_step.StepContext) anyerror!workflow_step.WorkflowStepResult {
+fn waitForCallback(allocator: Allocator, context: ?workflow_step.StepContext) workflow_step.WorkflowError!workflow_step.WorkflowStepResult {
     _ = allocator;
     _ = context;
 
@@ -430,7 +430,7 @@ fn waitForCallback(allocator: Allocator, context: ?workflow_step.StepContext) an
     return .{ .success = true, .outputData = "authorization_code_12345" };
 }
 
-fn exchangeCodeForToken(allocator: Allocator, context: ?workflow_step.StepContext) anyerror!workflow_step.WorkflowStepResult {
+fn exchangeCodeForToken(allocator: Allocator, context: ?workflow_step.StepContext) workflow_step.WorkflowError!workflow_step.WorkflowStepResult {
     _ = allocator;
     _ = context;
 
@@ -439,7 +439,7 @@ fn exchangeCodeForToken(allocator: Allocator, context: ?workflow_step.StepContex
     return .{ .success = true, .outputData = "access_token_abc123" };
 }
 
-fn validateToken(allocator: Allocator, context: ?workflow_step.StepContext) anyerror!workflow_step.WorkflowStepResult {
+fn validateToken(allocator: Allocator, context: ?workflow_step.StepContext) workflow_step.WorkflowError!workflow_step.WorkflowStepResult {
     _ = allocator;
     _ = context;
 
@@ -448,7 +448,7 @@ fn validateToken(allocator: Allocator, context: ?workflow_step.StepContext) anye
     return .{ .success = true };
 }
 
-fn saveCredentials(allocator: Allocator, context: ?workflow_step.StepContext) anyerror!workflow_step.WorkflowStepResult {
+fn saveCredentials(allocator: Allocator, context: ?workflow_step.StepContext) workflow_step.WorkflowError!workflow_step.WorkflowStepResult {
     _ = allocator;
     _ = context;
 
