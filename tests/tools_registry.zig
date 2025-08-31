@@ -2,8 +2,8 @@
 
 const std = @import("std");
 
-const tools = @import("../src/foundation/tools.zig");
-const SharedContext = @import("../src/foundation/context.zig").SharedContext;
+const tools = @import("foundation").tools;
+const SharedContext = @import("foundation").context.SharedContext;
 
 test "registerJsonTool wraps and invokes JSON tool" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -63,4 +63,3 @@ test "registerJsonToolWithRequiredFields enforces missing parameter" {
     const bad = "{\"message\": \"hi\"}";
     try std.testing.expectError(tools.ToolError.MissingParameter, tf(&ctx, allocator, bad));
 }
-

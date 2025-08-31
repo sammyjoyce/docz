@@ -6,8 +6,8 @@ const term_shared = @import("term_shared");
 const term_clipboard = term_shared.ansi.clipboard;
 const term_caps = term_shared.caps;
 const term_ansi = term_shared.ansi.color;
-const cli = @import("../../mod.zig");
-const notification = cli.notifications;
+const cli = @import("../../../cli.zig");
+const notification = cli.components.Base.Notification;
 const Allocator = std.mem.Allocator;
 
 pub const ClipboardError = error{

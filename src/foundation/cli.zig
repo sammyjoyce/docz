@@ -7,7 +7,7 @@ comptime {
     deps.assertLayer(.cli);
 }
 
-pub const CliApp = @import("CliApp.zig").CliApp;
+pub const CliApp = @import("cli/core/app.zig").CliApp;
 
 // Auth CLI components namespace
 pub const Auth = struct {

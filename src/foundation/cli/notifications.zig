@@ -16,7 +16,7 @@ const term_shared = @import("term_shared");
 const term = term_shared.term;
 const terminal_bridge = @import("./core/terminal_bridge.zig");
 const components = @import("components_shared");
-const presenters = @import("presenters/mod.zig");
+const presenters = @import("presenters.zig");
 
 // Re-export base types for convenience (alias to shared components)
 pub const NotificationType = components.NotificationType;

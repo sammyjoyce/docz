@@ -5,7 +5,7 @@
 
 const std = @import("std");
 const ui = @import("../ui.zig");
-const render = @import("../render.zig");
+const render_mod = @import("../render.zig");
 const App = @import("App.zig");
 
 const Self = @This();
@@ -298,7 +298,7 @@ fn updateFocus(self: *Self) void {
 }
 
 /// Render the screen
-pub fn render(self: *Self, ctx: *render.RenderContext) Error!void {
+pub fn render(self: *Self, ctx: *render_mod.RenderContext) Error!void {
     if (self.state != .active) {
         return;
     }

@@ -1,7 +1,7 @@
 const std = @import("std");
-const render_mod = @import("mod.zig");
-const Renderer = render_mod.Renderer;
-const RenderTier = render_mod.RenderTier;
+const render = @import("../render.zig");
+const Renderer = render.Renderer;
+const RenderTier = render.RenderTier;
 
 /// Defines quality tiers and characteristics for different rendering modes
 pub const QualityTiers = struct {

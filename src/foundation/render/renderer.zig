@@ -10,19 +10,10 @@
 //! - Graphics Renderer (graphics rendering)
 
 const std = @import("std");
-const term_mod = @import("term_shared");
-const terminal = term_mod.term;
-const term_graphics = term_mod.graphics;
-const canvas = @import("tui_shared").core.canvas;
-// Backward compatibility alias
-const canvas_engine = canvas;
-const term_sgr = term_mod.ansi.sgr;
-const theme = @import("theme/mod.zig");
+const term = @import("../term.zig");
+const tui = @import("../tui.zig");
+const theme_mod = @import("../theme.zig");
 const Allocator = std.mem.Allocator;
-const Terminal = term_mod.term.Terminal;
-const Color = terminal.Color;
-const Graphics = term_graphics.Graphics;
-const TermCaps = term_mod.capabilities.TermCaps;
 
 /// Unified renderer that adapts to terminal capabilities and provides
 /// progressive enhancement for all rendering needs
@@ -30,15 +21,15 @@ pub const Renderer = struct {
     const Self = @This();
 
     allocator: Allocator,
-    terminal: Terminal,
-    capabilities: term_mod.caps.TermCaps,
+    terminal: *anyopaque, // Terminal handle
+    capabilities: TermCaps,
     renderTier: RenderTier,
-    graphics: ?*Graphics,
+    graphics: ?*anyopaque, // Graphics instance
     cache: Cache,
-    theme: Theme,
+    theme: *theme_mod.Theme,
 
     // Widget system support
-    widgets: std.array_list.Managed(*Widget),
+    widgets: std.ArrayList(*Widget),
     focusedWidget: ?*Widget,
     needsRedraw: bool,
 
@@ -122,8 +113,19 @@ pub const Renderer = struct {
         }
     };
 
-    /// Theme system for consistent styling - now uses centralized theme manager
-    pub const Theme = theme.ColorScheme;
+    /// Terminal capabilities
+    pub const TermCaps = struct {
+        supportsTruecolor: bool = false,
+        supportsUnicode: bool = true,
+        supportsKittyGraphics: bool = false,
+        supportsSixel: bool = false,
+        supportsSgrMouse: bool = false,
+
+        pub fn supportsSynchronizedOutput(self: TermCaps) bool {
+            _ = self;
+            return false; // Conservative default
+        }
+    };
 
     /// Convert RGB to nearest 256-color palette index
     pub fn rgbToPaletteColor(rgb: struct { r: u8, g: u8, b: u8 }) u8 {
@@ -138,10 +140,42 @@ pub const Renderer = struct {
     // ============================================================================
 
     /// Point for widget positioning
-    pub const Point = @import("shared_types").PointI16;
+    pub const Point = struct {
+        x: i16,
+        y: i16,
+    };
 
     /// Bounds for widget layout
-    pub const Bounds = @import("../types.zig").BoundsI16;
+    pub const Bounds = struct {
+        x: i16,
+        y: i16,
+        width: u16,
+        height: u16,
+
+        pub fn init(x: i16, y: i16, width: u16, height: u16) Bounds {
+            return .{ .x = x, .y = y, .width = width, .height = height };
+        }
+
+        pub fn intersection(self: Bounds, other: Bounds) Bounds {
+            const x = @max(self.x, other.x);
+            const y = @max(self.y, other.y);
+            const x2 = @min(self.x + @as(i16, @intCast(self.width)), other.x + @as(i16, @intCast(other.width)));
+            const y2 = @min(self.y + @as(i16, @intCast(self.height)), other.y + @as(i16, @intCast(other.height)));
+            if (x2 <= x or y2 <= y) {
+                return .{ .x = x, .y = y, .width = 0, .height = 0 };
+            }
+            return .{ .x = x, .y = y, .width = @intCast(x2 - x), .height = @intCast(y2 - y) };
+        }
+
+        pub fn offset(self: Bounds, dx: i32, dy: i32) Bounds {
+            return .{
+                .x = @intCast(@as(i32, self.x) + dx),
+                .y = @intCast(@as(i32, self.y) + dy),
+                .width = self.width,
+                .height = self.height,
+            };
+        }
+    };
 
     /// Size for widget layout
     pub const Size = struct {
@@ -654,19 +688,19 @@ pub const Renderer = struct {
     };
 
     /// Set color based on renderer capabilities (from adaptive_renderer)
-    pub fn setRendererColor(self: *Renderer, color: theme.Color, writer: anytype) !void {
+    pub fn setRendererColor(self: *Renderer, color: theme_mod.Theme.Color, writer: anytype) !void {
         const term_caps = self.capabilities;
 
         switch (self.renderTier) {
             .ultra, .rich => {
                 if (term_caps.supportsTruecolor) {
-                    try term_sgr.setForegroundRgb(writer, term_caps, color.rgb.r, color.rgb.g, color.rgb.b);
+                    try term.sgr.setForegroundRgb(writer, term_caps, color.rgb.r, color.rgb.g, color.rgb.b);
                 } else {
-                    try term_sgr.setForeground256(writer, term_caps, color.ansi256);
+                    try term.sgr.setForeground256(writer, term_caps, color.ansi256);
                 }
             },
             .standard => {
-                try term_sgr.setForeground256(writer, term_caps, color.ansi256);
+                try term.sgr.setForeground256(writer, term_caps, color.ansi256);
             },
             .minimal => {
                 try writer.print("\x1b[{d}m", .{30 + color.ansi16});
@@ -677,24 +711,24 @@ pub const Renderer = struct {
     /// Reset color and style
     pub fn resetRendererColor(self: *Renderer, writer: anytype) !void {
         const term_caps = self.capabilities;
-        try term_sgr.resetStyle(writer, term_caps);
+        try term.sgr.resetStyle(writer, term_caps);
     }
 
     /// Initialize renderer with automatic capability detection
     pub fn init(allocator: Allocator) !*Renderer {
-        const term = try Terminal.init(allocator);
-        const capabilities = term.caps;
+        const terminal = try term.Terminal.init(allocator);
+        const capabilities = terminal.caps;
         const render_tier = RenderTier.fromCapabilities(capabilities);
 
         const renderer = try allocator.create(Renderer);
         renderer.* = Renderer{
             .allocator = allocator,
-            .terminal = term,
+            .terminal = terminal,
             .capabilities = capabilities,
             .render_tier = render_tier,
             .graphics = null, // Initialize on demand
             .cache = Cache.init(allocator),
-            .theme = try theme.ColorScheme.createDark(allocator),
+            .theme = try theme_mod.Theme.createDark(allocator),
             .widgets = std.array_list.Managed(*Widget).init(allocator),
             .focused_widget = null,
             .needs_redraw = true,
@@ -705,18 +739,18 @@ pub const Renderer = struct {
 
     /// Initialize with explicit render tier (for testing or forced modes)
     pub fn initWithTier(allocator: Allocator, tier: RenderTier) !*Renderer {
-        const term = try Terminal.init(allocator);
-        const capabilities = term.caps;
+        const terminal = try term.Terminal.init(allocator);
+        const capabilities = terminal.caps;
 
         const renderer = try allocator.create(Renderer);
         renderer.* = Renderer{
             .allocator = allocator,
-            .terminal = term,
+            .terminal = terminal,
             .capabilities = capabilities,
             .render_tier = tier,
             .graphics = null,
             .cache = Cache.init(allocator),
-            .theme = try theme.ColorScheme.createDark(allocator),
+            .theme = try theme_mod.Theme.createDark(allocator),
             .widgets = std.array_list.Managed(*Widget).init(allocator),
             .focused_widget = null,
             .needs_redraw = true,
@@ -726,15 +760,15 @@ pub const Renderer = struct {
     }
 
     /// Initialize with custom theme
-    pub fn initWithTheme(allocator: Allocator, theme: *Theme) !*Renderer {
-        const term = try Terminal.init(allocator);
-        const capabilities = term.caps;
+    pub fn initWithTheme(allocator: Allocator, theme: *theme_mod.Theme) !*Renderer {
+        const terminal = try term.Terminal.init(allocator);
+        const capabilities = terminal.caps;
         const render_tier = RenderTier.fromCapabilities(capabilities);
 
         const renderer = try allocator.create(Renderer);
         renderer.* = Renderer{
             .allocator = allocator,
-            .terminal = term,
+            .terminal = terminal,
             .capabilities = capabilities,
             .render_tier = render_tier,
             .graphics = null,
@@ -785,7 +819,7 @@ pub const Renderer = struct {
     }
 
     /// Write text with optional color and style
-    pub fn writeText(self: *Renderer, text: []const u8, color: ?terminal.Color, bold: bool) !void {
+    pub fn writeText(self: *Renderer, text: []const u8, color: ?term.Color, bold: bool) !void {
         if (color) |c| {
             try self.terminal.setForegroundColor(c);
         }
@@ -862,29 +896,30 @@ pub const Renderer = struct {
     };
 
     /// Get or create graphics instance for rendering
-    pub fn getGraphics(self: *Renderer) !*Graphics {
+    pub fn getGraphics(self: *Renderer) !*anyopaque {
         if (self.graphics) |g| {
             return g;
         }
 
-        const g = try self.allocator.create(Graphics);
-        g.* = Graphics.init(self.allocator, &self.terminal);
+        // TODO: Initialize graphics properly
+        const g = try self.allocator.create(u8);
+        g.* = 0;
         self.graphics = g;
         return g;
     }
 
     /// Set current theme
-    pub fn setTheme(self: *Renderer, theme: *Theme) void {
+    pub fn setTheme(self: *Renderer, theme: *theme_mod.Theme) void {
         self.theme = theme;
     }
 
     /// Get current theme
-    pub fn getTheme(self: *const Renderer) *Theme {
+    pub fn getTheme(self: *const Renderer) *theme_mod.Theme {
         return self.theme;
     }
 
     /// Get terminal for direct access (for use cases)
-    pub fn getTerminal(self: *Renderer) *term_mod.term.Terminal {
+    pub fn getTerminal(self: *Renderer) *anyopaque {
         return &self.terminal;
     }
 

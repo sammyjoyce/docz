@@ -1232,7 +1232,7 @@ const ModuleBuilder = struct {
     }
 
     /// Create conditional shared modules based on agent manifest capabilities
-    fn createConditionalSharedModules(self: ModuleBuilder, manifest: ?AgentManifest) ConditionalSharedModules {
+    fn createConditionalSharedModules(self: ModuleBuilder, _: ?AgentManifest) ConditionalSharedModules {
         var modules = ConditionalSharedModules{
             .network = null,
             .tools = null,
@@ -1253,34 +1253,18 @@ const ModuleBuilder = struct {
             .oauth_callback_server = null,
         };
 
+        // Create foundation module once for reuse
+        const foundation_mod = self.createModule("src/foundation.zig");
+
         // When using foundation barrel, only create engine module (not in foundation)
         // All other modules are available through the foundation barrel
         modules.engine = self.createModule(buildConfig.PATHS.ENGINE_ZIG);
+        modules.engine.?.addImport("foundation", foundation_mod);
 
-        // Engine needs its imports satisfied
-        const tools = self.createModule(buildConfig.PATHS.TOOLS_ZIG);
-        const network = self.createModule(buildConfig.PATHS.AUTH_ZIG);
-        const context_mod = self.createModule("src/foundation/context.zig");
+        // Store foundation in config field for reuse in createAgentModules
+        modules.config = foundation_mod;
 
-        modules.engine.?.addImport("tools_shared", tools);
-        modules.engine.?.addImport("anthropic_shared", network);
-        modules.engine.?.addImport("auth_shared", network);
-        modules.engine.?.addImport("context_shared", context_mod);
-        modules.engine.?.addImport("network_shared", network);
-
-        // Tools needs its imports
-        tools.addImport("context_shared", context_mod);
-        tools.addImport("shared_options", self.createModule("src/foundation/options.zig"));
-        tools.addImport("anthropic_shared", network);
-        tools.addImport("network_shared", network);
-
-        // Network needs context
-        network.addImport("context_shared", context_mod);
-        network.addImport("curl_shared", self.createModule("src/foundation/network/curl.zig"));
-        network.addImport("sse_shared", self.createModule("src/foundation/network/sse.zig"));
-
-        // Don't expose these as shared modules to avoid conflicts with foundation barrel
-        // Return early - we only need the engine module when using foundation barrel
+        // Return - we only need engine and foundation modules
         return modules;
     }
 
@@ -1288,9 +1272,10 @@ const ModuleBuilder = struct {
         const entry = self.createModule(self.ctx.agent_paths.main);
 
         // Add required imports
-        // Provide consolidated foundation barrel as a single import point
-        const foundation_mod = self.createModule("src/foundation.zig");
-        entry.addImport("foundation", foundation_mod);
+        // Reuse foundation module from shared (stored in config field)
+        if (shared.config) |foundation_mod| {
+            entry.addImport("foundation", foundation_mod);
+        }
         // Engine must be imported separately to avoid duplicate module inclusion
         if (shared.engine) |engine| entry.addImport("core_engine", engine);
         // Don't import modules that are already in foundation barrel to avoid conflicts
@@ -1314,7 +1299,10 @@ const ModuleBuilder = struct {
         // Skip oauth callback server in minimal builds
 
         const spec = self.createModule(self.ctx.agent_paths.spec);
-        spec.addImport("foundation", foundation_mod);
+        // Reuse foundation module from shared (stored in config field)
+        if (shared.config) |foundation_mod| {
+            spec.addImport("foundation", foundation_mod);
+        }
         // Engine must be imported separately to avoid duplicate module inclusion
         if (shared.engine) |engine| spec.addImport("core_engine", engine);
         // Don't import tools separately - it's in foundation barrel
@@ -1329,13 +1317,18 @@ const ModuleBuilder = struct {
     }
 
     fn createApiModule(self: ModuleBuilder) *std.Build.Module {
-        // Build test suite root module. Use a stable integration test that
-        // does not depend on removed/renamed files.
+        // Build test suite root module. This aggregates all test files
+        // from the tests/ directory for comprehensive testing.
         const test_module = self.ctx.b.addModule("tests_main", .{
-            .root_source_file = self.ctx.b.path("tests/smoke.zig"),
+            .root_source_file = self.ctx.b.path("tests/all_tests.zig"),
             .target = self.ctx.target,
             .optimize = self.ctx.optimize,
         });
+
+        // Add foundation module so tests can import it
+        const foundation_mod = self.createModule("src/foundation.zig");
+        test_module.addImport("foundation", foundation_mod);
+
         return test_module;
     }
 

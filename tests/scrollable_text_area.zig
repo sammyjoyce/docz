@@ -4,13 +4,12 @@ const std = @import("std");
 const testing = std.testing;
 const Allocator = std.mem.Allocator;
 
-// Import the widget from consolidated foundation TUI
-const tui = @import("src/foundation/tui.zig");
+// Import the widget from consolidated foundation TUI via the foundation module
+const tui = @import("foundation").tui;
 const ScrollableTextArea = tui.widgets.ScrollableTextArea;
-// Supporting types live with the widget implementation
-const Scrollable = @import("src/foundation/tui/widgets/core/ScrollableTextArea.zig");
-const WordWrapMode = Scrollable.WordWrapMode;
-const Selection = Scrollable.Selection;
+// Supporting types are re-exported via tui.widgets.core
+const WordWrapMode = tui.widgets.core.WordWrapMode;
+const Selection = tui.widgets.core.Selection;
 
 test "scrollableTextAreaInitialization" {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);

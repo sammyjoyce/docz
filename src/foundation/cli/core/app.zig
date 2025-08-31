@@ -85,11 +85,7 @@ pub const CliApp = struct {
     }
 
     fn parseArguments(self: *CliApp, args: []const []const u8) CliError!types.Args {
-        const build_options = @import("build_options");
-        const ParserMod = comptime if (build_options.include_legacy)
-            @import("../legacy/Parser.zig")
-        else
-            @import("parser.zig");
+        const ParserMod = @import("parser.zig");
         const ParserError = ParserMod.CliError;
 
         // The parser expects argv-style input including program name at index 0.

@@ -1,10 +1,10 @@
 //! Mouse event handling for TUI applications
 //! Provides pixel-precise mouse tracking and rich interaction support
 const std = @import("std");
-const shared = @import("../../../mod.zig");
-const shared_input = @import("../../../term.zig").input;
+const term = @import("../../../term.zig");
+const shared_input = term.input;
 const term_mouse = shared_input;
-const caps_mod = @import("../../../term.zig").capabilities;
+const caps_mod = term.capabilities;
 
 // Re-export shared mouse types
 pub const MouseButton = shared_input.MouseButton;

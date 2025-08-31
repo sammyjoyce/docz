@@ -5,10 +5,8 @@
 
 const std = @import("std");
 const ui = @import("../ui.zig");
-const render = @import("../render.zig");
+const render_mod = @import("../render.zig");
 const term = @import("../term.zig");
-
-const Self = @This();
 
 /// Application configuration
 pub const Config = struct {
@@ -32,6 +30,8 @@ pub const Error = error{
 };
 
 /// Double-buffered terminal application
+const Self = @This();
+
 allocator: std.mem.Allocator,
 front_buffer: *Surface,
 back_buffer: *Surface,
@@ -46,7 +46,7 @@ frame_scheduler: FrameScheduler,
 
 /// Frame scheduler for managing render timing and performance
 pub const FrameScheduler = struct {
-    const Self = @This();
+    const FSelf = @This();
 
     /// Performance metrics
     pub const Metrics = struct {
@@ -68,7 +68,7 @@ pub const FrameScheduler = struct {
     adaptive_quality: bool,
     quality_level: u8, // 0-100
 
-    pub fn init(fps: u32, vsync: bool, adaptive: bool) !Self {
+    pub fn init(fps: u32, vsync: bool, adaptive: bool) !FSelf {
         const timer = try std.time.Timer.start();
         const frame_budget = if (fps > 0)
             @divFloor(1_000_000_000, fps)
@@ -90,19 +90,19 @@ pub const FrameScheduler = struct {
     }
 
     /// Check if we should render a new frame
-    pub fn shouldRender(self: *Self) bool {
+    pub fn shouldRender(self: *FSelf) bool {
         const now = self.timer.read();
         const delta = now - self.last_frame_ns;
         return delta >= self.frame_budget_ns;
     }
 
     /// Begin a new frame
-    pub fn beginFrame(self: *Self) void {
+    pub fn beginFrame(self: *FSelf) void {
         self.last_frame_ns = self.timer.read();
     }
 
     /// End the current frame and update metrics
-    pub fn endFrame(self: *Self) void {
+    pub fn endFrame(self: *FSelf) void {
         const frame_time = self.timer.read() - self.last_frame_ns;
 
         // Update metrics
@@ -354,15 +354,15 @@ fn render(self: *Self) Error!void {
     // Create render context with adaptive quality
     const quality = if (self.frame_scheduler.adaptive_quality)
         switch (self.frame_scheduler.quality_level) {
-            0...33 => render.RenderTier.minimal,
-            34...66 => render.RenderTier.standard,
-            67...90 => render.RenderTier.rich,
-            else => render.RenderTier.rich,
+            0...33 => render_mod.quality_tiers.QualityTier.minimal,
+            34...66 => render_mod.quality_tiers.QualityTier.standard,
+            67...90 => render_mod.quality_tiers.QualityTier.rich,
+            else => render_mod.quality_tiers.QualityTier.rich,
         }
     else
-        render.RenderTier.rich;
+        render_mod.quality_tiers.QualityTier.rich;
 
-    var ctx = render.RenderContext{
+    var ctx = render_mod.RenderContext{
         .surface = self.back_buffer,
         .theme = undefined, // Would be initialized with actual theme
         .caps = .{

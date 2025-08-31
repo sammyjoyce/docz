@@ -3,17 +3,17 @@
 
 // Base components (core functionality)
 pub const Base = struct {
-    pub const SelectMenu = @import("base/SelectMenu.zig").SelectMenu;
-    pub const Notification = @import("../notifications.zig");
-    pub const CliNotification = @import("../core/state.zig").Notification;
-    pub const NotificationDisplay = @import("../notifications.zig"); // Alias for compatibility
-    pub const HyperlinkMenu = @import("base/HyperlinkMenu.zig").HyperlinkMenu;
-    pub const ClipboardInput = @import("base/ClipboardInput.zig").ClipboardInput;
-    pub const Panel = @import("base/panel.zig");
+    pub const SelectMenu = @import("components/base/SelectMenu.zig").SelectMenu;
+    pub const Notification = @import("notifications.zig");
+    pub const CliNotification = @import("core/state.zig").Notification;
+    pub const NotificationDisplay = @import("notifications.zig"); // Alias for compatibility
+    pub const HyperlinkMenu = @import("components/base/HyperlinkMenu.zig").HyperlinkMenu;
+    pub const ClipboardInput = @import("components/base/ClipboardInput.zig").ClipboardInput;
+    pub const Panel = @import("components/base/panel.zig");
     // Note: StatusIndicator was removed from this barrel. See TUI widgets or
     // enable `-Dlegacy` for compatibility shims if needed.
-    pub const Breadcrumb = @import("base/BreadcrumbTrail.zig").Breadcrumb;
-    pub const Clipboard = @import("base/clipboard.zig");
+    pub const Breadcrumb = @import("components/base/BreadcrumbTrail.zig").Breadcrumb;
+    pub const Clipboard = @import("components/base/clipboard.zig");
     // Note: InputManager is not part of the CLI barrel. Use TUI core input or
     // shared/components/input.zig instead.
 };

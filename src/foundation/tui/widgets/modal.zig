@@ -3,10 +3,10 @@
 //! with progressive enhancement, focus management, and animation support
 
 const std = @import("std");
-const core = @import("../core/mod.zig");
+const core = @import("../core.zig");
 const bounds_mod = @import("../core/bounds.zig");
 const renderer_mod = @import("../core/renderer.zig");
-const input_mod = @import("../core/input/mod.zig");
+const mouse_mod = @import("../core/input/mouse.zig");
 const events_mod = @import("../core/events.zig");
 const screen_mod = @import("../core/screen.zig");
 const term = @import("../../term.zig");

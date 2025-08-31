@@ -17,7 +17,25 @@ This document outlines the complete plan for consolidating the `src/foundation` 
 - Each migration step is a full refactor: update imports to the new barrels and remove the legacy paths in the same change (small, scoped PRs are fine, but no temporary shims).
 - The prior "Migration Strategy → Compatibility Layer" guidance is deprecated and retained only for historical reference — do not implement it.
 - Any "Temporary compatibility" or "Legacy compatibility" aliases referenced in examples must be removed as part of the relevant refactor step.
-- Commit after each step to a dedicated consolidation branch: land a small, self-contained commit (ideally a PR) per refactor step. CI/build success is not required during consolidation; do not add temporary compatibility layers to make builds green.
+- Commit after each step to a dedicated consolidation branch: land a small, self-contained commit (ideally a PR) per refactor step. Do not add temporary compatibility layers to make builds green.
+
+### Policy Update (2025-08-31): Builds and Runs Must Pass
+
+Effective immediately, build and run targets are gating. All commits and PRs must keep the tree green and runnable without introducing shims.
+
+Required commands (local and CI):
+
+- zig build list-agents
+- zig build validate-agents
+- zig build -Dagent=<each> test
+- zig fmt src/**/*.zig build.zig build.zig.zon
+- For every agent, a smoke run must exit 0 (no credentials required):
+  - zig build -Dagent=<name> run -- --help
+  - If an agent requires network/auth, provide an offline/mock mode or a help/diagnostics run path that succeeds by default.
+
+Notes:
+- Statements elsewhere in this document that “build is not gated” or similar are now historical. Post‑consolidation, builds and runs must pass. Fix root causes rather than adding compatibility layers.
+- Treat red CI as a stop‑ship for consolidation work.
 
 ### Dependency Hierarchy (enforced)
 ```
@@ -669,7 +687,7 @@ comptime {
 
 ## Implementation Checklist
 
-Commit Discipline: Each checkbox item should land as its own small, self-contained commit (or PR) on a consolidation branch. CI may be disabled or allowed to fail until consolidation stabilizes; do not introduce shims just to pass interim builds.
+Commit Discipline: Each checkbox item should land as its own small, self-contained commit (or PR) on a consolidation branch. CI must remain green and agent smoke runs must pass; do not introduce shims just to make builds or runs green — fix the underlying issues.
 
 ### Week 1: Render Standardization (Phase A) ✅
 **Status**: Completed (2025-08-31 UTC)
@@ -697,7 +715,7 @@ Commit Discipline: Each checkbox item should land as its own small, self-contain
 - src/foundation/render/widgets/*.zig (5 files moved)
 - build.zig (auth module fix)
 
-**Build Status**: Not gated during consolidation (may be failing); see follow-ups for known breakages
+**Build Status**: Post‑consolidation: gated. Builds and agent smoke runs must pass (see Policy Update: Builds and Runs Must Pass). Historical note for this step: not gated during consolidation.
 
 **Follow-ups**:
 - Add thin adapters in existing widgets to use new render system
@@ -726,7 +744,7 @@ Commit Discipline: Each checkbox item should land as its own small, self-contain
 - src/foundation/network/anthropic/ (removed empty dir)
 - src/foundation/network/auth/tui/ (removed empty dir)
 
-**Build Status**: Not gated during consolidation
+**Build Status**: Post‑consolidation: gated. Builds and agent smoke runs must pass (see Policy Update: Builds and Runs Must Pass). Historical note for this step: not gated during consolidation.
 
 **Follow-ups**:
 - Test auth flows end-to-end when consolidation complete
@@ -750,7 +768,7 @@ Commit Discipline: Each checkbox item should land as its own small, self-contain
 - src/foundation/components.zig (removed)
 - src/foundation/widgets.zig (removed)
 
-**Build Status**: Not gated during consolidation
+**Build Status**: Post‑consolidation: gated. Builds and agent smoke runs must pass (see Policy Update: Builds and Runs Must Pass). Historical note for this step: not gated during consolidation.
 
 **Follow-ups**:
 - Test UI components when consolidation complete
@@ -773,7 +791,7 @@ Commit Discipline: Each checkbox item should land as its own small, self-contain
 - src/foundation/tools/Validation.zig (new)
 - src/foundation/tools.zig (updated exports)
 
-**Build Status**: Not gated during consolidation
+**Build Status**: Post‑consolidation: gated. Builds and agent smoke runs must pass (see Policy Update: Builds and Runs Must Pass). Historical note for this step: not gated during consolidation.
 
 **Follow-ups**:
 - Test tool registration and validation when consolidation complete
@@ -1389,3 +1407,81 @@ The foundation consolidation is complete. Future work should focus on:
 - Integration testing with production workloads
 - Expanding feature flag configurations
 - Adding more provider implementations
+
+## Post-Consolidation Build Fixes
+
+### Build System Module Conflicts
+**Status**: Resolved (2025-08-31 UTC)
+**Issue**: Module duplication causing "file exists in multiple modules" errors
+
+**Changes Made**:
+1. Simplified `createConditionalSharedModules` to only create engine module
+2. Updated engine.zig to import from foundation barrel instead of individual modules
+3. Removed duplicate foundation module creation between shared and agent modules
+4. Fixed auth module incorrectly pointing to network module
+5. Removed obsolete src/shared.zig file causing import conflicts
+
+**Files Modified**:
+- build.zig (simplified module creation)
+- src/engine.zig (updated imports to use foundation barrel)
+- src/shared.zig → src/shared.zig.old (renamed to prevent compilation)
+
+### Remaining Import Issues
+**Status**: Pending
+**Issue**: 151 compilation errors due to missing files removed during consolidation
+
+**Files with broken imports** (sample):
+- src/foundation/CliApp.zig (missing)
+- src/foundation/RenderContext.zig (missing)
+- src/foundation/ansi/mod.zig (missing)
+- src/foundation/braille.zig (missing)
+- src/foundation/buffer/mod.zig (missing)
+- src/foundation/canvas.zig (missing)
+- src/foundation/cli/base/*.zig (multiple missing files)
+
+**Resolution needed**:
+- Update imports in foundation files to match new consolidated structure
+- Remove references to deleted files
+- Update paths to match new module locations
+
+## Current Goal: Enable Agent and Auth Flow Execution
+
+### Objective
+**Status**: In Progress (2025-08-31 UTC)
+**Goal**: Restore full functionality for agents and authentication flows using the new consolidated foundation structure
+
+**Key Requirements**:
+1. **Agent Execution**: All agents must be able to run with the consolidated foundation
+   - `zig build -Dagent=<name> run` must work for all agents
+   - Agents must properly import from foundation barrel
+   - Tool registration and execution must function correctly
+
+2. **Authentication Flows**: Auth system must be fully operational
+   - OAuth callback server must function
+   - Token management must work through consolidated network module
+   - CLI auth commands must execute properly
+   - Session persistence must be maintained
+
+3. **Foundation Module Stability**: 
+   - All foundation barrel exports must resolve correctly
+   - No circular dependencies between modules
+   - Feature flags must properly gate optional functionality
+
+**Success Criteria**:
+- ✅ Build system compiles without module conflicts
+- ⏳ All agents pass `zig build -Dagent=<name> run -- --help`
+- ⏳ Authentication flow completes successfully end-to-end
+- ⏳ No import errors from foundation barrel
+- ⏳ All agent tools register and execute properly
+
+**Current Blockers**:
+- Missing file imports need resolution (151 errors)
+- Foundation submodules need proper path updates
+- Some foundation files still reference old structure
+
+**Next Steps**:
+1. Fix all missing file imports in foundation modules
+2. Verify each agent can import and use foundation
+3. Test auth flow from login to API calls
+4. Validate tool registration and execution
+5. Ensure all feature flags work correctly

@@ -7,6 +7,10 @@
 
 const std = @import("std");
 const term = @import("../../term.zig");
+const unified = term;
+const graphics_manager = struct {
+    pub const GraphicsManager = anyopaque;
+};
 
 /// Canvas with layer management and real-time interaction
 /// Maintains backward compatibility with CanvasEngine API
@@ -14,8 +18,8 @@ pub const Canvas = struct {
     const Self = @This();
 
     allocator: std.mem.Allocator,
-    terminal: *unified.Terminal,
-    graphics: graphics_manager.GraphicsManager,
+    terminal: *anyopaque,
+    graphics: anyopaque,
     layers: std.ArrayList(Layer),
     viewport: Viewport,
     interaction: Interaction,

@@ -2,7 +2,7 @@
 //! Shows current status with icons, colors, and animations
 
 const std = @import("std");
-const term_mod = @import("../../../term/mod.zig");
+const term_mod = @import("../../term.zig");
 const term_ansi = term_mod.ansi.color;
 const term_caps = term_mod.caps;
 const term_screen = term_mod.ansi.screen;

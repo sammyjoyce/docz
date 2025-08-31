@@ -44,39 +44,33 @@ const network = @import("../network.zig");
 const ui = @import("../ui.zig");
 const tools = @import("../tools.zig");
 const cli = @import("../cli.zig");
-const tools_mod = @import("tools_shared");
+const engine = @import("core_engine"); // Named module from build.zig
+
+// Import specific components from TUI barrel
+const CommandPalette = tui.components.CommandPalette;
+
+// Component imports from local files
+const AuthenticationWizard = @import("components/auth_wizard.zig").AuthenticationWizard;
+const ThemeSelector_Impl = @import("components/theme_selector.zig").ThemeSelector;
+const SessionManager_Impl = @import("components/Session.zig").Session;
+const WelcomeScreen = @import("components/welcome_screen.zig").WelcomeScreen;
+const GoodbyeScreen = @import("components/goodbye_screen.zig").GoodbyeScreen;
+const FileBrowser_Impl = @import("components/file_browser.zig").FileBrowser;
+
+// Import modules that exist
+const screen_manager = tui.Screen;
 
 // Re-export CliOptions from engine to avoid duplication
 pub const CliOptions = engine.CliOptions;
 
 // Terminal abstractions
-const screen_manager = @import("../term/screen_manager.zig");
-const input_components = shared.components;
-const mouse_mod = input_components.input.Mouse;
-
-// File tree widget
-const file_tree_mod = @import("../tui.zig").widgets.base.file_tree;
-const focus_mod = @import("../tui.zig").base.input;
 const term_shared = @import("../term.zig");
 const term_ansi = term_shared.term.color;
-
-// Component imports
-// const components_mod = @import("../components/mod.zig");
-const CommandPalette = @import("components/command_palette.zig").CommandPalette;
-const NotificationSystem = @import("components/notification_system.zig").NotificationSystem;
-const ProgressTracker = @import("components/progress_tracker.zig").ProgressTracker;
-const AuthenticationWizard = @import("components/auth_wizard.zig").AuthenticationWizard;
-const ThemeSelector = @import("components/theme_selector.zig").ThemeSelector;
-const SessionManager = @import("components/Session.zig").Session;
-const AuthenticationManager = @import("components/auth_manager.zig").AuthenticationManager;
-const WelcomeScreen = @import("components/welcome_screen.zig").WelcomeScreen;
-const GoodbyeScreen = @import("components/goodbye_screen.zig").GoodbyeScreen;
-const FileBrowser = @import("components/file_browser.zig").FileBrowser;
 
 /// Configuration for modern agent interfaces
 pub const Config = struct {
     /// Base agent configuration
-    base_config: config.AgentConfig,
+    base_config: engine.AgentConfig,
 
     /// UI Enhancement Settings
     ui_settings: UISettings = .{},
@@ -289,11 +283,11 @@ pub const UIMode = enum {
 pub const ComponentSet = struct {
     dashboard: ?*tui.Dashboard = null,
     command_palette: ?*CommandPalette = null,
-    notification_manager: ?*NotificationSystem = null,
-    progress_tracker: ?*ProgressTracker = null,
-    auth_wizard: ?*AuthenticationWizard = null,
-    theme_selector: ?*ThemeSelector = null,
-    file_browser: ?*FileBrowser = null,
+    notification_manager: ?*tui.widgets.Rich.NotificationController = null,
+    progress_tracker: ?*tui.widgets.Rich.ProgressBar = null,
+    auth_wizard: ?*tui.Auth.OAuthWizard = null,
+    theme_selector: ?*ThemeSelector_Impl = null,
+    file_browser: ?*FileBrowser_Impl = null,
 };
 
 /// Session data
@@ -370,7 +364,7 @@ pub const Agent = struct {
     state: AgentState,
 
     /// Terminal capabilities
-    terminal_caps: term.caps.TermCaps,
+    terminal_caps: term.Capabilities,
 
     /// Theme manager
     theme_mgr: *theme.Theme,
@@ -379,37 +373,37 @@ pub const Agent = struct {
     renderer: *tui.Renderer,
 
     /// Event system for input handling
-    event_system: *tui.EventSystem,
+    event_system: *tui.events,
 
     /// Dashboard engine
     dashboard_engine: ?*tui.DashboardEngine,
 
     /// Session manager
-    session_mgr: *SessionManager,
+    session_mgr: *SessionManager_Impl,
 
     /// Authentication manager
-    auth_mgr: *AuthenticationManager,
+    auth_mgr: *anyopaque, // TODO: Define AuthenticationManager
 
     /// Notification system
-    notifier: *NotificationSystem,
+    notifier: *tui.widgets.Rich.NotificationController,
 
     /// Command palette
     cmd_palette: ?*CommandPalette,
 
     /// Progress tracker
-    progress: *ProgressTracker,
+    progress: *tui.widgets.Rich.ProgressBar,
 
     /// Screen manager for terminal state management
-    screen_mgr: *screen_manager.Screen,
+    screen_mgr: *tui.Screen,
 
     /// Mouse manager for input handling
-    mouse_mgr: *mouse_mod.Mouse,
+    mouse_mgr: *tui.events,
 
     /// Focus manager for UI components
-    focus_mgr: *focus_mod.Focus,
+    focus_mgr: *anyopaque,
 
     /// File browser component
-    file_browser: ?*FileBrowser,
+    file_browser: ?*FileBrowser_Impl,
 
     /// Thread pool for file operations
     thread_pool: *std.Thread.Pool,
@@ -452,10 +446,11 @@ pub const Agent = struct {
         };
 
         // Initialize terminal capabilities
-        self.terminal_caps = term.caps.detectCaps(allocator);
+        self.terminal_caps = term.detectCapabilities();
 
         // Initialize theme manager
-        self.theme_mgr = try theme.init(allocator);
+        self.theme_mgr = try allocator.create(theme.Theme);
+        self.theme_mgr.* = theme.Theme.init(allocator);
         try self.applyTheme();
 
         // Initialize renderer with adaptive quality
@@ -463,7 +458,8 @@ pub const Agent = struct {
         self.renderer = try tui.createRenderer(allocator, render_mode);
 
         // Initialize event system
-        self.event_system = try tui.EventSystem.init(allocator);
+        self.event_system = try allocator.create(tui.events);
+        self.event_system.* = tui.events.init(allocator);
 
         // Initialize dashboard if enabled
         if (self.config.ui_settings.enable_dashboard) {
@@ -471,19 +467,15 @@ pub const Agent = struct {
         }
 
         // Initialize session manager
-        self.session_mgr = try SessionManager.init(
-            allocator,
-            self.config.session_settings,
-        );
+        self.session_mgr = try SessionManager_Impl.init(allocator);
 
         // Initialize authentication manager
-        self.auth_mgr = try AuthenticationManager.init(allocator);
+        // TODO: Implement AuthenticationManager
+        self.auth_mgr = undefined;
 
         // Initialize notification system
-        self.notifier = try NotificationSystem.init(
-            allocator,
-            self.config.ui_settings.enable_notifications,
-        );
+        self.notifier = try allocator.create(tui.widgets.Rich.NotificationController);
+        self.notifier.* = tui.widgets.Rich.NotificationController.init(allocator);
 
         // Initialize command palette if enabled
         if (self.config.ui_settings.enable_command_palette) {
@@ -491,36 +483,28 @@ pub const Agent = struct {
         }
 
         // Initialize progress tracker
-        self.progress = try ProgressTracker.init(allocator);
+        self.progress = try allocator.create(tui.widgets.Rich.ProgressBar);
+        self.progress.* = tui.widgets.Rich.ProgressBar.init(allocator, .{});
 
         // Initialize screen manager
-        self.screen_mgr = try allocator.create(screen_manager.Screen);
-        self.screen_mgr.* = screen_manager.Screen.init(allocator);
+        self.screen_mgr = try allocator.create(tui.Screen);
+        self.screen_mgr.* = tui.Screen.init(allocator);
 
         // Initialize mouse manager
-        self.mouse_mgr = try allocator.create(mouse_mod.Mouse);
-        self.mouse_mgr.* = mouse_mod.Mouse.init(allocator);
+        self.mouse_mgr = try allocator.create(tui.events);
+        self.mouse_mgr.* = tui.events.init(allocator);
 
         // Initialize focus manager
-        self.focus_mgr = try allocator.create(focus_mod.Focus);
-        self.focus_mgr.* = focus_mod.Focus.init(allocator);
+        self.focus_mgr = undefined; // TODO: implement focus manager
 
         // Initialize thread pool for file operations
         self.thread_pool = try allocator.create(std.Thread.Pool);
         self.thread_pool.* = std.Thread.Pool.init(.{ .allocator = allocator });
 
         // Initialize file browser
-        const cwd = std.fs.cwd();
-        const cwd_path = try cwd.realpathAlloc(allocator, ".");
-        defer allocator.free(cwd_path);
-
-        self.file_browser = try FileBrowser.init(
-            allocator,
-            cwd_path,
-            self.thread_pool,
-            self.focus_mgr,
-            self.mouse_mgr,
-        );
+        if (self.config.ui_settings.enable_dashboard) {
+            self.file_browser = try FileBrowser_Impl.init(allocator);
+        }
 
         // Initialize session
         try self.initializeSession();
@@ -961,13 +945,15 @@ pub const Agent = struct {
     }
 
     fn openThemeSelector(self: *Self) !void {
-        const selector = try ThemeSelector.init(self.allocator, self.theme_mgr);
-        defer selector.deinit();
-
-        const selected_theme = try selector.run(self.event_system, self.renderer);
-        if (selected_theme) |theme| {
-            try self.theme_mgr.switchTheme(theme);
-        }
+        // TODO: Implement ThemeSelector
+        _ = self;
+        // const selector = try ThemeSelector.init(self.allocator, self.theme_mgr);
+        // defer selector.deinit();
+        //
+        // const selected_theme = try selector.run(self.event_system, self.renderer);
+        // if (selected_theme) |theme| {
+        //     try self.theme_mgr.switchTheme(theme);
+        // }
     }
 
     fn saveSession(self: *Self) !void {
@@ -1092,7 +1078,7 @@ pub fn createAgent(
     },
 ) !*Agent {
     const agent_config = Config{
-        .base_config = config.AgentConfig{}, // Use defaults or load from file
+        .base_config = engine.AgentConfig{}, // Use defaults or load from file
         .ui_settings = UISettings{
             .enable_dashboard = options.enable_dashboard,
             .enable_mouse = options.enable_mouse,

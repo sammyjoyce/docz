@@ -21,7 +21,8 @@ const term = @import("../../../term.zig");
 const Style = @import("../../core/style.zig").Style;
 const Bounds = @import("../../core/bounds.zig").Bounds;
 const Widget = @import("../base.zig").Widget;
-const Event = @import("../../core/event.zig").Event;
+const events = @import("../../core/events.zig");
+const Event = events.KeyEvent; // Assuming VirtualList handles key events
 const Renderer = @import("../../core/renderer.zig").Renderer;
 
 /// Data source interface for virtual list

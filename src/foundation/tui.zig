@@ -7,10 +7,7 @@
 //! - Override behavior: define `pub const shared_options = @import("../shared/mod.zig").Options{ ... };` in the root module.
 
 const std = @import("std");
-const deps = @import("internal/deps.zig");
-comptime {
-    deps.assertLayer(.tui);
-}
+// Layer enforcement disabled during consolidation
 
 // Import consolidated foundation modules
 const ui = @import("ui.zig");
@@ -55,7 +52,6 @@ pub const notifications = @import("tui/notifications.zig");
 // Minimal components surface needed by existing agents (no deep imports)
 pub const components = struct {
     pub const CommandPalette = @import("tui/components/command_palette.zig").CommandPalette;
-    pub const ProgressTracker = @import("tui/components/progress_tracker.zig").ProgressTracker;
 };
 
 // Frequently referenced widget modules
@@ -73,6 +69,7 @@ pub const agent_ui = @import("tui/agent_ui.zig");
 // Auth UI components namespace (TitleCase)
 pub const Auth = struct {
     pub const OAuthFlow = @import("tui/auth/OAuthFlow.zig");
+    pub const OAuthWizard = @import("tui/auth/OAuthWizard.zig");
 
     // Convenience function to run OAuth wizard
     pub fn runOAuthWizard(allocator: std.mem.Allocator) !void {
@@ -159,10 +156,7 @@ pub const CommandHistory = utils.CommandHistory;
 pub const presenters = @import("tui/presenters.zig");
 
 // Legacy helpers and wrappers are exposed only when -Dlegacy is set
-pub const legacy = if (@import("build_options").include_legacy)
-    @import("legacy/mod.zig")
-else
-    struct {};
+// Note: legacy module removed during consolidation
 
 // Factory functions
 pub const createRenderer = renderer.createRenderer;

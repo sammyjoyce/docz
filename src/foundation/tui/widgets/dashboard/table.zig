@@ -3,8 +3,8 @@
 //! This module provides the public interface for the modular table system.
 
 const std = @import("std");
-const renderer_mod = @import("../../../core/renderer.zig");
-const events_mod = @import("../../../core/events.zig");
+const renderer_mod = @import("../../../render/renderer.zig");
+const events_mod = @import("../../core/events.zig");
 
 // Re-export all public types and functions
 pub const base = @import("base.zig");

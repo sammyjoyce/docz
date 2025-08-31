@@ -226,7 +226,6 @@ pub const CommonSteps = struct {
     pub fn validateConfiguration(configPath: []const u8) WorkflowStep {
         const Impl = struct {
             fn execute(allocator: Allocator, context: ?StepContext) WorkflowError!WorkflowStepResult {
-                _ = context;
                 const dir = if (context) |ctx| ctx.dir else std.fs.cwd();
                 const file = dir.openFile(configPath, .{}) catch |err| switch (err) {
                     error.FileNotFound => return WorkflowError.Validation,

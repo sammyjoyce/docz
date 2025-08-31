@@ -7,7 +7,7 @@
 
 const std = @import("std");
 const bounds_mod = @import("bounds.zig");
-const tui_mod = @import("../mod.zig");
+const tui_mod = @import("../../tui.zig");
 
 pub const Point = bounds_mod.Point;
 pub const Bounds = bounds_mod.Bounds;

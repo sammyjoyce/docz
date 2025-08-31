@@ -5,21 +5,17 @@
 //! and keyboard support.
 
 const std = @import("std");
-const base = @import("base.zig");
-const term = @import("../term/term.zig");
+const Component = @import("../Component.zig");
+const Layout = @import("../Layout.zig");
+const Event = @import("../Event.zig");
+const render_mod = @import("../../render.zig");
+const term = @import("../../term.zig");
 
-const Component = base.Component;
-const State = base.State;
-const Render = base.Render;
-const Event = base.Event;
-const Theme = base.Theme;
-const ComponentError = base.ComponentError;
+const ComponentError = Component.ComponentError;
 
-const Terminal = term.Terminal;
-const Style = term.Style;
-const Color = term.Color;
-const Point = term.Point;
-const Rect = term.Rect;
+// Type aliases for compatibility
+const Point = Layout.Point;
+const Rect = Layout.Rect;
 
 /// Input features
 pub const Feature = packed struct {

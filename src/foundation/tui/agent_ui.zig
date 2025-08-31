@@ -5,15 +5,16 @@
 //! consistent theming and styling, keyboard shortcut management, and notification systems.
 
 const std = @import("std");
-const renderer_mod = @import("../core/renderer.zig");
-const bounds_mod = @import("../core/bounds.zig");
-const notification_mod = @import("../notifications.zig");
-const progress_mod = @import("../widgets/rich/progress.zig");
-const text_input_mod = @import("../widgets/rich/text_input.zig");
-const theme = @import("../../theme.zig");
-const ui = @import("../../ui.zig");
-const network = @import("../../network.zig");
-const render = @import("../../render.zig");
+const renderer_mod = @import("core/renderer.zig");
+const bounds_mod = @import("core/bounds.zig");
+const notification_mod = @import("notifications.zig");
+const progress_mod = @import("widgets/rich/progress.zig");
+const text_input_mod = @import("widgets/rich/text_input.zig");
+const theme = @import("../theme.zig");
+const ui = @import("../ui.zig");
+const network = @import("../network.zig");
+const render = @import("../render.zig");
+const oauth_mod = network; // OAuth is in network module
 
 const Renderer = renderer_mod.Renderer;
 const Render = renderer_mod.Render;

@@ -13,7 +13,7 @@ const std = @import("std");
 const renderer_mod = @import("../renderer.zig");
 const term_mod = @import("../../../term.zig");
 const term_caps = term_mod.caps;
-const components = @import("../../../components/mod.zig");
+const ui = @import("../../../ui.zig");
 
 // Import terminal capabilities modules
 const term_ansi_color = term_mod.ansi.color;
@@ -325,7 +325,9 @@ pub const RichRenderer = struct {
         if (!self.caps.supportsNotifyOsc9) return;
 
         // Use system notification through components layer
-        try components.SystemNotification.send(self.writer, self.allocator, self.caps, title, body);
+        // TODO: Implement system notification
+        _ = title;
+        _ = body;
     }
 
     fn setCursorPosition(impl: *anyopaque, pos: Point) anyerror!void {

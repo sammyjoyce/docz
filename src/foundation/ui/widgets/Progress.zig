@@ -10,7 +10,7 @@ const std = @import("std");
 const Component = @import("../Component.zig");
 const Layout = @import("../Layout.zig");
 const Event = @import("../Event.zig");
-const render = @import("../../render.zig");
+const render_mod = @import("../../render.zig");
 
 pub const Progress = struct {
     const Self = @This();
@@ -63,11 +63,11 @@ pub const Progress = struct {
         // No internal layout needed for simple progress bar
     }
 
-    pub fn render(self: *Self, ctx: *render.Context) Component.ComponentError!void {
+    pub fn render(self: *Self, ctx: *render_mod.Context) Component.ComponentError!void {
         // Delegate to the render layer's progress widget renderer
         // Get the current rendering bounds (assuming ctx has bounds information)
         // For now, use a default rectangle - this would typically come from the layout system
-        const rect = render.widgets.Progress.Rect{
+        const rect = render_mod.widgets.Progress.Rect{
             .x = 0,
             .y = 0,
             .w = 80, // Default width
@@ -75,7 +75,7 @@ pub const Progress = struct {
         };
 
         // Call the progress function from render/widgets/Progress.zig
-        render.widgets.Progress.progress(ctx, rect, self.value, self.label) catch return Component.ComponentError.RenderFailed;
+        render_mod.widgets.Progress.progress(ctx, rect, self.value, self.label) catch return Component.ComponentError.RenderFailed;
     }
 
     pub fn event(self: *Self, ev: Event.Event) Component.Component.Invalidate {

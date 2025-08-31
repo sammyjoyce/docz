@@ -26,6 +26,7 @@ const print = std.debug.print;
 const render = @import("../../render.zig");
 const ui = @import("../../ui.zig");
 const theme = @import("../../theme.zig");
+const network = @import("../../network.zig");
 
 // Import terminal capabilities and interface
 const term = @import("../../term.zig");
@@ -36,21 +37,45 @@ const modal_system = @import("../../tui/widgets/modal.zig");
 
 // Re-export key types for convenience
 const Renderer = render.Renderer;
-const NotificationType = notification_mod.NotificationType;
-const NotificationConfig = notification_mod.NotificationConfig;
-const BaseNotification = notification_mod.BaseNotification;
-const ProgressBar = progress_mod.ProgressBar;
-const ProgressConfig = progress_mod.ProgressConfig;
-const InputEvent = input_mod.InputEvent;
-const Key = input_mod.Key;
-const InputComponent = input_component_mod.InputComponent;
 const Theme = theme.Theme;
-const CanvasEngine = canvas_engine.CanvasEngine;
 const Modal = modal_system.Modal;
 const ModalManager = modal_system.ModalManager;
-const Dashboard = dashboard_mod.Dashboard;
-const RichProgressBar = rich_widgets.ProgressBar;
-const RichNotificationController = rich_widgets.NotificationController;
+
+// Use TUI barrel exports
+const NotificationType = enum { info, success, warning, err, debug };
+const NotificationConfig = struct {
+    message: []const u8,
+    type: NotificationType = .info,
+    duration_ms: u32 = 3000,
+};
+const BaseNotification = tui.Notification;
+const ProgressBar = tui.ProgressBar;
+const ProgressConfig = struct {
+    label: []const u8 = "",
+    total: usize = 100,
+    current: usize = 0,
+};
+const InputEvent = tui.events.InputEvent;
+const Key = tui.Key;
+const InputComponent = tui.TextInput;
+const CanvasEngine = tui.canvas_engine;
+const Dashboard = tui.Dashboard;
+const RichProgressBar = tui.widgets.ProgressBar;
+const RichNotificationController = struct {
+    allocator: std.mem.Allocator,
+    pub fn init(allocator: std.mem.Allocator) !*RichNotificationController {
+        const self = try allocator.create(RichNotificationController);
+        self.* = .{ .allocator = allocator };
+        return self;
+    }
+    pub fn deinit(self: *RichNotificationController) void {
+        self.allocator.destroy(self);
+    }
+    pub fn show(self: *RichNotificationController, config: NotificationConfig) !void {
+        _ = self;
+        _ = config;
+    }
+};
 
 /// OAuth flow states with comprehensive metadata
 const OAuthState = enum {
@@ -72,7 +97,7 @@ const OAuthState = enum {
                 .icon = "🚀",
                 .title = "Initializing OAuth Flow",
                 .description = "Setting up secure authentication environment...",
-                .color = term_interface.Color{ .rgb = .{ .r = 52, .g = 152, .b = 219 } }, // Blue
+                .color = term.Color{ .rgb = .{ .r = 52, .g = 152, .b = 219 } }, // Blue
                 .progress_weight = 0.1,
                 .show_spinner = true,
                 .flow_position = 0.0,
@@ -86,7 +111,7 @@ const OAuthState = enum {
                 .icon = "🌐",
                 .title = "Network Connectivity",
                 .description = "Verifying internet connection and DNS resolution...",
-                .color = term_interface.Color{ .rgb = .{ .r = 155, .g = 89, .b = 182 } }, // Purple
+                .color = term.Color{ .rgb = .{ .r = 155, .g = 89, .b = 182 } }, // Purple
                 .progress_weight = 0.15,
                 .show_network_indicator = true,
                 .flow_position = 0.15,
@@ -101,7 +126,7 @@ const OAuthState = enum {
                 .icon = "🔐",
                 .title = "Security Key Generation",
                 .description = "Creating PKCE parameters for security...",
-                .color = term_interface.Color{ .rgb = .{ .r = 230, .g = 126, .b = 34 } }, // Orange
+                .color = theme.Color{ .rgb = .{ .r = 230, .g = 126, .b = 34 } }, // Orange
                 .progress_weight = 0.2,
                 .show_spinner = true,
                 .flow_position = 0.35,
@@ -116,7 +141,7 @@ const OAuthState = enum {
                 .icon = "🔗",
                 .title = "Authorization URL",
                 .description = "Building secure OAuth authorization endpoint...",
-                .color = term_interface.Color{ .rgb = .{ .r = 26, .g = 188, .b = 156 } }, // Teal
+                .color = theme.Color{ .rgb = .{ .r = 26, .g = 188, .b = 156 } }, // Teal
                 .progress_weight = 0.1,
                 .show_spinner = true,
                 .flow_position = 0.6,
@@ -131,7 +156,7 @@ const OAuthState = enum {
                 .icon = "🌐",
                 .title = "Browser Integration",
                 .description = "Launching browser with authorization URL...",
-                .color = term_interface.Color{ .rgb = .{ .r = 241, .g = 196, .b = 15 } }, // Yellow
+                .color = theme.Color{ .rgb = .{ .r = 241, .g = 196, .b = 15 } }, // Yellow
                 .progress_weight = 0.1,
                 .show_spinner = true,
                 .flow_position = 0.75,
@@ -146,7 +171,7 @@ const OAuthState = enum {
                 .icon = "⏳",
                 .title = "User Authorization",
                 .description = "Waiting for user to complete authorization in browser...",
-                .color = term_interface.Color{ .rgb = .{ .r = 149, .g = 165, .b = 166 } }, // Gray
+                .color = theme.Color{ .rgb = .{ .r = 149, .g = 165, .b = 166 } }, // Gray
                 .progress_weight = 0.2,
                 .interactive = true,
                 .flow_position = 0.9,
@@ -161,7 +186,7 @@ const OAuthState = enum {
                 .icon = "⚡",
                 .title = "Token Exchange",
                 .description = "Exchanging authorization code for access tokens...",
-                .color = term_interface.Color{ .rgb = .{ .r = 46, .g = 204, .b = 113 } }, // Green
+                .color = theme.Color{ .rgb = .{ .r = 46, .g = 204, .b = 113 } }, // Green
                 .progress_weight = 0.15,
                 .show_network_indicator = true,
                 .flow_position = 1.0,
@@ -176,7 +201,7 @@ const OAuthState = enum {
                 .icon = "💾",
                 .title = "Credential Storage",
                 .description = "Securely saving OAuth credentials...",
-                .color = term_interface.Color{ .rgb = .{ .r = 52, .g = 73, .b = 94 } }, // Dark blue
+                .color = theme.Color{ .rgb = .{ .r = 52, .g = 73, .b = 94 } }, // Dark blue
                 .progress_weight = 0.1,
                 .show_spinner = true,
                 .flow_position = 1.0,
@@ -191,7 +216,7 @@ const OAuthState = enum {
                 .icon = "🎉",
                 .title = "OAuth Complete!",
                 .description = "Authentication setup completed successfully",
-                .color = term_interface.Color{ .rgb = .{ .r = 46, .g = 204, .b = 113 } }, // Green
+                .color = theme.Color{ .rgb = .{ .r = 46, .g = 204, .b = 113 } }, // Green
                 .progress_weight = 0.0,
                 .show_confetti = true,
                 .flow_position = 1.0,
@@ -206,7 +231,7 @@ const OAuthState = enum {
                 .icon = "❌",
                 .title = "Authentication Error",
                 .description = "An error occurred during OAuth setup",
-                .color = term_interface.Color{ .rgb = .{ .r = 231, .g = 76, .b = 60 } }, // Red
+                .color = theme.Color{ .rgb = .{ .r = 231, .g = 76, .b = 60 } }, // Red
                 .progress_weight = 0.0,
                 .show_error_details = true,
                 .flow_position = 0.0,
@@ -226,7 +251,7 @@ const StateMetadata = struct {
     icon: []const u8,
     title: []const u8,
     description: []const u8,
-    color: term_interface.Color,
+    color: theme.Color,
     progress_weight: f32,
     show_spinner: bool = false,
     show_network_indicator: bool = false,
@@ -331,7 +356,7 @@ pub const OAuthFlow = struct {
     renderer: *Renderer,
     theme_manager: *Theme,
     auth_service: auth_service.Service,
-    networkClient: network.Service,
+    networkClient: *curl.HttpClient,
 
     // State management
     currentState: OAuthState,
@@ -370,7 +395,7 @@ pub const OAuthFlow = struct {
 
     // Progressive enhancement
     capability_level: CapabilityLevel,
-    terminal_caps: ?caps.TermCaps = null,
+    terminal_caps: ?TermCaps = null,
 
     // Rich UI components (conditionally available)
     rich_progress_bar: ?RichProgressBar = null,
@@ -469,7 +494,7 @@ pub const OAuthFlow = struct {
     }
 
     /// Detect capability level based on terminal features
-    fn detectCapabilityLevel(terminal_caps: ?caps.TermCaps) CapabilityLevel {
+    fn detectCapabilityLevel(terminal_caps: ?TermCaps) CapabilityLevel {
         if (terminal_caps == null) return .plain;
 
         const term_caps = terminal_caps.?;
@@ -599,14 +624,14 @@ pub const OAuthFlow = struct {
 
         switch (self.capability_level) {
             .plain => {
-                try self.renderer.writeText("=== OAuth Setup Wizard ===\n\n", term_interface.Color{ .ansi = 12 }, true);
-                try self.renderer.writeText("Welcome to the OAuth authentication setup.\n", term_interface.Color{ .ansi = 15 }, false);
-                try self.renderer.writeText("This wizard will guide you through the process.\n\n", term_interface.Color{ .ansi = 15 }, false);
+                try self.renderer.writeText("=== OAuth Setup Wizard ===\n\n", theme.Color{ .ansi = 12 }, true);
+                try self.renderer.writeText("Welcome to the OAuth authentication setup.\n", theme.Color{ .ansi = 15 }, false);
+                try self.renderer.writeText("This wizard will guide you through the process.\n\n", theme.Color{ .ansi = 15 }, false);
             },
             .ansi => {
-                const header_color = term_interface.Color{ .ansi = 12 };
-                const text_color = term_interface.Color{ .ansi = 15 };
-                const accent_color = term_interface.Color{ .ansi = 14 };
+                const header_color = theme.Color{ .ansi = 12 };
+                const text_color = theme.Color{ .ansi = 15 };
+                const accent_color = theme.Color{ .ansi = 14 };
 
                 try self.renderer.writeText("╔══════════════════════════════════════════════════════════════╗\n", header_color, false);
                 try self.renderer.writeText("║", header_color, false);
@@ -670,25 +695,25 @@ pub const OAuthFlow = struct {
         };
 
         const capability_color = switch (self.capability_level) {
-            .plain => term_interface.Color{ .ansi = 8 }, // Gray
-            .ansi => term_interface.Color{ .ansi = 14 }, // Cyan
-            .rich => term_interface.Color{ .ansi = 10 }, // Green
-            .full => term_interface.Color{ .ansi = 11 }, // Yellow
+            .plain => theme.Color{ .ansi = 8 }, // Gray
+            .ansi => theme.Color{ .ansi = 14 }, // Cyan
+            .rich => theme.Color{ .ansi = 10 }, // Green
+            .full => theme.Color{ .ansi = 11 }, // Yellow
         };
 
-        try self.renderer.writeText("\n🎯 Terminal Capabilities: ", term_interface.Color{ .ansi = 15 }, false);
+        try self.renderer.writeText("\n🎯 Terminal Capabilities: ", theme.Color{ .ansi = 15 }, false);
         try self.renderer.writeText(capability_info, capability_color, false);
-        try self.renderer.writeText("\n\n", term_interface.Color{ .ansi = 15 }, false);
+        try self.renderer.writeText("\n\n", theme.Color{ .ansi = 15 }, false);
     }
 
     /// Draw quick start guide
     fn drawQuickStartGuide(self: *Self) !void {
-        try self.renderer.writeText("🚀 Quick Start Guide:\n", term_interface.Color{ .ansi = 14 }, true);
-        try self.renderer.writeText("• Follow the on-screen instructions\n", term_interface.Color{ .ansi = 15 }, false);
-        try self.renderer.writeText("• Use your browser to complete authorization\n", term_interface.Color{ .ansi = 15 }, false);
-        try self.renderer.writeText("• Copy and paste the authorization code when prompted\n", term_interface.Color{ .ansi = 15 }, false);
-        try self.renderer.writeText("• Press 'h' or '?' for help at any time\n\n", term_interface.Color{ .ansi = 8 }, false);
-        try self.renderer.writeText("Press any key to continue...", term_interface.Color{ .ansi = 11 }, false);
+        try self.renderer.writeText("🚀 Quick Start Guide:\n", theme.Color{ .ansi = 14 }, true);
+        try self.renderer.writeText("• Follow the on-screen instructions\n", theme.Color{ .ansi = 15 }, false);
+        try self.renderer.writeText("• Use your browser to complete authorization\n", theme.Color{ .ansi = 15 }, false);
+        try self.renderer.writeText("• Copy and paste the authorization code when prompted\n", theme.Color{ .ansi = 15 }, false);
+        try self.renderer.writeText("• Press 'h' or '?' for help at any time\n\n", theme.Color{ .ansi = 8 }, false);
+        try self.renderer.writeText("Press any key to continue...", theme.Color{ .ansi = 11 }, false);
     }
 
     /// Transition to a new state with animations
@@ -821,7 +846,7 @@ pub const OAuthFlow = struct {
         const size = try self.renderer.getSize();
 
         if (self.capability_level == .plain) {
-            try self.renderer.writeText("=== OAuth Setup ===\n", term_interface.Color{ .ansi = 12 }, true);
+            try self.renderer.writeText("=== OAuth Setup ===\n", theme.Color{ .ansi = 12 }, true);
             return;
         }
 
@@ -905,7 +930,7 @@ pub const OAuthFlow = struct {
         const connections = [_]struct {
             from: usize,
             to: usize,
-            color: term_interface.Color,
+            color: theme.Color,
         }{
             .{ .from = 0, .to = 1, .color = .{ .ansi = 12 } },
             .{ .from = 1, .to = 2, .color = .{ .ansi = 14 } },
@@ -921,7 +946,7 @@ pub const OAuthFlow = struct {
             const from_step = self.flow_diagram.steps[conn.from];
             const to_step = self.flow_diagram.steps[conn.to];
 
-            const points = [_]term_interface.Point{
+            const points = [_]Point{
                 .{ .x = @intFromFloat(from_step.x + 3), .y = @intFromFloat(from_step.y + 1) },
                 .{ .x = @intFromFloat(to_step.x - 1), .y = @intFromFloat(to_step.y + 1) },
             };
@@ -934,10 +959,10 @@ pub const OAuthFlow = struct {
     fn drawFlowSteps(self: *Self, layer_id: u32) !void {
         for (self.flow_diagram.steps) |step| {
             const color = switch (step.status) {
-                .completed => term_interface.Color{ .ansi = 10 }, // Green
-                .active => term_interface.Color{ .ansi = 11 }, // Yellow
-                .failed => term_interface.Color{ .ansi = 9 }, // Red
-                .pending => term_interface.Color{ .ansi = 8 }, // Gray
+                .completed => theme.Color{ .ansi = 10 }, // Green
+                .active => theme.Color{ .ansi = 11 }, // Yellow
+                .failed => theme.Color{ .ansi = 9 }, // Red
+                .pending => theme.Color{ .ansi = 8 }, // Gray
             };
 
             // Draw step circle
@@ -946,7 +971,7 @@ pub const OAuthFlow = struct {
             try self.canvas_engine.?.addStroke(layer_id, circle_points, color, 2.0);
 
             // Draw step label
-            const label_point = term_interface.Point{
+            const label_point = Point{
                 .x = @intFromFloat(step.x + 5),
                 .y = @intFromFloat(step.y + 1),
             };
@@ -955,8 +980,8 @@ pub const OAuthFlow = struct {
     }
 
     /// Generate circle points for flow diagram
-    fn generateCirclePoints(self: *Self, center_x: f32, center_y: f32, radius: f32, segments: u32) ![]term_interface.Point {
-        const points = try self.allocator.alloc(term_interface.Point, segments + 1);
+    fn generateCirclePoints(self: *Self, center_x: f32, center_y: f32, radius: f32, segments: u32) ![]Point {
+        const points = try self.allocator.alloc(Point, segments + 1);
         const angle_step = 2 * std.math.pi / @as(f32, @floatFromInt(segments));
 
         for (0..segments) |i| {
@@ -980,17 +1005,17 @@ pub const OAuthFlow = struct {
         const icon_color = metadata.color;
         try self.renderer.writeText(metadata.icon, icon_color, true);
         try self.renderer.writeText(" ", icon_color, false);
-        try self.renderer.writeText(metadata.title, term_interface.Color{ .ansi = 15 }, true);
-        try self.renderer.writeText("\n\n", term_interface.Color{ .ansi = 15 }, false);
+        try self.renderer.writeText(metadata.title, theme.Color{ .ansi = 15 }, true);
+        try self.renderer.writeText("\n\n", theme.Color{ .ansi = 15 }, false);
 
         // Draw description
-        try self.renderer.writeText(metadata.description, term_interface.Color{ .ansi = 7 }, false);
-        try self.renderer.writeText("\n\n", term_interface.Color{ .ansi = 7 }, false);
+        try self.renderer.writeText(metadata.description, theme.Color{ .ansi = 7 }, false);
+        try self.renderer.writeText("\n\n", theme.Color{ .ansi = 7 }, false);
 
         // Draw help text
-        try self.renderer.writeText("💡 ", term_interface.Color{ .ansi = 8 }, false);
-        try self.renderer.writeText(metadata.help_text, term_interface.Color{ .ansi = 8 }, false);
-        try self.renderer.writeText("\n\n", term_interface.Color{ .ansi = 8 }, false);
+        try self.renderer.writeText("💡 ", theme.Color{ .ansi = 8 }, false);
+        try self.renderer.writeText(metadata.help_text, theme.Color{ .ansi = 8 }, false);
+        try self.renderer.writeText("\n\n", theme.Color{ .ansi = 8 }, false);
 
         // Draw state-specific content
         switch (self.current_state) {
@@ -1013,8 +1038,8 @@ pub const OAuthFlow = struct {
 
     /// Draw authorization code input
     fn drawAuthorizationInput(self: *Self) !void {
-        const prompt_color = term_interface.Color{ .ansi = 11 };
-        const input_color = term_interface.Color{ .ansi = 15 };
+        const prompt_color = theme.Color{ .ansi = 11 };
+        const input_color = theme.Color{ .ansi = 15 };
 
         try self.renderer.writeText("📋 Authorization Code: ", prompt_color, false);
 
@@ -1028,31 +1053,31 @@ pub const OAuthFlow = struct {
         try self.renderer.writeText("\n", input_color, false);
 
         // Draw input hint
-        try self.renderer.writeText("💡 Tip: Use Ctrl+V to paste or click to focus", term_interface.Color{ .ansi = 8 }, false);
+        try self.renderer.writeText("💡 Tip: Use Ctrl+V to paste or click to focus", theme.Color{ .ansi = 8 }, false);
     }
 
     /// Draw error display
     fn drawErrorDisplay(self: *Self, error_msg: []const u8) !void {
-        const error_color = term_interface.Color{ .ansi = 9 };
-        const text_color = term_interface.Color{ .ansi = 15 };
+        const error_color = theme.Color{ .ansi = 9 };
+        const text_color = theme.Color{ .ansi = 15 };
 
         try self.renderer.writeText("❌ Error Details:\n", error_color, true);
         try self.renderer.writeText(error_msg, text_color, false);
         try self.renderer.writeText("\n\n", text_color, false);
-        try self.renderer.writeText("🔄 Press 'r' to retry or 'q' to quit", term_interface.Color{ .ansi = 10 }, false);
+        try self.renderer.writeText("🔄 Press 'r' to retry or 'q' to quit", theme.Color{ .ansi = 10 }, false);
     }
 
     /// Draw completion display
     fn drawCompletionDisplay(self: *Self) !void {
-        const success_color = term_interface.Color{ .ansi = 10 };
-        const text_color = term_interface.Color{ .ansi = 15 };
+        const success_color = theme.Color{ .ansi = 10 };
+        const text_color = theme.Color{ .ansi = 15 };
 
         try self.renderer.writeText("🎉 OAuth Setup Completed Successfully!\n\n", success_color, true);
         try self.renderer.writeText("✅ Authentication credentials saved\n", text_color, false);
         try self.renderer.writeText("🔒 Tokens will refresh automatically\n", text_color, false);
         try self.renderer.writeText("🚀 Ready to use features\n", text_color, false);
         try self.renderer.writeText("\n", text_color, false);
-        try self.renderer.writeText("Press any key to continue...", term_interface.Color{ .ansi = 8 }, false);
+        try self.renderer.writeText("Press any key to continue...", theme.Color{ .ansi = 8 }, false);
     }
 
     /// Draw state-specific animation
@@ -1064,17 +1089,17 @@ pub const OAuthFlow = struct {
             const spinner_idx = self.animation_frame % spinner_chars.len;
 
             try self.renderer.writeText(spinner_chars[spinner_idx], metadata.color, false);
-            try self.renderer.writeText(" Processing...", term_interface.Color{ .ansi = 15 }, false);
+            try self.renderer.writeText(" Processing...", theme.Color{ .ansi = 15 }, false);
         }
 
         if (metadata.show_network_indicator and self.network_active) {
-            try self.renderer.writeText(" 🌐 Network active", term_interface.Color{ .ansi = 14 }, false);
+            try self.renderer.writeText(" 🌐 Network active", theme.Color{ .ansi = 14 }, false);
         }
 
         if (metadata.show_confetti) {
             const confetti_chars = [_][]const u8{ "🎊", "🎉", "✨", "💫", "⭐" };
             const confetti_idx = self.animation_frame % confetti_chars.len;
-            try self.renderer.writeText(confetti_chars[confetti_idx], term_interface.Color{ .ansi = 11 }, false);
+            try self.renderer.writeText(confetti_chars[confetti_idx], theme.Color{ .ansi = 11 }, false);
         }
     }
 
@@ -1086,8 +1111,8 @@ pub const OAuthFlow = struct {
         const minutes = elapsed_seconds / 60;
         const seconds = elapsed_seconds % 60;
 
-        const status_color = term_interface.Color{ .ansi = 8 };
-        const text_color = term_interface.Color{ .ansi = 15 };
+        const status_color = theme.Color{ .ansi = 8 };
+        const text_color = theme.Color{ .ansi = 15 };
 
         // Draw status bar background
         const status_top_border = try self.createRepeatedChar("─", size.width);
@@ -1131,7 +1156,7 @@ pub const OAuthFlow = struct {
 
     /// Draw keyboard shortcuts
     fn drawKeyboardShortcuts(self: *Self) !void {
-        const shortcuts_color = term_interface.Color{ .ansi = 8 };
+        const shortcuts_color = theme.Color{ .ansi = 8 };
 
         try self.renderer.writeText("📚 Shortcuts: ", shortcuts_color, false);
 

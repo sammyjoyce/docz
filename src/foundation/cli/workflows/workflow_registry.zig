@@ -231,8 +231,6 @@ fn createConfigOptimizationStep() WorkflowStep.WorkflowStep {
 fn createInitialConfigStep() WorkflowStep.WorkflowStep {
     const InitConfigImpl = struct {
         fn execute(allocator: std.mem.Allocator, ctx: ?WorkflowStep.StepContext) WorkflowStep.WorkflowError!WorkflowStep.WorkflowStepResult {
-            _ = ctx;
-
             // Create configuration if it doesn't exist
             const config_content =
                 \\.{

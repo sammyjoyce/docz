@@ -7,21 +7,24 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 
 // File tree widget
-const file_tree_mod = @import("../../tui.zig").widgets.core.file_tree;
-const focus_mod = @import("../../tui.zig").core.input;
-const shared = @import("../../mod.zig");
-const components = shared.components;
-const mouse_mod = components.input.Mouse;
-const term_shared = @import("../../term.zig");
-const term_ansi = term_shared.term.color;
+const tui = @import("../../tui.zig");
+const term = @import("../../term.zig");
+const ui = @import("../../ui.zig");
+const file_tree_mod = tui.file_tree;
+const focus_mod = struct {
+    pub const Focus = anyopaque;
+};
+const mouse_mod = struct {
+    pub const Mouse = anyopaque;
+};
 
 /// Enhanced file browser component with Git integration
 pub const FileBrowser = struct {
     allocator: Allocator,
-    file_tree: *file_tree_mod.FileTree,
+    file_tree: *file_tree_mod,
     thread_pool: *std.Thread.Pool,
-    focus: *focus_mod.Focus,
-    mouse: *mouse_mod.Mouse,
+    focus: *anyopaque,
+    mouse: *anyopaque,
     git_status: std.StringHashMap(GitFileStatus),
     context_menu: ?*ContextMenu,
     preview_content: []const u8,
@@ -195,8 +198,8 @@ pub const FileBrowser = struct {
         allocator: Allocator,
         root_path: []const u8,
         thread_pool: *std.Thread.Pool,
-        focus: *focus_mod.Focus,
-        mouse: *mouse_mod.Mouse,
+        focus: *anyopaque,
+        mouse: *anyopaque,
     ) !*FileBrowser {
         const self = try allocator.create(FileBrowser);
         self.* = .{
@@ -554,31 +557,31 @@ pub const FileBrowser = struct {
             // Git status indicator
             const git_status = self.getGitStatusIcon(node.path);
             if (git_status.len > 0) {
-                try term_ansi.setForeground(writer, .yellow);
+                try term.ansi.setForeground(writer, .yellow);
                 try writer.writeAll(git_status);
                 try writer.writeAll(" ");
-                try term_ansi.reset(writer);
+                try term.ansi.reset(writer);
             }
 
             // Selection and color coding
             const is_selected = self.file_tree.selected_node == node;
             if (is_selected and self.file_tree.focus_aware.isFocused()) {
-                try term_ansi.setForeground(writer, .bright_white);
-                try term_ansi.setBackground(writer, .blue);
+                try term.ansi.setForeground(writer, .bright_white);
+                try term.ansi.setBackground(writer, .blue);
             } else if (is_selected) {
-                try term_ansi.setForeground(writer, .bright_white);
+                try term.ansi.setForeground(writer, .bright_white);
             } else {
                 try self.setFileTypeColor(writer, node);
             }
 
             // Name
             try writer.writeAll(node.name);
-            try term_ansi.reset(writer);
+            try term.ansi.reset(writer);
 
             // Metadata
             if (self.file_tree.show_metadata and !node.is_directory) {
                 try writer.writeAll(" ");
-                try term_ansi.setForeground(writer, .bright_black);
+                try term.ansi.setForeground(writer, .bright_black);
 
                 const size_buf = node.formatSize();
                 const size_len = std.mem.indexOfScalar(u8, &size_buf, 0) orelse size_buf.len;
@@ -591,23 +594,23 @@ pub const FileBrowser = struct {
                     try writer.writeAll(time_str);
                 }
 
-                try term_ansi.reset(writer);
+                try term.ansi.reset(writer);
             }
 
             // Permissions
             if (self.file_tree.show_metadata) {
                 try writer.writeAll(" ");
-                try term_ansi.setForeground(writer, .bright_black);
+                try term.ansi.setForeground(writer, .bright_black);
                 try writer.print("{o}", .{node.permissions & 0o777});
-                try term_ansi.reset(writer);
+                try term.ansi.reset(writer);
             }
 
             // Loading indicator
             if (node.is_loading) {
                 try writer.writeAll(" ");
-                try term_ansi.setForeground(writer, .yellow);
+                try term.ansi.setForeground(writer, .yellow);
                 try writer.writeAll("(loading...)");
-                try term_ansi.reset(writer);
+                try term.ansi.reset(writer);
             }
 
             try writer.writeAll("\n");
@@ -616,10 +619,10 @@ pub const FileBrowser = struct {
         // Scroll indicator
         if (self.file_tree.visible_nodes.items.len > self.file_tree.viewport_height) {
             try writer.writeAll("\n");
-            try term_ansi.setForeground(writer, .bright_black);
+            try term.ansi.setForeground(writer, .bright_black);
             const percentage = (self.file_tree.scroll_offset * 100) / (self.file_tree.visible_nodes.items.len - self.file_tree.viewport_height);
             try writer.print("[{d}/{d} {d}%]", .{ self.file_tree.scroll_offset + 1, self.file_tree.visible_nodes.items.len, percentage });
-            try term_ansi.reset(writer);
+            try term.ansi.reset(writer);
         }
     }
 
@@ -656,21 +659,21 @@ pub const FileBrowser = struct {
     fn setFileTypeColor(self: *FileBrowser, writer: anytype, node: *file_tree_mod.TreeNode) !void {
         _ = self;
         if (node.is_directory) {
-            try term_ansi.setForeground(writer, .blue);
+            try term.ansi.setForeground(writer, .blue);
         } else {
             const ext = std.fs.path.extension(node.name);
             if (std.mem.eql(u8, ext, ".zig")) {
-                try term_ansi.setForeground(writer, .cyan);
+                try term.ansi.setForeground(writer, .cyan);
             } else if (std.mem.eql(u8, ext, ".md") or std.mem.eql(u8, ext, ".txt")) {
-                try term_ansi.setForeground(writer, .green);
+                try term.ansi.setForeground(writer, .green);
             } else if (std.mem.eql(u8, ext, ".json") or std.mem.eql(u8, ext, ".yaml") or std.mem.eql(u8, ext, ".yml")) {
-                try term_ansi.setForeground(writer, .yellow);
+                try term.ansi.setForeground(writer, .yellow);
             } else if (std.mem.eql(u8, ext, ".sh") or std.mem.eql(u8, ext, ".bash")) {
-                try term_ansi.setForeground(writer, .red);
+                try term.ansi.setForeground(writer, .red);
             } else if (std.mem.eql(u8, ext, ".git")) {
-                try term_ansi.setForeground(writer, .magenta);
+                try term.ansi.setForeground(writer, .magenta);
             } else {
-                try term_ansi.setForeground(writer, .white);
+                try term.ansi.setForeground(writer, .white);
             }
         }
     }

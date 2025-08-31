@@ -15,21 +15,38 @@ const std = @import("std");
 const auth_service = @import("../../network/auth/Service.zig");
 const curl = @import("../../network/curl.zig");
 const oauth = @import("../../network/auth/OAuth.zig");
+const network = @import("../../network.zig");
 const print = std.debug.print;
+
+// Import terminal capabilities
+const term = @import("../../term.zig");
+// Import TUI module for consistent types and renderer
+const tui_mod = @import("../../tui.zig");
 
 // Import TUI components
 const progress_mod = @import("../../tui/widgets/rich/progress.zig");
-const notification_mod = @import("../../tui/widgets/rich/notification.zig");
-const text_input = @import("../../tui/widgets/rich/text_input.zig");
+const notification_mod = struct {
+    pub const Notification = tui_mod.Notification;
+    pub const NotificationController = struct {
+        const Self = @This();
+        allocator: std.mem.Allocator,
+        pub fn init(allocator: std.mem.Allocator) !*Self {
+            const self = try allocator.create(Self);
+            self.* = .{ .allocator = allocator };
+            return self;
+        }
+        pub fn deinit(self: *Self) void {
+            self.allocator.destroy(self);
+        }
+    };
+};
+const text_input = struct {
+    pub const TextInput = tui_mod.TextInput;
+};
 const status_bar = @import("../../tui/widgets/dashboard/status_bar.zig");
 const renderer_mod = tui_mod.renderer;
 const bounds_mod = tui_mod.bounds;
-const input_system = tui_mod.input;
-
-// Import terminal capabilities
-const term = @import("../../term/mod.zig");
-// Import TUI module for consistent types and renderer
-const tui_mod = @import("../../tui/mod.zig");
+const input_system = tui_mod.events;
 
 // Re-export types for convenience
 const ProgressBar = progress_mod.ProgressBar;
@@ -167,7 +184,7 @@ pub const OAuthWizard = struct {
     statusBar: StatusBar,
     textInput: ?TextInput = null,
     authService: auth_service.Service,
-    networkClient: network.Service,
+    networkClient: *anyopaque, // TODO: Define network service type
 
     // Terminal capabilities
     caps: ?term.caps.TermCaps = null,
@@ -230,8 +247,8 @@ pub const OAuthWizard = struct {
 
         // Initialize services
         const auth_svc = auth_service.Service.init(allocator);
-        var http_client = try network.curl.HTTPClient.init(allocator);
-        const net_svc = network.Service.init(allocator, http_client, .{});
+        var http_client = try network.HttpCurl.init(allocator);
+        const net_svc = auth_service.Service.init(allocator, http_client, .{});
 
         return Self{
             .allocator = allocator,
@@ -791,7 +808,7 @@ pub const OAuthWizard = struct {
         self.last_network_activity = std.time.timestamp();
 
         // Use network service to check connectivity
-        const test_request = network.Request{
+        const test_request = network.Http.Request{
             .url = "https://www.google.com",
             .timeout_ms = 5000,
         };

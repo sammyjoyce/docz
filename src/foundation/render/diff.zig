@@ -113,8 +113,8 @@ const MyersState = struct {
         const n = b.len;
         const max_d = m + n;
 
-        var v = std.ArrayList(isize).initCapacity(allocator, 2 * max_d + 1) catch return DiffError.OutOfMemory;
-        var trace = std.ArrayList(std.ArrayList(isize)).initCapacity(allocator, max_d + 1) catch {
+        const v = std.ArrayList(isize).initCapacity(allocator, 2 * max_d + 1) catch return DiffError.OutOfMemory;
+        const trace = std.ArrayList(std.ArrayList(isize)).initCapacity(allocator, max_d + 1) catch {
             v.deinit();
             return DiffError.OutOfMemory;
         };
@@ -236,8 +236,8 @@ const MyersState = struct {
         while (current_d > 0) {
             const prev_v = self.trace.items[current_d - 1].items;
 
-            var k = @as(isize, @intCast(x)) - @as(isize, @intCast(y));
-            const index = @as(usize, @intCast(k + @as(isize, @intCast(self.max_d))));
+            const k = @as(isize, @intCast(x)) - @as(isize, @intCast(y));
+            // const index = @as(usize, @intCast(k + @as(isize, @intCast(self.max_d)))); // Unused variable
 
             var prev_k: isize = undefined;
 
@@ -259,7 +259,7 @@ const MyersState = struct {
             const prev_index = @as(usize, @intCast(prev_k + @as(isize, @intCast(self.max_d))));
             const prev_x = @as(usize, @intCast(prev_v[prev_index]));
 
-            var prev_y = @as(isize, @intCast(prev_x)) - prev_k;
+            const prev_y = @as(isize, @intCast(prev_x)) - prev_k;
 
             // Follow diagonal backward
             while (x > prev_x and y > @as(usize, @intCast(prev_y))) {
@@ -468,7 +468,7 @@ pub fn formatDiff(
             },
             .delete, .insert => {
                 // Find the range of changes
-                var change_start = i;
+                const change_start = i;
                 var deletions: usize = 0;
                 var insertions: usize = 0;
 

@@ -1,9 +1,8 @@
 // Table widget using the new ui.component pattern with a separate renderer.
 
 const std = @import("std");
-const ui = @import("../../ui/mod.zig");
-const renderCtx = @import("../../render/mod.zig");
-const draw = @import("draw.zig");
+const ui = @import("../../ui.zig");
+const renderCtx = @import("../../render.zig");
 
 pub const Alignment = enum { left, center, right };
 

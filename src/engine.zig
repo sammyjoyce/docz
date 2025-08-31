@@ -3,11 +3,12 @@
 //! Agent-specifics (prompts, tools) are supplied via AgentSpec.
 
 const std = @import("std");
-// These are wired by build.zig via named imports
-const anthropic = @import("anthropic_shared");
-const tools_mod = @import("tools_shared");
-const auth = @import("auth_shared");
-const SharedContext = @import("context_shared").SharedContext;
+// Import from foundation barrel to avoid module conflicts
+const foundation = @import("foundation");
+const anthropic = foundation.network;
+const tools_mod = foundation.tools;
+const auth = foundation.network;
+const SharedContext = foundation.context.SharedContext;
 
 pub const Message = anthropic.Message;
 

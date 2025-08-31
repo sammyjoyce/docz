@@ -9,11 +9,11 @@
 const std = @import("std");
 const engine_mod = @import("engine.zig");
 const logging = @import("foundation").logger;
-const term = @import("../../../../term.zig");
+const term = @import("../../../term.zig");
 const color_palette = term.color.palettes;
 
-const render = @import("../../../../render.zig");
-const braille = render.braille;
+const render_mod = @import("../../../render.zig");
+const braille = render_mod.braille;
 
 /// Line chart with progressive enhancement
 pub const LineChart = struct {

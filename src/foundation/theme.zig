@@ -9,15 +9,8 @@
 //!   `theme_enable_accessibility`, `theme_default_scheme`.
 
 const std = @import("std");
-const deps = @import("internal/deps.zig");
-// Theme participates below render/ui; treat as render-adjacent for fences.
-comptime {
-    deps.assertLayer(.render);
-}
 const builtin = @import("builtin");
-const term = @import("term_shared");
 const root = @import("root");
-const shared = @import("../mod.zig");
 
 // -----------------------------------------------------------------------------
 // Compile-time Options for theme subsystem
@@ -45,24 +38,24 @@ pub const options: Options = blk: {
 };
 
 // Runtime exports - always available
-pub const Theme = @import("runtime/theme.zig").Theme;
-pub const Logger = @import("runtime/theme.zig").Logger;
-pub const Settings = @import("runtime/config.zig").Settings;
-pub const ColorScheme = @import("runtime/ColorScheme.zig").ColorScheme;
-pub const Color = @import("runtime/Color.zig").Color;
-pub const Colors = @import("runtime/Color.zig").Colors;
-pub const Inheritance = @import("runtime/Inheritance.zig").Inheritance;
-pub const SystemTheme = @import("runtime/SystemTheme.zig").SystemTheme;
-pub const Accessibility = @import("runtime/Accessibility.zig").Accessibility;
-pub const ColorBlindness = @import("runtime/ColorBlindness.zig").ColorBlindness;
-pub const Validator = @import("runtime/Validator.zig").Validator;
-pub const Platform = @import("runtime/Platform.zig").Platform;
+pub const Theme = @import("theme/runtime/theme.zig").Theme;
+pub const Logger = @import("theme/runtime/theme.zig").Logger;
+pub const Settings = @import("theme/runtime/config.zig").Settings;
+pub const ColorScheme = @import("theme/runtime/ColorScheme.zig").ColorScheme;
+pub const Color = @import("theme/runtime/color.zig").Color;
+pub const Colors = @import("theme/runtime/color.zig").Colors;
+pub const Inheritance = @import("theme/runtime/inheritance.zig").Inheritance;
+pub const SystemTheme = @import("theme/runtime/SystemTheme.zig").SystemTheme;
+pub const Accessibility = @import("theme/runtime/accessibility.zig").Accessibility;
+pub const ColorBlindness = @import("theme/runtime/ColorBlindness.zig").ColorBlindness;
+pub const Validator = @import("theme/runtime/validator.zig").Validator;
+pub const Platform = @import("theme/runtime/platform.zig").Platform;
 
 // Development tools - exported when tools are included
-pub const Editor = @import("tools/Editor.zig").Editor;
-pub const Exporter = @import("tools/Exporter.zig").Exporter;
-pub const Development = @import("tools/Development.zig").Development;
-pub const Generator = @import("tools/Generator.zig").Generator;
+pub const Editor = @import("theme/tools/editor.zig");
+pub const Exporter = @import("theme/tools/exporter.zig");
+pub const Development = @import("theme/tools/development.zig");
+pub const Generator = @import("theme/tools/generator.zig");
 
 /// Initialize the global theme manager
 pub fn init(allocator: std.mem.Allocator, logger: ?Logger) !*Theme {

@@ -122,7 +122,7 @@ test "Dashboard sparkline widget" {
 
     // Import sparkline through TUI barrel
     const Sparkline = tui.Sparkline;
-    const dashboard_engine = @import("foundation").tui.widgets.dashboard.engine;
+    const DashboardEngine = tui.DashboardEngine;
 
     // Create sparkline with capability tier
     var sparkline = try Sparkline.init(allocator, .standard);
@@ -215,7 +215,7 @@ test "Dashboard widgets with TUI App integration" {
     defer app.deinit();
 
     // Create dashboard engine
-    const DashboardEngine = @import("foundation").tui.widgets.dashboard.Engine;
+    const DashboardEngine = tui.DashboardEngine;
     var engine = try DashboardEngine.init(allocator);
     defer engine.deinit();
 

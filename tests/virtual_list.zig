@@ -5,7 +5,7 @@
 
 const std = @import("std");
 const testing = std.testing;
-const tui = @import("src/foundation/tui.zig");
+const tui = @import("foundation").tui;
 const Widgets = tui.widgets;
 const VirtualList = Widgets.VirtualList;
 const Item = Widgets.Item;

@@ -17,26 +17,26 @@ pub fn setLogger(l: Logger) void {
 }
 
 // Core widgets (essential functionality)
-pub const core = @import("core/mod.zig");
+pub const core = @import("core.zig");
 pub const Core = struct {
     // Consolidate from existing modular components
-    pub const Menu = @import("core/menu.zig").Menu;
-    pub const Section = @import("core/section.zig").Section;
-    pub const Logo = @import("core/logo.zig").Logo;
-    pub const LogoStyle = @import("core/logo.zig").LogoStyle;
-    pub const Alignment = @import("core/logo.zig").Alignment;
-    pub const Logos = @import("core/logo.zig").Logos;
+    pub const Menu = @import("widgets/core/menu.zig").Menu;
+    pub const Section = @import("widgets/core/section.zig").Section;
+    pub const Logo = @import("widgets/core/logo.zig").Logo;
+    pub const LogoStyle = @import("widgets/core/logo.zig").LogoStyle;
+    pub const Alignment = @import("widgets/core/logo.zig").Alignment;
+    pub const Logos = @import("widgets/core/logo.zig").Logos;
 
     // Widgets from existing modular system
-    pub const TextInput = @import("core/TextInput.zig").TextInput;
-    pub const TabContainer = @import("core/tabs.zig").TabContainer;
-    pub const TagInput = @import("core/tag_input.zig").TagInput;
-    pub const DiffViewer = @import("core/diff.zig").DiffViewer;
-    pub const Clear = @import("core/clear.zig").Clear;
-    pub const Scrollbar = @import("core/scrollbar.zig").Scrollbar;
-    pub const VirtualList = @import("core/VirtualList.zig").VirtualList;
-    pub const ScrollableTextArea = @import("core/ScrollableTextArea.zig").ScrollableTextArea;
-    pub const ScrollableContainer = @import("core/container.zig").Container;
+    pub const TextInput = @import("widgets/core/TextInput.zig").TextInput;
+    pub const TabContainer = @import("widgets/core/tabs.zig").TabContainer;
+    pub const TagInput = @import("widgets/core/tag_input.zig").TagInput;
+    pub const DiffViewer = @import("widgets/core/diff.zig").DiffViewer;
+    pub const Clear = @import("widgets/core/clear.zig").Clear;
+    pub const Scrollbar = @import("widgets/core/scrollbar.zig").Scrollbar;
+    pub const VirtualList = @import("widgets/core/VirtualList.zig").VirtualList;
+    pub const ScrollableTextArea = @import("widgets/core/ScrollableTextArea.zig").ScrollableTextArea;
+    pub const ScrollableContainer = @import("widgets/core/container.zig").Container;
 
     // Use consolidated UI Table widget instead of TUI placeholder
     pub const Table = ui.Widgets.Table.Table;
@@ -45,13 +45,13 @@ pub const Core = struct {
 // Rich widgets
 pub const Rich = struct {
     pub const ProgressBar = @import("rich/progress.zig").ProgressBar;
-    pub const Notification = @import("../notifications.zig").NotificationWidget;
-    pub const NotificationController = @import("../notifications.zig").NotificationController;
+    pub const Notification = @import("notifications.zig").NotificationWidget;
+    pub const NotificationController = @import("notifications.zig").NotificationController;
     pub const Graphics = @import("rich/graphics.zig").GraphicsWidget;
 };
 
-// Dashboard widgets (graphics widgets)
-pub const dashboard = @import("dashboard/mod.zig");
+// Dashboard widgets
+pub const dashboard = @import("widgets/dashboard/mod.zig");
 
 // Convenience re-exports
 pub const Menu = Core.Menu;

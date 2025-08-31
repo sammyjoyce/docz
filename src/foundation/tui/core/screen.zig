@@ -1,13 +1,16 @@
 //! Screen management and rendering for TUI components
-//! Provides TUI-specific screen functionality using components
+//! Provides TUI-specific screen functionality
 
 const std = @import("std");
-const screen = @import("../components/screen.zig");
-const Bounds = @import("../../types.zig").BoundsU32;
+const Screen = @import("../Screen.zig");
+const screen = Screen;
+const Bounds = @import("bounds.zig").Bounds;
 
 // Re-export screen functionality
-pub const Control = screen.Control;
-pub const Screen = screen.Screen;
+pub const ScreenType = Screen;
+pub const Config = Screen.Config;
+pub const State = Screen.State;
+pub const Error = Screen.Error;
 pub const Component = screen.Component;
 pub const TermCaps = screen.TermCaps;
 

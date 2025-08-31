@@ -66,12 +66,7 @@ const deps = @import("internal/deps.zig");
 comptime {
     deps.assertLayer(.render);
 }
-const shared = @import("../shared.zig");
-comptime {
-    if (!shared.options.feature_render) {
-        @compileError("render subsystem disabled; enable feature_render");
-    }
-}
+// Feature gating handled by build system
 const std = @import("std");
 const root = @import("root");
 
@@ -103,21 +98,21 @@ pub const options: Options = blk: {
     break :blk defaults;
 };
 const term_mod = @import("term_shared");
-pub const Painter = @import("painter.zig").Painter;
-pub const Surface = @import("surface.zig").Surface;
-pub const MemorySurface = @import("surface.zig").MemorySurface;
-pub const TermSurface = @import("surface.zig").TermSurface;
+pub const Painter = @import("render/painter.zig").Painter;
+pub const Surface = @import("render/surface.zig").Surface;
+pub const MemorySurface = @import("render/surface.zig").MemorySurface;
+pub const TermSurface = @import("render/surface.zig").TermSurface;
 
 // Core exports - Renderer System
-pub const Renderer = @import("renderer.zig").Renderer;
+pub const Renderer = @import("render/renderer.zig").Renderer;
 pub const RenderTier = Renderer.RenderTier;
-pub const RenderContext = @import("RenderContext.zig");
+pub const RenderContext = @import("render/RenderContext.zig");
 pub const Theme = Renderer.Theme;
 pub const cacheKey = Renderer.cacheKey;
-pub const QualityTiers = @import("quality_tiers.zig").QualityTiers;
-pub const ProgressConfig = @import("quality_tiers.zig").ProgressConfig;
-pub const TableConfig = @import("quality_tiers.zig").TableConfig;
-pub const ChartConfig = @import("quality_tiers.zig").ChartConfig;
+pub const QualityTiers = @import("render/quality_tiers.zig").QualityTiers;
+pub const ProgressConfig = @import("render/quality_tiers.zig").ProgressConfig;
+pub const TableConfig = @import("render/quality_tiers.zig").TableConfig;
+pub const ChartConfig = @import("render/quality_tiers.zig").ChartConfig;
 
 // Widget system exports
 pub const Widget = Renderer.Widget;
@@ -139,27 +134,27 @@ pub const Layout = Renderer.Layout;
 pub const Graphics = term_mod.graphics.Graphics;
 
 // Diff rendering module
-pub const diff = @import("diff.zig");
-pub const diffSurface = @import("diff_surface.zig");
+pub const diff = @import("render/diff.zig");
+pub const diffSurface = @import("render/diff_surface.zig");
 pub const DiffSpan = diffSurface.Span;
-pub const diffCoalesce = @import("diff_coalesce.zig");
+pub const diffCoalesce = @import("render/diff_coalesce.zig");
 pub const DiffRect = diffCoalesce.Rect;
 pub const coalesceSpansToRects = diffCoalesce.coalesceSpansToRects;
-pub const Memory = @import("memory.zig").Memory;
-pub const Terminal = @import("terminal.zig").Terminal;
-pub const Scheduler = @import("scheduler.zig").Scheduler;
+pub const Memory = @import("render/memory.zig").Memory;
+pub const Terminal = @import("render/terminal.zig").Terminal;
+pub const Scheduler = @import("render/scheduler.zig").Scheduler;
 
 // Legacy compatibility aliases
 // Legacy aliases removed per 2025-08-31 policy: use Memory/Terminal directly
 
 // Braille graphics module
-pub const braille = @import("braille.zig");
+pub const braille = @import("render/braille.zig");
 pub const BrailleCanvas = braille.BrailleCanvas;
 pub const BraillePatterns = braille.BraillePatterns;
 pub const Braille = braille.Braille;
 
 // Multi-resolution canvas module
-pub const canvas = @import("canvas.zig");
+pub const canvas = @import("render/canvas.zig");
 pub const Canvas = canvas.Canvas;
 pub const ResolutionMode = canvas.ResolutionMode;
 pub const CanvasPoint = canvas.Point;
@@ -223,12 +218,6 @@ test "rendering system" {
     // Legacy RendererAPI covered in render.legacy tests when enabled.
 }
 
-// Legacy shims are available under render.legacy only with -Dlegacy
-pub const legacy = if (@import("build_options").include_legacy)
-    @import("legacy/mod.zig")
-else
-    struct {};
-
 // -----------------------------------------------------------------------------
 // Backend Factory (Duck-typed)
 // -----------------------------------------------------------------------------
@@ -263,7 +252,7 @@ else
 ///   try API.beginFrame(&backend, 80, 24);
 pub fn useBackend(comptime Backend: type) type {
     comptime {
-        inline for (.{ "beginFrame", "endFrame", "drawText", "measureText", "moveCursor", "fillRect", "flush" }) |name| {
+        for (.{ "beginFrame", "endFrame", "drawText", "measureText", "moveCursor", "fillRect", "flush" }) |name| {
             if (!@hasDecl(Backend, name)) @compileError("renderer backend missing required decl '" ++ name ++ "'");
         }
     }

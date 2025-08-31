@@ -1,8 +1,8 @@
 // Minimal chart widget using the new ui.component pattern with a separate renderer.
 
 const std = @import("std");
-const ui = @import("../../ui/mod.zig");
-const render = @import("../../render.zig");
+const ui = @import("../../ui.zig");
+const render_mod = @import("../../render.zig");
 
 pub const Chart = struct {
     const Self = @This();
@@ -29,9 +29,9 @@ pub const Chart = struct {
         _ = rectangle;
     }
 
-    pub fn render(self: *Self, ctx: *render.Context) ui.component.ComponentError!void {
+    pub fn render(self: *Self, ctx: *render_mod.Context) ui.component.ComponentError!void {
         // Use the render layer's chart widget renderer
-        const rect = render.widgets.Chart.Rect{
+        const rect = render_mod.widgets.Chart.Rect{
             .x = 0,
             .y = 0,
             .w = 80, // Default width - should come from layout
@@ -39,7 +39,7 @@ pub const Chart = struct {
         };
 
         // Call the sparkline function from render/widgets/Chart.zig
-        render.widgets.Chart.sparkline(ctx, rect, self.values) catch return ui.component.ComponentError.RenderFailed;
+        render_mod.widgets.Chart.sparkline(ctx, rect, self.values) catch return ui.component.ComponentError.RenderFailed;
     }
 
     pub fn event(self: *Self, inputEvent: ui.event.Event) ui.component.Component.Invalidate {
