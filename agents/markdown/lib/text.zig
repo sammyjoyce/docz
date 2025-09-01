@@ -10,12 +10,12 @@ pub const SearchOptions = struct {
     case_sensitive: bool = false,
     whole_words: bool = false,
     regex_mode: bool = false,
-    max_results: ?usize = null,
+    max_results: ?u32 = null,
 };
 
 pub const SearchResult = struct {
-    line: usize,
-    column: usize,
+    line: u32,
+    column: u32,
     match: []const u8,
     context_before: ?[]const u8 = null,
     context_after: ?[]const u8 = null,
@@ -28,7 +28,7 @@ pub fn findAll(allocator: std.mem.Allocator, text: []const u8, pattern: []const 
     var line_num: usize = 0;
     var found_count: usize = 0;
 
-    const max_results = options.max_results orelse std.math.maxInt(usize);
+    const max_results: usize = if (options.max_results) |mr| @as(usize, mr) else std.math.maxInt(usize);
 
     while (lines.next()) |line| : (line_num += 1) {
         if (found_count >= max_results) break;
@@ -68,8 +68,8 @@ pub fn findAll(allocator: std.mem.Allocator, text: []const u8, pattern: []const 
             }
 
             const result = SearchResult{
-                .line = line_num,
-                .column = abs_pos,
+                .line = @as(u32, @intCast(@min(line_num, std.math.maxInt(u32)))),
+                .column = @as(u32, @intCast(@min(abs_pos, std.math.maxInt(u32)))),
                 .match = line[abs_pos .. abs_pos + pattern.len],
             };
 
@@ -89,7 +89,7 @@ pub fn replaceAll(allocator: std.mem.Allocator, text: []const u8, pattern: []con
     var result = std.array_list.Managed(u8).init(allocator);
     var remaining = text;
     var replaced_count: usize = 0;
-    const max_replacements = options.max_results orelse std.math.maxInt(usize);
+    const max_replacements: usize = if (options.max_results) |mr| @as(usize, mr) else std.math.maxInt(usize);
 
     while (replaced_count < max_replacements) {
         const pos = if (options.case_sensitive)

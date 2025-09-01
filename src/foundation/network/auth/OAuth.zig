@@ -290,16 +290,17 @@ pub fn exchangeCodeForTokens(
     pkceParams: Pkce,
     redirectUri: []const u8,
 ) !Credentials {
-    // Prepare JSON body for token exchange (standard OAuth format)
+    // Prepare JSON body for token exchange (per spec, includes state)
     const body = try std.fmt.allocPrint(allocator,
         \\\{{
         \\\  "grant_type": "authorization_code",
         \\\  "code": "{s}",
+        \\\  "state": "{s}",
+        \\\  "client_id": "{s}",
         \\\  "redirect_uri": "{s}",
-        \\\  "code_verifier": "{s}",
-        \\\  "client_id": "{s}"
+        \\\  "code_verifier": "{s}"
         \\\}}
-    , .{ authorizationCode, redirectUri, pkceParams.verifier, OAUTH_CLIENT_ID });
+    , .{ authorizationCode, pkceParams.state, OAUTH_CLIENT_ID, redirectUri, pkceParams.verifier });
     defer allocator.free(body);
 
     // Initialize HTTP client
@@ -493,9 +494,16 @@ pub fn loginWithLoopback(allocator: std.mem.Allocator) !Credentials {
     const auth_url = try buildAuthorizationUrlWithRedirect(allocator, pkceParams, redirect_uri);
     defer allocator.free(auth_url);
 
+    std.log.info("Opening browser for OAuth authorization...", .{});
+    std.log.info("URL: {s}", .{auth_url});
+    std.log.info("", .{});
+    std.log.info("Please complete the authorization in your browser.", .{});
+    std.log.info("The browser will handle Cloudflare verification if needed.", .{});
+
     // Try to open browser
     launchBrowser(auth_url) catch |err| {
         std.log.warn("Failed to open browser: {}", .{err});
+        std.log.info("Please open this URL manually: {s}", .{auth_url});
     };
 
     // Wait for callback

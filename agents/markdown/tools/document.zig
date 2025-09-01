@@ -121,7 +121,7 @@ fn createFromTemplate(allocator: std.mem.Allocator, params: json.ObjectMap) !jso
     try result.put("command", json.Value{ .string = "createFromTemplate" });
     try result.put("template", json.Value{ .string = template_name });
     try result.put("output_file", json.Value{ .string = output_path });
-    try result.put("rendered_size", json.Value{ .integer = @intCast(rendered.len) });
+    try result.put("rendered_size", json.Value{ .integer = @as(i64, @intCast(@min(rendered.len, std.math.maxInt(i64)))) });
 
     return json.Value{ .object = result };
 }
@@ -250,7 +250,7 @@ fn convertToHtml(allocator: std.mem.Allocator, params: json.ObjectMap) !json.Val
     try result.put("command", json.Value{ .string = "toHtml" });
     try result.put("input_file", json.Value{ .string = input_path });
     try result.put("output_file", json.Value{ .string = output_path });
-    try result.put("output_size", json.Value{ .integer = @intCast(html_content.items.len) });
+    try result.put("output_size", json.Value{ .integer = @as(i64, @intCast(@min(html_content.items.len, std.math.maxInt(i64)))) });
 
     return json.Value{ .object = result };
 }

@@ -132,7 +132,7 @@ pub const ReadFileResponse = struct {
 /// File metadata information
 pub const FileMetadata = struct {
     /// File size in bytes
-    size: u64,
+    size: i64,
     /// Last modification timestamp
     modified: i64,
     /// Whether this is a file (vs directory)
@@ -212,7 +212,7 @@ pub const SearchOptions = struct {
     /// Whether to use regex pattern matching
     regex_mode: bool = false,
     /// Maximum number of results to return
-    max_results: ?usize = null,
+    max_results: ?u32 = null,
 };
 
 /// Search content response
@@ -234,9 +234,9 @@ pub const SearchResult = struct {
     /// File path where match was found
     file_path: []const u8,
     /// Line number (1-based)
-    line: usize,
+    line: u32,
     /// Column number (1-based)
-    column: usize,
+    column: u32,
     /// Matched text
     matched_text: []const u8,
 };
@@ -266,9 +266,9 @@ pub const ReferenceResult = struct {
     /// File path where reference was found
     file_path: []const u8,
     /// Line number (1-based)
-    line: usize,
+    line: u32,
     /// Column number (1-based)
-    column: usize,
+    column: u32,
     /// Reference text
     text: []const u8,
     /// Reference URL
@@ -282,7 +282,7 @@ pub const ListDirectoryRequest = struct {
     /// Directory path to list
     directory_path: []const u8 = ".",
     /// Maximum number of entries to return
-    max_results: usize = 100,
+    max_results: u32 = 100,
     /// Whether to include detailed metadata for each entry
     show_details: bool = false,
 };
@@ -314,7 +314,7 @@ pub const FindFilesRequest = struct {
     /// File patterns to search for
     file_patterns: [][]const u8,
     /// Maximum number of files to return
-    max_results: usize = 100,
+    max_results: u32 = 100,
 };
 
 /// Find files response
@@ -334,7 +334,7 @@ pub const GetWorkspaceTreeRequest = struct {
     /// Root directory path
     directory_path: []const u8 = ".",
     /// Maximum depth to traverse
-    max_depth: usize = 3,
+    max_depth: u32 = 3,
 };
 
 /// Get workspace tree response
@@ -414,7 +414,7 @@ fn readFile(allocator: std.mem.Allocator, params: json.Value) !json.Value {
     if (request.value.include_metadata) {
         const file_info = try fs.getFileInfo(request.value.file_path);
         response.metadata = FileMetadata{
-            .size = file_info.size,
+            .size = @as(i64, @intCast(@min(file_info.size, std.math.maxInt(i64)))),
             .modified = file_info.modified,
             .is_file = file_info.is_file,
             .is_directory = file_info.is_dir,
@@ -471,7 +471,7 @@ fn readMultiple(allocator: std.mem.Allocator, params: json.Value) !json.Value {
         if (request.value.include_metadata) {
             const file_info = fs.getFileInfo(file_path) catch continue;
             file_data.metadata = FileMetadata{
-                .size = file_info.size,
+                .size = @as(i64, @intCast(@min(file_info.size, std.math.maxInt(i64)))),
                 .modified = file_info.modified,
                 .is_file = file_info.is_file,
                 .is_directory = file_info.is_dir,
@@ -784,7 +784,7 @@ fn listDirectory(allocator: std.mem.Allocator, params: json.Value) !json.Value {
 
             if (fs.getFileInfo(full_path)) |file_info| {
                 directory_entry.metadata = FileMetadata{
-                    .size = file_info.size,
+                    .size = @as(i64, @intCast(@min(file_info.size, std.math.maxInt(i64)))),
                     .modified = file_info.modified,
                     .is_file = file_info.is_file,
                     .is_directory = file_info.is_dir,
@@ -992,7 +992,7 @@ fn buildDirectoryTree(allocator: std.mem.Allocator, path: []const u8, current_de
         } else {
             var file_obj = json.ObjectMap.init(allocator);
             try file_obj.put("type", json.Value{ .string = "file" });
-            try file_obj.put("size", json.Value{ .integer = @intCast(file_metadata.size) });
+            try file_obj.put("size", json.Value{ .integer = @as(i64, @intCast(@min(file_metadata.size, std.math.maxInt(i64)))) });
             try tree.put(entry, json.Value{ .object = file_obj });
         }
     }

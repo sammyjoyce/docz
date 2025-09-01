@@ -31,4 +31,7 @@ fn registerToolsImpl(registry: *tools.Registry) !void {
 pub const SPEC: engine.AgentSpec = .{
     .buildSystemPrompt = buildSystemPromptImpl,
     .registerTools = registerToolsImpl,
+    .metadata = .{
+        .agentName = "markdown",
+    },
 };

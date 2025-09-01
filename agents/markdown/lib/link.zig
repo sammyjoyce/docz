@@ -20,8 +20,8 @@ pub const Link = struct {
     url: []const u8,
     title: ?[]const u8,
     type: LinkType,
-    line: usize,
-    column: usize,
+    line: u32,
+    column: u32,
 };
 
 /// Parse a markdown link
@@ -79,7 +79,7 @@ pub fn parseLink(text: []const u8, start_pos: usize) ?Link {
         .title = null,
         .type = classifyLink(linkURL),
         .line = 0, // Will be set by caller
-        .column = start_pos,
+        .column = @as(u32, @intCast(@min(start_pos, std.math.maxInt(u32)))),
     };
 }
 
@@ -97,7 +97,7 @@ pub fn findLinks(allocator: std.mem.Allocator, text: []const u8) Error![]Link {
             if (line[pos] == '[') {
                 if (parseLink(line, pos)) |link| {
                     var foundLink = link;
-                    foundLink.line = lineNum;
+                    foundLink.line = @as(u32, @intCast(@min(lineNum, std.math.maxInt(u32))));
                     try links.append(allocator, foundLink);
                     pos = link.column + link.text.len + link.url.len + 4; // Skip past this link
                 } else {

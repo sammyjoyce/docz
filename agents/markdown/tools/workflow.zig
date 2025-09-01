@@ -25,14 +25,14 @@ pub const StepResult = struct {
     success: bool,
     error_message: ?[]const u8 = null,
     output: ?json.Value = null,
-    duration_ms: u64 = 0,
+    duration_ms: i64 = 0,
 };
 
 pub const WorkflowResult = struct {
     success: bool,
-    completed_steps: usize,
-    failed_steps: usize,
-    total_duration_ms: u64,
+    completed_steps: u32,
+    failed_steps: u32,
+    total_duration_ms: i64,
     step_results: []StepResult,
     error_message: ?[]const u8 = null,
 };
@@ -63,7 +63,7 @@ fn executeInternal(allocator: std.mem.Allocator, params: json.Value) !json.Value
     };
 
     const end_time = std.time.nanoTimestamp();
-    const total_duration = @as(u64, @intCast(@divTrunc((end_time - start_time), std.time.ns_per_ms)));
+    const total_duration = @as(i64, @intCast(@divTrunc((end_time - start_time), std.time.ns_per_ms)));
 
     return buildWorkflowResponse(allocator, mode_str, workflow_result, total_duration);
 }
@@ -80,8 +80,8 @@ fn executePipeline(allocator: std.mem.Allocator, params: json.ObjectMap) !Workfl
     var step_results = try std.ArrayList(StepResult).initCapacity(allocator, 10);
     defer step_results.deinit(allocator);
 
-    var completed_steps: usize = 0;
-    var failed_steps: usize = 0;
+    var completed_steps: u32 = 0;
+    var failed_steps: u32 = 0;
 
     for (pipeline_array.items) |step_json| {
         const step = step_json.object;
@@ -94,7 +94,7 @@ fn executePipeline(allocator: std.mem.Allocator, params: json.ObjectMap) !Workfl
         // Execute the step (for now, simulate execution)
         const step_result = executeToolStep(allocator, tool_name, step_params) catch |err| blk: {
             const step_end = std.time.nanoTimestamp();
-            const duration = @as(u64, @intCast(@divTrunc((step_end - step_start), std.time.ns_per_ms)));
+            const duration = @as(i64, @intCast(@divTrunc((step_end - step_start), std.time.ns_per_ms)));
 
             break :blk StepResult{
                 .success = false,
@@ -157,8 +157,8 @@ fn executeBatch(allocator: std.mem.Allocator, params: json.ObjectMap) !WorkflowR
     var step_results = try std.ArrayList(StepResult).initCapacity(allocator, 10);
     defer step_results.deinit(allocator);
 
-    var completed_steps: usize = 0;
-    var failed_steps: usize = 0;
+    var completed_steps: u32 = 0;
+    var failed_steps: u32 = 0;
 
     // For simplicity, execute operations sequentially for now
     // In a full implementation, this would use thread pools or async execution
@@ -173,7 +173,7 @@ fn executeBatch(allocator: std.mem.Allocator, params: json.ObjectMap) !WorkflowR
         // Execute the batch operation
         const step_result = executeBatchOperation(allocator, file_path, operation_type, parameters) catch |err| blk: {
             const step_end = std.time.nanoTimestamp();
-            const duration = @as(u64, @intCast(@divTrunc((step_end - step_start), std.time.ns_per_ms)));
+            const duration = @as(i64, @intCast(@divTrunc((step_end - step_start), std.time.ns_per_ms)));
 
             break :blk StepResult{
                 .success = false,
@@ -280,7 +280,7 @@ fn executeBatchOperation(allocator: std.mem.Allocator, file_path: []const u8, op
     };
 }
 
-fn buildWorkflowResponse(allocator: std.mem.Allocator, mode: []const u8, workflow_result: WorkflowResult, total_duration: u64) !json.Value {
+fn buildWorkflowResponse(allocator: std.mem.Allocator, mode: []const u8, workflow_result: WorkflowResult, total_duration: i64) !json.Value {
     var result = json.ObjectMap.init(allocator);
     try result.put("success", json.Value{ .bool = workflow_result.success });
     try result.put("tool", json.Value{ .string = "workflow" });
