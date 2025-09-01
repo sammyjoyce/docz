@@ -10,7 +10,7 @@ const render_mod = foundation.render;
 
 // Import markdown-specific modules
 const markdown_tools = @import("tools.zig");
-const Agent = @import("Agent.zig");
+const Agent = @import("agent.zig");
 
 /// User experience level for progressive disclosure
 pub const ExperienceLevel = enum {

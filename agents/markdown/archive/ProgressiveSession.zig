@@ -4,7 +4,7 @@
 const std = @import("std");
 const foundation = @import("foundation");
 const markdown_tools = @import("tools.zig");
-const Agent = @import("Agent.zig");
+const Agent = @import("agent.zig");
 
 // Module definitions for missing components
 const render_mod = struct {

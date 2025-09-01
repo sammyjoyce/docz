@@ -2,7 +2,7 @@
 
 const std = @import("std");
 const engine = @import("core_engine");
-const impl = @import("Agent.zig");
+const impl = @import("agent.zig");
 const foundation = @import("foundation");
 const tools = foundation.tools;
 
