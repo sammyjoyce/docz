@@ -99,7 +99,7 @@ fn createFile(allocator: std.mem.Allocator, params: json.ObjectMap) !json.Value 
     try result.put("tool", json.Value{ .string = "file" });
     try result.put("command", json.Value{ .string = "create_file" });
     try result.put("file_path", json.Value{ .string = file_path });
-    try result.put("size", json.Value{ .integer = @intCast(template_content.len) });
+    try result.put("size", json.Value{ .integer = @as(i64, @intCast(@min(template_content.len, std.math.maxInt(i64)))) });
     try result.put("overwritten", json.Value{ .bool = file_exists });
 
     return json.Value{ .object = result };
@@ -190,7 +190,7 @@ fn copyFile(allocator: std.mem.Allocator, params: json.ObjectMap) !json.Value {
     try result.put("source_path", json.Value{ .string = source_path });
     try result.put("destination_path", json.Value{ .string = destination_path });
     try result.put("overwritten", json.Value{ .bool = dest_exists });
-    try result.put("size", json.Value{ .integer = @intCast(source_metadata.size) });
+    try result.put("size", json.Value{ .integer = @as(i64, @intCast(@min(source_metadata.size, std.math.maxInt(i64)))) });
 
     return json.Value{ .object = result };
 }
@@ -235,7 +235,7 @@ fn moveFile(allocator: std.mem.Allocator, params: json.ObjectMap) !json.Value {
     try result.put("source_path", json.Value{ .string = source_path });
     try result.put("destination_path", json.Value{ .string = destination_path });
     try result.put("overwritten", json.Value{ .bool = dest_exists });
-    try result.put("size", json.Value{ .integer = @intCast(source_metadata.size) });
+    try result.put("size", json.Value{ .integer = @as(i64, @intCast(@min(source_metadata.size, std.math.maxInt(i64)))) });
 
     return json.Value{ .object = result };
 }
@@ -263,7 +263,7 @@ fn deleteFile(allocator: std.mem.Allocator, params: json.ObjectMap) !json.Value 
     try result.put("tool", json.Value{ .string = "file" });
     try result.put("command", json.Value{ .string = "delete_file" });
     try result.put("file_path", json.Value{ .string = file_path });
-    try result.put("deleted_size", json.Value{ .integer = @intCast(file_metadata.size) });
+    try result.put("deleted_size", json.Value{ .integer = @as(i64, @intCast(@min(file_metadata.size, std.math.maxInt(i64)))) });
 
     return json.Value{ .object = result };
 }
