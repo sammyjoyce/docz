@@ -166,6 +166,10 @@ pub const Engine = struct {
             self.system_blocks = null;
         };
 
+        // Prepare tools JSON (if any tools registered)
+        const tools_json = try self.buildToolsJson();
+        defer if (tools_json) |tj| self.allocator.free(tj);
+
         if (self.options.stream) {
             // Streaming mode with SSE. Loop to allow tool → continue cycles.
             var client = self.client orelse return error.NotAuthenticated;
@@ -188,6 +192,8 @@ pub const Engine = struct {
                     .temperature = self.options.temperature,
                     .system = system_prompt,
                     .systemBlocks = self.system_blocks,
+                    .toolsJson = tools_json,
+                    .toolChoice = null, // default to auto when tools present
                     .onToken = struct {
                         fn callback(ctx: *SharedContext, data: []const u8) void {
                             Engine.processStreamingEvent(ctx, data);
@@ -234,6 +240,8 @@ pub const Engine = struct {
                     .maxTokens = self.options.max_tokens,
                     .temperature = self.options.temperature,
                     .system = system_prompt,
+                    .toolsJson = tools_json,
+                    .toolChoice = null,
                 });
                 defer result.deinit();
 
@@ -442,6 +450,59 @@ pub const Engine = struct {
         }
 
         return try prompt_builder.toOwnedSlice(self.allocator);
+    }
+
+    /// Build Anthropic tools array JSON from the registered tools.
+    /// Produces a JSON array string with objects: {"name","description","input_schema"}.
+    fn buildToolsJson(self: *Self) !?[]const u8 {
+        const list = try self.tool_registry.listTools(self.allocator);
+        defer self.allocator.free(list);
+        if (list.len == 0) return null;
+
+        // Local helper to write a JSON string with escapes
+        const Writer = struct {
+            fn writeJSONString(w: anytype, s: []const u8) !void {
+                try w.writeByte('"');
+                for (s) |c| switch (c) {
+                    '"' => try w.writeAll("\\\""),
+                    '\\' => try w.writeAll("\\\\"),
+                    '\n' => try w.writeAll("\\n"),
+                    '\r' => try w.writeAll("\\r"),
+                    '\t' => try w.writeAll("\\t"),
+                    else => {
+                        if (c < 0x20) {
+                            try std.fmt.format(w, "\\u{x:0>4}", .{c});
+                        } else try w.writeByte(c);
+                    },
+                };
+                try w.writeByte('"');
+            }
+        };
+
+        var buf = std.ArrayListUnmanaged(u8){};
+        defer buf.deinit(self.allocator);
+        var w = buf.writer(self.allocator);
+        try w.writeByte('[');
+        var first = true;
+        for (list) |t| {
+            if (!first) try w.writeByte(',');
+            first = false;
+            try w.writeByte('{');
+            // name
+            try w.writeAll("\"name\":");
+            try Writer.writeJSONString(w, t.name);
+            try w.writeByte(',');
+            // description (fallback to name if empty)
+            const desc = if (t.description.len == 0) t.name else t.description;
+            try w.writeAll("\"description\":");
+            try Writer.writeJSONString(w, desc);
+            try w.writeByte(',');
+            // generic permissive schema
+            try w.writeAll("\"input_schema\":{\"type\":\"object\"}");
+            try w.writeByte('}');
+        }
+        try w.writeByte(']');
+        return buf.toOwnedSlice(self.allocator);
     }
 
     /// Returns true if at least one tool call was executed.

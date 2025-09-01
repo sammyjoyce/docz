@@ -56,6 +56,10 @@ pub const MessageParameters = struct {
     topP: ?f32 = null,
     topK: ?u32 = null,
     stopSequences: ?[]const []const u8 = null,
+    /// Raw JSON array of tool definitions. When present, enables model tool use.
+    toolsJson: ?[]const u8 = null,
+    /// Tool choice policy; when tools are provided, defaults to "auto".
+    toolChoice: ?[]const u8 = null,
 };
 
 /// Response from non-streaming messages API
@@ -93,6 +97,10 @@ pub const StreamParameters = struct {
     topP: ?f32 = null,
     topK: ?u32 = null,
     stopSequences: ?[]const []const u8 = null,
+    /// Raw JSON array of tool definitions. When present, enables model tool use.
+    toolsJson: ?[]const u8 = null,
+    /// Tool choice policy; when tools are provided, defaults to "auto".
+    toolChoice: ?[]const u8 = null,
 };
 
 /// Anthropic HTTP client with OAuth and API key support
@@ -353,6 +361,8 @@ pub const Client = struct {
             .topP = params.topP,
             .topK = params.topK,
             .stopSequences = params.stopSequences,
+            .toolsJson = params.toolsJson,
+            .toolChoice = params.toolChoice,
             .onToken = struct {
                 fn callback(innerCtx: *SharedContext, data: []const u8) void {
                     // Try to parse as JSON to extract usage and content
@@ -627,6 +637,18 @@ pub const Client = struct {
 
         // Stream flag (always true for streaming requests)
         try writer.writeAll("\"stream\":true,");
+
+        // Tools (optional)
+        if (params.toolsJson) |tools_json| {
+            try writer.writeAll("\"tools\":");
+            try writer.writeAll(tools_json);
+            try writer.writeAll(",");
+            // Include tool_choice if provided; default to auto when tools are present
+            const choice = params.toolChoice orelse "{\"type\":\"auto\"}";
+            try writer.writeAll("\"tool_choice\":");
+            try writer.writeAll(choice);
+            try writer.writeAll(",");
+        }
 
         // System prompt(s) - prefer systemBlocks for OAuth, fallback to single system
         if (params.systemBlocks) |blocks| {

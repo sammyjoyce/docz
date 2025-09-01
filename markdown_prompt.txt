@@ -82,14 +82,21 @@ Acceptance (Phase 2):
 - No exported `anyerror` in public surfaces.
 - Default build excludes UI; agent compiles clean.
 
-PHASE 3 — Interactive UI (optional, gated)
-Goals: opt‑in TUI using `foundation.tui.agent_ui` patterns.
+PHASE 3 — Interactive UI (required, gated)
+Goals: Set up a full CLI and TUI experience using foundation barrels.
 Tasks:
-- Add UI demo target (`zig build -Dagent=markdown run -- --ui`) that composes widgets without owning a loop.
-- Keep `.terminal_ui = false` by default; TUI compiles only when enabled.
+- Use `src/foundation/cli.zig` for command-line interface (no custom parsers).
+- Use `src/foundation/tui.zig` and `src/foundation/ui.zig` to compose TUI widgets without owning a loop.
+- Implement interactive markdown editing/viewing using foundation TUI components.
+- All TUI code must be feature-gated via `comptime if (build_options.enable_tui)`.
+- Keep `.terminal_ui = false` by default in manifest; TUI compiles only when enabled.
+- Add UI demo target (`zig build -Dagent=markdown run -- --ui`) that showcases the TUI experience.
 
 Acceptance (Phase 3):
+- Full CLI experience using foundation.cli (argument parsing, help, commands).
+- TUI renders and accepts input using foundation.tui widgets.
 - Enabling TUI flag compiles and runs demo without changing default binary footprint.
+- No custom event loops; uses foundation's shared infrastructure.
 
 PHASE 4 — Tests & Docs (required)
 Goals: validate tools, config, and spec prompt; prevent regressions.
