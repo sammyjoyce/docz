@@ -16,12 +16,10 @@ pub const callbackServer = @import("Callback.zig");
 
 // Re-export OAuth constants and types from anthropic
 pub const OAUTH_CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e";
-// Use claude.ai for both authorization and token exchange
+// Use claude.ai for authorization (browser with session)
 pub const OAUTH_AUTHORIZATION_URL = "https://claude.ai/oauth/authorize";
-// Token endpoint should be claude.ai, not console.anthropic.com
-// Format: https://claude.ai/v1/oauth/{org_id}/authorize
-pub const OAUTH_TOKEN_ENDPOINT_BASE = "https://claude.ai/v1/oauth";
-pub const OAUTH_REDIRECT_URI = "http://localhost:8080/callback";
+// Token exchange endpoint (API call, no session needed)
+pub const OAUTH_TOKEN_ENDPOINT = "https://console.anthropic.com/v1/oauth/token";
 pub const OAUTH_SCOPES = "org:create_api_key user:profile user:inference";
 
 /// OAuth error types
@@ -97,7 +95,7 @@ pub const Provider = struct {
 
         return try std.fmt.allocPrint(
             allocator,
-            "{s}?client_id={s}&response_type=code&redirect_uri={s}&scope={s}&code_challenge={s}&code_challenge_method=S256&state={s}",
+            "{s}?code=true&client_id={s}&response_type=code&redirect_uri={s}&scope={s}&code_challenge={s}&code_challenge_method=S256&state={s}",
             .{ self.authorizationUrl, client_id_enc, redirect_enc, scopes_enc, challenge_enc, state_enc },
         );
     }
@@ -111,9 +109,9 @@ pub fn generatePkceParams(allocator: std.mem.Allocator) !Pkce {
     return @import("pkce.zig").generate(allocator, 64);
 }
 
-/// Build OAuth authorization URL
+/// Build OAuth authorization URL with default localhost:8080 callback
 pub fn buildAuthorizationUrl(allocator: std.mem.Allocator, pkceParams: Pkce) ![]u8 {
-    return buildAuthorizationUrlWithRedirect(allocator, pkceParams, OAUTH_REDIRECT_URI);
+    return buildAuthorizationUrlWithRedirect(allocator, pkceParams, "http://localhost:8080/callback");
 }
 
 /// Build OAuth authorization URL with custom redirect URI
@@ -122,7 +120,7 @@ pub fn buildAuthorizationUrlWithRedirect(allocator: std.mem.Allocator, pkceParam
     const provider = Provider{
         .clientId = OAUTH_CLIENT_ID,
         .authorizationUrl = OAUTH_AUTHORIZATION_URL,
-        .tokenUrl = OAUTH_TOKEN_ENDPOINT_BASE,
+        .tokenUrl = OAUTH_TOKEN_ENDPOINT,
         .redirectUri = redirectUri,
         .scopes = &scopes,
     };
@@ -292,29 +290,16 @@ pub fn exchangeCodeForTokens(
     pkceParams: Pkce,
     redirectUri: []const u8,
 ) !Credentials {
-    // For now, use a hardcoded org_id - this should be obtained dynamically
-    // TODO: Get org_id from user's organization or from initial auth response
-    const org_id = "ced3da9c-e42d-4d9e-a213-4a5ca5090f9f";
-
-    // Build the token endpoint URL with org_id
-    const token_endpoint = try std.fmt.allocPrint(allocator, "{s}/{s}/authorize", .{ OAUTH_TOKEN_ENDPOINT_BASE, org_id });
-    defer allocator.free(token_endpoint);
-
-    // Prepare request body - this endpoint expects different format than standard OAuth
-    // Based on the request dump, it sends the full OAuth params in JSON
+    // Prepare JSON body for token exchange (standard OAuth format)
     const body = try std.fmt.allocPrint(allocator,
         \\\{{
-        \\\  "response_type": "code",
-        \\\  "client_id": "{s}",
-        \\\  "redirect_uri": "{s}",
-        \\\  "scope": "{s}",
-        \\\  "code_challenge": "{s}",
-        \\\  "code_challenge_method": "S256",
-        \\\  "state": "{s}",
+        \\\  "grant_type": "authorization_code",
         \\\  "code": "{s}",
-        \\\  "code_verifier": "{s}"
+        \\\  "redirect_uri": "{s}",
+        \\\  "code_verifier": "{s}",
+        \\\  "client_id": "{s}"
         \\\}}
-    , .{ OAUTH_CLIENT_ID, redirectUri, OAUTH_SCOPES, pkceParams.challenge, pkceParams.state, authorizationCode, pkceParams.verifier });
+    , .{ authorizationCode, redirectUri, pkceParams.verifier, OAUTH_CLIENT_ID });
     defer allocator.free(body);
 
     // Initialize HTTP client
@@ -322,7 +307,7 @@ pub fn exchangeCodeForTokens(
     defer httpClient.deinit();
 
     // Parse URL
-    const uri = try std.Uri.parse(token_endpoint);
+    const uri = try std.Uri.parse(OAUTH_TOKEN_ENDPOINT);
 
     // Make POST request to token endpoint with browser-like headers
     var req = try httpClient.request(.POST, uri, .{
@@ -341,7 +326,7 @@ pub fn exchangeCodeForTokens(
     defer req.deinit();
 
     // Basic debug logging of request
-    std.log.debug("OAuth token exchange POST {s}", .{token_endpoint});
+    std.log.debug("OAuth token exchange POST {s}", .{OAUTH_TOKEN_ENDPOINT});
     std.log.debug("Redirect URI used: {s}", .{redirectUri});
     std.log.debug("Request Content-Type: application/json", .{});
     std.log.debug("Request body: {s}", .{body});
@@ -381,14 +366,8 @@ pub fn refreshTokens(allocator: std.mem.Allocator, refreshToken: []const u8) !Cr
     var httpClient = std.http.Client{ .allocator = allocator };
     defer httpClient.deinit();
 
-    // For refresh, use the same org_id approach
-    // TODO: Store and retrieve org_id properly
-    const org_id = "ced3da9c-e42d-4d9e-a213-4a5ca5090f9f";
-    const token_endpoint = try std.fmt.allocPrint(allocator, "{s}/{s}/authorize", .{ OAUTH_TOKEN_ENDPOINT_BASE, org_id });
-    defer allocator.free(token_endpoint);
-
     // Parse URL
-    const uri = try std.Uri.parse(token_endpoint);
+    const uri = try std.Uri.parse(OAUTH_TOKEN_ENDPOINT);
 
     // Make POST request to token endpoint with browser-like headers
     var req = try httpClient.request(.POST, uri, .{
@@ -406,7 +385,7 @@ pub fn refreshTokens(allocator: std.mem.Allocator, refreshToken: []const u8) !Cr
     });
     defer req.deinit();
 
-    std.log.debug("OAuth token refresh POST {s}", .{token_endpoint});
+    std.log.debug("OAuth token refresh POST {s}", .{OAUTH_TOKEN_ENDPOINT});
     std.log.debug("Request Content-Type: application/x-www-form-urlencoded", .{});
     std.log.debug("Request body: {s}", .{body});
     try req.sendBodyComplete(body);
@@ -496,9 +475,13 @@ pub fn loginWithLoopback(allocator: std.mem.Allocator) !Credentials {
     const pkceParams = try generatePkceParams(allocator);
     errdefer pkceParams.deinit(allocator);
 
+    // Use a random port in the high range to avoid conflicts
+    // Similar to the successful implementation using port 52591
+    const random_port = std.crypto.random.intRangeAtMost(u16, 50000, 60000);
+
     var server = try @import("loopback_server.zig").LoopbackServer.init(allocator, .{
         .host = "localhost",
-        .port = 8080,
+        .port = random_port,
         .path = "/callback",
         .timeout_ms = 300000,
     });
@@ -690,7 +673,7 @@ pub fn setupOAuth(allocator: std.mem.Allocator) !Credentials {
     const authCode = std.mem.trim(u8, buffer[0..bytesRead], " \t\r\n");
 
     // Exchange code for tokens
-    const credentials = try exchangeCodeForTokens(allocator, authCode, pkceParams, OAUTH_REDIRECT_URI);
+    const credentials = try exchangeCodeForTokens(allocator, authCode, pkceParams, "http://localhost:8080/callback");
 
     // Save credentials
     try saveCredentials(allocator, "claude_oauth_creds.json", credentials);
@@ -749,7 +732,7 @@ test "authorization URL uses localhost callback" {
     const p = Provider{
         .clientId = OAUTH_CLIENT_ID,
         .authorizationUrl = OAUTH_AUTHORIZATION_URL,
-        .tokenUrl = OAUTH_TOKEN_ENDPOINT_BASE,
+        .tokenUrl = OAUTH_TOKEN_ENDPOINT,
         .redirectUri = "http://localhost:54321/callback",
         .scopes = &scopes,
     };

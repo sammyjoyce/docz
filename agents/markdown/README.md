@@ -1,6 +1,6 @@
-# MarkDown Master - Specialized CLI Agent
+# Markdown Agent - Foundation-Integrated Agent
 
-A comprehensive CLI agent framework designed exclusively for creating, editing, and managing markdown documents. Built for handling long, complex documents with sophisticated structure, extensive cross-references, and detailed content.
+A comprehensive markdown document processing agent integrated with the foundation framework. Provides tools for creating, editing, validating, and managing markdown documents.
 
 ## 🎯 Purpose
 
@@ -15,27 +15,43 @@ This agent is specifically designed for users who work with:
 
 ```
 agents/markdown/
-├── main.zig                   # Agent entry point
-├── spec.zig                   # Agent spec (prompts + tools registration)
-├── markdown_agent.zig         # Agent implementation (public API)
-├── tools.zon                  # Tool definitions/config (ZON)
-├── config.zon                 # Agent configuration (ZON)
+├── main.zig                   # Entry point (delegates to foundation.agent_main)
+├── spec.zig                   # Agent spec (system prompt + tool registration)
+├── agent.zig                  # Agent implementation
+├── config.zon                 # Agent configuration (aligned with foundation.config.AgentConfig)
 ├── system_prompt.txt          # System prompt template
-├── examples.md                # Usage examples and workflows
-└── common/, tools/            # Internal modules
+├── tools/                     # JSON tools (io, content_editor, validate, document, workflow, file)
+├── lib/                       # Helper libraries (fs, text, link, meta, template)
+└── support/                   # Support modules
 ```
 
-## 🛠️ Core Tools
+## 🛠️ Registered Tools
 
-See tools in `tools/` and schemas in `tools.zon`.
+The agent registers 6 JSON tools via foundation.tools.registerJsonTool:
+- **io**: Document I/O operations
+- **content_editor**: Content editing operations
+- **validate**: Validation operations
+- **document**: Document operations
+- **workflow**: Workflow engine operations
+- **file**: File system operations
 
 ## 🚀 Getting Started
 
-Use the root CLI with the markdown agent selected (default):
+### Build and Run
 
 ```bash
-zig build run -- "Create a technical guide about Git workflows"
-zig build -Dagent=markdown run -- --config agents/markdown/config.zon "Edit document structure"
+# Build the agent
+zig build -Dagent=markdown
+
+# Run the agent
+zig build -Dagent=markdown run
+
+# Run with authentication
+zig build -Dagent=markdown run auth login
+zig build -Dagent=markdown run auth status
+
+# Run with a prompt
+zig build -Dagent=markdown run -- "Create a technical guide about Git workflows"
 ```
 
 ## 🎛️ Configuration

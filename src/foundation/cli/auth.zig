@@ -63,7 +63,7 @@ pub const Commands = struct {
         defer callback_result.deinit(allocator);
 
         stdout.print("Authorization code received, exchanging for tokens...\n", .{});
-        stdout.print("POST {s} with redirect_uri={s}\n", .{ Auth.OAuth.OAUTH_TOKEN_ENDPOINT, redirect_uri });
+        stdout.print("POST {s}/access_token with redirect_uri={s}\n", .{ Auth.OAuth.OAUTH_TOKEN_ENDPOINT_BASE, redirect_uri });
 
         // Exchange code for tokens
         const creds = try Auth.OAuth.exchangeCodeForTokens(
