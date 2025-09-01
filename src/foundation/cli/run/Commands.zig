@@ -20,8 +20,8 @@ pub const RunConfig = struct {
     system_prompt: ?[]const u8 = null,
 };
 
-/// Handle the run command
-pub fn handleRunCommand(allocator: std.mem.Allocator, config: RunConfig) !void {
+/// Handle the run command - legacy implementation
+pub fn handleRunCommandLegacy(allocator: std.mem.Allocator, config: RunConfig) !void {
     const stdout = std.debug;
     const stdin = std.fs.File.stdin().reader();
 
@@ -185,4 +185,23 @@ pub fn handleRunCommand(allocator: std.mem.Allocator, config: RunConfig) !void {
     }
 
     try stdout.print("\nGoodbye!\n", .{});
+}
+
+/// Handle the run command using the new agent loop
+pub fn handleRunCommand(allocator: std.mem.Allocator, config: RunConfig) !void {
+    const agent = @import("../../../agent_loop.zig");
+    
+    // Convert RunConfig to agent.Config
+    const agent_config = agent.Config{
+        .model = config.model,
+        .max_tokens = config.max_tokens,
+        .temperature = config.temperature,
+        .stream = config.stream,
+        .system_prompt = config.system_prompt,
+        .history_limit = 20,
+        .token_refresh_leeway = 120,
+    };
+
+    // Run the agent REPL
+    try agent.runREPL(allocator, agent_config);
 }

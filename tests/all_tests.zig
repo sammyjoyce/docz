@@ -32,8 +32,8 @@ comptime {
     // _ = @import("dashboard_validation.zig");
     _ = @import("oauth_flow.zig");
     _ = @import("oauth_storage_and_sse.zig");
-    _ = @import("oauth_unit.zig");
-    _ = @import("oauth_integration.zig");
+    _ = @import("oauth_unit_tests.zig");
+    _ = @import("oauth_integration_tests.zig");
     _ = @import("engine_loop.zig");
     _ = @import("engine.zig");
 

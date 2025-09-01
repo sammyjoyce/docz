@@ -25,6 +25,7 @@ pub const cli = @import("foundation/cli.zig");
 pub const network = @import("foundation/network.zig");
 
 // Agent support modules
+pub const agent = @import("agent_loop.zig");
 pub const agent_base = @import("foundation/agent_base.zig");
 pub const agent_main = @import("foundation/agent_main.zig");
 pub const agent_launcher = @import("foundation/agent_launcher.zig");
