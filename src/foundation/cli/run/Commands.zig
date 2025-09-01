@@ -22,7 +22,9 @@ pub const RunConfig = struct {
 
 /// Handle the run command
 pub fn handleRunCommand(allocator: std.mem.Allocator, config: RunConfig) !void {
-    const stdout = std.debug;
+    var out_file = std.fs.File.stdout();
+    var out_buf: [4096]u8 = undefined;
+    var out = out_file.writer(out_buf[0..]);
     var stdin_file = std.fs.File.stdin();
     var stdin_buf: [4096]u8 = undefined;
     var stdin = stdin_file.reader(stdin_buf[0..]);
@@ -35,13 +37,13 @@ pub fn handleRunCommand(allocator: std.mem.Allocator, config: RunConfig) !void {
         return err;
     };
     defer allocator.free(agent_name);
-    
-    const store = Auth.store.TokenStore.init(allocator, .{ 
+
+    const store = Auth.store.TokenStore.init(allocator, .{
         .agent_name = agent_name,
     });
 
     if (!store.exists()) {
-        stdout.print("Not authenticated. Run 'docz auth login' to authenticate.\n", .{});
+        out.print("Not authenticated. Run 'docz auth login' to authenticate.\n", .{}) catch {};
         return;
     }
 
@@ -52,7 +54,7 @@ pub fn handleRunCommand(allocator: std.mem.Allocator, config: RunConfig) !void {
 
     // Check and refresh token if needed
     if (creds.willExpireSoon(120)) {
-        stdout.print("Token expiring soon, refreshing...\n", .{});
+        out.print("Token expiring soon, refreshing...\n", .{}) catch {};
 
         var token_client = Auth.token_client.TokenClient.init(allocator, .{
             .client_id = "9d1c250a-e61b-44d9-88ed-5944d1962f5e",
@@ -92,29 +94,29 @@ pub fn handleRunCommand(allocator: std.mem.Allocator, config: RunConfig) !void {
     defer shared_ctx.deinit();
 
     // Initialize conversation history
-    var messages = std.ArrayList(network.Anthropic.Message).init(allocator);
-    defer messages.deinit();
+    var messages = std.ArrayList(network.Anthropic.Message){};
+    defer messages.deinit(allocator);
     defer {
-        for (messages.items) |msg| {
-            allocator.free(msg.content);
+        for (messages.items) |*msg| {
+            network.Anthropic.Models.freeMessage(allocator, msg);
         }
     }
 
     // Print banner
-    stdout.print("\n┌────────────────────────────────────────────┐\n", .{});
-    stdout.print("│  Docz Agent - Claude AI Assistant         │\n", .{});
-    stdout.print("│  Model: {s: <35} │\n", .{config.model});
-    stdout.print("│  Auth: OAuth (Claude Pro/Max)              │\n", .{});
-    stdout.print("│  Streaming: {s: <31} │\n", .{if (config.stream) "Enabled" else "Disabled"});
-    stdout.print("│  Type 'exit' or Ctrl-C to quit            │\n", .{});
-    stdout.print("└────────────────────────────────────────────┘\n\n", .{});
+    out.print("\n┌────────────────────────────────────────────┐\n", .{}) catch {};
+    out.print("│  Docz Agent - Claude AI Assistant         │\n", .{}) catch {};
+    out.print("│  Model: {s: <35} │\n", .{config.model}) catch {};
+    out.print("│  Auth: OAuth (Claude Pro/Max)              │\n", .{}) catch {};
+    out.print("│  Streaming: {s: <31} │\n", .{if (config.stream) "Enabled" else "Disabled"}) catch {};
+    out.print("│  Type 'exit' or Ctrl-C to quit            │\n", .{}) catch {};
+    out.print("└────────────────────────────────────────────┘\n\n", .{}) catch {};
 
     // REPL loop
     while (true) {
-        stdout.print("You: ", .{});
+        out.print("You: ", .{}) catch {};
 
         var buf: [4096]u8 = undefined;
-        if (try stdin.interface.readUntilDelimiterOrEof(&buf, '\n')) |user_input| {
+        if (try stdin.readUntilDelimiterOrEof(&buf, '\n')) |user_input| {
             const trimmed = std.mem.trim(u8, user_input, " \t\r\n");
 
             if (std.mem.eql(u8, trimmed, "exit")) {
@@ -126,9 +128,9 @@ pub fn handleRunCommand(allocator: std.mem.Allocator, config: RunConfig) !void {
             }
 
             // Add user message
-            try messages.append(.{ .role = .user, .content = try allocator.dupe(u8, trimmed) });
+            try messages.append(allocator, .{ .role = .user, .content = .{ .text = try allocator.dupe(u8, trimmed) } });
 
-            stdout.print("\nClaude: ", .{});
+            out.print("\nClaude: ", .{}) catch {};
 
             if (config.stream) {
                 // Streaming mode with SSE
@@ -151,13 +153,13 @@ pub fn handleRunCommand(allocator: std.mem.Allocator, config: RunConfig) !void {
                                 .ignore_unknown_fields = true,
                             }) catch return;
                             defer parsed.deinit();
-                            
+
                             if (parsed.value == .object) {
                                 if (parsed.value.object.get("delta")) |delta| {
                                     if (delta == .object) {
                                         if (delta.object.get("text")) |text| {
                                             if (text == .string) {
-                                                std.debug.print("{s}", .{text.string});
+                                                _ = std.fs.File.stdout().deprecatedWriter().writeAll(text.string) catch {};
                                             }
                                         }
                                     }
@@ -171,7 +173,7 @@ pub fn handleRunCommand(allocator: std.mem.Allocator, config: RunConfig) !void {
 
                 // Add assistant message to history
                 const assistant_content = try allocator.dupe(u8, shared_ctx.anthropic.contentCollector.items);
-                try messages.append(.{ .role = .assistant, .content = assistant_content });
+                try messages.append(allocator, .{ .role = .assistant, .content = .{ .text = assistant_content } });
             } else {
                 // Non-streaming mode
                 var result = try client.createMessage(.{
@@ -184,19 +186,19 @@ pub fn handleRunCommand(allocator: std.mem.Allocator, config: RunConfig) !void {
                 defer result.deinit();
 
                 // Print and append assistant content
-                stdout.print("{s}", .{result.content});
-                try messages.append(.{ .role = .assistant, .content = try allocator.dupe(u8, result.content) });
+                out.print("{s}", .{result.content}) catch {};
+                try messages.append(allocator, .{ .role = .assistant, .content = .{ .text = try allocator.dupe(u8, result.content) } });
             }
 
-            stdout.print("\n\n", .{});
+            out.print("\n\n", .{}) catch {};
 
             // Keep conversation history manageable (max 20 messages)
             if (messages.items.len > 20) {
                 // Keep system prompt and last 19 messages
                 const start = if (config.system_prompt != null) 1 else 0;
                 const to_remove = messages.items.len - 20;
-                for (messages.items[start .. start + to_remove]) |msg| {
-                    allocator.free(msg.content);
+                for (messages.items[start .. start + to_remove]) |*msg| {
+                    network.Anthropic.Models.freeMessage(allocator, msg);
                 }
                 std.mem.copyForwards(network.Anthropic.Message, messages.items[start..], messages.items[start + to_remove ..]);
                 messages.shrinkRetainingCapacity(20);
@@ -207,5 +209,5 @@ pub fn handleRunCommand(allocator: std.mem.Allocator, config: RunConfig) !void {
         }
     }
 
-    stdout.print("\nGoodbye!\n", .{});
+    out.print("\nGoodbye!\n", .{}) catch {};
 }

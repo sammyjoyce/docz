@@ -645,17 +645,9 @@ pub const Client = struct {
             try writer.writeAll("],");
         }
 
-        // Messages array
-        try writer.writeAll("\"messages\":[");
-        for (params.messages, 0..) |message, i| {
-            if (i > 0) try writer.writeAll(",");
-            try writer.writeAll("{\"role\":\"");
-            try writer.writeAll(@tagName(message.role));
-            try writer.writeAll("\",\"content\":\"");
-            try writeEscapedJson(writer, message.content);
-            try writer.writeAll("\"}");
-        }
-        try writer.writeAll("]");
+        // Messages array (first-class content blocks)
+        try writer.writeAll("\"messages\":");
+        try models.writeWireMessages(writer, params.messages);
 
         // End JSON object
         try writer.writeAll("}");
@@ -688,7 +680,7 @@ pub const Client = struct {
     /// Convenience method: completion with just a prompt
     pub fn completePrompt(self: *Self, ctx: *SharedContext, model: []const u8, prompt: []const u8) ![]const u8 {
         const messages = [_]Message{
-            .{ .role = .user, .content = prompt },
+            .{ .role = .user, .content = .{ .text = prompt } },
         };
 
         const response = try self.complete(ctx, .{

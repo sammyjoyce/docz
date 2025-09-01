@@ -148,8 +148,8 @@ pub const Service = struct {
     /// Exchange authorization code for tokens
     pub fn exchangeCode(self: Service, code: []const u8, pkceVerifier: []const u8) AuthError!Credentials {
         const pkceParams = oauth.Pkce{
-            .codeVerifier = try self.allocator.dupe(u8, pkceVerifier),
-            .codeChallenge = try self.allocator.dupe(u8, ""), // Not needed for exchange
+            .verifier = try self.allocator.dupe(u8, pkceVerifier),
+            .challenge = try self.allocator.dupe(u8, ""), // Not needed for exchange
             .state = try self.allocator.dupe(u8, ""), // Not needed for exchange
         };
         defer pkceParams.deinit(self.allocator);

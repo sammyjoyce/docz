@@ -308,7 +308,7 @@ pub const Registry = struct {
 
     /// List all registered tools
     pub fn listTools(self: *Registry, allocator: std.mem.Allocator) ![]Tool {
-        var tools = std.ArrayList(Tool).initCapacity(allocator, 0) catch unreachable;
+        var tools = try std.ArrayList(Tool).initCapacity(allocator, 0);
         defer tools.deinit(allocator);
 
         var iterator = self.metadata.iterator();
@@ -321,8 +321,8 @@ pub const Registry = struct {
 
     /// List tools by agent
     pub fn listToolsByAgent(self: *Registry, allocator: std.mem.Allocator, agentName: []const u8) ![]Tool {
-        var tools = std.ArrayList(Tool).init(allocator);
-        defer tools.deinit();
+        var tools = std.ArrayList(Tool){};
+        defer tools.deinit(allocator);
 
         var iterator = self.metadata.iterator();
         while (iterator.next()) |entry| {
@@ -459,8 +459,8 @@ fn oracleTool(ctx: *SharedContext, allocator: std.mem.Allocator, input: []const 
     client.stream(ctx, .{
         .model = "claude-3-sonnet-20240229",
         .messages = &[_]anthropic.Message{
-            .{ .role = .system, .content = systemPrompt },
-            .{ .role = .user, .content = promptText },
+            .{ .role = .system, .content = .{ .text = systemPrompt } },
+            .{ .role = .user, .content = .{ .text = promptText } },
         },
         .onToken = &Callback.onToken,
     }) catch |err| switch (err) {

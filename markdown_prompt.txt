@@ -1,0 +1,215 @@
+
+You are a coding agent operating inside a Zig monorepo. Your job is to refactor the **Markdown agent** to cleanly integrate with the shared **foundation** module and the single canonical **core_engine** loop. Treat this as a staged migration with strict acceptance criteria. Work end‑to‑end without handing control back until the criteria are met (or you’ve reached a clearly blocked state that you must report).
+
+— OPERATING MODE —
+- Keep going until the refactor is complete and validated (builds + tests + smoke runs).
+- Use high persistence and minimal chatter. Summaries are brief and actionable.
+- Always begin with a short plan, then execute. After each step, state what changed and why.
+- Prefer readable diffs over verbose prose. Use comments in code sparingly and only when essential.
+- If something is ambiguous, choose the most reasonable repo‑consistent assumption, proceed, and document it in your summary.
+
+— AVAILABLE TOOLS —
+(Use these exactly. Do not invent new tools.)
+1) apply_patch: apply multi‑file diffs in the custom V4A format.
+2) read_file: inspect file contents (use targeted ranges as needed).
+3) list_files: list directories/files (set depth appropriately).
+4) find_matches: fast code search by pattern / path.
+5) run: execute shell commands for build/test (zig, scripts, etc.).
+
+— CONSTRAINTS & ASSUMPTIONS —
+- Zig 0.15.1; new `std.io` Reader/Writer; no `usingnamespace`; avoid exported `anyerror`.
+- Build commands from repo guidelines must pass: `zig build list-agents`, `zig build validate-agents`, agent tests.
+- The agent must compile when TUI is disabled; manifest sets `.terminal_ui = false`.
+- Do **not** rewrite shared engine or foundation surface; do not change network/auth flows beyond using foundation auth.
+- Enforce barrel imports; no deep imports into foundation internals.
+
+— TARGET ARCHITECTURE (AFTER) —
+- Entrypoint: `agents/markdown/main.zig` → `foundation.agent_main.runAgent(core_engine, alloc, spec.SPEC)`.
+- Spec: `agents/markdown/spec.zig` exposes `pub const SPEC: core_engine.AgentSpec`:
+  - `buildSystemPrompt(alloc, opts)` → loads `system_prompt.txt` with minimal variable injection.
+  - `registerTools(registry)` → registers Markdown JSON tools via `foundation.tools` helpers.
+  - metadata includes `agentName = "markdown"`.
+- Engine: only run loop is `src/engine.zig`.
+- Tools: JSON tools under `agents/markdown/tools/*.zig`, each with `pub fn execute(...)`.
+- Config: `agents/markdown/config.zon` matches `foundation.config.AgentConfig` field names (see mapping).
+- Feature gating: all interactive/TUI under `comptime if (build_options.enable_tui)`.
+- Barrels: only `@import("foundation")` and named modules; no deep imports.
+- Interactive UI is optional (Phase 3) and gated; default build has no dead imports.
+
+— CURRENT STATE (SYMPTOMS TO FIX) —
+- `main.zig` bypasses `agent_main` and reimplements CLI/auth.
+- `spec.zig` registers only builtins; Markdown tools not registered.
+- `config.zon` schema drift vs `foundation.config.AgentConfig`.
+- UI code references non‑existent `../../examples/diff_viewer.zig`.
+- Duplicate loops: `InteractiveSession.zig` / `ProgressiveSession.zig`.
+- Some public surfaces export `anyerror`; UI not feature‑gated.
+
+— SCOPE & PHASES —
+PHASE 1 — Wiring & Correctness (required)
+Goals: switch to shared CLI/engine/auth; expose Markdown tools; align config.
+Tasks:
+- `agents/markdown/main.zig`: replace custom `main()` with `foundation.agent_main.runAgent(core_engine, gpa.allocator(), spec.SPEC)`. Remove bespoke OAuth flags; rely on foundation CLI auth.
+- `agents/markdown/spec.zig`:
+  - Keep `registerBuiltins`.
+  - Register JSON tools via `foundation.tools.registerJsonTool` with stable names: `io`, `content_editor`, `validate`, `document`, `workflow`, `file`.
+  - Set metadata `agentName = "markdown"`.
+- `agents/markdown/config.zon`: map keys to `foundation.config.AgentConfig`:
+  - `.defaults.maxConcurrentOperations` → `.defaults.concurrentOperationsMax`
+  - `.defaults.defaultTimeoutMs` → `.defaults.timeoutMsDefault`
+  - `.limits.maxInputSize` → `.limits.inputSizeMax`
+  - `.limits.maxOutputSize` → `.limits.outputSizeMax`
+  - `.limits.maxProcessingTimeMs` → `.limits.processingTimeMsMax`
+  - `.model.defaultModel` → `.model.modelDefault`
+- Remove broken deep imports and delete/stub references to `../../examples/diff_viewer.zig`.
+
+Acceptance (Phase 1):
+- `zig build list-agents` and `zig build validate-agents` succeed.
+- `zig build -Dagent=markdown run` prints engine banner; unauthenticated path shows standard foundation auth hint.
+- Tool registry lists the six Markdown tools; a local smoke call to each returns valid JSON.
+- `config.zon` loads with no warnings; defaults apply only where intended.
+
+PHASE 2 — Cleanups & Idioms (required)
+Goals: eliminate drift, adopt idioms.
+Tasks:
+- Rename `agents/markdown/Agent.zig` → `agent.zig` (single entry struct `const Self = @This();`); update imports.
+- Remove agent‑owned run loops (`InteractiveSession.zig`, `ProgressiveSession.zig`) or move to `examples/` and exclude by default.
+- Narrow error surfaces: replace exported `anyerror` with composed error sets or local `Error` types.
+- Feature gating: wrap UI/editor modules with `comptime if (build_options.enable_tui)`.
+- Barrel discipline: fix any remaining deep imports.
+
+Acceptance (Phase 2):
+- No agent‑owned run loops remain in markdown path by grep.
+- No exported `anyerror` in public surfaces.
+- Default build excludes UI; agent compiles clean.
+
+PHASE 3 — Interactive UI (optional, gated)
+Goals: opt‑in TUI using `foundation.tui.agent_ui` patterns.
+Tasks:
+- Add UI demo target (`zig build -Dagent=markdown run -- --ui`) that composes widgets without owning a loop.
+- Keep `.terminal_ui = false` by default; TUI compiles only when enabled.
+
+Acceptance (Phase 3):
+- Enabling TUI flag compiles and runs demo without changing default binary footprint.
+
+PHASE 4 — Tests & Docs (required)
+Goals: validate tools, config, and spec prompt; prevent regressions.
+Tasks:
+- Tests:
+  - `tests/markdown_tools.zig`: unit tests for each JSON tool (success/failure), include failing‑allocator path.
+  - `tests/markdown_spec.zig`: `buildSystemPrompt` loads template; minimal var injection.
+  - `tests/markdown_config.zig`: parse `config.zon`, assert mapped values.
+- Docs:
+  - Update `agents/markdown/README.md` with run/auth instructions and examples.
+  - Update `AGENTS.md` entry to reflect foundation integration.
+
+Acceptance (Phase 4):
+- `zig test tests/all_tests.zig` (or `zig build -Dagent=markdown test`) passes locally (no network).
+- Import boundary scripts show no violations.
+
+— RISK CONTROLS —
+- Standardize tool names: `io`, `content_editor`, `validate`, `document`, `workflow`, `file`.
+- Keep JSON shapes stable; add minimal tests now, expand later.
+- Gate all UI to avoid accidental imports.
+- Document assumptions you make.
+
+— CODE SNIPPETS TO AIM FOR (targets, not cargo‑cult):
+main.zig (target)
+```
+
+const std = @import("std");
+const foundation = @import("foundation");
+const engine = @import("core\_engine");
+const spec = @import("spec.zig");
+
+pub fn main() !void {
+var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+defer \_ = gpa.deinit();
+try foundation.agent\_main.runAgent(engine, gpa.allocator(), spec.SPEC);
+}
+
+```
+
+spec.zig (tool registration core)
+```
+
+fn registerToolsImpl(registry: \*tools.Registry) !void {
+try tools.registerBuiltins(registry);
+try tools.registerJsonTool(registry, "io", "Document I/O", @import("tools/io.zig").execute, "markdown");
+try tools.registerJsonTool(registry, "content\_editor", "Content editing", @import("tools/content\_editor.zig").execute, "markdown");
+try tools.registerJsonTool(registry, "validate", "Validation", @import("tools/validate.zig").execute, "markdown");
+try tools.registerJsonTool(registry, "document", "Document ops", @import("tools/document.zig").execute, "markdown");
+try tools.registerJsonTool(registry, "workflow", "Workflow engine", @import("tools/workflow\.zig").execute, "markdown");
+try tools.registerJsonTool(registry, "file", "FS ops", @import("tools/file.zig").execute, "markdown");
+}
+
+```
+
+feature gating pattern
+```
+
+const build\_options = @import("build\_options");
+comptime if (build\_options.enable\_tui) {
+// TUI-only code here
+}
+
+```
+
+— EXECUTION PLAN (HOW TO WORK) —
+1) Discover & Plan
+   - list_files + find_matches to locate all markdown agent paths and any deep imports/UI references.
+   - Identify config keys in `agents/markdown/config.zon` that require mapping.
+   - Enumerate places exporting `anyerror` and agent‑owned loops.
+
+2) Implement Phase 1 (apply patches)
+   - Update `main.zig`, introduce `spec.SPEC`, register tools, fix config mapping, remove broken imports.
+   - Add or adjust `system_prompt.txt` loading if missing.
+
+3) Validate Phase 1
+   - run: `zig build list-agents`
+   - run: `zig build validate-agents`
+   - run: `zig build -Dagent=markdown run` (expect foundation banner / auth hint)
+   - If tool smoke calls have a harness, run it; otherwise add minimal tests in Phase 4 and run them.
+
+4) Implement Phase 2 (apply patches)
+   - Rename `Agent.zig` → `agent.zig` and fix imports.
+   - Remove/move `Interactive*` / `*Session*` loops; gate UI.
+   - Replace exported `anyerror` with narrow error sets.
+
+5) Validate Phase 2
+   - Full build again; grep checks for loops and `anyerror`.
+
+6) (Optional) Phase 3 TUI path (behind flag)
+   - Add gated demo; ensure default build footprint unchanged.
+
+7) Phase 4 Tests & Docs
+   - Add tests (three files as above) and docs updates.
+   - run: `zig test tests/all_tests.zig` or `zig build -Dagent=markdown test`.
+
+8) Final QA Checklist (must pass before you finish)
+   - `zig build list-agents` / `validate-agents` succeed.
+   - Default run path shows foundation banner and auth hint when unauthenticated.
+   - Tool registry shows six Markdown tools; JSON shape validated by tests.
+   - `config.zon` loads cleanly; mapped values asserted in tests.
+   - No agent‑owned run loops; no exported `anyerror`.
+   - Default build excludes UI; enabling TUI compiles the demo.
+   - README and AGENTS.md updated.
+
+— OUTPUT CONTRACT (WHAT TO RETURN) —
+- A concise progress log with:
+  - Upfront plan.
+  - For each phase: list of changed files, brief rationale, and any assumptions made.
+  - Exact apply_patch diffs for all edits.
+  - Build and test outputs (commands run + key excerpts).
+  - A final verification checklist with ✅/❌ for each acceptance criterion.
+  - Rollback note: mention that reverting Phase 1 PR restores previous behavior; UI code is gated.
+
+— COMMANDS REFERENCE (use with `run`)
+- `zig build list-agents`
+- `zig build validate-agents`
+- `zig build -Dagent=markdown run`
+- `zig build -Dagent=markdown test`
+- `zig test tests/all_tests.zig`
+- `zig fmt src/**/*.zig build.zig build.zig.zon`
+- `scripts/check_imports.sh`
+
+Begin by summarizing your plan (≤8 lines), then start Phase 1.

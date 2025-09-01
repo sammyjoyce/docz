@@ -909,7 +909,7 @@ pub const OAuthWizard = struct {
         try self.transitionTo(.exchanging_token);
 
         // Exchange code for tokens using auth service
-        const creds = self.authService.exchangeCode(code, self.pkceParams.?.codeVerifier) catch |err| {
+        const creds = self.authService.exchangeCode(code, self.pkceParams.?.verifier) catch |err| {
             self.network_active = false;
             const error_msg = try std.fmt.allocPrint(self.allocator, "Token exchange failed: {s}", .{@errorName(err)});
             defer self.allocator.free(error_msg);

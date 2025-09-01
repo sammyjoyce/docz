@@ -4,10 +4,167 @@ const std = @import("std");
 
 pub const MessageRole = enum { system, user, assistant, tool };
 
+/// Content blocks (Anthropic-style)
+pub const ContentBlock = union(enum) {
+    /// {"type":"text","text": "..."}
+    text: struct { text: []const u8 },
+    /// {"type":"tool_use","id":"...","name":"...","input":{...}}
+    /// `input_json` must be a valid JSON object string; we write it raw (no extra quoting).
+    tool_use: struct { id: []const u8, name: []const u8, input_json: []const u8 },
+    /// {"type":"tool_result","tool_use_id":"...","content":"...","is_error":true?}
+    tool_result: struct { tool_use_id: ?[]const u8 = null, content: []const u8, is_error: bool = false },
+};
+
+/// A message can be a single text string, or a list of blocks.
+pub const MessageContent = union(enum) {
+    text: []const u8,
+    blocks: []const ContentBlock,
+};
+
 pub const Message = struct {
     role: MessageRole,
-    content: []const u8,
+    content: MessageContent,
 };
+
+/// Helpers (role → string)
+pub fn roleString(role: MessageRole) []const u8 {
+    return switch (role) {
+        .system => "system",
+        .user => "user",
+        .assistant => "assistant",
+        .tool => "tool",
+    };
+}
+
+/// JSON writers (no heap, write directly to a writer)
+fn writeJSONString(w: anytype, s: []const u8) !void {
+    try w.writeByte('"');
+    for (s) |c| {
+        switch (c) {
+            '"' => try w.writeAll("\\\""),
+            '\\' => try w.writeAll("\\\\"),
+            '\n' => try w.writeAll("\\n"),
+            '\r' => try w.writeAll("\\r"),
+            '\t' => try w.writeAll("\\t"),
+            else => {
+                if (c < 0x20) {
+                    var buf: [6]u8 = .{ '\\', 'u', '0', '0', 0, 0 };
+                    const HEX = "0123456789abcdef";
+                    buf[4] = HEX[(c >> 4) & 0xF];
+                    buf[5] = HEX[c & 0xF];
+                    try w.writeAll(&buf);
+                } else {
+                    try w.writeByte(c);
+                }
+            },
+        }
+    }
+    try w.writeByte('"');
+}
+
+fn writeContentBlock(w: anytype, b: ContentBlock) !void {
+    switch (b) {
+        .text => |tb| {
+            try w.writeAll("{\"type\":\"text\",\"text\":");
+            try writeJSONString(w, tb.text);
+            try w.writeByte('}');
+        },
+        .tool_use => |tu| {
+            try w.writeAll("{\"type\":\"tool_use\",\"id\":");
+            try writeJSONString(w, tu.id);
+            try w.writeAll(",\"name\":");
+            try writeJSONString(w, tu.name);
+            try w.writeAll(",\"input\":");
+            // Raw JSON (assumed valid)
+            try w.writeAll(tu.input_json);
+            try w.writeByte('}');
+        },
+        .tool_result => |tr| {
+            try w.writeAll("{\"type\":\"tool_result\"");
+            if (tr.tool_use_id) |tid| {
+                try w.writeAll(",\"tool_use_id\":");
+                try writeJSONString(w, tid);
+            }
+            if (tr.is_error) try w.writeAll(",\"is_error\":true");
+            try w.writeAll(",\"content\":");
+            try writeJSONString(w, tr.content);
+            try w.writeByte('}');
+        },
+    }
+}
+
+/// Write a single message as an API wire object ("{\"role\":\"...\",\"content\": ...}").
+pub fn writeWireMessage(w: anytype, msg: Message) !void {
+    try w.writeAll("{\"role\":\"");
+    try w.writeAll(roleString(msg.role));
+    try w.writeAll("\",\"content\":");
+    switch (msg.content) {
+        .text => |t| try writeJSONString(w, t),
+        .blocks => |bs| {
+            try w.writeByte('[');
+            var first = true;
+            for (bs) |b| {
+                if (!first) try w.writeByte(',');
+                first = false;
+                try writeContentBlock(w, b);
+            }
+            try w.writeByte(']');
+        },
+    }
+    try w.writeByte('}');
+}
+
+/// Write an array of messages for the request body: `[ {role,content}, ... ]`
+pub fn writeWireMessages(w: anytype, msgs: []const Message) !void {
+    try w.writeByte('[');
+    var first = true;
+    for (msgs) |m| {
+        if (!first) try w.writeByte(',');
+        first = false;
+        try writeWireMessage(w, m);
+    }
+    try w.writeByte(']');
+}
+
+/// Free a Message's owned memory (strings/slices inside). Assumes all slices were duped by the allocator.
+pub fn freeMessage(allocator: std.mem.Allocator, msg: *Message) void {
+    switch (msg.content) {
+        .text => |t| allocator.free(t),
+        .blocks => |bs| {
+            for (bs) |b| switch (b) {
+                .text => |tb| allocator.free(tb.text),
+                .tool_use => |tu| {
+                    allocator.free(tu.id);
+                    allocator.free(tu.name);
+                    allocator.free(tu.input_json);
+                },
+                .tool_result => |tr| {
+                    if (tr.tool_use_id) |tid| allocator.free(tid);
+                    allocator.free(tr.content);
+                },
+            };
+            allocator.free(bs);
+        },
+    }
+    // Reset to safe state
+    msg.* = .{ .role = msg.role, .content = .{ .text = "" } };
+}
+
+/// Convenience: create a role=tool message with a single tool_result block
+pub fn makeToolResultMessage(
+    allocator: std.mem.Allocator,
+    tool_use_id: ?[]const u8,
+    content: []const u8,
+    is_error: bool,
+) !Message {
+    var blocks = try allocator.alloc(ContentBlock, 1);
+    blocks[0] = .{ .tool_result = .{
+        .tool_use_id = if (tool_use_id) |tid| try allocator.dupe(u8, tid) else null,
+        .content = try allocator.dupe(u8, content),
+        .is_error = is_error,
+    } };
+    return .{ .role = .tool, .content = .{ .blocks = blocks } };
+}
 
 /// OAuth credentials stored to disk
 pub const Credentials = struct {
@@ -56,15 +213,46 @@ pub const OAuthProvider = struct {
     scopes: []const []const u8,
 
     pub fn buildAuthUrl(self: OAuthProvider, allocator: std.mem.Allocator, pkceParams: Pkce) ![]u8 {
+        // Percent-encode each query value (RFC 3986 unreserved set)
+        var buf = std.ArrayList(u8){};
+        errdefer buf.deinit(allocator);
+        const w = buf.writer(allocator);
+        try w.print("{s}?client_id=", .{self.authorizationUrl});
+        try writePctEncoded(w, self.clientId);
+        try w.writeAll("&response_type=code&redirect_uri=");
+        try writePctEncoded(w, self.redirectUri);
+        try w.writeAll("&scope=");
         const scopesJoined = try std.mem.join(allocator, " ", self.scopes);
         defer allocator.free(scopesJoined);
-        return try std.fmt.allocPrint(
-            allocator,
-            "{s}?client_id={s}&response_type=code&redirect_uri={s}&scope={s}&code_challenge={s}&code_challenge_method=S256&state={s}",
-            .{ self.authorizationUrl, self.clientId, self.redirectUri, scopesJoined, pkceParams.codeChallenge, pkceParams.state },
-        );
+        try writePctEncoded(w, scopesJoined);
+        try w.writeAll("&code_challenge=");
+        try writePctEncoded(w, pkceParams.codeChallenge);
+        try w.writeAll("&code_challenge_method=S256&state=");
+        try writePctEncoded(w, pkceParams.state);
+        return try buf.toOwnedSlice(allocator);
     }
 };
+
+inline fn isUnreserved(b: u8) bool {
+    return (b >= 'A' and b <= 'Z') or
+        (b >= 'a' and b <= 'z') or
+        (b >= '0' and b <= '9') or
+        b == '-' or b == '.' or b == '_' or b == '~';
+}
+
+fn writePctEncoded(w: anytype, s: []const u8) !void {
+    const HEX = "0123456789ABCDEF";
+    for (s) |b| {
+        if (isUnreserved(b)) {
+            try w.writeByte(b);
+        } else {
+            var out: [3]u8 = .{ '%', 0, 0 };
+            out[1] = HEX[(b >> 4) & 0xF];
+            out[2] = HEX[b & 0xF];
+            try w.writeAll(&out);
+        }
+    }
+}
 
 /// Token refresh state to prevent concurrent refreshes
 pub const RefreshLock = struct {
@@ -73,6 +261,14 @@ pub const RefreshLock = struct {
 
     pub fn init() RefreshLock {
         return .{ .mutex = .{}, .inProgress = false };
+    }
+    pub fn acquire(self: *RefreshLock) void {
+        self.mutex.lock();
+        self.inProgress = true;
+    }
+    pub fn release(self: *RefreshLock) void {
+        self.inProgress = false;
+        self.mutex.unlock();
     }
 };
 
@@ -209,7 +405,10 @@ pub const Stream = struct {
     maxTokens: usize = 256,
     temperature: f32 = 0.7,
     messages: []const Message,
-    onToken: *const fn ([]const u8) void,
+    system: ?[]const u8 = null,
+    /// Optional per-token callback with user context pointer.
+    onToken: ?*const fn (?*anyopaque, []const u8) void = null,
+    user_ctx: ?*anyopaque = null,
 };
 
 pub const CompletionResult = struct {
@@ -217,10 +416,9 @@ pub const CompletionResult = struct {
     usage: Usage,
     allocator: std.mem.Allocator,
 
-    pub fn deinit(self: *CompletionResult, allocator: std.mem.Allocator) void {
+    /// Content is owned by the caller/collector; nothing to free here.
+    pub fn deinit(self: *CompletionResult) void {
         _ = self;
-        _ = allocator;
-        // Content is owned by the collector, which will be freed separately
     }
 };
 
@@ -234,4 +432,5 @@ pub const Complete = struct {
     maxTokens: usize = 256,
     temperature: f32 = 0.7,
     messages: []const Message,
+    system: ?[]const u8 = null,
 };

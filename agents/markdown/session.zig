@@ -2174,8 +2174,8 @@ pub const MetricsCollector = struct {
         self.* = .{
             .allocator = allocator,
             .config = metrics_config,
-            .document_metrics = std.ArrayList(DocumentMetricsSnapshot).init(allocator),
-            .session_metrics = std.ArrayList(SessionMetricsSnapshot).init(allocator),
+            .document_metrics = std.ArrayList(DocumentMetricsSnapshot){},
+            .session_metrics = std.ArrayList(SessionMetricsSnapshot){},
             .sparklines = std.StringHashMap([]f32).init(allocator),
         };
         return self;

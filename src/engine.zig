@@ -49,7 +49,7 @@ pub const Engine = struct {
             .allocator = allocator,
             .client = null,
             .shared_ctx = SharedContext.init(allocator),
-            .messages = std.ArrayList(network.Anthropic.Message).init(allocator),
+            .messages = std.ArrayList(network.Anthropic.Message){},
             .tool_registry = tools.Registry.init(allocator),
             .options = options,
             .system_base = null,
@@ -57,10 +57,10 @@ pub const Engine = struct {
     }
 
     pub fn deinit(self: *Self) void {
-        for (self.messages.items) |msg| {
-            self.allocator.free(msg.content);
+        for (self.messages.items) |*msg| {
+            network.Anthropic.Models.freeMessage(self.allocator, msg);
         }
-        self.messages.deinit();
+        self.messages.deinit(self.allocator);
         self.shared_ctx.deinit();
         if (self.client) |*c| c.deinit();
         self.tool_registry.deinit();
@@ -108,7 +108,7 @@ pub const Engine = struct {
             log.info("Token expiring soon, refreshing...", .{});
 
             // Get fresh tokens; take ownership of returned allocations.
-            var new_creds = try Auth.OAuth.refreshTokens(self.allocator, creds.refreshToken);
+            const new_creds = try Auth.OAuth.refreshTokens(self.allocator, creds.refreshToken);
 
             // Update stored credentials
             const updated_store_creds = Auth.store.StoredCredentials{
@@ -136,13 +136,10 @@ pub const Engine = struct {
 
     /// Run inference with streaming support and tool execution
     pub fn runInference(self: *Self, user_input: []const u8) !void {
-        const stdout = std.debug;
+        var out = std.fs.File.stdout().deprecatedWriter();
 
-        // Add user message
-        try self.messages.append(self.allocator, .{
-            .role = .user,
-            .content = try self.allocator.dupe(u8, user_input),
-        });
+        // Add user message (text content)
+        try self.messages.append(self.allocator, .{ .role = .user, .content = .{ .text = try self.allocator.dupe(u8, user_input) } });
 
         // Trim context if too large (keep last 20 messages)
         try self.trimContext();
@@ -152,65 +149,83 @@ pub const Engine = struct {
         defer if (system_prompt) |sp| self.allocator.free(sp);
 
         if (self.options.stream) {
-            // Streaming mode with SSE
-            stdout.print("\nClaude: ", .{});
-
-            // Initialize streaming state
-            self.shared_ctx.anthropic.contentCollector.clearRetainingCapacity();
-            self.shared_ctx.anthropic.messageId = null;
-            self.shared_ctx.anthropic.stopReason = null;
-            self.shared_ctx.anthropic.model = null;
-
-            // Stream the response
+            // Streaming mode with SSE. Loop to allow tool → continue cycles.
             var client = self.client orelse return error.NotAuthenticated;
-            const streamParams = network.Anthropic.Client.StreamParameters{
-                .model = self.options.model,
-                .messages = self.messages.items,
-                .maxTokens = self.options.max_tokens,
-                .temperature = self.options.temperature,
-                .system = system_prompt,
-                .onToken = struct {
-                    fn callback(ctx: *SharedContext, data: []const u8) void {
-                        Engine.processStreamingEvent(ctx, data);
+            while (true) {
+                out.writeAll("\nClaude: ") catch {};
+
+                // Initialize streaming state
+                self.shared_ctx.anthropic.contentCollector.clearRetainingCapacity();
+                self.shared_ctx.anthropic.messageId = null;
+                self.shared_ctx.anthropic.stopReason = null;
+                self.shared_ctx.anthropic.model = null;
+                // Reset per-message tool queue/buffers
+                self.shared_ctx.tools.resetForNewAssistantMessage();
+
+                // Stream the response
+                const streamParams = network.Anthropic.Client.StreamParameters{
+                    .model = self.options.model,
+                    .messages = self.messages.items,
+                    .maxTokens = self.options.max_tokens,
+                    .temperature = self.options.temperature,
+                    .system = system_prompt,
+                    .onToken = struct {
+                        fn callback(ctx: *SharedContext, data: []const u8) void {
+                            Engine.processStreamingEvent(ctx, data);
+                        }
+                    }.callback,
+                };
+
+                try client.createMessageStream(&self.shared_ctx, streamParams);
+
+                // Add assistant message as blocks: text + tool_use blocks captured during SSE
+                var blocks = std.ArrayListUnmanaged(network.Anthropic.Models.ContentBlock){};
+                defer blocks.deinit(self.allocator);
+                if (self.shared_ctx.anthropic.contentCollector.items.len > 0) {
+                    try blocks.append(self.allocator, .{ .text = .{ .text = try self.allocator.dupe(u8, self.shared_ctx.anthropic.contentCollector.items) } });
+                }
+                // Include each finalized pending tool_use
+                for (self.shared_ctx.tools.queue.items) |p| {
+                    if (p.jsonComplete) |input_json| {
+                        const id_bytes = if (p.id) |id| try self.allocator.dupe(u8, id) else try self.allocator.dupe(u8, "tool-use");
+                        const name_bytes = if (p.name) |nm| try self.allocator.dupe(u8, nm) else try self.allocator.dupe(u8, "unknown");
+                        try blocks.append(self.allocator, .{ .tool_use = .{
+                            .id = id_bytes,
+                            .name = name_bytes,
+                            .input_json = try self.allocator.dupe(u8, input_json),
+                        } });
                     }
-                }.callback,
-            };
+                }
+                const owned_blocks = try blocks.toOwnedSlice(self.allocator);
+                try self.messages.append(self.allocator, .{ .role = .assistant, .content = .{ .blocks = owned_blocks } });
 
-            try client.createMessageStream(&self.shared_ctx, streamParams);
+                // Check for tool calls and execute them
+                const executed = try self.handleToolCalls();
 
-            // Add assistant message to history
-            const assistant_content = try self.allocator.dupe(u8, self.shared_ctx.anthropic.contentCollector.items);
-            try self.messages.append(self.allocator, .{
-                .role = .assistant,
-                .content = assistant_content,
-            });
-
-            // Check for tool calls and execute them
-            try self.handleToolCalls();
-
-            stdout.print("\n\n", .{});
+                out.writeAll("\n\n") catch {};
+                if (!executed) break; // no tool calls → done; else loop again
+            }
         } else {
-            // Non-streaming mode
+            // Non-streaming mode with tool → continue cycle
             var client = self.client orelse return error.NotAuthenticated;
-            var result = try client.createMessage(.{
-                .model = self.options.model,
-                .messages = self.messages.items,
-                .maxTokens = self.options.max_tokens,
-                .temperature = self.options.temperature,
-                .system = system_prompt,
-            });
-            defer result.deinit();
+            while (true) {
+                var result = try client.createMessage(.{
+                    .model = self.options.model,
+                    .messages = self.messages.items,
+                    .maxTokens = self.options.max_tokens,
+                    .temperature = self.options.temperature,
+                    .system = system_prompt,
+                });
+                defer result.deinit();
 
-            stdout.print("\nClaude: {s}\n\n", .{result.content});
+                std.fmt.format(out, "\nClaude: {s}\n\n", .{result.content}) catch {};
 
-            // Add assistant message
-            try self.messages.append(self.allocator, .{
-                .role = .assistant,
-                .content = try self.allocator.dupe(u8, result.content),
-            });
+                // Add assistant message (text content)
+                try self.messages.append(self.allocator, .{ .role = .assistant, .content = .{ .text = try self.allocator.dupe(u8, result.content) } });
 
-            // Check for tool calls and execute them
-            try self.handleToolCalls();
+                // Check for tool calls and execute them
+                if (!try self.handleToolCalls()) break;
+            }
         }
     }
 
@@ -233,6 +248,7 @@ pub const Engine = struct {
                 type: ?[]const u8 = null,
                 text: ?[]const u8 = null,
                 partial_json: ?[]const u8 = null,
+                stop_reason: ?[]const u8 = null,
             } = null,
         };
 
@@ -258,18 +274,8 @@ pub const Engine = struct {
             if (parsed.value.content_block) |block| {
                 if (block.type) |block_type| {
                     if (std.mem.eql(u8, block_type, "tool_use")) {
-                        // Start accumulating tool JSON
-                        ctx.tools.hasPending = true;
-                        ctx.tools.toolName = if (block.name) |name|
-                            ctx.anthropic.allocator.dupe(u8, name) catch null
-                        else
-                            null;
-                        ctx.tools.toolId = if (block.id) |id|
-                            ctx.anthropic.allocator.dupe(u8, id) catch null
-                        else
-                            null;
-                        ctx.tools.jsonComplete = null;
-                        ctx.tools.tokenBuffer.clearRetainingCapacity();
+                        // Start a new pending tool_use
+                        ctx.tools.pushToolStart(block.name, block.id);
                     }
                 }
             }
@@ -279,24 +285,21 @@ pub const Engine = struct {
                     if (std.mem.eql(u8, delta_type, "text_delta")) {
                         if (delta.text) |text| {
                             // Print text content
-                            std.debug.print("{s}", .{text});
+                            _ = std.fs.File.stdout().deprecatedWriter().writeAll(text) catch {};
                             // Accumulate for history
                             ctx.anthropic.contentCollector.appendSlice(ctx.anthropic.allocator, text) catch {};
                         }
                     } else if (std.mem.eql(u8, delta_type, "input_json_delta")) {
                         if (delta.partial_json) |json_part| {
-                            // Accumulate tool JSON
-                            ctx.tools.tokenBuffer.appendSlice(json_part) catch {};
+                            // Accumulate tool JSON into current tool_use
+                            ctx.tools.appendToCurrentJson(json_part);
                         }
                     }
                 }
             }
         } else if (std.mem.eql(u8, event_type, "content_block_stop")) {
-            // Finalize tool JSON accumulation
-            if (ctx.tools.hasPending and ctx.tools.tokenBuffer.items.len > 0) {
-                ctx.tools.jsonComplete = ctx.anthropic.allocator.dupe(u8, ctx.tools.tokenBuffer.items) catch null;
-                ctx.tools.hasPending = false;
-            }
+            // Finalize current tool_use JSON accumulation
+            ctx.tools.finalizeCurrent();
         } else if (std.mem.eql(u8, event_type, "message_delta")) {
             if (parsed.value.delta) |delta| {
                 if (delta.stop_reason) |stop_reason| {
@@ -321,8 +324,14 @@ pub const Engine = struct {
         };
         defer if (spoofContent) |content| self.allocator.free(content);
 
-        var prompt_builder = std.ArrayList(u8).initCapacity(self.allocator, 0) catch unreachable;
+        var prompt_builder = std.ArrayListUnmanaged(u8){};
         defer prompt_builder.deinit(self.allocator);
+
+        // Prepend agent-provided base system prompt if set
+        if (self.system_base) |base| {
+            try prompt_builder.appendSlice(self.allocator, base);
+            try prompt_builder.appendSlice(self.allocator, "\n\n");
+        }
 
         // Prepend spoof content if available
         if (spoofContent) |content| {
@@ -355,46 +364,72 @@ pub const Engine = struct {
         return try prompt_builder.toOwnedSlice(self.allocator);
     }
 
-    /// Handle tool calls from the assistant response
-    fn handleToolCalls(self: *Self) !void {
-        // Check if we have accumulated tool JSON from streaming
-        if (self.shared_ctx.tools.jsonComplete) |tool_json| {
-            defer self.allocator.free(self.shared_ctx.tools.jsonComplete.?);
-            self.shared_ctx.tools.jsonComplete = null;
+    /// Returns true if at least one tool call was executed.
+    fn handleToolCalls(self: *Self) !bool {
+        var executed = false;
+        var tctx = &self.shared_ctx.tools;
 
-            // Parse the tool call - Anthropic sends tool parameters as JSON
-            const parsed = std.json.parseFromSlice(std.json.Value, self.allocator, tool_json, .{}) catch |err| {
-                log.warn("Failed to parse tool call JSON: {}", .{err});
-                return;
-            };
-            defer parsed.deinit();
+        // Preferred path: drain queued multi-tool calls
+        if (tctx.queue.items.len > 0) {
+            var i: usize = 0;
+            while (i < tctx.queue.items.len) : (i += 1) {
+                const p = &tctx.queue.items[i];
+                if (p.jsonComplete) |tool_json| {
+                    const parsed = std.json.parseFromSlice(std.json.Value, self.allocator, tool_json, .{}) catch |err| {
+                        log.warn("Failed to parse tool call JSON: {}", .{err});
+                        continue;
+                    };
+                    defer parsed.deinit();
+                    if (p.name) |tool_name| {
+                        try self.executeTool(tool_name, p.id, &parsed.value);
+                        executed = true;
+                    } else {
+                        log.warn("Tool call had no name; skipping", .{});
+                    }
+                }
+            }
+            // Free and clear queue
+            for (tctx.queue.items) |*p| {
+                if (p.name) |n| self.allocator.free(n);
+                if (p.id) |qid| self.allocator.free(qid);
+                if (p.jsonComplete) |j| self.allocator.free(j);
+                p.tokenBuffer.deinit();
+            }
+            tctx.queue.clearRetainingCapacity();
+            tctx.current = null;
+        }
 
-            // Extract tool name and arguments from the accumulated JSON
-            if (parsed.value == .object) {
-                if (self.shared_ctx.tools.toolName) |tool_name| {
-                    defer self.allocator.free(self.shared_ctx.tools.toolName.?);
-                    self.shared_ctx.tools.toolName = null;
-
-                    try self.executeTool(tool_name, &parsed.value);
+        // Legacy fallback if nothing executed
+        if (!executed) {
+            if (tctx.jsonComplete) |tool_json| {
+                defer self.allocator.free(tctx.jsonComplete.?);
+                tctx.jsonComplete = null;
+                const parsed = std.json.parseFromSlice(std.json.Value, self.allocator, tool_json, .{}) catch |err| {
+                    log.warn("Failed to parse tool call JSON: {}", .{err});
+                    return false;
+                };
+                defer parsed.deinit();
+                if (tctx.toolName) |tool_name| {
+                    const id = tctx.toolId;
+                    self.allocator.free(tctx.toolName.?);
+                    tctx.toolName = null;
+                    if (tctx.toolId) |tid| {
+                        self.allocator.free(tid);
+                        tctx.toolId = null;
+                    }
+                    try self.executeTool(tool_name, id, &parsed.value);
+                    executed = true;
                 } else {
-                    log.warn("Tool name not available for execution", .{});
+                    log.warn("Tool name not available for execution (legacy path)", .{});
                 }
             }
         }
 
-        // Clean up tool context
-        if (self.shared_ctx.tools.toolName) |name| {
-            self.allocator.free(name);
-            self.shared_ctx.tools.toolName = null;
-        }
-        if (self.shared_ctx.tools.toolId) |id| {
-            self.allocator.free(id);
-            self.shared_ctx.tools.toolId = null;
-        }
+        return executed;
     }
 
-    /// Execute a tool by name with given arguments
-    fn executeTool(self: *Self, tool_name: []const u8, arguments: *const std.json.Value) !void {
+    /// Execute a tool by name with given arguments (and optional tool_use_id)
+    fn executeTool(self: *Self, tool_name: []const u8, tool_id: ?[]const u8, arguments: *const std.json.Value) !void {
         // Get the tool function from registry
         const tool_func = self.tool_registry.get(tool_name) orelse {
             log.warn("Tool not found in registry: {s}", .{tool_name});
@@ -402,7 +437,14 @@ pub const Engine = struct {
         };
 
         // Convert arguments to JSON string for the tool function
-        const args_json = try std.json.stringifyAlloc(self.allocator, arguments.*, .{});
+        var aj = std.ArrayList(u8){};
+        defer aj.deinit(self.allocator);
+        var ajw: std.Io.Writer.Allocating = .fromArrayList(self.allocator, &aj);
+        std.json.Stringify.value(arguments.*, .{}, &ajw.writer) catch {
+            return error.Unexpected;
+        };
+        aj = ajw.toArrayList();
+        const args_json = try aj.toOwnedSlice(self.allocator);
         defer self.allocator.free(args_json);
 
         log.info("Executing tool: {s}", .{tool_name});
@@ -410,27 +452,19 @@ pub const Engine = struct {
         // Execute the tool
         const result = tool_func(&self.shared_ctx, self.allocator, args_json) catch |err| {
             log.err("Tool execution failed: {s} - {}", .{ tool_name, err });
-            const error_msg = try std.fmt.allocPrint(self.allocator, "Tool '{s}' failed: {s}", .{ tool_name, @errorName(err) });
-            defer self.allocator.free(error_msg);
-
-            try self.messages.append(self.allocator, .{
-                .role = .user,
-                .content = error_msg,
-            });
+            const msg = try std.fmt.allocPrint(self.allocator, "Tool '{s}' failed: {s}", .{ tool_name, @errorName(err) });
+            defer self.allocator.free(msg);
+            const tool_err_msg = try network.Anthropic.Models.makeToolResultMessage(self.allocator, tool_id, msg, true);
+            try self.messages.append(self.allocator, tool_err_msg);
             return;
         };
         defer self.allocator.free(result);
 
         log.info("Tool '{s}' completed successfully", .{tool_name});
 
-        // Add tool result to conversation as a user message
-        const tool_result_content = try std.fmt.allocPrint(self.allocator, "Tool '{s}' result: {s}", .{ tool_name, result });
-        defer self.allocator.free(tool_result_content);
-
-        try self.messages.append(self.allocator, .{
-            .role = .user,
-            .content = tool_result_content,
-        });
+        // Add structured tool_result with optional tool_use_id
+        const tool_ok_msg = try network.Anthropic.Models.makeToolResultMessage(self.allocator, tool_id, result, false);
+        try self.messages.append(self.allocator, tool_ok_msg);
     }
 
     /// Execute multiple tools in parallel when supported
@@ -440,7 +474,7 @@ pub const Engine = struct {
         // For now, execute tools sequentially (parallel execution can be added later)
         // This maintains compatibility while allowing for future parallel implementation
         for (tool_calls) |tool_call| {
-            try self.executeTool(tool_call.name, &tool_call.arguments);
+            try self.executeTool(tool_call.name, null, &tool_call.arguments);
         }
     }
 
@@ -462,8 +496,8 @@ pub const Engine = struct {
             const to_remove = self.messages.items.len - max_messages;
             log.debug("Trimming context: removing {} old messages", .{to_remove});
 
-            for (self.messages.items[0..to_remove]) |msg| {
-                self.allocator.free(msg.content);
+            for (self.messages.items[0..to_remove]) |*msg| {
+                network.Anthropic.Models.freeMessage(self.allocator, msg);
             }
             std.mem.copyForwards(
                 network.Anthropic.Message,
@@ -482,8 +516,8 @@ pub const Engine = struct {
             const keep_count = 10;
             if (self.messages.items.len > keep_count) {
                 const to_remove = self.messages.items.len - keep_count;
-                for (self.messages.items[0..to_remove]) |msg| {
-                    self.allocator.free(msg.content);
+                for (self.messages.items[0..to_remove]) |*msg| {
+                    network.Anthropic.Models.freeMessage(self.allocator, msg);
                 }
                 std.mem.copyForwards(
                     network.Anthropic.Message,
@@ -516,10 +550,11 @@ pub const Engine = struct {
         const messages_to_summarize = self.messages.items[0..(self.messages.items.len - keep_recent)];
 
         // Build summarization prompt
-        var summary_prompt = std.ArrayList(u8).initCapacity(self.allocator, 0) catch unreachable;
+        var summary_prompt = std.ArrayList(u8){};
         defer summary_prompt.deinit(self.allocator);
+        var aw: std.Io.Writer.Allocating = .fromArrayList(self.allocator, &summary_prompt);
 
-        try summary_prompt.appendSlice(self.allocator, "Please provide a concise summary of the following conversation history. Focus on key decisions, important information, and context that would be relevant for continuing this conversation:\n\n");
+        try aw.writer.writeAll("Please provide a concise summary of the following conversation history. Focus on key decisions, important information, and context that would be relevant for continuing this conversation:\n\n");
 
         for (messages_to_summarize, 0..) |msg, i| {
             const role_name = switch (msg.role) {
@@ -528,16 +563,64 @@ pub const Engine = struct {
                 .system => "System",
                 .tool => "Tool",
             };
-            try summary_prompt.writer(self.allocator).print("{s}: {s}\n", .{ role_name, msg.content });
+            // Write textual view of message content
+            try aw.writer.writeAll(role_name);
+            try aw.writer.writeAll(": ");
+            switch (msg.content) {
+                .text => |t| try aw.writer.writeAll(t),
+                .blocks => |bs| {
+                    var first = true;
+                    for (bs) |b| switch (b) {
+                        .text => |tb| {
+                            if (!first) try aw.writer.writeAll(" ");
+                            first = false;
+                            try aw.writer.writeAll(tb.text);
+                        },
+                        .tool_use => |tu| {
+                            if (!first) try aw.writer.writeAll(" ");
+                            first = false;
+                            try aw.writer.writeAll("[tool_use:");
+                            try aw.writer.writeAll(tu.name);
+                            try aw.writer.writeAll("]");
+                        },
+                        .tool_result => |tr| {
+                            if (!first) try aw.writer.writeAll(" ");
+                            first = false;
+                            try aw.writer.writeAll(if (tr.is_error) "[tool_error]" else "[tool_result]");
+                        },
+                    };
+                },
+            }
+            try aw.writer.writeAll("\n");
             if (i < messages_to_summarize.len - 1) {
-                try summary_prompt.appendSlice(self.allocator, "\n");
+                try aw.writer.writeAll("\n");
             }
         }
 
         // Use oracle tool to generate summary
-        const summary_json = try std.fmt.allocPrint(self.allocator,
-            \\{{"prompt":"{s}"}}
-        , .{summary_prompt.items});
+        // JSON-safe stringify of the prompt: {"prompt":"..."}
+        var json_buf = std.ArrayList(u8){};
+        defer json_buf.deinit(self.allocator);
+        var jw: std.Io.Writer.Allocating = .fromArrayList(self.allocator, &json_buf);
+        try jw.writer.writeAll("{\"prompt\":\"");
+        // minimal JSON string escape
+        for (summary_prompt.items) |c| switch (c) {
+            '"' => try jw.writer.writeAll("\\\""),
+            '\\' => try jw.writer.writeAll("\\\\"),
+            '\n' => try jw.writer.writeAll("\\n"),
+            '\r' => try jw.writer.writeAll("\\r"),
+            '\t' => try jw.writer.writeAll("\\t"),
+            else => if (c < 0x20) {
+                var buf4: [6]u8 = .{ '\\', 'u', '0', '0', 0, 0 };
+                const HEX = "0123456789abcdef";
+                buf4[4] = HEX[(c >> 4) & 0xF];
+                buf4[5] = HEX[c & 0xF];
+                try jw.writer.writeAll(&buf4);
+            } else try jw.writer.writeByte(c),
+        };
+        try jw.writer.writeAll("\"}");
+        json_buf = jw.toArrayList();
+        const summary_json = try json_buf.toOwnedSlice(self.allocator);
         defer self.allocator.free(summary_json);
 
         log.debug("Generating conversation summary using oracle tool", .{});
@@ -552,25 +635,24 @@ pub const Engine = struct {
         const summary_content = try std.fmt.allocPrint(self.allocator, "Previous conversation summary: {s}", .{summary_result});
 
         // Free old messages
-        for (messages_to_summarize) |msg| {
-            self.allocator.free(msg.content);
+        for (messages_to_summarize) |*msg| {
+            network.Anthropic.Models.freeMessage(self.allocator, msg);
         }
 
         // Replace with summary message
-        self.messages.items[0] = .{
-            .role = .user,
-            .content = summary_content,
-        };
+        self.messages.items[0] = .{ .role = .system, .content = .{ .text = summary_content } };
 
         // Shift remaining messages
         std.mem.copyForwards(
             network.Anthropic.Message,
-            self.messages.items[1..],
+            self.messages.items[1 .. self.messages.items.len - (messages_to_summarize.len - 1)],
             self.messages.items[(messages_to_summarize.len)..],
         );
 
         // Resize array
-        self.messages.shrinkRetainingCapacity(self.messages.items.len - messages_to_summarize.len + 1);
+        const final_len = self.messages.items.len - messages_to_summarize.len + 1;
+        self.messages.items.len = final_len;
+        self.messages.shrinkRetainingCapacity(final_len);
 
         log.debug("Successfully summarized {} messages into 1 summary", .{messages_to_summarize.len});
     }
@@ -583,10 +665,8 @@ pub fn runWithOptions(
     spec: AgentSpec,
     _: []const u8, // working directory (unused for now)
 ) !void {
-    const stdout = std.debug;
-    var stdin_file = std.fs.File.stdin();
-    var stdin_buf: [4096]u8 = undefined;
-    var stdin = stdin_file.reader(stdin_buf[0..]);
+    var out = std.fs.File.stdout().deprecatedWriter();
+    var stdin_depr = std.fs.File.stdin().deprecatedReader();
 
     // Initialize engine
     var engine = try Engine.init(allocator, options);
@@ -595,34 +675,29 @@ pub fn runWithOptions(
     // Authenticate
     engine.authenticate() catch |err| {
         if (err == error.NotAuthenticated) {
-            stdout.print("Not authenticated. Run 'docz auth login' to authenticate.\n", .{});
+            out.writeAll("Not authenticated. Run 'docz auth login' to authenticate.\n") catch {};
             return;
         }
         return err;
     };
 
-    // Build system prompt
-    const system_prompt = try spec.buildSystemPrompt(allocator, options);
-    defer allocator.free(system_prompt);
+    // Build agent-provided base system prompt once and store it
+    const agent_system = try spec.buildSystemPrompt(allocator, options);
+    defer allocator.free(agent_system);
+    if (agent_system.len > 0) {
+        engine.system_base = try allocator.dupe(u8, agent_system);
+    }
 
     // Register tools
     try spec.registerTools(&engine.tool_registry);
 
-    // Add system prompt as first message if provided
-    if (system_prompt.len > 0) {
-        try engine.messages.append(allocator, .{
-            .role = .user,
-            .content = try allocator.dupe(u8, system_prompt),
-        });
-    }
-
     // Print banner
-    stdout.print("\n┌────────────────────────────────────────┐\n", .{});
-    stdout.print("│  Docz Agent - Claude AI Assistant     │\n", .{});
-    stdout.print("│  Model: {s: <30} │\n", .{options.model});
-    stdout.print("│  Auth: OAuth (Claude Pro/Max)         │\n", .{});
-    stdout.print("│  Type 'exit' or Ctrl-C to quit        │\n", .{});
-    stdout.print("└────────────────────────────────────────┘\n\n", .{});
+    out.writeAll("\n┌────────────────────────────────────────┐\n") catch {};
+    out.writeAll("│  Docz Agent - Claude AI Assistant     │\n") catch {};
+    std.fmt.format(out, "│  Model: {s: <30} │\n", .{options.model}) catch {};
+    out.writeAll("│  Auth: OAuth (Claude Pro/Max)         │\n") catch {};
+    out.writeAll("│  Type 'exit' or Ctrl-C to quit        │\n") catch {};
+    out.writeAll("└────────────────────────────────────────┘\n\n") catch {};
 
     // Check for input flag
     if (options.input) |input| {
@@ -633,7 +708,19 @@ pub fn runWithOptions(
             defer file.close();
             if (engine.messages.items.len > 0) {
                 const last_msg = engine.messages.items[engine.messages.items.len - 1];
-                try file.writeAll(last_msg.content);
+                switch (last_msg.content) {
+                    .text => |t| try file.writeAll(t),
+                    .blocks => |bs| {
+                        // Write only concatenated text blocks
+                        var wrote_any = false;
+                        for (bs) |b| if (b == .text) {
+                            const txt = b.text.text;
+                            if (wrote_any) try file.writeAll(" ");
+                            wrote_any = true;
+                            try file.writeAll(txt);
+                        };
+                    },
+                }
             }
         }
         return;
@@ -641,10 +728,10 @@ pub fn runWithOptions(
 
     // REPL loop
     while (true) {
-        stdout.print("You: ", .{});
+        out.writeAll("You: ") catch {};
 
         var buf: [4096]u8 = undefined;
-        if (try stdin.interface.readUntilDelimiterOrEof(&buf, '\n')) |user_input| {
+        if (try stdin_depr.readUntilDelimiterOrEof(&buf, '\n')) |user_input| {
             const trimmed = std.mem.trim(u8, user_input, " \t\r\n");
 
             if (std.mem.eql(u8, trimmed, "exit")) {
@@ -662,5 +749,5 @@ pub fn runWithOptions(
         }
     }
 
-    stdout.print("\nGoodbye!\n", .{});
+    out.writeAll("\nGoodbye!\n") catch {};
 }

@@ -54,7 +54,6 @@ pub const TokenClient = struct {
         code: []const u8,
         code_verifier: []const u8,
         redirect_uri: []const u8,
-        state: []const u8,
     ) !TokenResponse {
         const body = try std.fmt.allocPrint(self.allocator,
             \\{{
@@ -62,10 +61,9 @@ pub const TokenClient = struct {
             \\  "code": "{s}",
             \\  "code_verifier": "{s}",
             \\  "client_id": "{s}",
-            \\  "redirect_uri": "{s}",
-            \\  "state": "{s}"
+            \\  "redirect_uri": "{s}"
             \\}}
-        , .{ code, code_verifier, self.config.client_id, redirect_uri, state });
+        , .{ code, code_verifier, self.config.client_id, redirect_uri });
         defer self.allocator.free(body);
 
         log.info("Exchanging authorization code for tokens", .{});
@@ -101,6 +99,8 @@ pub const TokenClient = struct {
         defer req.deinit();
 
         req.transfer_encoding = .{ .content_length = body.len };
+        log.debug("Content-Type: application/json", .{});
+        log.debug("Request body: {s}", .{body});
         try req.send();
         try req.writeAll(body);
         try req.finish();

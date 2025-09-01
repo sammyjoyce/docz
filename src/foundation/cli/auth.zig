@@ -48,6 +48,8 @@ pub const Commands = struct {
         const auth_url = try Auth.OAuth.buildAuthorizationUrlWithRedirect(allocator, pkce_params, redirect_uri);
         defer allocator.free(auth_url);
 
+        stdout.print("Using redirect_uri: {s}\n", .{redirect_uri});
+
         // Open browser
         Auth.OAuth.launchBrowser(auth_url) catch |err| {
             log.warn("Failed to open browser: {}", .{err});
@@ -61,6 +63,7 @@ pub const Commands = struct {
         defer callback_result.deinit(allocator);
 
         stdout.print("Authorization code received, exchanging for tokens...\n", .{});
+        stdout.print("POST {s} with redirect_uri={s}\n", .{ Auth.OAuth.OAUTH_TOKEN_ENDPOINT, redirect_uri });
 
         // Exchange code for tokens
         const creds = try Auth.OAuth.exchangeCodeForTokens(
@@ -275,7 +278,7 @@ pub const Commands = struct {
 
         // Make a simple test call
         const messages = [_]network.Anthropic.Message{
-            .{ .role = .user, .content = "Say 'Test successful!' in exactly 3 words." },
+            .{ .role = .user, .content = .{ .text = "Say 'Test successful!' in exactly 3 words." } },
         };
 
         if (args.stream) {

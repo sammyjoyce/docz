@@ -81,7 +81,7 @@ pub const ExperienceLevel = enum {
 /// Main improved interactive session
 pub const ImprovedInteractiveSession = struct {
     allocator: std.mem.Allocator,
-    agent: *Agent.MarkdownAgent,
+    agent: *Agent.Markdown,
     experience_level: ExperienceLevel,
 
     // UI Components
@@ -101,7 +101,7 @@ pub const ImprovedInteractiveSession = struct {
     const Self = @This();
 
     /// Initialize the improved session
-    pub fn init(allocator: std.mem.Allocator, agent: *Agent.MarkdownAgent) !Self {
+    pub fn init(allocator: std.mem.Allocator, agent: *Agent.Markdown) !Self {
         const level = try detectExperienceLevel(allocator);
 
         var session = Self{
@@ -116,7 +116,7 @@ pub const ImprovedInteractiveSession = struct {
             .notification_center = null,
             .current_mode = .normal,
             .active_workflow = null,
-            .command_history = std.ArrayList([]const u8).init(allocator),
+            .command_history = std.ArrayList([]const u8){},
         };
 
         // Initialize components based on experience level
@@ -247,7 +247,7 @@ pub const ImprovedInteractiveSession = struct {
         switch (event) {
             .key => |key| {
                 // Command palette
-                if (key.ctrl and key.char == 'p') {
+                if (key.modifiers.ctrl and key.character == 'p') {
                     self.current_mode = .command;
                     if (self.notification_center) |*nc| {
                         try nc.show(.info, "Command Palette", "Press ESC to close");
@@ -256,7 +256,7 @@ pub const ImprovedInteractiveSession = struct {
                 }
 
                 // Tool discovery
-                if (key.ctrl and key.char == 't') {
+                if (key.modifiers.ctrl and key.character == 't') {
                     self.current_mode = .tool_discovery;
                     if (self.notification_center) |*nc| {
                         try nc.show(.info, "Tool Discovery", "Browse available tools");
@@ -265,7 +265,7 @@ pub const ImprovedInteractiveSession = struct {
                 }
 
                 // Help
-                if (key.char == '?') {
+                if (key.character == '?') {
                     self.current_mode = .help;
                     if (self.notification_center) |*nc| {
                         try nc.show(.info, "Help Mode", "Press ESC to return");
@@ -274,7 +274,7 @@ pub const ImprovedInteractiveSession = struct {
                 }
 
                 // Quit
-                if (key.ctrl and key.char == 'q') {
+                if (key.modifiers.ctrl and key.character == 'q') {
                     if (self.notification_center) |*nc| {
                         try nc.show(.info, "Goodbye", "Thank you for using Markdown Agent");
                     }
@@ -342,14 +342,26 @@ pub const ImprovedInteractiveSession = struct {
     /// Get input event
     fn getInput(self: *Self) !Event {
         // For demonstration purposes, simulate a Ctrl+Q after a few calls to exit
-        // In a real implementation, this would read from stdin
+        // In a real implementation, this would integrate with foundation.term.input
         self.input_call_count = (self.input_call_count orelse 0) + 1;
         if (self.input_call_count.? >= 3) {
-            // Simulate Ctrl+Q to exit
-            return Event{ .key = .{ .char = 'q', .ctrl = true, .alt = false, .shift = false } };
+            // Simulate Ctrl+Q to exit using foundation event types
+            return Event{
+                .key = .{
+                    .key = .character,
+                    .character = 'q',
+                    .modifiers = .{ .ctrl = true },
+                },
+            };
         }
         // Return a dummy event for the first few calls
-        return Event{ .key = .{ .char = 0, .ctrl = false, .alt = false, .shift = false } };
+        return Event{
+            .key = .{
+                .key = .character,
+                .character = null,
+                .modifiers = .{},
+            },
+        };
     }
 
     /// Handle normal mode events
@@ -540,7 +552,7 @@ pub const ImprovedInteractiveSession = struct {
     }
 
     pub fn deinit(self: *Self) void {
-        self.command_history.deinit();
+        self.command_history.deinit(self.allocator);
         if (self.command_palette) |*cp| cp.deinit();
         if (self.tool_discovery) |*td| td.deinit();
         if (self.contextual_help) |*ch| ch.deinit();
@@ -573,15 +585,15 @@ pub const CommandPalette = struct {
         description: []const u8,
         shortcut: ?[]const u8,
         category: CommandCategory,
-        action: *const fn (*Agent.MarkdownAgent, []const u8) anyerror!void,
+        action: *const fn (*Agent.Markdown, []const u8) anyerror!void,
     };
 
     pub fn init(allocator: std.mem.Allocator) !CommandPalette {
         var palette = CommandPalette{
             .allocator = allocator,
-            .commands = std.ArrayList(Command).init(allocator),
-            .search_term = std.ArrayList(u8).init(allocator),
-            .filtered_commands = std.ArrayList(*Command).init(allocator),
+            .commands = std.ArrayList(Command){},
+            .search_term = std.ArrayList(u8){},
+            .filtered_commands = std.ArrayList(*Command){},
             .selected_index = 0,
         };
 
@@ -636,9 +648,9 @@ pub const CommandPalette = struct {
     }
 
     pub fn deinit(self: *CommandPalette) void {
-        self.commands.deinit();
-        self.search_term.deinit();
-        self.filtered_commands.deinit();
+        self.commands.deinit(self.allocator);
+        self.search_term.deinit(self.allocator);
+        self.filtered_commands.deinit(self.allocator);
     }
 };
 
@@ -678,7 +690,7 @@ pub const ToolDiscoveryGrid = struct {
     pub fn init(allocator: std.mem.Allocator, mode: DisplayMode) !ToolDiscoveryGrid {
         var grid = ToolDiscoveryGrid{
             .allocator = allocator,
-            .tools = std.ArrayList(ToolInfo).init(allocator),
+            .tools = std.ArrayList(ToolInfo){},
             .categories = std.StringHashMap(std.ArrayList(ToolInfo)).init(allocator),
             .display_mode = mode,
             .selected_tool = null,
@@ -718,7 +730,7 @@ pub const ToolDiscoveryGrid = struct {
     fn categorizeTools(self: *ToolDiscoveryGrid) !void {
         for (self.tools.items) |tool| {
             const category = self.categories.get(tool.category) orelse blk: {
-                const list = std.ArrayList(ToolInfo).init(self.allocator);
+                const list = std.ArrayList(ToolInfo){};
                 try self.categories.put(tool.category, list);
                 break :blk list;
             };
@@ -791,10 +803,10 @@ pub const ToolDiscoveryGrid = struct {
     }
 
     pub fn deinit(self: *ToolDiscoveryGrid) void {
-        self.tools.deinit();
+        self.tools.deinit(self.allocator);
         const it = self.categories.iterator();
         while (it.next()) |entry| {
-            entry.value_ptr.deinit();
+            entry.value_ptr.deinit(self.allocator);
         }
         self.categories.deinit();
     }
@@ -832,7 +844,7 @@ pub const ContextualHelpSystem = struct {
             .allocator = allocator,
             .help_level = level,
             .current_context = null,
-            .help_history = std.ArrayList(HelpEntry).init(allocator),
+            .help_history = std.ArrayList(HelpEntry){},
         };
     }
 
@@ -883,7 +895,7 @@ pub const ContextualHelpSystem = struct {
     }
 
     pub fn deinit(self: *ContextualHelpSystem) void {
-        self.help_history.deinit();
+        self.help_history.deinit(self.allocator);
     }
 };
 
@@ -897,7 +909,7 @@ pub const WorkflowBuilder = struct {
     pub fn init(allocator: std.mem.Allocator) !WorkflowBuilder {
         return WorkflowBuilder{
             .allocator = allocator,
-            .workflows = std.ArrayList(Workflow).init(allocator),
+            .workflows = std.ArrayList(Workflow){},
             .current_workflow = null,
             .canvas = null,
         };
@@ -915,7 +927,7 @@ pub const WorkflowBuilder = struct {
         for (self.workflows.items) |*workflow| {
             workflow.deinit();
         }
-        self.workflows.deinit();
+        self.workflows.deinit(self.allocator);
     }
 };
 
@@ -945,7 +957,7 @@ pub const Workflow = struct {
             .allocator = allocator,
             .name = name,
             .description = "",
-            .steps = std.ArrayList(WorkflowStep).init(allocator),
+            .steps = std.ArrayList(WorkflowStep){},
             .trigger = .manual,
         };
     }
@@ -962,7 +974,7 @@ pub const Workflow = struct {
         for (self.steps.items) |*step| {
             step.parameters.deinit();
         }
-        self.steps.deinit();
+        self.steps.deinit(self.allocator);
     }
 };
 
@@ -986,7 +998,7 @@ pub const OnboardingWizard = struct {
             .allocator = allocator,
             .current_step = 0,
             .total_steps = 5,
-            .completed_features = std.ArrayList(Feature).init(allocator),
+            .completed_features = std.ArrayList(Feature){},
         };
     }
 
@@ -1022,7 +1034,7 @@ pub const OnboardingWizard = struct {
     }
 
     pub fn deinit(self: *OnboardingWizard) void {
-        self.completed_features.deinit();
+        self.completed_features.deinit(self.allocator);
     }
 };
 
@@ -1050,7 +1062,7 @@ pub const NotificationCenter = struct {
     pub fn init(allocator: std.mem.Allocator, mode: DisplayMode) !NotificationCenter {
         return NotificationCenter{
             .allocator = allocator,
-            .notifications = std.ArrayList(Notification).init(allocator),
+            .notifications = std.ArrayList(Notification){},
             .display_mode = mode,
         };
     }
@@ -1121,7 +1133,7 @@ pub const NotificationCenter = struct {
     }
 
     pub fn deinit(self: *NotificationCenter) void {
-        self.notifications.deinit();
+        self.notifications.deinit(self.allocator);
     }
 };
 
@@ -1142,28 +1154,35 @@ fn fuzzyMatch(needle: []const u8, haystack: []const u8) bool {
 }
 
 // Command implementations
-fn openFile(agent: *Agent.MarkdownAgent, path: []const u8) !void {
+fn openFile(agent: *Agent.Markdown, path: []const u8) !void {
     _ = agent;
     _ = path;
     // Implementation
 }
 
-fn saveFile(agent: *Agent.MarkdownAgent, path: []const u8) !void {
+fn saveFile(agent: *Agent.Markdown, path: []const u8) !void {
     _ = agent;
     _ = path;
     // Implementation
 }
 
-fn formatDocument(agent: *Agent.MarkdownAgent, _: []const u8) !void {
+fn formatDocument(agent: *Agent.Markdown, _: []const u8) !void {
     _ = agent;
     // Implementation
 }
 
-// Event types
+// Event types - use foundation event system
+const events = foundation.tui.core.events;
+
 pub const Event = union(enum) {
-    key: KeyEvent,
-    mouse: MouseEvent,
+    key: events.KeyEvent,
+    mouse: events.MouseEvent,
     resize: ResizeEvent,
+};
+
+pub const ResizeEvent = struct {
+    width: u32,
+    height: u32,
 };
 
 pub const KeyEvent = struct {
@@ -1185,11 +1204,6 @@ pub const MouseButton = enum {
     middle,
     wheel_up,
     wheel_down,
-};
-
-pub const ResizeEvent = struct {
-    width: u16,
-    height: u16,
 };
 
 pub const Position = struct {

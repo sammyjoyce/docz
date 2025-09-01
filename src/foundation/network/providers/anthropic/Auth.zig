@@ -26,18 +26,17 @@ pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorizationCode: []
 
     var codeParts = std.mem.splitSequence(u8, authorizationCode, "#");
     const code = codeParts.next() orelse authorizationCode;
-    const state = codeParts.next() orelse "";
+    // Note: state is validated at callback time and MUST NOT be sent to the token endpoint
 
     const body = try std.fmt.allocPrint(allocator,
         \\{{
         \\  "code": "{s}",
-        \\  "state": "{s}",
         \\  "grant_type": "authorization_code",
         \\  "client_id": "{s}",
         \\  "redirect_uri": "{s}",
         \\  "code_verifier": "{s}"
         \\}}
-    , .{ code, state, oauthClientId, oauthRedirectUri, pkceParams.codeVerifier });
+    , .{ code, oauthClientId, oauthRedirectUri, pkceParams.codeVerifier });
     defer allocator.free(body);
 
     // Avoid logging sensitive fields (code, state, verifier). Log only action.
@@ -129,16 +128,13 @@ pub fn refreshTokens(allocator: std.mem.Allocator, refreshToken: []const u8) !Cr
     defer client.deinit();
 
     const body = try std.fmt.allocPrint(allocator,
-        \\{{
-        \\  "grant_type": "refresh_token",
-        \\  "refresh_token": "{s}",
-        \\  "client_id": "{s}"
-        \\}}
-    , .{ refreshToken, oauthClientId });
+        "grant_type=refresh_token&refresh_token={s}&client_id={s}",
+        .{ refreshToken, oauthClientId },
+    );
     defer allocator.free(body);
 
     const headers = [_]curl.Header{
-        .{ .name = "content-type", .value = "application/json" },
+        .{ .name = "content-type", .value = "application/x-www-form-urlencoded" },
         .{ .name = "accept", .value = "application/json" },
         .{ .name = "user-agent", .value = "docz/1.0 (libcurl)" },
     };

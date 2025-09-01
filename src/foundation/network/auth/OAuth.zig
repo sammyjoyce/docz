@@ -109,8 +109,6 @@ pub fn generatePkceParams(allocator: std.mem.Allocator) !Pkce {
     return @import("pkce.zig").generate(allocator, 64);
 }
 
-
-
 /// Build OAuth authorization URL
 pub fn buildAuthorizationUrl(allocator: std.mem.Allocator, pkceParams: Pkce) ![]u8 {
     return buildAuthorizationUrlWithRedirect(allocator, pkceParams, OAUTH_REDIRECT_URI);
@@ -157,7 +155,9 @@ fn urlEncode(allocator: std.mem.Allocator, input: []const u8) ![]u8 {
     return out.toOwnedSlice(allocator);
 }
 
-fn encodeFormData(allocator: std.mem.Allocator, fields: anytype) ![]u8 {
+const FormField = struct { key: []const u8, value: []const u8 };
+
+fn encodeFormData(allocator: std.mem.Allocator, fields: []const FormField) ![]u8 {
     var formData = std.ArrayListUnmanaged(u8){};
     defer formData.deinit(allocator);
 
@@ -176,62 +176,111 @@ fn encodeFormData(allocator: std.mem.Allocator, fields: anytype) ![]u8 {
     return formData.toOwnedSlice(allocator);
 }
 
-/// Parse OAuth token response JSON
-fn parseTokenResponse(allocator: std.mem.Allocator, jsonResponse: []const u8) !Credentials {
-    const parsed = try std.json.parseFromSlice(std.json.Value, allocator, jsonResponse, .{});
-    defer parsed.deinit();
+fn urlDecode(allocator: std.mem.Allocator, input: []const u8) ![]u8 {
+    var out = std.ArrayListUnmanaged(u8){};
+    defer out.deinit(allocator);
+    var i: usize = 0;
+    while (i < input.len) : (i += 1) {
+        const c = input[i];
+        if (c == '+') {
+            try out.append(allocator, ' ');
+        } else if (c == '%') {
+            if (i + 2 >= input.len) return Error.InvalidFormat;
+            const hex = [_]u8{ input[i + 1], input[i + 2] };
+            const v = std.fmt.parseUnsigned(u8, &hex, 16) catch return Error.InvalidFormat;
+            try out.append(allocator, v);
+            i += 2;
+        } else {
+            try out.append(allocator, c);
+        }
+    }
+    return out.toOwnedSlice(allocator);
+}
 
-    // Check if response contains an error
-    if (parsed.value == .object) {
-        if (parsed.value.object.get("error")) |errorField| {
-            var code: []const u8 = "unknown_error";
-            if (errorField == .string) {
-                code = errorField.string;
-            } else if (errorField == .object) {
-                if (errorField.object.get("type")) |t| {
-                    if (t == .string) code = t.string;
-                }
-            }
-            std.log.err("OAuth error response type: {s}", .{code});
-            if (std.mem.eql(u8, code, "invalid_grant")) return Error.InvalidGrant;
-            if (std.mem.eql(u8, code, "invalid_request")) return Error.InvalidFormat;
-            return Error.AuthError;
+fn parseFormTokenResponse(allocator: std.mem.Allocator, body: []const u8) !Credentials {
+    var access_token: ?[]u8 = null;
+    var refresh_token: ?[]u8 = null;
+    var expires_in: ?i64 = null;
+
+    var it = std.mem.splitScalar(u8, body, '&');
+    while (it.next()) |pair| {
+        if (pair.len == 0) continue;
+        const eq_idx = std.mem.indexOfScalar(u8, pair, '=') orelse continue;
+        const k_enc = pair[0..eq_idx];
+        const v_enc = pair[eq_idx + 1 ..];
+        const k = urlDecode(allocator, k_enc) catch continue;
+        defer allocator.free(k);
+        const v = urlDecode(allocator, v_enc) catch continue;
+        defer allocator.free(v);
+        if (std.mem.eql(u8, k, "access_token")) {
+            access_token = try allocator.dupe(u8, v);
+        } else if (std.mem.eql(u8, k, "refresh_token")) {
+            refresh_token = try allocator.dupe(u8, v);
+        } else if (std.mem.eql(u8, k, "expires_in")) {
+            expires_in = std.fmt.parseInt(i64, v, 10) catch null;
         }
     }
 
-    if (parsed.value != .object) return Error.InvalidFormat;
-    const obj = parsed.value.object;
-
-    // Extract required fields with proper error handling
-    const accessToken = obj.get("access_token") orelse {
-        std.log.err("Missing access_token in OAuth response", .{});
-        return Error.InvalidFormat;
-    };
-
-    const refreshToken = obj.get("refresh_token") orelse {
-        std.log.err("Missing refresh_token in OAuth response", .{});
-        return Error.InvalidFormat;
-    };
-
-    const expiresIn = obj.get("expires_in") orelse {
-        std.log.err("Missing expires_in in OAuth response", .{});
-        return Error.InvalidFormat;
-    };
-
-    if (accessToken != .string or refreshToken != .string or expiresIn != .integer) {
-        std.log.err("Invalid field types in OAuth response", .{});
-        return Error.InvalidFormat;
-    }
-
-    // Calculate expiration timestamp
-    const expiresAt = std.time.timestamp() + expiresIn.integer;
-
+    if (access_token == null or refresh_token == null or expires_in == null) return Error.InvalidFormat;
+    const expiresAt = std.time.timestamp() + expires_in.?;
     return Credentials{
         .type = try allocator.dupe(u8, "oauth"),
-        .accessToken = try allocator.dupe(u8, accessToken.string),
-        .refreshToken = try allocator.dupe(u8, refreshToken.string),
+        .accessToken = access_token.?,
+        .refreshToken = refresh_token.?,
         .expiresAt = expiresAt,
     };
+}
+
+/// Parse OAuth token response (JSON preferred, form-encoded fallback)
+fn parseTokenResponse(allocator: std.mem.Allocator, response_body: []const u8) !Credentials {
+    // Prefer JSON if it looks like JSON
+    if (response_body.len > 0 and response_body[0] == '{') {
+        const parsed = std.json.parseFromSlice(std.json.Value, allocator, response_body, .{}) catch |err| {
+            std.log.err("Failed to parse JSON token response: {}", .{err});
+            // Try form-encoded fallback
+            return parseFormTokenResponse(allocator, response_body) catch |err2| {
+                std.log.err("Form-encoded fallback also failed: {}", .{err2});
+                const preview_len: usize = @min(response_body.len, 256);
+                std.log.err("Response preview: {s}", .{response_body[0..preview_len]});
+                return Error.InvalidFormat;
+            };
+        };
+        defer parsed.deinit();
+
+        if (parsed.value == .object) {
+            if (parsed.value.object.get("error")) |errorField| {
+                var code: []const u8 = "unknown_error";
+                if (errorField == .string) {
+                    code = errorField.string;
+                } else if (errorField == .object) {
+                    if (errorField.object.get("type")) |t| {
+                        if (t == .string) code = t.string;
+                    }
+                }
+                std.log.err("OAuth error response type: {s}", .{code});
+                if (std.mem.eql(u8, code, "invalid_grant")) return Error.InvalidGrant;
+                if (std.mem.eql(u8, code, "invalid_request")) return Error.InvalidFormat;
+                return Error.AuthError;
+            }
+        }
+
+        if (parsed.value != .object) return Error.InvalidFormat;
+        const obj = parsed.value.object;
+        const accessToken = obj.get("access_token") orelse return Error.InvalidFormat;
+        const refreshToken = obj.get("refresh_token") orelse return Error.InvalidFormat;
+        const expiresIn = obj.get("expires_in") orelse return Error.InvalidFormat;
+        if (accessToken != .string or refreshToken != .string or expiresIn != .integer) return Error.InvalidFormat;
+        const expiresAt = std.time.timestamp() + expiresIn.integer;
+        return Credentials{
+            .type = try allocator.dupe(u8, "oauth"),
+            .accessToken = try allocator.dupe(u8, accessToken.string),
+            .refreshToken = try allocator.dupe(u8, refreshToken.string),
+            .expiresAt = expiresAt,
+        };
+    }
+
+    // Non-JSON responses: attempt form-encoded parsing
+    return parseFormTokenResponse(allocator, response_body);
 }
 
 /// Exchange authorization code for tokens using PKCE flow
@@ -241,17 +290,16 @@ pub fn exchangeCodeForTokens(
     pkceParams: Pkce,
     redirectUri: []const u8,
 ) !Credentials {
-    // Prepare JSON body for token exchange (Anthropic expects JSON)
+    // Prepare JSON body for token exchange (per OAuth spec, without state)
     const body = try std.fmt.allocPrint(allocator,
-        \\{{
-        \\  "grant_type": "authorization_code",
-        \\  "code": "{s}",
-        \\  "redirect_uri": "{s}",
-        \\  "code_verifier": "{s}",
-        \\  "client_id": "{s}",
-        \\  "state": "{s}"
-        \\}}
-    , .{ authorizationCode, redirectUri, pkceParams.verifier, OAUTH_CLIENT_ID, pkceParams.state });
+        \\\{{
+        \\\  "grant_type": "authorization_code",
+        \\\  "code": "{s}",
+        \\\  "redirect_uri": "{s}",
+        \\\  "code_verifier": "{s}",
+        \\\  "client_id": "{s}"
+        \\\}}
+    , .{ authorizationCode, redirectUri, pkceParams.verifier, OAUTH_CLIENT_ID });
     defer allocator.free(body);
 
     // Initialize HTTP client
@@ -267,9 +315,18 @@ pub fn exchangeCodeForTokens(
             .user_agent = .{ .override = "docz/1.0" },
             .content_type = .{ .override = "application/json" },
         },
-        .extra_headers = &.{ .{ .name = "Accept", .value = "application/json" } },
+        .extra_headers = &.{
+            .{ .name = "Accept", .value = "application/json" },
+            .{ .name = "Accept-Encoding", .value = "identity" },
+        },
     });
     defer req.deinit();
+
+    // Basic debug logging of request
+    std.log.debug("OAuth token exchange POST {s}", .{OAUTH_TOKEN_ENDPOINT});
+    std.log.debug("Redirect URI used: {s}", .{redirectUri});
+    std.log.debug("Request Content-Type: application/json", .{});
+    std.log.debug("Request body: {s}", .{body});
 
     try req.sendBodyComplete(body);
     var redirect_buf: [256]u8 = undefined;
@@ -290,15 +347,15 @@ pub fn exchangeCodeForTokens(
     return try parseTokenResponse(allocator, response_body);
 }
 
-/// Refresh access token using refresh token (JSON body per spec)
+/// Refresh access token using refresh token (JSON per spec)
 pub fn refreshTokens(allocator: std.mem.Allocator, refreshToken: []const u8) !Credentials {
     // Prepare JSON body
     const body = try std.fmt.allocPrint(allocator,
-        \\{{
-        \\  "grant_type": "refresh_token",
-        \\  "refresh_token": "{s}",
-        \\  "client_id": "{s}"
-        \\}}
+        \\\{{
+        \\\  "grant_type": "refresh_token",
+        \\\  "refresh_token": "{s}",
+        \\\  "client_id": "{s}"
+        \\\}}
     , .{ refreshToken, OAUTH_CLIENT_ID });
     defer allocator.free(body);
 
@@ -315,10 +372,16 @@ pub fn refreshTokens(allocator: std.mem.Allocator, refreshToken: []const u8) !Cr
             .user_agent = .{ .override = "docz/1.0" },
             .content_type = .{ .override = "application/json" },
         },
-        .extra_headers = &.{ .{ .name = "Accept", .value = "application/json" } },
+        .extra_headers = &.{
+            .{ .name = "Accept", .value = "application/json" },
+            .{ .name = "Accept-Encoding", .value = "identity" },
+        },
     });
     defer req.deinit();
 
+    std.log.debug("OAuth token refresh POST {s}", .{OAUTH_TOKEN_ENDPOINT});
+    std.log.debug("Request Content-Type: application/x-www-form-urlencoded", .{});
+    std.log.debug("Request body: {s}", .{body});
     try req.sendBodyComplete(body);
     // handled above
 
@@ -349,10 +412,10 @@ pub fn saveCredentialsToStore(allocator: std.mem.Allocator, creds: Credentials) 
     };
     defer allocator.free(agent_name);
 
-    const store = @import("store.zig").TokenStore.init(allocator, .{ 
+    const store = @import("store.zig").TokenStore.init(allocator, .{
         .agent_name = agent_name,
     });
-    
+
     const stored_creds = @import("store.zig").StoredCredentials{
         .type = creds.type,
         .access_token = creds.accessToken,
@@ -442,10 +505,10 @@ pub fn loginWithLoopback(allocator: std.mem.Allocator) !Credentials {
     };
     defer allocator.free(agent_name);
 
-    const store = @import("store.zig").TokenStore.init(allocator, .{ 
+    const store = @import("store.zig").TokenStore.init(allocator, .{
         .agent_name = agent_name,
     });
-    
+
     const stored_creds = @import("store.zig").StoredCredentials{
         .type = "oauth",
         .access_token = creds.accessToken,
@@ -467,19 +530,19 @@ pub fn getAccessToken(allocator: std.mem.Allocator) ![]u8 {
     };
     defer allocator.free(agent_name);
 
-    const store = @import("store.zig").TokenStore.init(allocator, .{ 
+    const store = @import("store.zig").TokenStore.init(allocator, .{
         .agent_name = agent_name,
     });
-    
+
     const stored_creds = try store.load();
     defer allocator.free(stored_creds.type);
     defer allocator.free(stored_creds.refresh_token);
-    
+
     // Return owned copy of access token
     return stored_creds.access_token;
 }
 
-/// Launch the system browser to open the authorization URL  
+/// Launch the system browser to open the authorization URL
 pub fn launchBrowser(url: []const u8) !void {
     const allocator = std.heap.page_allocator;
     return @import("authorize_url.zig").openInBrowser(allocator, url);

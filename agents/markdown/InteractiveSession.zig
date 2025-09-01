@@ -50,7 +50,7 @@ const Thread = std.Thread;
 const Mutex = Thread.Mutex;
 
 // Core modules
-const agent_interface = @import("agent_interface");
+const agent_base = @import("foundation").agent_base;
 const config = @import("foundation").config;
 
 // Shared infrastructure
@@ -93,9 +93,6 @@ const text_utils = @import("lib/text.zig");
 
 /// Interactive Session Configuration
 pub const InteractiveSessionConfig = struct {
-    /// Base agent configuration
-    base_config: agent_interface.Config,
-
     /// Dashboard settings
     dashboard_config: DashboardConfig = .{},
 
@@ -464,7 +461,7 @@ pub const InteractiveSession = struct {
     allocator: Allocator,
 
     /// Agent interface
-    agent: *agent_interface.Agent,
+    agent: *agent_base.Agent,
 
     /// Session configuration
     config: InteractiveSessionConfig,
@@ -513,14 +510,14 @@ pub const InteractiveSession = struct {
     /// Initialize the enhanced interactive session
     pub fn init(
         allocator: Allocator,
-        agent: *agent_interface.Agent,
+        agent: *agent_base.Agent,
         session_config: InteractiveSessionConfig,
     ) !*Self {
         var self = try allocator.create(Self);
         errdefer allocator.destroy(self);
 
         // Initialize components
-        const editor = try markdown_editor.MarkdownEditor.init(allocator, agent, session_config.base_config);
+        const editor = try markdown_editor.MarkdownEditor.init(allocator, agent);
         errdefer editor.deinit();
 
         const dashboard_instance = try dashboard.Dashboard.init(allocator, .{
@@ -1495,16 +1492,16 @@ pub const MetricsCollector = struct {
         self.* = .{
             .allocator = allocator,
             .config = metrics_config,
-            .document_metrics = std.ArrayList(DocumentMetricsSnapshot).init(allocator),
-            .session_metrics = std.ArrayList(SessionMetricsSnapshot).init(allocator),
+            .document_metrics = std.ArrayList(DocumentMetricsSnapshot){},
+            .session_metrics = std.ArrayList(SessionMetricsSnapshot){},
             .sparklines = std.StringHashMap([]f32).init(allocator),
         };
         return self;
     }
 
     pub fn deinit(self: *MetricsCollector) void {
-        self.document_metrics.deinit();
-        self.session_metrics.deinit();
+        self.document_metrics.deinit(self.allocator);
+        self.session_metrics.deinit(self.allocator);
         var it = self.sparklines.iterator();
         while (it.next()) |entry| {
             self.allocator.free(entry.value_ptr.*);
@@ -1655,13 +1652,13 @@ pub const OutlineNavigator = struct {
         const self = try allocator.create(OutlineNavigator);
         self.* = .{
             .allocator = allocator,
-            .outline_items = std.ArrayList(OutlineItem).init(allocator),
+            .outline_items = std.ArrayList(OutlineItem){},
         };
         return self;
     }
 
     pub fn deinit(self: *OutlineNavigator) void {
-        self.outline_items.deinit();
+        self.outline_items.deinit(self.allocator);
         self.allocator.destroy(self);
     }
 
@@ -1705,7 +1702,7 @@ pub const VersionHistoryViewer = struct {
         self.* = .{
             .allocator = allocator,
             .config = session_config,
-            .versions = std.ArrayList(DocumentVersion).init(allocator),
+            .versions = std.ArrayList(DocumentVersion){},
         };
         return self;
     }
@@ -1717,14 +1714,14 @@ pub const VersionHistoryViewer = struct {
                 self.allocator.free(diff);
             }
         }
-        self.versions.deinit();
+        self.versions.deinit(self.allocator);
         self.allocator.destroy(self);
     }
 
     pub fn addVersion(self: *VersionHistoryViewer, document: *const markdown_editor.Document) !void {
         // Create snapshot of current document
-        var content = std.ArrayList(u8).init(self.allocator);
-        defer content.deinit();
+        var content = std.ArrayList(u8){};
+        defer content.deinit(self.allocator);
 
         for (document.lines.items) |line| {
             try content.appendSlice(line);
@@ -1808,9 +1805,8 @@ pub const SessionExitScreen = struct {
 };
 
 /// Public API for creating and running the enhanced interactive session
-pub fn runInteractiveSession(allocator: Allocator, agent: *agent_interface.Agent) !void {
+pub fn runInteractiveSession(allocator: Allocator, agent: *agent_base.Agent) !void {
     const session_config = InteractiveSessionConfig{
-        .base_config = agent.config,
         .dashboard_config = .{},
         .layout_config = .{},
         .preview_config = .{},

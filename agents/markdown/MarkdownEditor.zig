@@ -138,10 +138,9 @@ const Mutex = Thread.Mutex;
 
 // Core modules
 const agent_interface = @import("agent_interface");
-const config = foundation.config;
-
 // Shared infrastructure
 const foundation = @import("foundation");
+const config = foundation.config;
 const tui = foundation.tui;
 const term = foundation.term;
 const theme = foundation.theme;
@@ -153,6 +152,7 @@ const input_component = ui.Widgets.Input;
 const split_pane = tui.split_pane;
 const file_tree = tui.file_tree;
 const modal = tui.Modal;
+const ScrollableTextArea = tui.widgets.ScrollableTextArea;
 const canvas_mod = tui.canvas;
 // Backward compatibility alias
 const canvas_engine = canvas_mod;
@@ -167,7 +167,6 @@ const document_tool = @import("tools/document.zig");
 const fs = @import("lib/fs.zig");
 const link = @import("lib/link.zig");
 const meta = @import("lib/meta.zig");
-const foundation = @import("foundation");
 const table = foundation.tools.table;
 const template = @import("lib/template.zig");
 const text_utils = @import("lib/text.zig");
@@ -539,6 +538,9 @@ pub const MarkdownEditor = struct {
     /// Export manager
     export_manager: *Export,
 
+    /// Text area widget for enhanced editing
+    text_area: ?*ScrollableTextArea = null,
+
     /// Session manager for drafts
     session_manager: *EditorSession,
 
@@ -567,9 +569,9 @@ pub const MarkdownEditor = struct {
 
         // Initialize document
         const document = Document{
-            .lines = std.ArrayList([]u8).init(allocator),
+            .lines = std.ArrayList([]u8){},
             .metadata = DocumentMetadata{
-                .tags = std.ArrayList([]const u8).init(allocator),
+                .tags = std.ArrayList([]const u8){},
                 .custom = std.StringHashMap([]const u8).init(allocator),
             },
         };
@@ -581,15 +583,15 @@ pub const MarkdownEditor = struct {
             .config = editor_config,
             .state = EditorState{
                 .document = document,
-                .cursors = std.ArrayList(CursorPosition).init(allocator),
-                .selections = std.ArrayList(SelectionRange).init(allocator),
+                .cursors = std.ArrayList(CursorPosition){},
+                .selections = std.ArrayList(SelectionRange){},
                 .undo_history = UndoHistory{
-                    .undo_stack = std.ArrayList(EditOperation).init(allocator),
-                    .redo_stack = std.ArrayList(EditOperation).init(allocator),
+                    .undo_stack = std.ArrayList(EditOperation){},
+                    .redo_stack = std.ArrayList(EditOperation){},
                 },
                 .view = ViewState{},
                 .search = SearchState{
-                    .results = std.ArrayList(SearchResult).init(allocator),
+                    .results = std.ArrayList(SearchResult){},
                 },
                 .metrics = DocumentMetrics{},
             },
@@ -644,14 +646,14 @@ pub const MarkdownEditor = struct {
         self.syntax_theme.deinit();
 
         // Cleanup state
-        self.state.document.lines.deinit();
-        self.state.document.metadata.tags.deinit();
+        self.state.document.lines.deinit(self.allocator);
+        self.state.document.metadata.tags.deinit(self.allocator);
         self.state.document.metadata.custom.deinit();
-        self.state.cursors.deinit();
-        self.state.selections.deinit();
-        self.state.undo_history.undo_stack.deinit();
-        self.state.undo_history.redo_stack.deinit();
-        self.state.search.results.deinit();
+        self.state.cursors.deinit(self.allocator);
+        self.state.selections.deinit(self.allocator);
+        self.state.undo_history.undo_stack.deinit(self.allocator);
+        self.state.undo_history.redo_stack.deinit(self.allocator);
+        self.state.search.results.deinit(self.allocator);
 
         self.allocator.destroy(self);
     }
@@ -711,7 +713,7 @@ pub const MarkdownEditor = struct {
         defer self.allocator.free(content);
 
         // Parse into lines
-        var lines = std.ArrayList([]u8).init(self.allocator);
+        var lines = std.ArrayList([]u8){};
         var it = std.mem.tokenize(u8, content, "\n");
         while (it.next()) |line| {
             try lines.append(try self.allocator.dupe(u8, line));
@@ -719,7 +721,7 @@ pub const MarkdownEditor = struct {
 
         // Update document
         self.state.document.file_path = try self.allocator.dupe(u8, file_path);
-        self.state.document.lines.deinit();
+        self.state.document.lines.deinit(self.allocator);
         self.state.document.lines = lines;
 
         // Extract metadata if present
@@ -770,8 +772,8 @@ pub const MarkdownEditor = struct {
         defer progress.active = false;
 
         // Build content
-        var content = std.ArrayList(u8).init(self.allocator);
-        defer content.deinit();
+        var content = std.ArrayList(u8){};
+        defer content.deinit(self.allocator);
 
         // Add metadata if configured
         if (self.config.export_settings.include_metadata) {
@@ -985,6 +987,21 @@ pub const MarkdownEditor = struct {
             self.allocator,
             self.config.editor_settings.highlight_theme,
         );
+
+        // Initialize ScrollableTextArea for enhanced editing
+        if (self.config.editor_settings.multi_cursor) {
+            self.text_area = try ScrollableTextArea.init(self.allocator, .{
+                .syntax_highlighting = self.config.editor_settings.syntax_highlighting,
+                .line_numbers = true,
+                .read_only = false,
+                .wrap_lines = self.config.editor_settings.word_wrap,
+                .tab_width = 4,
+                .mouse_support = true,
+                .keyboard_navigation = true,
+                .search_enabled = true,
+                .bracket_matching = self.config.editor_settings.bracket_matching,
+            });
+        }
     }
 
     /// Setup markdown-specific autocomplete suggestions
@@ -1075,8 +1092,8 @@ pub const MarkdownEditor = struct {
             try canvas.render();
 
             // Build markdown content
-            var content = std.ArrayList(u8).init(self.allocator);
-            defer content.deinit();
+            var content = std.ArrayList(u8){};
+            defer content.deinit(self.allocator);
 
             for (self.state.document.lines.items) |line| {
                 try content.appendSlice(line);
@@ -1396,8 +1413,8 @@ pub const MarkdownEditor = struct {
 
     fn renderTextPreview(self: *Self, renderer: *tui.Renderer, x: u16, y: u16, width: u16, height: u16) !void {
         // Build markdown content
-        var content = std.ArrayList(u8).init(self.allocator);
-        defer content.deinit();
+        var content = std.ArrayList(u8){};
+        defer content.deinit(self.allocator);
 
         for (self.state.document.lines.items) |line| {
             try content.appendSlice(line);
@@ -1515,6 +1532,25 @@ pub const MarkdownEditor = struct {
             }
         }
 
+        // If we have a ScrollableTextArea, use its enhanced keyboard handler
+        if (self.text_area) |ta| {
+            const renderer = if (self.canvas_engine) |ce| ce.renderer else null;
+            try ta.handleKeyboardWithModifiers(key, key.ctrl, key.shift, key.alt, renderer);
+
+            // Still handle our own ctrl shortcuts for editor-specific features
+            if (key.ctrl) {
+                switch (key.code) {
+                    's' => try self.saveDocument(),
+                    'o' => try self.openFile(),
+                    'n' => try self.newDocument(),
+                    'e' => try self.exportDialog(),
+                    'p' => try self.command_palette.toggle(),
+                    else => {},
+                }
+            }
+            return false;
+        }
+
         // Handle ctrl shortcuts
         if (key.ctrl) {
             return try self.handleCtrlShortcut(key);
@@ -1573,6 +1609,10 @@ pub const MarkdownEditor = struct {
             'b' => try self.toggleBold(), // Bold
             'i' => try self.toggleItalic(), // Italic
             'k' => try self.insertLink(), // Insert link
+            'c' => try self.copySelection(), // Copy with clipboard support
+            'x' => try self.cutSelection(), // Cut with clipboard support
+            'v' => try self.pasteFromClipboard(), // Paste from clipboard
+            'a' => try self.selectAll(), // Select all
             ' ' => try self.triggerAutoComplete(), // Auto-complete
             else => {},
         }
@@ -1892,6 +1932,120 @@ pub const MarkdownEditor = struct {
         _ = self;
     }
 
+    // Clipboard methods
+    fn copySelection(self: *Self) !void {
+        if (self.text_area) |ta| {
+            const renderer = if (self.canvas_engine) |ce| ce.renderer else null;
+            _ = try ta.copySelection(renderer);
+        } else if (self.state.selections.items.len > 0) {
+            // Fallback: copy from document lines
+            const sel = self.state.selections.items[0];
+            const text = try self.getSelectionText(sel);
+            defer self.allocator.free(text);
+
+            // Try to copy using foundation clipboard if available
+            if (self.canvas_engine) |ce| {
+                if (ce.renderer) |renderer| {
+                    const caps = renderer.getCapabilities();
+                    if (caps.supportsClipboardOsc52) {
+                        renderer.copyToClipboard(text) catch {};
+                    }
+                }
+            }
+        }
+    }
+
+    fn cutSelection(self: *Self) !void {
+        try self.copySelection();
+        if (self.state.selections.items.len > 0) {
+            try self.deleteSelection();
+        }
+    }
+
+    fn pasteFromClipboard(self: *Self) !void {
+        // In a real implementation, we'd get text from system clipboard
+        // For now, this is a placeholder that could be extended
+        if (self.text_area) |ta| {
+            // Text area would handle paste internally
+            try ta.pasteFromClipboard("");
+        }
+    }
+
+    fn selectAll(self: *Self) !void {
+        if (self.text_area) |ta| {
+            // Use text area's select all
+            const total_lines = ta.lines.items.len;
+            if (total_lines > 0) {
+                const last_line = total_lines - 1;
+                const last_col = ta.getLineLength(last_line);
+                ta.selection = .{
+                    .start_line = 0,
+                    .start_col = 0,
+                    .end_line = last_line,
+                    .end_col = last_col,
+                };
+            }
+        } else {
+            // Select entire document
+            if (self.state.document.lines.items.len > 0) {
+                const last_line = self.state.document.lines.items.len - 1;
+                const last_col = self.state.document.lines.items[last_line].len;
+                try self.state.selections.append(.{
+                    .start = .{ .line = 0, .column = 0 },
+                    .end = .{ .line = last_line, .column = last_col },
+                });
+            }
+        }
+    }
+
+    fn getSelectionText(self: *Self, sel: SelectionRange) ![]u8 {
+        var text = std.ArrayList(u8){};
+        errdefer text.deinit(self.allocator);
+
+        const start_line = @min(sel.start.line, sel.end.line);
+        const end_line = @max(sel.start.line, sel.end.line);
+
+        for (start_line..end_line + 1) |line_idx| {
+            if (line_idx < self.state.document.lines.items.len) {
+                const line = self.state.document.lines.items[line_idx];
+                if (line_idx == start_line and line_idx == end_line) {
+                    // Single line selection
+                    const start_col = @min(sel.start.column, sel.end.column);
+                    const end_col = @min(@max(sel.start.column, sel.end.column), line.len);
+                    try text.appendSlice(line[start_col..end_col]);
+                } else if (line_idx == start_line) {
+                    // First line of multi-line selection
+                    const start_col = @min(sel.start.column, line.len);
+                    try text.appendSlice(line[start_col..]);
+                    try text.append('\n');
+                } else if (line_idx == end_line) {
+                    // Last line of multi-line selection
+                    const end_col = @min(sel.end.column, line.len);
+                    try text.appendSlice(line[0..end_col]);
+                } else {
+                    // Middle lines
+                    try text.appendSlice(line);
+                    try text.append('\n');
+                }
+            }
+        }
+
+        return text.toOwnedSlice();
+    }
+
+    fn deleteSelection(self: *Self) !void {
+        if (self.state.selections.items.len == 0) return;
+
+        // Delete the selected text
+        const sel = self.state.selections.items[0];
+        // Implementation would delete text between sel.start and sel.end
+        _ = sel;
+
+        // Clear selection
+        self.state.selections.clearRetainingCapacity();
+        self.state.is_modified = true;
+    }
+
     // Search methods
     fn openSearchDialog(self: *Self) !void {
         _ = self;
@@ -1973,13 +2127,13 @@ const AutoCompleter = struct {
         const self = try allocator.create(AutoCompleter);
         self.* = .{
             .allocator = allocator,
-            .completions = std.ArrayList(Completion).init(allocator),
+            .completions = std.ArrayList(Completion){},
         };
         return self;
     }
 
     pub fn deinit(self: *AutoCompleter) void {
-        self.completions.deinit();
+        self.completions.deinit(self.allocator);
         self.allocator.destroy(self);
     }
 
@@ -2015,7 +2169,7 @@ const CommandPalette = struct {
         const self = try allocator.create(CommandPalette);
         self.* = .{
             .allocator = allocator,
-            .commands = std.ArrayList(Command).init(allocator),
+            .commands = std.ArrayList(Command){},
         };
         return self;
     }
@@ -2117,13 +2271,13 @@ const EditorSession = struct {
         self.* = .{
             .allocator = allocator,
             .settings = settings,
-            .recent_files = std.ArrayList([]const u8).init(allocator),
+            .recent_files = std.ArrayList([]const u8){},
         };
         return self;
     }
 
     pub fn deinit(self: *EditorSession) void {
-        self.recent_files.deinit();
+        self.recent_files.deinit(self.allocator);
         self.allocator.destroy(self);
     }
 
@@ -2163,10 +2317,10 @@ const EditorWelcomeScreen = struct {
     allocator: Allocator,
     theme: *theme.ColorScheme,
 
-    pub fn init(allocator: Allocator, theme: *theme.ColorScheme) EditorWelcomeScreen {
+    pub fn init(allocator: Allocator, color_scheme: *theme.ColorScheme) EditorWelcomeScreen {
         return .{
             .allocator = allocator,
-            .theme = theme,
+            .theme = color_scheme,
         };
     }
 

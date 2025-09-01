@@ -36,6 +36,35 @@ pub fn main() !void {
         return;
     }
 
+    // Interactive mode temporarily disabled - needs refactoring for new foundation
+    // if (args.len >= 1 and std.mem.eql(u8, args[0], "--interactive")) {
+    //     const InteractiveSession = @import("InteractiveSession.zig");
+    //     const agent_base = @import("foundation").agent_base;
+    //
+    //     // Create agent interface with full UI support
+    //     var agent = agent_base.Agent.init(allocator);
+    //     defer agent.deinit();
+    //
+    //     try InteractiveSession.runInteractiveSession(allocator, &agent);
+    //     return 0;
+    // }
+
+    // Progressive mode temporarily disabled - needs refactoring for new foundation
+    // if (args.len >= 1 and std.mem.eql(u8, args[0], "--progressive")) {
+    //     const ProgressiveSession = @import("ProgressiveSession.zig");
+    //     const MarkdownAgent = @import("Agent.zig").Markdown;
+    //
+    //     // Create enhanced agent with progressive UI
+    //     var agent = try MarkdownAgent.initFromConfig(allocator);
+    //     defer agent.deinit();
+    //
+    //     var session = try ProgressiveSession.ImprovedInteractiveSession.init(allocator, &agent);
+    //     defer session.deinit();
+    //
+    //     try session.run();
+    //     return 0;
+    // }
+
     // Special flag to trigger OAuth login for minimal agent
     if (args.len == 1 and (std.mem.eql(u8, args[0], "--oauth") or std.mem.eql(u8, args[0], "login"))) {
         try foundation.cli.Auth.login(allocator, .{});
