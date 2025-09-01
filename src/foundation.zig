@@ -14,7 +14,6 @@ pub const testing = @import("foundation/testing.zig");
 // Terminal and rendering modules
 pub const term = @import("foundation/term.zig");
 pub const render = @import("foundation/render.zig");
-pub const theme = @import("foundation/theme.zig");
 
 // UI modules
 pub const ui = @import("foundation/ui.zig");
@@ -28,7 +27,6 @@ pub const network = @import("foundation/network.zig");
 pub const agent = @import("agent_loop.zig");
 pub const agent_base = @import("foundation/agent_base.zig");
 pub const agent_main = @import("foundation/agent_main.zig");
-pub const agent_launcher = @import("foundation/agent_launcher.zig");
 pub const agent_registry = @import("foundation/agent_registry.zig");
 pub const interactive_session = @import("foundation/interactive_session.zig");
 pub const session = @import("foundation/session.zig");
@@ -39,7 +37,6 @@ pub const Tool = tools.Tool;
 pub const Component = ui.Component;
 pub const App = tui.App;
 pub const Http = network.Http;
-pub const Theme = theme.Theme;
 
 // Version information
 pub const version = "1.0.0";

@@ -13,7 +13,6 @@ const std = @import("std");
 const ui = @import("ui.zig");
 const render = @import("render.zig");
 const term = @import("term.zig");
-const theme = @import("theme.zig");
 
 // Core TUI functionality
 pub const App = @import("tui/App.zig");
@@ -32,9 +31,6 @@ pub const typing_animation = base.typing_animation;
 
 // Widget system - organized by category
 pub const widgets = @import("tui/widgets.zig");
-
-// Themes and styling - use foundation theme module
-pub const themes = theme;
 
 // Utilities
 pub const utils = @import("tui/utils.zig");
@@ -140,10 +136,6 @@ pub const Render = renderer.Render;
 pub const Style = renderer.Style;
 pub const Color = renderer.Style.Color;
 pub const Image = renderer.Image;
-
-// Theme exports
-pub const Theme = themes.Theme;
-pub const DefaultTheme = themes.ColorScheme;
 
 // Utility exports
 pub const CommandHistory = utils.CommandHistory;

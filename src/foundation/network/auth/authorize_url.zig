@@ -17,8 +17,8 @@ pub fn openInBrowser(allocator: std.mem.Allocator, url: []const u8) !void {
         else => return error.UnsupportedPlatform,
     };
 
-    if (result.term.Exited != 0) {
-        log.err("Failed to open browser (exit code: {})", .{result.term.Exited});
+    if (result != .Exited or result.Exited != 0) {
+        log.err("Failed to open browser (exit code: {})", .{if (result == .Exited) result.Exited else @as(u32, 1)});
         return error.BrowserOpenFailed;
     }
 }

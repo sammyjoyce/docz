@@ -4,14 +4,11 @@
 /// Compatible with Zig 0.15.1
 const std = @import("std");
 const term_shared = @import("../../term.zig");
+const double_buffer = @import("double_buffer.zig");
+const input = @import("../../term/input.zig");
+const capabilities = @import("../../term/capabilities.zig");
 
 pub const cellbuf = term_shared.cellbuf;
-// TODO: Implement cursor optimizer
-// pub const cursor_optimizer = @import("../../term/control/cursor.zig").CursorOptimizer;
-// TODO: Implement input handler
-// pub const input_handler = @import("input/input_handler.zig");
-// TODO: Implement editor
-// pub const editor = @import("editor.zig");
 
 // Re-export key types for convenience
 pub const CellBuffer = cellbuf.CellBuffer;
@@ -20,24 +17,14 @@ pub const Color = cellbuf.Color;
 pub const Style = cellbuf.Style;
 pub const AttrMask = cellbuf.AttrMask;
 
-// TODO: Implement cursor optimizer types
-// pub const CursorOptimizer = cursor_optimizer.CursorOptimizer;
-// pub const TabStops = cursor_optimizer.TabStops;
-// pub const Capabilities = cursor_optimizer.Capabilities;
-// pub const OptimizerOptions = cursor_optimizer.OptimizerOptions;
+// Terminal capability detection
+pub const Capabilities = capabilities.Capabilities;
 
-// TODO: Implement input handler types
-// pub const InputParser = input_handler.InputParser;
-// pub const Event = input_handler.Event;
-// pub const KeyEvent = input_handler.KeyEvent;
-// pub const PasteEvent = input_handler.PasteEvent;
-// pub const MouseEvent = input_handler.MouseEvent;
-
-// TODO: Implement editor types
-// pub const EditorCommand = editor.EditorCommand;
+// Input handling types
+pub const InputEvent = input.InputEvent;
+pub const InputParser = input.Parser;
 
 /// Comprehensive terminal manager combining all features
-/// TODO: Implement terminal features
 pub const Terminal = struct {
     allocator: std.mem.Allocator,
     buffer: CellBuffer,
@@ -45,6 +32,8 @@ pub const Terminal = struct {
     height: usize,
     cursor_x: usize = 0,
     cursor_y: usize = 0,
+    caps: Capabilities,
+    input_parser: InputParser,
 
     const Self = @This();
 
@@ -52,36 +41,35 @@ pub const Terminal = struct {
     pub fn init(allocator: std.mem.Allocator, app_name: []const u8) !Self {
         _ = app_name;
 
-        // TODO: Implement terminal capability detection
-        // const detected_term = try detectTerminalCapabilities();
-        // const width = detected_term.width orelse 80;
-        // const height = detected_term.height orelse 24;
-
-        // Fallback to default size
-        const width = 80;
-        const height = 24;
+        // Detect terminal capabilities
+        const caps = try Capabilities.detect(allocator);
+        
+        // Get terminal size (fallback to defaults if not available)
+        const size = try term_shared.getSize();
+        const width = size.width;
+        const height = size.height;
 
         const buffer = try CellBuffer.init(allocator, width, height);
+        const input_parser = InputParser{};
 
         return Self{
             .allocator = allocator,
             .buffer = buffer,
             .width = width,
             .height = height,
+            .caps = caps,
+            .input_parser = input_parser,
         };
     }
 
     pub fn deinit(self: *Self) void {
         self.buffer.deinit();
-        // TODO: Deinitialize cursor optimizer and input parser
-        // self.cursor_optimizer.deinit();
-        // self.input_parser.deinit();
+        self.caps.deinit(self.allocator);
     }
 
     /// Resize terminal to new dimensions
     pub fn resize(self: *Self, new_width: usize, new_height: usize) !void {
         try self.buffer.resize(new_width, new_height);
-        try self.cursor_optimizer.resize(new_width, new_height);
         self.width = new_width;
         self.height = new_height;
     }
@@ -120,7 +108,7 @@ pub const Terminal = struct {
 
     /// Generate optimized cursor movement sequence
     pub fn moveCursorTo(self: *Self, x: usize, y: usize) ![]u8 {
-        const movement = try self.cursor_optimizer.moveCursor(self.allocator, self.cursor_x, self.cursor_y, x, y);
+        const movement = try generateCursorMovement(self.allocator, self.cursor_x, self.cursor_y, x, y);
         self.setCursor(x, y);
         return movement;
     }
@@ -139,7 +127,7 @@ pub const Terminal = struct {
         for (diffs) |diff| {
             // Move cursor if needed
             if (diff.x != last_x or diff.y != last_y) {
-                const move_seq = try self.cursor_optimizer.moveCursor(self.allocator, last_x, last_y, diff.x, diff.y);
+                const move_seq = try double_buffer.moveCursorOptimized(self.allocator, last_x, last_y, diff.x, diff.y);
                 defer self.allocator.free(move_seq);
                 try writer.writeAll(move_seq);
                 last_x = diff.x;
@@ -172,15 +160,11 @@ pub const Terminal = struct {
     }
 
     /// Parse input events
-    /// TODO: Implement input parsing
-    pub fn parseInput(self: *Self, input: []const u8) ![]u8 {
-        _ = self;
-        _ = input;
-        return error.NotImplemented;
+    pub fn parseInput(self: *Self, input: []const u8) !?InputEvent {
+        return self.input_parser.parse(input);
     }
 
     /// Open file in external editor
-    /// TODO: Implement external editor support
     pub fn openInEditor(self: *Self, app_name: []const u8, file_path: []const u8) !std.process.Child {
         _ = self;
         _ = app_name;
@@ -189,7 +173,6 @@ pub const Terminal = struct {
     }
 
     /// Open file in external editor at specific line
-    /// TODO: Implement external editor support
     pub fn openInEditorAtLine(self: *Self, app_name: []const u8, file_path: []const u8, line: u32) !std.process.Child {
         _ = self;
         _ = app_name;
@@ -199,7 +182,6 @@ pub const Terminal = struct {
     }
 
     /// Enable logging for input events
-    /// TODO: Implement input logging
     pub fn enableInputLogging(self: *Self, log_fn: *const fn (ctx: ?*anyopaque, comptime format: []const u8, args: anytype) void, context: ?*anyopaque) void {
         _ = self;
         _ = log_fn;
@@ -330,18 +312,8 @@ test "input event parsing integration" {
     var terminal = try Terminal.init(allocator, "xterm");
     defer terminal.deinit();
 
-    const events = try terminal.parseInput("hello");
-    defer {
-        for (events) |*event| {
-            switch (event.*) {
-                .key_press => |*key| allocator.free(key.key),
-                else => {},
-            }
-        }
-        allocator.free(events);
-    }
-
-    try testing.expect(events.len > 0);
+    const event = try terminal.parseInput("a");
+    try testing.expect(event != null);
 }
 
 test "cursor movement optimization" {

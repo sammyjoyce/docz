@@ -711,16 +711,5 @@ pub fn streamMessages(
     }
 }
 
-/// Create a new streaming context
-pub fn createStreamingContext(
-    allocator: std.mem.Allocator,
-    ctx: *SharedContext,
-    callback: *const fn (*SharedContext, []const u8) void,
-) StreamingContext {
-    return StreamingContext.init(allocator, ctx, callback);
-}
-
-/// Destroy a streaming context and free its resources
-pub fn destroyStreamingContext(context: *StreamingContext) void {
-    context.deinit();
-}
+// Duplicate definitions removed; see the earlier declarations for
+// createStreamingContext/destroyStreamingContext.

@@ -20,16 +20,28 @@ pub const RunConfig = struct {
     system_prompt: ?[]const u8 = null,
 };
 
-/// Handle the run command - legacy implementation
-pub fn handleRunCommandLegacy(allocator: std.mem.Allocator, config: RunConfig) !void {
+/// Handle the run command
+pub fn handleRunCommand(allocator: std.mem.Allocator, config: RunConfig) !void {
     const stdout = std.debug;
-    const stdin = std.fs.File.stdin().reader();
+    var stdin_file = std.fs.File.stdin();
+    var stdin_buf: [4096]u8 = undefined;
+    var stdin = stdin_file.reader(stdin_buf[0..]);
 
     // Check authentication
-    const store = Auth.store.TokenStore.init(allocator, .{});
+    const agent_name = std.process.getEnvVarOwned(allocator, "AGENT_NAME") catch |err| blk: {
+        if (err == error.EnvironmentVariableNotFound) {
+            break :blk try allocator.dupe(u8, "docz");
+        }
+        return err;
+    };
+    defer allocator.free(agent_name);
+    
+    const store = Auth.store.TokenStore.init(allocator, .{ 
+        .agent_name = agent_name,
+    });
 
     if (!store.exists()) {
-        try stdout.print("Not authenticated. Run 'docz auth login' to authenticate.\n", .{});
+        stdout.print("Not authenticated. Run 'docz auth login' to authenticate.\n", .{});
         return;
     }
 
@@ -40,7 +52,7 @@ pub fn handleRunCommandLegacy(allocator: std.mem.Allocator, config: RunConfig) !
 
     // Check and refresh token if needed
     if (creds.willExpireSoon(120)) {
-        try stdout.print("Token expiring soon, refreshing...\n", .{});
+        stdout.print("Token expiring soon, refreshing...\n", .{});
 
         var token_client = Auth.token_client.TokenClient.init(allocator, .{
             .client_id = "9d1c250a-e61b-44d9-88ed-5944d1962f5e",
@@ -65,14 +77,14 @@ pub fn handleRunCommandLegacy(allocator: std.mem.Allocator, config: RunConfig) !
         creds.access_token = try allocator.dupe(u8, new_tokens.access_token);
     }
 
-    // Initialize Anthropic client (provider-based)
-    const provider_creds = network.Anthropic.Models.Credentials{
+    // Initialize Anthropic client with OAuth credentials
+    const oauth_creds = network.Auth.OAuth.Credentials{
         .type = creds.type,
         .accessToken = creds.access_token,
         .refreshToken = creds.refresh_token,
         .expiresAt = creds.expires_at,
     };
-    var client = try network.Anthropic.Client.initWithOAuth(allocator, provider_creds, store.config.path);
+    var client = try network.Anthropic.Client.Client.initWithOAuth(allocator, oauth_creds, null);
     defer client.deinit();
 
     // Shared context for streaming and token refresh
@@ -89,20 +101,20 @@ pub fn handleRunCommandLegacy(allocator: std.mem.Allocator, config: RunConfig) !
     }
 
     // Print banner
-    try stdout.print("\n┌────────────────────────────────────────────┐\n", .{});
-    try stdout.print("│  Docz Agent - Claude AI Assistant         │\n", .{});
-    try stdout.print("│  Model: {s: <35} │\n", .{config.model});
-    try stdout.print("│  Auth: OAuth (Claude Pro/Max)              │\n", .{});
-    try stdout.print("│  Streaming: {s: <31} │\n", .{if (config.stream) "Enabled" else "Disabled"});
-    try stdout.print("│  Type 'exit' or Ctrl-C to quit            │\n", .{});
-    try stdout.print("└────────────────────────────────────────────┘\n\n", .{});
+    stdout.print("\n┌────────────────────────────────────────────┐\n", .{});
+    stdout.print("│  Docz Agent - Claude AI Assistant         │\n", .{});
+    stdout.print("│  Model: {s: <35} │\n", .{config.model});
+    stdout.print("│  Auth: OAuth (Claude Pro/Max)              │\n", .{});
+    stdout.print("│  Streaming: {s: <31} │\n", .{if (config.stream) "Enabled" else "Disabled"});
+    stdout.print("│  Type 'exit' or Ctrl-C to quit            │\n", .{});
+    stdout.print("└────────────────────────────────────────────┘\n\n", .{});
 
     // REPL loop
     while (true) {
-        try stdout.print("You: ", .{});
+        stdout.print("You: ", .{});
 
         var buf: [4096]u8 = undefined;
-        if (try stdin.readUntilDelimiterOrEof(&buf, '\n')) |user_input| {
+        if (try stdin.interface.readUntilDelimiterOrEof(&buf, '\n')) |user_input| {
             const trimmed = std.mem.trim(u8, user_input, " \t\r\n");
 
             if (std.mem.eql(u8, trimmed, "exit")) {
@@ -116,7 +128,7 @@ pub fn handleRunCommandLegacy(allocator: std.mem.Allocator, config: RunConfig) !
             // Add user message
             try messages.append(.{ .role = .user, .content = try allocator.dupe(u8, trimmed) });
 
-            try stdout.print("\nClaude: ", .{});
+            stdout.print("\nClaude: ", .{});
 
             if (config.stream) {
                 // Streaming mode with SSE
@@ -133,39 +145,50 @@ pub fn handleRunCommandLegacy(allocator: std.mem.Allocator, config: RunConfig) !
                     .system = config.system_prompt,
                     .onToken = struct {
                         fn callback(ctx: *context.SharedContext, data: []const u8) void {
-                            // Process streaming events
-                            const event_type = ctx.anthropic.lastEventType orelse "";
-                            if (std.mem.eql(u8, event_type, "content_block_delta")) {
-                                // Accumulate content
-                                ctx.anthropic.contentCollector.appendSlice(data) catch {};
-                                // Print token immediately
-                                std.debug.print("{s}", .{data});
+                            // Parse SSE event data and extract text content
+                            _ = ctx;
+                            const parsed = std.json.parseFromSlice(std.json.Value, std.heap.page_allocator, data, .{
+                                .ignore_unknown_fields = true,
+                            }) catch return;
+                            defer parsed.deinit();
+                            
+                            if (parsed.value == .object) {
+                                if (parsed.value.object.get("delta")) |delta| {
+                                    if (delta == .object) {
+                                        if (delta.object.get("text")) |text| {
+                                            if (text == .string) {
+                                                std.debug.print("{s}", .{text.string});
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }.callback,
                 };
 
-                try client.stream(&shared_ctx, streamParams);
+                try client.createMessageStream(&shared_ctx, streamParams);
 
                 // Add assistant message to history
                 const assistant_content = try allocator.dupe(u8, shared_ctx.anthropic.contentCollector.items);
                 try messages.append(.{ .role = .assistant, .content = assistant_content });
             } else {
                 // Non-streaming mode
-                const result = try client.create(&shared_ctx, .{
+                var result = try client.createMessage(.{
                     .model = config.model,
                     .messages = messages.items,
                     .maxTokens = config.max_tokens,
                     .temperature = config.temperature,
                     .system = config.system_prompt,
                 });
+                defer result.deinit();
 
                 // Print and append assistant content
-                try stdout.print("{s}", .{result.content});
+                stdout.print("{s}", .{result.content});
                 try messages.append(.{ .role = .assistant, .content = try allocator.dupe(u8, result.content) });
             }
 
-            try stdout.print("\n\n", .{});
+            stdout.print("\n\n", .{});
 
             // Keep conversation history manageable (max 20 messages)
             if (messages.items.len > 20) {
@@ -184,24 +207,5 @@ pub fn handleRunCommandLegacy(allocator: std.mem.Allocator, config: RunConfig) !
         }
     }
 
-    try stdout.print("\nGoodbye!\n", .{});
-}
-
-/// Handle the run command using the new agent loop
-pub fn handleRunCommand(allocator: std.mem.Allocator, config: RunConfig) !void {
-    const agent = @import("../../../agent_loop.zig");
-    
-    // Convert RunConfig to agent.Config
-    const agent_config = agent.Config{
-        .model = config.model,
-        .max_tokens = config.max_tokens,
-        .temperature = config.temperature,
-        .stream = config.stream,
-        .system_prompt = config.system_prompt,
-        .history_limit = 20,
-        .token_refresh_leeway = 120,
-    };
-
-    // Run the agent REPL
-    try agent.runREPL(allocator, agent_config);
+    stdout.print("\nGoodbye!\n", .{});
 }

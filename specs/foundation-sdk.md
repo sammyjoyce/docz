@@ -39,6 +39,7 @@ Layering Model (Allowed Dependencies)
 - Terminal UI: `tui` → `ui`, `render`; `tui` may import `term` only for terminal mode and raw input handling (never painting).
 - CLI: `cli` → `tui` (may use `term` for process lifecycle and raw stdio).
 - Networking: `network` — std only; no dependency on UI/TUI/Render/Term.
+  - Handles OAuth credential storage at `~/.local/share/{agent name}/auth.json` (read/write tokens).
 - Tools: `tools` → `network` (headless surfaces; no direct UI/TUI coupling).
 - Theme/Logger/Context: headless utilities referenced by any layer; must not pull higher layers.
 

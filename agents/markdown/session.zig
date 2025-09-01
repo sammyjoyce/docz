@@ -1320,7 +1320,7 @@ pub const InteractiveSession = struct {
 
         try exit_screen.render(self.dashboard.renderer, .{
             .session_duration = std.time.timestamp() - self.state.session_start,
-            .documents_edited = 1, // TODO: track this
+            .documents_edited = self.state.documents_edited,
             .total_words = self.editor.state.metrics.word_count,
             .total_tokens = self.metrics_collector.getTotalTokens(),
             .tools_used = self.tool_discovery_grid.getUsedToolsCount(),
@@ -1794,6 +1794,10 @@ pub const InteractiveSession = struct {
 
     fn saveDocument(self: *Self) !void {
         try self.editor.saveDocument();
+
+        // Track document edit
+        self.state.documents_edited += 1;
+
         try self.notification_system.success("Document Saved", "Document has been saved successfully");
         try self.feedback_system.showSuccess("Document saved!");
     }
@@ -1943,6 +1947,9 @@ pub const SessionState = struct {
 
     /// UX state
     ux_state: UXState,
+
+    /// Number of documents edited in this session
+    documents_edited: usize = 0,
 };
 
 /// Active panes

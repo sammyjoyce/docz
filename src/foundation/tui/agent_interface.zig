@@ -56,6 +56,8 @@ const SessionManager_Impl = @import("components/Session.zig").Session;
 const WelcomeScreen = @import("components/welcome_screen.zig").WelcomeScreen;
 const GoodbyeScreen = @import("components/goodbye_screen.zig").GoodbyeScreen;
 const FileBrowser_Impl = @import("components/file_browser.zig").FileBrowser;
+const AuthenticationManager = @import("AuthenticationManager.zig").AuthenticationManager;
+const FocusManager = @import("FocusManager.zig").FocusManager;
 
 // Import modules that exist
 const screen_manager = tui.Screen;
@@ -269,6 +271,12 @@ pub const AgentState = struct {
 
     /// File browser state
     file_browser: FileBrowserState = .{},
+
+    /// Authentication status
+    auth_status: []const u8 = "Not authenticated",
+
+    /// Is authenticated
+    is_authenticated: bool = false,
 };
 
 /// UI modes
@@ -382,7 +390,7 @@ pub const Agent = struct {
     session_mgr: *SessionManager_Impl,
 
     /// Authentication manager
-    auth_mgr: *anyopaque, // TODO: Define AuthenticationManager
+    auth_mgr: *AuthenticationManager,
 
     /// Notification system
     notifier: *tui.widgets.Rich.NotificationController,
@@ -400,7 +408,7 @@ pub const Agent = struct {
     mouse_mgr: *tui.events,
 
     /// Focus manager for UI components
-    focus_mgr: *anyopaque,
+    focus_mgr: *FocusManager,
 
     /// File browser component
     file_browser: ?*FileBrowser_Impl,
@@ -470,16 +478,30 @@ pub const Agent = struct {
         self.session_mgr = try SessionManager_Impl.init(allocator);
 
         // Initialize authentication manager
-        // TODO: Implement AuthenticationManager
-        self.auth_mgr = undefined;
+        self.auth_mgr = try AuthenticationManager.init(allocator);
+        errdefer self.auth_mgr.deinit();
 
         // Initialize notification system
         self.notifier = try allocator.create(tui.widgets.Rich.NotificationController);
         self.notifier.* = tui.widgets.Rich.NotificationController.init(allocator);
 
         // Initialize command palette if enabled
-        if (self.config.ui_settings.enable_command_palette) {
-            self.cmd_palette = try CommandPalette.init(allocator);
+        if (self.config.ui_settings.enable_dashboard) {
+            self.cmd_palette = try self.createCommandPalette();
+
+            // Register command palette with focus manager
+            if (self.cmd_palette) |palette| {
+                const focusable = FocusManager.Focusable{
+                    .id = "command_palette",
+                    .ptr = palette,
+                    .vtable = &.{
+                        .onFocus = commandPaletteFocus,
+                        .onBlur = commandPaletteBlur,
+                        .canFocus = commandPaletteCanFocus,
+                    },
+                };
+                try self.focus_mgr.registerComponent(focusable);
+            }
         }
 
         // Initialize progress tracker
@@ -495,7 +517,11 @@ pub const Agent = struct {
         self.mouse_mgr.* = tui.events.init(allocator);
 
         // Initialize focus manager
-        self.focus_mgr = undefined; // TODO: implement focus manager
+        // Initialize focus manager
+        self.focus_mgr = try FocusManager.init(allocator);
+        errdefer if (@TypeOf(self.focus_mgr) != @TypeOf(undefined)) {
+            @as(*FocusManager, @ptrCast(@alignCast(self.focus_mgr))).deinit();
+        };
 
         // Initialize thread pool for file operations
         self.thread_pool = try allocator.create(std.Thread.Pool);
@@ -503,7 +529,24 @@ pub const Agent = struct {
 
         // Initialize file browser
         if (self.config.ui_settings.enable_dashboard) {
-            self.file_browser = try FileBrowser_Impl.init(allocator);
+            self.file_browser = try FileBrowser_Impl.init(self.allocator, .{
+                .show_hidden = false,
+                .enable_preview = true,
+            });
+
+            // Register file browser with focus manager
+            if (self.file_browser) |browser| {
+                const focusable = FocusManager.Focusable{
+                    .id = "file_browser",
+                    .ptr = browser,
+                    .vtable = &.{
+                        .onFocus = fileBrowserFocus,
+                        .onBlur = fileBrowserBlur,
+                        .canFocus = fileBrowserCanFocus,
+                    },
+                };
+                try self.focus_mgr.registerComponent(focusable);
+            }
         }
 
         // Initialize session
@@ -555,6 +598,13 @@ pub const Agent = struct {
 
     /// Run agent in interactive mode with full UI
     pub fn runInteractive(self: *Self) !void {
+        // Initialize authentication
+        self.auth_mgr.loadCredentials() catch |err| {
+            std.log.warn("Failed to load credentials: {}", .{err});
+            // Try to authenticate interactively
+            try self.authenticateWithWizard();
+        };
+
         // Setup terminal for interactive mode
         try self.setupTerminal();
         defer self.restoreTerminal();
@@ -621,15 +671,112 @@ pub const Agent = struct {
 
     /// Handle authentication with OAuth wizard
     pub fn authenticateWithWizard(self: *Self) !void {
+        // Register callback for auth state changes
+        try self.auth_mgr.registerCallback(authStateChanged, self);
+
         if (self.config.ui_settings.enable_dashboard) {
             // Use OAuth wizard UI
             const wizard = try AuthenticationWizard.init(self.allocator);
             defer wizard.deinit();
 
-            try wizard.run(self.auth_mgr);
+            // Start OAuth flow
+            const auth_url = try self.auth_mgr.startOAuthFlow();
+            defer self.allocator.free(auth_url);
+
+            // Show auth URL in wizard
+            try wizard.showAuthorizationUrl(auth_url);
+
+            // Wait for authorization code from wizard
+            const auth_code = try wizard.waitForAuthorizationCode();
+            defer self.allocator.free(auth_code);
+
+            // Complete OAuth flow
+            const pkce_verifier = try wizard.getPkceVerifier();
+            try self.auth_mgr.completeOAuthFlow(auth_code, pkce_verifier);
         } else {
-            // Fallback to CLI authentication
-            try self.auth_mgr.authenticateCLI();
+            // Fallback to loading from environment or file
+            try self.auth_mgr.loadCredentials();
+        }
+
+        // Check if authenticated
+        if (self.auth_mgr.isAuthenticated()) {
+            try self.notifier.showNotification(.{
+                .title = "Authentication Successful",
+                .message = "You are now authenticated",
+                .type = .success,
+            });
+        }
+    }
+
+    // Focus manager callbacks for command palette
+    fn commandPaletteFocus(ptr: *anyopaque) void {
+        const palette: *CommandPalette = @ptrCast(@alignCast(ptr));
+        palette.setFocused(true) catch {};
+    }
+
+    fn commandPaletteBlur(ptr: *anyopaque) void {
+        const palette: *CommandPalette = @ptrCast(@alignCast(ptr));
+        palette.setFocused(false) catch {};
+    }
+
+    fn commandPaletteCanFocus(ptr: *anyopaque) bool {
+        const palette: *CommandPalette = @ptrCast(@alignCast(ptr));
+        return palette.isVisible();
+    }
+
+    // Focus manager callbacks for file browser
+    fn fileBrowserFocus(ptr: *anyopaque) void {
+        const browser: *FileBrowser_Impl = @ptrCast(@alignCast(ptr));
+        browser.setFocused(true) catch {};
+    }
+
+    fn fileBrowserBlur(ptr: *anyopaque) void {
+        const browser: *FileBrowser_Impl = @ptrCast(@alignCast(ptr));
+        browser.setFocused(false) catch {};
+    }
+
+    fn fileBrowserCanFocus(ptr: *anyopaque) bool {
+        const browser: *FileBrowser_Impl = @ptrCast(@alignCast(ptr));
+        return browser.isVisible();
+    }
+
+    fn authStateChanged(event: AuthenticationManager.AuthEvent, ctx: *anyopaque) void {
+        const self: *Self = @ptrCast(@alignCast(ctx));
+
+        switch (event) {
+            .state_changed => |state| {
+                // Update UI based on auth state
+                const status_text = switch (state) {
+                    .unauthenticated => "Not authenticated",
+                    .authenticating => "Authenticating...",
+                    .authenticated => "Authenticated",
+                    .refreshing => "Refreshing token...",
+                    .auth_error => "Authentication failed",
+                };
+
+                self.state.auth_status = status_text;
+
+                // Update dashboard if enabled
+                if (self.dashboard_engine) |dashboard| {
+                    dashboard.updateAuthStatus(status_text) catch {};
+                }
+            },
+            .credentials_loaded => {
+                // Credentials loaded successfully
+                self.state.is_authenticated = true;
+            },
+            .auth_failed => |err| {
+                // Show error notification
+                const error_msg = std.fmt.allocPrint(self.allocator, "Authentication failed: {}", .{err}) catch "Authentication failed";
+                defer self.allocator.free(error_msg);
+
+                self.notifier.showNotification(.{
+                    .title = "Authentication Error",
+                    .message = error_msg,
+                    .type = .danger,
+                }) catch {};
+            },
+            else => {},
         }
     }
 
@@ -860,6 +1007,32 @@ pub const Agent = struct {
     fn handleEvent(self: *Self, event: tui.InputEvent) !bool {
         switch (event) {
             .key => |key| {
+                // Handle focus navigation with Tab/Shift+Tab
+                if (key.code == '\t') {
+                    const direction: FocusManager.Direction = if (key.shift) .previous else .next;
+                    _ = self.focus_mgr.moveFocus(direction);
+                    return false;
+                }
+
+                // Handle arrow key navigation for focus
+                if (!key.ctrl and !key.alt) {
+                    const direction = switch (key.code) {
+                        0x1B5B41 => FocusManager.Direction.up, // Up arrow
+                        0x1B5B42 => FocusManager.Direction.down, // Down arrow
+                        0x1B5B43 => FocusManager.Direction.right, // Right arrow
+                        0x1B5B44 => FocusManager.Direction.left, // Left arrow
+                        else => null,
+                    };
+
+                    if (direction) |dir| {
+                        if (key.shift) {
+                            // Shift+Arrow: Move focus between panes
+                            _ = self.focus_mgr.moveFocus(dir);
+                            return false;
+                        }
+                    }
+                }
+
                 // Handle keyboard shortcuts
                 if (key.ctrl) {
                     switch (key.code) {

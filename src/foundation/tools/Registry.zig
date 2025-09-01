@@ -308,15 +308,15 @@ pub const Registry = struct {
 
     /// List all registered tools
     pub fn listTools(self: *Registry, allocator: std.mem.Allocator) ![]Tool {
-        var tools = std.ArrayList(Tool).init(allocator);
-        defer tools.deinit();
+        var tools = std.ArrayList(Tool).initCapacity(allocator, 0) catch unreachable;
+        defer tools.deinit(allocator);
 
         var iterator = self.metadata.iterator();
         while (iterator.next()) |entry| {
-            try tools.append(entry.value_ptr.*);
+            try tools.append(allocator, entry.value_ptr.*);
         }
 
-        return tools.toOwnedSlice();
+        return tools.toOwnedSlice(allocator);
     }
 
     /// List tools by agent
@@ -327,11 +327,11 @@ pub const Registry = struct {
         var iterator = self.metadata.iterator();
         while (iterator.next()) |entry| {
             if (std.mem.eql(u8, entry.value_ptr.agent, agentName)) {
-                try tools.append(entry.value_ptr.*);
+                try tools.append(allocator, entry.value_ptr.*);
             }
         }
 
-        return tools.toOwnedSlice();
+        return tools.toOwnedSlice(allocator);
     }
 };
 
@@ -405,15 +405,12 @@ fn oracleTool(ctx: *SharedContext, allocator: std.mem.Allocator, input: []const 
     };
 
     ctx.tools.tokenBuffer.clearRetainingCapacity();
-    // Bridge callback: use provider context's user_data to reach our higher-level ctx
+    // Bridge callback: append tokens to our context's buffer
     const Callback = struct {
-        fn onToken(ac: *anthropic.Client.SharedContext, chunk: []const u8) void {
-            if (ac.user_data) |p| {
-                const user_ctx: *SharedContext = @ptrCast(@alignCast(p));
-                user_ctx.tools.tokenBuffer.appendSlice(chunk) catch |appendError| {
-                    std.log.err("Failed to append token chunk: {any}", .{appendError});
-                };
-            }
+        fn onToken(shared_ctx: *SharedContext, chunk: []const u8) void {
+            shared_ctx.tools.tokenBuffer.appendSlice(chunk) catch |appendError| {
+                std.log.err("Failed to append token chunk: {any}", .{appendError});
+            };
         }
     };
 
@@ -459,10 +456,7 @@ fn oracleTool(ctx: *SharedContext, allocator: std.mem.Allocator, input: []const 
         , .{currentDate}) catch return ToolError.OutOfMemory;
     defer allocator.free(systemPrompt);
 
-    var ac = anthropic.Client.SharedContext.init(allocator);
-    defer ac.deinit();
-    ac.user_data = ctx;
-    client.stream(&ac, .{
+    client.stream(ctx, .{
         .model = "claude-3-sonnet-20240229",
         .messages = &[_]anthropic.Message{
             .{ .role = .system, .content = systemPrompt },

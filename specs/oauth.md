@@ -34,6 +34,7 @@ Enable a desktop/CLI app to authenticate a Claude Pro/Max user via OAuth **with 
   * API: `https://api.anthropic.com/v1/messages`
     Authorize/token endpoints are vendor‑specific; treat them as change‑prone (monitor failures & surface actionable errors). (The Messages API path and version header are documented; OAuth usage of Bearer + beta header is observed in Claude Code clients.) ([Anthropic][5], [Gist][3], [GitHub][4])
 * **Scopes (from your flow):** `org:create_api_key user:profile user:inference`. Treat as vendor‑defined; fail gracefully if scope changes.
+* **Credential storage (required):** OAuth credentials must be stored in and retrieved from `~/.local/share/{agent name}/auth.json`. This is the single canonical location used by agents and the foundation auth wiring.
 
 ---
 
@@ -66,6 +67,8 @@ Enable a desktop/CLI app to authenticate a Claude Pro/Max user via OAuth **with 
 * **F6** Callback handler: read `code` + `state` **from query string**; verify `state` **and** the exact `redirect_uri` you used (`http://localhost:{port}/callback`). Return a minimal HTML page that autocloses. ([IETF Datatracker][1])
 * **F7** Token exchange (JSON): POST `https://console.anthropic.com/v1/oauth/token` with `{ grant_type: "authorization_code", code, code_verifier, client_id, redirect_uri, state }`.
 * **F8** Persist tokens & absolute expiry (`now + expires_in`).
+
+  - Persist to JSON at `~/.local/share/{agent name}/auth.json` and reload from the same path on startup/refresh.
 
 ### 4.2 Token Refresh
 

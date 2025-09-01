@@ -28,6 +28,8 @@ const buildConfig = struct {
         const SCAFFOLD_TOOL = "src/tools/agent_scaffold.zig";
     };
 
+    // OAuth build options (not used directly here, moved to build_options module)
+
     const RELEASE_TARGETS = [_]ReleaseTarget{
         .{ .arch_os_abi = "aarch64-macos", .archive_ext = ".tar.xz", .is_windows = false },
         .{ .arch_os_abi = "x86_64-linux", .archive_ext = ".tar.xz", .is_windows = false },

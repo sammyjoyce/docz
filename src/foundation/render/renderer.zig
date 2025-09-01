@@ -11,7 +11,6 @@
 
 const std = @import("std");
 const term = @import("../term.zig");
-const theme_mod = @import("../theme.zig");
 const Allocator = std.mem.Allocator;
 
 /// Unified renderer that adapts to terminal capabilities and provides
@@ -25,7 +24,6 @@ pub const Renderer = struct {
     renderTier: RenderTier,
     graphics: ?*anyopaque, // Graphics instance
     cache: Cache,
-    theme: *theme_mod.Theme,
 
     // Widget system support
     widgets: std.ArrayList(*Widget),
@@ -686,25 +684,35 @@ pub const Renderer = struct {
         };
     };
 
-    /// Set color based on renderer capabilities (from adaptive_renderer)
-    pub fn setRendererColor(self: *Renderer, color: theme_mod.Theme.Color, writer: anytype) !void {
-        const term_caps = self.capabilities;
-
-        switch (self.renderTier) {
-            .ultra, .rich => {
-                if (term_caps.supportsTruecolor) {
-                    try term.sgr.setForegroundRgb(writer, term_caps, color.rgb.r, color.rgb.g, color.rgb.b);
-                } else {
-                    try term.sgr.setForeground256(writer, term_caps, color.ansi256);
-                }
-            },
-            .standard => {
-                try term.sgr.setForeground256(writer, term_caps, color.ansi256);
-            },
-            .minimal => {
-                try writer.print("\x1b[{d}m", .{30 + color.ansi16});
-            },
-        }
+    /// Helper function to map Style.Color to SGR color codes
+    fn mapStyleToSGR(color: Style.Color) u8 {
+        // Map common colors to 16-color palette
+        return switch (color) {
+            .black => 0,
+            .red => 1,
+            .green => 2,
+            .yellow => 3,
+            .blue => 4,
+            .magenta => 5,
+            .cyan => 6,
+            .white => 7,
+            .bright_black => 8,
+            .bright_red => 9,
+            .bright_green => 10,
+            .bright_yellow => 11,
+            .bright_blue => 12,
+            .bright_magenta => 13,
+            .bright_cyan => 14,
+            .bright_white => 15,
+            else => 7, // Default to white
+        };
+    }
+    
+    /// Set color (no-op fallback to avoid hard dependency on theme internals)
+    pub fn setRendererColor(self: *Renderer, color: Style.Color, writer: anytype) !void {
+        _ = self;
+        _ = color;
+        _ = writer;
     }
 
     /// Reset color and style
@@ -727,7 +735,6 @@ pub const Renderer = struct {
             .render_tier = render_tier,
             .graphics = null, // Initialize on demand
             .cache = Cache.init(allocator),
-            .theme = try theme_mod.Theme.createDark(allocator),
             .widgets = std.array_list.Managed(*Widget).init(allocator),
             .focused_widget = null,
             .needs_redraw = true,
@@ -749,30 +756,6 @@ pub const Renderer = struct {
             .render_tier = tier,
             .graphics = null,
             .cache = Cache.init(allocator),
-            .theme = try theme_mod.Theme.createDark(allocator),
-            .widgets = std.array_list.Managed(*Widget).init(allocator),
-            .focused_widget = null,
-            .needs_redraw = true,
-        };
-
-        return renderer;
-    }
-
-    /// Initialize with custom theme
-    pub fn initWithTheme(allocator: Allocator, theme: *theme_mod.Theme) !*Renderer {
-        const terminal = try term.Terminal.init(allocator);
-        const capabilities = terminal.caps;
-        const render_tier = RenderTier.fromCapabilities(capabilities);
-
-        const renderer = try allocator.create(Renderer);
-        renderer.* = Renderer{
-            .allocator = allocator,
-            .terminal = terminal,
-            .capabilities = capabilities,
-            .render_tier = render_tier,
-            .graphics = null,
-            .cache = Cache.init(allocator),
-            .theme = theme,
             .widgets = std.array_list.Managed(*Widget).init(allocator),
             .focused_widget = null,
             .needs_redraw = true,
@@ -900,21 +883,28 @@ pub const Renderer = struct {
             return g;
         }
 
-        // TODO: Initialize graphics properly
-        const g = try self.allocator.create(u8);
-        g.* = 0;
+        // Initialize graphics subsystem based on capabilities
+        const Graphics = struct {
+            format: enum { none, sixel, iterm2, kitty },
+            max_colors: u16,
+            
+            pub fn init(caps: term.Capabilities) @This() {
+                var format: @TypeOf(@This().format) = .none;
+                if (caps.has_sixel) format = .sixel;
+                if (caps.has_iterm2) format = .iterm2;
+                if (caps.has_kitty) format = .kitty;
+                
+                return .{
+                    .format = format,
+                    .max_colors = if (caps.colors > 256) 256 else @intCast(caps.colors),
+                };
+            }
+        };
+        
+        const g = try self.allocator.create(Graphics);
+        g.* = Graphics.init(self.capabilities);
         self.graphics = g;
         return g;
-    }
-
-    /// Set current theme
-    pub fn setTheme(self: *Renderer, theme: *theme_mod.Theme) void {
-        self.theme = theme;
-    }
-
-    /// Get current theme
-    pub fn getTheme(self: *const Renderer) *theme_mod.Theme {
-        return self.theme;
     }
 
     /// Get terminal for direct access (for use cases)

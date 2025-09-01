@@ -183,7 +183,7 @@ pub const OAuthWizard = struct {
     statusBar: StatusBar,
     textInput: ?TextInput = null,
     authService: auth_service.Service,
-    networkClient: *anyopaque, // TODO: Define network service type
+    networkClient: *network.Http,
 
     // Terminal capabilities
     caps: ?term.caps.TermCaps = null,

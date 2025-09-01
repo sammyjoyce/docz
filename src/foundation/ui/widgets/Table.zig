@@ -48,11 +48,40 @@ pub const Table = struct {
     }
 
     pub fn render(self: *Self, context: *renderCtx.Context) ui.component.ComponentError!void {
-        _ = context;
-        _ = self;
-        // TODO: Implement table rendering
-        // const rectangle = ui.layout.Rect{ .x = 0, .y = 0, .w = context.surface.size().w, .h = context.surface.size().h };
-        // Render table headers, rows, borders, etc.
+        const tableWidget = renderCtx.widgets.Table;
+        const rect = tableWidget.Rect{
+            .x = 0,
+            .y = 0,
+            .w = @intCast(context.surface.size().w),
+            .h = @intCast(context.surface.size().h),
+        };
+
+        const tableData = tableWidget.Table{
+            .title = self.title,
+            .headers = self.headers,
+            .rows = self.rows,
+            .columnWidths = self.columnWidths,
+            .columnAlignments = if (self.columnAlignments) |aligns| blk: {
+                var alignments = self.allocator.alloc(tableWidget.Alignment, aligns.len) catch return ui.component.ComponentError.OutOfMemory;
+                for (aligns, 0..) |alignment, i| {
+                    alignments[i] = switch (alignment) {
+                        .left => .left,
+                        .center => .center,
+                        .right => .right,
+                    };
+                }
+                break :blk alignments;
+            } else null,
+        };
+
+        tableWidget.table(context, rect, &tableData) catch |err| switch (err) {
+            error.OutOfMemory => return ui.component.ComponentError.OutOfMemory,
+            else => return ui.component.ComponentError.RenderFailed,
+        };
+
+        if (tableData.columnAlignments) |aligns| {
+            self.allocator.free(aligns);
+        }
     }
 
     pub fn event(self: *Self, inputEvent: ui.event.Event) ui.component.Component.Invalidate {

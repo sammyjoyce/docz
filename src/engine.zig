@@ -3,10 +3,11 @@
 //! ~300 LoC core implementation with OAuth + SSE streaming support
 
 const std = @import("std");
-const network = @import("foundation/network.zig");
+const foundation = @import("foundation");
+const network = foundation.network;
 const Auth = network.Auth;
-const tools = @import("foundation/tools.zig");
-const context = @import("foundation/context.zig");
+const tools = foundation.tools;
+const SharedContext = foundation.context.SharedContext;
 
 const log = std.log.scoped(.engine);
 
@@ -35,20 +36,23 @@ pub const Engine = struct {
     const Self = @This();
 
     allocator: std.mem.Allocator,
-    client: ?network.Anthropic.Client,
-    shared_ctx: context.SharedContext,
+    client: ?network.Anthropic.Client.Client,
+    shared_ctx: SharedContext,
     messages: std.ArrayList(network.Anthropic.Message),
     tool_registry: tools.Registry,
     options: CliOptions,
+    /// Optional base system prompt provided by the AgentSpec (owned by Engine)
+    system_base: ?[]const u8 = null,
 
     pub fn init(allocator: std.mem.Allocator, options: CliOptions) !Self {
         return Self{
             .allocator = allocator,
             .client = null,
-            .shared_ctx = context.SharedContext.init(allocator),
+            .shared_ctx = SharedContext.init(allocator),
             .messages = std.ArrayList(network.Anthropic.Message).init(allocator),
             .tool_registry = tools.Registry.init(allocator),
             .options = options,
+            .system_base = null,
         };
     }
 
@@ -60,16 +64,42 @@ pub const Engine = struct {
         self.shared_ctx.deinit();
         if (self.client) |*c| c.deinit();
         self.tool_registry.deinit();
+        if (self.system_base) |sb| self.allocator.free(sb);
     }
 
     /// Authenticate and initialize client
     pub fn authenticate(self: *Self) !void {
-        const creds_path = "claude_oauth_creds.json";
-        var creds = Auth.OAuth.parseCredentials(self.allocator, creds_path) catch |err| {
-            if (err == error.FileNotFound) {
-                return error.NotAuthenticated;
+        // Get agent name from environment or use default
+        const agent_name = std.process.getEnvVarOwned(self.allocator, "AGENT_NAME") catch |err| blk: {
+            if (err == error.EnvironmentVariableNotFound) {
+                break :blk try self.allocator.dupe(u8, "docz");
             }
             return err;
+        };
+        defer self.allocator.free(agent_name);
+
+        // Use standard credential path: ~/.local/share/{agent_name}/auth.json
+        const store = Auth.store.TokenStore.init(self.allocator, .{
+            .agent_name = agent_name,
+        });
+
+        // Check if credentials exist
+        if (!store.exists()) {
+            return error.NotAuthenticated;
+        }
+
+        // Load credentials
+        const stored_creds = try store.load();
+        defer self.allocator.free(stored_creds.type);
+        defer self.allocator.free(stored_creds.access_token);
+        defer self.allocator.free(stored_creds.refresh_token);
+
+        // Convert to OAuth credentials format for Anthropic client
+        var creds = Auth.OAuth.Credentials{
+            .type = try self.allocator.dupe(u8, stored_creds.type),
+            .accessToken = try self.allocator.dupe(u8, stored_creds.access_token),
+            .refreshToken = try self.allocator.dupe(u8, stored_creds.refresh_token),
+            .expiresAt = stored_creds.expires_at,
         };
         errdefer creds.deinit(self.allocator);
 
@@ -77,19 +107,31 @@ pub const Engine = struct {
         if (creds.willExpireSoon(120)) {
             log.info("Token expiring soon, refreshing...", .{});
 
-            const new_creds = try Auth.OAuth.refreshTokens(self.allocator, creds.refreshToken);
-            errdefer new_creds.deinit(self.allocator);
+            // Get fresh tokens; take ownership of returned allocations.
+            var new_creds = try Auth.OAuth.refreshTokens(self.allocator, creds.refreshToken);
 
             // Update stored credentials
-            try Auth.OAuth.saveCredentials(self.allocator, creds_path, new_creds);
+            const updated_store_creds = Auth.store.StoredCredentials{
+                .type = new_creds.type,
+                .access_token = new_creds.accessToken,
+                .refresh_token = new_creds.refreshToken,
+                .expires_at = new_creds.expiresAt,
+            };
+            try store.save(updated_store_creds);
 
-            // Use new credentials
+            // Free old credentials and replace them (new_creds memory now owned by creds)
             creds.deinit(self.allocator);
             creds = new_creds;
         }
 
+        // Get credentials path for auto-refresh support
+        const creds_path = try store.getCredentialPath();
+        defer self.allocator.free(creds_path);
+
         // Initialize Anthropic client with OAuth
-        self.client = try network.Anthropic.Client.initWithOAuth(self.allocator, creds, creds_path);
+        self.client = try network.Anthropic.Client.Client.initWithOAuth(self.allocator, creds, creds_path);
+        // On success, the client is assumed to manage token refresh; we intentionally
+        // do not deinit `creds` here.
     }
 
     /// Run inference with streaming support and tool execution
@@ -97,7 +139,7 @@ pub const Engine = struct {
         const stdout = std.debug;
 
         // Add user message
-        try self.messages.append(.{
+        try self.messages.append(self.allocator, .{
             .role = .user,
             .content = try self.allocator.dupe(u8, user_input),
         });
@@ -111,7 +153,7 @@ pub const Engine = struct {
 
         if (self.options.stream) {
             // Streaming mode with SSE
-            try stdout.print("\nClaude: ", .{});
+            stdout.print("\nClaude: ", .{});
 
             // Initialize streaming state
             self.shared_ctx.anthropic.contentCollector.clearRetainingCapacity();
@@ -120,7 +162,7 @@ pub const Engine = struct {
             self.shared_ctx.anthropic.model = null;
 
             // Stream the response
-            const client = self.client orelse return error.NotAuthenticated;
+            var client = self.client orelse return error.NotAuthenticated;
             const streamParams = network.Anthropic.Client.StreamParameters{
                 .model = self.options.model,
                 .messages = self.messages.items,
@@ -128,17 +170,17 @@ pub const Engine = struct {
                 .temperature = self.options.temperature,
                 .system = system_prompt,
                 .onToken = struct {
-                    fn callback(ctx: *context.SharedContext, data: []const u8) void {
+                    fn callback(ctx: *SharedContext, data: []const u8) void {
                         Engine.processStreamingEvent(ctx, data);
                     }
                 }.callback,
             };
 
-            try client.stream(&self.shared_ctx, streamParams);
+            try client.createMessageStream(&self.shared_ctx, streamParams);
 
             // Add assistant message to history
             const assistant_content = try self.allocator.dupe(u8, self.shared_ctx.anthropic.contentCollector.items);
-            try self.messages.append(.{
+            try self.messages.append(self.allocator, .{
                 .role = .assistant,
                 .content = assistant_content,
             });
@@ -146,22 +188,23 @@ pub const Engine = struct {
             // Check for tool calls and execute them
             try self.handleToolCalls();
 
-            try stdout.print("\n\n", .{});
+            stdout.print("\n\n", .{});
         } else {
             // Non-streaming mode
-            const client = self.client orelse return error.NotAuthenticated;
-            const result = try client.complete(&self.shared_ctx, .{
+            var client = self.client orelse return error.NotAuthenticated;
+            var result = try client.createMessage(.{
                 .model = self.options.model,
                 .messages = self.messages.items,
                 .maxTokens = self.options.max_tokens,
                 .temperature = self.options.temperature,
                 .system = system_prompt,
             });
+            defer result.deinit();
 
-            try stdout.print("\nClaude: {s}\n\n", .{result.content});
+            stdout.print("\nClaude: {s}\n\n", .{result.content});
 
             // Add assistant message
-            try self.messages.append(.{
+            try self.messages.append(self.allocator, .{
                 .role = .assistant,
                 .content = try self.allocator.dupe(u8, result.content),
             });
@@ -172,7 +215,7 @@ pub const Engine = struct {
     }
 
     /// Process streaming SSE events with proper tool JSON accumulation
-    fn processStreamingEvent(ctx: *context.SharedContext, data: []const u8) void {
+    fn processStreamingEvent(ctx: *SharedContext, data: []const u8) void {
         // Parse the SSE event data
         const EventData = struct {
             type: ?[]const u8 = null,
@@ -194,7 +237,7 @@ pub const Engine = struct {
         };
 
         const parsed = std.json.parseFromSlice(EventData, ctx.anthropic.allocator, data, .{
-            .ignore_unknown_fields = true
+            .ignore_unknown_fields = true,
         }) catch return;
         defer parsed.deinit();
 
@@ -240,7 +283,7 @@ pub const Engine = struct {
                             // Accumulate for history
                             ctx.anthropic.contentCollector.appendSlice(ctx.anthropic.allocator, text) catch {};
                         }
-                        } else if (std.mem.eql(u8, delta_type, "input_json_delta")) {
+                    } else if (std.mem.eql(u8, delta_type, "input_json_delta")) {
                         if (delta.partial_json) |json_part| {
                             // Accumulate tool JSON
                             ctx.tools.tokenBuffer.appendSlice(json_part) catch {};
@@ -270,45 +313,46 @@ pub const Engine = struct {
         // Read anthropic_spoof.txt content per spec requirements
         const spoofContent = blk: {
             const spoofFile = std.fs.cwd().openFile("prompt/anthropic_spoof.txt", .{}) catch {
-                break :blk "";
+                break :blk null;
             };
             defer spoofFile.close();
-            break :blk spoofFile.readToEndAlloc(self.allocator, 1024) catch "";
+            const content = spoofFile.readToEndAlloc(self.allocator, 1024 * 1024) catch null;
+            break :blk content;
         };
-        defer if (spoofContent.len > 0) self.allocator.free(spoofContent);
+        defer if (spoofContent) |content| self.allocator.free(content);
 
-        // Build tool descriptions for system prompt
-        const tool_list = try self.tool_registry.listTools(self.allocator);
-        defer self.allocator.free(tool_list);
-
-        var prompt_builder = std.ArrayList(u8).init(self.allocator);
-        defer prompt_builder.deinit();
+        var prompt_builder = std.ArrayList(u8).initCapacity(self.allocator, 0) catch unreachable;
+        defer prompt_builder.deinit(self.allocator);
 
         // Prepend spoof content if available
-        if (spoofContent.len > 0) {
-            try prompt_builder.appendSlice(spoofContent);
-            try prompt_builder.appendSlice("\n\n");
+        if (spoofContent) |content| {
+            try prompt_builder.appendSlice(self.allocator, content);
+            try prompt_builder.appendSlice(self.allocator, "\n\n");
         }
 
-        if (tool_list.len > 0) {
-            try prompt_builder.appendSlice("You have access to the following tools:\n\n");
+        // Add tool descriptions if available
+        const tools_list = try self.tool_registry.listTools(self.allocator);
+        defer self.allocator.free(tools_list);
 
-            for (tool_list) |tool| {
-                try prompt_builder.appendSlice("Tool: ");
-                try prompt_builder.appendSlice(tool.name);
-                try prompt_builder.appendSlice("\nDescription: ");
-                try prompt_builder.appendSlice(tool.description);
-                try prompt_builder.appendSlice("\n\n");
+        if (tools_list.len > 0) {
+            try prompt_builder.appendSlice(self.allocator, "You have access to the following tools:\n\n");
+
+            for (tools_list) |tool| {
+                try prompt_builder.appendSlice(self.allocator, "Tool: ");
+                try prompt_builder.appendSlice(self.allocator, tool.name);
+                try prompt_builder.appendSlice(self.allocator, "\nDescription: ");
+                try prompt_builder.appendSlice(self.allocator, tool.description);
+                try prompt_builder.appendSlice(self.allocator, "\n\n");
             }
 
-            try prompt_builder.appendSlice("When you need to use a tool, respond with a tool_use block containing the tool name and parameters.\n");
+            try prompt_builder.appendSlice(self.allocator, "When you need to use a tool, respond with a tool_use block containing the tool name and parameters.\n");
         }
 
         if (prompt_builder.items.len == 0) {
             return null;
         }
 
-        return prompt_builder.toOwnedSlice();
+        return try prompt_builder.toOwnedSlice(self.allocator);
     }
 
     /// Handle tool calls from the assistant response
@@ -365,15 +409,11 @@ pub const Engine = struct {
 
         // Execute the tool
         const result = tool_func(&self.shared_ctx, self.allocator, args_json) catch |err| {
-            log.err("Tool execution failed: {s} - {}", .{tool_name, err});
-            const error_msg = try std.fmt.allocPrint(
-                self.allocator,
-                "Tool '{s}' failed: {s}",
-                .{ tool_name, @errorName(err) }
-            );
+            log.err("Tool execution failed: {s} - {}", .{ tool_name, err });
+            const error_msg = try std.fmt.allocPrint(self.allocator, "Tool '{s}' failed: {s}", .{ tool_name, @errorName(err) });
             defer self.allocator.free(error_msg);
 
-            try self.messages.append(.{
+            try self.messages.append(self.allocator, .{
                 .role = .user,
                 .content = error_msg,
             });
@@ -384,14 +424,10 @@ pub const Engine = struct {
         log.info("Tool '{s}' completed successfully", .{tool_name});
 
         // Add tool result to conversation as a user message
-        const tool_result_content = try std.fmt.allocPrint(
-            self.allocator,
-            "Tool '{s}' result: {s}",
-            .{ tool_name, result }
-        );
+        const tool_result_content = try std.fmt.allocPrint(self.allocator, "Tool '{s}' result: {s}", .{ tool_name, result });
         defer self.allocator.free(tool_result_content);
 
-        try self.messages.append(.{
+        try self.messages.append(self.allocator, .{
             .role = .user,
             .content = tool_result_content,
         });
@@ -469,7 +505,7 @@ pub const Engine = struct {
         // Find the oracle tool for summarization
         const oracle_tool = self.tool_registry.get("oracle");
         if (oracle_tool == null) {
-            log.debug("Oracle tool not available for summarization, skipping");
+            log.debug("Oracle tool not available for summarization, skipping", .{});
             return;
         }
 
@@ -480,42 +516,40 @@ pub const Engine = struct {
         const messages_to_summarize = self.messages.items[0..(self.messages.items.len - keep_recent)];
 
         // Build summarization prompt
-        var summary_prompt = std.ArrayList(u8).init(self.allocator);
-        defer summary_prompt.deinit();
+        var summary_prompt = std.ArrayList(u8).initCapacity(self.allocator, 0) catch unreachable;
+        defer summary_prompt.deinit(self.allocator);
 
-        try summary_prompt.appendSlice("Please provide a concise summary of the following conversation history. Focus on key decisions, important information, and context that would be relevant for continuing this conversation:\n\n");
+        try summary_prompt.appendSlice(self.allocator, "Please provide a concise summary of the following conversation history. Focus on key decisions, important information, and context that would be relevant for continuing this conversation:\n\n");
 
         for (messages_to_summarize, 0..) |msg, i| {
             const role_name = switch (msg.role) {
                 .user => "User",
                 .assistant => "Assistant",
                 .system => "System",
+                .tool => "Tool",
             };
-            try summary_prompt.writer().print("{}: {}\n", .{ role_name, std.fmt.fmtSliceEscapeLower(msg.content) });
+            try summary_prompt.writer(self.allocator).print("{s}: {s}\n", .{ role_name, msg.content });
             if (i < messages_to_summarize.len - 1) {
-                try summary_prompt.appendSlice("\n");
+                try summary_prompt.appendSlice(self.allocator, "\n");
             }
         }
 
         // Use oracle tool to generate summary
         const summary_json = try std.fmt.allocPrint(self.allocator,
             \\{{"prompt":"{s}"}}
-        , .{std.fmt.fmtSliceEscapeLower(summary_prompt.items)});
+        , .{summary_prompt.items});
         defer self.allocator.free(summary_json);
 
         log.debug("Generating conversation summary using oracle tool", .{});
 
-        const summary_result = oracle_tool(&self.shared_ctx, self.allocator, summary_json) catch |err| {
+        const summary_result = oracle_tool.?(&self.shared_ctx, self.allocator, summary_json) catch |err| {
             log.warn("Failed to generate conversation summary: {}", .{err});
             return;
         };
         defer self.allocator.free(summary_result);
 
         // Replace old messages with summary
-        const summary_content = try std.fmt.allocPrint(self.allocator,
-            "Previous conversation summary: {s}",
-            .{summary_result}
-        );
+        const summary_content = try std.fmt.allocPrint(self.allocator, "Previous conversation summary: {s}", .{summary_result});
 
         // Free old messages
         for (messages_to_summarize) |msg| {
@@ -550,7 +584,9 @@ pub fn runWithOptions(
     _: []const u8, // working directory (unused for now)
 ) !void {
     const stdout = std.debug;
-    const stdin = std.fs.File.stdin().reader();
+    var stdin_file = std.fs.File.stdin();
+    var stdin_buf: [4096]u8 = undefined;
+    var stdin = stdin_file.reader(stdin_buf[0..]);
 
     // Initialize engine
     var engine = try Engine.init(allocator, options);
@@ -559,7 +595,7 @@ pub fn runWithOptions(
     // Authenticate
     engine.authenticate() catch |err| {
         if (err == error.NotAuthenticated) {
-            try stdout.print("Not authenticated. Run 'docz auth login' to authenticate.\n", .{});
+            stdout.print("Not authenticated. Run 'docz auth login' to authenticate.\n", .{});
             return;
         }
         return err;
@@ -574,19 +610,19 @@ pub fn runWithOptions(
 
     // Add system prompt as first message if provided
     if (system_prompt.len > 0) {
-        try engine.messages.append(.{
+        try engine.messages.append(allocator, .{
             .role = .user,
             .content = try allocator.dupe(u8, system_prompt),
         });
     }
 
     // Print banner
-    try stdout.print("\n┌────────────────────────────────────────┐\n", .{});
-    try stdout.print("│  Docz Agent - Claude AI Assistant     │\n", .{});
-    try stdout.print("│  Model: {s: <30} │\n", .{options.model});
-    try stdout.print("│  Auth: OAuth (Claude Pro/Max)         │\n", .{});
-    try stdout.print("│  Type 'exit' or Ctrl-C to quit        │\n", .{});
-    try stdout.print("└────────────────────────────────────────┘\n\n", .{});
+    stdout.print("\n┌────────────────────────────────────────┐\n", .{});
+    stdout.print("│  Docz Agent - Claude AI Assistant     │\n", .{});
+    stdout.print("│  Model: {s: <30} │\n", .{options.model});
+    stdout.print("│  Auth: OAuth (Claude Pro/Max)         │\n", .{});
+    stdout.print("│  Type 'exit' or Ctrl-C to quit        │\n", .{});
+    stdout.print("└────────────────────────────────────────┘\n\n", .{});
 
     // Check for input flag
     if (options.input) |input| {
@@ -605,10 +641,10 @@ pub fn runWithOptions(
 
     // REPL loop
     while (true) {
-        try stdout.print("You: ", .{});
+        stdout.print("You: ", .{});
 
         var buf: [4096]u8 = undefined;
-        if (try stdin.readUntilDelimiterOrEof(&buf, '\n')) |user_input| {
+        if (try stdin.interface.readUntilDelimiterOrEof(&buf, '\n')) |user_input| {
             const trimmed = std.mem.trim(u8, user_input, " \t\r\n");
 
             if (std.mem.eql(u8, trimmed, "exit")) {
@@ -626,5 +662,5 @@ pub fn runWithOptions(
         }
     }
 
-    try stdout.print("\nGoodbye!\n", .{});
+    stdout.print("\nGoodbye!\n", .{});
 }

@@ -8,7 +8,6 @@ const log = std.log.scoped(.cli_auth);
 
 // Re-export Commands for the CLI barrel
 pub const Commands = struct {
-
     /// OAuth configuration constants
     const OAUTH_CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e";
     const OAUTH_AUTHORIZATION_URL = "https://claude.ai/oauth/authorize";
@@ -27,7 +26,7 @@ pub const Commands = struct {
             return;
         }
 
-        try stdout.print("Starting OAuth login flow...\n", .{});
+        stdout.print("Starting OAuth login flow...\n", .{});
 
         // Generate PKCE parameters
         const pkce_params = try Auth.OAuth.generatePkceParams(allocator);
@@ -52,57 +51,96 @@ pub const Commands = struct {
         // Open browser
         Auth.OAuth.launchBrowser(auth_url) catch |err| {
             log.warn("Failed to open browser: {}", .{err});
-            try stdout.print("Please manually open this URL in your browser:\n{s}\n", .{auth_url});
+            stdout.print("Please manually open this URL in your browser:\n{s}\n", .{auth_url});
         };
 
-        try stdout.print("Waiting for authorization callback...\n", .{});
+        stdout.print("Waiting for authorization callback...\n", .{});
 
         // Wait for callback with state validation
         const callback_result = try server.waitForCallback(pkce_params.state);
         defer callback_result.deinit(allocator);
 
-        try stdout.print("Authorization code received, exchanging for tokens...\n", .{});
+        stdout.print("Authorization code received, exchanging for tokens...\n", .{});
 
         // Exchange code for tokens
-        const token_response = try Auth.OAuth.exchangeCodeForTokens(
+        const creds = try Auth.OAuth.exchangeCodeForTokens(
             allocator,
             callback_result.code,
             pkce_params,
             redirect_uri,
         );
-        defer token_response.deinit(allocator);
+        defer creds.deinit(allocator);
 
-        // Save credentials
-        try Auth.OAuth.saveCredentials(allocator, "claude_oauth_creds.json", token_response);
+        // Save credentials to standard location
+        const agent_name = std.process.getEnvVarOwned(allocator, "AGENT_NAME") catch |err| blk: {
+            if (err == error.EnvironmentVariableNotFound) {
+                break :blk try allocator.dupe(u8, "docz");
+            }
+            return err;
+        };
+        defer allocator.free(agent_name);
 
-        try stdout.print("\n✓ Authentication successful!\n", .{});
-        try stdout.print("Access token expires in {} seconds\n", .{token_response.expiresAt - std.time.timestamp()});
+        const store = Auth.store.TokenStore.init(allocator, .{
+            .agent_name = agent_name,
+        });
+
+        const stored_creds = Auth.store.StoredCredentials{
+            .type = creds.type,
+            .access_token = creds.accessToken,
+            .refresh_token = creds.refreshToken,
+            .expires_at = creds.expiresAt,
+        };
+        try store.save(stored_creds);
+
+        stdout.print("\n✓ Authentication successful!\n", .{});
+        stdout.print("Access token expires in {} seconds\n", .{creds.expiresAt - std.time.timestamp()});
     }
 
     /// Handle 'auth status' command
     pub fn status(allocator: std.mem.Allocator) !void {
         const stdout = std.debug;
 
-        const creds_path = "claude_oauth_creds.json";
-        const creds = Auth.OAuth.parseCredentials(allocator, creds_path) catch |err| {
-            if (err == error.FileNotFound) {
-                try stdout.print("Not authenticated. Run 'docz auth login' to authenticate.\n", .{});
-                return;
+        // Get agent name from environment or use default
+        const agent_name = std.process.getEnvVarOwned(allocator, "AGENT_NAME") catch |err| blk: {
+            if (err == error.EnvironmentVariableNotFound) {
+                break :blk try allocator.dupe(u8, "docz");
             }
             return err;
         };
-        defer creds.deinit(allocator);
+        defer allocator.free(agent_name);
 
-        try stdout.print("Authentication Status:\n", .{});
-        try stdout.print("  Type: {s}\n", .{creds.type});
+        const store = Auth.store.TokenStore.init(allocator, .{
+            .agent_name = agent_name,
+        });
+
+        if (!store.exists()) {
+            stdout.print("Not authenticated. Run 'docz auth login' to authenticate.\n", .{});
+            return;
+        }
+
+        const stored_creds = try store.load();
+        defer allocator.free(stored_creds.type);
+        defer allocator.free(stored_creds.access_token);
+        defer allocator.free(stored_creds.refresh_token);
+
+        // Convert to OAuth credentials for compatibility
+        const creds = Auth.OAuth.Credentials{
+            .type = stored_creds.type,
+            .accessToken = stored_creds.access_token,
+            .refreshToken = stored_creds.refresh_token,
+            .expiresAt = stored_creds.expires_at,
+        };
+
+        stdout.print("Authentication Status:\n", .{});
+        stdout.print("  Type: {s}\n", .{creds.type});
 
         const now = std.time.timestamp();
         if (creds.isExpired()) {
-            try stdout.print("  Status: EXPIRED\n", .{});
+            stdout.print("  Status: EXPIRED\n", .{});
         } else {
             const remaining = creds.expiresAt - now;
-            try stdout.print("  Status: VALID\n", .{});
-            try stdout.print("  Expires in: {} seconds\n", .{remaining});
+            stdout.print("  Status: VALID\n", .{});
+            stdout.print("  Expires in: {} seconds\n", .{remaining});
         }
     }
 
@@ -110,90 +148,64 @@ pub const Commands = struct {
     pub fn whoami(allocator: std.mem.Allocator) !void {
         const stdout = std.debug;
 
-        const creds_path = "claude_oauth_creds.json";
-        const creds = Auth.OAuth.parseCredentials(allocator, creds_path) catch |err| {
-            if (err == error.FileNotFound) {
-                try stdout.print("Not authenticated. Run 'docz auth login' to authenticate.\n", .{});
-                return;
+        // Get agent name from environment or use default
+        const agent_name = std.process.getEnvVarOwned(allocator, "AGENT_NAME") catch |err| blk: {
+            if (err == error.EnvironmentVariableNotFound) {
+                break :blk try allocator.dupe(u8, "docz");
             }
             return err;
         };
-        defer creds.deinit(allocator);
+        defer allocator.free(agent_name);
 
-        // TODO: Make API call to get user info
-        try stdout.print("Authenticated via OAuth\n", .{});
-        try stdout.print("Token type: {s}\n", .{creds.type});
+        const store = Auth.store.TokenStore.init(allocator, .{
+            .agent_name = agent_name,
+        });
+
+        if (!store.exists()) {
+            stdout.print("Not authenticated. Run 'docz auth login' to authenticate.\n", .{});
+            return;
+        }
+
+        const stored_creds = try store.load();
+        defer allocator.free(stored_creds.type);
+        defer allocator.free(stored_creds.access_token);
+        defer allocator.free(stored_creds.refresh_token);
+
+        const creds = Auth.OAuth.Credentials{
+            .type = stored_creds.type,
+            .accessToken = stored_creds.access_token,
+            .refreshToken = stored_creds.refresh_token,
+            .expiresAt = stored_creds.expires_at,
+        };
+
+        stdout.print("Authenticated via OAuth\n", .{});
+        stdout.print("Token type: {s}\n", .{creds.type});
     }
 
     /// Handle 'auth logout' command
     pub fn logout(allocator: std.mem.Allocator) !void {
         const stdout = std.debug;
 
-        const creds_path = "claude_oauth_creds.json";
-        _ = std.fs.cwd().deleteFile(creds_path) catch |err| {
-            if (err == error.FileNotFound) {
-                try stdout.print("Not authenticated.\n", .{});
-                return;
+        // Get agent name from environment or use default
+        const agent_name = std.process.getEnvVarOwned(allocator, "AGENT_NAME") catch |err| blk: {
+            if (err == error.EnvironmentVariableNotFound) {
+                break :blk try allocator.dupe(u8, "docz");
             }
             return err;
         };
+        defer allocator.free(agent_name);
 
-        try stdout.print("Successfully logged out.\n", .{});
-    }
+        const store = Auth.store.TokenStore.init(allocator, .{
+            .agent_name = agent_name,
+        });
 
-    /// Manual login flow (copy-paste)
-    fn loginManual(allocator: std.mem.Allocator) !void {
-        const stdout = std.debug;
-        const stdin = std.io.getStdIn().reader();
-
-        try stdout.print("Starting manual OAuth login flow...\n", .{});
-
-        // Generate PKCE parameters
-        const pkce_params = try Auth.OAuth.generatePkceParams(allocator);
-        defer pkce_params.deinit(allocator);
-
-        // Build authorization URL with default redirect
-        const auth_url = try Auth.OAuth.buildAuthorizationUrl(allocator, pkce_params);
-        defer allocator.free(auth_url);
-
-        try stdout.print("\nPlease open this URL in your browser:\n{s}\n\n", .{auth_url});
-        try stdout.print("After authorization, you'll be redirected to a URL like:\n", .{});
-        try stdout.print("http://localhost:8080/callback?code=CODE&state=STATE\n\n", .{});
-        try stdout.print("Please paste the authorization code: ", .{});
-
-        // Read authorization code
-        var buf: [1024]u8 = undefined;
-        if (try stdin.readUntilDelimiterOrEof(&buf, '\n')) |input| {
-            const code = std.mem.trim(u8, input, " \t\r\n");
-
-            try stdout.print("Please paste the state parameter: ", .{});
-            if (try stdin.readUntilDelimiterOrEof(&buf, '\n')) |state_input| {
-                const state = std.mem.trim(u8, state_input, " \t\r\n");
-
-                // Verify state matches
-                if (!std.mem.eql(u8, state, pkce_params.state)) {
-                    try stdout.print("Error: State mismatch - authorization may have been intercepted\n", .{});
-                    return error.StateMismatch;
-                }
-
-                try stdout.print("Exchanging code for tokens...\n", .{});
-
-                // Exchange code for tokens using default redirect URI
-                const token_response = try Auth.OAuth.exchangeCodeForTokens(
-                    allocator,
-                    code,
-                    pkce_params,
-                    "http://localhost:8080/callback",
-                );
-                defer token_response.deinit(allocator);
-
-                // Save credentials
-                try Auth.OAuth.saveCredentials(allocator, "claude_oauth_creds.json", token_response);
-
-                try stdout.print("\n✓ Authentication successful!\n", .{});
-                try stdout.print("Access token expires in {} seconds\n", .{token_response.expiresAt - std.time.timestamp()});
-            }
+        if (!store.exists()) {
+            stdout.print("Not authenticated.\n", .{});
+            return;
         }
+
+        try store.remove();
+        stdout.print("Successfully logged out.\n", .{});
     }
 
     /// Handle 'auth test-call' command
@@ -202,38 +214,63 @@ pub const Commands = struct {
     }) !void {
         const stdout = std.debug;
 
-        const creds_path = "claude_oauth_creds.json";
-        var creds = Auth.OAuth.parseCredentials(allocator, creds_path) catch |err| {
-            if (err == error.FileNotFound) {
-                try stdout.print("Not authenticated. Run 'docz auth login' to authenticate.\n", .{});
-                return;
+        // Get agent name from environment or use default
+        const agent_name = std.process.getEnvVarOwned(allocator, "AGENT_NAME") catch |err| blk: {
+            if (err == error.EnvironmentVariableNotFound) {
+                break :blk try allocator.dupe(u8, "docz");
             }
             return err;
+        };
+        defer allocator.free(agent_name);
+
+        const store = Auth.store.TokenStore.init(allocator, .{
+            .agent_name = agent_name,
+        });
+
+        if (!store.exists()) {
+            stdout.print("Not authenticated. Run 'docz auth login' to authenticate.\n", .{});
+            return;
+        }
+
+        const stored_creds = try store.load();
+        defer allocator.free(stored_creds.type);
+        defer allocator.free(stored_creds.access_token);
+        defer allocator.free(stored_creds.refresh_token);
+
+        // Convert to OAuth credentials
+        var creds = Auth.OAuth.Credentials{
+            .type = try allocator.dupe(u8, stored_creds.type),
+            .accessToken = try allocator.dupe(u8, stored_creds.access_token),
+            .refreshToken = try allocator.dupe(u8, stored_creds.refresh_token),
+            .expiresAt = stored_creds.expires_at,
         };
         defer creds.deinit(allocator);
 
         // Check if token needs refresh
         if (creds.willExpireSoon(120)) {
-            try stdout.print("Token expiring soon, refreshing...\n", .{});
+            stdout.print("Token expiring soon, refreshing...\n", .{});
 
             const new_creds = try Auth.OAuth.refreshTokens(allocator, creds.refreshToken);
             defer new_creds.deinit(allocator);
 
             // Update stored credentials
-            try Auth.OAuth.saveCredentials(allocator, creds_path, new_creds);
+            const updated_store_creds = Auth.store.StoredCredentials{
+                .type = new_creds.type,
+                .access_token = new_creds.accessToken,
+                .refresh_token = new_creds.refreshToken,
+                .expires_at = new_creds.expiresAt,
+            };
+            try store.save(updated_store_creds);
 
-            // Use new access token
-            allocator.free(creds.accessToken);
-            creds.accessToken = try allocator.dupe(u8, new_creds.accessToken);
-            allocator.free(creds.refreshToken);
-            creds.refreshToken = try allocator.dupe(u8, new_creds.refreshToken);
-            creds.expiresAt = new_creds.expiresAt;
+            // Use new credentials
+            creds.deinit(allocator);
+            creds = new_creds;
         }
 
-        try stdout.print("Making test API call to Anthropic Messages API...\n", .{});
+        stdout.print("Making test API call to Anthropic Messages API...\n", .{});
 
         // Initialize Anthropic client
-        var client = try network.Anthropic.Client.initWithOAuth(allocator, creds, creds_path);
+        var client = try network.Anthropic.Client.Client.initWithOAuth(allocator, creds, null);
         defer client.deinit();
 
         // Make a simple test call
@@ -242,99 +279,48 @@ pub const Commands = struct {
         };
 
         if (args.stream) {
-            try stdout.print("Using streaming mode...\n", .{});
-
-            // Streaming test call
+            // Streaming test
             var shared_ctx = @import("../context.zig").SharedContext.init(allocator);
             defer shared_ctx.deinit();
 
-            const streamParams = network.Anthropic.Client.StreamParameters{
+            const stream_params = network.Anthropic.Client.StreamParameters{
                 .model = "claude-3-5-sonnet-20241022",
                 .messages = &messages,
-                .maxTokens = 100,
-                .temperature = 0.0,
+                .maxTokens = 64,
+                .temperature = 0.7,
                 .onToken = struct {
-                    fn callback(ctx: *@import("../context.zig").SharedContext, data: []const u8) void {
+                    fn onToken(ctx: *@import("../context.zig").SharedContext, token: []const u8) void {
                         _ = ctx;
-                        // Parse and print streaming data
-                        const parsed = std.json.parseFromSlice(
-                            struct { delta: ?struct { text: ?[]const u8 } = null },
-                            std.heap.page_allocator,
-                            data,
-                            .{ .ignore_unknown_fields = true }
-                        ) catch return;
-                        defer parsed.deinit();
-
-                        if (parsed.value.delta) |delta| {
-                            if (delta.text) |text| {
-                                std.debug.print("{s}", .{text});
-                            }
-                        }
+                        std.debug.print("{s}", .{token});
                     }
-                }.callback,
+                }.onToken,
             };
 
-            try client.stream(&shared_ctx, streamParams);
-            try stdout.print("\n", .{});
+            try client.createMessageStream(&shared_ctx, stream_params);
+            stdout.print("\n✓ Streaming API call successful!\n", .{});
         } else {
-            // Non-streaming test call
-            var shared_ctx = @import("../context.zig").SharedContext.init(allocator);
-            defer shared_ctx.deinit();
-
-            const result = try client.complete(&shared_ctx, .{
+            // Non-streaming test
+            const params = network.Anthropic.Client.MessageParameters{
                 .model = "claude-3-5-sonnet-20241022",
                 .messages = &messages,
-                .maxTokens = 100,
-                .temperature = 0.0,
-            });
+                .maxTokens = 64,
+                .temperature = 0.7,
+                .stream = false,
+            };
+
+            var result = try client.createMessage(params);
             defer result.deinit();
 
-            // Print response
-            try stdout.print("Response: {s}\n", .{result.content});
+            stdout.print("Claude says: {s}\n", .{result.content});
+            stdout.print("✓ API call successful!\n", .{});
         }
-
-        try stdout.print("✓ Test call successful!\n", .{});
     }
 
-    fn loginManual(allocator: std.mem.Allocator) !void {
+    /// Manual login flow (copy-paste)
+    fn loginManual(_: std.mem.Allocator) !void {
         const stdout = std.debug;
-        const stdin = std.fs.File.stdin().reader();
-
-        // Generate PKCE parameters
-        const pkce_params = try Auth.OAuth.generatePkceParams(allocator);
-        defer pkce_params.deinit(allocator);
-
-        // Build authorization URL for manual flow
-        const auth_url = try Auth.OAuth.buildAuthorizationUrl(allocator, pkce_params);
-        defer allocator.free(auth_url);
-
-        try stdout.print("\nManual OAuth Flow\n", .{});
-        try stdout.print("==================\n\n", .{});
-        try stdout.print("1. Open this URL in your browser:\n\n", .{});
-        try stdout.print("{s}\n\n", .{auth_url});
-        try stdout.print("2. After authorizing, copy the code from the redirect URL\n", .{});
-        try stdout.print("3. Enter the authorization code: ", .{});
-
-        var buf: [256]u8 = undefined;
-        if (try stdin.readUntilDelimiterOrEof(&buf, '\n')) |code| {
-            const trimmed_code = std.mem.trim(u8, code, " \t\r\n");
-
-            // Exchange code for tokens
-            const token_response = try Auth.OAuth.exchangeCodeForTokens(
-                allocator,
-                trimmed_code,
-                pkce_params,
-                "urn:ietf:wg:oauth:2.0:oob",
-            );
-            defer token_response.deinit(allocator);
-
-            // Save credentials
-            try Auth.OAuth.saveCredentials(allocator, "claude_oauth_creds.json", token_response);
-
-            try stdout.print("\n✓ Authentication successful!\n", .{});
-        } else {
-            return error.NoCodeEntered;
-        }
+        stdout.print("Manual OAuth login is not available in this build.\n", .{});
+        stdout.print("Please run: docz auth login\n", .{});
+        return error.ManualLoginNotSupported;
     }
-};
 };

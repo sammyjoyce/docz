@@ -302,13 +302,41 @@ pub const ScrollableTextArea = struct {
     }
 
     /// Copy selected text to clipboard
-    pub fn copySelection(self: *Self) !?[]const u8 {
+    pub fn copySelection(self: *Self, renderer: ?*Renderer) !?[]const u8 {
         if (self.selection) |sel| {
             const text = try self.getSelectedText(sel);
-            // TODO: Implement clipboard integration
+
+            // Try to copy to system clipboard using OSC 52
+            if (renderer) |r| {
+                const caps = r.getCapabilities();
+                if (caps.supportsClipboardOsc52) {
+                    r.copyToClipboard(text) catch {
+                        // Fall back to returning text if clipboard fails
+                    };
+                }
+            }
+
             return text;
         }
         return null;
+    }
+
+    /// Paste text from clipboard (if supported)
+    pub fn pasteFromClipboard(self: *Self, text: []const u8) !void {
+        // Insert text at current cursor position
+        if (self.cursor_y < self.lines.items.len) {
+            var line = &self.lines.items[self.cursor_y];
+            const insert_pos = @min(self.cursor_x, line.items.len);
+
+            // Insert the text
+            try line.insertSlice(self.allocator, insert_pos, text);
+
+            // Move cursor to end of inserted text
+            self.cursor_x = insert_pos + text.len;
+
+            // Mark as modified
+            self.modified = true;
+        }
     }
 
     /// Search for text
@@ -392,6 +420,102 @@ pub const ScrollableTextArea = struct {
                 self.scroll_col = self.cursor_col - visible_width + 1;
             }
         }
+    }
+
+    /// Handle keyboard input with modifiers
+    pub fn handleKeyboardWithModifiers(self: *Self, key: term.Key, ctrl: bool, shift: bool, _: bool, renderer: ?*Renderer) !void {
+        if (!self.config.keyboard_navigation) return;
+
+        // Handle clipboard operations
+        if (ctrl) {
+            switch (key) {
+                .char => |c| switch (c) {
+                    'c', 'C' => {
+                        // Ctrl+C: Copy
+                        _ = try self.copySelection(renderer);
+                        return;
+                    },
+                    'x', 'X' => {
+                        // Ctrl+X: Cut
+                        if (!self.config.read_only) {
+                            const text = try self.copySelection(renderer);
+                            if (text != null) {
+                                try self.deleteSelection();
+                            }
+                        }
+                        return;
+                    },
+                    'v', 'V' => {
+                        // Ctrl+V: Paste (would need clipboard content from system)
+                        // For now, this is a placeholder
+                        if (!self.config.read_only) {
+                            // In a real implementation, we'd get text from system clipboard
+                            // For now, just demonstrate the structure
+                            const paste_text = ""; // Would come from clipboard
+                            if (paste_text.len > 0) {
+                                try self.pasteFromClipboard(paste_text);
+                            }
+                        }
+                        return;
+                    },
+                    'a', 'A' => {
+                        // Ctrl+A: Select all
+                        if (self.lines.items.len > 0) {
+                            const last_line = self.lines.items.len - 1;
+                            const last_col = self.getLineLength(last_line);
+                            self.selection = .{
+                                .start_line = 0,
+                                .start_col = 0,
+                                .end_line = last_line,
+                                .end_col = last_col,
+                            };
+                        }
+                        return;
+                    },
+                    else => {},
+                },
+                else => {},
+            }
+        }
+
+        // Handle text selection with Shift+Arrow keys
+        if (shift) {
+            // Start selection if not already started
+            if (self.selection == null) {
+                self.selection = .{
+                    .start_line = self.cursor_line,
+                    .start_col = self.cursor_col,
+                    .end_line = self.cursor_line,
+                    .end_col = self.cursor_col,
+                };
+            }
+
+            // Update selection end point based on cursor movement
+            if (self.selection) |*sel| {
+                switch (key) {
+                    .arrow_up, .arrow_down, .arrow_left, .arrow_right, .home, .end, .page_up, .page_down => {
+                        // Handle the movement first
+                        try self.handleKeyboard(key);
+                        // Then update selection end point
+                        sel.end_line = self.cursor_line;
+                        sel.end_col = self.cursor_col;
+                        return;
+                    },
+                    else => {},
+                }
+            }
+        } else {
+            // Clear selection on non-shift movement
+            switch (key) {
+                .arrow_up, .arrow_down, .arrow_left, .arrow_right, .home, .end, .page_up, .page_down => {
+                    self.selection = null;
+                },
+                else => {},
+            }
+        }
+
+        // Handle regular keyboard input
+        try self.handleKeyboard(key);
     }
 
     /// Handle keyboard input

@@ -108,7 +108,7 @@ pub fn main() !void {
 
 fn printUsage() !void {
     const stdout = std.debug;
-    try stdout.print(
+    stdout.print(
         \\Docz - AI Agent CLI with OAuth Authentication
         \\
         \\Usage: docz <command> [options]
@@ -137,7 +137,7 @@ fn printUsage() !void {
 
 fn printAuthUsage() !void {
     const stdout = std.debug;
-    try stdout.print(
+    stdout.print(
         \\Auth commands:
         \\  docz auth login [--port 8080] [--host localhost] [--manual]
         \\  docz auth status
@@ -150,6 +150,6 @@ fn printAuthUsage() !void {
 
 fn printVersion() !void {
     const stdout = std.debug;
-    try stdout.print("Docz version 1.0.0\n", .{});
-    try stdout.print("Zig version: 0.15.1\n", .{});
+    stdout.print("Docz version 1.0.0\n", .{});
+    stdout.print("Zig version: 0.15.1\n", .{});
 }

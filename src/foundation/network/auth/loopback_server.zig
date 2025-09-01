@@ -43,13 +43,13 @@ pub const LoopbackServer = struct {
         // Bind to loopback interface only - use 127.0.0.1 for RFC 8252 compliance
         const address = try net.Address.parseIp("127.0.0.1", config.port);
 
-        var server = try address.listen(.{
+        const server = try address.listen(.{
             .reuse_address = true,
             .kernel_backlog = 1,
         });
 
-        const actual_address = try server.getLocalAddress();
-        log.info("OAuth callback server listening on http://{}:{}/callback", .{ config.host, actual_address.getPort() });
+        const actual_address = server.listen_address;
+        log.info("OAuth callback server listening on http://{s}:{d}/callback", .{ config.host, actual_address.getPort() });
 
         return Self{
             .allocator = allocator,
@@ -78,10 +78,11 @@ pub const LoopbackServer = struct {
     /// Wait for OAuth callback and extract code and state
     /// Validates the callback path matches the expected path
     pub fn waitForCallback(self: *Self, expected_state: ?[]const u8) !CallbackResult {
-        const server = self.server orelse return error.ServerNotInitialized;
+        if (self.server == null) return error.ServerNotInitialized;
+        var server_ptr: *net.Server = &self.server.?;
 
         // Accept connection with timeout
-        const connection = try server.accept();
+        const connection = try server_ptr.accept();
         defer connection.stream.close();
 
         var buf: [8192]u8 = undefined;
@@ -91,11 +92,11 @@ pub const LoopbackServer = struct {
             return error.EmptyRequest;
         }
 
-        const request_line = std.mem.sliceTo(buf[0..bytes_read], '\r') orelse
-            return error.InvalidRequest;
+        const cr_index = std.mem.indexOfScalar(u8, buf[0..bytes_read], '\r') orelse return error.InvalidRequest;
+        const request_line = buf[0..cr_index];
 
         // Parse GET request
-        var parts = std.mem.tokenize(u8, request_line, " ");
+        var parts = std.mem.splitScalar(u8, request_line, ' ');
         const method = parts.next() orelse return error.InvalidRequest;
         const full_path = parts.next() orelse return error.InvalidRequest;
 
@@ -116,26 +117,6 @@ pub const LoopbackServer = struct {
 
         // Extract query parameters
         if (query_start == null) {
-            // Check if this is an error callback
-            if (std.mem.indexOf(u8, full_path, "error=") != null) {
-                var error_desc: ?[]const u8 = null;
-                const query = full_path[query_start.? + 1 ..];
-                var params = std.mem.tokenize(u8, query, "&");
-                while (params.next()) |param| {
-                    const eq_pos = std.mem.indexOf(u8, param, "=") orelse continue;
-                    const key = param[0..eq_pos];
-                    const value = param[eq_pos + 1 ..];
-                    if (std.mem.eql(u8, key, "error_description")) {
-                        error_desc = try urlDecode(self.allocator, value);
-                    }
-                }
-                try self.sendErrorResponse(connection.stream, error_desc orelse "Authorization denied");
-                return CallbackResult{
-                    .code = try self.allocator.dupe(u8, ""),
-                    .state = try self.allocator.dupe(u8, ""),
-                    .error_msg = error_desc,
-                };
-            }
             try self.sendErrorResponse(connection.stream, "Missing parameters");
             return error.NoQueryParameters;
         }
@@ -146,10 +127,11 @@ pub const LoopbackServer = struct {
         var code: ?[]const u8 = null;
         var state: ?[]const u8 = null;
         var error_param: ?[]const u8 = null;
+        var error_desc: ?[]const u8 = null;
 
-        var params = std.mem.tokenize(u8, query, "&");
+        var params = std.mem.splitScalar(u8, query, '&');
         while (params.next()) |param| {
-            const eq_pos = std.mem.indexOf(u8, param, "=") orelse continue;
+            const eq_pos = std.mem.indexOfScalar(u8, param, '=') orelse continue;
             const key = param[0..eq_pos];
             const value = param[eq_pos + 1 ..];
 
@@ -159,15 +141,24 @@ pub const LoopbackServer = struct {
                 state = try urlDecode(self.allocator, value);
             } else if (std.mem.eql(u8, key, "error")) {
                 error_param = try urlDecode(self.allocator, value);
+            } else if (std.mem.eql(u8, key, "error_description")) {
+                error_desc = try urlDecode(self.allocator, value);
             }
         }
 
-        // Handle OAuth error response
-        if (error_param) |err| {
-            log.err("OAuth error: {s}", .{err});
-            try self.sendErrorResponse(connection.stream, err);
-            self.allocator.free(err);
-            return error.OAuthError;
+        // Handle error response from OAuth provider
+        if (error_param != null) {
+            const msg = error_desc orelse error_param.?;
+            try self.sendErrorResponse(connection.stream, msg);
+            if (error_param) |ep| self.allocator.free(ep);
+            if (error_desc) |ed| self.allocator.free(ed);
+            if (code) |c| self.allocator.free(c);
+            if (state) |s| self.allocator.free(s);
+            return CallbackResult{
+                .code = try self.allocator.dupe(u8, ""),
+                .state = try self.allocator.dupe(u8, ""),
+                .error_msg = try self.allocator.dupe(u8, msg),
+            };
         }
 
         if (code == null or state == null) {
@@ -268,8 +259,8 @@ pub const LoopbackServer = struct {
 
 /// URL decode a string (reverse of percent encoding)
 fn urlDecode(allocator: std.mem.Allocator, input: []const u8) ![]u8 {
-    var result = std.ArrayList(u8).init(allocator);
-    errdefer result.deinit();
+    var result = std.ArrayList(u8){};
+    errdefer result.deinit(allocator);
 
     var i: usize = 0;
     while (i < input.len) {
@@ -277,21 +268,21 @@ fn urlDecode(allocator: std.mem.Allocator, input: []const u8) ![]u8 {
             const hex = input[i + 1 .. i + 3];
             const byte = std.fmt.parseInt(u8, hex, 16) catch {
                 // Invalid hex, just append the %
-                try result.append(input[i]);
+                try result.append(allocator, input[i]);
                 i += 1;
                 continue;
             };
-            try result.append(byte);
+            try result.append(allocator, byte);
             i += 3;
         } else if (input[i] == '+') {
             // + is space in URL encoding
-            try result.append(' ');
+            try result.append(allocator, ' ');
             i += 1;
         } else {
-            try result.append(input[i]);
+            try result.append(allocator, input[i]);
             i += 1;
         }
     }
 
-    return result.toOwnedSlice();
+    return result.toOwnedSlice(allocator);
 }

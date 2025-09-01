@@ -262,35 +262,30 @@ pub fn exchangeCodeForTokens(
     const uri = try std.Uri.parse(OAUTH_TOKEN_ENDPOINT);
 
     // Make POST request to token endpoint
-    var req = try httpClient.open(.POST, uri, .{
-        .server_header_buffer = &[_]u8{},
-        .extra_headers = &.{
-            .{ .name = "Content-Type", .value = "application/json" },
-            .{ .name = "Accept", .value = "application/json" },
-            .{ .name = "User-Agent", .value = "docz/1.0" },
+    var req = try httpClient.request(.POST, uri, .{
+        .headers = .{
+            .user_agent = .{ .override = "docz/1.0" },
+            .content_type = .{ .override = "application/json" },
         },
+        .extra_headers = &.{ .{ .name = "Accept", .value = "application/json" } },
     });
     defer req.deinit();
 
-    req.transfer_encoding = .{ .content_length = body.len };
-    try req.send();
-    try req.writeAll(body);
-    try req.finish();
-    try req.wait();
+    try req.sendBodyComplete(body);
+    var redirect_buf: [256]u8 = undefined;
+    var resp = try req.receiveHead(&redirect_buf);
 
     // Check for successful response
-    if (req.response.status != .ok) {
-        std.log.err("OAuth token exchange failed with status: {}", .{req.response.status});
-
-        const error_body = try req.reader().readAllAlloc(allocator, 1024 * 1024);
+    if (resp.head.status != .ok) {
+        std.log.err("OAuth token exchange failed with status: {}", .{resp.head.status});
+        const reader = resp.reader(&[_]u8{});
+        const error_body = try reader.*.allocRemaining(allocator, std.Io.Limit.limited(1024 * 1024));
         defer allocator.free(error_body);
         std.log.err("Response body: {s}", .{error_body});
-
         return Error.AuthError;
     }
-
-    // Parse JSON response
-    const response_body = try req.reader().readAllAlloc(allocator, 1024 * 1024);
+    const reader = resp.reader(&[_]u8{});
+    const response_body = try reader.*.allocRemaining(allocator, std.Io.Limit.limited(1024 * 1024));
     defer allocator.free(response_body);
     return try parseTokenResponse(allocator, response_body);
 }
@@ -299,11 +294,11 @@ pub fn exchangeCodeForTokens(
 pub fn refreshTokens(allocator: std.mem.Allocator, refreshToken: []const u8) !Credentials {
     // Prepare JSON body
     const body = try std.fmt.allocPrint(allocator,
-        \\\{{
-        \\\  "grant_type": "refresh_token",
-        \\\  "refresh_token": "{s}",
-        \\\  "client_id": "{s}"
-        \\\}}
+        \\{{
+        \\  "grant_type": "refresh_token",
+        \\  "refresh_token": "{s}",
+        \\  "client_id": "{s}"
+        \\}}
     , .{ refreshToken, OAUTH_CLIENT_ID });
     defer allocator.free(body);
 
@@ -315,36 +310,95 @@ pub fn refreshTokens(allocator: std.mem.Allocator, refreshToken: []const u8) !Cr
     const uri = try std.Uri.parse(OAUTH_TOKEN_ENDPOINT);
 
     // Make POST request to token endpoint
-    var req = try httpClient.open(.POST, uri, .{
-        .server_header_buffer = &[_]u8{},
-        .extra_headers = &.{
-            .{ .name = "Content-Type", .value = "application/json" },
-            .{ .name = "Accept", .value = "application/json" },
-            .{ .name = "User-Agent", .value = "docz/1.0" },
+    var req = try httpClient.request(.POST, uri, .{
+        .headers = .{
+            .user_agent = .{ .override = "docz/1.0" },
+            .content_type = .{ .override = "application/json" },
         },
+        .extra_headers = &.{ .{ .name = "Accept", .value = "application/json" } },
     });
     defer req.deinit();
 
-    req.transfer_encoding = .{ .content_length = body.len };
-    try req.send();
-    try req.writeAll(body);
-    try req.finish();
-    try req.wait();
+    try req.sendBodyComplete(body);
+    // handled above
 
     // Check for successful response
-    if (req.response.status != .ok) {
-        std.log.err("OAuth token refresh failed with status: {}", .{req.response.status});
-
-        const error_body = try req.reader().readAllAlloc(allocator, 1024 * 1024);
+    var redirect_buf2: [256]u8 = undefined;
+    var resp2 = try req.receiveHead(&redirect_buf2);
+    if (resp2.head.status != .ok) {
+        std.log.err("OAuth token refresh failed with status: {}", .{resp2.head.status});
+        const reader2 = resp2.reader(&[_]u8{});
+        const error_body = try reader2.*.allocRemaining(allocator, std.Io.Limit.limited(1024 * 1024));
         defer allocator.free(error_body);
         std.log.err("Response body: {s}", .{error_body});
         return Error.AuthError;
     }
-
-    // Parse JSON response
-    const response_body = try req.reader().readAllAlloc(allocator, 1024 * 1024);
+    const reader2 = resp2.reader(&[_]u8{});
+    const response_body = try reader2.*.allocRemaining(allocator, std.Io.Limit.limited(1024 * 1024));
     defer allocator.free(response_body);
     return try parseTokenResponse(allocator, response_body);
+}
+
+/// Save credentials to file - delegates to store module when path not provided
+pub fn saveCredentialsToStore(allocator: std.mem.Allocator, creds: Credentials) !void {
+    const agent_name = std.process.getEnvVarOwned(allocator, "AGENT_NAME") catch |err| blk: {
+        if (err == error.EnvironmentVariableNotFound) {
+            break :blk try allocator.dupe(u8, "docz");
+        }
+        return err;
+    };
+    defer allocator.free(agent_name);
+
+    const store = @import("store.zig").TokenStore.init(allocator, .{ 
+        .agent_name = agent_name,
+    });
+    
+    const stored_creds = @import("store.zig").StoredCredentials{
+        .type = creds.type,
+        .access_token = creds.accessToken,
+        .refresh_token = creds.refreshToken,
+        .expires_at = creds.expiresAt,
+    };
+    try store.save(stored_creds);
+}
+
+/// Save credentials to specific file path with atomic write
+pub fn saveCredentials(allocator: std.mem.Allocator, filePath: []const u8, creds: Credentials) !void {
+    // Persist in snake_case per spec; chmod 0600. Write atomically via a temp file then rename.
+    const jsonContent = try std.fmt.allocPrint(
+        allocator,
+        \\{{"type":"{s}","access_token":"{s}","refresh_token":"{s}","expires_at":{}}}
+    ,
+        .{ creds.type, creds.accessToken, creds.refreshToken, creds.expiresAt },
+    );
+    defer allocator.free(jsonContent);
+
+    var cwd = std.fs.cwd();
+    // Create temp path in same directory to ensure rename is atomic on most filesystems
+    const tmpPath = try std.fmt.allocPrint(allocator, "{s}.tmp", .{filePath});
+    defer allocator.free(tmpPath);
+
+    {
+        const tmp = try cwd.createFile(tmpPath, .{ .mode = 0o600 });
+        defer tmp.close();
+        try tmp.writeAll(jsonContent);
+        // Ensure contents are on disk before rename
+        tmp.sync() catch {};
+    }
+
+    // Rename temp → final path
+    cwd.rename(tmpPath, filePath) catch |err| {
+        // Best-effort fallback: write directly (kept for portability)
+        switch (err) {
+            error.FileNotFound, error.AccessDenied, error.RenameAcrossMountPoints => {
+                const file = try cwd.createFile(filePath, .{ .mode = 0o600 });
+                defer file.close();
+                try file.writeAll(jsonContent);
+                return;
+            },
+            else => return err,
+        }
+    };
 }
 
 /// Convenience: Full login using loopback server and PKCE; persists tokens and returns creds.
@@ -352,26 +406,83 @@ pub fn loginWithLoopback(allocator: std.mem.Allocator) !Credentials {
     const pkceParams = try generatePkceParams(allocator);
     errdefer pkceParams.deinit(allocator);
 
-    var result = try callbackServer.runCallbackServer(allocator, pkceParams, null);
-    defer result.deinit(allocator);
+    var server = try @import("loopback_server.zig").LoopbackServer.init(allocator, .{
+        .host = "localhost",
+        .port = 8080,
+        .path = "/callback",
+        .timeout_ms = 300000,
+    });
+    defer server.deinit();
 
-    const redirect = result.redirectUri orelse OAUTH_REDIRECT_URI;
-    const creds = try exchangeCodeForTokens(allocator, result.code, pkceParams, redirect);
+    const redirect_uri = try server.getRedirectUri(allocator);
+    defer allocator.free(redirect_uri);
+
+    const auth_url = try buildAuthorizationUrlWithRedirect(allocator, pkceParams, redirect_uri);
+    defer allocator.free(auth_url);
+
+    // Try to open browser
+    launchBrowser(auth_url) catch |err| {
+        std.log.warn("Failed to open browser: {}", .{err});
+    };
+
+    // Wait for callback
+    const callback_result = try server.waitForCallback(pkceParams.state);
+    defer callback_result.deinit(allocator);
+
+    // Exchange code for tokens
+    const creds = try exchangeCodeForTokens(allocator, callback_result.code, pkceParams, redirect_uri);
     errdefer creds.deinit(allocator);
 
-    try saveCredentials(allocator, "claude_oauth_creds.json", creds);
+    // Save credentials
+    const agent_name = std.process.getEnvVarOwned(allocator, "AGENT_NAME") catch |err| blk: {
+        if (err == error.EnvironmentVariableNotFound) {
+            break :blk try allocator.dupe(u8, "docz");
+        }
+        return err;
+    };
+    defer allocator.free(agent_name);
+
+    const store = @import("store.zig").TokenStore.init(allocator, .{ 
+        .agent_name = agent_name,
+    });
+    
+    const stored_creds = @import("store.zig").StoredCredentials{
+        .type = "oauth",
+        .access_token = creds.accessToken,
+        .refresh_token = creds.refreshToken,
+        .expires_at = creds.expiresAt,
+    };
+    try store.save(stored_creds);
+
     return creds;
 }
 
 /// Convenience: Load current access token from default credentials file.
-pub fn getAccessToken(allocator: std.mem.Allocator, path: []const u8) ![]u8 {
-    const file = try std.fs.cwd().openFile(path, .{});
-    defer file.close();
-    const data = try file.readToEndAlloc(allocator, 16 * 1024);
-    defer allocator.free(data);
-    const creds = try parseCredentials(allocator, data);
-    defer creds.deinit(allocator);
-    return try allocator.dupe(u8, creds.accessToken);
+pub fn getAccessToken(allocator: std.mem.Allocator) ![]u8 {
+    const agent_name = std.process.getEnvVarOwned(allocator, "AGENT_NAME") catch |err| blk: {
+        if (err == error.EnvironmentVariableNotFound) {
+            break :blk try allocator.dupe(u8, "docz");
+        }
+        return err;
+    };
+    defer allocator.free(agent_name);
+
+    const store = @import("store.zig").TokenStore.init(allocator, .{ 
+        .agent_name = agent_name,
+    });
+    
+    const stored_creds = try store.load();
+    defer allocator.free(stored_creds.type);
+    defer allocator.free(stored_creds.refresh_token);
+    
+    // Return owned copy of access token
+    return stored_creds.access_token;
+}
+
+/// Launch the system browser to open the authorization URL  
+pub fn launchBrowser(url: []const u8) !void {
+    const allocator = std.heap.page_allocator;
+    return @import("authorize_url.zig").openInBrowser(allocator, url);
 }
 
 /// Convenience: Minimal Messages API POST using OAuth Bearer headers.
@@ -396,8 +507,8 @@ pub fn fetchWithAnthropicOAuth(
 
     const uri = try std.Uri.parse("https://api.anthropic.com/v1/messages");
 
-    var req = try client.open(.POST, uri, .{
-        .server_header_buffer = &[_]u8{},
+    var req = try client.request(.POST, uri, .{
+        .headers = .{ .user_agent = .override("docz/1.0"), .content_type = .override("application/json") },
         .extra_headers = &.{
             .{ .name = "Authorization", .value = bearer },
             .{ .name = "Content-Type", .value = "application/json" },
@@ -409,25 +520,14 @@ pub fn fetchWithAnthropicOAuth(
     });
     defer req.deinit();
 
-    req.transfer_encoding = .{ .content_length = body_json.len };
-    try req.send();
-    try req.writeAll(body_json);
-    try req.finish();
-    try req.wait();
-
-    if (req.response.status != .ok) return Error.AuthError;
-
-    const response_body = try req.reader().readAllAlloc(allocator, 1024 * 1024);
+    try req.sendBodyComplete(body_json);
+    var redirect_buf3: [256]u8 = undefined;
+    const resp3 = try req.receiveHead(&redirect_buf3);
+    if (resp3.head.status != .ok) return Error.AuthError;
+    var reader3 = resp3.reader(&[_]u8{});
+    const response_body = try reader3.readAllAlloc(allocator, 1024 * 1024);
     defer allocator.free(response_body);
     return try allocator.dupe(u8, response_body);
-}
-
-pub fn parseCredentials(allocator: std.mem.Allocator, filePath: []const u8) !Credentials {
-    const file = try std.fs.cwd().openFile(filePath, .{});
-    defer file.close();
-    const jsonContent = try file.readToEndAlloc(allocator, 16 * 1024);
-    defer allocator.free(jsonContent);
-    return parseCredentialsFromJson(allocator, jsonContent);
 }
 
 pub fn parseCredentialsFromJson(allocator: std.mem.Allocator, jsonContent: []const u8) !Credentials {
@@ -464,75 +564,6 @@ pub fn parseCredentialsFromJson(allocator: std.mem.Allocator, jsonContent: []con
         .refreshToken = try allocator.dupe(u8, parsed2.value.refreshToken),
         .expiresAt = parsed2.value.expiresAt,
     };
-}
-
-pub fn saveCredentials(allocator: std.mem.Allocator, filePath: []const u8, creds: Credentials) !void {
-    // Persist in snake_case per spec; chmod 0600. Write atomically via a temp file then rename.
-    const jsonContent = try std.fmt.allocPrint(
-        allocator,
-        \\{{\"type\":\"{s}\",\"access_token\":\"{s}\",\"refresh_token\":\"{s}\",\"expires_at\":{}}}
-    ,
-        .{ creds.type, creds.accessToken, creds.refreshToken, creds.expiresAt },
-    );
-    defer allocator.free(jsonContent);
-
-    var cwd = std.fs.cwd();
-    // Create temp path in same directory to ensure rename is atomic on most filesystems
-    const tmpPath = try std.fmt.allocPrint(allocator, "{s}.tmp", .{filePath});
-    defer allocator.free(tmpPath);
-
-    {
-        const tmp = try cwd.createFile(tmpPath, .{ .mode = 0o600 });
-        defer tmp.close();
-        try tmp.writeAll(jsonContent);
-        // Ensure contents are on disk before rename
-        tmp.sync() catch {};
-    }
-
-    // Rename temp → final path
-    cwd.rename(tmpPath, filePath) catch |err| {
-        // Best-effort fallback: write directly (kept for portability)
-        switch (err) {
-            error.FileNotFound, error.AccessDenied, error.RenameAcrossMountPoints => {
-                const file = try cwd.createFile(filePath, .{ .mode = 0o600 });
-                defer file.close();
-                try file.writeAll(jsonContent);
-                return;
-            },
-            else => return err,
-        }
-    };
-}
-
-pub fn launchBrowser(url: []const u8) !void {
-    const allocator = std.heap.page_allocator;
-
-    switch (@import("builtin").os.tag) {
-        .macos => {
-            const argv = [_][]const u8{ "open", url };
-            _ = try std.process.Child.run(.{
-                .allocator = allocator,
-                .argv = &argv,
-            });
-        },
-        .linux => {
-            const argv = [_][]const u8{ "xdg-open", url };
-            _ = try std.process.Child.run(.{
-                .allocator = allocator,
-                .argv = &argv,
-            });
-        },
-        .windows => {
-            const argv = [_][]const u8{ "cmd", "/c", "start", url };
-            _ = try std.process.Child.run(.{
-                .allocator = allocator,
-                .argv = &argv,
-            });
-        },
-        else => {
-            std.log.warn("Unsupported platform for browser launching. Please manually open: {s}", .{url});
-        },
-    }
 }
 
 /// High-level OAuth setup function - simplified implementation without TUI
@@ -587,11 +618,11 @@ pub const runCallbackServer = callbackServer.runCallbackServer;
 pub const integrateWithWizard = callbackServer.integrateWithWizard;
 pub const completeOAuthFlow = callbackServer.completeOAuthFlow;
 
-test "parseCredentials supports snake_case and camelCase" {
+test "parseCredentialsFromJson supports snake_case and camelCase" {
     const a = std.testing.allocator;
 
     const snake = "{\"type\":\"oauth\",\"access_token\":\"a\",\"refresh_token\":\"b\",\"expires_at\":123}";
-    const c1 = try parseCredentials(a, snake);
+    const c1 = try parseCredentialsFromJson(a, snake);
     defer c1.deinit(a);
     try std.testing.expectEqualStrings("oauth", c1.type);
     try std.testing.expectEqualStrings("a", c1.accessToken);
@@ -599,7 +630,7 @@ test "parseCredentials supports snake_case and camelCase" {
     try std.testing.expectEqual(@as(i64, 123), c1.expiresAt);
 
     const camel = "{\"type\":\"oauth\",\"accessToken\":\"x\",\"refreshToken\":\"y\",\"expiresAt\":42}";
-    const c2 = try parseCredentials(a, camel);
+    const c2 = try parseCredentialsFromJson(a, camel);
     defer c2.deinit(a);
     try std.testing.expectEqualStrings("oauth", c2.type);
     try std.testing.expectEqualStrings("x", c2.accessToken);

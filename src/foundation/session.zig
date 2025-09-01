@@ -10,6 +10,28 @@ const time = std.time;
 const mem = std.mem;
 const fmt = std.fmt;
 
+/// Free memory allocated by a json.Value
+fn deinitJsonValue(allocator: Allocator, value: json.Value) void {
+    switch (value) {
+        .null, .bool, .integer, .float => {}, // No allocation to free
+        .number_string, .string => |s| allocator.free(s),
+        .array => |arr| {
+            for (arr.items) |item| {
+                deinitJsonValue(allocator, item);
+            }
+            arr.deinit();
+        },
+        .object => |obj| {
+            var it = obj.iterator();
+            while (it.next()) |entry| {
+                allocator.free(entry.key_ptr.*);
+                deinitJsonValue(allocator, entry.value_ptr.*);
+            }
+            obj.deinit();
+        },
+    }
+}
+
 /// Session management errors
 pub const SessionError = error{
     SessionNotFound,
@@ -198,7 +220,7 @@ pub const SessionState = struct {
         var it = map.iterator();
         while (it.next()) |entry| {
             self.allocator.free(entry.key_ptr.*);
-            // entry.value_ptr.*.deinit(self.allocator); // TODO: fix json.Value deinit
+            deinitJsonValue(self.allocator, entry.value_ptr.*);
         }
         map.deinit();
     }
@@ -215,7 +237,7 @@ pub const SessionState = struct {
 
         const keyCopy = try self.allocator.dupe(u8, key);
         if (map.get(keyCopy)) |oldValue| {
-            oldValue.deinit();
+            deinitJsonValue(self.allocator, oldValue);
         }
         try map.put(keyCopy, value);
     }
@@ -767,8 +789,8 @@ pub const ConversationEntry = struct {
     /// Deinitialize conversation entry
     pub fn deinit(self: *ConversationEntry, allocator: Allocator) void {
         allocator.free(self.content);
-        if (self.metadata) |_| {
-            // meta.deinit(); // TODO: fix json.Value deinit
+        if (self.metadata) |meta| {
+            deinitJsonValue(allocator, meta);
         }
     }
 };

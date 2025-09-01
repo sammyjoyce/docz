@@ -3,14 +3,72 @@
 
 const std = @import("std");
 const foundation = @import("foundation");
-const tui = foundation.tui;
-const ui = foundation.ui;
-const tools_mod = foundation.tools;
-const render_mod = foundation.render;
-
-// Import markdown-specific modules
 const markdown_tools = @import("tools.zig");
 const Agent = @import("Agent.zig");
+
+// Module definitions for missing components
+const render_mod = struct {
+    const markdown_renderer = struct {
+        pub fn renderHeader(text: []const u8) !void {
+            const stdout = std.io.getStdOut().writer();
+            try stdout.print("## {s}\n", .{text});
+        }
+
+        pub fn createCard(config: anytype) !Card {
+            return Card{
+                .title = config.title,
+                .content = config.content,
+                .footer = config.footer,
+            };
+        }
+
+        pub fn render(card: Card) !void {
+            const stdout = std.io.getStdOut().writer();
+            try stdout.print("╔══════════════════╗\n", .{});
+            try stdout.print("║ {s: <16} ║\n", .{card.title});
+            try stdout.print("╠══════════════════╣\n", .{});
+            try stdout.print("║ {s: <16} ║\n", .{card.content});
+            try stdout.print("╚══════════════════╝\n", .{});
+        }
+    };
+
+    const Card = struct {
+        title: []const u8,
+        content: []const u8,
+        footer: ?[]const u8,
+    };
+
+    const Canvas = struct {
+        allocator: std.mem.Allocator,
+
+        pub fn init(allocator: std.mem.Allocator) !*Canvas {
+            const self = try allocator.create(Canvas);
+            self.* = .{ .allocator = allocator };
+            return self;
+        }
+
+        pub fn deinit(self: *Canvas) void {
+            self.allocator.destroy(self);
+        }
+    };
+};
+
+// Component definitions
+const components = struct {
+    const TerminalScreen = struct {
+        pub fn clear() void {
+            const stdout = std.io.getStdOut().writer();
+            stdout.print("\x1b[2J\x1b[H", .{}) catch {};
+        }
+    };
+
+    const NotificationType = enum {
+        info,
+        success,
+        warning,
+        danger,
+    };
+};
 
 /// User experience level for progressive disclosure
 pub const ExperienceLevel = enum {
@@ -120,25 +178,27 @@ pub const ImprovedInteractiveSession = struct {
 
     /// Run onboarding for new users
     fn runOnboarding(self: *Self) !void {
+        // Show welcome notification
+        if (self.notification_center) |*nc| {
+            try nc.show(.success, "Welcome!", "Starting onboarding experience");
+        }
+
         if (self.onboarding_wizard) |*wizard| {
-            try wizard.start();
+            // Full wizard experience
+            try wizard.run();
 
-            // Show welcome screen
-            try wizard.showWelcome();
-
-            // Demonstrate key features
-            try wizard.demonstrateFeature(.tool_discovery);
-            try wizard.demonstrateFeature(.command_palette);
-            try wizard.demonstrateFeature(.contextual_help);
-
-            // Let user practice
-            try wizard.interactiveTutorial();
-
-            // Save preferences
-            try wizard.savePreferences();
+            // Show completion notification
+            if (self.notification_center) |*nc| {
+                try nc.show(.success, "Onboarding Complete", "You're ready to start!");
+            }
         } else {
             // Simple onboarding without wizard
             try self.showSimpleWelcome();
+
+            // Show tips notification
+            if (self.notification_center) |*nc| {
+                try nc.show(.info, "Tips", "Press ? for help, Ctrl+P for commands");
+            }
         }
     }
 
@@ -189,23 +249,35 @@ pub const ImprovedInteractiveSession = struct {
                 // Command palette
                 if (key.ctrl and key.char == 'p') {
                     self.current_mode = .command;
+                    if (self.notification_center) |*nc| {
+                        try nc.show(.info, "Command Palette", "Press ESC to close");
+                    }
                     return true;
                 }
 
                 // Tool discovery
                 if (key.ctrl and key.char == 't') {
                     self.current_mode = .tool_discovery;
+                    if (self.notification_center) |*nc| {
+                        try nc.show(.info, "Tool Discovery", "Browse available tools");
+                    }
                     return true;
                 }
 
                 // Help
                 if (key.char == '?') {
                     self.current_mode = .help;
+                    if (self.notification_center) |*nc| {
+                        try nc.show(.info, "Help Mode", "Press ESC to return");
+                    }
                     return true;
                 }
 
                 // Quit
                 if (key.ctrl and key.char == 'q') {
+                    if (self.notification_center) |*nc| {
+                        try nc.show(.info, "Goodbye", "Thank you for using Markdown Agent");
+                    }
                     return true; // Exit session
                 }
             },
@@ -290,17 +362,158 @@ pub const ImprovedInteractiveSession = struct {
 
     /// Handle command mode events
     fn handleCommandMode(self: *Self, event: Event) !bool {
-        _ = self;
-        _ = event;
-        // Implementation
+        if (self.command_palette == null) return false;
+
+        switch (event) {
+            .key => |key| {
+                // ESC to exit command mode
+                if (key.char == 27) { // ESC
+                    self.current_mode = .normal;
+                    if (self.notification_center) |*nc| {
+                        try nc.show(.info, null, "Command palette closed");
+                    }
+                    return false;
+                }
+
+                // Enter to execute selected command
+                if (key.char == '\n' or key.char == '\r') {
+                    if (self.command_palette) |*cp| {
+                        if (cp.selected_index < cp.filtered_commands.items.len) {
+                            const cmd = cp.filtered_commands.items[cp.selected_index];
+
+                            // Show notification before execution
+                            if (self.notification_center) |*nc| {
+                                const msg = try std.fmt.allocPrint(self.allocator, "Executing: {s}", .{cmd.title});
+                                defer self.allocator.free(msg);
+                                try nc.show(.info, "Command", msg);
+                            }
+
+                            // Execute the command
+                            cmd.action(self.agent, "") catch |err| {
+                                // Show error notification
+                                if (self.notification_center) |*nc| {
+                                    const err_msg = try std.fmt.allocPrint(self.allocator, "Command failed: {}", .{err});
+                                    defer self.allocator.free(err_msg);
+                                    try nc.show(.danger, "Error", err_msg);
+                                }
+                                return false;
+                            };
+
+                            // Show success notification
+                            if (self.notification_center) |*nc| {
+                                try nc.show(.success, "Success", "Command executed successfully");
+                            }
+
+                            // Return to normal mode
+                            self.current_mode = .normal;
+                        }
+                    }
+                    return false;
+                }
+
+                // Arrow keys for navigation
+                if (key.char == 0x1B5B41) { // Up arrow
+                    if (self.command_palette) |*cp| {
+                        if (cp.selected_index > 0) {
+                            cp.selected_index -= 1;
+                        }
+                    }
+                    return false;
+                }
+
+                if (key.char == 0x1B5B42) { // Down arrow
+                    if (self.command_palette) |*cp| {
+                        if (cp.selected_index + 1 < cp.filtered_commands.items.len) {
+                            cp.selected_index += 1;
+                        }
+                    }
+                    return false;
+                }
+
+                // Type to search
+                if (key.char >= 32 and key.char < 127) {
+                    if (self.command_palette) |*cp| {
+                        try cp.search_term.append(key.char);
+                        try cp.filterCommands(cp.search_term.items);
+                        cp.selected_index = 0;
+                    }
+                    return false;
+                }
+            },
+            else => {},
+        }
         return false;
     }
 
     /// Handle tool discovery mode events
     fn handleToolDiscoveryMode(self: *Self, event: Event) !bool {
-        _ = self;
-        _ = event;
-        // Implementation
+        if (self.tool_discovery == null) return false;
+
+        switch (event) {
+            .key => |key| {
+                // ESC to exit tool discovery
+                if (key.char == 27) { // ESC
+                    self.current_mode = .normal;
+                    if (self.notification_center) |*nc| {
+                        try nc.show(.info, null, "Tool discovery closed");
+                    }
+                    return false;
+                }
+
+                // Enter to use selected tool
+                if (key.char == '\n' or key.char == '\r') {
+                    if (self.tool_discovery) |*td| {
+                        if (td.selected_tool) |tool| {
+                            // Show notification about tool selection
+                            if (self.notification_center) |*nc| {
+                                const msg = try std.fmt.allocPrint(self.allocator, "Selected tool: {s}", .{tool.name});
+                                defer self.allocator.free(msg);
+                                try nc.show(.success, "Tool Selected", msg);
+
+                                // Show tool details
+                                try nc.show(.info, tool.name, tool.description);
+                            }
+
+                            // Update usage count
+                            tool.usage_count += 1;
+                            tool.last_used = std.time.timestamp();
+
+                            // Return to normal mode
+                            self.current_mode = .normal;
+                        }
+                    }
+                    return false;
+                }
+
+                // Tab to view details
+                if (key.char == '\t') {
+                    if (self.tool_discovery) |*td| {
+                        if (td.selected_tool) |tool| {
+                            if (self.notification_center) |*nc| {
+                                const complexity_str = switch (tool.complexity) {
+                                    .simple => "Simple",
+                                    .moderate => "Moderate",
+                                    .advanced => "Advanced",
+                                };
+                                const details = try std.fmt.allocPrint(self.allocator, "{s} | Category: {s} | Complexity: {s} | Used: {} times", .{ tool.icon, tool.category, complexity_str, tool.usage_count });
+                                defer self.allocator.free(details);
+                                try nc.show(.info, tool.name, details);
+                            }
+                        }
+                    }
+                    return false;
+                }
+            },
+            .mouse => |mouse| {
+                // Handle mouse clicks on tools
+                if (mouse.type == .click) {
+                    if (self.notification_center) |*nc| {
+                        try nc.show(.info, "Mouse", "Tool clicked");
+                    }
+                }
+            },
+            else => {},
+        }
         return false;
     }
 
@@ -643,22 +856,16 @@ pub const ContextualHelpSystem = struct {
 
     fn renderSimpleHelp(self: *ContextualHelpSystem, text: []const u8) !void {
         // Simple one-line help at bottom
+        const stdout = std.io.getStdOut().writer();
+        try stdout.print("[Help] {s}\n", .{text});
         _ = self;
-        _ = text;
-        // TODO: Implement status indicator
-        // try components.status_indicator.show(text);
     }
 
     fn renderStandardHelp(self: *ContextualHelpSystem, text: []const u8) !void {
         // Help with keyboard shortcuts
+        const stdout = std.io.getStdOut().writer();
+        try stdout.print("ℹ️  {s}\n", .{text});
         _ = self;
-        _ = text;
-        // TODO: Implement notification system
-        // try components.notification.show(.{
-        //     .type = .info,
-        //     .message = text,
-        //     .duration = 0, // Persistent
-        // });
     }
 
     fn renderDetailedHelp(self: *ContextualHelpSystem, text: []const u8) !void {
@@ -848,6 +1055,18 @@ pub const NotificationCenter = struct {
         };
     }
 
+    pub fn show(self: *NotificationCenter, notification_type: components.NotificationType, title: ?[]const u8, message: []const u8) !void {
+        const notification = Notification{
+            .type = notification_type,
+            .title = title,
+            .message = message,
+            .timestamp = std.time.timestamp(),
+            .duration = 5, // 5 seconds default
+        };
+        try self.notifications.append(notification);
+        try self.renderNotification(notification);
+    }
+
     pub fn render(self: *NotificationCenter) !void {
         // Render notifications based on display mode
         for (self.notifications.items) |notification| {
@@ -864,14 +1083,41 @@ pub const NotificationCenter = struct {
     }
 
     fn renderNotification(self: *NotificationCenter, notification: Notification) !void {
-        _ = self;
-        _ = notification;
-        // TODO: Implement notification rendering
-        // try components.notification.show(.{
-        //     .type = notification.type,
-        //     .title = notification.title,
-        //     .message = notification.message,
-        // });
+        // Simple notification rendering to stdout
+        const stdout = std.io.getStdOut().writer();
+
+        // Choose icon based on notification type
+        const icon = switch (notification.type) {
+            .info => "ℹ️ ",
+            .success => "✅",
+            .warning => "⚠️ ",
+            .danger => "❌",
+        };
+
+        // Render notification based on display mode
+        switch (self.display_mode) {
+            .minimal => {
+                try stdout.print("{s} {s}\n", .{ icon, notification.message });
+            },
+            .standard => {
+                if (notification.title) |title| {
+                    try stdout.print("{s} {s}: {s}\n", .{ icon, title, notification.message });
+                } else {
+                    try stdout.print("{s} {s}\n", .{ icon, notification.message });
+                }
+            },
+            .rich, .full => {
+                // Rich notification with box drawing
+                const width = 60;
+                try stdout.print("┌{s}┐\n", .{"─" ** (width - 2)});
+                if (notification.title) |title| {
+                    try stdout.print("│ {s} {s: <{}} │\n", .{ icon, title, width - 6 });
+                    try stdout.print("├{s}┤\n", .{"─" ** (width - 2)});
+                }
+                try stdout.print("│ {s: <{}} │\n", .{ notification.message, width - 3 });
+                try stdout.print("└{s}┘\n", .{"─" ** (width - 2)});
+            },
+        }
     }
 
     pub fn deinit(self: *NotificationCenter) void {

@@ -40,7 +40,7 @@ pub const SharedContext = foundation_context.SharedContext;
 pub const Message = models.Message;
 pub const MessageRole = models.MessageRole;
 pub const AuthType = models.AuthType;
-pub const Credentials = oauth.Credentials; // Use OAuth credentials from network auth
+pub const Credentials = models.Credentials; // Use models.Credentials for AuthType compatibility
 pub const Usage = models.Usage;
 pub const Error = models.Error;
 pub const CostCalc = models.CostCalculator;
@@ -184,7 +184,7 @@ pub const Client = struct {
     /// Initialize client with OAuth credentials
     pub fn initWithOAuth(
         allocator: std.mem.Allocator,
-        oauthCreds: Credentials,
+        oauthCreds: oauth.Credentials,
         credentialsPath: ?[]const u8,
     ) !Self {
         var dupedPath: ?[]const u8 = null;
@@ -192,8 +192,8 @@ pub const Client = struct {
             dupedPath = try allocator.dupe(u8, path);
         }
 
-        // Duplicate OAuth credentials
-        const dupedCreds = Credentials{
+        // Convert OAuth credentials to Models credentials
+        const dupedCreds = models.Credentials{
             .type = try allocator.dupe(u8, oauthCreds.type),
             .accessToken = try allocator.dupe(u8, oauthCreds.accessToken),
             .refreshToken = try allocator.dupe(u8, oauthCreds.refreshToken),
@@ -266,10 +266,28 @@ pub const Client = struct {
                 defer ctx.anthropic.refreshLock.inProgress = false;
 
                 // Perform the refresh
-                const newCreds = oauth.refreshTokens(self.allocator, oauthCreds.refreshToken) catch |err| {
+                const newOAuthCreds = oauth.refreshTokens(self.allocator, oauthCreds.refreshToken) catch |err| {
                     std.log.err("Token refresh failed: {}", .{err});
                     return err;
                 };
+
+                // Persist updated credentials first (before deinit)
+                if (self.credentialsPath) |path| {
+                    oauth.saveCredentials(self.allocator, path, newOAuthCreds) catch |err| {
+                        std.log.warn("Failed to save refreshed credentials: {}", .{err});
+                    };
+                }
+
+                // Convert to models.Credentials
+                const newCreds = models.Credentials{
+                    .type = try self.allocator.dupe(u8, newOAuthCreds.type),
+                    .accessToken = try self.allocator.dupe(u8, newOAuthCreds.accessToken),
+                    .refreshToken = try self.allocator.dupe(u8, newOAuthCreds.refreshToken),
+                    .expiresAt = newOAuthCreds.expiresAt,
+                };
+
+                // Clean up OAuth creds after duplication
+                newOAuthCreds.deinit(self.allocator);
 
                 // Free old credentials
                 self.allocator.free(oauthCreds.type);
@@ -278,13 +296,6 @@ pub const Client = struct {
 
                 // Update with new credentials
                 self.auth = AuthType{ .oauth = newCreds };
-
-                // Persist updated credentials
-                if (self.credentialsPath) |path| {
-                    oauth.saveCredentials(self.allocator, path, newCreds) catch |err| {
-                        std.log.warn("Failed to save refreshed credentials: {}", .{err});
-                    };
-                }
             },
         }
     }
@@ -295,13 +306,25 @@ pub const Client = struct {
         return self.complete(ctx, .{
             .model = req.model,
             .messages = req.messages,
-            .max_tokens = req.max_tokens,
+            .maxTokens = req.maxTokens,
             .temperature = req.temperature,
             .system = req.system,
-            .top_p = req.top_p,
-            .top_k = req.top_k,
-            .stop_sequences = req.stop_sequences,
+            .topP = req.topP,
+            .topK = req.topK,
+            .stopSequences = req.stopSequences,
         });
+    }
+
+    /// Alias for create method used by CLI
+    pub fn createMessage(self: *Self, params: MessageParameters) !MessageResult {
+        var ctx = SharedContext.init(self.allocator);
+        defer ctx.deinit();
+        return self.create(&ctx, params);
+    }
+
+    /// Alias for stream method used by CLI
+    pub fn createMessageStream(self: *Self, ctx: *SharedContext, params: StreamParameters) !void {
+        return self.stream(ctx, params);
     }
 
     /// Complete method for non-streaming requests (collects streaming response)
@@ -423,71 +446,6 @@ pub const Client = struct {
         };
     }
 
-    /// Build JSON request body for Messages API
-    fn buildBodyJson(self: *Self, params: StreamParameters) ![]u8 {
-        var json_body = std.ArrayList(u8).init(self.allocator);
-        defer json_body.deinit();
-
-        try json_body.appendSlice("{");
-        
-        // Model
-        try json_body.appendSlice("\"model\":\"");
-        try json_body.appendSlice(params.model);
-        try json_body.appendSlice("\",");
-        
-        // Max tokens
-        try json_body.writer().print("\"max_tokens\":{},", .{params.maxTokens});
-        
-        // Temperature
-        try json_body.writer().print("\"temperature\":{d:.2},", .{params.temperature});
-        
-        // Stream flag
-        try json_body.appendSlice("\"stream\":true,");
-        
-        // System prompt (optional)
-        if (params.system) |system| {
-            try json_body.appendSlice("\"system\":\"");
-            // JSON-escape the system prompt
-            for (system) |c| {
-                switch (c) {
-                    '\\' => try json_body.appendSlice("\\\\"),
-                    '"' => try json_body.appendSlice("\\\""),
-                    '\n' => try json_body.appendSlice("\\n"),
-                    '\r' => try json_body.appendSlice("\\r"),
-                    '\t' => try json_body.appendSlice("\\t"),
-                    else => try json_body.append(c),
-                }
-            }
-            try json_body.appendSlice("\",");
-        }
-        
-        // Messages array
-        try json_body.appendSlice("\"messages\":[");
-        for (params.messages, 0..) |msg, i| {
-            if (i > 0) try json_body.appendSlice(",");
-            try json_body.appendSlice("{\"role\":\"");
-            try json_body.appendSlice(@tagName(msg.role));
-            try json_body.appendSlice("\",\"content\":\"");
-            // JSON-escape the content
-            for (msg.content) |c| {
-                switch (c) {
-                    '\\' => try json_body.appendSlice("\\\\"),
-                    '"' => try json_body.appendSlice("\\\""),
-                    '\n' => try json_body.appendSlice("\\n"),
-                    '\r' => try json_body.appendSlice("\\r"),
-                    '\t' => try json_body.appendSlice("\\t"),
-                    else => try json_body.append(c),
-                }
-            }
-            try json_body.appendSlice("\"}");
-        }
-        try json_body.appendSlice("]");
-        
-        try json_body.appendSlice("}");
-        
-        return json_body.toOwnedSlice();
-    }
-
     /// Stream messages using Server-Sent Events
     pub fn stream(self: *Self, ctx: *SharedContext, params: StreamParameters) !void {
         return self.streamWithRetry(ctx, params, false);
@@ -495,195 +453,145 @@ pub const Client = struct {
 
     /// Internal method to handle streaming with automatic retry on 401
     fn streamWithRetry(self: *Self, ctx: *SharedContext, params: StreamParameters, is_retry: bool) !void {
-        // Proactive refresh even before first attempt; ignore RefreshInProgress in concurrent scenarios
-        if (!is_retry) {
-            self.refreshOAuthIfNeeded(ctx) catch |err| {
-                if (err != Error.RefreshInProgress) {
-                    std.log.warn("Proactive OAuth refresh skipped: {}", .{err});
-                }
-            };
-        }
-
-        // Build request body
+        // Prepare request body
         const bodyJson = try self.buildBodyJson(params);
         defer self.allocator.free(bodyJson);
 
-        // Initialize HTTP client
-        var client = std.http.Client{ .allocator = self.allocator };
-        defer client.deinit();
-
-        // Parse URL
-        const uri = try std.Uri.parse(try std.fmt.allocPrint(self.allocator, "{s}/v1/messages", .{self.baseUrl}));
-        defer self.allocator.free(uri.path);
-
         // Prepare headers
-        var headers_list = std.ArrayListUnmanaged(std.http.Header){};
-        defer headers_list.deinit(self.allocator);
+        var headers = std.ArrayListUnmanaged(curl.Header){};
+        defer {
+            for (headers.items) |header| {
+                if (std.mem.eql(u8, header.name, "authorization")) {
+                    self.allocator.free(header.value);
+                }
+            }
+            headers.deinit(self.allocator);
+        }
+
+        // Add auth header
+        const auth_header = try self.getAuthHeader(self.allocator);
+        try headers.append(self.allocator, .{ .name = auth_header.name, .value = auth_header.value });
+
+        // Add other required headers
+        try headers.append(self.allocator, .{ .name = "content-type", .value = "application/json" });
+        try headers.append(self.allocator, .{ .name = "accept", .value = "text/event-stream" });
+        try headers.append(self.allocator, .{ .name = "anthropic-version", .value = "2023-06-01" });
 
         const is_api_key_auth = switch (self.auth) {
             .api_key => true,
             .oauth => false,
         };
 
-        if (is_api_key_auth) {
-            // API key path (standard header)
-            try headers_list.append(self.allocator, .{ .name = "x-api-key", .value = self.auth.api_key });
-            try headers_list.append(self.allocator, .{ .name = "accept", .value = "text/event-stream" });
-            try headers_list.append(self.allocator, .{ .name = "content-type", .value = "application/json" });
-            try headers_list.append(self.allocator, .{ .name = "anthropic-version", .value = self.apiVersion });
-            try headers_list.append(self.allocator, .{ .name = "anthropic-beta", .value = "none" });
-            try headers_list.append(self.allocator, .{ .name = "user-agent", .value = "docz/1.0" });
-        } else {
-            // OAuth path: Bearer only (no x-api-key fallback)
-            const creds = self.auth.oauth;
-            const bearer = try std.fmt.allocPrint(self.allocator, "Bearer {s}", .{creds.accessToken});
-            defer self.allocator.free(bearer);
-            // OAuth beta header is feature-gated via build options; default matches spec
-            const beta_value = if (build_options.oauth_beta_header) build_options.anthropic_beta_oauth else "none";
-            try headers_list.append(self.allocator, .{ .name = "Authorization", .value = bearer });
-            try headers_list.append(self.allocator, .{ .name = "accept", .value = "text/event-stream" });
-            try headers_list.append(self.allocator, .{ .name = "content-type", .value = "application/json" });
-            try headers_list.append(self.allocator, .{ .name = "anthropic-version", .value = self.apiVersion });
-            try headers_list.append(self.allocator, .{ .name = "anthropic-beta", .value = beta_value });
-            try headers_list.append(self.allocator, .{ .name = "user-agent", .value = "docz/1.0" });
+        if (!is_api_key_auth and build_options.oauth_beta_header) {
+            try headers.append(self.allocator, .{ .name = "anthropic-beta", .value = build_options.anthropic_beta_oauth });
         }
 
-        const headers = headers_list.items;
-        self.logRequestHeaders(uri.path, headers);
+        // Build URL
+        const url = try std.fmt.allocPrint(self.allocator, "{s}/v1/messages", .{self.baseUrl});
+        defer self.allocator.free(url);
+
+        // Log headers if verbose
+        self.logRequestHeaders(url, headers.items);
+
+        // Create HTTP client
+        var http_client = try curl.HTTPClient.init(self.allocator);
+        defer http_client.deinit();
+
+        // Create streaming context for callback
+        const StreamContext = struct {
+            ctx: *SharedContext,
+            allocator: std.mem.Allocator,
+            onToken: *const fn (*SharedContext, []const u8) void,
+
+            fn streamCallback(chunk: []const u8, context: *anyopaque) void {
+                const stream_ctx: *@This() = @ptrCast(@alignCast(context));
+                // Process the SSE chunk
+                var streaming_context = stream_module.StreamingContext{
+                    .allocator = stream_ctx.allocator,
+                    .ctx = stream_ctx.ctx,
+                    .callback = stream_ctx.onToken,
+                    .buffer = std.ArrayListUnmanaged(u8){},
+                };
+                defer streaming_context.buffer.deinit(stream_ctx.allocator);
+
+                stream_module.processSseChunk(&streaming_context, chunk) catch |err| {
+                    std.log.err("Error processing SSE chunk: {}", .{err});
+                };
+            }
+        };
+
+        var stream_ctx = StreamContext{
+            .ctx = ctx,
+            .allocator = self.allocator,
+            .onToken = params.onToken,
+        };
 
         // Make streaming request
-        var req = try client.open(.POST, uri, .{
-            .server_header_buffer = &[_]u8{},
-            .extra_headers = headers,
-        });
-        defer req.deinit();
-
-        req.transfer_encoding = .{ .content_length = bodyJson.len };
-        try req.send();
-        try req.writeAll(bodyJson);
-        try req.finish();
-        try req.wait();
+        const status_code = try http_client.streamRequest(
+            .{
+                .method = .POST,
+                .url = url,
+                .headers = headers.items,
+                .body = bodyJson,
+                .timeout_ms = 60000, // 60 second timeout for streaming
+                .verify_ssl = true,
+                .verbose = self.httpVerbose,
+            },
+            StreamContext.streamCallback,
+            &stream_ctx,
+        );
 
         // Check for 401 Unauthorized and retry once for OAuth; report auth error for API keys
-        if (req.response.status == .unauthorized and !is_retry) {
+        if (status_code == 401 and !is_retry) {
             std.log.warn("Received 401 Unauthorized, attempting token refresh...", .{});
             // Force a refresh regardless of current expiry to handle server-side invalidation
             switch (self.auth) {
                 .oauth => |creds| {
-                    const newCreds = oauth.refreshTokens(self.allocator, creds.refreshToken) catch |err| {
+                    const newOAuthCreds = oauth.refreshTokens(self.allocator, creds.refreshToken) catch |err| {
                         std.log.err("Token refresh on 401 failed: {}", .{err});
                         return Error.AuthError;
                     };
-                    // Replace credentials and persist
+
+                    // Persist updated credentials first
+                    if (self.credentialsPath) |path| {
+                        oauth.saveCredentials(self.allocator, path, newOAuthCreds) catch |err| {
+                            std.log.warn("Failed to save refreshed credentials: {}", .{err});
+                        };
+                    }
+
+                    // Convert to models.Credentials
+                    const newCreds = models.Credentials{
+                        .type = try self.allocator.dupe(u8, newOAuthCreds.type),
+                        .accessToken = try self.allocator.dupe(u8, newOAuthCreds.accessToken),
+                        .refreshToken = try self.allocator.dupe(u8, newOAuthCreds.refreshToken),
+                        .expiresAt = newOAuthCreds.expiresAt,
+                    };
+
+                    // Clean up OAuth creds after duplication
+                    newOAuthCreds.deinit(self.allocator);
+
+                    // Replace credentials
                     self.allocator.free(creds.type);
                     self.allocator.free(creds.accessToken);
                     self.allocator.free(creds.refreshToken);
                     self.auth = AuthType{ .oauth = newCreds };
-                    if (self.credentialsPath) |path| {
-                        oauth.saveCredentials(self.allocator, path, newCreds) catch |err| {
-                            std.log.warn("Failed to save refreshed credentials: {}", .{err});
-                        };
-                    }
                 },
                 .api_key => {},
             }
             return self.streamWithRetry(ctx, params, true); // Retry once after refresh
         }
 
-        if (req.response.status == .unauthorized) {
+        if (status_code == 401) {
             // After retry (or with API keys), surface as authentication error
             return Error.AuthError;
         }
 
-        if (req.response.status != .ok) {
-            // Attempt a non-streaming POST to fetch error body for diagnostics
-            std.log.err("HTTP error: {}", .{req.response.status});
-
-            const error_body = try req.reader().readAllAlloc(self.allocator, 1024 * 1024);
-            defer self.allocator.free(error_body);
-            std.log.err("Error body: {s}", .{error_body});
-
-            // Surface upstream request-id when present for troubleshooting
-            const maybe_req_id = blk: {
-                if (req.response.headers.get("request-id")) |v| break :blk v;
-                if (req.response.headers.get("Request-Id")) |v| break :blk v;
-                if (req.response.headers.get("x-request-id")) |v| break :blk v;
-                if (req.response.headers.get("X-Request-Id")) |v| break :blk v;
-                break :blk null;
-            };
-            if (maybe_req_id) |rid| {
-                std.log.warn("Upstream request-id: {s}", .{rid});
-            }
-
-            if (std.mem.indexOf(u8, error_body, "Invalid bearer token")) |_| {
-                return Error.AuthError;
-            }
+        if (status_code != 200) {
+            std.log.err("HTTP error: {}", .{status_code});
             return Error.APIError;
         }
 
-        // Process streaming response using proper SSE parser
-        const sse = @import("../../SSE.zig");
-        var eventState = sse.ServerSentEventBuilder.init(self.allocator);
-        defer eventState.deinit();
-
-        var buffer: [4096]u8 = undefined;
-        var accumulated_data = std.ArrayList(u8).init(self.allocator);
-        defer accumulated_data.deinit();
-
-        while (true) {
-            const bytes_read = try req.reader().read(&buffer);
-            if (bytes_read == 0) break;
-
-            // Accumulate data
-            try accumulated_data.appendSlice(buffer[0..bytes_read]);
-
-            // Process accumulated SSE data
-            var events = std.ArrayList(sse.ServerSentEvent).init(self.allocator);
-            defer {
-                for (events.items) |*event| {
-                    event.deinit(self.allocator);
-                }
-                events.deinit();
-            }
-
-            sse.processServerSentEventLines(accumulated_data.items, &eventState, &sse.ServerSentEventConfig{}, &events, self.allocator) catch |err| {
-                std.log.warn("SSE processing error: {}", .{err});
-                continue;
-            };
-
-            // Process completed events
-            for (events.items) |event| {
-                if (event.has_data and !std.mem.eql(u8, event.data, "[DONE]")) {
-                    // Call the token callback with the event data
-                    params.onToken(ctx, event.data);
-                }
-            }
-
-            // Clear processed data
-            accumulated_data.clearRetainingCapacity();
-        }
-
-        // Process any remaining accumulated data
-        if (accumulated_data.items.len > 0) {
-            var events = std.ArrayList(sse.ServerSentEvent).init(self.allocator);
-            defer {
-                for (events.items) |*event| {
-                    event.deinit(self.allocator);
-                }
-                events.deinit();
-            }
-
-            sse.processServerSentEventLines(accumulated_data.items, &eventState, &sse.ServerSentEventConfig{}, &events, self.allocator) catch |err| {
-                std.log.warn("Final SSE processing error: {}", .{err});
-            };
-
-            // Process final events
-            for (events.items) |event| {
-                if (event.has_data and !std.mem.eql(u8, event.data, "[DONE]")) {
-                    params.onToken(ctx, event.data);
-                }
-            }
-        }
+        // Response processing is handled by the streaming callback
     }
 
     /// Build JSON request body for the messages API
@@ -840,7 +748,7 @@ test "getAuthHeader returns Bearer for OAuth and x-api-key for API key" {
     try std.testing.expectEqualStrings("k", h1.value);
 
     // OAuth path
-    const creds = Credentials{
+    const creds = oauth.Credentials{
         .type = "oauth",
         .accessToken = "t",
         .refreshToken = "r",
@@ -857,7 +765,7 @@ test "getAuthHeader returns Bearer for OAuth and x-api-key for API key" {
 test "buildHeadersForTest includes beta for OAuth and no x-api-key" {
     const a = std.testing.allocator;
     // OAuth client
-    const creds = Credentials{ .type = "oauth", .accessToken = "tok", .refreshToken = "ref", .expiresAt = 0 };
+    const creds = oauth.Credentials{ .type = "oauth", .accessToken = "tok", .refreshToken = "ref", .expiresAt = 0 };
     var c = try Client.initWithOAuth(a, creds, null);
     defer c.deinit();
     const hdrs = try c.buildHeadersForTest(a, true);

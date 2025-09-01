@@ -29,6 +29,8 @@ pub const StoredCredentials = struct {
 pub const StoreConfig = struct {
     /// Path to credentials file
     path: []const u8 = "claude_oauth_creds.json",
+    /// Agent name for credential path construction
+    agent_name: ?[]const u8 = null,
     /// Use OS keychain if available (future feature)
     use_keychain: bool = false,
 };
@@ -47,17 +49,37 @@ pub const TokenStore = struct {
         };
     }
 
+    /// Get the full path for credential storage
+    pub fn getCredentialPath(self: Self) ![]const u8 {
+        if (self.config.agent_name) |agent_name| {
+            // Build path: ~/.local/share/{agent_name}/auth.json
+            const home = std.posix.getenv("HOME") orelse return error.NoHomeDirectory;
+            const path = try std.fmt.allocPrint(self.allocator, "{s}/.local/share/{s}/auth.json", .{ home, agent_name });
+            
+            // Ensure directory exists
+            const dir_path = try std.fmt.allocPrint(self.allocator, "{s}/.local/share/{s}", .{ home, agent_name });
+            defer self.allocator.free(dir_path);
+            std.fs.makeDirAbsolute(dir_path) catch |err| switch (err) {
+                error.PathAlreadyExists => {},
+                else => return err,
+            };
+            
+            return path;
+        }
+        return self.allocator.dupe(u8, self.config.path);
+    }
+
     /// Save credentials to file with mode 0600
     pub fn save(self: Self, creds: StoredCredentials) !void {
-        // Serialize to JSON - use writeStream
-        var buffer: [8192]u8 = undefined;
-        var stream = std.io.fixedBufferStream(&buffer);
-        var write_stream = json.writeStream(stream.writer(), .{ .whitespace = .indent_2 });
-        try write_stream.write(creds);
-        const json_str = stream.getWritten();
+        const path = try self.getCredentialPath();
+        defer self.allocator.free(path);
+
+        // Serialize to JSON (Zig 0.15)
+        const json_str = try std.fmt.allocPrint(self.allocator, "{f}", .{json.fmt(creds, .{ .whitespace = .indent_2 })});
+        defer self.allocator.free(json_str);
 
         // Write atomically with temp file
-        const temp_path = try std.fmt.allocPrint(self.allocator, "{s}.tmp", .{self.config.path});
+        const temp_path = try std.fmt.allocPrint(self.allocator, "{s}.tmp", .{path});
         defer self.allocator.free(temp_path);
 
         // Create temp file with restricted permissions
@@ -70,14 +92,17 @@ pub const TokenStore = struct {
         try file.sync();
 
         // Atomic rename
-        try fs.cwd().rename(temp_path, self.config.path);
+        try fs.cwd().rename(temp_path, path);
 
-        log.info("Credentials saved to {s} with mode 0600", .{self.config.path});
+        log.info("Credentials saved to {s} with mode 0600", .{path});
     }
 
     /// Load credentials from file
     pub fn load(self: Self) !StoredCredentials {
-        const file = try fs.cwd().openFile(self.config.path, .{});
+        const path = try self.getCredentialPath();
+        defer self.allocator.free(path);
+
+        const file = try fs.cwd().openFile(path, .{});
         defer file.close();
 
         // Check file permissions
@@ -108,13 +133,19 @@ pub const TokenStore = struct {
 
     /// Check if credentials exist
     pub fn exists(self: Self) bool {
-        fs.cwd().access(self.config.path, .{}) catch return false;
+        const path = self.getCredentialPath() catch return false;
+        defer self.allocator.free(path);
+        
+        fs.cwd().access(path, .{}) catch return false;
         return true;
     }
 
     /// Remove credentials file
     pub fn remove(self: Self) !void {
-        try fs.cwd().deleteFile(self.config.path);
+        const path = try self.getCredentialPath();
+        defer self.allocator.free(path);
+        
+        try fs.cwd().deleteFile(path);
         log.info("Credentials removed", .{});
     }
 };

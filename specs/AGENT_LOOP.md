@@ -52,6 +52,10 @@ This document specifies the single, shared run loop used by all agents and clari
 
 All agents compile with their own `agents/<name>/main.zig` and reuse the same engine and foundation.
 
+Credential store
+
+- OAuth credentials are stored in and retrieved from `~/.local/share/{agent name}/auth.json`. The engine and `foundation/agent_main.zig` expect this canonical path for reading existing sessions and writing refreshed tokens.
+
 ---
 
 ## 4. Engine Loop Stages
