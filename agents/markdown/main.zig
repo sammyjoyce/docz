@@ -17,26 +17,32 @@ pub fn main() !void {
 
     // Minimal auth subcommands passthrough: `docz auth <sub>`
     if (args.len >= 1 and std.mem.eql(u8, args[0], "auth")) {
-        const Commands = foundation.cli.Auth.Commands;
+        const Auth = foundation.cli.Auth;
         const sub = if (args.len >= 2) args[1] else "status";
-        if (Commands.AuthCommand.fromString(sub)) |cmd| {
-            try Commands.runAuthCommand(allocator, cmd);
-            return;
+
+        if (std.mem.eql(u8, sub, "login")) {
+            try Auth.login(allocator, .{});
+        } else if (std.mem.eql(u8, sub, "status")) {
+            try Auth.status(allocator);
+        } else if (std.mem.eql(u8, sub, "whoami")) {
+            try Auth.whoami(allocator);
+        } else if (std.mem.eql(u8, sub, "logout")) {
+            try Auth.logout(allocator);
+        } else if (std.mem.eql(u8, sub, "test-call")) {
+            try Auth.testCall(allocator, .{});
         } else {
             std.debug.print("Unknown auth subcommand: {s}\n", .{sub});
-            return;
         }
+        return;
     }
 
     // Special flag to trigger OAuth login for minimal agent
-    if (args.len == 1 and (std.mem.eql(u8, args[0], "--oauth") or std.mem.eql(u8, args[0], "auth") or std.mem.eql(u8, args[0], "login"))) {
-        try foundation.cli.Auth.handleLoginCommand(allocator);
+    if (args.len == 1 and (std.mem.eql(u8, args[0], "--oauth") or std.mem.eql(u8, args[0], "login"))) {
+        try foundation.cli.Auth.login(allocator, .{});
         return;
     }
     if (args.len == 1 and (std.mem.eql(u8, args[0], "--oauth-paste") or std.mem.eql(u8, args[0], "--paste-oauth"))) {
-        const oauth = foundation.network.Auth.OAuth;
-        const creds = try oauth.setupOAuth(allocator);
-        creds.deinit(allocator);
+        try foundation.cli.Auth.login(allocator, .{ .manual = true });
         return;
     }
     // Support for Anthropic-specific OAuth if needed
@@ -47,41 +53,31 @@ pub fn main() !void {
     }
 
     // Build minimal engine options with sensible defaults.
-    // Use a model from the Anthropic Models list
-    const default_model = "claude-sonnet-4-0"; // From foundation.network.AnthropicAuth model pricing table
+    const default_model = "claude-3-5-sonnet-20241022";
     var options = engine.CliOptions{
-        .options = .{
-            .model = default_model,
-            .output = null,
-            .input = null,
-            .system = null,
-            .config = null,
-            .tokensMax = 1024,
-            .temperature = 0.7,
-        },
-        .flags = .{
-            .verbose = false,
-            .help = false,
-            .version = false,
-            .stream = true,
-            .pretty = false,
-            .debug = false,
-            .interactive = false,
-        },
-        .positionals = null,
+        .model = default_model,
+        .max_tokens = 4096,
+        .temperature = 0.7,
+        .stream = true,
+        .verbose = false,
+        .history = null,
+        .input = null,
+        .output = null,
     };
 
     // If user passed a prompt, join remaining args into one positional string.
     if (args.len > 0) {
         const joined = try std.mem.join(allocator, " ", args);
         defer allocator.free(joined);
-        // Duplicate to give ownership to engine
-        options.positionals = try allocator.dupe(u8, joined);
+        // Use input field for prompt
+        options.input = try allocator.dupe(u8, joined);
     }
 
     // Ensure any owned option strings are released
-    defer if (options.positionals) |p| allocator.free(p);
+    defer if (options.input) |p| allocator.free(p);
 
     // Run the engine. It will read stdin if no positional prompt is provided.
-    try engine.runWithOptions(allocator, options, spec.SPEC, std.fs.cwd());
+    const cwd_path = try std.fs.cwd().realpathAlloc(allocator, ".");
+    defer allocator.free(cwd_path);
+    try engine.runWithOptions(allocator, options, spec.SPEC, cwd_path);
 }

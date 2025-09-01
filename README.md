@@ -554,10 +554,13 @@ zig test src/core/engine.zig --test-filter "config"
 // Old (deprecated)
 const stdout = std.io.getStdOut().writer();
 
-// New
+// New (Zig 0.15.1)
 var stdout_buffer: [4096]u8 = undefined;
 var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
 const stdout = &stdout_writer.interface;
+
+// Remember to flush!
+try stdout.flush();
 try stdout.print("Hello\n", .{});
 try stdout.flush(); // Don't forget to flush!
 ```

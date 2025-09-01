@@ -16,8 +16,8 @@ fn buildSystemPromptImpl(allocator: std.mem.Allocator, options: engine.CliOption
 }
 
 fn registerToolsImpl(registry: *tools_mod.Registry) !void {
-    _ = registry; // Tools temporarily disabled to fix build
-    // TODO: Fix tool registration - tools need to export proper execute functions
+    // Register built-in tools
+    try tools_mod.registerBuiltins(registry);
 }
 
 pub const SPEC: engine.AgentSpec = .{

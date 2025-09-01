@@ -62,7 +62,7 @@ fn openWindows(allocator: std.mem.Allocator, url: []const u8) !process.Child.Ter
 
 /// Display manual authentication instructions
 pub fn showManualInstructions(url: []const u8) void {
-    const stdout = std.io.getStdOut().writer();
+    const stdout = std.debug;
     stdout.print(
         \\
         \\Could not open browser automatically.

@@ -31,7 +31,7 @@ pub const Auth = struct {
 
     // Convenience re-exports
     pub const AuthMethod = Core.AuthMethod;
-    pub const Credentials = Core.Credentials;
+    pub const Credentials = OAuth.Credentials; // Use OAuth credentials for compatibility
     pub const AuthError = Errors.AuthError;
     pub const setupOAuth = OAuth.setupOAuth;
     pub const refreshTokens = OAuth.refreshTokens;

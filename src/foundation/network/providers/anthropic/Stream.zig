@@ -83,6 +83,20 @@ pub const StreamingContext = struct {
     }
 };
 
+/// Create a new streaming context
+pub fn createStreamingContext(
+    allocator: std.mem.Allocator,
+    ctx: *SharedContext,
+    callback: *const fn (*SharedContext, []const u8) void,
+) StreamingContext {
+    return StreamingContext.init(allocator, ctx, callback);
+}
+
+/// Destroy a streaming context
+pub fn destroyStreamingContext(ctx: *StreamingContext) void {
+    ctx.deinit();
+}
+
 // ============================== Core Streaming Functions ==============================
 
 /// Process a stream chunk (entry point for curl callbacks)

@@ -29,7 +29,10 @@
 //! canvas.setDot(5, 5, true);
 //!
 //! // Render to terminal
-//! try canvas.render(std.io.getStdOut().writer());
+//! var stdout_buffer: [1024]u8 = undefined;
+//! var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+//! try canvas.render(&stdout_writer.interface);
+//! try stdout_writer.interface.flush();
 //! ```
 
 const std = @import("std");

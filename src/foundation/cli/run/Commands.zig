@@ -4,9 +4,10 @@
 //! that starts the interactive agent REPL with OAuth authentication.
 
 const std = @import("std");
-const network = @import("network_shared");
+const network = @import("../../network.zig");
 const Auth = network.Auth;
-const tools = @import("tools_shared");
+const tools = @import("../../tools.zig");
+const context = @import("../../context.zig");
 
 const log = std.log.scoped(.cli_run);
 
@@ -21,8 +22,8 @@ pub const RunConfig = struct {
 
 /// Handle the run command
 pub fn handleRunCommand(allocator: std.mem.Allocator, config: RunConfig) !void {
-    const stdout = std.io.getStdOut().writer();
-    const stdin = std.io.getStdIn().reader();
+    const stdout = std.debug;
+    const stdin = std.fs.File.stdin().reader();
 
     // Check authentication
     const store = Auth.store.TokenStore.init(allocator, .{});
@@ -75,28 +76,26 @@ pub fn handleRunCommand(allocator: std.mem.Allocator, config: RunConfig) !void {
     defer client.deinit();
 
     // Shared context for streaming and token refresh
-    var shared_ctx = network.Anthropic.Client.SharedContext.init(allocator);
+    var shared_ctx = context.SharedContext.init(allocator);
     defer shared_ctx.deinit();
 
     // Initialize conversation history
     var messages = std.ArrayList(network.Anthropic.Message).init(allocator);
     defer messages.deinit();
-
-    // Add system prompt if provided
-    if (config.system_prompt) |prompt| {
-        try messages.append(.{
-            .role = .user,
-            .content = try allocator.dupe(u8, prompt),
-        });
+    defer {
+        for (messages.items) |msg| {
+            allocator.free(msg.content);
+        }
     }
 
     // Print banner
-    try stdout.print("\n┌────────────────────────────────────────┐\n", .{});
-    try stdout.print("│  Docz Agent - Claude AI Assistant     │\n", .{});
-    try stdout.print("│  Model: {s: <30} │\n", .{config.model});
-    try stdout.print("│  Auth: OAuth (Claude Pro/Max)         │\n", .{});
-    try stdout.print("│  Type 'exit' or Ctrl-C to quit        │\n", .{});
-    try stdout.print("└────────────────────────────────────────┘\n\n", .{});
+    try stdout.print("\n┌────────────────────────────────────────────┐\n", .{});
+    try stdout.print("│  Docz Agent - Claude AI Assistant         │\n", .{});
+    try stdout.print("│  Model: {s: <35} │\n", .{config.model});
+    try stdout.print("│  Auth: OAuth (Claude Pro/Max)              │\n", .{});
+    try stdout.print("│  Streaming: {s: <31} │\n", .{if (config.stream) "Enabled" else "Disabled"});
+    try stdout.print("│  Type 'exit' or Ctrl-C to quit            │\n", .{});
+    try stdout.print("└────────────────────────────────────────────┘\n\n", .{});
 
     // REPL loop
     while (true) {
@@ -119,19 +118,52 @@ pub fn handleRunCommand(allocator: std.mem.Allocator, config: RunConfig) !void {
 
             try stdout.print("\nClaude: ", .{});
 
-            // Send message and get non-streaming response via provider
-            const result = try client.create(&shared_ctx, .{
-                .model = config.model,
-                .messages = messages.items,
-                .maxTokens = config.max_tokens,
-                .temperature = config.temperature,
-                .system = config.system_prompt,
-            });
-            // result.content/id are owned by client allocator (freed when client deinit)
+            if (config.stream) {
+                // Streaming mode with SSE
+                shared_ctx.anthropic.contentCollector.clearRetainingCapacity();
+                shared_ctx.anthropic.messageId = null;
+                shared_ctx.anthropic.stopReason = null;
+                shared_ctx.anthropic.model = null;
 
-            // Print and append assistant content
-            try stdout.print("{s}", .{result.content});
-            try messages.append(.{ .role = .assistant, .content = try allocator.dupe(u8, result.content) });
+                const streamParams = network.Anthropic.Client.StreamParameters{
+                    .model = config.model,
+                    .messages = messages.items,
+                    .maxTokens = config.max_tokens,
+                    .temperature = config.temperature,
+                    .system = config.system_prompt,
+                    .onToken = struct {
+                        fn callback(ctx: *context.SharedContext, data: []const u8) void {
+                            // Process streaming events
+                            const event_type = ctx.anthropic.lastEventType orelse "";
+                            if (std.mem.eql(u8, event_type, "content_block_delta")) {
+                                // Accumulate content
+                                ctx.anthropic.contentCollector.appendSlice(data) catch {};
+                                // Print token immediately
+                                std.debug.print("{s}", .{data});
+                            }
+                        }
+                    }.callback,
+                };
+
+                try client.stream(&shared_ctx, streamParams);
+
+                // Add assistant message to history
+                const assistant_content = try allocator.dupe(u8, shared_ctx.anthropic.contentCollector.items);
+                try messages.append(.{ .role = .assistant, .content = assistant_content });
+            } else {
+                // Non-streaming mode
+                const result = try client.create(&shared_ctx, .{
+                    .model = config.model,
+                    .messages = messages.items,
+                    .maxTokens = config.max_tokens,
+                    .temperature = config.temperature,
+                    .system = config.system_prompt,
+                });
+
+                // Print and append assistant content
+                try stdout.print("{s}", .{result.content});
+                try messages.append(.{ .role = .assistant, .content = try allocator.dupe(u8, result.content) });
+            }
 
             try stdout.print("\n\n", .{});
 

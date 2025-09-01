@@ -196,7 +196,10 @@ pub const Sparkline = struct {
         // Title
         if (self.title) |title| {
             try self.writeWithColor(title, null);
-            try std.io.getStdOut().writer().writeAll("\n");
+            var stdout_buffer: [1024]u8 = undefined;
+            var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+            try stdout_writer.interface.writeAll("\n");
+            try stdout_writer.interface.flush();
         }
 
         // Render sparkline
@@ -223,10 +226,18 @@ pub const Sparkline = struct {
         if (self.show_trend and self.data.len >= 2) {
             const trend = self.calculateTrend();
             const trend_char = if (trend > 0.01) "↗" else if (trend < -0.01) "↘" else "→";
-            try std.io.getStdOut().writer().print(" {s}", .{trend_char});
+            var stdout_buffer: [1024]u8 = undefined;
+            var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+            try stdout_writer.interface.print(" {s}", .{trend_char});
+            try stdout_writer.interface.flush();
         }
 
-        try std.io.getStdOut().writer().writeAll("\n");
+        {
+            var stdout_buffer: [1024]u8 = undefined;
+            var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+            try stdout_writer.interface.writeAll("\n");
+            try stdout_writer.interface.flush();
+        }
     }
 
     fn renderAscii(self: *Sparkline, bounds: anytype) !void {
@@ -257,7 +268,10 @@ pub const Sparkline = struct {
         // Title
         if (self.title) |title| {
             try self.writeWithColor(title, null);
-            try std.io.getStdOut().writer().writeAll("\n");
+            var stdout_buffer: [1024]u8 = undefined;
+            var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+            try stdout_writer.interface.writeAll("\n");
+            try stdout_writer.interface.flush();
         }
 
         // Render sparkline
@@ -285,10 +299,18 @@ pub const Sparkline = struct {
         if (self.show_trend and self.data.len >= 2) {
             const trend = self.calculateTrend();
             const trend_char = if (trend > 0.01) "+" else if (trend < -0.01) "-" else "=";
-            try std.io.getStdOut().writer().print(" {s}", .{trend_char});
+            var stdout_buffer: [1024]u8 = undefined;
+            var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+            try stdout_writer.interface.print(" {s}", .{trend_char});
+            try stdout_writer.interface.flush();
         }
 
-        try std.io.getStdOut().writer().writeAll("\n");
+        {
+            var stdout_buffer: [1024]u8 = undefined;
+            var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+            try stdout_writer.interface.writeAll("\n");
+            try stdout_writer.interface.flush();
+        }
     }
 
     fn renderEmpty(self: *Sparkline, bounds: anytype) !void {
@@ -296,7 +318,10 @@ pub const Sparkline = struct {
 
         if (self.title) |title| {
             try self.writeWithColor(title, null);
-            try std.io.getStdOut().writer().writeAll("\n");
+            var stdout_buffer: [1024]u8 = undefined;
+            var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+            try stdout_writer.interface.writeAll("\n");
+            try stdout_writer.interface.flush();
         }
 
         try self.writeWithColor("▕", self.color);
@@ -305,7 +330,12 @@ pub const Sparkline = struct {
             try self.writeWithColor("░", self.color);
         }
         try self.writeWithColor("▏", self.color);
-        try std.io.getStdOut().writer().writeAll(" (no data)\n");
+        {
+            var stdout_buffer: [1024]u8 = undefined;
+            var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+            try stdout_writer.interface.writeAll(" (no data)\n");
+            try stdout_writer.interface.flush();
+        }
     }
 
     fn renderFlatLine(self: *Sparkline, width: u16) !void {
@@ -315,7 +345,12 @@ pub const Sparkline = struct {
             try self.writeWithColor("─", self.color);
         }
         try self.writeWithColor("▏", self.color);
-        try std.io.getStdOut().writer().writeAll("\n");
+        {
+            var stdout_buffer: [1024]u8 = undefined;
+            var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+            try stdout_writer.interface.writeAll("\n");
+            try stdout_writer.interface.flush();
+        }
     }
 
     pub fn calculateMinMax(self: *const Sparkline) struct { min: f64, max: f64 } {
@@ -367,7 +402,9 @@ pub const Sparkline = struct {
 
     fn writeWithColor(self: *const Sparkline, text: []const u8, color: ?Color) !void {
         _ = self; // Self not used but kept for consistency with other methods
-        const writer = std.io.getStdOut().writer();
+        var stdout_buffer: [1024]u8 = undefined;
+        var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+        const writer = &stdout_writer.interface;
         const caps = term_mod.capabilities.getTermCaps();
 
         if (color) |c| {
@@ -386,5 +423,7 @@ pub const Sparkline = struct {
         if (color != null) {
             try term_sgr.resetStyle(writer, caps);
         }
+
+        try writer.flush();
     }
 };

@@ -8,11 +8,13 @@ const crypto = std.crypto;
 pub const PkceParams = struct {
     verifier: []const u8,
     challenge: []const u8,
+    state: []const u8,
     method: []const u8 = "S256",
 
     pub fn deinit(self: PkceParams, allocator: std.mem.Allocator) void {
         allocator.free(self.verifier);
         allocator.free(self.challenge);
+        allocator.free(self.state);
     }
 };
 
@@ -29,10 +31,16 @@ pub fn generate(allocator: std.mem.Allocator, verifier_length: usize) !PkceParam
 
     // Generate S256 challenge from verifier
     const challenge = try generateS256Challenge(allocator, verifier);
+    errdefer allocator.free(challenge);
+
+    // Generate separate high-entropy state parameter
+    const state = try generateState(allocator, 32);
+    errdefer allocator.free(state);
 
     return PkceParams{
         .verifier = verifier,
         .challenge = challenge,
+        .state = state,
         .method = "S256",
     };
 }
@@ -105,6 +113,7 @@ test "PKCE verifier generation" {
 
     try std.testing.expectEqual(@as(usize, 64), params.verifier.len);
     try std.testing.expect(params.challenge.len > 0);
+    try std.testing.expectEqual(@as(usize, 32), params.state.len);
     try std.testing.expectEqualStrings("S256", params.method);
 
     // Verify characters are valid
@@ -113,6 +122,14 @@ test "PKCE verifier generation" {
             (c >= 'a' and c <= 'z') or
             (c >= '0' and c <= '9') or
             c == '-' or c == '.' or c == '_' or c == '~';
+        try std.testing.expect(valid);
+    }
+
+    // Verify state characters are valid
+    for (params.state) |c| {
+        const valid = (c >= 'A' and c <= 'Z') or
+            (c >= 'a' and c <= 'z') or
+            (c >= '0' and c <= '9');
         try std.testing.expect(valid);
     }
 }

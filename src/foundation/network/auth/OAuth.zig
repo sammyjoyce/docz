@@ -13,15 +13,13 @@
 
 const std = @import("std");
 pub const callbackServer = @import("Callback.zig");
-// Get curl from the network module
-const curl = @import("../curl.zig");
 
 // Re-export OAuth constants and types from anthropic
 pub const OAUTH_CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e";
 // Use claude.ai for the authorization step; it supports localhost redirects.
 pub const OAUTH_AUTHORIZATION_URL = "https://claude.ai/oauth/authorize";
 pub const OAUTH_TOKEN_ENDPOINT = "https://console.anthropic.com/v1/oauth/token";
-pub const OAUTH_REDIRECT_URI = "https://console.anthropic.com/oauth/code/callback";
+pub const OAUTH_REDIRECT_URI = "http://localhost:8080/callback";
 pub const OAUTH_SCOPES = "org:create_api_key user:profile user:inference";
 
 /// OAuth error types
@@ -63,19 +61,8 @@ pub const Credentials = struct {
     }
 };
 
-/// PKCE parameters - compatible with anthropic module
-pub const Pkce = struct {
-    codeVerifier: []const u8,
-    codeChallenge: []const u8,
-    state: []const u8,
-
-    /// Clean up allocated memory
-    pub fn deinit(self: Pkce, allocator: std.mem.Allocator) void {
-        allocator.free(self.codeVerifier);
-        allocator.free(self.codeChallenge);
-        allocator.free(self.state);
-    }
-};
+/// PKCE parameters - alias for compatibility
+pub const Pkce = @import("pkce.zig").PkceParams;
 
 /// OAuth provider configuration
 pub const Provider = struct {
@@ -100,7 +87,7 @@ pub const Provider = struct {
         const scopes_enc = try urlEncode(allocator, scopesJoined);
         defer allocator.free(scopes_enc);
 
-        const challenge_enc = try urlEncode(allocator, pkceParams.codeChallenge);
+        const challenge_enc = try urlEncode(allocator, pkceParams.challenge);
         defer allocator.free(challenge_enc);
 
         const state_enc = try urlEncode(allocator, pkceParams.state);
@@ -119,90 +106,27 @@ pub const Provider = struct {
 
 /// Generate PKCE parameters with cryptographically secure random values
 pub fn generatePkceParams(allocator: std.mem.Allocator) !Pkce {
-    // Generate random code verifier (43-128 characters)
-    const verifierLength = 64; // Use 64 characters for good entropy
-    const codeVerifier = try generateCodeVerifier(allocator, verifierLength);
-
-    // Generate code challenge by SHA256 hashing and base64url encoding
-    const codeChallenge = try generateCodeChallenge(allocator, codeVerifier);
-
-    // Generate random state parameter (32 characters)
-    const state = try generateRandomState(allocator, 32);
-
-    return Pkce{
-        .codeVerifier = codeVerifier,
-        .codeChallenge = codeChallenge,
-        .state = state,
-    };
+    return @import("pkce.zig").generate(allocator, 64);
 }
 
-/// Generate a cryptographically secure random code verifier
-fn generateCodeVerifier(allocator: std.mem.Allocator, length: usize) ![]u8 {
-    if (length < 43 or length > 128) {
-        return Error.InvalidFormat;
-    }
 
-    // Generate random bytes
-    const randomBytes = try allocator.alloc(u8, length);
-    defer allocator.free(randomBytes);
-    std.crypto.random.bytes(randomBytes);
-
-    // Convert to valid PKCE characters (alphanumeric + -._~)
-    const validChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
-    const verifier = try allocator.alloc(u8, length);
-
-    for (randomBytes, 0..) |byte, i| {
-        verifier[i] = validChars[byte % validChars.len];
-    }
-
-    return verifier;
-}
-
-/// Generate code challenge by SHA256 hashing and base64url encoding the verifier
-fn generateCodeChallenge(allocator: std.mem.Allocator, codeVerifier: []const u8) ![]u8 {
-    // SHA256 hash the verifier
-    var hasher = std.crypto.hash.sha2.Sha256.init(.{});
-    hasher.update(codeVerifier);
-    const hash = hasher.finalResult();
-
-    // Base64url encode the hash
-    const encodedSize = std.base64.url_safe_no_pad.Encoder.calcSize(hash.len);
-    const challenge = try allocator.alloc(u8, encodedSize);
-    _ = std.base64.url_safe_no_pad.Encoder.encode(challenge, &hash);
-
-    return challenge;
-}
-
-/// Generate a cryptographically secure random state parameter
-fn generateRandomState(allocator: std.mem.Allocator, length: usize) ![]u8 {
-    // Generate random bytes
-    const randomBytes = try allocator.alloc(u8, length);
-    defer allocator.free(randomBytes);
-    std.crypto.random.bytes(randomBytes);
-
-    // Convert to URL-safe characters
-    const validChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
-    const state = try allocator.alloc(u8, length);
-
-    for (randomBytes, 0..) |byte, i| {
-        state[i] = validChars[byte % validChars.len];
-    }
-
-    return state;
-}
 
 /// Build OAuth authorization URL
 pub fn buildAuthorizationUrl(allocator: std.mem.Allocator, pkceParams: Pkce) ![]u8 {
+    return buildAuthorizationUrlWithRedirect(allocator, pkceParams, OAUTH_REDIRECT_URI);
+}
+
+/// Build OAuth authorization URL with custom redirect URI
+pub fn buildAuthorizationUrlWithRedirect(allocator: std.mem.Allocator, pkceParams: Pkce, redirectUri: []const u8) ![]u8 {
     const scopes = [_][]const u8{ "org:create_api_key", "user:profile", "user:inference" };
     const provider = Provider{
         .clientId = OAUTH_CLIENT_ID,
         .authorizationUrl = OAUTH_AUTHORIZATION_URL,
         .tokenUrl = OAUTH_TOKEN_ENDPOINT,
-        .redirectUri = OAUTH_REDIRECT_URI,
+        .redirectUri = redirectUri,
         .scopes = &scopes,
     };
 
-    // For callback flow, we don't need &code=true; keep original URL.
     return try provider.buildAuthorizationUrl(allocator, pkceParams);
 }
 
@@ -327,52 +251,48 @@ pub fn exchangeCodeForTokens(
         \\  "client_id": "{s}",
         \\  "state": "{s}"
         \\}}
-    , .{ authorizationCode, redirectUri, pkceParams.codeVerifier, OAUTH_CLIENT_ID, pkceParams.state });
+    , .{ authorizationCode, redirectUri, pkceParams.verifier, OAUTH_CLIENT_ID, pkceParams.state });
     defer allocator.free(body);
 
     // Initialize HTTP client
-    var httpClient = try curl.HTTPClient.init(allocator);
+    var httpClient = std.http.Client{ .allocator = allocator };
     defer httpClient.deinit();
 
-    // Prepare headers
-    const headers = [_]curl.Header{
-        .{ .name = "Content-Type", .value = "application/json" },
-        .{ .name = "Accept", .value = "application/json" },
-        .{ .name = "User-Agent", .value = "docz/1.0 (libcurl)" },
-    };
+    // Parse URL
+    const uri = try std.Uri.parse(OAUTH_TOKEN_ENDPOINT);
 
     // Make POST request to token endpoint
-    const request = curl.HTTPRequest{
-        .method = .POST,
-        .url = OAUTH_TOKEN_ENDPOINT,
-        .headers = &headers,
-        .body = body,
-        .timeout_ms = 30000,
-        .verify_ssl = true,
-    };
+    var req = try httpClient.open(.POST, uri, .{
+        .server_header_buffer = &[_]u8{},
+        .extra_headers = &.{
+            .{ .name = "Content-Type", .value = "application/json" },
+            .{ .name = "Accept", .value = "application/json" },
+            .{ .name = "User-Agent", .value = "docz/1.0" },
+        },
+    });
+    defer req.deinit();
 
-    var response = httpClient.request(request) catch |err| {
-        std.log.err("Network error during OAuth token exchange: {any}", .{err});
-        return Error.NetworkError;
-    };
-    defer response.deinit();
+    req.transfer_encoding = .{ .content_length = body.len };
+    try req.send();
+    try req.writeAll(body);
+    try req.finish();
+    try req.wait();
 
     // Check for successful response
-    if (response.status_code != 200) {
-        std.log.err("OAuth token exchange failed with status: {d}", .{response.status_code});
-        std.log.err("Response body: {s}", .{response.body});
+    if (req.response.status != .ok) {
+        std.log.err("OAuth token exchange failed with status: {}", .{req.response.status});
 
-        // Try to log error details (without panicking on structure)
-        if (std.mem.indexOf(u8, response.body, "message")) |idx| {
-            _ = idx; // suppress unused
-            std.log.err("OAuth error response: {s}", .{response.body});
-        }
+        const error_body = try req.reader().readAllAlloc(allocator, 1024 * 1024);
+        defer allocator.free(error_body);
+        std.log.err("Response body: {s}", .{error_body});
 
         return Error.AuthError;
     }
 
     // Parse JSON response
-    return try parseTokenResponse(allocator, response.body);
+    const response_body = try req.reader().readAllAlloc(allocator, 1024 * 1024);
+    defer allocator.free(response_body);
+    return try parseTokenResponse(allocator, response_body);
 }
 
 /// Refresh access token using refresh token (JSON body per spec)
@@ -388,41 +308,43 @@ pub fn refreshTokens(allocator: std.mem.Allocator, refreshToken: []const u8) !Cr
     defer allocator.free(body);
 
     // Initialize HTTP client
-    var httpClient = try curl.HTTPClient.init(allocator);
+    var httpClient = std.http.Client{ .allocator = allocator };
     defer httpClient.deinit();
 
-    // Prepare headers
-    const headers = [_]curl.Header{
-        .{ .name = "Content-Type", .value = "application/json" },
-        .{ .name = "Accept", .value = "application/json" },
-        .{ .name = "User-Agent", .value = "docz/1.0 (libcurl)" },
-    };
+    // Parse URL
+    const uri = try std.Uri.parse(OAUTH_TOKEN_ENDPOINT);
 
     // Make POST request to token endpoint
-    const request = curl.HTTPRequest{
-        .method = .POST,
-        .url = OAUTH_TOKEN_ENDPOINT,
-        .headers = &headers,
-        .body = body,
-        .timeout_ms = 30000,
-        .verify_ssl = true,
-    };
+    var req = try httpClient.open(.POST, uri, .{
+        .server_header_buffer = &[_]u8{},
+        .extra_headers = &.{
+            .{ .name = "Content-Type", .value = "application/json" },
+            .{ .name = "Accept", .value = "application/json" },
+            .{ .name = "User-Agent", .value = "docz/1.0" },
+        },
+    });
+    defer req.deinit();
 
-    var response = httpClient.request(request) catch |err| {
-        std.log.err("Network error during OAuth token refresh: {any}", .{err});
-        return Error.NetworkError;
-    };
-    defer response.deinit();
+    req.transfer_encoding = .{ .content_length = body.len };
+    try req.send();
+    try req.writeAll(body);
+    try req.finish();
+    try req.wait();
 
     // Check for successful response
-    if (response.status_code != 200) {
-        std.log.err("OAuth token refresh failed with status: {d}", .{response.status_code});
-        std.log.err("Response body: {s}", .{response.body});
+    if (req.response.status != .ok) {
+        std.log.err("OAuth token refresh failed with status: {}", .{req.response.status});
+
+        const error_body = try req.reader().readAllAlloc(allocator, 1024 * 1024);
+        defer allocator.free(error_body);
+        std.log.err("Response body: {s}", .{error_body});
         return Error.AuthError;
     }
 
     // Parse JSON response
-    return try parseTokenResponse(allocator, response.body);
+    const response_body = try req.reader().readAllAlloc(allocator, 1024 * 1024);
+    defer allocator.free(response_body);
+    return try parseTokenResponse(allocator, response_body);
 }
 
 /// Convenience: Full login using loopback server and PKCE; persists tokens and returns creds.
@@ -430,7 +352,7 @@ pub fn loginWithLoopback(allocator: std.mem.Allocator) !Credentials {
     const pkceParams = try generatePkceParams(allocator);
     errdefer pkceParams.deinit(allocator);
 
-    var result = try runCallbackServer(allocator, pkceParams, null);
+    var result = try callbackServer.runCallbackServer(allocator, pkceParams, null);
     defer result.deinit(allocator);
 
     const redirect = result.redirectUri orelse OAUTH_REDIRECT_URI;
@@ -458,40 +380,57 @@ pub fn fetchWithAnthropicOAuth(
     access_token: []const u8,
     body_json: []const u8,
 ) ![]u8 {
-    const http = curl;
-    var client = try http.HTTPClient.init(allocator);
+    var client = std.http.Client{ .allocator = allocator };
     defer client.deinit();
 
     const bearer = try std.fmt.allocPrint(allocator, "Bearer {s}", .{access_token});
     defer allocator.free(bearer);
 
     const version = "2023-06-01";
-    const beta = @import("root").build_options.anthropic_beta_oauth;
-
-    const headers = [_]http.Header{
-        .{ .name = "Authorization", .value = bearer },
-        .{ .name = "Content-Type", .value = "application/json" },
-        .{ .name = "Accept", .value = "application/json" },
-        .{ .name = "anthropic-version", .value = version },
-        .{ .name = "anthropic-beta", .value = beta },
-        .{ .name = "User-Agent", .value = "docz/1.0 (libcurl)" },
+    const has_build_options = @hasDecl(@import("root"), "build_options");
+    const build_options = if (has_build_options) @import("root").build_options else struct {
+        pub const anthropic_beta_oauth = "oauth-2025-04-20";
+        pub const oauth_beta_header = true;
     };
+    const beta = if (build_options.oauth_beta_header) build_options.anthropic_beta_oauth else "none";
 
-    const req = http.HTTPRequest{
-        .method = .POST,
-        .url = "https://api.anthropic.com/v1/messages",
-        .headers = &headers,
-        .body = body_json,
-        .timeout_ms = 60000,
-        .verify_ssl = true,
-    };
-    var resp = try client.request(req);
-    defer resp.deinit();
-    if (resp.status_code != 200) return Error.AuthError;
-    return try allocator.dupe(u8, resp.body);
+    const uri = try std.Uri.parse("https://api.anthropic.com/v1/messages");
+
+    var req = try client.open(.POST, uri, .{
+        .server_header_buffer = &[_]u8{},
+        .extra_headers = &.{
+            .{ .name = "Authorization", .value = bearer },
+            .{ .name = "Content-Type", .value = "application/json" },
+            .{ .name = "Accept", .value = "application/json" },
+            .{ .name = "anthropic-version", .value = version },
+            .{ .name = "anthropic-beta", .value = beta },
+            .{ .name = "User-Agent", .value = "docz/1.0" },
+        },
+    });
+    defer req.deinit();
+
+    req.transfer_encoding = .{ .content_length = body_json.len };
+    try req.send();
+    try req.writeAll(body_json);
+    try req.finish();
+    try req.wait();
+
+    if (req.response.status != .ok) return Error.AuthError;
+
+    const response_body = try req.reader().readAllAlloc(allocator, 1024 * 1024);
+    defer allocator.free(response_body);
+    return try allocator.dupe(u8, response_body);
 }
 
-pub fn parseCredentials(allocator: std.mem.Allocator, jsonContent: []const u8) !Credentials {
+pub fn parseCredentials(allocator: std.mem.Allocator, filePath: []const u8) !Credentials {
+    const file = try std.fs.cwd().openFile(filePath, .{});
+    defer file.close();
+    const jsonContent = try file.readToEndAlloc(allocator, 16 * 1024);
+    defer allocator.free(jsonContent);
+    return parseCredentialsFromJson(allocator, jsonContent);
+}
+
+pub fn parseCredentialsFromJson(allocator: std.mem.Allocator, jsonContent: []const u8) !Credentials {
     // Preferred: snake_case fields per repo spec
     const Snake = struct {
         type: []const u8,
@@ -673,12 +612,14 @@ test "pkce generator produces valid lengths and URL-safe challenge" {
     const pk = try generatePkceParams(a);
     defer pk.deinit(a);
     // Verifier length within RFC bounds [43,128]
-    try std.testing.expect(pk.codeVerifier.len >= 43 and pk.codeVerifier.len <= 128);
+    try std.testing.expect(pk.verifier.len >= 43 and pk.verifier.len <= 128);
     // Challenge should be URL-safe base64 (no '=' padding)
-    for (pk.codeChallenge) |c| {
+    for (pk.challenge) |c| {
         const ok = (c >= 'A' and c <= 'Z') or (c >= 'a' and c <= 'z') or (c >= '0' and c <= '9') or c == '-' or c == '_';
         try std.testing.expect(ok);
     }
+    // State should be 32 characters
+    try std.testing.expectEqual(@as(usize, 32), pk.state.len);
 }
 
 test "authorization URL uses localhost callback" {

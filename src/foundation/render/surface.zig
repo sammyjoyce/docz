@@ -121,7 +121,7 @@ pub const TermSurface = struct {
             if (lines_env) |l| h = std.fmt.parseInt(u32, l, 10) catch h;
             break :blk Surface.Dim{ .w = w, .h = h };
         };
-        self.* = .{ .allocator = allocator, .dims = size, .stdout = std.io.getStdOut() };
+        self.* = .{ .allocator = allocator, .dims = size, .stdout = std.fs.File.stdout() };
         return try self.wrap();
     }
 

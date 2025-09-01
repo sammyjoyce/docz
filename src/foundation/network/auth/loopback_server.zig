@@ -40,7 +40,7 @@ pub const LoopbackServer = struct {
     address: net.Address,
 
     pub fn init(allocator: std.mem.Allocator, config: ServerConfig) !Self {
-        // Bind to loopback interface only
+        // Bind to loopback interface only - use 127.0.0.1 for RFC 8252 compliance
         const address = try net.Address.parseIp("127.0.0.1", config.port);
 
         var server = try address.listen(.{

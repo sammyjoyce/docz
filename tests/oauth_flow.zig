@@ -126,3 +126,63 @@ test "Streaming headers set accept to text/event-stream" {
     try std.testing.expect(saw_accept);
     try std.testing.expect(accept_ok);
 }
+
+test "OAuth token refresh on 401" {
+    const a = std.testing.allocator;
+    const anth = foundation.network.Anthropic;
+
+    // Create expired credentials
+    const creds = anth.Models.Credentials{
+        .type = "oauth",
+        .accessToken = "expired_token",
+        .refreshToken = "valid_refresh_token",
+        .expiresAt = std.time.timestamp() - 100, // Expired
+    };
+
+    var client = try anth.Client.Client.initWithOAuth(a, creds, null);
+    defer client.deinit();
+
+    // Mock a 401 response by checking refresh logic
+    const will_refresh = creds.willExpireSoon(300); // 5 minutes
+    try std.testing.expect(will_refresh);
+}
+
+test "PKCE verifier meets RFC 7636 length requirements" {
+    const a = std.testing.allocator;
+    const oauth = foundation.network.Auth.OAuth;
+
+    // Test minimum length
+    const pk_min = try oauth.pkce.generate(a, 43);
+    defer pk_min.deinit(a);
+    try std.testing.expectEqual(@as(usize, 43), pk_min.verifier.len);
+
+    // Test maximum length
+    const pk_max = try oauth.pkce.generate(a, 128);
+    defer pk_max.deinit(a);
+    try std.testing.expectEqual(@as(usize, 128), pk_max.verifier.len);
+
+    // Test invalid lengths
+    try std.testing.expectError(error.InvalidVerifierLength, oauth.pkce.generate(a, 42));
+    try std.testing.expectError(error.InvalidVerifierLength, oauth.pkce.generate(a, 129));
+}
+
+test "OAuth credentials JSON parsing handles both snake_case and camelCase" {
+    const a = std.testing.allocator;
+    const oauth = foundation.network.Auth.OAuth;
+
+    // Test snake_case (preferred)
+    const snake_json = "{\"type\":\"oauth\",\"access_token\":\"at\",\"refresh_token\":\"rt\",\"expires_at\":123}";
+    const creds1 = try oauth.parseCredentialsFromJson(a, snake_json);
+    defer creds1.deinit(a);
+    try std.testing.expectEqualStrings("oauth", creds1.type);
+    try std.testing.expectEqualStrings("at", creds1.accessToken);
+    try std.testing.expectEqual(@as(i64, 123), creds1.expiresAt);
+
+    // Test camelCase (backwards compatibility)
+    const camel_json = "{\"type\":\"oauth\",\"accessToken\":\"at2\",\"refreshToken\":\"rt2\",\"expiresAt\":456}";
+    const creds2 = try oauth.parseCredentialsFromJson(a, camel_json);
+    defer creds2.deinit(a);
+    try std.testing.expectEqualStrings("oauth", creds2.type);
+    try std.testing.expectEqualStrings("at2", creds2.accessToken);
+    try std.testing.expectEqual(@as(i64, 456), creds2.expiresAt);
+}

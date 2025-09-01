@@ -94,6 +94,9 @@ pub const Server = struct {
     resultChannel: Channel.Channel(Result),
     shutdownRequested: std.atomic.Value(bool),
 
+    // Security validation
+    expectedRedirectUri: ?[]const u8 = null,
+
     // Status tracking
     startTimeMs: i64,
     requestsHandled: u32 = 0,
@@ -186,6 +189,11 @@ pub const Server = struct {
             result.deinit(self.allocator);
         }
 
+        // Clean up expected redirect URI
+        if (self.expectedRedirectUri) |uri| {
+            self.allocator.free(uri);
+        }
+
         // Clean up sessions
         // NOTE: The server does not own PKCE buffers.
         // Ownership stays with the caller that generated them
@@ -251,7 +259,7 @@ pub const Server = struct {
         }
     }
 
-    /// Register a new PKCE session
+    /// Register a new PKCE session with expected redirect URI
     pub fn registerSession(self: *Self, pkceParams: oauth.Pkce) !void {
         const now = std.time.timestamp();
         const session = Session{
@@ -265,6 +273,14 @@ pub const Server = struct {
         if (self.config.verbose) {
             print("📝 Registered new OAuth session (state: {s})\n", .{pkceParams.state});
         }
+    }
+
+    /// Set the expected redirect URI for validation
+    pub fn setExpectedRedirectUri(self: *Self, uri: []const u8) !void {
+        if (self.expectedRedirectUri) |old| {
+            self.allocator.free(old);
+        }
+        self.expectedRedirectUri = try self.allocator.dupe(u8, uri);
     }
 
     /// Wait for authorization callback with timeout
@@ -365,6 +381,18 @@ pub const Server = struct {
         }
     }
 
+    /// Reconstruct the redirect URI from the HTTP request
+    fn reconstructRedirectUri(self: *Self, request: []const u8, path: []const u8) ![]u8 {
+        // Find Host header
+        const hostHeader = "Host: ";
+        const hostStart = std.mem.indexOf(u8, request, hostHeader) orelse return error.InvalidRequest;
+        const hostLineEnd = std.mem.indexOf(u8, request[hostStart..], "\r\n") orelse request.len - hostStart;
+        const hostValue = std.mem.trim(u8, request[hostStart + hostHeader.len .. hostStart + hostLineEnd], " \t");
+
+        // Reconstruct URI: http://host/path
+        return std.fmt.allocPrint(self.allocator, "http://{s}{s}", .{ hostValue, path });
+    }
+
     /// Parse OAuth callback request
     pub fn parseCallbackRequest(self: *Self, request: []const u8) !Result {
         // Find the request line
@@ -388,11 +416,29 @@ pub const Server = struct {
             return oauth.Error.InvalidFormat;
         }
 
+        // Validate redirect URI if expected URI is set
+        if (self.expectedRedirectUri) |expected| {
+            // Reconstruct the actual redirect URI from the request
+            const actualUri = try self.reconstructRedirectUri(request, pathOnly);
+            defer self.allocator.free(actualUri);
+
+            if (!std.mem.eql(u8, actualUri, expected)) {
+                if (self.config.verbose) {
+                    print("❌ Redirect URI mismatch: expected '{s}', got '{s}'\n", .{ expected, actualUri });
+                }
+                return oauth.Error.InvalidFormat;
+            }
+        }
+
         // Enforce redirect host policy from build options (default: require localhost)
         const root = @import("root");
         const has_build = @hasDecl(root, "build_options");
         const build_options = if (has_build) @import("build_options") else struct {
             pub const oauth_allow_localhost: bool = true;
+            pub const oauth_enabled: bool = true;
+            pub const oauth_beta_header: bool = true;
+            pub const streaming_enabled: bool = true;
+            pub const keychain_enabled: bool = false;
         };
         const must_require_localhost = build_options.oauth_allow_localhost;
 
@@ -722,15 +768,18 @@ pub fn runCallbackServer(
     var server = try Server.init(allocator, serverConfig);
     defer server.deinit();
 
-    // Register the session
-    try server.registerSession(pkceParams);
-
-    // Start the server
+    // Start the server first to get the actual port
     try server.start();
 
-    // Build authorization URL with the actual loopback redirect (RFC 8252 prefers 127.0.0.1)
+    // Build authorization URL with the actual loopback redirect
     const localRedirect = try std.fmt.allocPrint(allocator, "http://localhost:{d}/callback", .{server.config.port});
-    defer allocator.free(localRedirect);
+    errdefer allocator.free(localRedirect);
+
+    // Set expected redirect URI for validation
+    try server.setExpectedRedirectUri(localRedirect);
+
+    // Register the session
+    try server.registerSession(pkceParams);
 
     const scopes = [_][]const u8{ "org:create_api_key", "user:profile", "user:inference" };
     const provider = oauth.Provider{
@@ -836,4 +885,39 @@ test "parse callback request" {
 
     try std.testing.expectEqualStrings("test_code", result.code);
     try std.testing.expectEqualStrings("test_state", result.state);
+}
+
+test "redirect URI validation" {
+    const allocator = std.testing.allocator;
+
+    var server = try Server.init(allocator, .{});
+    defer server.deinit();
+
+    // Set expected redirect URI
+    try server.setExpectedRedirectUri("http://localhost:8080/callback");
+
+    // Test valid request
+    const valid_request = "GET /callback?code=test_code&state=test_state HTTP/1.1\r\nHost: localhost:8080\r\n\r\n";
+    const result = try server.parseCallbackRequest(valid_request);
+    defer result.deinit(allocator);
+
+    try std.testing.expectEqualStrings("test_code", result.code);
+    try std.testing.expectEqualStrings("test_state", result.state);
+
+    // Test invalid redirect URI (wrong port)
+    const invalid_request = "GET /callback?code=test_code&state=test_state HTTP/1.1\r\nHost: localhost:8081\r\n\r\n";
+    try std.testing.expectError(error.InvalidFormat, server.parseCallbackRequest(invalid_request));
+}
+
+test "reconstruct redirect URI" {
+    const allocator = std.testing.allocator;
+
+    var server = try Server.init(allocator, .{});
+    defer server.deinit();
+
+    const request = "GET /callback?code=test HTTP/1.1\r\nHost: localhost:8080\r\n\r\n";
+    const uri = try server.reconstructRedirectUri(request, "/callback");
+    defer allocator.free(uri);
+
+    try std.testing.expectEqualStrings("http://localhost:8080/callback", uri);
 }

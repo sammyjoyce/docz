@@ -1749,62 +1749,50 @@ fn applyFeatureFlagsToExecutable(_: *std.Build.Step.Compile, manifest: AgentMani
         std.log.info("   ✓ Streaming responses enabled", .{});
     }
 
-    // Add tool integration flags
-    if (manifest.tools.integration.json_tools) {
-        std.log.info("   ✓ JSON tools enabled", .{});
-    }
-    if (manifest.tools.integration.streaming_tools) {
-        std.log.info("   ✓ Streaming tools enabled", .{});
-    }
-    if (manifest.tools.integration.chainable_tools) {
-        std.log.info("   ✓ Chainable tools enabled", .{});
-    }
-
     // Note: In Zig 0.16+, you could use exe.defineCMacro() here
     // exe.defineCMacro("AGENT_NAME", manifest.agent.name);
     // exe.defineCMacro("AGENT_VERSION", manifest.agent.version);
 }
 
 pub fn build(b: *std.Build) !void {
+    // Build options
+    const oauth_enabled = b.option(bool, "oauth_enabled", "Enable OAuth authentication") orelse true;
+    const oauth_beta_header = b.option(bool, "oauth_beta_header", "Send anthropic-beta header for OAuth") orelse true;
+    const streaming_enabled = b.option(bool, "streaming_enabled", "Enable streaming responses") orelse true;
+    const keychain_enabled = b.option(bool, "keychain_enabled", "Store secrets in OS keychain") orelse false;
+    const oauth_allow_localhost = b.option(bool, "oauth_allow_localhost", "Require localhost for OAuth redirect") orelse true;
 
-    // Initialize agent registry
-    var registry = AgentRegistry.init(b.allocator);
-    defer registry.deinit();
+    // Create build options module
+    const build_options = b.addOptions();
+    build_options.addOption(bool, "oauth_enabled", oauth_enabled);
+    build_options.addOption(bool, "oauth_beta_header", oauth_beta_header);
+    build_options.addOption(bool, "streaming_enabled", streaming_enabled);
+    build_options.addOption(bool, "keychain_enabled", keychain_enabled);
+    build_options.addOption(bool, "oauth_allow_localhost", oauth_allow_localhost);
+    build_options.addOption([]const u8, "anthropic_beta_oauth", if (oauth_beta_header) "oauth-2025-04-20" else "none");
+    build_options.addOption(bool, "http_verbose_default", false);
+    build_options.addOption(bool, "include_legacy", false);
 
-    try registry.discoverAgents();
-
-    // Check for special build modes that don't require agent selection
-    const list_agents = b.option(bool, "list-agents", "List all available agents") orelse false;
-    const validate_agents = b.option(bool, "validate-agents", "Validate all agents") orelse false;
+    // Build options
+    const build_profile = b.option([]const u8, "build_profile", "Build profile (minimal, standard, full)") orelse "standard";
+    const features_str = b.option([]const u8, "features", "Comma-separated list of features to enable") orelse "all";
+    const enable_tui = b.option(bool, "enable_tui", "Enable Terminal UI");
+    const enable_cli = b.option(bool, "enable_cli", "Enable CLI framework");
+    const enable_network = b.option(bool, "enable_network", "Enable network layer");
+    const enable_anthropic = b.option(bool, "enable_anthropic", "Enable Anthropic provider");
+    const enable_auth = b.option(bool, "enable_auth", "Enable authentication");
+    const enable_sixel = b.option(bool, "enable_sixel", "Enable Sixel graphics");
+    const enable_theme_dev = b.option(bool, "enable_theme_dev", "Enable theme development tools");
+    const include_legacy = b.option(bool, "include_legacy", "Include legacy code") orelse false;
+    const http_verbose = b.option(bool, "http_verbose", "Enable verbose HTTP logging") orelse false;
+    const list_agents = b.option(bool, "list_agents", "List available agents and exit") orelse false;
+    const validate_agents = b.option(bool, "validate_agents", "Validate all agents and exit") orelse false;
+    const scaffold_agent = b.option(bool, "scaffold-agent", "Scaffold a new agent") orelse false;
     const all_agents = b.option(bool, "all-agents", "Build all available agents") orelse false;
     const agents_list = b.option([]const u8, "agents", "Comma-separated list of agents to build") orelse "";
-    const scaffold_agent = b.option(bool, "scaffold-agent", "Scaffold a new agent") orelse false;
-    const optimize_binary = b.option(bool, "optimize-binary", "Enable manifest-driven binary optimization") orelse true;
-    const include_legacy = b.option(bool, "legacy", "Include legacy modules (deprecated)") orelse false;
-    const http_verbose = b.option(bool, "http-verbose", "Enable libcurl verbose logging by default") orelse false;
+    const optimize_binary = b.option(bool, "optimize-binary", "Optimize binary by only including required modules") orelse false;
 
-    // ========================================================================
-    // FEATURE FLAGS - Control which foundation modules are compiled
-    // ========================================================================
-
-    // Parse feature string (comma-separated list)
-    const features_str = b.option([]const u8, "features", "Comma-separated features to include: tui,cli,network,anthropic,sixel,all (default: all)") orelse "all";
-
-    // Parse individual feature flags (these override the features string)
-    const enable_tui = b.option(bool, "enable-tui", "Enable terminal UI components") orelse null;
-    const enable_cli = b.option(bool, "enable-cli", "Enable CLI framework") orelse null;
-    const enable_network = b.option(bool, "enable-network", "Enable network layer") orelse null;
-    const enable_anthropic = b.option(bool, "enable-anthropic", "Enable Anthropic provider") orelse null;
-    const enable_auth = b.option(bool, "enable-auth", "Enable authentication system") orelse null;
-    // Optional override for Anthropic OAuth beta header
-    const anthropic_beta_opt = b.option([]const u8, "anthropic-beta-oauth", "Override Anthropic OAuth beta header value (default: oauth-2025-04-20)") orelse null;
-    const enable_sixel = b.option(bool, "enable-sixel", "Enable Sixel graphics") orelse null;
-    const enable_theme_dev = b.option(bool, "enable-theme-dev", "Enable theme development tools") orelse null;
-
-    // Parse build profile
-    const build_profile = b.option([]const u8, "profile", "Build profile: minimal, standard, full (default: standard)") orelse "standard";
-
-    // Feature configuration structure (renamed to avoid shadowing)
+    // Feature configuration struct
     const LocalFeatureConfig = struct {
         tui: bool,
         cli: bool,
@@ -1815,10 +1803,8 @@ pub fn build(b: *std.Build) !void {
         theme_dev: bool,
     };
 
-    // Determine feature configuration based on profile and overrides
     const feature_config = blk: {
-        // Start with profile defaults
-        var config = if (std.mem.eql(u8, build_profile, "minimal"))
+        var feature_config = if (std.mem.eql(u8, build_profile, "minimal"))
             LocalFeatureConfig{
                 .tui = false,
                 .cli = true,
@@ -1852,7 +1838,7 @@ pub fn build(b: *std.Build) !void {
         // Apply features string if not "all"
         if (!std.mem.eql(u8, features_str, "all")) {
             // Reset all features first
-            config = LocalFeatureConfig{
+            feature_config = LocalFeatureConfig{
                 .tui = false,
                 .cli = false,
                 .network = false,
@@ -1865,32 +1851,32 @@ pub fn build(b: *std.Build) !void {
             // Parse comma-separated features
             var it = std.mem.tokenizeScalar(u8, features_str, ',');
             while (it.next()) |feature| {
-                if (std.mem.eql(u8, feature, "tui")) config.tui = true else if (std.mem.eql(u8, feature, "cli")) config.cli = true else if (std.mem.eql(u8, feature, "network")) config.network = true else if (std.mem.eql(u8, feature, "anthropic")) config.anthropic = true else if (std.mem.eql(u8, feature, "auth")) config.auth = true else if (std.mem.eql(u8, feature, "sixel")) config.sixel = true else if (std.mem.eql(u8, feature, "theme-dev")) config.theme_dev = true;
+                if (std.mem.eql(u8, feature, "tui")) feature_config.tui = true else if (std.mem.eql(u8, feature, "cli")) feature_config.cli = true else if (std.mem.eql(u8, feature, "network")) feature_config.network = true else if (std.mem.eql(u8, feature, "anthropic")) feature_config.anthropic = true else if (std.mem.eql(u8, feature, "auth")) feature_config.auth = true else if (std.mem.eql(u8, feature, "sixel")) feature_config.sixel = true else if (std.mem.eql(u8, feature, "theme-dev")) feature_config.theme_dev = true;
             }
         }
 
         // Apply individual flag overrides
-        if (enable_tui) |val| config.tui = val;
-        if (enable_cli) |val| config.cli = val;
-        if (enable_network) |val| config.network = val;
-        if (enable_anthropic) |val| config.anthropic = val;
-        if (enable_auth) |val| config.auth = val;
-        if (enable_sixel) |val| config.sixel = val;
-        if (enable_theme_dev) |val| config.theme_dev = val;
+        if (enable_tui) |val| feature_config.tui = val;
+        if (enable_cli) |val| feature_config.cli = val;
+        if (enable_network) |val| feature_config.network = val;
+        if (enable_anthropic) |val| feature_config.anthropic = val;
+        if (enable_auth) |val| feature_config.auth = val;
+        if (enable_sixel) |val| feature_config.sixel = val;
+        if (enable_theme_dev) |val| feature_config.theme_dev = val;
 
         // Dependency enforcement (only if flags weren't explicitly set)
-        if (config.anthropic and enable_network == null) config.network = true; // Anthropic requires network
-        if (config.auth and enable_network == null) config.network = true; // Auth requires network
+        if (feature_config.anthropic and enable_network == null) feature_config.network = true; // Anthropic requires network
+        if (feature_config.auth and enable_network == null) feature_config.network = true; // Auth requires network
 
         // If network is explicitly disabled, also disable dependent features
         if (enable_network) |val| {
             if (!val) {
-                config.anthropic = false;
-                config.auth = false;
+                feature_config.anthropic = false;
+                feature_config.auth = false;
             }
         }
 
-        break :blk config;
+        break :blk feature_config;
     };
 
     // Log feature configuration
@@ -1926,17 +1912,23 @@ pub fn build(b: *std.Build) !void {
     build_opts.addOption(bool, "oauth_allow_localhost", true); // Require localhost as redirect host
 
     // Feature-gated OAuth beta header for Anthropic; default per specs/oauth.md
-    build_opts.addOption([]const u8, "anthropic_beta_oauth", anthropic_beta_opt orelse "oauth-2025-04-20");
+    build_opts.addOption([]const u8, "anthropic_beta_oauth", if (oauth_beta_header) "oauth-2025-04-20" else "none");
 
     // Handle special build modes
-    if (list_agents) {
-        try listAvailableAgents(&registry);
-        return;
-    }
+    if (list_agents or validate_agents) {
+        var local_registry = AgentRegistry.init(std.heap.page_allocator);
+        defer local_registry.deinit();
+        try local_registry.discoverAgents();
 
-    if (validate_agents) {
-        try validateAllAgents(&registry);
-        return;
+        if (list_agents) {
+            try listAvailableAgents(&local_registry);
+            return;
+        }
+
+        if (validate_agents) {
+            try validateAllAgents(&local_registry);
+            return;
+        }
     }
 
     if (scaffold_agent) {
@@ -1987,6 +1979,9 @@ pub fn build(b: *std.Build) !void {
         .theme_dev = feature_config.theme_dev,
     };
     const ctx = try BuildState.init(b, global_feature_config);
+    var registry = AgentRegistry.init(std.heap.page_allocator);
+    defer registry.deinit();
+    try registry.discoverAgents();
     const builder = ModuleBuilder.init(ctx, &registry);
 
     // Validate the selected agent before building

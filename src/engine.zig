@@ -3,10 +3,10 @@
 //! ~300 LoC core implementation with OAuth + SSE streaming support
 
 const std = @import("std");
-// Import shared modules directly to avoid circular dependencies
-const network = @import("network_shared");
+const network = @import("foundation/network.zig");
 const Auth = network.Auth;
-const tools = @import("tools_shared");
+const tools = @import("foundation/tools.zig");
+const context = @import("foundation/context.zig");
 
 const log = std.log.scoped(.engine);
 
@@ -36,7 +36,7 @@ pub const Engine = struct {
 
     allocator: std.mem.Allocator,
     client: ?network.Anthropic.Client,
-    shared_ctx: network.Anthropic.Client.SharedContext,
+    shared_ctx: context.SharedContext,
     messages: std.ArrayList(network.Anthropic.Message),
     tool_registry: tools.Registry,
     options: CliOptions,
@@ -45,7 +45,7 @@ pub const Engine = struct {
         return Self{
             .allocator = allocator,
             .client = null,
-            .shared_ctx = network.Anthropic.Client.SharedContext.init(allocator),
+            .shared_ctx = context.SharedContext.init(allocator),
             .messages = std.ArrayList(network.Anthropic.Message).init(allocator),
             .tool_registry = tools.Registry.init(allocator),
             .options = options,
@@ -64,57 +64,37 @@ pub const Engine = struct {
 
     /// Authenticate and initialize client
     pub fn authenticate(self: *Self) !void {
-        const store = Auth.store.TokenStore.init(self.allocator, .{});
-
-        if (!store.exists()) {
-            return error.NotAuthenticated;
-        }
-
-        var creds = try store.load();
-        defer self.allocator.free(creds.type);
-        defer self.allocator.free(creds.access_token);
-        defer self.allocator.free(creds.refresh_token);
+        const creds_path = "claude_oauth_creds.json";
+        var creds = Auth.OAuth.parseCredentials(self.allocator, creds_path) catch |err| {
+            if (err == error.FileNotFound) {
+                return error.NotAuthenticated;
+            }
+            return err;
+        };
+        errdefer creds.deinit(self.allocator);
 
         // Check and refresh token if needed
         if (creds.willExpireSoon(120)) {
             log.info("Token expiring soon, refreshing...", .{});
 
-            var token_client = Auth.token_client.TokenClient.init(self.allocator, .{
-                .client_id = "9d1c250a-e61b-44d9-88ed-5944d1962f5e",
-                .token_endpoint = "https://console.anthropic.com/v1/oauth/token",
-            });
-            defer token_client.deinit();
-
-            const new_tokens = try token_client.refreshToken(creds.refresh_token);
-            defer new_tokens.deinit(self.allocator);
+            const new_creds = try Auth.OAuth.refreshTokens(self.allocator, creds.refreshToken);
+            errdefer new_creds.deinit(self.allocator);
 
             // Update stored credentials
-            const new_creds = Auth.store.StoredCredentials{
-                .type = "oauth",
-                .access_token = new_tokens.access_token,
-                .refresh_token = new_tokens.refresh_token,
-                .expires_at = std.time.timestamp() + new_tokens.expires_in,
-            };
-            try store.save(new_creds);
+            try Auth.OAuth.saveCredentials(self.allocator, creds_path, new_creds);
 
-            // Use new access token
-            self.allocator.free(creds.access_token);
-            creds.access_token = try self.allocator.dupe(u8, new_tokens.access_token);
+            // Use new credentials
+            creds.deinit(self.allocator);
+            creds = new_creds;
         }
 
         // Initialize Anthropic client with OAuth
-        const provider_creds = network.Anthropic.Models.Credentials{
-            .type = creds.type,
-            .accessToken = creds.access_token,
-            .refreshToken = creds.refresh_token,
-            .expiresAt = creds.expires_at,
-        };
-        self.client = try network.Anthropic.Client.initWithOAuth(self.allocator, provider_creds, store.config.path);
+        self.client = try network.Anthropic.Client.initWithOAuth(self.allocator, creds, creds_path);
     }
 
-    /// Run inference with streaming support
+    /// Run inference with streaming support and tool execution
     pub fn runInference(self: *Self, user_input: []const u8) !void {
-        const stdout = std.io.getStdOut().writer();
+        const stdout = std.debug;
 
         // Add user message
         try self.messages.append(.{
@@ -125,70 +105,57 @@ pub const Engine = struct {
         // Trim context if too large (keep last 20 messages)
         try self.trimContext();
 
-        if (false and self.options.stream) { // TODO: Fix streaming callback
+        // Build system prompt from registered tools
+        const system_prompt = try self.buildSystemPrompt();
+        defer if (system_prompt) |sp| self.allocator.free(sp);
+
+        if (self.options.stream) {
             // Streaming mode with SSE
             try stdout.print("\nClaude: ", .{});
 
-            var assistant_content = std.ArrayList(u8).init(self.allocator);
-            defer assistant_content.deinit();
-
-            // Callback for streaming events
-            const StreamCallback = struct {
-                content: *std.ArrayList(u8),
-                writer: std.fs.File.Writer,
-
-                fn callback(event: network.ServerSentEvent, ctx: ?*anyopaque) !void {
-                    _ = ctx; // Context passed from createStream but not needed here
-
-                    if (std.mem.eql(u8, event.event orelse "", "content_block_delta")) {
-                        // Parse delta and accumulate text
-                        const parsed = try std.json.parseFromSlice(
-                            struct { delta: struct { text: []const u8 } },
-                            std.heap.page_allocator,
-                            event.data orelse "",
-                            .{ .ignore_unknown_fields = true },
-                        );
-                        defer parsed.deinit();
-
-                        // Need to use stdout directly since we can't access struct fields from static callback
-                        const out = std.io.getStdOut().writer();
-                        try out.print("{s}", .{parsed.value.delta.text});
-                        // TODO: Accumulate content for history
-                    }
-                }
-            };
-
-            var callback_data = StreamCallback{
-                .content = &assistant_content,
-                .writer = stdout,
-            };
+            // Initialize streaming state
+            self.shared_ctx.anthropic.contentCollector.clearRetainingCapacity();
+            self.shared_ctx.anthropic.messageId = null;
+            self.shared_ctx.anthropic.stopReason = null;
+            self.shared_ctx.anthropic.model = null;
 
             // Stream the response
             const client = self.client orelse return error.NotAuthenticated;
-            try client.createStream(&self.shared_ctx, .{
+            const streamParams = network.Anthropic.Client.StreamParameters{
                 .model = self.options.model,
                 .messages = self.messages.items,
                 .maxTokens = self.options.max_tokens,
                 .temperature = self.options.temperature,
-                .system = null,
-            }, StreamCallback.callback, &callback_data);
+                .system = system_prompt,
+                .onToken = struct {
+                    fn callback(ctx: *context.SharedContext, data: []const u8) void {
+                        Engine.processStreamingEvent(ctx, data);
+                    }
+                }.callback,
+            };
 
-            // Add assistant message to history (TODO: accumulate from stream)
+            try client.stream(&self.shared_ctx, streamParams);
+
+            // Add assistant message to history
+            const assistant_content = try self.allocator.dupe(u8, self.shared_ctx.anthropic.contentCollector.items);
             try self.messages.append(.{
                 .role = .assistant,
-                .content = try self.allocator.dupe(u8, "[streaming not yet implemented]"),
+                .content = assistant_content,
             });
+
+            // Check for tool calls and execute them
+            try self.handleToolCalls();
 
             try stdout.print("\n\n", .{});
         } else {
             // Non-streaming mode
             const client = self.client orelse return error.NotAuthenticated;
-            const result = try client.create(&self.shared_ctx, .{
+            const result = try client.complete(&self.shared_ctx, .{
                 .model = self.options.model,
                 .messages = self.messages.items,
                 .maxTokens = self.options.max_tokens,
                 .temperature = self.options.temperature,
-                .system = null,
+                .system = system_prompt,
             });
 
             try stdout.print("\nClaude: {s}\n\n", .{result.content});
@@ -198,14 +165,267 @@ pub const Engine = struct {
                 .role = .assistant,
                 .content = try self.allocator.dupe(u8, result.content),
             });
+
+            // Check for tool calls and execute them
+            try self.handleToolCalls();
         }
     }
 
-    /// Context hygiene - keep conversation manageable
+    /// Process streaming SSE events with proper tool JSON accumulation
+    fn processStreamingEvent(ctx: *context.SharedContext, data: []const u8) void {
+        // Parse the SSE event data
+        const EventData = struct {
+            type: ?[]const u8 = null,
+            message: ?struct {
+                id: ?[]const u8 = null,
+                model: ?[]const u8 = null,
+                stop_reason: ?[]const u8 = null,
+            } = null,
+            content_block: ?struct {
+                type: ?[]const u8 = null,
+                id: ?[]const u8 = null,
+                name: ?[]const u8 = null,
+            } = null,
+            delta: ?struct {
+                type: ?[]const u8 = null,
+                text: ?[]const u8 = null,
+                partial_json: ?[]const u8 = null,
+            } = null,
+        };
+
+        const parsed = std.json.parseFromSlice(EventData, ctx.anthropic.allocator, data, .{
+            .ignore_unknown_fields = true
+        }) catch return;
+        defer parsed.deinit();
+
+        const event_type = parsed.value.type orelse return;
+
+        // Handle different event types
+        if (std.mem.eql(u8, event_type, "message_start")) {
+            if (parsed.value.message) |msg| {
+                if (msg.id) |id| {
+                    ctx.anthropic.messageId = ctx.anthropic.allocator.dupe(u8, id) catch null;
+                }
+                if (msg.model) |model| {
+                    ctx.anthropic.model = ctx.anthropic.allocator.dupe(u8, model) catch null;
+                }
+            }
+        } else if (std.mem.eql(u8, event_type, "content_block_start")) {
+            // Initialize tool JSON accumulation if this is a tool_use block
+            if (parsed.value.content_block) |block| {
+                if (block.type) |block_type| {
+                    if (std.mem.eql(u8, block_type, "tool_use")) {
+                        // Start accumulating tool JSON
+                        ctx.tools.hasPending = true;
+                        ctx.tools.toolName = if (block.name) |name|
+                            ctx.anthropic.allocator.dupe(u8, name) catch null
+                        else
+                            null;
+                        ctx.tools.toolId = if (block.id) |id|
+                            ctx.anthropic.allocator.dupe(u8, id) catch null
+                        else
+                            null;
+                        ctx.tools.jsonComplete = null;
+                        ctx.tools.tokenBuffer.clearRetainingCapacity();
+                    }
+                }
+            }
+        } else if (std.mem.eql(u8, event_type, "content_block_delta")) {
+            if (parsed.value.delta) |delta| {
+                if (delta.type) |delta_type| {
+                    if (std.mem.eql(u8, delta_type, "text_delta")) {
+                        if (delta.text) |text| {
+                            // Print text content
+                            std.debug.print("{s}", .{text});
+                            // Accumulate for history
+                            ctx.anthropic.contentCollector.appendSlice(ctx.anthropic.allocator, text) catch {};
+                        }
+                        } else if (std.mem.eql(u8, delta_type, "input_json_delta")) {
+                        if (delta.partial_json) |json_part| {
+                            // Accumulate tool JSON
+                            ctx.tools.tokenBuffer.appendSlice(json_part) catch {};
+                        }
+                    }
+                }
+            }
+        } else if (std.mem.eql(u8, event_type, "content_block_stop")) {
+            // Finalize tool JSON accumulation
+            if (ctx.tools.hasPending and ctx.tools.tokenBuffer.items.len > 0) {
+                ctx.tools.jsonComplete = ctx.anthropic.allocator.dupe(u8, ctx.tools.tokenBuffer.items) catch null;
+                ctx.tools.hasPending = false;
+            }
+        } else if (std.mem.eql(u8, event_type, "message_delta")) {
+            if (parsed.value.delta) |delta| {
+                if (delta.stop_reason) |stop_reason| {
+                    ctx.anthropic.stopReason = ctx.anthropic.allocator.dupe(u8, stop_reason) catch null;
+                }
+            }
+        } else if (std.mem.eql(u8, event_type, "message_stop")) {
+            // Message complete
+        }
+    }
+
+    /// Build system prompt from registered tools
+    fn buildSystemPrompt(self: *Self) !?[]const u8 {
+        // Read anthropic_spoof.txt content per spec requirements
+        const spoofContent = blk: {
+            const spoofFile = std.fs.cwd().openFile("prompt/anthropic_spoof.txt", .{}) catch {
+                break :blk "";
+            };
+            defer spoofFile.close();
+            break :blk spoofFile.readToEndAlloc(self.allocator, 1024) catch "";
+        };
+        defer if (spoofContent.len > 0) self.allocator.free(spoofContent);
+
+        // Build tool descriptions for system prompt
+        const tool_list = try self.tool_registry.listTools(self.allocator);
+        defer self.allocator.free(tool_list);
+
+        var prompt_builder = std.ArrayList(u8).init(self.allocator);
+        defer prompt_builder.deinit();
+
+        // Prepend spoof content if available
+        if (spoofContent.len > 0) {
+            try prompt_builder.appendSlice(spoofContent);
+            try prompt_builder.appendSlice("\n\n");
+        }
+
+        if (tool_list.len > 0) {
+            try prompt_builder.appendSlice("You have access to the following tools:\n\n");
+
+            for (tool_list) |tool| {
+                try prompt_builder.appendSlice("Tool: ");
+                try prompt_builder.appendSlice(tool.name);
+                try prompt_builder.appendSlice("\nDescription: ");
+                try prompt_builder.appendSlice(tool.description);
+                try prompt_builder.appendSlice("\n\n");
+            }
+
+            try prompt_builder.appendSlice("When you need to use a tool, respond with a tool_use block containing the tool name and parameters.\n");
+        }
+
+        if (prompt_builder.items.len == 0) {
+            return null;
+        }
+
+        return prompt_builder.toOwnedSlice();
+    }
+
+    /// Handle tool calls from the assistant response
+    fn handleToolCalls(self: *Self) !void {
+        // Check if we have accumulated tool JSON from streaming
+        if (self.shared_ctx.tools.jsonComplete) |tool_json| {
+            defer self.allocator.free(self.shared_ctx.tools.jsonComplete.?);
+            self.shared_ctx.tools.jsonComplete = null;
+
+            // Parse the tool call - Anthropic sends tool parameters as JSON
+            const parsed = std.json.parseFromSlice(std.json.Value, self.allocator, tool_json, .{}) catch |err| {
+                log.warn("Failed to parse tool call JSON: {}", .{err});
+                return;
+            };
+            defer parsed.deinit();
+
+            // Extract tool name and arguments from the accumulated JSON
+            if (parsed.value == .object) {
+                if (self.shared_ctx.tools.toolName) |tool_name| {
+                    defer self.allocator.free(self.shared_ctx.tools.toolName.?);
+                    self.shared_ctx.tools.toolName = null;
+
+                    try self.executeTool(tool_name, &parsed.value);
+                } else {
+                    log.warn("Tool name not available for execution", .{});
+                }
+            }
+        }
+
+        // Clean up tool context
+        if (self.shared_ctx.tools.toolName) |name| {
+            self.allocator.free(name);
+            self.shared_ctx.tools.toolName = null;
+        }
+        if (self.shared_ctx.tools.toolId) |id| {
+            self.allocator.free(id);
+            self.shared_ctx.tools.toolId = null;
+        }
+    }
+
+    /// Execute a tool by name with given arguments
+    fn executeTool(self: *Self, tool_name: []const u8, arguments: *const std.json.Value) !void {
+        // Get the tool function from registry
+        const tool_func = self.tool_registry.get(tool_name) orelse {
+            log.warn("Tool not found in registry: {s}", .{tool_name});
+            return;
+        };
+
+        // Convert arguments to JSON string for the tool function
+        const args_json = try std.json.stringifyAlloc(self.allocator, arguments.*, .{});
+        defer self.allocator.free(args_json);
+
+        log.info("Executing tool: {s}", .{tool_name});
+
+        // Execute the tool
+        const result = tool_func(&self.shared_ctx, self.allocator, args_json) catch |err| {
+            log.err("Tool execution failed: {s} - {}", .{tool_name, err});
+            const error_msg = try std.fmt.allocPrint(
+                self.allocator,
+                "Tool '{s}' failed: {s}",
+                .{ tool_name, @errorName(err) }
+            );
+            defer self.allocator.free(error_msg);
+
+            try self.messages.append(.{
+                .role = .user,
+                .content = error_msg,
+            });
+            return;
+        };
+        defer self.allocator.free(result);
+
+        log.info("Tool '{s}' completed successfully", .{tool_name});
+
+        // Add tool result to conversation as a user message
+        const tool_result_content = try std.fmt.allocPrint(
+            self.allocator,
+            "Tool '{s}' result: {s}",
+            .{ tool_name, result }
+        );
+        defer self.allocator.free(tool_result_content);
+
+        try self.messages.append(.{
+            .role = .user,
+            .content = tool_result_content,
+        });
+    }
+
+    /// Execute multiple tools in parallel when supported
+    fn executeToolsParallel(self: *Self, tool_calls: []const ToolCall) !void {
+        if (tool_calls.len == 0) return;
+
+        // For now, execute tools sequentially (parallel execution can be added later)
+        // This maintains compatibility while allowing for future parallel implementation
+        for (tool_calls) |tool_call| {
+            try self.executeTool(tool_call.name, &tool_call.arguments);
+        }
+    }
+
+    /// Tool call structure for parallel execution
+    const ToolCall = struct {
+        name: []const u8,
+        arguments: std.json.Value,
+    };
+
+    /// Context hygiene - keep conversation manageable with summarization
     fn trimContext(self: *Self) !void {
-        if (self.messages.items.len > 20) {
-            // Keep last 20 messages
-            const to_remove = self.messages.items.len - 20;
+        const max_messages = 20;
+        const estimated_tokens_per_message = 100; // Rough estimate
+        const max_estimated_tokens = 160_000;
+        const summarization_threshold = 120_000; // Summarize when approaching limit
+
+        // Check message count first
+        if (self.messages.items.len > max_messages) {
+            const to_remove = self.messages.items.len - max_messages;
+            log.debug("Trimming context: removing {} old messages", .{to_remove});
+
             for (self.messages.items[0..to_remove]) |msg| {
                 self.allocator.free(msg.content);
             }
@@ -214,8 +434,111 @@ pub const Engine = struct {
                 self.messages.items[0..],
                 self.messages.items[to_remove..],
             );
-            self.messages.shrinkRetainingCapacity(20);
+            self.messages.shrinkRetainingCapacity(max_messages);
         }
+
+        // Check estimated token count (rough heuristic)
+        const estimated_tokens = self.messages.items.len * estimated_tokens_per_message;
+        if (estimated_tokens > max_estimated_tokens) {
+            log.debug("Context estimated at {} tokens, trimming older messages", .{estimated_tokens});
+
+            // Keep system message + last 10 exchanges
+            const keep_count = 10;
+            if (self.messages.items.len > keep_count) {
+                const to_remove = self.messages.items.len - keep_count;
+                for (self.messages.items[0..to_remove]) |msg| {
+                    self.allocator.free(msg.content);
+                }
+                std.mem.copyForwards(
+                    network.Anthropic.Message,
+                    self.messages.items[0..],
+                    self.messages.items[to_remove..],
+                );
+                self.messages.shrinkRetainingCapacity(keep_count);
+            }
+        } else if (estimated_tokens > summarization_threshold) {
+            // Try to summarize older messages to preserve context
+            try self.summarizeOldMessages();
+        }
+    }
+
+    /// Summarize older messages to preserve context while reducing token count
+    fn summarizeOldMessages(self: *Self) !void {
+        if (self.messages.items.len < 8) return; // Need at least some messages to summarize
+
+        // Find the oracle tool for summarization
+        const oracle_tool = self.tool_registry.get("oracle");
+        if (oracle_tool == null) {
+            log.debug("Oracle tool not available for summarization, skipping");
+            return;
+        }
+
+        // Collect older messages for summarization (keep last 5, summarize the rest)
+        const keep_recent = 5;
+        if (self.messages.items.len <= keep_recent) return;
+
+        const messages_to_summarize = self.messages.items[0..(self.messages.items.len - keep_recent)];
+
+        // Build summarization prompt
+        var summary_prompt = std.ArrayList(u8).init(self.allocator);
+        defer summary_prompt.deinit();
+
+        try summary_prompt.appendSlice("Please provide a concise summary of the following conversation history. Focus on key decisions, important information, and context that would be relevant for continuing this conversation:\n\n");
+
+        for (messages_to_summarize, 0..) |msg, i| {
+            const role_name = switch (msg.role) {
+                .user => "User",
+                .assistant => "Assistant",
+                .system => "System",
+            };
+            try summary_prompt.writer().print("{}: {}\n", .{ role_name, std.fmt.fmtSliceEscapeLower(msg.content) });
+            if (i < messages_to_summarize.len - 1) {
+                try summary_prompt.appendSlice("\n");
+            }
+        }
+
+        // Use oracle tool to generate summary
+        const summary_json = try std.fmt.allocPrint(self.allocator,
+            \\{{"prompt":"{s}"}}
+        , .{std.fmt.fmtSliceEscapeLower(summary_prompt.items)});
+        defer self.allocator.free(summary_json);
+
+        log.debug("Generating conversation summary using oracle tool", .{});
+
+        const summary_result = oracle_tool(&self.shared_ctx, self.allocator, summary_json) catch |err| {
+            log.warn("Failed to generate conversation summary: {}", .{err});
+            return;
+        };
+        defer self.allocator.free(summary_result);
+
+        // Replace old messages with summary
+        const summary_content = try std.fmt.allocPrint(self.allocator,
+            "Previous conversation summary: {s}",
+            .{summary_result}
+        );
+
+        // Free old messages
+        for (messages_to_summarize) |msg| {
+            self.allocator.free(msg.content);
+        }
+
+        // Replace with summary message
+        self.messages.items[0] = .{
+            .role = .user,
+            .content = summary_content,
+        };
+
+        // Shift remaining messages
+        std.mem.copyForwards(
+            network.Anthropic.Message,
+            self.messages.items[1..],
+            self.messages.items[(messages_to_summarize.len)..],
+        );
+
+        // Resize array
+        self.messages.shrinkRetainingCapacity(self.messages.items.len - messages_to_summarize.len + 1);
+
+        log.debug("Successfully summarized {} messages into 1 summary", .{messages_to_summarize.len});
     }
 };
 
@@ -226,8 +549,8 @@ pub fn runWithOptions(
     spec: AgentSpec,
     _: []const u8, // working directory (unused for now)
 ) !void {
-    const stdout = std.io.getStdOut().writer();
-    const stdin = std.io.getStdIn().reader();
+    const stdout = std.debug;
+    const stdin = std.fs.File.stdin().reader();
 
     // Initialize engine
     var engine = try Engine.init(allocator, options);

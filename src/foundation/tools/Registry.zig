@@ -308,30 +308,30 @@ pub const Registry = struct {
 
     /// List all registered tools
     pub fn listTools(self: *Registry, allocator: std.mem.Allocator) ![]Tool {
-        var tools = std.ArrayList(Tool){};
-        defer tools.deinit(allocator);
+        var tools = std.ArrayList(Tool).init(allocator);
+        defer tools.deinit();
 
         var iterator = self.metadata.iterator();
         while (iterator.next()) |entry| {
-            try tools.append(allocator, entry.value_ptr.*);
+            try tools.append(entry.value_ptr.*);
         }
 
-        return tools.toOwnedSlice(allocator);
+        return tools.toOwnedSlice();
     }
 
     /// List tools by agent
     pub fn listToolsByAgent(self: *Registry, allocator: std.mem.Allocator, agentName: []const u8) ![]Tool {
-        var tools = std.ArrayList(Tool){};
-        defer tools.deinit(allocator);
+        var tools = std.ArrayList(Tool).init(allocator);
+        defer tools.deinit();
 
         var iterator = self.metadata.iterator();
         while (iterator.next()) |entry| {
             if (std.mem.eql(u8, entry.value_ptr.agent, agentName)) {
-                try tools.append(allocator, entry.value_ptr.*);
+                try tools.append(entry.value_ptr.*);
             }
         }
 
-        return tools.toOwnedSlice(allocator);
+        return tools.toOwnedSlice();
     }
 };
 

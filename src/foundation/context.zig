@@ -53,6 +53,11 @@ pub const SharedContext = struct {
     pub const Tools = struct {
         // Managed array list per Zig 0.15.1; holds allocator internally
         tokenBuffer: std.array_list.Managed(u8),
+        // Track a single pending tool-use per turn (minimal viable loop)
+        hasPending: bool = false,
+        toolName: ?[]u8 = null,
+        toolId: ?[]u8 = null,
+        jsonComplete: ?[]u8 = null,
 
         pub fn init(allocator: std.mem.Allocator) Tools {
             return .{ .tokenBuffer = std.array_list.Managed(u8).init(allocator) };
@@ -60,6 +65,9 @@ pub const SharedContext = struct {
 
         pub fn deinit(self: *Tools) void {
             self.tokenBuffer.deinit();
+            if (self.toolName) |s| self.tokenBuffer.allocator.free(s);
+            if (self.toolId) |s| self.tokenBuffer.allocator.free(s);
+            if (self.jsonComplete) |s| self.tokenBuffer.allocator.free(s);
         }
     };
 

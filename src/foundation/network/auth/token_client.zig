@@ -90,12 +90,12 @@ pub const TokenClient = struct {
     fn makeTokenRequest(self: *Self, body: []const u8) !TokenResponse {
         const uri = try Uri.parse(self.config.token_endpoint);
 
-        const server_header_buffer: [16 * 1024]u8 = undefined;
         var req = try self.client.open(.POST, uri, .{
-            .server_header_buffer = @constCast(&server_header_buffer),
+            .server_header_buffer = &[_]u8{},
             .extra_headers = &.{
                 .{ .name = "Content-Type", .value = "application/json" },
                 .{ .name = "Accept", .value = "application/json" },
+                .{ .name = "User-Agent", .value = "docz/1.0" },
             },
         });
         defer req.deinit();

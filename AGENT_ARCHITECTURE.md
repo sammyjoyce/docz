@@ -105,4 +105,3 @@ pub const SPEC: engine.AgentSpec = .{
 - Unit test tool functions and prompt builders (include failing allocators)
 - End‑to‑end tests use the selected agent via `zig build -Dagent=<name> test`
 - Exercise OAuth and API‑key paths; validate SSE tool JSON assembly and termination
-

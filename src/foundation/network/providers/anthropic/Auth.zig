@@ -3,6 +3,7 @@
 const std = @import("std");
 const curl = @import("../../curl.zig");
 const models = @import("Models.zig");
+const oauth = @import("../../auth/OAuth.zig");
 
 pub const oauthClientId = "9d1c250a-e61b-44d9-88ed-5944d1962f5e";
 pub const oauthAuthorizationUrl = "https://claude.ai/oauth/authorize";
@@ -10,7 +11,7 @@ pub const oauthTokenEndpoint = "https://console.anthropic.com/v1/oauth/token";
 pub const oauthRedirectUri = "https://console.anthropic.com/oauth/code/callback";
 pub const oauthScopes = "org:create_api_key user:profile user:inference";
 
-const Credentials = models.Credentials;
+const Credentials = oauth.Credentials; // Use network auth Credentials
 const Pkce = models.Pkce;
 const Error = models.Error;
 
