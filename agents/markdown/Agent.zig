@@ -1,218 +1,115 @@
+//! Markdown agent implementation: config + system prompt loading.
+//! Single-entry struct; no loop/CLI logic here.
+
 const std = @import("std");
-const json = std.json;
+const foundation = @import("foundation");
 const Allocator = std.mem.Allocator;
 
-// Markdown Agent Module
-// Provides specialized functionality for markdown document creation and editing
+// Agent-specific configuration extending foundation.config.AgentConfig
+pub const Config = struct {
+    agentConfig: foundation.config.AgentConfig,
 
-pub const Markdown = struct {
-    allocator: Allocator,
-    config: Config,
-    /// Arena owning parsed configuration memory
-    arena: ?std.heap.ArenaAllocator = null,
+    // Markdown-specific settings (match keys in config.zon)
+    textWrapWidth: u32 = 80,
+    headingStyle: []const u8 = "atx",
+    listStyle: []const u8 = "dash",
+    codeFenceStyle: []const u8 = "backtick",
+    tableAlignment: []const u8 = "auto",
+    frontMatterFormat: []const u8 = "yaml",
+    tocStyle: []const u8 = "github",
+    linkStyle: []const u8 = "reference",
 
-    const Self = @This();
-
-    /// Agent configuration structure - extends the standard AgentConfig
-    pub const Config = struct {
-        // Include standard agent configuration
-        agentConfig: @import("foundation").config.AgentConfig,
-
-        // Add agent-specific configuration fields here
-        textWrapWidth: u32 = 80,
-        headingStyle: []const u8 = "atx",
-        listStyle: []const u8 = "dash",
-        codeFenceStyle: []const u8 = "backtick",
-        tableAlignment: []const u8 = "auto",
-        frontMatterFormat: []const u8 = "yaml",
-        tocStyle: []const u8 = "github",
-        linkStyle: []const u8 = "reference",
-
-        /// Load configuration from file with defaults fallback
-        pub fn loadFromFile(allocator: Allocator, path: []const u8) !Config {
-            const foundation = @import("foundation");
-            const config_utils = foundation.config;
-            const defaults = Config{
-                .agentConfig = config_utils.createValidatedAgentConfig("markdown", "Markdown document processing agent", "Developer"),
-                .textWrapWidth = 80,
-                .headingStyle = "atx",
-                .listStyle = "dash",
-                .codeFenceStyle = "backtick",
-                .tableAlignment = "auto",
-                .frontMatterFormat = "yaml",
-                .tocStyle = "github",
-                .linkStyle = "reference",
-            };
-            return config_utils.loadWithDefaults(Config, allocator, path, defaults);
-        }
-
-        /// Get the standard agent config path for this agent
-        pub fn getConfigPath(allocator: Allocator) ![]const u8 {
-            const foundation = @import("foundation");
-            const config_utils = foundation.config;
-            return config_utils.getAgentConfigPath(allocator, "markdown");
-        }
-    };
-
-    pub const Document = struct {
-        name: []const u8,
-        frontMatter: json.Value,
-        sections: [][]const u8,
-    };
-
-    /// Error set for markdown agent operations
-    pub const Error = error{
-        InvalidInput,
-        MissingParameter,
-        OutOfMemory,
-        FileNotFound,
-        PermissionDenied,
-        ProcessingFailed,
-        UnexpectedError,
-    };
-
-    pub fn init(allocator: Allocator, config: Config) Self {
-        return Self{ .allocator = allocator, .config = config, .arena = null };
+    pub fn getConfigPath(allocator: Allocator) ![]const u8 {
+        return foundation.config.getAgentConfigPath(allocator, "markdown");
     }
 
-    /// Initialize agent with configuration loaded from file
-    pub fn initFromConfig(allocator: Allocator) !Self {
-        // Use an arena to own all parsed config allocations, and clean it up in deinit
-        var arena = std.heap.ArenaAllocator.init(allocator);
-        errdefer arena.deinit();
-
-        const configPath = try Config.getConfigPath(allocator);
-        defer allocator.free(configPath);
-
-        const config = try Config.loadFromFile(arena.allocator(), configPath);
-        return Self{ .allocator = allocator, .config = config, .arena = arena };
-    }
-
-    pub fn deinit(self: *Self) void {
-        if (self.arena) |*a| a.deinit();
-    }
-
-    /// Load system prompt from file or generate dynamically
-    pub fn loadSystemPrompt(self: *Self) ![]const u8 {
-        const promptPath = "agents/markdown/system_prompt.txt";
-        const file = std.fs.cwd().openFile(promptPath, .{}) catch |err| {
-            switch (err) {
-                error.FileNotFound => {
-                    // Return a default prompt if file doesn't exist
-                    return try self.allocator.dupe(u8, "You are a helpful AI assistant.");
-                },
-                else => return err,
-            }
+    pub fn loadFromFile(allocator: Allocator, path: []const u8) !Config {
+        const defaults = Config{
+            .agentConfig = foundation.config.createValidatedAgentConfig(
+                "markdown",
+                "Enterprise-grade markdown systems architect & quality guardian",
+                "AI Assistant",
+            ),
         };
-        defer file.close();
-
-        const template = try file.readToEndAlloc(self.allocator, std.math.maxInt(usize));
-        defer self.allocator.free(template);
-
-        // Process template variables
-        return self.processTemplateVariables(template);
+        return foundation.config.loadWithDefaults(Config, allocator, path, defaults);
     }
 
-    /// Process template variables in system prompt
-    fn processTemplateVariables(self: *Self, template: []const u8) ![]const u8 {
-        var result = std.ArrayListUnmanaged(u8){};
-        try result.ensureTotalCapacity(self.allocator, template.len);
-        defer result.deinit(self.allocator);
-
-        var i: usize = 0;
-        while (i < template.len) {
-            if (std.mem.indexOf(u8, template[i..], "{")) |start| {
-                // Copy everything before the {
-                try result.appendSlice(self.allocator, template[i .. i + start]);
-                i += start;
-
-                if (std.mem.indexOf(u8, template[i..], "}")) |end| {
-                    const varName = template[i + 1 .. i + end];
-                    const replacement = try self.templateVariableValue(varName);
-                    defer self.allocator.free(replacement);
-                    try result.appendSlice(self.allocator, replacement);
-                    i += end + 1;
-                } else {
-                    // No closing }, copy the { as-is
-                    try result.append(self.allocator, template[i]);
-                    i += 1;
-                }
-            } else {
-                // No more variables, copy the rest
-                try result.appendSlice(self.allocator, template[i..]);
-                break;
-            }
-        }
-
-        return result.toOwnedSlice(self.allocator);
-    }
-
-    /// Override base agent method to provide config-aware template variable processing
-    pub fn templateVariableValue(self: *Self, varName: []const u8) ![]const u8 {
-        const cfg = &self.config.agentConfig;
-
-        if (std.mem.eql(u8, varName, "agent_name")) {
-            return try self.allocator.dupe(u8, cfg.agentInfo.name);
-        } else if (std.mem.eql(u8, varName, "agent_version")) {
-            return try self.allocator.dupe(u8, cfg.agentInfo.version);
-        } else if (std.mem.eql(u8, varName, "agent_description")) {
-            return try self.allocator.dupe(u8, cfg.agentInfo.description);
-        } else if (std.mem.eql(u8, varName, "agent_author")) {
-            return try self.allocator.dupe(u8, cfg.agentInfo.author);
-        } else if (std.mem.eql(u8, varName, "debug_enabled")) {
-            return try self.allocator.dupe(u8, if (cfg.defaults.enableDebugLogging) "enabled" else "disabled");
-        } else if (std.mem.eql(u8, varName, "verbose_enabled")) {
-            return try self.allocator.dupe(u8, if (cfg.defaults.enableVerboseOutput) "enabled" else "disabled");
-        } else if (std.mem.eql(u8, varName, "custom_tools_enabled")) {
-            return try self.allocator.dupe(u8, if (cfg.features.enableCustomTools) "enabled" else "disabled");
-        } else if (std.mem.eql(u8, varName, "file_operations_enabled")) {
-            return try self.allocator.dupe(u8, if (cfg.features.enableFileOperations) "enabled" else "disabled");
-        } else if (std.mem.eql(u8, varName, "network_access_enabled")) {
-            return try self.allocator.dupe(u8, if (cfg.features.enableNetworkAccess) "enabled" else "disabled");
-        } else if (std.mem.eql(u8, varName, "system_commands_enabled")) {
-            return try self.allocator.dupe(u8, if (cfg.features.enableSystemCommands) "enabled" else "disabled");
-        } else if (std.mem.eql(u8, varName, "max_input_size")) {
-            return try std.fmt.allocPrint(self.allocator, "{d}", .{cfg.limits.inputSizeMax});
-        } else if (std.mem.eql(u8, varName, "max_output_size")) {
-            return try std.fmt.allocPrint(self.allocator, "{d}", .{cfg.limits.outputSizeMax});
-        } else if (std.mem.eql(u8, varName, "max_processing_time")) {
-            return try std.fmt.allocPrint(self.allocator, "{d}", .{cfg.limits.processingTimeMsMax});
-        } else if (std.mem.eql(u8, varName, "current_date")) {
-            const now = std.time.timestamp();
-            const epochSeconds = std.time.epoch.EpochSeconds{ .secs = @intCast(now) };
-            const epochDay = epochSeconds.getEpochDay();
-            const yearDay = epochDay.calculateYearDay();
-            const monthDay = yearDay.calculateMonthDay();
-
-            return try std.fmt.allocPrint(self.allocator, "{d:0>4}-{d:0>2}-{d:0>2}", .{
-                yearDay.year,
-                @intFromEnum(monthDay.month),
-                monthDay.day_index + 1,
-            });
-        } else {
-            // Unknown variable, return as-is with braces
-            return try std.fmt.allocPrint(self.allocator, "{{{s}}}", .{varName});
-        }
-    }
-
-    /// Get the list of available tools for this agent
-    /// Note: Tools are now registered through the spec.zig file using the shared registry
-    pub fn getAvailableTools(self: *Self) ![]const []const u8 {
-        _ = self;
-        // Tool names are now registered in spec.zig
-        return &.{
-            "io",
-            "content_editor",
-            "validate",
-            "document",
-            "workflow",
-            "file",
-        };
+    pub fn validate(self: *Config) !void {
+        try foundation.config.validateAgentConfig(self.agentConfig);
+        if (self.textWrapWidth == 0) return error.InvalidConfigFormat;
     }
 };
 
-// Note: Tool execution functions are now handled through the shared tools registry
-// and registered in spec.zig. The actual implementations remain in the tools/ directory
-// but are called through the standardized interface.
+// Main agent type (single-entry struct)
+pub const Markdown = struct {
+    const Self = @This();
 
-// Markdown is already exported as pub const above
+    allocator: Allocator,
+    config: Config,
+
+    pub fn init(allocator: Allocator, config: Config) Self {
+        return .{ .allocator = allocator, .config = config };
+    }
+
+    pub fn initFromConfig(allocator: Allocator) !Self {
+        const path = try Config.getConfigPath(allocator);
+        defer allocator.free(path);
+        var cfg = try Config.loadFromFile(allocator, path);
+        try cfg.validate();
+        return Self.init(allocator, cfg);
+    }
+
+    pub fn deinit(self: *Self) void {
+        _ = self;
+    }
+
+    pub fn loadSystemPrompt(self: *Self) ![]const u8 {
+        const prompt_path = "agents/markdown/system_prompt.txt";
+        const file = std.fs.cwd().openFile(prompt_path, .{}) catch |err| switch (err) {
+            error.FileNotFound => return self.allocator.dupe(u8, "You are the Markdown agent. Maintain high quality."),
+            else => return err,
+        };
+        defer file.close();
+
+        const raw = try file.readToEndAlloc(self.allocator, std.math.maxInt(usize));
+        defer self.allocator.free(raw);
+        return self.processTemplateVariables(raw);
+    }
+
+    fn processTemplateVariables(self: *Self, template: []const u8) ![]const u8 {
+        var out = try std.ArrayList(u8).initCapacity(self.allocator, template.len + 256);
+        defer out.deinit(self.allocator);
+        var i: usize = 0;
+        while (i < template.len) {
+            if (std.mem.indexOf(u8, template[i..], "{")) |start| {
+                try out.appendSlice(self.allocator, template[i .. i + start]);
+                i += start;
+                if (std.mem.indexOf(u8, template[i..], "}")) |end| {
+                    const name = template[i + 1 .. i + end];
+                    const value = try self.templateVar(name);
+                    defer self.allocator.free(value);
+                    try out.appendSlice(self.allocator, value);
+                    i += end + 1;
+                } else {
+                    try out.append(self.allocator, template[i]);
+                    i += 1;
+                }
+            } else {
+                try out.appendSlice(self.allocator, template[i..]);
+                break;
+            }
+        }
+        return out.toOwnedSlice(self.allocator);
+    }
+
+    fn templateVar(self: *Self, name: []const u8) ![]const u8 {
+        const cfg = &self.config.agentConfig;
+        if (std.mem.eql(u8, name, "agent_name")) return self.allocator.dupe(u8, cfg.agentInfo.name);
+        if (std.mem.eql(u8, name, "agent_version")) return self.allocator.dupe(u8, cfg.agentInfo.version);
+        if (std.mem.eql(u8, name, "agent_description")) return self.allocator.dupe(u8, cfg.agentInfo.description);
+        if (std.mem.eql(u8, name, "debug_enabled")) return self.allocator.dupe(u8, if (cfg.defaults.enableDebugLogging) "enabled" else "disabled");
+        if (std.mem.eql(u8, name, "file_ops")) return self.allocator.dupe(u8, if (cfg.features.enableFileOperations) "enabled" else "disabled");
+        if (std.mem.eql(u8, name, "wrap_width")) return std.fmt.allocPrint(self.allocator, "{d}", .{self.config.textWrapWidth});
+        return std.fmt.allocPrint(self.allocator, "{{{s}}}", .{name});
+    }
+};

@@ -7,12 +7,15 @@ const foundation = @import("foundation");
 const tools = foundation.tools;
 
 fn buildSystemPromptImpl(allocator: std.mem.Allocator, options: engine.CliOptions) ![]const u8 {
-    _ = options; // reserved for future use (e.g., config path)
+    _ = options;
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
 
-    var agent = try impl.Markdown.initFromConfig(allocator);
-    defer agent.deinit();
-
-    return agent.loadSystemPrompt();
+    var agent = try impl.Markdown.initFromConfig(a);
+    const tmp = try agent.loadSystemPrompt();
+    // Duplicate into caller allocator so arena can be freed
+    return allocator.dupe(u8, tmp);
 }
 
 fn registerToolsImpl(registry: *tools.Registry) !void {

@@ -95,7 +95,7 @@ pub const Provider = struct {
 
         return try std.fmt.allocPrint(
             allocator,
-            "{s}?code=true&client_id={s}&response_type=code&redirect_uri={s}&scope={s}&code_challenge={s}&code_challenge_method=S256&state={s}",
+            "{s}?client_id={s}&response_type=code&redirect_uri={s}&scope={s}&code_challenge={s}&code_challenge_method=S256&state={s}",
             .{ self.authorizationUrl, client_id_enc, redirect_enc, scopes_enc, challenge_enc, state_enc },
         );
     }
@@ -109,9 +109,9 @@ pub fn generatePkceParams(allocator: std.mem.Allocator) !Pkce {
     return @import("pkce.zig").generate(allocator, 64);
 }
 
-/// Build OAuth authorization URL with default localhost:8080 callback
+/// Build OAuth authorization URL with default redirect to console.anthropic.com
 pub fn buildAuthorizationUrl(allocator: std.mem.Allocator, pkceParams: Pkce) ![]u8 {
-    return buildAuthorizationUrlWithRedirect(allocator, pkceParams, "http://localhost:8080/callback");
+    return buildAuthorizationUrlWithRedirect(allocator, pkceParams, "https://console.anthropic.com/oauth/code/callback");
 }
 
 /// Build OAuth authorization URL with custom redirect URI
@@ -233,6 +233,9 @@ fn parseFormTokenResponse(allocator: std.mem.Allocator, body: []const u8) !Crede
 
 /// Parse OAuth token response (JSON preferred, form-encoded fallback)
 fn parseTokenResponse(allocator: std.mem.Allocator, response_body: []const u8) !Credentials {
+    // Debug preview to help diagnose format differences
+    const preview_len: usize = @min(response_body.len, 256);
+    std.log.debug("Token response preview: {s}", .{response_body[0..preview_len]});
     // Prefer JSON if it looks like JSON
     if (response_body.len > 0 and response_body[0] == '{') {
         const parsed = std.json.parseFromSlice(std.json.Value, allocator, response_body, .{}) catch |err| {
@@ -240,8 +243,6 @@ fn parseTokenResponse(allocator: std.mem.Allocator, response_body: []const u8) !
             // Try form-encoded fallback
             return parseFormTokenResponse(allocator, response_body) catch |err2| {
                 std.log.err("Form-encoded fallback also failed: {}", .{err2});
-                const preview_len: usize = @min(response_body.len, 256);
-                std.log.err("Response preview: {s}", .{response_body[0..preview_len]});
                 return Error.InvalidFormat;
             };
         };
@@ -290,16 +291,33 @@ pub fn exchangeCodeForTokens(
     pkceParams: Pkce,
     redirectUri: []const u8,
 ) !Credentials {
-    // Prepare JSON body for token exchange - order matches the working example
+    // Parse the authorization code if it contains a fragment
+    // The code from Claude comes as "code#state" format
+    var actual_code = authorizationCode;
+    var state_from_code: []const u8 = "";
+
+    // Check if the code contains a fragment separator
+    if (std.mem.indexOf(u8, authorizationCode, "#")) |hash_pos| {
+        actual_code = authorizationCode[0..hash_pos];
+        state_from_code = authorizationCode[hash_pos + 1 ..];
+    }
+
+    // If state was included in code fragment, ensure it matches our PKCE state
+    if (state_from_code.len != 0 and !std.mem.eql(u8, state_from_code, pkceParams.state)) {
+        return Error.InvalidFormat;
+    }
+
+    // Build JSON body with required fields (includes state)
     const body = try std.fmt.allocPrint(allocator,
-        \\\{{
-        \\\  "code": "{s}",
-        \\\  "grant_type": "authorization_code",
-        \\\  "client_id": "{s}",
-        \\\  "redirect_uri": "{s}",
-        \\\  "code_verifier": "{s}"
-        \\\}}
-    , .{ authorizationCode, OAUTH_CLIENT_ID, redirectUri, pkceParams.verifier });
+        \\{{
+        \\  "grant_type": "authorization_code",
+        \\  "client_id": "{s}",
+        \\  "code_verifier": "{s}",
+        \\  "code": "{s}",
+        \\  "redirect_uri": "{s}",
+        \\  "state": "{s}"
+        \\}}
+    , .{ OAUTH_CLIENT_ID, pkceParams.verifier, actual_code, redirectUri, pkceParams.state });
     defer allocator.free(body);
 
     // Initialize HTTP client
@@ -309,18 +327,15 @@ pub fn exchangeCodeForTokens(
     // Parse URL
     const uri = try std.Uri.parse(OAUTH_TOKEN_ENDPOINT);
 
-    // Make POST request to token endpoint with browser-like headers
+    // Make POST request to token endpoint
     var req = try httpClient.request(.POST, uri, .{
         .headers = .{
-            .user_agent = .{ .override = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15" },
+            .user_agent = .{ .override = "docz/1.0" },
             .content_type = .{ .override = "application/json" },
         },
         .extra_headers = &.{
             .{ .name = "Accept", .value = "application/json" },
             .{ .name = "Accept-Encoding", .value = "identity" },
-            .{ .name = "Accept-Language", .value = "en-US,en;q=0.9" },
-            .{ .name = "Origin", .value = "https://claude.ai" },
-            .{ .name = "Referer", .value = "https://claude.ai/" },
         },
     });
     defer req.deinit();
@@ -344,7 +359,10 @@ pub fn exchangeCodeForTokens(
         std.log.err("Response body: {s}", .{error_body});
         return Error.AuthError;
     }
-    const reader = resp.reader(&[_]u8{});
+    var transfer_buf: [4096]u8 = undefined;
+    var decomp: std.http.Decompress = undefined;
+    var decomp_buf: [std.compress.flate.max_window_len]u8 = undefined;
+    const reader = resp.readerDecompressing(&transfer_buf, &decomp, &decomp_buf);
     const response_body = try reader.*.allocRemaining(allocator, std.Io.Limit.limited(1024 * 1024));
     defer allocator.free(response_body);
     return try parseTokenResponse(allocator, response_body);
@@ -352,13 +370,13 @@ pub fn exchangeCodeForTokens(
 
 /// Refresh access token using refresh token (JSON per spec)
 pub fn refreshTokens(allocator: std.mem.Allocator, refreshToken: []const u8) !Credentials {
-    // Prepare JSON body
+    // Build JSON body for refresh
     const body = try std.fmt.allocPrint(allocator,
-        \\\{{
-        \\\  "grant_type": "refresh_token",
-        \\\  "refresh_token": "{s}",
-        \\\  "client_id": "{s}"
-        \\\}}
+        \\{{
+        \\  "grant_type": "refresh_token",
+        \\  "refresh_token": "{s}",
+        \\  "client_id": "{s}"
+        \\}}
     , .{ refreshToken, OAUTH_CLIENT_ID });
     defer allocator.free(body);
 
@@ -369,18 +387,15 @@ pub fn refreshTokens(allocator: std.mem.Allocator, refreshToken: []const u8) !Cr
     // Parse URL
     const uri = try std.Uri.parse(OAUTH_TOKEN_ENDPOINT);
 
-    // Make POST request to token endpoint with browser-like headers
+    // Make POST request to token endpoint
     var req = try httpClient.request(.POST, uri, .{
         .headers = .{
-            .user_agent = .{ .override = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15" },
+            .user_agent = .{ .override = "docz/1.0" },
             .content_type = .{ .override = "application/json" },
         },
         .extra_headers = &.{
             .{ .name = "Accept", .value = "application/json" },
             .{ .name = "Accept-Encoding", .value = "identity" },
-            .{ .name = "Accept-Language", .value = "en-US,en;q=0.9" },
-            .{ .name = "Origin", .value = "https://claude.ai" },
-            .{ .name = "Referer", .value = "https://claude.ai/" },
         },
     });
     defer req.deinit();
@@ -402,7 +417,10 @@ pub fn refreshTokens(allocator: std.mem.Allocator, refreshToken: []const u8) !Cr
         std.log.err("Response body: {s}", .{error_body});
         return Error.AuthError;
     }
-    const reader2 = resp2.reader(&[_]u8{});
+    var transfer_buf2: [4096]u8 = undefined;
+    var decomp2: std.http.Decompress = undefined;
+    var decomp_buf2: [std.compress.flate.max_window_len]u8 = undefined;
+    const reader2 = resp2.readerDecompressing(&transfer_buf2, &decomp2, &decomp_buf2);
     const response_body = try reader2.*.allocRemaining(allocator, std.Io.Limit.limited(1024 * 1024));
     defer allocator.free(response_body);
     return try parseTokenResponse(allocator, response_body);
@@ -470,24 +488,13 @@ pub fn saveCredentials(allocator: std.mem.Allocator, filePath: []const u8, creds
     };
 }
 
-/// Convenience: Full login using loopback server and PKCE; persists tokens and returns creds.
+/// Convenience: Full login with manual code entry (no loopback server)
 pub fn loginWithLoopback(allocator: std.mem.Allocator) !Credentials {
     const pkceParams = try generatePkceParams(allocator);
     errdefer pkceParams.deinit(allocator);
 
-    // Use port 8080 - confirmed working in successful authorization events
-    const callback_port: u16 = 8080;
-
-    var server = try @import("loopback_server.zig").LoopbackServer.init(allocator, .{
-        .host = "localhost",
-        .port = callback_port,
-        .path = "/callback",
-        .timeout_ms = 300000,
-    });
-    defer server.deinit();
-
-    const redirect_uri = try server.getRedirectUri(allocator);
-    defer allocator.free(redirect_uri);
+    // Use the official redirect URI
+    const redirect_uri = "https://console.anthropic.com/oauth/code/callback";
 
     const auth_url = try buildAuthorizationUrlWithRedirect(allocator, pkceParams, redirect_uri);
     defer allocator.free(auth_url);
@@ -496,7 +503,9 @@ pub fn loginWithLoopback(allocator: std.mem.Allocator) !Credentials {
     std.log.info("URL: {s}", .{auth_url});
     std.log.info("", .{});
     std.log.info("Please complete the authorization in your browser.", .{});
-    std.log.info("The browser will handle Cloudflare verification if needed.", .{});
+    std.log.info("After authorization, copy the code from the redirect URL.", .{});
+    std.log.info("The code will be in the format: xxxxxxxx#yyyyyyyy", .{});
+    std.log.info("Please paste the ENTIRE code including the part after # and press Enter:", .{});
 
     // Try to open browser
     launchBrowser(auth_url) catch |err| {
@@ -504,12 +513,18 @@ pub fn loginWithLoopback(allocator: std.mem.Allocator) !Credentials {
         std.log.info("Please open this URL manually: {s}", .{auth_url});
     };
 
-    // Wait for callback
-    const callback_result = try server.waitForCallback(pkceParams.state);
-    defer callback_result.deinit(allocator);
+    // Read authorization code from stdin
+    const stdin = std.fs.File.stdin();
+    var buffer: [1024]u8 = undefined;
+    const bytesRead = try stdin.readAll(buffer[0..]);
+    if (bytesRead == 0) {
+        return Error.AuthError;
+    }
+
+    const authCode = std.mem.trim(u8, buffer[0..bytesRead], " \t\r\n");
 
     // Exchange code for tokens
-    const creds = try exchangeCodeForTokens(allocator, callback_result.code, pkceParams, redirect_uri);
+    const creds = try exchangeCodeForTokens(allocator, authCode, pkceParams, redirect_uri);
     errdefer creds.deinit(allocator);
 
     // Save credentials
@@ -678,8 +693,8 @@ pub fn setupOAuth(allocator: std.mem.Allocator) !Credentials {
 
     const authCode = std.mem.trim(u8, buffer[0..bytesRead], " \t\r\n");
 
-    // Exchange code for tokens
-    const credentials = try exchangeCodeForTokens(allocator, authCode, pkceParams, "http://localhost:8080/callback");
+    // Exchange code for tokens using the official redirect URI
+    const credentials = try exchangeCodeForTokens(allocator, authCode, pkceParams, "https://console.anthropic.com/oauth/code/callback");
 
     // Save credentials
     try saveCredentials(allocator, "claude_oauth_creds.json", credentials);

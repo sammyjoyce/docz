@@ -1,65 +1,67 @@
-# Markdown Agent - Foundation-Integrated Agent
+# Markdown Agent
 
-A comprehensive markdown document processing agent integrated with the foundation framework. Provides tools for creating, editing, validating, and managing markdown documents.
+Enterprise-grade markdown systems architect integrated with the foundation framework.
 
-## 🎯 Purpose
+## Overview
 
-This agent is specifically designed for users who work with:
-- **Technical documentation** (API docs, user manuals, specifications)
-- **Academic writing** (research papers, dissertations, articles)
-- **Content publishing** (blogs, tutorials, guides)
-- **Project documentation** (READMEs, wikis, knowledge bases)
-- **Long-form content** (books, reports, comprehensive guides)
+The Markdown agent provides comprehensive tools for creating, editing, validating, and managing markdown documents. It's fully integrated with the foundation framework's shared engine and authentication system.
 
-## 📁 File Structure
+## Architecture
 
 ```
 agents/markdown/
-├── main.zig                   # Entry point (delegates to foundation.agent_main)
-├── spec.zig                   # Agent spec (system prompt + tool registration)
-├── agent.zig                  # Agent implementation
-├── config.zon                 # Agent configuration (aligned with foundation.config.AgentConfig)
-├── system_prompt.txt          # System prompt template
-├── tools/                     # JSON tools (io, content_editor, validate, document, workflow, file)
-├── lib/                       # Helper libraries (fs, text, link, meta, template)
-└── support/                   # Support modules
+├── main.zig          # Entry point using foundation.agent_main.runAgent()
+├── spec.zig          # AgentSpec with buildSystemPrompt() and registerTools()
+├── agent.zig         # Markdown struct with config and system prompt loading
+├── config.zon        # Configuration aligned with foundation.config.AgentConfig
+├── system_prompt.txt # System prompt template
+└── tools/            # JSON tools registered via foundation.tools
+    ├── io.zig
+    ├── content_editor.zig
+    ├── validate.zig
+    ├── document.zig
+    ├── workflow.zig
+    └── file.zig
 ```
 
-## 🛠️ Registered Tools
+## Tools
 
-The agent registers 6 JSON tools via foundation.tools.registerJsonTool:
-- **io**: Document I/O operations
-- **content_editor**: Content editing operations
-- **validate**: Validation operations
-- **document**: Document operations
-- **workflow**: Workflow engine operations
-- **file**: File system operations
+The agent registers 6 markdown-specific JSON tools:
+- **io**: Read files, search content, explore workspace
+- **content_editor**: Edit and modify markdown content
+- **validate**: Validate document quality and structure
+- **document**: Create documents, convert formats, apply templates
+- **workflow**: Execute multi-step workflows and batch operations
+- **file**: Manage files and directories
 
-## 🚀 Getting Started
-
-### Build and Run
+## Building and Running
 
 ```bash
 # Build the agent
 zig build -Dagent=markdown
 
-# Run the agent
+# Run with foundation engine and auth
 zig build -Dagent=markdown run
 
-# Run with authentication (handled by foundation CLI)
-# First authenticate:
-zig build -Dagent=markdown run -- auth login
-# Then run normally:
-zig build -Dagent=markdown run
-zig build -Dagent=markdown run auth status
-
+# Test the agent
+zig build -Dagent=markdown test
 # Run with a prompt
 zig build -Dagent=markdown run -- "Create a technical guide about Git workflows"
+
+# Test the agent
+zig build -Dagent=markdown test
 ```
 
 ## 🎛️ Configuration
 
-Edit `config.zon` and `tools.zon` as needed. Load at runtime via CLI `--config` flag.
+The agent uses `config.zon` which follows the `foundation.config.AgentConfig` schema with proper field mapping:
+- `concurrentOperationsMax` for maximum concurrent operations
+- `timeoutMsDefault` for default timeout
+- `inputSizeMax` / `outputSizeMax` for size limits
+- `processingTimeMsMax` for processing time limits
+- `modelDefault` for default model
+
+Additional markdown-specific settings are available for heading style, list style, etc.
 
 ## 🤝 Contributing
 

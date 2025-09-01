@@ -40,7 +40,9 @@ pub fn execute(allocator: std.mem.Allocator, params: json.Value) !json.Value {
 fn executeInternal(allocator: std.mem.Allocator, params: json.Value) !json.Value {
     const params_obj = params.object;
 
-    const command_str = params_obj.get("command").?.string;
+    const command_val = params_obj.get("command") orelse return Error.UnknownCommand;
+    if (command_val != .string) return Error.InvalidParameters;
+    const command_str = command_val.string;
     const command = Command.fromString(command_str) orelse return Error.UnknownCommand;
 
     return switch (command) {

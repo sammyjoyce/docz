@@ -1327,9 +1327,19 @@ const ModuleBuilder = struct {
             .optimize = self.ctx.optimize,
         });
 
-        // Add foundation module so tests can import it
+        // Add foundation and engine modules so tests can import them
         const foundation_mod = self.createModule("src/foundation.zig");
         test_module.addImport("foundation", foundation_mod);
+        const engine_mod = self.createModule("src/engine.zig");
+        engine_mod.addImport("foundation", foundation_mod);
+        test_module.addImport("core_engine", engine_mod);
+
+        // Expose markdown agent spec as a named module for tests
+        // to avoid forbidden relative imports outside the module root (Zig 0.15.1)
+        var markdown_spec_mod = self.createModule("agents/markdown/spec.zig");
+        markdown_spec_mod.addImport("foundation", foundation_mod);
+        markdown_spec_mod.addImport("core_engine", engine_mod);
+        test_module.addImport("markdown_spec", markdown_spec_mod);
 
         return test_module;
     }

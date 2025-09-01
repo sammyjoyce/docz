@@ -2,7 +2,7 @@
 
 const std = @import("std");
 const testing = std.testing;
-const foundation = @import("../src/foundation.zig");
+const foundation = @import("foundation");
 
 test "config.zon loads with mapped keys" {
     const allocator = testing.allocator;

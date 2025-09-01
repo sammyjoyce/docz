@@ -28,7 +28,8 @@ pub fn runAgent(comptime Engine: type, allocator: std.mem.Allocator, spec: anyty
 
     // Handle run command (default)
     if (cliArgsConst.len == 0 or (cliArgsConst.len > 0 and std.mem.eql(u8, cliArgsConst[0], "run"))) {
-        try runAgentLoop(Engine, allocator, spec, cliArgsConst[1..]);
+        const runArgs = if (cliArgsConst.len > 0) cliArgsConst[1..] else cliArgsConst[0..0];
+        try runAgentLoop(Engine, allocator, spec, runArgs);
         return;
     }
 

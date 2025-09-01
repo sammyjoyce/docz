@@ -498,7 +498,22 @@ pub fn createJsonToolWrapper(jsonFunc: JsonFunction) ToolFn {
             var aw: std.Io.Writer.Allocating = .fromArrayList(allocator, &buffer);
             std.json.Stringify.value(value, .{}, &aw.writer) catch return ToolError.UnexpectedError;
             buffer = aw.toArrayList();
-            return buffer.toOwnedSlice(allocator) catch return ToolError.UnexpectedError;
+            const out = buffer.toOwnedSlice(allocator) catch return ToolError.UnexpectedError;
+
+            // Best-effort cleanup of JSON values constructed by tools
+            switch (value) {
+                .object => |obj_const| {
+                    var obj = obj_const; // make mutable copy for deinit
+                    obj.deinit();
+                },
+                .array => |arr_const| {
+                    var arr = arr_const;
+                    arr.deinit();
+                },
+                else => {},
+            }
+
+            return out;
         }
     }.wrapper;
 }

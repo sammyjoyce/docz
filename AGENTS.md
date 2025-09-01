@@ -119,3 +119,14 @@
 - `agents/<name>/agent.zig`: Agent implementation (types/helpers); no run loop, no CLI parsing.
 
 Canonical loop and SSE/tool handling live in `src/engine.zig`. Do not duplicate the loop in agent code or in `src/`—use the shared engine.
+
+## Available Agents
+
+### markdown
+- **Version:** 2.0.0
+- **Description:** Enterprise-grade markdown systems architect & quality guardian
+- **Integration:** Fully integrated with foundation framework
+- **Tools:** 6 JSON tools (io, content_editor, validate, document, workflow, file)
+- **Features:** Document processing, validation, workflow management
+- **Config:** Uses foundation.config.AgentConfig with proper field mapping
+- **TUI:** Disabled by default (terminal_ui = false in manifest)
