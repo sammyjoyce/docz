@@ -495,7 +495,11 @@ pub fn runWithOptions(
             });
 
             // If assistant requested tool_use, execute it and continue the loop
-            if (sharedContext.tools.hasPending and sharedContext.tools.jsonComplete) |toolJson| {
+            if (sharedContext.tools.hasPending) {
+                const toolJson = sharedContext.tools.jsonComplete orelse {
+                    // No accumulated tool JSON; finish turn
+                    break;
+                };
                 const toolName = sharedContext.tools.toolName orelse "";
                 if (toolName.len == 0) {
                     std.log.warn("Tool use without name; skipping.", .{});
@@ -505,12 +509,14 @@ pub fn runWithOptions(
                 const toolFn = registry.get(toolName);
                 if (toolFn == null) {
                     std.log.warn("Unknown tool requested by model: {s}", .{toolName});
-                    const errMsg = try std.fmt.allocPrint(allocator, "{\"error\":\"unknown_tool\",\"tool\":\"{s}\"}", .{toolName});
+                    const errMsg = try std.fmt.allocPrint(allocator, "{{\"error\":\"unknown_tool\",\"tool\":\"{s}\"}}", .{toolName});
                     try messages.append(.{ .role = .tool, .content = errMsg });
                 } else {
                     // Execute tool; keep context hygiene
-                    const out = toolFn.?(&sharedContext, allocator, toolJson) catch |e| blk_err: {
-                        const msg = try std.fmt.allocPrint(allocator, "{\"error\":\"{s}\"}", .{@errorName(e)});
+                    var tool_ctx = foundation.context.SharedContext.init(allocator);
+                    defer tool_ctx.deinit();
+                    const out = toolFn.?(&tool_ctx, allocator, toolJson) catch |e| blk_err: {
+                        const msg = try std.fmt.allocPrint(allocator, "{{\"error\":\"{s}\"}}", .{@errorName(e)});
                         break :blk_err msg;
                     };
                     try messages.append(.{ .role = .tool, .content = out });
@@ -535,7 +541,7 @@ pub fn runWithOptions(
                 if (messages.items.len > max_history) {
                     const excess = messages.items.len - max_history;
                     // Shift remaining messages down (drop oldest without freeing to avoid double-free)
-                    std.mem.move(Message, messages.items[0..], messages.items[excess..]);
+                    std.mem.copyForwards(Message, messages.items[0..], messages.items[excess..]);
                     messages.resize(max_history) catch {};
                 }
 

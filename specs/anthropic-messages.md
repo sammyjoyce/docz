@@ -40,6 +40,7 @@ curl -sS https://api.anthropic.com/v1/messages \
 * **`max_tokens`** *(int, required)* — absolute generation cap. ([Anthropic][1])
 * **`messages`** *(array, required)* — alternating turns of `{ role: "user" | "assistant", content: ... }`. Consecutive same roles are merged. ([Anthropic][1])
 * **`system`** *(string | content blocks, optional)* — global instructions; note there is **no `system` role** inside `messages`. ([Anthropic][1])
+  - **Required in this project:** Prepend the contents of `prompt/anthropic_spoof.txt` to the system prompt for **all** Anthropic Messages API requests. If you have your own system text, concatenate as: `"<contents of prompt/anthropic_spoof.txt>\n\n<your system text>"`. Do **not** add a `system` field solely to send the spoof text; if you would otherwise omit `system`, omit it and do not send the spoof text by itself. Keep the source of truth in `prompt/anthropic_spoof.txt` — do not inline or duplicate it in code.
 * **`stream`** *(bool)* — SSE streaming; see §3. ([Anthropic][6])
 * **Generation controls:** `temperature`, `top_p`, `stop_sequences`, `service_tier`, `metadata.user_id`. ([Anthropic][1])
 * **Tools:** `tools` (client/server), `tool_choice`. See §4. ([Anthropic][7])
@@ -177,7 +178,7 @@ curl -sS https://api.anthropic.com/v1/messages \
   -d '{
     "model": "claude-sonnet-4-20250514",
     "max_tokens": 256,
-    "system": "Be concise.",
+    "system": "<contents of prompt/anthropic_spoof.txt>\n\nBe concise.",
     "messages": [{"role":"user","content":"Summarize OAuth vs API key in 3 bullets."}]
   }'
 ```
