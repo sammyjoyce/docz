@@ -39,7 +39,8 @@ pub fn exchangeCodeForTokens(allocator: std.mem.Allocator, authorizationCode: []
     , .{ code, state, oauthClientId, oauthRedirectUri, pkceParams.codeVerifier });
     defer allocator.free(body);
 
-    std.log.debug("Sending OAuth token request with JSON body: {s}", .{body});
+    // Avoid logging sensitive fields (code, state, verifier). Log only action.
+    std.log.debug("Sending OAuth token request (JSON body redacted)", .{});
 
     const headers = [_]curl.Header{
         .{ .name = "content-type", .value = "application/json" },
@@ -237,6 +238,23 @@ pub fn saveOAuthCredentials(allocator: std.mem.Allocator, filePath: []const u8, 
     defer file.close();
 
     try file.writeAll(jsonContent);
+}
+
+test "saveOAuthCredentials uses 0600 file mode" {
+    const a = std.testing.allocator;
+    const tmp_name = "test_oauth_creds.json";
+    defer std.fs.cwd().deleteFile(tmp_name) catch {};
+    const creds = Credentials{ .type = "oauth", .accessToken = "a", .refreshToken = "b", .expiresAt = 1 };
+    try saveOAuthCredentials(a, tmp_name, creds);
+    var f = try std.fs.cwd().openFile(tmp_name, .{});
+    defer f.close();
+    const st = try f.stat();
+    // On Unix, check mode bits (0600). On non-Unix, just ensure file exists.
+    if (@hasField(@TypeOf(st), "mode")) {
+        const m: u32 = @intCast(st.mode);
+        // Only owner read/write bits set
+        try std.testing.expect((m & 0o777) == 0o600);
+    }
 }
 
 pub fn extractCodeFromCallbackUrl(allocator: std.mem.Allocator, callbackUrl: []const u8) ![]u8 {

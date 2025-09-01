@@ -207,12 +207,17 @@ pub const Registry = struct {
 
     /// Register a tool with full metadata
     pub fn registerWithMeta(self: *Registry, meta: Tool) !void {
-        // Independent ownership for key and value fields to avoid double-free
-        const key_name = try self.allocator.dupe(u8, meta.name);
-        errdefer self.allocator.free(key_name);
+        // Make three distinct copies of the tool name so that:
+        // 1) map key, 2) metadata key, and 3) metadata.value.name
+        // are independently owned and can be freed without aliasing.
+        const map_key = try self.allocator.dupe(u8, meta.name);
+        errdefer self.allocator.free(map_key);
 
-        const ownedName = try self.allocator.dupe(u8, meta.name);
-        errdefer self.allocator.free(ownedName);
+        const meta_key = try self.allocator.dupe(u8, meta.name);
+        errdefer self.allocator.free(meta_key);
+
+        const value_name = try self.allocator.dupe(u8, meta.name);
+        errdefer self.allocator.free(value_name);
 
         const ownedDesc = try self.allocator.dupe(u8, meta.description);
         errdefer self.allocator.free(ownedDesc);
@@ -226,17 +231,22 @@ pub const Registry = struct {
         const ownedAgent = try self.allocator.dupe(u8, meta.agent);
         errdefer self.allocator.free(ownedAgent);
 
-        try self.map.put(ownedName, meta.func);
+        // Insert map entry first. If it fails, fall through errdefer frees.
+        try self.map.put(map_key, meta.func);
+        // We intentionally do NOT free map_key on success; map owns it until deinit.
 
         const ownedMeta = Tool{
-            .name = ownedName,
+            .name = value_name,
             .description = ownedDesc,
             .func = meta.func,
             .category = ownedCategory,
             .version = ownedVersion,
             .agent = ownedAgent,
         };
-        try self.metadata.put(key_name, ownedMeta);
+
+        // Insert metadata. On success, the table owns meta_key and value fields.
+        try self.metadata.put(meta_key, ownedMeta);
+        // Do not free meta_key or value_name after this point.
     }
 
     /// Register multiple tools from a module using comptime reflection

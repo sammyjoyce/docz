@@ -112,6 +112,30 @@ pub const HTTPClient = struct {
         // Configure URL
         _ = c.curl_easy_setopt(handle, c.CURLOPT_URL, req.url.ptr);
 
+        // Proxy configuration via standard env vars (HTTP_PROXY/HTTPS_PROXY/NO_PROXY)
+        // libcurl often respects these by default, but we set explicitly for clarity.
+        // Respect both uppercase and lowercase variants. NO_PROXY disables proxy for hosts listed.
+        if (std.process.getEnvVarOwned(self.allocator, "HTTPS_PROXY")) |https_proxy| {
+            defer self.allocator.free(https_proxy);
+            _ = c.curl_easy_setopt(handle, c.CURLOPT_PROXY, https_proxy.ptr);
+        } else |_| if (std.process.getEnvVarOwned(self.allocator, "https_proxy")) |https_proxy| {
+            defer self.allocator.free(https_proxy);
+            _ = c.curl_easy_setopt(handle, c.CURLOPT_PROXY, https_proxy.ptr);
+        } else |_| if (std.process.getEnvVarOwned(self.allocator, "HTTP_PROXY")) |http_proxy| {
+            defer self.allocator.free(http_proxy);
+            _ = c.curl_easy_setopt(handle, c.CURLOPT_PROXY, http_proxy.ptr);
+        } else |_| if (std.process.getEnvVarOwned(self.allocator, "http_proxy")) |http_proxy| {
+            defer self.allocator.free(http_proxy);
+            _ = c.curl_easy_setopt(handle, c.CURLOPT_PROXY, http_proxy.ptr);
+        } else |_| {}
+        if (std.process.getEnvVarOwned(self.allocator, "NO_PROXY")) |no_proxy| {
+            defer self.allocator.free(no_proxy);
+            _ = c.curl_easy_setopt(handle, c.CURLOPT_NOPROXY, no_proxy.ptr);
+        } else |_| if (std.process.getEnvVarOwned(self.allocator, "no_proxy")) |no_proxy| {
+            defer self.allocator.free(no_proxy);
+            _ = c.curl_easy_setopt(handle, c.CURLOPT_NOPROXY, no_proxy.ptr);
+        } else |_| {}
+
         // Configure HTTP method
         switch (req.method) {
             .GET => {
@@ -250,6 +274,28 @@ pub const HTTPClient = struct {
 
         // Configure URL and method (same as regular request)
         _ = c.curl_easy_setopt(handle, c.CURLOPT_URL, req.url.ptr);
+
+        // Proxy configuration via env vars for streaming as well
+        if (std.process.getEnvVarOwned(self.allocator, "HTTPS_PROXY")) |https_proxy| {
+            defer self.allocator.free(https_proxy);
+            _ = c.curl_easy_setopt(handle, c.CURLOPT_PROXY, https_proxy.ptr);
+        } else |_| if (std.process.getEnvVarOwned(self.allocator, "https_proxy")) |https_proxy| {
+            defer self.allocator.free(https_proxy);
+            _ = c.curl_easy_setopt(handle, c.CURLOPT_PROXY, https_proxy.ptr);
+        } else |_| if (std.process.getEnvVarOwned(self.allocator, "HTTP_PROXY")) |http_proxy| {
+            defer self.allocator.free(http_proxy);
+            _ = c.curl_easy_setopt(handle, c.CURLOPT_PROXY, http_proxy.ptr);
+        } else |_| if (std.process.getEnvVarOwned(self.allocator, "http_proxy")) |http_proxy| {
+            defer self.allocator.free(http_proxy);
+            _ = c.curl_easy_setopt(handle, c.CURLOPT_PROXY, http_proxy.ptr);
+        } else |_| {}
+        if (std.process.getEnvVarOwned(self.allocator, "NO_PROXY")) |no_proxy| {
+            defer self.allocator.free(no_proxy);
+            _ = c.curl_easy_setopt(handle, c.CURLOPT_NOPROXY, no_proxy.ptr);
+        } else |_| if (std.process.getEnvVarOwned(self.allocator, "no_proxy")) |no_proxy| {
+            defer self.allocator.free(no_proxy);
+            _ = c.curl_easy_setopt(handle, c.CURLOPT_NOPROXY, no_proxy.ptr);
+        } else |_| {}
 
         switch (req.method) {
             .GET => {

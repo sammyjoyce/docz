@@ -23,11 +23,18 @@ pub const AuthSubcommand = enum {
     login,
     status,
     refresh,
+    logout,
+    whoami,
+    test_call,
 
     pub fn fromString(str: []const u8) ?AuthSubcommand {
         if (std.mem.eql(u8, str, "login")) return .login;
         if (std.mem.eql(u8, str, "status")) return .status;
         if (std.mem.eql(u8, str, "refresh")) return .refresh;
+        if (std.mem.eql(u8, str, "logout")) return .logout;
+        if (std.mem.eql(u8, str, "whoami")) return .whoami;
+        if (std.mem.eql(u8, str, "test-call")) return .test_call;
+        if (std.mem.eql(u8, str, "test_call")) return .test_call; // tolerate underscore
         return null;
     }
 };

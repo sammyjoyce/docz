@@ -238,16 +238,23 @@ pub const Parser = struct {
             .chat => {
                 // For chat command, check if this is actually a command
                 if (std.mem.eql(u8, arg, "auth")) {
+                    // Expect a subcommand after 'auth'
                     if (i.* + 1 >= args.len) {
                         return CliError.MissingValue; // auth subcommand is required
                     }
                     i.* += 1;
                     const subcommand_str = args[i.*];
                     if (AuthSubcommand.fromString(subcommand_str)) |sub| {
-                        result.positionals.command = Command{ .auth = sub };
+                        // Record command and subcommand in ParsedArgs
+                        result.positionals.command = .auth;
+                        // Set the side-channel subcommand field used by router
+                        @field(result, "authSubcommand") = sub;
                     } else {
                         return CliError.UnknownSubcommand;
                     }
+                } else if (std.mem.eql(u8, arg, "run")) {
+                    // 'run' is an alias of the default chat command; nothing to change.
+                    // Simply skip this positional and allow following text to be treated as the prompt.
                 } else {
                     // Not a known command, treat as prompt for default chat command
                     if (result.positionals.prompt == null) {

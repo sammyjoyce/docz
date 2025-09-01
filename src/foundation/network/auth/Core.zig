@@ -176,8 +176,14 @@ pub fn createClient(allocator: std.mem.Allocator) AuthError!AuthClient {
     if (loadCredentials(allocator, oauthPath)) |credentials| {
         if (credentials.isValid()) {
             std.log.info("Using OAuth authentication", .{});
-            return AuthClient.initWithPath(allocator, credentials, oauthPath) catch |err| {
+            // Sanitize tokens (strip whitespace/newlines) before storing
+            const sanitized = sanitizeCredentials(allocator, credentials) catch |e| {
                 credentials.deinit(allocator);
+                return e;
+            };
+            credentials.deinit(allocator);
+            return AuthClient.initWithPath(allocator, sanitized, oauthPath) catch |err| {
+                sanitized.deinit(allocator);
                 return err;
             };
         }
@@ -186,6 +192,35 @@ pub fn createClient(allocator: std.mem.Allocator) AuthError!AuthClient {
 
     std.log.err("No authentication method available", .{});
     return AuthError.MissingAPIKey;
+}
+
+/// Remove whitespace/newlines from OAuth tokens to avoid malformed Authorization headers
+fn stripWhitespace(allocator: std.mem.Allocator, input: []const u8) ![]u8 {
+    var out = try allocator.alloc(u8, input.len);
+    var n: usize = 0;
+    for (input) |c| {
+        if (c == '\n' or c == '\r' or c == ' ' or c == '\t') continue;
+        out[n] = c;
+        n += 1;
+    }
+    return if (n == input.len) out else try allocator.realloc(out, n);
+}
+
+fn sanitizeCredentials(allocator: std.mem.Allocator, creds: AuthCredentials) !AuthCredentials {
+    return switch (creds) {
+        .oauth => |c| blk: {
+            const at = try stripWhitespace(allocator, c.accessToken);
+            const rt = try stripWhitespace(allocator, c.refreshToken);
+            break :blk AuthCredentials{ .oauth = .{
+                .type = try allocator.dupe(u8, c.type),
+                .accessToken = at,
+                .refreshToken = rt,
+                .expiresAt = c.expiresAt,
+            } };
+        },
+        .api_key => creds,
+        .none => creds,
+    };
 }
 
 /// Load authentication credentials from file

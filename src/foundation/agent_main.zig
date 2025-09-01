@@ -150,24 +150,23 @@ pub fn runAgent(allocator: std.mem.Allocator, spec: anytype) !void {
 
     // Quick routing for explicit subcommands (e.g., `auth login`)
     if (cliArgsConst.len > 0 and std.mem.eql(u8, cliArgsConst[0], "auth")) {
+        const cli = @import("foundation").cli;
+        const Commands = cli.Auth.Commands;
+
+        // Determine subcommand and dispatch to CLI auth handlers
         const sub = if (cliArgsConst.len > 1) cliArgsConst[1] else "login";
-        if (std.mem.eql(u8, sub, "login") or std.mem.eql(u8, sub, "oauth")) {
-            // TODO: Auth commands should be in foundation.cli.auth.Commands or similar
-            std.debug.print("Auth login command not yet implemented\n", .{});
-            return;
-        } else if (std.mem.eql(u8, sub, "status")) {
-            // TODO: Auth commands should be in foundation.cli.auth.Commands or similar
-            std.debug.print("Auth status command not yet implemented\n", .{});
-            return;
-        } else if (std.mem.eql(u8, sub, "refresh")) {
-            // TODO: Auth commands should be in foundation.cli.auth.Commands or similar
-            std.debug.print("Auth refresh command not yet implemented\n", .{});
-            return;
-        } else {
+        const cmd = Commands.AuthCommand.fromString(sub) orelse {
             std.log.err("Unknown auth subcommand: {s}", .{sub});
-            std.log.info("Available: login | status | refresh", .{});
+            std.log.info("Available: login | status | refresh | logout | whoami | test-call", .{});
             return error.InvalidChoice;
-        }
+        };
+
+        // Execute and return to avoid running the rest of the engine path
+        Commands.runAuthCommand(allocator, cmd) catch |err| {
+            std.log.err("Auth command failed: {any}", .{err});
+            return err;
+        };
+        return;
     }
 
     // Check if launcher mode is requested (no arguments or --launcher flag)

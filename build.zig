@@ -1781,6 +1781,7 @@ pub fn build(b: *std.Build) !void {
     const scaffold_agent = b.option(bool, "scaffold-agent", "Scaffold a new agent") orelse false;
     const optimize_binary = b.option(bool, "optimize-binary", "Enable manifest-driven binary optimization") orelse true;
     const include_legacy = b.option(bool, "legacy", "Include legacy modules (deprecated)") orelse false;
+    const http_verbose = b.option(bool, "http-verbose", "Enable libcurl verbose logging by default") orelse false;
 
     // ========================================================================
     // FEATURE FLAGS - Control which foundation modules are compiled
@@ -1795,6 +1796,8 @@ pub fn build(b: *std.Build) !void {
     const enable_network = b.option(bool, "enable-network", "Enable network layer") orelse null;
     const enable_anthropic = b.option(bool, "enable-anthropic", "Enable Anthropic provider") orelse null;
     const enable_auth = b.option(bool, "enable-auth", "Enable authentication system") orelse null;
+    // Optional override for Anthropic OAuth beta header
+    const anthropic_beta_opt = b.option([]const u8, "anthropic-beta-oauth", "Override Anthropic OAuth beta header value (default: oauth-2025-04-20)") orelse null;
     const enable_sixel = b.option(bool, "enable-sixel", "Enable Sixel graphics") orelse null;
     const enable_theme_dev = b.option(bool, "enable-theme-dev", "Enable theme development tools") orelse null;
 
@@ -1913,6 +1916,11 @@ pub fn build(b: *std.Build) !void {
     build_opts.addOption(bool, "enable_sixel", feature_config.sixel);
     build_opts.addOption(bool, "enable_theme_dev", feature_config.theme_dev);
     build_opts.addOption([]const u8, "build_profile", build_profile);
+    build_opts.addOption(bool, "http_verbose_default", http_verbose);
+    // Feature-gated OAuth beta header for Anthropic; default per specs/oauth.md
+    build_opts.addOption([]const u8, "anthropic_beta_oauth", anthropic_beta_opt orelse "oauth-2025-04-20");
+    // Require localhost host in redirect Host header (default true). If set false, 127.0.0.1 is also accepted.
+    build_opts.addOption(bool, "oauth_allow_localhost", true);
 
     // Handle special build modes
     if (list_agents) {

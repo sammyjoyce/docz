@@ -105,6 +105,9 @@
                 .login = "Setup OAuth authentication with Claude",
                 .status = "Check current authentication status",
                 .refresh = "Refresh OAuth access token",
+                .whoami = "Print auth method and OAuth expiry",
+                .logout = "Remove stored OAuth credentials",
+                .test_call = "Verify Messages API call succeeds (use --stream for SSE)",
             },
         },
         .chat = .{

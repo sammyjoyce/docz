@@ -12,11 +12,17 @@ pub const AuthCommand = enum {
     login,
     status,
     refresh,
+    logout,
+    whoami,
+    test_call,
 
     pub fn fromString(str: []const u8) ?AuthCommand {
         if (std.mem.eql(u8, str, "login")) return .login;
         if (std.mem.eql(u8, str, "status")) return .status;
         if (std.mem.eql(u8, str, "refresh")) return .refresh;
+        if (std.mem.eql(u8, str, "logout")) return .logout;
+        if (std.mem.eql(u8, str, "whoami")) return .whoami;
+        if (std.mem.eql(u8, str, "test-call") or std.mem.eql(u8, str, "test_call")) return .test_call;
         return null;
     }
 };
@@ -27,14 +33,21 @@ pub fn runAuthCommand(allocator: std.mem.Allocator, command: AuthCommand) !void 
         .login => try handleLoginCommand(allocator),
         .status => try handleStatusCommand(allocator),
         .refresh => try handleRefreshCommand(allocator),
+        .logout => try handleLogoutCommand(allocator),
+        .whoami => try handleWhoamiCommand(allocator),
+        .test_call => try handleTestCallCommand(allocator),
     }
 }
 
 /// Handle login command (OAuth setup)
 pub fn handleLoginCommand(allocator: std.mem.Allocator) !void {
     std.log.info("Starting OAuth authentication setup...", .{});
-    // Prefer the local callback server flow for seamless login (no manual code paste)
-    try oauth.completeOAuthFlow(allocator);
+    // Prefer callback server flow for a code-less experience.
+    oauth.completeOAuthFlow(allocator) catch |err| {
+        std.log.warn("Callback flow failed ({any}); falling back to manual code entry.", .{err});
+        // setupOAuth returns credentials; assign to '_' to acknowledge the value
+        _ = try oauth.setupOAuth(allocator);
+    };
 }
 
 /// Handle status command
@@ -90,4 +103,70 @@ pub fn displayStatus(allocator: std.mem.Allocator) !void {
             std.debug.print("❌ No authentication configured\n", .{});
         },
     }
+}
+
+/// Remove stored OAuth credentials
+pub fn handleLogoutCommand(allocator: std.mem.Allocator) !void {
+    _ = allocator;
+    std.fs.cwd().deleteFile("claude_oauth_creds.json") catch |err| switch (err) {
+        error.FileNotFound => std.log.info("No credentials file found", .{}),
+        else => return err,
+    };
+    std.log.info("✅ Logged out (credentials removed)", .{});
+}
+
+/// Print basic identity info
+pub fn handleWhoamiCommand(allocator: std.mem.Allocator) !void {
+    var client = core.createClient(allocator) catch |err| {
+        std.debug.print("❌ No authentication configured: {}\n", .{err});
+        return;
+    };
+    defer client.deinit();
+    switch (client.credentials) {
+        .api_key => std.debug.print("Using API key authentication\n", .{}),
+        .oauth => |c| {
+            const now: i64 = std.time.timestamp();
+            const secs = c.expiresAt - now;
+            std.debug.print("Using OAuth (expires in {d}s)\n", .{secs});
+        },
+        .none => std.debug.print("Unauthenticated\n", .{}),
+    }
+}
+
+/// Make a small Messages API request to verify headers/auth
+pub fn handleTestCallCommand(allocator: std.mem.Allocator) !void {
+    const net = @import("../../network.zig");
+    const anthropic = net.Anthropic;
+
+    var ac = core.createClient(allocator) catch |err| {
+        std.debug.print("❌ No authentication configured: {}\n", .{err});
+        return;
+    };
+    defer ac.deinit();
+
+    var client: anthropic.Client.Client = switch (ac.credentials) {
+        .api_key => |k| try anthropic.Client.Client.init(allocator, k),
+        .oauth => |c| blk: {
+            const creds = anthropic.Models.Credentials{
+                .type = c.type,
+                .accessToken = c.accessToken,
+                .refreshToken = c.refreshToken,
+                .expiresAt = c.expiresAt,
+            };
+            break :blk try anthropic.Client.Client.initWithOAuth(allocator, creds, "claude_oauth_creds.json");
+        },
+        .none => return,
+    };
+    defer client.deinit();
+
+    var ctx = anthropic.Client.SharedContext.init(allocator);
+    defer ctx.deinit();
+
+    const msg = [_]anthropic.Message{.{ .role = .user, .content = "ping" }};
+    const res = try client.complete(&ctx, .{ .model = "claude-3-5-sonnet-20241022", .messages = &msg, .maxTokens = 16 });
+    defer {
+        var m = res;
+        m.deinit();
+    }
+    std.debug.print("✅ Test call succeeded\n", .{});
 }

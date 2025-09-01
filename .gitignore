@@ -25,3 +25,4 @@ zig-out/
 test_anthropic
 test_binary
 test_ux
+/.zig-cache-global

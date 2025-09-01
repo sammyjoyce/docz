@@ -55,7 +55,7 @@ test "registerJsonToolWithRequiredFields enforces missing parameter" {
         }
     }.run;
 
-    const required = [_][]const u8{ "msg" };
+    const required = [_][]const u8{"msg"};
     try tools.registerJsonToolWithRequiredFields(&registry, "echo_req", "Echo with required field", echoTool, "test_agent", &required);
 
     const tf = registry.get("echo_req") orelse return error.ToolNotFound;

@@ -1,6 +1,7 @@
 const std = @import("std");
 const engine = @import("core_engine");
 const spec = @import("spec.zig");
+const foundation = @import("foundation");
 
 // Minimal CLI → engine adapter for the markdown agent.
 // Keeps foundation decoupled from the engine while ensuring the agent runs.
@@ -14,10 +15,43 @@ pub fn main() !void {
     defer std.process.argsFree(allocator, argv);
     const args = if (argv.len > 1) argv[1..] else argv[0..0];
 
+    // Minimal auth subcommands passthrough: `docz auth <sub>`
+    if (args.len >= 1 and std.mem.eql(u8, args[0], "auth")) {
+        const Commands = foundation.cli.Auth.Commands;
+        const sub = if (args.len >= 2) args[1] else "status";
+        if (Commands.AuthCommand.fromString(sub)) |cmd| {
+            try Commands.runAuthCommand(allocator, cmd);
+            return;
+        } else {
+            std.debug.print("Unknown auth subcommand: {s}\n", .{sub});
+            return;
+        }
+    }
+
+    // Special flag to trigger OAuth login for minimal agent
+    if (args.len == 1 and (std.mem.eql(u8, args[0], "--oauth") or std.mem.eql(u8, args[0], "auth") or std.mem.eql(u8, args[0], "login"))) {
+        try foundation.cli.Auth.handleLoginCommand(allocator);
+        return;
+    }
+    if (args.len == 1 and (std.mem.eql(u8, args[0], "--oauth-paste") or std.mem.eql(u8, args[0], "--paste-oauth"))) {
+        const oauth = foundation.network.Auth.OAuth;
+        const creds = try oauth.setupOAuth(allocator);
+        creds.deinit(allocator);
+        return;
+    }
+    // Support for Anthropic-specific OAuth if needed
+    if (args.len == 1 and std.mem.eql(u8, args[0], "--anthropic-oauth")) {
+        const anthropic_auth = foundation.network.AnthropicAuth;
+        std.log.info("Using Anthropic OAuth: client_id = {s}", .{anthropic_auth.oauthClientId});
+        return;
+    }
+
     // Build minimal engine options with sensible defaults.
+    // Use a model from the Anthropic Models list
+    const default_model = "claude-sonnet-4-0"; // From foundation.network.AnthropicAuth model pricing table
     var options = engine.CliOptions{
         .options = .{
-            .model = "claude-3-haiku-20240307",
+            .model = default_model,
             .output = null,
             .input = null,
             .system = null,

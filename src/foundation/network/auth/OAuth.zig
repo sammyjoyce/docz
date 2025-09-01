@@ -18,6 +18,7 @@ const curl = @import("../curl.zig");
 
 // Re-export OAuth constants and types from anthropic
 pub const OAUTH_CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e";
+// Use claude.ai for the authorization step; it supports localhost redirects.
 pub const OAUTH_AUTHORIZATION_URL = "https://claude.ai/oauth/authorize";
 pub const OAUTH_TOKEN_ENDPOINT = "https://console.anthropic.com/v1/oauth/token";
 pub const OAUTH_REDIRECT_URI = "https://console.anthropic.com/oauth/code/callback";
@@ -85,18 +86,31 @@ pub const Provider = struct {
     scopes: []const []const u8,
 
     /// Build authorization URL with PKCE parameters
+    /// All query parameter values are URL-encoded per RFC 3986.
     pub fn buildAuthorizationUrl(self: Provider, allocator: std.mem.Allocator, pkceParams: Pkce) ![]u8 {
         const scopesJoined = try std.mem.join(allocator, " ", self.scopes);
         defer allocator.free(scopesJoined);
 
-        return try std.fmt.allocPrint(allocator, "{s}?client_id={s}&response_type=code&redirect_uri={s}&scope={s}&code_challenge={s}&code_challenge_method=S256&state={s}", .{
-            self.authorizationUrl,
-            self.clientId,
-            self.redirectUri,
-            scopesJoined,
-            pkceParams.codeChallenge,
-            pkceParams.state,
-        });
+        const client_id_enc = try urlEncode(allocator, self.clientId);
+        defer allocator.free(client_id_enc);
+
+        const redirect_enc = try urlEncode(allocator, self.redirectUri);
+        defer allocator.free(redirect_enc);
+
+        const scopes_enc = try urlEncode(allocator, scopesJoined);
+        defer allocator.free(scopes_enc);
+
+        const challenge_enc = try urlEncode(allocator, pkceParams.codeChallenge);
+        defer allocator.free(challenge_enc);
+
+        const state_enc = try urlEncode(allocator, pkceParams.state);
+        defer allocator.free(state_enc);
+
+        return try std.fmt.allocPrint(
+            allocator,
+            "{s}?client_id={s}&response_type=code&redirect_uri={s}&scope={s}&code_challenge={s}&code_challenge_method=S256&state={s}",
+            .{ self.authorizationUrl, client_id_enc, redirect_enc, scopes_enc, challenge_enc, state_enc },
+        );
     }
 };
 
@@ -188,6 +202,7 @@ pub fn buildAuthorizationUrl(allocator: std.mem.Allocator, pkceParams: Pkce) ![]
         .scopes = &scopes,
     };
 
+    // For callback flow, we don't need &code=true; keep original URL.
     return try provider.buildAuthorizationUrl(allocator, pkceParams);
 }
 
@@ -360,17 +375,17 @@ pub fn exchangeCodeForTokens(
     return try parseTokenResponse(allocator, response.body);
 }
 
-/// Refresh access token using refresh token
+/// Refresh access token using refresh token (JSON body per spec)
 pub fn refreshTokens(allocator: std.mem.Allocator, refreshToken: []const u8) !Credentials {
-    // Prepare form data for token refresh
-    const fields = [_]struct { key: []const u8, value: []const u8 }{
-        .{ .key = "grant_type", .value = "refresh_token" },
-        .{ .key = "refresh_token", .value = refreshToken },
-        .{ .key = "client_id", .value = OAUTH_CLIENT_ID },
-    };
-
-    const formData = try encodeFormData(allocator, fields[0..]);
-    defer allocator.free(formData);
+    // Prepare JSON body
+    const body = try std.fmt.allocPrint(allocator,
+        \\\{{
+        \\\  "grant_type": "refresh_token",
+        \\\  "refresh_token": "{s}",
+        \\\  "client_id": "{s}"
+        \\\}}
+    , .{ refreshToken, OAUTH_CLIENT_ID });
+    defer allocator.free(body);
 
     // Initialize HTTP client
     var httpClient = try curl.HTTPClient.init(allocator);
@@ -378,8 +393,9 @@ pub fn refreshTokens(allocator: std.mem.Allocator, refreshToken: []const u8) !Cr
 
     // Prepare headers
     const headers = [_]curl.Header{
-        .{ .name = "Content-Type", .value = "application/x-www-form-urlencoded" },
+        .{ .name = "Content-Type", .value = "application/json" },
         .{ .name = "Accept", .value = "application/json" },
+        .{ .name = "User-Agent", .value = "docz/1.0 (libcurl)" },
     };
 
     // Make POST request to token endpoint
@@ -387,7 +403,7 @@ pub fn refreshTokens(allocator: std.mem.Allocator, refreshToken: []const u8) !Cr
         .method = .POST,
         .url = OAUTH_TOKEN_ENDPOINT,
         .headers = &headers,
-        .body = formData,
+        .body = body,
         .timeout_ms = 30000,
         .verify_ssl = true,
     };
@@ -402,12 +418,6 @@ pub fn refreshTokens(allocator: std.mem.Allocator, refreshToken: []const u8) !Cr
     if (response.status_code != 200) {
         std.log.err("OAuth token refresh failed with status: {d}", .{response.status_code});
         std.log.err("Response body: {s}", .{response.body});
-
-        // Try to parse error response
-        if (std.mem.indexOf(u8, response.body, "error")) |_| {
-            _ = parseTokenResponse(allocator, response.body) catch {};
-        }
-
         return Error.AuthError;
     }
 
@@ -415,26 +425,144 @@ pub fn refreshTokens(allocator: std.mem.Allocator, refreshToken: []const u8) !Cr
     return try parseTokenResponse(allocator, response.body);
 }
 
-pub fn parseCredentials(allocator: std.mem.Allocator, jsonContent: []const u8) !Credentials {
-    const parsed = try std.json.parseFromSlice(Credentials, allocator, jsonContent, .{});
-    defer parsed.deinit();
+/// Convenience: Full login using loopback server and PKCE; persists tokens and returns creds.
+pub fn loginWithLoopback(allocator: std.mem.Allocator) !Credentials {
+    const pkceParams = try generatePkceParams(allocator);
+    errdefer pkceParams.deinit(allocator);
 
+    var result = try runCallbackServer(allocator, pkceParams, null);
+    defer result.deinit(allocator);
+
+    const redirect = result.redirectUri orelse OAUTH_REDIRECT_URI;
+    const creds = try exchangeCodeForTokens(allocator, result.code, pkceParams, redirect);
+    errdefer creds.deinit(allocator);
+
+    try saveCredentials(allocator, "claude_oauth_creds.json", creds);
+    return creds;
+}
+
+/// Convenience: Load current access token from default credentials file.
+pub fn getAccessToken(allocator: std.mem.Allocator, path: []const u8) ![]u8 {
+    const file = try std.fs.cwd().openFile(path, .{});
+    defer file.close();
+    const data = try file.readToEndAlloc(allocator, 16 * 1024);
+    defer allocator.free(data);
+    const creds = try parseCredentials(allocator, data);
+    defer creds.deinit(allocator);
+    return try allocator.dupe(u8, creds.accessToken);
+}
+
+/// Convenience: Minimal Messages API POST using OAuth Bearer headers.
+pub fn fetchWithAnthropicOAuth(
+    allocator: std.mem.Allocator,
+    access_token: []const u8,
+    body_json: []const u8,
+) ![]u8 {
+    const http = curl;
+    var client = try http.HTTPClient.init(allocator);
+    defer client.deinit();
+
+    const bearer = try std.fmt.allocPrint(allocator, "Bearer {s}", .{access_token});
+    defer allocator.free(bearer);
+
+    const version = "2023-06-01";
+    const beta = @import("root").build_options.anthropic_beta_oauth;
+
+    const headers = [_]http.Header{
+        .{ .name = "Authorization", .value = bearer },
+        .{ .name = "Content-Type", .value = "application/json" },
+        .{ .name = "Accept", .value = "application/json" },
+        .{ .name = "anthropic-version", .value = version },
+        .{ .name = "anthropic-beta", .value = beta },
+        .{ .name = "User-Agent", .value = "docz/1.0 (libcurl)" },
+    };
+
+    const req = http.HTTPRequest{
+        .method = .POST,
+        .url = "https://api.anthropic.com/v1/messages",
+        .headers = &headers,
+        .body = body_json,
+        .timeout_ms = 60000,
+        .verify_ssl = true,
+    };
+    var resp = try client.request(req);
+    defer resp.deinit();
+    if (resp.status_code != 200) return Error.AuthError;
+    return try allocator.dupe(u8, resp.body);
+}
+
+pub fn parseCredentials(allocator: std.mem.Allocator, jsonContent: []const u8) !Credentials {
+    // Preferred: snake_case fields per repo spec
+    const Snake = struct {
+        type: []const u8,
+        access_token: []const u8,
+        refresh_token: []const u8,
+        expires_at: i64,
+    };
+
+    if (std.json.parseFromSlice(Snake, allocator, jsonContent, .{})) |parsed| {
+        defer parsed.deinit();
+        return Credentials{
+            .type = try allocator.dupe(u8, parsed.value.type),
+            .accessToken = try allocator.dupe(u8, parsed.value.access_token),
+            .refreshToken = try allocator.dupe(u8, parsed.value.refresh_token),
+            .expiresAt = parsed.value.expires_at,
+        };
+    } else |_| {}
+
+    // Back-compat: camelCase fields
+    const Camel = struct {
+        type: []const u8,
+        accessToken: []const u8,
+        refreshToken: []const u8,
+        expiresAt: i64,
+    };
+    const parsed2 = try std.json.parseFromSlice(Camel, allocator, jsonContent, .{});
+    defer parsed2.deinit();
     return Credentials{
-        .type = try allocator.dupe(u8, parsed.value.type),
-        .accessToken = try allocator.dupe(u8, parsed.value.accessToken),
-        .refreshToken = try allocator.dupe(u8, parsed.value.refreshToken),
-        .expiresAt = parsed.value.expiresAt,
+        .type = try allocator.dupe(u8, parsed2.value.type),
+        .accessToken = try allocator.dupe(u8, parsed2.value.accessToken),
+        .refreshToken = try allocator.dupe(u8, parsed2.value.refreshToken),
+        .expiresAt = parsed2.value.expiresAt,
     };
 }
 
 pub fn saveCredentials(allocator: std.mem.Allocator, filePath: []const u8, creds: Credentials) !void {
-    const jsonContent = try std.fmt.allocPrint(allocator, "{{\"type\":\"{s}\",\"accessToken\":\"{s}\",\"refreshToken\":\"{s}\",\"expiresAt\":{d}}}", .{ creds.type, creds.accessToken, creds.refreshToken, creds.expiresAt });
+    // Persist in snake_case per spec; chmod 0600. Write atomically via a temp file then rename.
+    const jsonContent = try std.fmt.allocPrint(
+        allocator,
+        \\{{\"type\":\"{s}\",\"access_token\":\"{s}\",\"refresh_token\":\"{s}\",\"expires_at\":{}}}
+    ,
+        .{ creds.type, creds.accessToken, creds.refreshToken, creds.expiresAt },
+    );
     defer allocator.free(jsonContent);
 
-    const file = try std.fs.cwd().createFile(filePath, .{ .mode = 0o600 });
-    defer file.close();
+    var cwd = std.fs.cwd();
+    // Create temp path in same directory to ensure rename is atomic on most filesystems
+    const tmpPath = try std.fmt.allocPrint(allocator, "{s}.tmp", .{filePath});
+    defer allocator.free(tmpPath);
 
-    try file.writeAll(jsonContent);
+    {
+        const tmp = try cwd.createFile(tmpPath, .{ .mode = 0o600 });
+        defer tmp.close();
+        try tmp.writeAll(jsonContent);
+        // Ensure contents are on disk before rename
+        tmp.sync() catch {};
+    }
+
+    // Rename temp → final path
+    cwd.rename(tmpPath, filePath) catch |err| {
+        // Best-effort fallback: write directly (kept for portability)
+        switch (err) {
+            error.FileNotFound, error.AccessDenied, error.RenameAcrossMountPoints => {
+                const file = try cwd.createFile(filePath, .{ .mode = 0o600 });
+                defer file.close();
+                try file.writeAll(jsonContent);
+                return;
+            },
+            else => return err,
+        }
+    };
 }
 
 pub fn launchBrowser(url: []const u8) !void {
@@ -519,3 +647,53 @@ pub const Result = callbackServer.Result;
 pub const runCallbackServer = callbackServer.runCallbackServer;
 pub const integrateWithWizard = callbackServer.integrateWithWizard;
 pub const completeOAuthFlow = callbackServer.completeOAuthFlow;
+
+test "parseCredentials supports snake_case and camelCase" {
+    const a = std.testing.allocator;
+
+    const snake = "{\"type\":\"oauth\",\"access_token\":\"a\",\"refresh_token\":\"b\",\"expires_at\":123}";
+    const c1 = try parseCredentials(a, snake);
+    defer c1.deinit(a);
+    try std.testing.expectEqualStrings("oauth", c1.type);
+    try std.testing.expectEqualStrings("a", c1.accessToken);
+    try std.testing.expectEqualStrings("b", c1.refreshToken);
+    try std.testing.expectEqual(@as(i64, 123), c1.expiresAt);
+
+    const camel = "{\"type\":\"oauth\",\"accessToken\":\"x\",\"refreshToken\":\"y\",\"expiresAt\":42}";
+    const c2 = try parseCredentials(a, camel);
+    defer c2.deinit(a);
+    try std.testing.expectEqualStrings("oauth", c2.type);
+    try std.testing.expectEqualStrings("x", c2.accessToken);
+    try std.testing.expectEqualStrings("y", c2.refreshToken);
+    try std.testing.expectEqual(@as(i64, 42), c2.expiresAt);
+}
+
+test "pkce generator produces valid lengths and URL-safe challenge" {
+    const a = std.testing.allocator;
+    const pk = try generatePkceParams(a);
+    defer pk.deinit(a);
+    // Verifier length within RFC bounds [43,128]
+    try std.testing.expect(pk.codeVerifier.len >= 43 and pk.codeVerifier.len <= 128);
+    // Challenge should be URL-safe base64 (no '=' padding)
+    for (pk.codeChallenge) |c| {
+        const ok = (c >= 'A' and c <= 'Z') or (c >= 'a' and c <= 'z') or (c >= '0' and c <= '9') or c == '-' or c == '_';
+        try std.testing.expect(ok);
+    }
+}
+
+test "authorization URL uses localhost callback" {
+    const a = std.testing.allocator;
+    const scopes = [_][]const u8{ "org:create_api_key", "user:profile", "user:inference" };
+    const p = Provider{
+        .clientId = OAUTH_CLIENT_ID,
+        .authorizationUrl = OAUTH_AUTHORIZATION_URL,
+        .tokenUrl = OAUTH_TOKEN_ENDPOINT,
+        .redirectUri = "http://localhost:54321/callback",
+        .scopes = &scopes,
+    };
+    const pk = try generatePkceParams(a);
+    defer pk.deinit(a);
+    const url = try p.buildAuthorizationUrl(a, pk);
+    defer a.free(url);
+    try std.testing.expect(std.mem.indexOf(u8, url, "redirect_uri=http%3A%2F%2Flocalhost%3A54321%2Fcallback") != null);
+}

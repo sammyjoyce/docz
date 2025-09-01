@@ -102,8 +102,8 @@ fn initAnthropicClient(allocator: std.mem.Allocator) !anthropic.Client.Client {
 /// Start OAuth flow using the auth system
 pub fn setupOauth(allocator: std.mem.Allocator) !void {
     const oauth = foundation.network.Auth.OAuth;
-    const credentials = try oauth.setupOAuth(allocator);
-    defer credentials.deinit(allocator);
+    // Prefer automated local callback flow (no paste code)
+    try oauth.completeOAuthFlow(allocator);
 
     std.log.info("✅ OAuth setup completed successfully!", .{});
     std.log.info("🔐 You can now use Claude Pro/Max features with your subscription.", .{});
@@ -185,21 +185,143 @@ fn flushAllOutputs() !void {
 }
 
 fn onToken(ctx: *anthropic.Client.SharedContext, chunk: []const u8) void {
-    _ = ctx;
-    initStdoutWriter();
-    const stdout = &stdoutWriter.interface;
-    stdout.writeAll(chunk) catch |err| {
-        std.log.err("Failed to write streaming output to stdout: {any}", .{err});
-    };
-
-    if (outputWriterInitialized) {
-        if (outputWriter) |*writer| {
-            const fileWriter = &writer.interface;
-            fileWriter.writeAll(chunk) catch |err| {
-                std.log.err("Failed to write streaming output to file: {any}", .{err});
-            };
+    // Anthropic SSE sends JSON events per specs/anthropic-messages.md.
+    // We only print assistant text deltas; for tool JSON deltas we accumulate
+    // and defer emission until content_block_stop.
+    const A = ctx.anthropic.allocator;
+    const Parsed = std.json.Value;
+    var parsed = std.json.parseFromSlice(Parsed, A, chunk, .{ .ignore_unknown_fields = true }) catch {
+        // Fallback: not JSON; stream raw chunk
+        initStdoutWriter();
+        const stdout = &stdoutWriter.interface;
+        stdout.writeAll(chunk) catch {};
+        if (outputWriterInitialized) {
+            if (outputWriter) |*writer| _ = writer.interface.writeAll(chunk) catch {};
         }
+        return;
+    };
+    defer parsed.deinit();
+
+    if (parsed.value != .object) return;
+    const obj = parsed.value.object;
+    const tval = obj.get("type") orelse return;
+    if (tval != .string) return;
+    const etype = tval.string;
+
+    // Helper to write visible text
+    const emitText = struct {
+        fn out(s: []const u8) void {
+            initStdoutWriter();
+            const stdout = &stdoutWriter.interface;
+            stdout.writeAll(s) catch {};
+            if (outputWriterInitialized) {
+                if (outputWriter) |*writer| _ = writer.interface.writeAll(s) catch {};
+            }
+        }
+    }.out;
+
+    // message_start can carry model/id — recorded by client.complete path.
+    // Detect start of tool_use content blocks to capture tool name/id.
+    if (std.mem.eql(u8, etype, "content_block_start")) {
+        if (obj.get("content_block")) |cv| {
+            if (cv == .object) {
+                const cobj = cv.object;
+                if (cobj.get("type")) |tv| {
+                    if (tv == .string and std.mem.eql(u8, tv.string, "tool_use")) {
+                        if (cobj.get("name")) |nv| {
+                            if (nv == .string) {
+                                if (ctx.tools.toolName) |old| A.free(old);
+                                ctx.tools.toolName = A.dupe(u8, nv.string) catch null;
+                            }
+                        }
+                        if (cobj.get("id")) |iv| {
+                            if (iv == .string) {
+                                if (ctx.tools.toolId) |old| A.free(old);
+                                ctx.tools.toolId = A.dupe(u8, iv.string) catch null;
+                            }
+                        }
+                        // reset any previous buffer
+                        ctx.tools.tokenBuffer.clearRetainingCapacity();
+                    }
+                }
+            }
+        }
+        return;
     }
+    if (std.mem.eql(u8, etype, "content_block_delta")) {
+        const maybe_delta = obj.get("delta") orelse return;
+        if (maybe_delta != .object) return;
+        const d_obj = maybe_delta.object;
+
+        const maybe_dt = d_obj.get("type") orelse return;
+        if (maybe_dt != .string) return;
+        const dtt = maybe_dt.string;
+
+        if (std.mem.eql(u8, dtt, "text_delta")) {
+            if (d_obj.get("text")) |tv| {
+                if (tv == .string) {
+                    // Print assistant text
+                    emitText(tv.string);
+                    // Also keep a copy in contentCollector for completeness
+                    ctx.anthropic.contentCollector.appendSlice(A, tv.string) catch {};
+                }
+            }
+        } else if (std.mem.eql(u8, dtt, "input_json_delta") or std.mem.eql(u8, dtt, "tool_use_delta") or std.mem.eql(u8, dtt, "output_tool_use_delta")) {
+            // Parameters streamed as partial JSON; do not print until stop.
+            if (d_obj.get("partial_json")) |pj| {
+                if (pj == .string) {
+                    ctx.tools.tokenBuffer.appendSlice(pj.string) catch {};
+                }
+            }
+        }
+        return;
+    }
+
+    if (std.mem.eql(u8, etype, "content_block_stop")) {
+        // If we accumulated tool JSON for an active tool_use block, mark pending
+        if (ctx.tools.tokenBuffer.items.len > 0 and (ctx.tools.toolName != null or ctx.tools.toolId != null)) {
+            if (ctx.tools.jsonComplete) |old| A.free(old);
+            ctx.tools.jsonComplete = A.dupe(u8, ctx.tools.tokenBuffer.items) catch null;
+            ctx.tools.hasPending = ctx.tools.jsonComplete != null;
+            ctx.tools.tokenBuffer.clearRetainingCapacity();
+        }
+        return;
+    }
+
+    if (std.mem.eql(u8, etype, "message_delta")) {
+        // Optional metadata: stop_reason, usage
+        if (obj.get("delta")) |dv| {
+            if (dv == .object) {
+                const d_obj = dv.object;
+                if (d_obj.get("stop_reason")) |sv| {
+                    if (sv == .string) {
+                        // Can be "tool_use", "end_turn", etc. Keep it in context.
+                        if (ctx.anthropic.stopReason) |old| A.free(old);
+                        ctx.anthropic.stopReason = A.dupe(u8, sv.string) catch null;
+                    }
+                }
+            }
+        }
+        if (obj.get("usage")) |uv| {
+            if (uv == .object) {
+                const uo = uv.object;
+                if (uo.get("output_tokens")) |ot| {
+                    if (ot == .integer) ctx.anthropic.usageInfo.outputTokens = @intCast(ot.integer);
+                }
+                if (uo.get("input_tokens")) |it| {
+                    if (it == .integer) ctx.anthropic.usageInfo.inputTokens = @intCast(it.integer);
+                }
+            }
+        }
+        return;
+    }
+
+    if (std.mem.eql(u8, etype, "message_stop")) {
+        // Nothing to do; finalization handled by caller.
+        return;
+    }
+
+    // Unknown event: ignore silently
 }
 
 fn writeCompleteResponse(content: []const u8) void {
@@ -241,6 +363,8 @@ pub fn runWithOptions(
         break :blk_client c0;
     };
     defer client.deinit();
+    // Enable wire logs via CLI verbose; build default handled in client
+    client.setHttpVerbose(options.flags.verbose);
 
     if (client.isOAuthSession()) {
         std.log.info("🔐 Using Claude Pro/Max OAuth authentication", .{});
@@ -352,13 +476,76 @@ pub fn runWithOptions(
             std.log.info("Estimated cost: ${d:.4} (Input: ${d:.4}, Output: ${d:.4})", .{ totalCost, inputCost, outputCost });
         }
     } else {
-        try client.stream(&sharedContext, .{
-            .model = options.options.model,
-            .maxTokens = options.options.tokensMax,
-            .temperature = options.options.temperature,
-            .messages = messages.items,
-            .onToken = onToken,
-        });
+        // Streaming loop with minimal tool execution support
+        const max_history: usize = 10;
+        while (true) {
+            // Reset pending tool flags for this turn
+            sharedContext.tools.hasPending = false;
+            if (sharedContext.tools.jsonComplete) |s| {
+                allocator.free(s);
+                sharedContext.tools.jsonComplete = null;
+            }
+
+            try client.stream(&sharedContext, .{
+                .model = options.options.model,
+                .maxTokens = options.options.tokensMax,
+                .temperature = options.options.temperature,
+                .messages = messages.items,
+                .onToken = onToken,
+            });
+
+            // If assistant requested tool_use, execute it and continue the loop
+            if (sharedContext.tools.hasPending and sharedContext.tools.jsonComplete) |toolJson| {
+                const toolName = sharedContext.tools.toolName orelse "";
+                if (toolName.len == 0) {
+                    std.log.warn("Tool use without name; skipping.", .{});
+                    break;
+                }
+
+                const toolFn = registry.get(toolName);
+                if (toolFn == null) {
+                    std.log.warn("Unknown tool requested by model: {s}", .{toolName});
+                    const errMsg = try std.fmt.allocPrint(allocator, "{\"error\":\"unknown_tool\",\"tool\":\"{s}\"}", .{toolName});
+                    try messages.append(.{ .role = .tool, .content = errMsg });
+                } else {
+                    // Execute tool; keep context hygiene
+                    const out = toolFn.?(&sharedContext, allocator, toolJson) catch |e| blk_err: {
+                        const msg = try std.fmt.allocPrint(allocator, "{\"error\":\"{s}\"}", .{@errorName(e)});
+                        break :blk_err msg;
+                    };
+                    try messages.append(.{ .role = .tool, .content = out });
+                }
+
+                // Clear tool tracking now that we've appended the result
+                if (sharedContext.tools.toolName) |s| {
+                    allocator.free(s);
+                    sharedContext.tools.toolName = null;
+                }
+                if (sharedContext.tools.toolId) |s| {
+                    allocator.free(s);
+                    sharedContext.tools.toolId = null;
+                }
+                if (sharedContext.tools.jsonComplete) |s| {
+                    allocator.free(s);
+                    sharedContext.tools.jsonComplete = null;
+                }
+                sharedContext.tools.hasPending = false;
+
+                // Trim history aggressively (keep last 10 messages)
+                if (messages.items.len > max_history) {
+                    const excess = messages.items.len - max_history;
+                    // Shift remaining messages down (drop oldest without freeing to avoid double-free)
+                    std.mem.move(Message, messages.items[0..], messages.items[excess..]);
+                    messages.resize(max_history) catch {};
+                }
+
+                // Continue loop with new tool result appended
+                continue;
+            }
+
+            // No tool requested; finish
+            break;
+        }
     }
 
     try flushAllOutputs();

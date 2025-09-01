@@ -181,6 +181,11 @@ pub const Server = struct {
     pub fn deinit(self: *Self) void {
         self.shutdown();
 
+        // Clean up any unconsumed results in the channel
+        if (self.resultChannel.tryReceive()) |result| {
+            result.deinit(self.allocator);
+        }
+
         // Clean up sessions
         // NOTE: The server does not own PKCE buffers.
         // Ownership stays with the caller that generated them
@@ -200,6 +205,7 @@ pub const Server = struct {
         const max_attempts: u16 = 20; // 20 consecutive ports
 
         while (attempts < max_attempts) : (attempts += 1) {
+            // Bind to loopback; redirect_uri uses localhost host, binding remains on loopback
             const address = try std.net.Address.parseIp("127.0.0.1", chosen_port);
             const maybe = std.net.Address.listen(address, .{}) catch |err| switch (err) {
                 error.AddressInUse => {
@@ -294,6 +300,7 @@ pub const Server = struct {
                 }
 
                 // Attach the actual redirect URI used by the local server
+                // RFC 8252: prefer 127.0.0.1 over localhost
                 result.redirectUri = try std.fmt.allocPrint(self.allocator, "http://localhost:{d}/callback", .{self.config.port});
                 return result;
             }
@@ -359,7 +366,7 @@ pub const Server = struct {
     }
 
     /// Parse OAuth callback request
-    fn parseCallbackRequest(self: *Self, request: []const u8) !Result {
+    pub fn parseCallbackRequest(self: *Self, request: []const u8) !Result {
         // Find the request line
         const firstLineEnd = std.mem.indexOf(u8, request, "\r\n") orelse request.len;
         const requestLine = request[0..firstLineEnd];
@@ -374,8 +381,45 @@ pub const Server = struct {
         const pathEnd = std.mem.indexOf(u8, requestLine[pathStart..], " ") orelse return oauth.Error.InvalidFormat;
         const fullPath = requestLine[pathStart .. pathStart + pathEnd];
 
+        // Enforce exact callback path
+        const qmark = std.mem.indexOfScalar(u8, fullPath, '?') orelse return oauth.Error.InvalidFormat;
+        const pathOnly = fullPath[0..qmark];
+        if (!std.mem.eql(u8, pathOnly, "/callback")) {
+            return oauth.Error.InvalidFormat;
+        }
+
+        // Enforce redirect host policy from build options (default: require localhost)
+        const root = @import("root");
+        const has_build = @hasDecl(root, "build_options");
+        const build_options = if (has_build) @import("build_options") else struct {
+            pub const oauth_allow_localhost: bool = true;
+        };
+        const must_require_localhost = build_options.oauth_allow_localhost;
+
+        // Parse Host header if present
+        var host_ok: bool = true;
+        if (std.mem.indexOf(u8, request, "\r\nHost:")) |host_line_start| {
+            const line_end = std.mem.indexOf(u8, request[host_line_start..], "\r\n") orelse request.len - host_line_start;
+            const header_line = std.mem.trim(u8, request[host_line_start .. host_line_start + line_end], " \t\r\n");
+            // header_line like "Host: localhost:PORT"
+            if (std.mem.indexOf(u8, header_line, ":")) |colon| {
+                const value = std.mem.trim(u8, header_line[colon + 1 ..], " \t");
+                // Extract host token up to optional colon
+                const hostVal = blk: {
+                    if (std.mem.indexOfScalar(u8, value, ':')) |p| break :blk value[0..p];
+                    break :blk value;
+                };
+                if (must_require_localhost) {
+                    host_ok = std.ascii.eqlIgnoreCase(hostVal, "localhost");
+                } else {
+                    host_ok = std.ascii.eqlIgnoreCase(hostVal, "localhost") or std.ascii.eqlIgnoreCase(hostVal, "127.0.0.1");
+                }
+            }
+        }
+        if (!host_ok) return oauth.Error.InvalidFormat;
+
         // Parse query parameters
-        const queryStart = std.mem.indexOf(u8, fullPath, "?") orelse return oauth.Error.InvalidFormat;
+        const queryStart = qmark;
         const query = fullPath[queryStart + 1 ..];
 
         var code: ?[]const u8 = null;
@@ -391,13 +435,13 @@ pub const Server = struct {
             const value = param[eqPos + 1 ..];
 
             if (std.mem.eql(u8, key, "code")) {
-                code = try self.allocator.dupe(u8, try urlDecode(self.allocator, value));
+                code = try urlDecode(self.allocator, value);
             } else if (std.mem.eql(u8, key, "state")) {
-                state = try self.allocator.dupe(u8, try urlDecode(self.allocator, value));
+                state = try urlDecode(self.allocator, value);
             } else if (std.mem.eql(u8, key, "error")) {
-                errorCode = try self.allocator.dupe(u8, try urlDecode(self.allocator, value));
+                errorCode = try urlDecode(self.allocator, value);
             } else if (std.mem.eql(u8, key, "error_description")) {
-                errorDescription = try self.allocator.dupe(u8, try urlDecode(self.allocator, value));
+                errorDescription = try urlDecode(self.allocator, value);
             }
         }
 
@@ -684,17 +728,19 @@ pub fn runCallbackServer(
     // Start the server
     try server.start();
 
-    // Build and display authorization URL
-    const authUrl = try oauth.buildAuthorizationUrl(allocator, pkceParams);
-    defer allocator.free(authUrl);
-
-    // Update redirect URI to use local callback server
-    // Use the actual bound port (may differ if we had to fall back)
+    // Build authorization URL with the actual loopback redirect (RFC 8252 prefers 127.0.0.1)
     const localRedirect = try std.fmt.allocPrint(allocator, "http://localhost:{d}/callback", .{server.config.port});
     defer allocator.free(localRedirect);
 
-    // Replace redirect URI in auth URL
-    const updatedAuthUrl = try std.mem.replaceOwned(u8, allocator, authUrl, oauth.OAUTH_REDIRECT_URI, localRedirect);
+    const scopes = [_][]const u8{ "org:create_api_key", "user:profile", "user:inference" };
+    const provider = oauth.Provider{
+        .clientId = oauth.OAUTH_CLIENT_ID,
+        .authorizationUrl = oauth.OAUTH_AUTHORIZATION_URL,
+        .tokenUrl = oauth.OAUTH_TOKEN_ENDPOINT,
+        .redirectUri = localRedirect,
+        .scopes = &scopes,
+    };
+    const updatedAuthUrl = try provider.buildAuthorizationUrl(allocator, pkceParams);
     defer allocator.free(updatedAuthUrl);
 
     print("\n{s}🔐 OAuth Authorization Required{s}\n", .{ ansi.style.bold, ansi.style.reset });
@@ -702,6 +748,9 @@ pub fn runCallbackServer(
 
     print("Please visit this URL to authorize the application:\n\n", .{});
     print("{s}{s}{s}\n\n", .{ ansi.fg.cyan, updatedAuthUrl, ansi.style.reset });
+
+    // Echo the actual redirect URI being used so users can confirm registration
+    print("Redirect URI: {s}{s}{s}\n\n", .{ ansi.fg.gray, localRedirect, ansi.style.reset });
 
     // Try to launch browser
     oauth.launchBrowser(updatedAuthUrl) catch {

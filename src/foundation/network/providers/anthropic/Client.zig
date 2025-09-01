@@ -21,6 +21,12 @@ const curl = @import("../../curl.zig");
 const models = @import("Models.zig");
 const oauth = @import("Auth.zig"); // Needed for token refresh
 const stream_module = @import("Stream.zig");
+const root = @import("root");
+const has_build_options = @hasDecl(root, "build_options");
+const build_options = if (has_build_options) @import("build_options") else struct {
+    pub const http_verbose_default = false;
+    pub const anthropic_beta_oauth = "oauth-2025-04-20";
+};
 
 // Shared context used during requests/streaming. Mirrors the subset of
 // fields the client needs from the higher-level foundation context while
@@ -55,16 +61,41 @@ pub const SharedContext = struct {
         }
     };
 
+    // Minimal tools surface used by engine streaming handler to accumulate
+    // partial JSON for tool calls. This mirrors foundation/context.zig but
+    // avoids a hard dependency to keep the provider self-contained.
+    pub const Tools = struct {
+        tokenBuffer: std.array_list.Managed(u8),
+        // Track a single pending tool-use per turn (minimal viable loop)
+        hasPending: bool = false,
+        toolName: ?[]u8 = null,
+        toolId: ?[]u8 = null,
+        jsonComplete: ?[]u8 = null,
+
+        pub fn init(allocator: std.mem.Allocator) Tools {
+            return .{ .tokenBuffer = std.array_list.Managed(u8).init(allocator) };
+        }
+
+        pub fn deinit(self: *Tools) void {
+            self.tokenBuffer.deinit();
+            if (self.toolName) |s| self.tokenBuffer.allocator.free(s);
+            if (self.toolId) |s| self.tokenBuffer.allocator.free(s);
+            if (self.jsonComplete) |s| self.tokenBuffer.allocator.free(s);
+        }
+    };
+
     // Optional user data pointer for higher-level integrations
     user_data: ?*anyopaque = null,
+    tools: Tools,
     anthropic: Anthropic,
 
     pub fn init(allocator: std.mem.Allocator) SharedContext {
-        return .{ .user_data = null, .anthropic = Anthropic.init(allocator) };
+        return .{ .user_data = null, .tools = Tools.init(allocator), .anthropic = Anthropic.init(allocator) };
     }
 
     pub fn deinit(self: *SharedContext) void {
         self.anthropic.deinit();
+        self.tools.deinit();
     }
 };
 
@@ -128,8 +159,80 @@ pub const Client = struct {
     baseUrl: []const u8 = "https://api.anthropic.com",
     apiVersion: []const u8 = "2023-06-01",
     timeoutMs: u32 = 120000, // 2 minute default timeout
+    httpVerbose: bool = false,
 
     const Self = @This();
+
+    fn maskToken(allocator: std.mem.Allocator, token: []const u8) ![]u8 {
+        if (token.len <= 10) return allocator.dupe(u8, "<redacted>");
+        const prefix = token[0..6];
+        const suffix = token[token.len - 4 .. token.len];
+        return std.fmt.allocPrint(allocator, "{s}...{s}", .{ prefix, suffix });
+    }
+
+    /// Test helper: build headers for a request without performing I/O
+    /// Returns an owned slice of headers; caller must free `value` fields and the slice itself.
+    pub fn buildHeadersForTest(self: *Self, allocator: std.mem.Allocator, streaming: bool) ![]curl.Header {
+        var headers = std.ArrayListUnmanaged(curl.Header){};
+        errdefer headers.deinit(allocator);
+
+        switch (self.auth) {
+            .api_key => |key| {
+                try headers.append(allocator, .{ .name = "x-api-key", .value = try allocator.dupe(u8, key) });
+                try headers.append(allocator, .{ .name = "accept", .value = try allocator.dupe(u8, if (streaming) "text/event-stream" else "application/json") });
+                try headers.append(allocator, .{ .name = "content-type", .value = try allocator.dupe(u8, "application/json") });
+                try headers.append(allocator, .{ .name = "anthropic-version", .value = try allocator.dupe(u8, self.apiVersion) });
+                try headers.append(allocator, .{ .name = "anthropic-beta", .value = try allocator.dupe(u8, "none") });
+                try headers.append(allocator, .{ .name = "user-agent", .value = try allocator.dupe(u8, "docz/1.0 (libcurl)") });
+            },
+            .oauth => |creds| {
+                const bearer = try std.fmt.allocPrint(allocator, "Bearer {s}", .{creds.accessToken});
+                defer allocator.free(bearer);
+                const beta_value = build_options.anthropic_beta_oauth;
+                try headers.append(allocator, .{ .name = "Authorization", .value = try allocator.dupe(u8, bearer) });
+                try headers.append(allocator, .{ .name = "accept", .value = try allocator.dupe(u8, if (streaming) "text/event-stream" else "application/json") });
+                try headers.append(allocator, .{ .name = "content-type", .value = try allocator.dupe(u8, "application/json") });
+                try headers.append(allocator, .{ .name = "anthropic-version", .value = try allocator.dupe(u8, self.apiVersion) });
+                try headers.append(allocator, .{ .name = "anthropic-beta", .value = try allocator.dupe(u8, beta_value) });
+                try headers.append(allocator, .{ .name = "user-agent", .value = try allocator.dupe(u8, "docz/1.0 (libcurl)") });
+            },
+        }
+
+        return headers.toOwnedSlice(allocator);
+    }
+    fn redactHeaderValue(self: *Self, name: []const u8, value: []const u8) ![]u8 {
+        // Redact secrets for Authorization and x-api-key
+        if (std.ascii.eqlIgnoreCase(name, "authorization")) {
+            // Expect "Bearer <token>"; redact the token part
+            if (std.mem.indexOfScalar(u8, value, ' ')) |sp| {
+                const scheme = value[0..sp];
+                const tok = value[sp + 1 ..];
+                const masked = try maskToken(self.allocator, tok);
+                defer self.allocator.free(masked);
+                return std.fmt.allocPrint(self.allocator, "{s} {s}", .{ scheme, masked });
+            }
+            return self.allocator.dupe(u8, "<redacted>");
+        }
+        if (std.ascii.eqlIgnoreCase(name, "x-api-key")) {
+            const masked = try maskToken(self.allocator, value);
+            return masked;
+        }
+        return self.allocator.dupe(u8, value);
+    }
+
+    fn logRequestHeaders(self: *Self, url: []const u8, headers: []const curl.Header) void {
+        std.log.debug("Anthropic request headers for {s}:", .{url});
+        var i: usize = 0;
+        while (i < headers.len) : (i += 1) {
+            const h = headers[i];
+            const redacted = self.redactHeaderValue(h.name, h.value) catch {
+                std.log.debug("  {s}: <redaction-error>", .{h.name});
+                continue;
+            };
+            std.log.debug("  {s}: {s}", .{ h.name, redacted });
+            self.allocator.free(redacted);
+        }
+    }
 
     /// Initialize client with API key
     pub fn init(allocator: std.mem.Allocator, api_key: []const u8) !Self {
@@ -137,6 +240,7 @@ pub const Client = struct {
         return Self{
             .allocator = allocator,
             .auth = AuthType{ .api_key = api_key },
+            .httpVerbose = build_options.http_verbose_default,
         };
     }
 
@@ -163,7 +267,13 @@ pub const Client = struct {
             .allocator = allocator,
             .auth = AuthType{ .oauth = dupedCreds },
             .credentialsPath = dupedPath,
+            .httpVerbose = build_options.http_verbose_default,
         };
+    }
+
+    /// Control libcurl verbose logging at runtime
+    pub fn setHttpVerbose(self: *Self, verbose: bool) void {
+        self.httpVerbose = verbose;
     }
 
     /// Clean up resources
@@ -383,9 +493,13 @@ pub const Client = struct {
 
     /// Internal method to handle streaming with automatic retry on 401
     fn streamWithRetry(self: *Self, ctx: *SharedContext, params: StreamParameters, is_retry: bool) !void {
-        // Refresh OAuth tokens if needed (unless this is already a retry)
+        // Proactive refresh even before first attempt; ignore RefreshInProgress in concurrent scenarios
         if (!is_retry) {
-            try self.refreshOAuthIfNeeded(ctx);
+            self.refreshOAuthIfNeeded(ctx) catch |err| {
+                if (err != Error.RefreshInProgress) {
+                    std.log.warn("Proactive OAuth refresh skipped: {}", .{err});
+                }
+            };
         }
 
         // Build request body
@@ -399,67 +513,109 @@ pub const Client = struct {
         };
         defer client.deinit();
 
-        // Prepare headers with auth
+        // Prepare headers with auth. For OAuth, try Bearer first, then fallback to x-api-key.
         var authHeaderValue: ?[]const u8 = null;
         defer if (authHeaderValue) |value| self.allocator.free(value);
 
-        const headers = switch (self.auth) {
-            .api_key => |key| [_]curl.Header{
-                .{ .name = "x-api-key", .value = key },
-                .{ .name = "accept", .value = "text/event-stream" },
-                .{ .name = "content-type", .value = "application/json" },
-                .{ .name = "anthropic-version", .value = self.apiVersion },
-                .{ .name = "user-agent", .value = "docz/1.0 (libcurl)" },
-            },
-            .oauth => |creds| blk: {
-                authHeaderValue = try std.fmt.allocPrint(self.allocator, "Bearer {s}", .{creds.accessToken});
-                break :blk [_]curl.Header{
-                    .{ .name = "authorization", .value = authHeaderValue.? },
-                    .{ .name = "accept", .value = "text/event-stream" },
-                    .{ .name = "content-type", .value = "application/json" },
-                    .{ .name = "anthropic-version", .value = self.apiVersion },
-                    .{ .name = "user-agent", .value = "docz/1.0 (libcurl)" },
-                };
-            },
+        const is_api_key_auth = switch (self.auth) {
+            .api_key => true,
+            .oauth => false,
         };
 
-        // Create streaming context
+        // Create streaming context before attempting requests
         var streamingContext = stream_module.createStreamingContext(self.allocator, ctx, params.onToken);
         defer stream_module.destroyStreamingContext(&streamingContext);
 
-        // Build full URL
+        // Helper to execute one streaming attempt with provided headers
+        const do_stream = struct {
+            fn run(cli: *Self, cl: *curl.HTTPClient, req_url: []const u8, hdrs: []const curl.Header, body: []const u8, ctx2: *stream_module.StreamingContext) !c_int {
+                const request = curl.HTTPRequest{
+                    .method = .POST,
+                    .url = req_url,
+                    .headers = hdrs,
+                    .body = body,
+                    .timeout_ms = cli.timeoutMs,
+                    .verify_ssl = true,
+                    .follow_redirects = false,
+                    .verbose = cli.httpVerbose,
+                };
+                return cl.streamRequest(request, stream_module.processStreamChunk, ctx2) catch |err| {
+                    std.log.err("Streaming request failed: {}", .{err});
+                    switch (err) {
+                        curl.HTTPError.NetworkError => return @as(c_int, 599),
+                        curl.HTTPError.TlsError => return @as(c_int, 598),
+                        curl.HTTPError.Timeout => return @as(c_int, 597),
+                        else => return @as(c_int, 596),
+                    }
+                };
+            }
+        };
+
+        // Build URL once
         const url = try std.fmt.allocPrint(self.allocator, "{s}/v1/messages", .{self.baseUrl});
         defer self.allocator.free(url);
 
-        const req = curl.HTTPRequest{
-            .method = .POST,
-            .url = url,
-            .headers = &headers,
-            .body = bodyJson,
-            .timeout_ms = self.timeoutMs,
-            .verify_ssl = true,
-            .follow_redirects = false,
-            .verbose = false,
-        };
+        var statusCode: c_int = 0;
 
-        // Perform streaming request
-        const statusCode = client.streamRequest(
-            req,
-            stream_module.processStreamChunk,
-            &streamingContext,
-        ) catch |err| {
-            std.log.err("Streaming request failed: {}", .{err});
-            switch (err) {
-                curl.HTTPError.NetworkError => return Error.NetworkError,
-                curl.HTTPError.TlsError => return Error.NetworkError,
-                curl.HTTPError.Timeout => return Error.NetworkError,
-                else => return Error.APIError,
-            }
-        };
+        if (is_api_key_auth) {
+            // API key path (standard header)
+            const headers_api = [_]curl.Header{
+                .{ .name = "x-api-key", .value = self.auth.api_key },
+                .{ .name = "accept", .value = "text/event-stream" },
+                .{ .name = "content-type", .value = "application/json" },
+                .{ .name = "anthropic-version", .value = self.apiVersion },
+                .{ .name = "anthropic-beta", .value = "none" },
+                .{ .name = "user-agent", .value = "docz/1.0 (libcurl)" },
+            };
+            self.logRequestHeaders(url, &headers_api);
+            statusCode = try do_stream.run(self, &client, url, &headers_api, bodyJson, &streamingContext);
+        } else {
+            // OAuth path: Bearer only (no x-api-key fallback)
+            const creds = self.auth.oauth;
+            authHeaderValue = try std.fmt.allocPrint(self.allocator, "Bearer {s}", .{creds.accessToken});
+            // OAuth beta header is feature-gated via build options; default matches spec
+            const beta_value = build_options.anthropic_beta_oauth;
+            const headers_bearer = [_]curl.Header{
+                .{ .name = "Authorization", .value = authHeaderValue.? },
+                .{ .name = "accept", .value = "text/event-stream" },
+                .{ .name = "content-type", .value = "application/json" },
+                .{ .name = "anthropic-version", .value = self.apiVersion },
+                .{ .name = "anthropic-beta", .value = beta_value },
+                .{ .name = "user-agent", .value = "docz/1.0 (libcurl)" },
+            };
+            self.logRequestHeaders(url, &headers_bearer);
+            statusCode = try do_stream.run(self, &client, url, &headers_bearer, bodyJson, &streamingContext);
+        }
+
+        // Build full URL
+        // Log body at debug level once
+        if (std.debug.runtime_safety) {
+            std.log.debug("Anthropic request body: {s}", .{bodyJson});
+        }
 
         // Check for 401 Unauthorized and retry once for OAuth; report auth error for API keys
         if (statusCode == 401 and !is_retry) {
             std.log.warn("Received 401 Unauthorized, attempting token refresh...", .{});
+            // Force a refresh regardless of current expiry to handle server-side invalidation
+            switch (self.auth) {
+                .oauth => |creds| {
+                    const newCreds = oauth.refreshTokens(self.allocator, creds.refreshToken) catch |err| {
+                        std.log.err("Token refresh on 401 failed: {}", .{err});
+                        return Error.AuthError;
+                    };
+                    // Replace credentials and persist
+                    self.allocator.free(creds.type);
+                    self.allocator.free(creds.accessToken);
+                    self.allocator.free(creds.refreshToken);
+                    self.auth = AuthType{ .oauth = newCreds };
+                    if (self.credentialsPath) |path| {
+                        oauth.saveOAuthCredentials(self.allocator, path, newCreds) catch |err| {
+                            std.log.warn("Failed to save refreshed credentials: {}", .{err});
+                        };
+                    }
+                },
+                .api_key => {},
+            }
             return self.streamWithRetry(ctx, params, true); // Retry once after refresh
         }
 
@@ -469,7 +625,71 @@ pub const Client = struct {
         }
 
         if (statusCode != 200) {
+            // Attempt a non-streaming POST to fetch error body for diagnostics
             std.log.err("HTTP error: {}", .{statusCode});
+            var diag_client = try curl.HTTPClient.init(self.allocator);
+            defer diag_client.deinit();
+
+            // Build headers dynamically to avoid array size/type mismatches
+            var headers_list = std.ArrayListUnmanaged(curl.Header){};
+            defer headers_list.deinit(self.allocator);
+            switch (self.auth) {
+                .api_key => |key| {
+                    try headers_list.append(self.allocator, .{ .name = "x-api-key", .value = key });
+                    try headers_list.append(self.allocator, .{ .name = "accept", .value = "application/json" });
+                    try headers_list.append(self.allocator, .{ .name = "content-type", .value = "application/json" });
+                    try headers_list.append(self.allocator, .{ .name = "anthropic-version", .value = self.apiVersion });
+                    try headers_list.append(self.allocator, .{ .name = "anthropic-beta", .value = "none" });
+                    try headers_list.append(self.allocator, .{ .name = "user-agent", .value = "docz/1.0 (libcurl)" });
+                },
+                .oauth => |creds| {
+                    const bearer = try std.fmt.allocPrint(self.allocator, "Bearer {s}", .{creds.accessToken});
+                    defer self.allocator.free(bearer);
+                    const beta_value = build_options.anthropic_beta_oauth;
+                    try headers_list.append(self.allocator, .{ .name = "Authorization", .value = bearer });
+                    try headers_list.append(self.allocator, .{ .name = "accept", .value = "application/json" });
+                    try headers_list.append(self.allocator, .{ .name = "content-type", .value = "application/json" });
+                    try headers_list.append(self.allocator, .{ .name = "anthropic-version", .value = self.apiVersion });
+                    try headers_list.append(self.allocator, .{ .name = "anthropic-beta", .value = beta_value });
+                    try headers_list.append(self.allocator, .{ .name = "user-agent", .value = "docz/1.0 (libcurl)" });
+                },
+            }
+            const headers_diag = headers_list.items;
+            const url_diag = try std.fmt.allocPrint(self.allocator, "{s}/v1/messages", .{self.baseUrl});
+            defer self.allocator.free(url_diag);
+            // Log diagnostic headers as well
+            self.logRequestHeaders(url_diag, headers_diag);
+            const resp = diag_client.request(.{
+                .method = .POST,
+                .url = url_diag,
+                .headers = headers_diag,
+                .body = bodyJson,
+                .timeout_ms = self.timeoutMs,
+                .verify_ssl = true,
+                .verbose = self.httpVerbose,
+            }) catch |err| {
+                std.log.warn("Diagnostic request failed: {}", .{err});
+                return Error.APIError;
+            };
+            defer {
+                var r = resp;
+                r.deinit();
+            }
+            // Surface upstream request-id when present for troubleshooting
+            const maybe_req_id = blk: {
+                if (resp.headers.get("request-id")) |v| break :blk v;
+                if (resp.headers.get("Request-Id")) |v| break :blk v;
+                if (resp.headers.get("x-request-id")) |v| break :blk v;
+                if (resp.headers.get("X-Request-Id")) |v| break :blk v;
+                break :blk null;
+            };
+            if (maybe_req_id) |rid| {
+                std.log.warn("Upstream request-id: {s}", .{rid});
+            }
+            std.log.err("Error body: {s}", .{resp.body});
+            if (std.mem.indexOf(u8, resp.body, "Invalid bearer token")) |_| {
+                return Error.AuthError;
+            }
             return Error.APIError;
         }
 
@@ -597,8 +817,8 @@ pub const Client = struct {
         if (creds) |oauth_creds| {
             defer {
                 allocator.free(oauth_creds.type);
-                allocator.free(oauth_creds.access_token);
-                allocator.free(oauth_creds.refresh_token);
+                allocator.free(oauth_creds.accessToken);
+                allocator.free(oauth_creds.refreshToken);
             }
             return Self.initWithOAuth(allocator, oauth_creds, file_path);
         }
@@ -616,10 +836,60 @@ pub const Client = struct {
             },
             .oauth => |creds| {
                 return .{
-                    .name = "authorization",
-                    .value = try std.fmt.allocPrint(allocator, "Bearer {s}", .{creds.access_token}),
+                    .name = "Authorization",
+                    .value = try std.fmt.allocPrint(allocator, "Bearer {s}", .{creds.accessToken}),
                 };
             },
         }
     }
 };
+
+test "getAuthHeader returns Bearer for OAuth and x-api-key for API key" {
+    const a = std.testing.allocator;
+    // API key path
+    var client1 = try Client.init(a, "k");
+    defer client1.deinit();
+    const h1 = try client1.getAuthHeader(a);
+    defer a.free(h1.value);
+    try std.testing.expectEqualStrings("x-api-key", h1.name);
+    try std.testing.expectEqualStrings("k", h1.value);
+
+    // OAuth path
+    const creds = Credentials{
+        .type = "oauth",
+        .accessToken = "t",
+        .refreshToken = "r",
+        .expiresAt = 0,
+    };
+    var client2 = try Client.initWithOAuth(a, creds, null);
+    defer client2.deinit();
+    const h2 = try client2.getAuthHeader(a);
+    defer a.free(h2.value);
+    try std.testing.expectEqualStrings("Authorization", h2.name);
+    try std.testing.expectEqualStrings("Bearer t", h2.value);
+}
+
+test "buildHeadersForTest includes beta for OAuth and no x-api-key" {
+    const a = std.testing.allocator;
+    // OAuth client
+    const creds = Credentials{ .type = "oauth", .accessToken = "tok", .refreshToken = "ref", .expiresAt = 0 };
+    var c = try Client.initWithOAuth(a, creds, null);
+    defer c.deinit();
+    const hdrs = try c.buildHeadersForTest(a, true);
+    defer {
+        // free duplicated header values
+        for (hdrs) |h| a.free(h.value);
+        a.free(hdrs);
+    }
+    var has_auth = false;
+    var has_beta = false;
+    var has_x_api = false;
+    for (hdrs) |h| {
+        if (std.ascii.eqlIgnoreCase(h.name, "authorization")) has_auth = true;
+        if (std.ascii.eqlIgnoreCase(h.name, "anthropic-beta")) has_beta = true;
+        if (std.ascii.eqlIgnoreCase(h.name, "x-api-key")) has_x_api = true;
+    }
+    try std.testing.expect(has_auth);
+    try std.testing.expect(has_beta);
+    try std.testing.expect(!has_x_api);
+}
