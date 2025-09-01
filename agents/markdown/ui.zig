@@ -7,10 +7,32 @@
 const std = @import("std");
 const agent_ui_framework = @import("foundation").tui.agent_ui;
 const tui = @import("foundation").tui;
+const bounds_mod = @import("foundation").tui.bounds;
+// Theme stub for now
+const theme = struct {
+    pub const primary = 0xFF00FF;
+};
+// Input system stub
+const input_system = struct {
+    pub const KeyEvent = struct {};
+    pub const MouseEvent = struct {};
+};
 // Theme types are available via the TUI barrel
 // Components (Input) come from the consolidated UI barrel
 const Input = @import("foundation").ui.Widgets.Input;
-const diff_viewer = @import("../../examples/diff_viewer.zig");
+// TODO: diff_viewer removed - needs reimplementation
+// // TODO: diff_viewer removed - needs reimplementation
+// const diff_viewer = @import("../../examples/diff_viewer.zig");
+const diff_viewer = struct {
+    pub const DiffViewer = struct {
+        pub fn deinit(self: *DiffViewer) void {
+            _ = self;
+        }
+        pub fn render(self: *DiffViewer) !void {
+            _ = self;
+        }
+    };
+};
 
 const StandardUIPatterns = agent_ui_framework.StandardUIPatterns;
 const MarkdownEditor = agent_ui_framework.MarkdownEditor;

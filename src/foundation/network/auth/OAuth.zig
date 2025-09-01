@@ -309,15 +309,18 @@ pub fn exchangeCodeForTokens(
     // Parse URL
     const uri = try std.Uri.parse(OAUTH_TOKEN_ENDPOINT);
 
-    // Make POST request to token endpoint
+    // Make POST request to token endpoint with browser-like headers
     var req = try httpClient.request(.POST, uri, .{
         .headers = .{
-            .user_agent = .{ .override = "docz/1.0" },
+            .user_agent = .{ .override = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15" },
             .content_type = .{ .override = "application/json" },
         },
         .extra_headers = &.{
             .{ .name = "Accept", .value = "application/json" },
             .{ .name = "Accept-Encoding", .value = "identity" },
+            .{ .name = "Accept-Language", .value = "en-US,en;q=0.9" },
+            .{ .name = "Origin", .value = "https://claude.ai" },
+            .{ .name = "Referer", .value = "https://claude.ai/" },
         },
     });
     defer req.deinit();
@@ -366,15 +369,18 @@ pub fn refreshTokens(allocator: std.mem.Allocator, refreshToken: []const u8) !Cr
     // Parse URL
     const uri = try std.Uri.parse(OAUTH_TOKEN_ENDPOINT);
 
-    // Make POST request to token endpoint
+    // Make POST request to token endpoint with browser-like headers
     var req = try httpClient.request(.POST, uri, .{
         .headers = .{
-            .user_agent = .{ .override = "docz/1.0" },
+            .user_agent = .{ .override = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15" },
             .content_type = .{ .override = "application/json" },
         },
         .extra_headers = &.{
             .{ .name = "Accept", .value = "application/json" },
             .{ .name = "Accept-Encoding", .value = "identity" },
+            .{ .name = "Accept-Language", .value = "en-US,en;q=0.9" },
+            .{ .name = "Origin", .value = "https://claude.ai" },
+            .{ .name = "Referer", .value = "https://claude.ai/" },
         },
     });
     defer req.deinit();

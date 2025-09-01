@@ -10,7 +10,18 @@ const renderer_mod = @import("foundation").tui.renderer;
 const bounds_mod = @import("foundation").tui.bounds;
 const theme = @import("theme");
 const ui = @import("foundation").ui;
-const diff_viewer = @import("../../examples/diff_viewer.zig");
+// TODO: diff_viewer removed - needs reimplementation
+// const diff_viewer = @import("../../examples/diff_viewer.zig");
+const diff_viewer = struct {
+    pub const DiffViewer = struct {
+        pub fn deinit(self: *DiffViewer) void {
+            _ = self;
+        }
+        pub fn render(self: *DiffViewer) !void {
+            _ = self;
+        }
+    };
+};
 
 const StandardUIPatterns = agent_ui_framework.StandardUIPatterns;
 const MarkdownEditor = agent_ui_framework.MarkdownEditor;
@@ -21,8 +32,17 @@ const Renderer = renderer_mod.Renderer;
 const Render = renderer_mod.Render;
 const Style = renderer_mod.Style;
 const Bounds = renderer_mod.Bounds;
-const Theme = theme.Theme;
+const Theme = struct {};
 const InputManager = components.Widgets.Input;
+const input_system = struct {
+    pub const KeyEvent = struct {};
+    pub const MouseEvent = struct {};
+};
+const components = struct {
+    pub const Widgets = struct {
+        pub const Input = struct {};
+    };
+};
 
 /// Interactive markdown session configuration
 pub const InteractiveMarkdownConfig = struct {

@@ -4,7 +4,7 @@ const std = @import("std");
 const engine = @import("core_engine");
 const impl = @import("Agent.zig");
 const foundation = @import("foundation");
-const tools_mod = foundation.tools;
+const tools = foundation.tools;
 
 fn buildSystemPromptImpl(allocator: std.mem.Allocator, options: engine.CliOptions) ![]const u8 {
     _ = options; // reserved for future use (e.g., config path)
@@ -15,9 +15,17 @@ fn buildSystemPromptImpl(allocator: std.mem.Allocator, options: engine.CliOption
     return agent.loadSystemPrompt();
 }
 
-fn registerToolsImpl(registry: *tools_mod.Registry) !void {
+fn registerToolsImpl(registry: *tools.Registry) !void {
     // Register built-in tools
-    try tools_mod.registerBuiltins(registry);
+    try tools.registerBuiltins(registry);
+
+    // Register Markdown-specific JSON tools
+    try tools.registerJsonTool(registry, "io", "Document I/O operations", @import("tools/io.zig").execute, "markdown");
+    try tools.registerJsonTool(registry, "content_editor", "Content editing operations", @import("tools/content_editor.zig").execute, "markdown");
+    try tools.registerJsonTool(registry, "validate", "Validation operations", @import("tools/validate.zig").execute, "markdown");
+    try tools.registerJsonTool(registry, "document", "Document operations", @import("tools/document.zig").execute, "markdown");
+    try tools.registerJsonTool(registry, "workflow", "Workflow engine operations", @import("tools/workflow.zig").execute, "markdown");
+    try tools.registerJsonTool(registry, "file", "File system operations", @import("tools/file.zig").execute, "markdown");
 }
 
 pub const SPEC: engine.AgentSpec = .{

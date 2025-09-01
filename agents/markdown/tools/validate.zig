@@ -80,7 +80,7 @@ fn validateLinks(allocator: std.mem.Allocator, content: []const u8, issues: *jso
     _ = warnings;
 
     // Simple link detection pattern
-    var iter = std.mem.tokenize(u8, content, "\n");
+    var iter = std.mem.tokenizeScalar(u8, content, '\n');
     var line_num: usize = 0;
 
     while (iter.next()) |line| {
@@ -117,7 +117,7 @@ fn validateCodeBlocks(allocator: std.mem.Allocator, content: []const u8, issues:
     var code_block_start: usize = 0;
     var has_language = false;
 
-    var iter = std.mem.tokenize(u8, content, "\n");
+    var iter = std.mem.tokenizeAny(u8, content, "\n");
     var line_num: usize = 0;
 
     while (iter.next()) |line| {
@@ -159,7 +159,7 @@ fn validateHeadings(allocator: std.mem.Allocator, content: []const u8, issues: *
     _ = issues;
 
     var prev_level: usize = 0;
-    var iter = std.mem.tokenize(u8, content, "\n");
+    var iter = std.mem.tokenizeAny(u8, content, "\n");
     var line_num: usize = 0;
 
     while (iter.next()) |line| {
@@ -209,7 +209,7 @@ fn calculateStats(_: std.mem.Allocator, content: []const u8, stats: *json.Object
 
     // Word count
     var word_count: usize = 0;
-    var iter = std.mem.tokenize(u8, content, " \n\t\r");
+    var iter = std.mem.tokenizeAny(u8, content, " \n\t\r");
     while (iter.next()) |_| {
         word_count += 1;
     }
@@ -220,7 +220,7 @@ fn calculateStats(_: std.mem.Allocator, content: []const u8, stats: *json.Object
 
     // Heading count
     var heading_count: usize = 0;
-    var line_iter = std.mem.tokenize(u8, content, "\n");
+    var line_iter = std.mem.tokenizeAny(u8, content, "\n");
     while (line_iter.next()) |line| {
         if (std.mem.startsWith(u8, line, "#")) {
             heading_count += 1;

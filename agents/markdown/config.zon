@@ -8,8 +8,8 @@
         },
 
         .defaults = .{
-            .maxConcurrentOperations = 10,
-            .defaultTimeoutMs = 30000,
+            .concurrentOperationsMax = 10,
+            .timeoutMsDefault = 30000,
             .enableDebugLogging = false,
             .enableVerboseOutput = false,
         },
@@ -22,13 +22,13 @@
         },
 
         .limits = .{
-            .maxInputSize = 1048576, // 1MB
-            .maxOutputSize = 1048576, // 1MB
-            .maxProcessingTimeMs = 60000,
+            .inputSizeMax = 1048576, // 1MB
+            .outputSizeMax = 1048576, // 1MB
+            .processingTimeMsMax = 60000,
         },
 
         .model = .{
-            .defaultModel = "claude-3-sonnet-20240229",
+            .modelDefault = "claude-3-sonnet-20240229",
             .maxTokens = 4096,
             .temperature = 0.7,
             .streamResponses = true,

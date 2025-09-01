@@ -118,7 +118,9 @@ pub fn createErrorResponse(
     var buffer = std.ArrayList(u8){};
     try buffer.ensureTotalCapacity(allocator, 1024);
     defer buffer.deinit(allocator);
-    std.json.stringify(response, .{}, buffer.writer()) catch |e| {
+    const writer = buffer.writer(allocator);
+    var stringify = std.json.Stringify(@TypeOf(writer)).init(writer);
+    stringify.value(response, .{}) catch |e| {
         return switch (e) {
             error.OutOfMemory => ToolJsonError.OutOfMemory,
             else => ToolJsonError.SerializationFailed,
@@ -381,9 +383,14 @@ pub const JsonReflector = struct {
             pub const Error = error{SerializationFailed};
 
             /// Serializes a struct instance to a JSON string.
-            pub fn serialize(allocator: std.mem.Allocator, instance: T, options: std.json.StringifyOptions) Error![]const u8 {
+            pub fn serialize(allocator: std.mem.Allocator, instance: T, options: anytype) Error![]const u8 {
+                _ = options;
                 var buffer = std.ArrayList(u8){};
-                std.json.stringify(instance, options, buffer.writer()) catch |err| {
+                // TODO: Fix for Zig 0.15.1 - std.json.stringify no longer exists
+                // Need to use std.json.Stringify.value() instead
+                const writer = buffer.writer(allocator);
+                var stringify = std.json.Stringify(@TypeOf(writer)).init(writer);
+                stringify.value(instance, .{}) catch |err| {
                     buffer.deinit(allocator);
                     std.log.warn("JSON serialization failed: {any}", .{err});
                     return Error.SerializationFailed;
@@ -416,7 +423,7 @@ pub const JsonReflector = struct {
             }
 
             /// Convenience method to serialize struct to JSON string
-            pub fn toJson(allocator: std.mem.Allocator, instance: T, options: std.json.StringifyOptions) Serializer.Error![]const u8 {
+            pub fn toJson(allocator: std.mem.Allocator, instance: T, options: anytype) Serializer.Error![]const u8 {
                 return Serializer.serialize(allocator, instance, options);
             }
 

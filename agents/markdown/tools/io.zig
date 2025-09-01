@@ -662,7 +662,7 @@ fn searchPattern(allocator: std.mem.Allocator, params: json.Value) !json.Value {
     // Serialize modified request and delegate to searchContent
     const ModifiedMapper = JsonReflector.mapper(SearchContentRequest);
     const modified_params = try ModifiedMapper.toJsonValue(allocator, modified_request);
-    defer modified_params.deinit();
+    // json.Value doesn't have deinit in 0.15.1
 
     return try searchContent(allocator, modified_params);
 }
