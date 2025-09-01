@@ -26,3 +26,6 @@ test_anthropic
 test_binary
 test_ux
 /.zig-cache-global
+
+# OAuth credentials - never commit
+claude_oauth_creds.json
