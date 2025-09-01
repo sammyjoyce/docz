@@ -23,6 +23,11 @@ pub const Auth = struct {
     pub const Callback = @import("network/auth/Callback.zig");
     pub const Service = @import("network/auth/Service.zig");
     pub const Errors = @import("network/auth/Errors.zig");
+    pub const pkce = @import("network/auth/pkce.zig");
+    pub const loopback_server = @import("network/auth/loopback_server.zig");
+    pub const token_client = @import("network/auth/token_client.zig");
+    pub const store = @import("network/auth/store.zig");
+    pub const authorize_url = @import("network/auth/authorize_url.zig");
 
     // Convenience re-exports
     pub const AuthMethod = Core.AuthMethod;

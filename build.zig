@@ -1917,10 +1917,16 @@ pub fn build(b: *std.Build) !void {
     build_opts.addOption(bool, "enable_theme_dev", feature_config.theme_dev);
     build_opts.addOption([]const u8, "build_profile", build_profile);
     build_opts.addOption(bool, "http_verbose_default", http_verbose);
+
+    // OAuth-specific build options per requirements
+    build_opts.addOption(bool, "oauth_enabled", feature_config.auth);
+    build_opts.addOption(bool, "oauth_beta_header", true); // Send anthropic-beta header
+    build_opts.addOption(bool, "streaming_enabled", true); // SSE streaming support
+    build_opts.addOption(bool, "keychain_enabled", false); // Use file storage for now
+    build_opts.addOption(bool, "oauth_allow_localhost", true); // Require localhost as redirect host
+
     // Feature-gated OAuth beta header for Anthropic; default per specs/oauth.md
     build_opts.addOption([]const u8, "anthropic_beta_oauth", anthropic_beta_opt orelse "oauth-2025-04-20");
-    // Require localhost host in redirect Host header (default true). If set false, 127.0.0.1 is also accepted.
-    build_opts.addOption(bool, "oauth_allow_localhost", true);
 
     // Handle special build modes
     if (list_agents) {

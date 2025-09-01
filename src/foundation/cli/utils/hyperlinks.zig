@@ -2,7 +2,7 @@
 //! Builds on @src/term/ansi/hyperlink.zig with additional convenience functions
 
 const std = @import("std");
-const term = @import("../term.zig");
+const term = @import("../../term.zig");
 const term_hyperlink = term.ansi.hyperlink;
 const term_caps = term.capabilities;
 const Allocator = std.mem.Allocator;

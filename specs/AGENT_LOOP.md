@@ -1,82 +1,71 @@
-# Core Agent Loop Specification (Zig 0.15.1)
+# Engine-Centric Agent Loop (Zig 0.15.1)
 
-This document captures the **minimal viable loop** that turns the Docz binary into a fully-featured coding agent.  It is adapted from the reference Golang starter loop and from the principles outlined in “How to build a coding agent: free workshop”.  All design decisions below are aligned with Zig 0.15.1 language features and the existing project layout.
+This document specifies the single, shared run loop used by all agents and clarifies responsibilities across modules so agent implementations remain small. The loop lives in `src/engine.zig` and is invoked by a standardized entry (`src/foundation/agent_main.zig`). Agents in `agents/<name>/` should not re‑implement a bespoke 300‑line loop.
 
 ---
 
 ## 1. Guiding Principles
 
-1. **300 LoC target** – keep the loop small, readable, and easily hackable.
-2. **Single-responsibility loop** – the loop does only three things:
-   1. get user / system input,
-   2. pass it (plus tool results) to the LLM,
-   3. execute any tool calls returned by the model.
-3. **Clear context hygiene** – allocate *one* activity per inference window; purge irrelevant history aggressively.
-4. **Tooling as first-class citizens** – expose tools through the MCP registry; treat *other LLMs* as tools (oracle pattern).
-5. **Fail-open, observe, correct** – the loop never panics; it logs and asks the LLM to self-heal when a tool call fails.
+1. **One engine, many agents** – the run loop is centralized in `src/engine.zig`. Agents contribute prompts and tools; they don’t copy the loop.
+2. **Small agent surface** – agent implementations focus on business logic: system prompt, tool registration, and optional config. No custom CLI or REPL plumbing.
+3. **Clear context hygiene** – the engine aggressively trims history and handles SSE tool JSON correctly.
+4. **Tools are first‑class** – tools are registered via the shared registry; the engine streams tool parameters and executes results.
+5. **Fail‑open, observable** – the engine logs clearly and recovers from tool failures with actionable messages.
 
 ---
 
-## 2. High-level Flow Diagram
+## 2. High‑Level Flow (Engine)
 
 ```
 ┌────────────────────┐      ┌────────────────────┐
-│ 1. initialise()    │◀────▶│  Tool Registry     │
+│ 1. initialize      │◀────▶│  Tool Registry     │
 └────────┬───────────┘      └────────┬───────────┘
          │                            │
          ▼                            ▼
 ┌──────────────────────────────────────────────────┐
-│              2. eventLoop()                     │
+│            2. engine.runWithOptions             │
 │   ┌──────────────────────────────────────────┐   │
-│   │ while (true) {                          │   │
-│   │     input = getNextUserMessage();       │   │
-│   │     if (input == null) continue;        │   │
-│   │                                          │   │
-│   │     conv.addUser(input);                 │   │
-│   │     let resp = runInference(conv);       │   │
-│   │                                          │   │
-│   │     if (resp.containsToolCalls()) {      │   │
-│   │         let results = execTools(resp);   │   │
-│   │         conv.addAssistant(resp.textOnly);│   │
-│   │         conv.addToolResults(results);    │   │
-│   │         continue; // iterate again       │   │
-│   │     }                                    │   │
-│   │                                          │   │
-│   │     display(resp.textOnly);              │   │
-│   │   }                                      │   │
+│   │ while (streaming) {                     │   │
+│   │   stream SSE; collect text + tool JSON; │   │
+│   │   if (tool requested) {                 │   │
+│   │     exec tool; append tool_result;      │   │
+│   │     continue;                           │   │
+│   │   } else break;                         │   │
+│   │ }                                       │   │
 │   └──────────────────────────────────────────┘   │
 └──────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 3. Module Responsibilities
+## 3. Module Responsibilities (Layered)
 
-| Module (file)     | Public API                               | Notes |
-|-------------------|------------------------------------------|-------|
-| `agent.zig`       | `pub fn run(alloc: *Allocator) !void`    | Orchestrates `initialise` + `eventLoop`. |
-| `anthropic.zig`   | `fn complete(messages: []Message) !Resp` | Thin HTTP client for Claude Sonnet; keeps zero global state. |
-| `tools.zig`       | `pub fn register(name: []const u8, fn execute(JSON) !JSON)` | Simple in-process registry. |
-| `conversation.zig`| append / slice / purge helper fns        | Stores history in an `ArrayList(Message)` backed by an arena allocator. |
-| `io.zig`          | TTY / REPL helpers                       | Fully async; uses `std.io.getStdIn().reader()`. |
-| `errors.zig`      | `logFailure`, retry helpers              | Unifies transient vs fatal errors. |
+| Module (file)                 | Public API                                         | Role |
+|------------------------------|----------------------------------------------------|------|
+| `src/engine.zig`             | `pub fn runWithOptions(alloc, opts, spec, dir)`    | The one shared run loop (streaming + tools + auth wiring). |
+| `src/foundation/agent_main.zig` | `pub fn runAgent(alloc, spec)`                   | Standardized entry: parse CLI, handle auth subcommands, call engine. |
+| `src/foundation/tools/*.zig` | registry fns (`registerJsonTool`, etc.)            | Shared tools surface and dispatch. |
+| `src/foundation/network/*`   | `Anthropic.Client`, Auth (API key + OAuth)         | HTTP/SSE client, credential management. |
+| `agents/<name>/spec.zig`     | `pub const SPEC: engine.AgentSpec`                 | Agent’s system prompt builder + tool registration. |
+| `agents/<name>/agent.zig`    | Agent’s types/helpers (single‑entry struct)        | Agent‑specific logic (no loop/CLI). |
+| `agents/<name>/main.zig`     | `agent_main.runAgent(alloc, SPEC)`                 | Thin entry point per agent. |
 
-All modules compile into the existing `src/main.zig` executable.
+All agents compile with their own `agents/<name>/main.zig` and reuse the same engine and foundation.
 
 ---
 
-## 4. Detailed Loop Stages
+## 4. Engine Loop Stages
 
-### 4.1 initialise()
+### 4.1 initialize()
 
 1. Load env vars (`ANTHROPIC_API_KEY`, etc.).
 2. Instantiate a `std.heap.ArenaAllocator` for the entire session.
 3. Register core tools (filesystem, git, oracle, etc.).
 4. Boot REPL UI and print banner.
 
-### 4.2 getNextUserMessage()
+### 4.2 input collection
 
-Non-blocking read from STDIN; returns `null` when only a newline was entered (keeps loop hot like in the Go sample).
+The engine accepts input from CLI flags (`--input`, stdin when `-`), or interactive modes enabled by foundation components. Agents do not implement REPLs.
 
 ### 4.3 runInference()
 
@@ -91,9 +80,9 @@ Non-blocking read from STDIN; returns `null` when only a newline was entered (ke
 3. Capture `stdout`, `stderr`, and `return` JSON; on error, wrap into `ToolError{ name, message }`.
 4. Return aggregated `[]ToolResult` to caller.
 
-### 4.5 display()
+### 4.5 output
 
-Streams assistant text to terminal with colours; if the assistant proposes code, pipe through `zig fmt` before display.
+Engine streams assistant text to stdout and optionally to a file (`--output`). UI/TUI embellishments live under `foundation/` and are feature‑gated.
 
 ### 4.6 context hygiene strategy
 
@@ -102,7 +91,7 @@ Streams assistant text to terminal with colours; if the assistant proposes code,
 
 ---
 
-## 5. Concurrency Model & Zig 0.15.1 Considerations
+## 5. Concurrency & Zig 0.15.1 Considerations
 
 * Use `async` functions & the default event-loop rather than manual threads when latency hiding is needed (API + tool exec concurrently).
 * Prefer **slice-based** APIs; avoid hidden heap unless via the session arena.
@@ -127,7 +116,7 @@ Streams assistant text to terminal with colours; if the assistant proposes code,
 
 ---
 
-## 8. Non-Goals for v0
+## 8. Non‑Goals for v0
 
 * Multi-user server mode.
 * Advanced scheduling / planning agents (can be layered later).
@@ -135,34 +124,45 @@ Streams assistant text to terminal with colours; if the assistant proposes code,
 
 ---
 
-## 9. Pseudocode Implementation (abridged)
+## 9. Usage Patterns (Agent‑centric)
+
+Minimal agent entry:
 
 ```zig
-pub fn run(alloc: *Allocator) !void {
-    try initialise(alloc);
-    while (true) {
-        if (try io.getNextUserMessage(alloc)) |msg| {
-            try conv.addUser(msg);
-            var resp = try anthropic.complete(conv.messages());
-            if (resp.toolCalls.len > 0) {
-                var results = try execTools(alloc, resp.toolCalls);
-                try conv.addAssistant(resp.text);
-                try conv.addToolResults(results);
-                continue; // start next cycle immediately
-            }
-            io.display(resp.text);
-            try conv.addAssistant(resp.text);
-        }
-    }
+// agents/<name>/main.zig
+const std = @import("std");
+const agentMain = @import("foundation").agent_main;
+const spec = @import("spec.zig");
+pub fn main() !void {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){}; defer _ = gpa.deinit();
+    try agentMain.runAgent(gpa.allocator(), spec.SPEC);
 }
 ```
 
-> **≈270 LoC** across `src/` without tests; comfortably inside the 300-line target.
+Agent spec:
+
+```zig
+// agents/<name>/spec.zig
+const engine = @import("core_engine");
+const tools = @import("foundation").tools;
+const impl = @import("agent.zig");
+
+fn buildSystemPromptImpl(a: anytype, opts: engine.CliOptions) ![]const u8 {
+    _ = opts; var agent = try impl.Agent.initFromConfig(a); defer agent.deinit();
+    return agent.loadSystemPrompt();
+}
+
+fn registerToolsImpl(reg: *tools.Registry) !void {
+    const t = @import("tools.zig");
+    try tools.registerJsonTool(reg, "example", "desc", t.example, "<name>");
+}
+
+pub const SPEC: engine.AgentSpec = .{ .buildSystemPrompt = buildSystemPromptImpl, .registerTools = registerToolsImpl };
+```
 
 ---
 
-## 10. Next Steps
+## 10. Migration Notes
 
-* Flesh out the HTTP client (streaming decode).
-* Implement `tool_git.zig` and `tool_filesystem.zig`.
-* Hook the loop into existing `main.zig` CLI flags.
+- The canonical loop is `src/engine.zig` invoked by `foundation/agent_main.runAgent()`.
+- Agents must not duplicate CLI parsing or stream handling. Keep agent code minimal and rely on the shared engine.

@@ -72,7 +72,8 @@ curl -NsS https://api.anthropic.com/v1/messages \
     "model": "claude-sonnet-4-20250514",
     "max_tokens": 256,
     "stream": true,
-    "messages": [{"role": "user", "content": "Stream a short reply"}]
+    "messages": [{"role": "user", "content": "Stream a short reply"}],
+    "system": "<contents of prompt/anthropic_spoof.txt>\n\nUse short sentences."
   }'
 ```
 
@@ -178,8 +179,23 @@ curl -sS https://api.anthropic.com/v1/messages \
   -d '{
     "model": "claude-sonnet-4-20250514",
     "max_tokens": 256,
-    "system": "<contents of prompt/anthropic_spoof.txt>\n\nBe concise.",
     "messages": [{"role":"user","content":"Summarize OAuth vs API key in 3 bullets."}]
+  }'
+```
+
+**A1) With system prompt**
+
+```bash
+curl -sS https://api.anthropic.com/v1/messages \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "Content-Type: application/json" \
+  -H "anthropic-beta: oauth-2025-04-20" \
+  -d '{
+    "model": "claude-sonnet-4-20250514",
+    "max_tokens": 256,
+    "messages": [{"role":"user","content":"Summarize OAuth vs API key in 3 bullets."}],
+    "system": "<contents of prompt/anthropic_spoof.txt>\n\nBe concise."
   }'
 ```
 

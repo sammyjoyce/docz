@@ -2,7 +2,7 @@
 //! Command palette and autocomplete functionality
 
 pub const completion = @import("completion.zig");
-pub const CommandPalette = @import("CommandPalette.zig");
+const CommandPaletteImpl = @import("interactive/command_palette.zig");
 
 // Re-export commonly used types
 pub const CompletionItem = completion.CompletionItem;
@@ -10,6 +10,10 @@ pub const FuzzyMatcher = completion.FuzzyMatcher;
 pub const CompletionEngine = completion.CompletionEngine;
 pub const CompletionSets = completion.CompletionSets;
 
-pub const Palette = CommandPalette.Palette;
-pub const PaletteResult = CommandPalette.PaletteResult;
-pub const PaletteAction = CommandPalette.PaletteAction;
+// Module surface: keep prior alias while pointing to canonical impl
+pub const CommandPalette = CommandPaletteImpl;
+
+// Back-compat aliases used elsewhere
+pub const Palette = CommandPaletteImpl.CommandPalette;
+pub const PaletteResult = CommandPaletteImpl.CommandPaletteResult;
+pub const PaletteAction = CommandPaletteImpl.CommandPaletteAction;

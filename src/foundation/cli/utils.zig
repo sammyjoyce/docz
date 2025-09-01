@@ -4,7 +4,7 @@
 const std = @import("std");
 
 // Export hyperlink utilities
-pub const hyperlinks = @import("hyperlinks.zig");
+pub const hyperlinks = @import("utils/hyperlinks.zig");
 
 // For now, provide utilities
 pub fn printVersion() void {

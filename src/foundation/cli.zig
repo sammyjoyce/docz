@@ -11,14 +11,23 @@ pub const CliApp = @import("cli/core/app.zig").CliApp;
 
 // Auth CLI components namespace
 pub const Auth = struct {
-    pub const Commands = @import("cli/auth/Commands.zig");
-    // Additional auth CLI components can be added here
+    pub const Commands = @import("cli/auth.zig").Commands;
 
     // Convenience re-exports
-    pub const runAuthCommand = Commands.runAuthCommand;
-    pub const handleLoginCommand = Commands.handleLoginCommand;
-    pub const handleStatusCommand = Commands.handleStatusCommand;
-    pub const handleRefreshCommand = Commands.handleRefreshCommand;
+    pub const login = Commands.login;
+    pub const status = Commands.status;
+    pub const whoami = Commands.whoami;
+    pub const logout = Commands.logout;
+    pub const testCall = Commands.testCall;
+};
+
+// Run CLI components namespace
+pub const Run = struct {
+    pub const Commands = @import("cli/run/Commands.zig");
+
+    // Convenience re-exports
+    pub const handleRunCommand = Commands.handleRunCommand;
+    pub const RunConfig = Commands.RunConfig;
 };
 
 // Components barrel re-export

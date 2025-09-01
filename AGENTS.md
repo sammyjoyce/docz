@@ -2,7 +2,8 @@
 
 ## Project Structure & Module Organization
 - Source lives in `src/`. Shared subsystems are under `src/foundation/` (`cli/`, `tui/`, `render/`, `ui/`, `network/`, `tools/`, `term/`). Each namespace exposes a barrel file (e.g., `src/foundation/tui.zig`); avoid deep imports.
-- Agents in `agents/<name>/` (`main.zig`, `spec.zig`, `Agent.zig`, optional `config.zon`, `tools.zon`, `system_prompt.txt`, `tools/`). Only the selected agent should compile.
+- Engine lives in `src/engine.zig` (single shared run loop). Standardized entry lives in `src/foundation/agent_main.zig`.
+- Agents in `agents/<name>/` (`main.zig`, `spec.zig`, `agent.zig` (preferred) or legacy `Agent.zig`, optional `config.zon`, `tools.zon`, `system_prompt.txt`, `tools/`). Only the selected agent should compile.
 - Tests in `tests/`; docs in `docs/`; helper scripts in `scripts/`.
 
 ## Build, Test, and Development Commands
@@ -109,3 +110,12 @@
 **Do / Don’t Quick Reference**
 - **Do:** encapsulate per-module state in one struct; inject allocators/services; guard features at comptime; return precise error sets; re-export via barrels.
 - **Don’t:** leak deep imports; rely on global singletons; expose inferred/private error sets publicly; flatten namespaces; mix 0.14/0.15 APIs.
+
+## Agent Entrypoints & Responsibilities
+- `agents/<name>/main.zig`: Thin entry that calls `@import("foundation").agent_main.runAgent(alloc, spec.SPEC)`.
+- `agents/<name>/spec.zig`: Exposes `pub const SPEC: @import("core_engine").AgentSpec` with:
+  - `buildSystemPrompt(alloc, options) ![]const u8`
+  - `registerTools(registry: *tools.Registry) !void`
+- `agents/<name>/agent.zig`: Agent implementation (types/helpers); no run loop, no CLI parsing.
+
+Canonical loop and SSE/tool handling live in `src/engine.zig`. Do not duplicate the loop in agent code or in `src/`—use the shared engine.
