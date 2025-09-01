@@ -109,9 +109,9 @@ pub fn generatePkceParams(allocator: std.mem.Allocator) !Pkce {
     return @import("pkce.zig").generate(allocator, 64);
 }
 
-/// Build OAuth authorization URL with default localhost:8080 callback
+/// Build OAuth authorization URL with default localhost:52591 callback
 pub fn buildAuthorizationUrl(allocator: std.mem.Allocator, pkceParams: Pkce) ![]u8 {
-    return buildAuthorizationUrlWithRedirect(allocator, pkceParams, "http://localhost:8080/callback");
+    return buildAuthorizationUrlWithRedirect(allocator, pkceParams, "http://localhost:52591/callback");
 }
 
 /// Build OAuth authorization URL with custom redirect URI
@@ -476,13 +476,13 @@ pub fn loginWithLoopback(allocator: std.mem.Allocator) !Credentials {
     const pkceParams = try generatePkceParams(allocator);
     errdefer pkceParams.deinit(allocator);
 
-    // Use a random port in the high range to avoid conflicts
-    // Similar to the successful implementation using port 52591
-    const random_port = std.crypto.random.intRangeAtMost(u16, 50000, 60000);
+    // Use port 52591 specifically - this is what the successful implementation uses
+    // This specific port might be validated or expected by Anthropic's OAuth
+    const callback_port: u16 = 52591;
 
     var server = try @import("loopback_server.zig").LoopbackServer.init(allocator, .{
         .host = "localhost",
-        .port = random_port,
+        .port = callback_port,
         .path = "/callback",
         .timeout_ms = 300000,
     });
@@ -681,7 +681,7 @@ pub fn setupOAuth(allocator: std.mem.Allocator) !Credentials {
     const authCode = std.mem.trim(u8, buffer[0..bytesRead], " \t\r\n");
 
     // Exchange code for tokens
-    const credentials = try exchangeCodeForTokens(allocator, authCode, pkceParams, "http://localhost:8080/callback");
+    const credentials = try exchangeCodeForTokens(allocator, authCode, pkceParams, "http://localhost:52591/callback");
 
     // Save credentials
     try saveCredentials(allocator, "claude_oauth_creds.json", credentials);
