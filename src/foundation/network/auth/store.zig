@@ -55,7 +55,7 @@ pub const TokenStore = struct {
             // Build path: ~/.local/share/{agent_name}/auth.json
             const home = std.posix.getenv("HOME") orelse return error.NoHomeDirectory;
             const path = try std.fmt.allocPrint(self.allocator, "{s}/.local/share/{s}/auth.json", .{ home, agent_name });
-            
+
             // Ensure directory exists
             const dir_path = try std.fmt.allocPrint(self.allocator, "{s}/.local/share/{s}", .{ home, agent_name });
             defer self.allocator.free(dir_path);
@@ -63,7 +63,7 @@ pub const TokenStore = struct {
                 error.PathAlreadyExists => {},
                 else => return err,
             };
-            
+
             return path;
         }
         return self.allocator.dupe(u8, self.config.path);
@@ -135,7 +135,7 @@ pub const TokenStore = struct {
     pub fn exists(self: Self) bool {
         const path = self.getCredentialPath() catch return false;
         defer self.allocator.free(path);
-        
+
         fs.cwd().access(path, .{}) catch return false;
         return true;
     }
@@ -144,7 +144,7 @@ pub const TokenStore = struct {
     pub fn remove(self: Self) !void {
         const path = try self.getCredentialPath();
         defer self.allocator.free(path);
-        
+
         try fs.cwd().deleteFile(path);
         log.info("Credentials removed", .{});
     }

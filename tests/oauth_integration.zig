@@ -8,33 +8,33 @@ const testing = std.testing;
 
 test "PKCE generation produces correct verifier and challenge" {
     const allocator = testing.allocator;
-    
+
     // Generate PKCE parameters
     const pkce = try Auth.pkce.generate(allocator, 64);
     defer pkce.deinit(allocator);
-    
+
     // Verify verifier length (should be 64 * 4/3 for base64url)
     try testing.expect(pkce.verifier.len >= 43);
     try testing.expect(pkce.verifier.len <= 128);
-    
+
     // Verify challenge is base64url encoded SHA256 (43 chars)
     try testing.expectEqual(@as(usize, 43), pkce.challenge.len);
-    
+
     // Verify state is present and has reasonable length
     try testing.expect(pkce.state.len >= 16);
 }
 
 test "Authorization URL builder creates valid URL with all parameters" {
     const allocator = testing.allocator;
-    
+
     // Generate PKCE parameters
     const pkce = try Auth.pkce.generate(allocator, 64);
     defer pkce.deinit(allocator);
-    
+
     // Build authorization URL
     const auth_url = try Auth.OAuth.buildAuthorizationUrl(allocator, pkce);
     defer allocator.free(auth_url);
-    
+
     // Verify URL contains required parameters
     try testing.expect(std.mem.indexOf(u8, auth_url, "client_id=") != null);
     try testing.expect(std.mem.indexOf(u8, auth_url, "response_type=code") != null);
@@ -47,10 +47,10 @@ test "Authorization URL builder creates valid URL with all parameters" {
 
 test "Token store saves and loads credentials with proper permissions" {
     const allocator = testing.allocator;
-    
+
     const test_creds_path = "test_oauth_creds.json";
     defer std.fs.cwd().deleteFile(test_creds_path) catch {};
-    
+
     // Create test credentials
     const creds = Auth.OAuth.Credentials{
         .type = try allocator.dupe(u8, "oauth"),
@@ -59,7 +59,7 @@ test "Token store saves and loads credentials with proper permissions" {
         .expiresAt = std.time.timestamp() + 3600,
     };
     defer creds.deinit(allocator);
-    
+
     // Save credentials
     const store = Auth.store.TokenStore.init(allocator, .{ .path = test_creds_path });
     try store.save(.{
@@ -68,22 +68,22 @@ test "Token store saves and loads credentials with proper permissions" {
         .refresh_token = creds.refreshToken,
         .expires_at = creds.expiresAt,
     });
-    
+
     // Verify file exists
     try testing.expect(store.exists());
-    
+
     // Load credentials back
     const loaded = try store.load();
     defer allocator.free(loaded.type);
     defer allocator.free(loaded.access_token);
     defer allocator.free(loaded.refresh_token);
-    
+
     // Verify loaded data matches
     try testing.expectEqualStrings("oauth", loaded.type);
     try testing.expectEqualStrings("test_access_token", loaded.access_token);
     try testing.expectEqualStrings("test_refresh_token", loaded.refresh_token);
     try testing.expectEqual(creds.expiresAt, loaded.expires_at);
-    
+
     // Verify file permissions (should be 0600)
     const file = try std.fs.cwd().openFile(test_creds_path, .{});
     defer file.close();
@@ -96,7 +96,7 @@ test "Token store saves and loads credentials with proper permissions" {
 
 test "Loopback server binds to localhost only" {
     const allocator = testing.allocator;
-    
+
     // Initialize loopback server
     var server = try Auth.loopback_server.LoopbackServer.init(allocator, .{
         .host = "localhost",
@@ -105,11 +105,11 @@ test "Loopback server binds to localhost only" {
         .timeout_ms = 1000,
     });
     defer server.deinit();
-    
+
     // Get the actual port
     const redirect_uri = try server.getRedirectUri(allocator);
     defer allocator.free(redirect_uri);
-    
+
     // Verify redirect URI uses localhost
     try testing.expect(std.mem.startsWith(u8, redirect_uri, "http://localhost:"));
     try testing.expect(std.mem.endsWith(u8, redirect_uri, "/callback"));
@@ -117,7 +117,7 @@ test "Loopback server binds to localhost only" {
 
 test "OAuth credentials expiration checking" {
     const allocator = testing.allocator;
-    
+
     // Create expired credentials
     const expired_creds = Auth.OAuth.Credentials{
         .type = try allocator.dupe(u8, "oauth"),
@@ -126,10 +126,10 @@ test "OAuth credentials expiration checking" {
         .expiresAt = std.time.timestamp() - 3600, // Expired 1 hour ago
     };
     defer expired_creds.deinit(allocator);
-    
+
     try testing.expect(expired_creds.isExpired());
     try testing.expect(expired_creds.willExpireSoon(0));
-    
+
     // Create valid credentials
     const valid_creds = Auth.OAuth.Credentials{
         .type = try allocator.dupe(u8, "oauth"),
@@ -138,7 +138,7 @@ test "OAuth credentials expiration checking" {
         .expiresAt = std.time.timestamp() + 3600, // Valid for 1 hour
     };
     defer valid_creds.deinit(allocator);
-    
+
     try testing.expect(!valid_creds.isExpired());
     try testing.expect(!valid_creds.willExpireSoon(3000)); // Won't expire in 50 minutes
     try testing.expect(valid_creds.willExpireSoon(4000)); // Will expire in 67 minutes
@@ -146,7 +146,7 @@ test "OAuth credentials expiration checking" {
 
 test "Anthropic client builds correct headers for OAuth" {
     const allocator = testing.allocator;
-    
+
     // Create OAuth credentials
     const creds = Auth.OAuth.Credentials{
         .type = try allocator.dupe(u8, "oauth"),
@@ -155,7 +155,7 @@ test "Anthropic client builds correct headers for OAuth" {
         .expiresAt = std.time.timestamp() + 3600,
     };
     defer creds.deinit(allocator);
-    
+
     // Initialize client with OAuth
     var client = network.Anthropic.Client{
         .allocator = allocator,
@@ -167,7 +167,7 @@ test "Anthropic client builds correct headers for OAuth" {
         .httpVerbose = false,
     };
     defer client.deinit();
-    
+
     // Build headers for non-streaming request
     const headers = try client.buildHeadersForTest(allocator, false);
     defer {
@@ -176,13 +176,13 @@ test "Anthropic client builds correct headers for OAuth" {
         }
         allocator.free(headers);
     }
-    
+
     // Verify required headers
     var has_auth = false;
     var has_version = false;
     var has_beta = false;
     var has_no_api_key = true;
-    
+
     for (headers) |h| {
         if (std.mem.eql(u8, h.name, "Authorization")) {
             has_auth = true;
@@ -197,7 +197,7 @@ test "Anthropic client builds correct headers for OAuth" {
             has_no_api_key = false; // Should NOT have API key with OAuth
         }
     }
-    
+
     try testing.expect(has_auth);
     try testing.expect(has_version);
     try testing.expect(has_beta);
@@ -206,27 +206,27 @@ test "Anthropic client builds correct headers for OAuth" {
 
 test "State validation prevents CSRF attacks" {
     const allocator = testing.allocator;
-    
+
     // Generate PKCE with state
     const pkce = try Auth.pkce.generate(allocator, 64);
     defer pkce.deinit(allocator);
-    
+
     // Simulate callback with wrong state
     const wrong_state = "malicious_state";
     const correct_state = pkce.state;
-    
+
     // State mismatch should be detected
     try testing.expect(!std.mem.eql(u8, wrong_state, correct_state));
 }
 
 test "Redirect URI exact match validation" {
     const allocator = testing.allocator;
-    
+
     const expected_redirect = "http://localhost:8080/callback";
-    const wrong_redirect_1 = "http://localhost:8080/callback/";  // Extra slash
-    const wrong_redirect_2 = "http://localhost:8081/callback";   // Wrong port
-    const wrong_redirect_3 = "http://127.0.0.1:8080/callback";   // Wrong host
-    
+    const wrong_redirect_1 = "http://localhost:8080/callback/"; // Extra slash
+    const wrong_redirect_2 = "http://localhost:8081/callback"; // Wrong port
+    const wrong_redirect_3 = "http://127.0.0.1:8080/callback"; // Wrong host
+
     // Only exact match should pass
     try testing.expect(std.mem.eql(u8, expected_redirect, expected_redirect));
     try testing.expect(!std.mem.eql(u8, expected_redirect, wrong_redirect_1));
@@ -237,9 +237,9 @@ test "Redirect URI exact match validation" {
 // Integration test for the full OAuth flow (requires mock server)
 test "OAuth flow happy path" {
     if (true) return error.SkipZigTest; // Skip in CI, enable for manual testing
-    
+
     const allocator = testing.allocator;
-    
+
     // This test would:
     // 1. Generate PKCE parameters
     // 2. Start loopback server
@@ -250,11 +250,11 @@ test "OAuth flow happy path" {
     // 7. Make test API call
     // 8. Refresh tokens
     // 9. Make another API call
-    
+
     // For now, we just verify the components work independently
     const pkce = try Auth.pkce.generate(allocator, 64);
     defer pkce.deinit(allocator);
-    
+
     try testing.expect(pkce.verifier.len > 0);
     try testing.expect(pkce.challenge.len > 0);
     try testing.expect(pkce.state.len > 0);

@@ -46,8 +46,11 @@ zig build -Dagent=markdown
 # Run the agent
 zig build -Dagent=markdown run
 
-# Run with authentication
-zig build -Dagent=markdown run auth login
+# Run with authentication (handled by foundation CLI)
+# First authenticate:
+zig build -Dagent=markdown run -- auth login
+# Then run normally:
+zig build -Dagent=markdown run
 zig build -Dagent=markdown run auth status
 
 # Run with a prompt

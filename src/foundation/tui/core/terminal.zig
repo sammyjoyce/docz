@@ -43,7 +43,7 @@ pub const Terminal = struct {
 
         // Detect terminal capabilities
         const caps = try Capabilities.detect(allocator);
-        
+
         // Get terminal size (fallback to defaults if not available)
         const size = try term_shared.getSize();
         const width = size.width;

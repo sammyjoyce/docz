@@ -17,7 +17,7 @@ pub const Terminal = struct {
         _ = self;
         const stdout = std.io.getStdOut();
         try stdout.writer().writeAll("\x1b[?1049h"); // Alternate screen
-        try stdout.writer().writeAll("\x1b[?25l");   // Hide cursor
+        try stdout.writer().writeAll("\x1b[?25l"); // Hide cursor
         // Platform-specific raw mode would be set here via termios on Unix
     }
 
@@ -25,7 +25,7 @@ pub const Terminal = struct {
     pub fn exitRawMode(self: *Self) !void {
         _ = self;
         const stdout = std.io.getStdOut();
-        try stdout.writer().writeAll("\x1b[?25h");   // Show cursor
+        try stdout.writer().writeAll("\x1b[?25h"); // Show cursor
         try stdout.writer().writeAll("\x1b[?1049l"); // Exit alternate screen
         // Platform-specific raw mode would be restored here
     }
@@ -55,20 +55,20 @@ pub const Terminal = struct {
         // Fallback to environment variables
         const cols_str = std.process.getEnvVarOwned(std.heap.page_allocator, "COLUMNS") catch null;
         const rows_str = std.process.getEnvVarOwned(std.heap.page_allocator, "LINES") catch null;
-        
+
         var width: u32 = 80;
         var height: u32 = 24;
-        
+
         if (cols_str) |cols| {
             defer std.heap.page_allocator.free(cols);
             width = std.fmt.parseInt(u32, cols, 10) catch 80;
         }
-        
+
         if (rows_str) |rows| {
             defer std.heap.page_allocator.free(rows);
             height = std.fmt.parseInt(u32, rows, 10) catch 24;
         }
-        
+
         return .{ .width = width, .height = height };
     }
 
@@ -91,8 +91,8 @@ pub const Terminal = struct {
     pub fn clear(self: *Self) !void {
         _ = self;
         const stdout = std.io.getStdOut();
-        try stdout.writer().writeAll("\x1b[2J");  // Clear screen
-        try stdout.writer().writeAll("\x1b[H");   // Move to home
+        try stdout.writer().writeAll("\x1b[2J"); // Clear screen
+        try stdout.writer().writeAll("\x1b[H"); // Move to home
     }
 
     /// Write a single styled cell at position. Style is generic to avoid
@@ -102,10 +102,10 @@ pub const Terminal = struct {
         _ = style;
         const stdout = std.io.getStdOut();
         const writer = stdout.writer();
-        
+
         // Move to position (1-indexed)
         try writer.print("\x1b[{};{}H", .{ y + 1, x + 1 });
-        
+
         // Write character
         var buf: [4]u8 = undefined;
         const len = try std.unicode.utf8Encode(ch, &buf);

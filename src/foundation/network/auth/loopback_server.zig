@@ -25,7 +25,7 @@ pub const CallbackResult = struct {
 /// Loopback server configuration
 pub const ServerConfig = struct {
     host: []const u8 = "localhost",
-    port: u16 = 52591, // Default to the port used in successful implementations
+    port: u16 = 8080, // Default port confirmed working
     path: []const u8 = "/callback",
     timeout_ms: u32 = 300000, // 5 minutes
 };

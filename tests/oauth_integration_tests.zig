@@ -66,14 +66,14 @@ test "Loopback server redirect URI validation" {
 
     for (valid_uris) |uri_str| {
         const uri = try std.Uri.parse(uri_str);
-        
+
         // Verify host is localhost
         try testing.expect(uri.host != null);
         try testing.expectEqualStrings("localhost", uri.host.?.percent_encoded);
-        
+
         // Verify path is /callback
         try testing.expectEqualStrings("/callback", uri.path.percent_encoded);
-        
+
         // Verify scheme is http (not https for loopback)
         try testing.expectEqualStrings("http", uri.scheme);
     }
@@ -264,7 +264,7 @@ test "Message history management" {
     if (messages.items.len > limit) {
         const start: usize = 1; // Keep system prompt
         const to_remove = messages.items.len - limit;
-        
+
         // Free old messages
         for (messages.items[start .. start + to_remove]) |msg| {
             allocator.free(msg.content);
@@ -276,7 +276,7 @@ test "Message history management" {
             messages.items[start..],
             messages.items[start + to_remove ..],
         );
-        
+
         messages.shrinkRetainingCapacity(limit);
     }
 

@@ -6,30 +6,30 @@ const Auth = network.Auth;
 
 test "PKCE generation creates valid parameters" {
     const allocator = std.testing.allocator;
-    
+
     const pkce = try Auth.pkce.generate(allocator, 64);
     defer pkce.deinit(allocator);
-    
+
     // Verify verifier length
     try std.testing.expect(pkce.verifier.len == 64);
-    
+
     // Verify challenge is base64url encoded
     try std.testing.expect(pkce.challenge.len > 0);
-    
+
     // Verify state is different from verifier (per spec requirement)
     try std.testing.expect(!std.mem.eql(u8, pkce.state, pkce.verifier));
 }
 
 test "Credentials parsing supports snake_case JSON" {
     const allocator = std.testing.allocator;
-    
-    const json = 
+
+    const json =
         \\{"type":"oauth","access_token":"test_access","refresh_token":"test_refresh","expires_at":1234567890}
     ;
-    
+
     const creds = try Auth.OAuth.parseCredentialsFromJson(allocator, json);
     defer creds.deinit(allocator);
-    
+
     try std.testing.expectEqualStrings("oauth", creds.type);
     try std.testing.expectEqualStrings("test_access", creds.accessToken);
     try std.testing.expectEqualStrings("test_refresh", creds.refreshToken);
@@ -38,27 +38,27 @@ test "Credentials parsing supports snake_case JSON" {
 
 test "Credentials expiry check works correctly" {
     const allocator = std.testing.allocator;
-    
+
     const future_time = std.time.timestamp() + 3600; // 1 hour from now
     const past_time = std.time.timestamp() - 3600; // 1 hour ago
-    
+
     const valid_creds = Auth.OAuth.Credentials{
         .type = "oauth",
         .accessToken = "valid",
         .refreshToken = "valid",
         .expiresAt = future_time,
     };
-    
+
     const expired_creds = Auth.OAuth.Credentials{
         .type = "oauth",
         .accessToken = "expired",
         .refreshToken = "expired",
         .expiresAt = past_time,
     };
-    
+
     try std.testing.expect(!valid_creds.isExpired());
     try std.testing.expect(expired_creds.isExpired());
-    
+
     // Test willExpireSoon with 2 hour leeway
     try std.testing.expect(!valid_creds.willExpireSoon(120)); // 2 minutes
     try std.testing.expect(expired_creds.willExpireSoon(120));
@@ -66,16 +66,16 @@ test "Credentials expiry check works correctly" {
 
 test "Authorization URL is properly formatted" {
     const allocator = std.testing.allocator;
-    
+
     const pkce = Auth.pkce.PkceParams{
         .verifier = "test_verifier",
         .challenge = "test_challenge",
         .state = "test_state",
     };
-    
+
     const url = try Auth.OAuth.buildAuthorizationUrl(allocator, pkce);
     defer allocator.free(url);
-    
+
     // Check that URL contains required parameters
     try std.testing.expect(std.mem.indexOf(u8, url, "client_id=") != null);
     try std.testing.expect(std.mem.indexOf(u8, url, "response_type=code") != null);
@@ -88,11 +88,11 @@ test "Authorization URL is properly formatted" {
 
 test "Redirect URI validation enforces localhost" {
     const allocator = std.testing.allocator;
-    
+
     // Per spec, we only accept localhost redirect URIs
     const valid_uri = "http://localhost:8080/callback";
     const invalid_uri = "http://127.0.0.1:8080/callback";
-    
+
     // This is more of a documentation test - the actual validation
     // happens during the OAuth flow
     try std.testing.expect(std.mem.startsWith(u8, valid_uri, "http://localhost"));
@@ -101,10 +101,10 @@ test "Redirect URI validation enforces localhost" {
 
 test "Credential storage uses mode 0600" {
     const allocator = std.testing.allocator;
-    
+
     const temp_dir = std.testing.tmpDir(.{});
     defer temp_dir.cleanup();
-    
+
     const test_path = "test_creds.json";
     const creds = Auth.OAuth.Credentials{
         .type = try allocator.dupe(u8, "oauth"),
@@ -113,15 +113,15 @@ test "Credential storage uses mode 0600" {
         .expiresAt = 1234567890,
     };
     defer creds.deinit(allocator);
-    
+
     // Save credentials
     try Auth.OAuth.saveCredentials(allocator, test_path, creds);
     defer std.fs.cwd().deleteFile(test_path) catch {};
-    
+
     // Check file permissions (mode 0600)
     const file = try std.fs.cwd().openFile(test_path, .{});
     defer file.close();
-    
+
     const stat = try file.stat();
     if (@hasField(@TypeOf(stat), "mode")) {
         // Unix-like systems

@@ -135,7 +135,7 @@ test "engine: tool execution" {
     const test_tool_fn = struct {
         fn testTool(ctx: *network.SharedContext, alloc: std.mem.Allocator, args_json: []const u8) ![]u8 {
             _ = ctx;
-            
+
             // Parse arguments
             const parsed = try std.json.parseFromSlice(std.json.Value, alloc, args_json, .{});
             defer parsed.deinit();
@@ -147,7 +147,7 @@ test "engine: tool execution" {
                     }
                 }
             }
-            
+
             return alloc.dupe(u8, "No param");
         }
     }.testTool;
@@ -178,7 +178,7 @@ test "engine: SSE event processing" {
     defer shared_ctx.deinit();
 
     // Test message_start event
-    const message_start = 
+    const message_start =
         \\{"type":"message_start","message":{"id":"msg_123","model":"claude-3","stop_reason":null}}
     ;
     engine.Engine.processStreamingEvent(&shared_ctx, message_start);
@@ -186,7 +186,7 @@ test "engine: SSE event processing" {
     try testing.expectEqualStrings("claude-3", shared_ctx.anthropic.model.?);
 
     // Test content_block_start for tool use
-    const tool_start = 
+    const tool_start =
         \\{"type":"content_block_start","content_block":{"type":"tool_use","id":"tool_1","name":"calculator"}}
     ;
     engine.Engine.processStreamingEvent(&shared_ctx, tool_start);
@@ -194,14 +194,14 @@ test "engine: SSE event processing" {
     try testing.expectEqualStrings("calculator", shared_ctx.tools.toolName.?);
 
     // Test content_block_delta with text
-    const text_delta = 
+    const text_delta =
         \\{"type":"content_block_delta","delta":{"type":"text_delta","text":"Hello "}}
     ;
     engine.Engine.processStreamingEvent(&shared_ctx, text_delta);
     try testing.expectEqualStrings("Hello ", shared_ctx.anthropic.contentCollector.items);
 
     // Test content_block_delta with more text
-    const text_delta2 = 
+    const text_delta2 =
         \\{"type":"content_block_delta","delta":{"type":"text_delta","text":"world!"}}
     ;
     engine.Engine.processStreamingEvent(&shared_ctx, text_delta2);
@@ -209,14 +209,14 @@ test "engine: SSE event processing" {
 
     // Test tool JSON accumulation
     shared_ctx.anthropic.contentCollector.clearRetainingCapacity();
-    const json_delta = 
+    const json_delta =
         \\{"type":"content_block_delta","delta":{"type":"input_json_delta","partial_json":"{\"x\":42"}}
     ;
     engine.Engine.processStreamingEvent(&shared_ctx, json_delta);
     try testing.expectEqualStrings("{\"x\":42", shared_ctx.tools.tokenBuffer.items);
 
     // Test content_block_stop finalizes tool JSON
-    const block_stop = 
+    const block_stop =
         \\{"type":"content_block_stop"}
     ;
     engine.Engine.processStreamingEvent(&shared_ctx, block_stop);
@@ -224,7 +224,7 @@ test "engine: SSE event processing" {
     try testing.expectEqualStrings("{\"x\":42", shared_ctx.tools.jsonComplete.?);
 
     // Test message_delta with stop reason
-    const message_delta = 
+    const message_delta =
         \\{"type":"message_delta","delta":{"stop_reason":"end_turn"}}
     ;
     engine.Engine.processStreamingEvent(&shared_ctx, message_delta);
@@ -267,7 +267,7 @@ test "engine: AgentSpec interface" {
     // Test tool registration
     var registry = @import("../src/foundation/tools.zig").Registry.init(allocator);
     defer registry.deinit();
-    
+
     try spec.registerTools(&registry);
     const tool = registry.get("test_tool");
     try testing.expect(tool != null);

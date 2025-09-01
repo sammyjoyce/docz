@@ -4,10 +4,10 @@ const std = @import("std");
 
 pub fn main() !void {
     std.testing.log_level = .warn;
-    
+
     // Run OAuth tests
     _ = @import("oauth.zig");
-    
+
     // Run engine integration tests
     _ = @import("engine_integration.zig");
 }

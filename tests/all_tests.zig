@@ -54,6 +54,12 @@ comptime {
     // _ = @import("markdown.zig");
     // _ = @import("snapshot.zig");
 
+    // Markdown agent tests
+    _ = @import("markdown_config.zig");
+    _ = @import("markdown_spec.zig");
+    // Disabled: tool tests need module import fixes
+    // _ = @import("markdown_tools.zig");
+
     // Smoke test (basic sanity check)
     _ = @import("smoke.zig");
 }

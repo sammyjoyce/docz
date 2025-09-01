@@ -41,8 +41,8 @@ const ansi = struct {
 
 /// Server configuration
 pub const Config = struct {
-    /// Port to listen on (default: 52591 - matches successful implementations)
-    port: u16 = 52591,
+    /// Port to listen on (default: 8080)
+    port: u16 = 8080,
     /// Timeout for authorization code receipt (milliseconds)
     timeoutMs: u64 = 300_000, // 5 minutes
     /// Maximum concurrent connections

@@ -707,7 +707,7 @@ pub const Renderer = struct {
             else => 7, // Default to white
         };
     }
-    
+
     /// Set color (no-op fallback to avoid hard dependency on theme internals)
     pub fn setRendererColor(self: *Renderer, color: Style.Color, writer: anytype) !void {
         _ = self;
@@ -887,20 +887,20 @@ pub const Renderer = struct {
         const Graphics = struct {
             format: enum { none, sixel, iterm2, kitty },
             max_colors: u16,
-            
+
             pub fn init(caps: term.Capabilities) @This() {
                 var format: @TypeOf(@This().format) = .none;
                 if (caps.has_sixel) format = .sixel;
                 if (caps.has_iterm2) format = .iterm2;
                 if (caps.has_kitty) format = .kitty;
-                
+
                 return .{
                     .format = format,
                     .max_colors = if (caps.colors > 256) 256 else @intCast(caps.colors),
                 };
             }
         };
-        
+
         const g = try self.allocator.create(Graphics);
         g.* = Graphics.init(self.capabilities);
         self.graphics = g;

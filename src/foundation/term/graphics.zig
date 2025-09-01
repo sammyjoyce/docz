@@ -13,11 +13,11 @@ pub const GraphicsFormat = enum {
 /// Graphics manager for terminal rendering
 pub const GraphicsManager = struct {
     const Self = @This();
-    
+
     allocator: std.mem.Allocator,
     format: GraphicsFormat,
     max_colors: u16,
-    
+
     /// Initialize graphics manager
     pub fn init(allocator: std.mem.Allocator) Self {
         return .{
@@ -26,25 +26,25 @@ pub const GraphicsManager = struct {
             .max_colors = 256,
         };
     }
-    
+
     /// Deinitialize graphics manager
     pub fn deinit(self: *Self) void {
         _ = self;
     }
-    
+
     /// Detect terminal graphics capabilities
     pub fn detectCapabilities(self: *Self) !void {
         // Check TERM environment variable for hints
         if (std.process.getEnvVarOwned(self.allocator, "TERM")) |term| {
             defer self.allocator.free(term);
-            
+
             if (std.mem.indexOf(u8, term, "kitty") != null) {
                 self.format = .kitty;
             } else if (std.mem.indexOf(u8, term, "xterm") != null) {
                 self.format = .sixel;
             }
         } else |_| {}
-        
+
         // Check for iTerm2
         if (std.process.getEnvVarOwned(self.allocator, "TERM_PROGRAM")) |prog| {
             defer self.allocator.free(prog);
@@ -53,7 +53,7 @@ pub const GraphicsManager = struct {
             }
         } else |_| {}
     }
-    
+
     /// Clear graphics at position
     pub fn clear(self: *Self, x: u16, y: u16, width: u16, height: u16) !void {
         _ = self;

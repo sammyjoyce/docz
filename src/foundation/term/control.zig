@@ -15,7 +15,7 @@ pub const ansi = struct {
     pub const cursor_restore = "\x1b[u";
     pub const cursor_hide = "\x1b[?25l";
     pub const cursor_show = "\x1b[?25h";
-    
+
     // Screen control
     pub const clear_screen = "\x1b[2J";
     pub const clear_line = "\x1b[2K";
@@ -23,11 +23,11 @@ pub const ansi = struct {
     pub const clear_to_bol = "\x1b[1K";
     pub const scroll_up = "\x1b[S";
     pub const scroll_down = "\x1b[T";
-    
+
     // Alternate screen
     pub const alt_screen_enable = "\x1b[?1049h";
     pub const alt_screen_disable = "\x1b[?1049l";
-    
+
     // Styles
     pub const reset = "\x1b[0m";
     pub const bold = "\x1b[1m";
@@ -119,44 +119,44 @@ pub fn bell(writer: anytype) !void {
 /// Control sequence builder for complex sequences
 pub const SequenceBuilder = struct {
     const Self = @This();
-    
+
     buffer: std.ArrayList(u8),
-    
+
     pub fn init(allocator: std.mem.Allocator) Self {
         return .{
             .buffer = std.ArrayList(u8).init(allocator),
         };
     }
-    
+
     pub fn deinit(self: *Self) void {
         self.buffer.deinit();
     }
-    
+
     pub fn csi(self: *Self) !*Self {
         try self.buffer.appendSlice("\x1b[");
         return self;
     }
-    
+
     pub fn osc(self: *Self) !*Self {
         try self.buffer.appendSlice("\x1b]");
         return self;
     }
-    
+
     pub fn param(self: *Self, value: anytype) !*Self {
         try std.fmt.format(self.buffer.writer(), "{}", .{value});
         return self;
     }
-    
+
     pub fn separator(self: *Self) !*Self {
         try self.buffer.append(';');
         return self;
     }
-    
+
     pub fn finish(self: *Self, code: u8) ![]const u8 {
         try self.buffer.append(code);
         return self.buffer.items;
     }
-    
+
     pub fn finishST(self: *Self) ![]const u8 {
         try self.buffer.appendSlice("\x07");
         return self.buffer.items;

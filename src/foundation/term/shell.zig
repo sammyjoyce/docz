@@ -17,31 +17,31 @@ pub fn detectShell() ShellType {
     // Check SHELL environment variable
     if (std.process.getEnvVarOwned(std.heap.page_allocator, "SHELL")) |shell| {
         defer std.heap.page_allocator.free(shell);
-        
+
         if (std.mem.indexOf(u8, shell, "bash") != null) return .bash;
         if (std.mem.indexOf(u8, shell, "zsh") != null) return .zsh;
         if (std.mem.indexOf(u8, shell, "fish") != null) return .fish;
         if (std.mem.indexOf(u8, shell, "pwsh") != null) return .powershell;
     } else |_| {}
-    
+
     // Check for Windows
     if (std.process.getEnvVarOwned(std.heap.page_allocator, "COMSPEC")) |comspec| {
         defer std.heap.page_allocator.free(comspec);
         if (std.mem.indexOf(u8, comspec, "cmd.exe") != null) return .cmd;
         if (std.mem.indexOf(u8, comspec, "powershell") != null) return .powershell;
     } else |_| {}
-    
+
     return .unknown;
 }
 
 /// Shell integration for command history
 pub const History = struct {
     const Self = @This();
-    
+
     allocator: std.mem.Allocator,
     entries: std.ArrayList([]u8),
     current: usize = 0,
-    
+
     /// Initialize history
     pub fn init(allocator: std.mem.Allocator) Self {
         return .{
@@ -49,7 +49,7 @@ pub const History = struct {
             .entries = std.ArrayList([]u8).init(allocator),
         };
     }
-    
+
     /// Deinitialize history
     pub fn deinit(self: *Self) void {
         for (self.entries.items) |entry| {
@@ -57,14 +57,14 @@ pub const History = struct {
         }
         self.entries.deinit();
     }
-    
+
     /// Add entry to history
     pub fn add(self: *Self, entry: []const u8) !void {
         const copy = try self.allocator.dupe(u8, entry);
         try self.entries.append(copy);
         self.current = self.entries.items.len;
     }
-    
+
     /// Get previous entry
     pub fn previous(self: *Self) ?[]const u8 {
         if (self.current > 0) {
@@ -73,7 +73,7 @@ pub const History = struct {
         }
         return null;
     }
-    
+
     /// Get next entry
     pub fn next(self: *Self) ?[]const u8 {
         if (self.current < self.entries.items.len - 1) {

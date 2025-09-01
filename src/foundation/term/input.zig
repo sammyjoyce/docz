@@ -58,50 +58,47 @@ pub const MouseAction = enum {
 /// Input parser
 pub const Parser = struct {
     const Self = @This();
-    
+
     buffer: std.ArrayList(u8),
-    
+
     /// Initialize parser
     pub fn init(allocator: std.mem.Allocator) Self {
         return .{
             .buffer = std.ArrayList(u8).init(allocator),
         };
     }
-    
+
     /// Deinitialize parser
     pub fn deinit(self: *Self) void {
         self.buffer.deinit();
     }
-    
+
     /// Parse input bytes into events
     pub fn parse(self: *Self, data: []const u8) !?InputEvent {
         try self.buffer.appendSlice(data);
-        
+
         // Simple parsing logic (would be more complex in real implementation)
         if (self.buffer.items.len > 0) {
             const byte = self.buffer.items[0];
             _ = self.buffer.orderedRemove(0);
-            
+
             // ASCII printable character
             if (byte >= 0x20 and byte < 0x7F) {
                 return InputEvent{ .key = .{ .code = byte } };
             }
-            
+
             // Escape sequences would be parsed here
             if (byte == 0x1B) {
                 // Parse escape sequence
                 return null;
             }
-            
+
             // Control characters
             if (byte < 0x20) {
-                return InputEvent{ .key = .{ 
-                    .code = byte,
-                    .modifiers = .{ .ctrl = true }
-                } };
+                return InputEvent{ .key = .{ .code = byte, .modifiers = .{ .ctrl = true } } };
             }
         }
-        
+
         return null;
     }
 };

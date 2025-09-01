@@ -127,7 +127,8 @@ pub fn refreshTokens(allocator: std.mem.Allocator, refreshToken: []const u8) !Cr
     };
     defer client.deinit();
 
-    const body = try std.fmt.allocPrint(allocator,
+    const body = try std.fmt.allocPrint(
+        allocator,
         "grant_type=refresh_token&refresh_token={s}&client_id={s}",
         .{ refreshToken, oauthClientId },
     );

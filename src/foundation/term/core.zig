@@ -15,13 +15,13 @@ pub const Mode = struct {
 /// Terminal state manager
 pub const Terminal = struct {
     const Self = @This();
-    
+
     allocator: std.mem.Allocator,
     mode: Mode,
     saved_mode: ?Mode = null,
     writer: std.io.AnyWriter,
     reader: std.io.AnyReader,
-    
+
     /// Initialize terminal
     pub fn init(
         allocator: std.mem.Allocator,
@@ -35,7 +35,7 @@ pub const Terminal = struct {
             .reader = reader,
         };
     }
-    
+
     /// Deinitialize terminal (restore original settings)
     pub fn deinit(self: *Self) void {
         if (self.saved_mode) |saved| {
@@ -43,7 +43,7 @@ pub const Terminal = struct {
             self.applyMode() catch {};
         }
     }
-    
+
     /// Enter raw mode
     pub fn enterRawMode(self: *Self) !void {
         self.saved_mode = self.mode;
@@ -52,7 +52,7 @@ pub const Terminal = struct {
         self.mode.line_buffered = false;
         try self.applyMode();
     }
-    
+
     /// Exit raw mode
     pub fn exitRawMode(self: *Self) !void {
         if (self.saved_mode) |saved| {
@@ -60,7 +60,7 @@ pub const Terminal = struct {
             try self.applyMode();
         }
     }
-    
+
     /// Enable mouse tracking
     pub fn enableMouse(self: *Self) !void {
         self.mode.mouse = true;
@@ -69,7 +69,7 @@ pub const Terminal = struct {
         try self.writer.writeAll("\x1b[?1003h"); // Mouse move
         try self.writer.writeAll("\x1b[?1006h"); // SGR mouse mode
     }
-    
+
     /// Disable mouse tracking
     pub fn disableMouse(self: *Self) !void {
         self.mode.mouse = false;
@@ -78,59 +78,59 @@ pub const Terminal = struct {
         try self.writer.writeAll("\x1b[?1003l");
         try self.writer.writeAll("\x1b[?1006l");
     }
-    
+
     /// Enable bracketed paste mode
     pub fn enableBracketedPaste(self: *Self) !void {
         self.mode.bracketed_paste = true;
         try self.writer.writeAll("\x1b[?2004h");
     }
-    
+
     /// Disable bracketed paste mode
     pub fn disableBracketedPaste(self: *Self) !void {
         self.mode.bracketed_paste = false;
         try self.writer.writeAll("\x1b[?2004l");
     }
-    
+
     /// Enter alternate screen
     pub fn enterAlternateScreen(self: *Self) !void {
         self.mode.alternate_screen = true;
         try self.writer.writeAll("\x1b[?1049h");
     }
-    
+
     /// Exit alternate screen
     pub fn exitAlternateScreen(self: *Self) !void {
         self.mode.alternate_screen = false;
         try self.writer.writeAll("\x1b[?1049l");
     }
-    
+
     /// Apply current mode settings
     fn applyMode(self: *Self) !void {
         // Platform-specific implementation would go here
         // This is a simplified version
         _ = self;
     }
-    
+
     /// Clear screen
     pub fn clear(self: *Self) !void {
         try self.writer.writeAll("\x1b[2J");
         try self.writer.writeAll("\x1b[H");
     }
-    
+
     /// Move cursor to position
     pub fn moveTo(self: *Self, x: u16, y: u16) !void {
         try self.writer.print("\x1b[{};{}H", .{ y + 1, x + 1 });
     }
-    
+
     /// Hide cursor
     pub fn hideCursor(self: *Self) !void {
         try self.writer.writeAll("\x1b[?25l");
     }
-    
+
     /// Show cursor
     pub fn showCursor(self: *Self) !void {
         try self.writer.writeAll("\x1b[?25h");
     }
-    
+
     /// Flush output
     pub fn flush(self: *Self) !void {
         _ = self;

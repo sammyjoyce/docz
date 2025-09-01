@@ -296,7 +296,7 @@ test "context trimming" {
     const limit: usize = 20;
     if (messages.items.len > limit) {
         const to_remove = messages.items.len - limit;
-        
+
         // Free old messages
         for (messages.items[0..to_remove]) |msg| {
             allocator.free(msg.content);
@@ -308,7 +308,7 @@ test "context trimming" {
             messages.items[0..],
             messages.items[to_remove..],
         );
-        
+
         messages.shrinkRetainingCapacity(limit);
     }
 

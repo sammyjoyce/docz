@@ -97,11 +97,11 @@ test "redirect URI: localhost validation" {
     // Verify format
     try testing.expect(std.mem.startsWith(u8, uri1, "http://localhost:"));
     try testing.expect(std.mem.endsWith(u8, uri1, "/callback"));
-    
+
     // Parse to validate structure
     const parsed1 = try std.Uri.parse(uri1);
     const parsed2 = try std.Uri.parse(uri2);
-    
+
     try testing.expectEqualStrings("localhost", parsed1.host.?.raw);
     try testing.expectEqualStrings("localhost", parsed2.host.?.raw);
 }
