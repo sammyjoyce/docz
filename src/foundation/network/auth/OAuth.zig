@@ -290,17 +290,16 @@ pub fn exchangeCodeForTokens(
     pkceParams: Pkce,
     redirectUri: []const u8,
 ) !Credentials {
-    // Prepare JSON body for token exchange (per spec, includes state)
+    // Prepare JSON body for token exchange - order matches the working example
     const body = try std.fmt.allocPrint(allocator,
         \\\{{
-        \\\  "grant_type": "authorization_code",
         \\\  "code": "{s}",
-        \\\  "state": "{s}",
+        \\\  "grant_type": "authorization_code",
         \\\  "client_id": "{s}",
         \\\  "redirect_uri": "{s}",
         \\\  "code_verifier": "{s}"
         \\\}}
-    , .{ authorizationCode, pkceParams.state, OAUTH_CLIENT_ID, redirectUri, pkceParams.verifier });
+    , .{ authorizationCode, OAUTH_CLIENT_ID, redirectUri, pkceParams.verifier });
     defer allocator.free(body);
 
     // Initialize HTTP client
