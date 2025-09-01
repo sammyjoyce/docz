@@ -61,8 +61,8 @@
 
 const std = @import("std");
 const json = std.json;
-const tools_mod = @import("foundation").tools;
-const JsonReflector = tools_mod.JsonReflector;
+const tools = @import("foundation").tools;
+const JsonReflector = tools.JsonReflector;
 const fs = @import("../lib/fs.zig");
 const text = @import("../lib/text.zig");
 const link = @import("../lib/link.zig");
@@ -353,7 +353,7 @@ pub const GetWorkspaceTreeResponse = struct {
 
 /// Main entry point for document I/O operations
 /// Now uses struct-based request/response handling with json_reflection
-pub fn execute(allocator: std.mem.Allocator, params: json.Value) !json.Value {
+pub fn execute(allocator: std.mem.Allocator, params: json.Value) tools.ToolError!json.Value {
     return executeInternal(allocator, params) catch |err| {
         // Create error response using struct-based approach
         const error_response = BaseResponse{

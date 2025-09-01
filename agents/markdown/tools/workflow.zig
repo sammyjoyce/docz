@@ -1,5 +1,6 @@
 const std = @import("std");
 const json = std.json;
+const tools = @import("foundation").tools;
 const fs = @import("../lib/fs.zig");
 
 pub const Error = fs.Error || error{
@@ -38,7 +39,7 @@ pub const WorkflowResult = struct {
 };
 
 /// Main entry point for workflow operations
-pub fn execute(allocator: std.mem.Allocator, params: json.Value) !json.Value {
+pub fn execute(allocator: std.mem.Allocator, params: json.Value) tools.ToolError!json.Value {
     return executeInternal(allocator, params) catch |err| {
         var result = json.ObjectMap.init(allocator);
         try result.put("success", json.Value{ .bool = false });

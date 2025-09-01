@@ -99,7 +99,12 @@ pub fn writeWireMessage(w: anytype, msg: Message) !void {
     try w.writeAll(roleString(msg.role));
     try w.writeAll("\",\"content\":");
     switch (msg.content) {
-        .text => |t| try writeJSONString(w, t),
+        .text => |t| {
+            // Anthropic v1 requires content blocks; wrap plain text in a single text block
+            try w.writeByte('[');
+            try writeContentBlock(w, .{ .text = .{ .text = t } });
+            try w.writeByte(']');
+        },
         .blocks => |bs| {
             try w.writeByte('[');
             var first = true;

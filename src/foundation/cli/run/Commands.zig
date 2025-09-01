@@ -79,14 +79,20 @@ pub fn handleRunCommand(allocator: std.mem.Allocator, config: RunConfig) !void {
         creds.access_token = try allocator.dupe(u8, new_tokens.access_token);
     }
 
-    // Initialize Anthropic client with OAuth credentials
+    // Initialize Anthropic client; prefer API key if provided
     const oauth_creds = network.Auth.OAuth.Credentials{
         .type = creds.type,
         .accessToken = creds.access_token,
         .refreshToken = creds.refresh_token,
         .expiresAt = creds.expires_at,
     };
-    var client = try network.Anthropic.Client.Client.initWithOAuth(allocator, oauth_creds, null);
+    var client: network.Anthropic.Client.Client = blk: {
+        if (std.process.getEnvVarOwned(allocator, "ANTHROPIC_API_KEY")) |api_key| {
+            defer allocator.free(api_key);
+            if (api_key.len > 0) break :blk try network.Anthropic.Client.Client.init(allocator, api_key);
+        } else |_| {}
+        break :blk try network.Anthropic.Client.Client.initWithOAuth(allocator, oauth_creds, null);
+    };
     defer client.deinit();
 
     // Shared context for streaming and token refresh

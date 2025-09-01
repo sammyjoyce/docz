@@ -6,6 +6,9 @@ const impl = @import("agent.zig");
 const foundation = @import("foundation");
 const tools = foundation.tools;
 
+// Explicit agent metadata for discovery/logging surfaces
+pub const agentName: []const u8 = "markdown";
+
 fn buildSystemPromptImpl(allocator: std.mem.Allocator, options: engine.CliOptions) ![]const u8 {
     _ = options;
     var arena = std.heap.ArenaAllocator.init(allocator);

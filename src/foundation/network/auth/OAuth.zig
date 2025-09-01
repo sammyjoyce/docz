@@ -233,9 +233,6 @@ fn parseFormTokenResponse(allocator: std.mem.Allocator, body: []const u8) !Crede
 
 /// Parse OAuth token response (JSON preferred, form-encoded fallback)
 fn parseTokenResponse(allocator: std.mem.Allocator, response_body: []const u8) !Credentials {
-    // Debug preview to help diagnose format differences
-    const preview_len: usize = @min(response_body.len, 256);
-    std.log.debug("Token response preview: {s}", .{response_body[0..preview_len]});
     // Prefer JSON if it looks like JSON
     if (response_body.len > 0 and response_body[0] == '{') {
         const parsed = std.json.parseFromSlice(std.json.Value, allocator, response_body, .{}) catch |err| {

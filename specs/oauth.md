@@ -22,10 +22,30 @@ Enable a desktop/CLI app to authenticate a Claude Pro/Max user via OAuth **with 
 
 ---
 
+## Constants (current)
+
+- Client ID: `9d1c250a-e61b-44d9-88ed-5944d1962f5e`
+- Default Redirect URI: `http://localhost:54545/callback` (CLI default)
+- Scopes: `org:create_api_key user:profile user:inference`
+- Authorization: `https://claude.ai/oauth/authorize`
+- Token: `https://console.anthropic.com/v1/oauth/token`
+- API Base: `https://api.anthropic.com`
+
+Token format examples
+- Access: `sk-ant-oat01-...` (typical TTL ~ 8 hours)
+- Refresh: `sk-ant-ort01-...`
+
+CLI quickstart
+- Login: `zig build run -- auth login` (listens on 54545 by default)
+- Override port: `zig build run -- auth login --port 12345`
+- Status/Whoami/Logout: `zig build run -- auth status|whoami|logout`
+
+---
+
 ## 2) Constraints & Assumptions
 
 * **Client registration:** You have a client ID that is allowed to use loopback `redirect_uri` (e.g., `http://localhost:{port}/callback`). Authorization servers **must** allow arbitrary port on loopback per RFC 8252 §7.3; in practice, vendors may still require pre‑registration of the scheme/host/path. ([IETF Datatracker][1])
-* **Loopback specifics:** Use `http://localhost:{port}/callback` exclusively. Exact match of `redirect_uri` is required (host + path); ports may vary if your registration allows any port. Do not use `127.0.0.1` or `[::1]` hosts in this project. ([IETF Datatracker][1])
+* **Loopback specifics:** Use `http://localhost:{port}/callback` exclusively. Exact match of `redirect_uri` is required (host + path); ports may vary if your registration allows any port. Do not use `127.0.0.1` or `[::1]` hosts in this project. The CLI default port is **54545**. ([IETF Datatracker][1])
 * **Headers:** `anthropic-version` is always required. Beta headers are supported and used to gate features; today, OAuth tokens require `anthropic-beta: oauth-2025-04-20` (subject to change). ([Anthropic][2], [Gist][3])
 * **Endpoints:**
 
@@ -35,6 +55,31 @@ Enable a desktop/CLI app to authenticate a Claude Pro/Max user via OAuth **with 
     Authorize/token endpoints are vendor‑specific; treat them as change‑prone (monitor failures & surface actionable errors). (The Messages API path and version header are documented; OAuth usage of Bearer + beta header is observed in Claude Code clients.) ([Anthropic][5], [Gist][3], [GitHub][4])
 * **Scopes (from your flow):** `org:create_api_key user:profile user:inference`. Treat as vendor‑defined; fail gracefully if scope changes.
 * **Credential storage (required):** OAuth credentials must be stored in and retrieved from `~/.local/share/{agent name}/auth.json`. This is the single canonical location used by agents and the foundation auth wiring.
+
+---
+
+## 2.5) Sequence (happy path)
+
+```mermaid
+sequenceDiagram
+    participant CLI as CLI Client
+    participant Browser as User Browser
+    participant Auth as claude.ai
+    participant Token as console.anthropic.com
+    participant API as api.anthropic.com
+
+    CLI->>CLI: Generate PKCE challenge + state
+    CLI->>Browser: Open authorization URL
+    Browser->>Auth: GET /oauth/authorize
+    Auth->>Browser: Present login form
+    Browser->>Auth: User authorizes
+    Auth->>Browser: Redirect with code+state
+    Browser->>CLI: Authorization code
+    CLI->>Token: POST /v1/oauth/token (JSON)
+    Token->>CLI: Access & refresh tokens
+    CLI->>API: POST /v1/messages with Bearer
+    API->>CLI: Response (JSON/SSE)
+```
 
 ---
 
@@ -54,7 +99,7 @@ Enable a desktop/CLI app to authenticate a Claude Pro/Max user via OAuth **with 
 
 * **F1** Generate PKCE: random 32–64 byte verifier; S256 challenge.
 * **F2** Generate a **separate** high‑entropy `state`. Do **not** reuse the PKCE verifier as `state`. ([IETF Datatracker][1])
-* **F3** Start a local HTTP server bound to the loopback interface on an ephemeral port; path `/callback`.
+* **F3** Start a local HTTP server bound to the loopback interface on a chosen port (default **54545**); path `/callback`.
 * **F4** Build authorize URL:
 
   * `response_type=code`
@@ -65,7 +110,20 @@ Enable a desktop/CLI app to authenticate a Claude Pro/Max user via OAuth **with 
   * `state=<opaque>`
 * **F5** Open in system browser; disallow embedded webviews. ([IETF Datatracker][1])
 * **F6** Callback handler: read `code` + `state` **from query string**; verify `state` **and** the exact `redirect_uri` you used (`http://localhost:{port}/callback`). Return a minimal HTML page that autocloses. ([IETF Datatracker][1])
-* **F7** Token exchange (JSON): POST `https://console.anthropic.com/v1/oauth/token` with `{ grant_type: "authorization_code", code, code_verifier, client_id, redirect_uri, state }`.
+* **F7** Token exchange (JSON): POST `https://console.anthropic.com/v1/oauth/token` with body:
+
+  ```json
+  {
+    "grant_type": "authorization_code",
+    "client_id": "9d1c250a-e61b-44d9-88ed-5944d1962f5e",
+    "code_verifier": "<PKCE_VERIFIER>",
+    "code": "<CODE>",
+    "redirect_uri": "http://localhost:54545/callback",
+    "state": "<STATE>"
+  }
+  ```
+
+  Use `Content-Type: application/json` and `Accept: application/json`. The server may return a compressed body; clients must honor `Content-Encoding` (gzip/deflate/zstd) and decompress before JSON parsing.
 * **F8** Persist tokens & absolute expiry (`now + expires_in`).
 
   - Persist to JSON at `~/.local/share/{agent name}/auth.json` and reload from the same path on startup/refresh.
@@ -74,7 +132,7 @@ Enable a desktop/CLI app to authenticate a Claude Pro/Max user via OAuth **with 
 
 * **F9** Background refresh when `now >= (expires_at - skew)`, where `skew` ≈ 60–120s.
 * **F10** On API 401 with `authentication_error`, attempt one refresh (if refresh token present, and last refresh >30s ago).
-* **F11** Refresh request: POST token endpoint `{ grant_type: "refresh_token", refresh_token, client_id }`.
+* **F11** Refresh request: POST token endpoint (JSON) `{ "grant_type": "refresh_token", "refresh_token": "...", "client_id": "9d1c250a-e61b-44d9-88ed-5944d1962f5e" }`. Accept JSON; handle compressed responses.
 * **F12** Update stored token set atomically; keep last‑good tokens until swap succeeds.
 
 ### 4.3 API Wrapper (Messages)
@@ -153,8 +211,9 @@ Enable a desktop/CLI app to authenticate a Claude Pro/Max user via OAuth **with 
 
 ```bash
 # Token exchange succeeds (200, JSON contains access_token & refresh_token)
-curl -sS https://console.anthropic.com/v1/oauth/token -H 'Content-Type: application/json' \
- -d '{"grant_type":"authorization_code","code":"...","state":"...","client_id":"...","redirect_uri":"http://localhost:54321/callback","code_verifier":"..."}'
+curl -sS https://console.anthropic.com/v1/oauth/token \
+  -H 'Content-Type: application/json' -H 'Accept: application/json' \
+  -d '{"grant_type":"authorization_code","code":"...","state":"...","client_id":"9d1c250a-e61b-44d9-88ed-5944d1962f5e","redirect_uri":"http://localhost:54545/callback","code_verifier":"..."}'
 
 # API call with Bearer, version, and beta header returns 200 and content
 curl -sS https://api.anthropic.com/v1/messages \
@@ -176,7 +235,7 @@ curl -sS https://api.anthropic.com/v1/messages \
 * **Local firewall / browser quirks:** Use `localhost`; ensure it resolves to the loopback interface. Avoid forcing `127.0.0.1`. ([IETF Datatracker][1])
 * **Security:** Reusing PKCE verifier as `state` weakens CSRF defense. Require separate random `state`. ([IETF Datatracker][1])
 * **Proxy environments:** Auth uses the browser path; API calls need app‑level proxy config; document env vars like `HTTP_PROXY/HTTPS_PROXY/NO_PROXY`. ([GitHub][6])
-* **Client registration host/port mismatch (observed 2025‑09‑01):** After switching the `redirect_uri` host from `localhost` to `127.0.0.1`, the browser showed: `Redirect URI http://127.0.0.1:8081/callback is not supported by client.` We have also observed the same error on the default port: `Redirect URI http://127.0.0.1:8080/callback is not supported by client.` We did not get this message when using the localhost form `http://localhost:{port}/callback` (default in this repo: `http://localhost:8080/callback`). This indicates our OAuth client registration is for the `localhost` host only. Actions:
+* **Client registration host/port mismatch (observed 2025‑09‑01):** After switching the `redirect_uri` host from `localhost` to `127.0.0.1`, the browser showed: `Redirect URI http://127.0.0.1:8081/callback is not supported by client.` We have also observed the same error on historical defaults like `http://127.0.0.1:8080/callback`. We did not get this message when using the localhost form `http://localhost:{port}/callback` (repo default is now `http://localhost:54545/callback`). This indicates our OAuth client registration is for the `localhost` host only. Actions:
   - Use `http://localhost:{port}/callback` exclusively. If your registration previously included `127.0.0.1`, update it to `localhost` instead.
 
 **Alternatives:**
@@ -224,6 +283,22 @@ curl -sS https://api.anthropic.com/v1/messages \
 3. Ship the header‑correct **Bearer** wrapper with a feature flag for the OAuth beta header.
 4. Build the test matrix: macOS/Windows/Linux, IPv4/IPv6, with/without proxy.
 5. Wire structured logs and a clean fallback to manual code flow and/or API‑key mode.
+
+---
+
+### Appendix: OpenAPI Summary (reference)
+
+- `GET https://claude.ai/oauth/authorize` (security: none)
+  - Query: `client_id`, `response_type=code`, `redirect_uri`, `scope`, `code_challenge`, `code_challenge_method=S256`, `state`.
+- `POST https://console.anthropic.com/v1/oauth/token` (security: none)
+  - Headers: `Content-Type: application/json`, `Accept: application/json`.
+  - Body: `{ grant_type, code, redirect_uri, client_id, code_verifier, state }` for authorization_code; `{ grant_type, refresh_token, client_id }` for refresh.
+  - Response: JSON `{ token_type, access_token, expires_in, refresh_token, scope, organization?, account? }`.
+- `GET https://api.anthropic.com/api/oauth/profile` (with Bearer)
+- `GET https://api.anthropic.com/api/oauth/claude_cli/roles` (with Bearer)
+- `POST https://api.anthropic.com/v1/messages` (with Bearer)
+  - Headers: `anthropic-version: 2023-06-01`, optional `anthropic-beta: oauth-2025-04-20`.
+  - Body: `{ model, max_tokens, messages, stream?, metadata? }`.
 
 [1]: https://datatracker.ietf.org/doc/html/rfc8252 "
             

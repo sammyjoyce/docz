@@ -357,18 +357,37 @@ pub const HTTPClient = struct {
         }
 
         // Set streaming callback context
-        const StreamingCallback = struct {
-            callback: StreamCallback,
-            context: *anyopaque,
+        // Collect error bodies and forward SSE chunks when appropriate
+        var err_body = std.ArrayListUnmanaged(u8){};
+        defer err_body.deinit(self.allocator);
+        var is_event_stream: bool = false;
+
+        const StreamingContext = struct {
+            out_body: *std.ArrayListUnmanaged(u8),
+            allocator: std.mem.Allocator,
+            sse_cb: StreamCallback,
+            sse_ctx: *anyopaque,
+            is_event_stream_ptr: *bool,
         };
 
-        const stream_context = StreamingCallback{
-            .callback = callback,
-            .context = context,
+        const stream_context = StreamingContext{
+            .out_body = &err_body,
+            .allocator = self.allocator,
+            .sse_cb = callback,
+            .sse_ctx = context,
+            .is_event_stream_ptr = &is_event_stream,
         };
 
-        _ = c.curl_easy_setopt(handle, c.CURLOPT_WRITEFUNCTION, streamWriteCallback);
+        _ = c.curl_easy_setopt(handle, c.CURLOPT_WRITEFUNCTION, streamMultiplexWriteCallback);
         _ = c.curl_easy_setopt(handle, c.CURLOPT_WRITEDATA, @as(*const anyopaque, @ptrCast(&stream_context)));
+
+        // Detect content-type from headers to enable/disable SSE forwarding
+        const HeaderDetector = struct {
+            is_event_stream_ptr: *bool,
+        };
+        const header_ctx = HeaderDetector{ .is_event_stream_ptr = &is_event_stream };
+        _ = c.curl_easy_setopt(handle, c.CURLOPT_HEADERFUNCTION, detectContentTypeHeaderCallback);
+        _ = c.curl_easy_setopt(handle, c.CURLOPT_HEADERDATA, @as(*const anyopaque, @ptrCast(&header_ctx)));
 
         // Perform streaming request
         const result = c.curl_easy_perform(handle);
@@ -387,6 +406,9 @@ pub const HTTPClient = struct {
         var statusCode: c_long = 0;
         _ = c.curl_easy_getinfo(handle, c.CURLINFO_RESPONSE_CODE, &statusCode);
 
+        if (statusCode != 200 and err_body.items.len > 0) {
+            std.log.debug("HTTP error body: {s}", .{err_body.items});
+        }
         return @intCast(statusCode);
     }
 
@@ -487,5 +509,57 @@ fn streamWriteCallback(
     const dataSlice = contents[0..realSize];
     context.callback(dataSlice, context.context);
 
+    return realSize;
+}
+
+// Combined streaming writer: accumulate body for diagnostics, forward SSE when event-stream
+fn streamMultiplexWriteCallback(
+    contents: [*c]u8,
+    size: usize,
+    nmemb: usize,
+    userData: ?*anyopaque,
+) callconv(.c) usize {
+    const realSize = size * nmemb;
+    const Ctx = struct {
+        out_body: *std.ArrayListUnmanaged(u8),
+        allocator: std.mem.Allocator,
+        sse_cb: StreamCallback,
+        sse_ctx: *anyopaque,
+        is_event_stream_ptr: *bool,
+    };
+    const ctx: *const Ctx = @ptrCast(@alignCast(userData.?));
+    const dataSlice = contents[0..realSize];
+    ctx.out_body.appendSlice(ctx.allocator, dataSlice) catch return 0;
+    if (ctx.is_event_stream_ptr.*) {
+        ctx.sse_cb(dataSlice, ctx.sse_ctx);
+    }
+    return realSize;
+}
+
+// Header detector to set SSE mode
+fn detectContentTypeHeaderCallback(
+    buffer: [*c]u8,
+    size: usize,
+    nitems: usize,
+    userData: ?*anyopaque,
+) callconv(.c) usize {
+    const realSize = size * nitems;
+    const Ctx = struct { is_event_stream_ptr: *bool };
+    const ctx: *const Ctx = @ptrCast(@alignCast(userData.?));
+    const line = buffer[0..realSize];
+    // Quick check for case-insensitive "content-type:"
+    // Convert only the prefix to avoid allocations
+    const prefix = "Content-Type:";
+    if (line.len >= prefix.len and std.ascii.eqlIgnoreCase(line[0..prefix.len], prefix)) {
+        // Case-insensitive contains check without allocation
+        var i: usize = 0;
+        while (i + "text/event-stream".len <= line.len) : (i += 1) {
+            const slice = line[i .. i + "text/event-stream".len];
+            if (std.ascii.eqlIgnoreCase(slice, "text/event-stream")) {
+                ctx.is_event_stream_ptr.* = true;
+                break;
+            }
+        }
+    }
     return realSize;
 }

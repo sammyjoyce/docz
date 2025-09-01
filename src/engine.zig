@@ -43,6 +43,8 @@ pub const Engine = struct {
     options: CliOptions,
     /// Optional base system prompt provided by the AgentSpec (owned by Engine)
     system_base: ?[]const u8 = null,
+    /// System blocks for OAuth multi-part system prompts
+    system_blocks: ?[]const network.Anthropic.Client.SystemBlock = null,
 
     pub fn init(allocator: std.mem.Allocator, options: CliOptions) !Self {
         return Self{
@@ -69,6 +71,15 @@ pub const Engine = struct {
 
     /// Authenticate and initialize client
     pub fn authenticate(self: *Self) !void {
+        // Prefer API key from environment for general Messages API access
+        if (std.process.getEnvVarOwned(self.allocator, "ANTHROPIC_API_KEY")) |api_key| {
+            defer self.allocator.free(api_key);
+            if (api_key.len > 0) {
+                self.client = try network.Anthropic.Client.Client.init(self.allocator, api_key);
+                return;
+            }
+        } else |_| {}
+
         // Get agent name from environment or use default
         const agent_name = std.process.getEnvVarOwned(self.allocator, "AGENT_NAME") catch |err| blk: {
             if (err == error.EnvironmentVariableNotFound) {
@@ -130,8 +141,8 @@ pub const Engine = struct {
 
         // Initialize Anthropic client with OAuth
         self.client = try network.Anthropic.Client.Client.initWithOAuth(self.allocator, creds, creds_path);
-        // On success, the client is assumed to manage token refresh; we intentionally
-        // do not deinit `creds` here.
+        // Client duplicates the credentials internally; free our local copies to avoid leaks.
+        creds.deinit(self.allocator);
     }
 
     /// Run inference with streaming support and tool execution
@@ -147,6 +158,13 @@ pub const Engine = struct {
         // Build system prompt from registered tools
         const system_prompt = try self.buildSystemPrompt();
         defer if (system_prompt) |sp| self.allocator.free(sp);
+        defer if (self.system_blocks) |blocks| {
+            for (blocks) |block| {
+                self.allocator.free(block.text);
+            }
+            self.allocator.free(blocks);
+            self.system_blocks = null;
+        };
 
         if (self.options.stream) {
             // Streaming mode with SSE. Loop to allow tool → continue cycles.
@@ -169,6 +187,7 @@ pub const Engine = struct {
                     .maxTokens = self.options.max_tokens,
                     .temperature = self.options.temperature,
                     .system = system_prompt,
+                    .systemBlocks = self.system_blocks,
                     .onToken = struct {
                         fn callback(ctx: *SharedContext, data: []const u8) void {
                             Engine.processStreamingEvent(ctx, data);
@@ -313,6 +332,14 @@ pub const Engine = struct {
 
     /// Build system prompt from registered tools
     fn buildSystemPrompt(self: *Self) !?[]const u8 {
+        // Check if we're using OAuth authentication
+        const is_oauth = if (self.client) |*client| blk: {
+            break :blk switch (client.auth) {
+                .oauth => true,
+                .api_key => false,
+            };
+        } else false;
+
         // Read anthropic_spoof.txt content per spec requirements
         const spoofContent = blk: {
             const spoofFile = std.fs.cwd().openFile("prompt/anthropic_spoof.txt", .{}) catch {
@@ -324,18 +351,71 @@ pub const Engine = struct {
         };
         defer if (spoofContent) |content| self.allocator.free(content);
 
+        // For OAuth, build system blocks array
+        if (is_oauth and spoofContent != null) {
+            var blocks = std.ArrayListUnmanaged(network.Anthropic.Client.SystemBlock){};
+            defer blocks.deinit(self.allocator);
+
+            // First block: Claude Code identifier with cache control
+            try blocks.append(self.allocator, .{
+                .text = try self.allocator.dupe(u8, spoofContent.?),
+                .cache_control = .{ .type = "ephemeral" },
+            });
+
+            // Second block: Agent system prompt and tools
+            var agent_prompt = std.ArrayListUnmanaged(u8){};
+            defer agent_prompt.deinit(self.allocator);
+
+            // Add agent-provided base system prompt if set
+            if (self.system_base) |base| {
+                try agent_prompt.appendSlice(self.allocator, base);
+                try agent_prompt.appendSlice(self.allocator, "\n\n");
+            }
+
+            // Add tool descriptions if available
+            const tools_list = try self.tool_registry.listTools(self.allocator);
+            defer self.allocator.free(tools_list);
+
+            if (tools_list.len > 0) {
+                try agent_prompt.appendSlice(self.allocator, "You have access to the following tools:\n\n");
+
+                for (tools_list) |tool| {
+                    try agent_prompt.appendSlice(self.allocator, "Tool: ");
+                    try agent_prompt.appendSlice(self.allocator, tool.name);
+                    try agent_prompt.appendSlice(self.allocator, "\nDescription: ");
+                    try agent_prompt.appendSlice(self.allocator, tool.description);
+                    try agent_prompt.appendSlice(self.allocator, "\n\n");
+                }
+
+                try agent_prompt.appendSlice(self.allocator, "When you need to use a tool, respond with a tool_use block containing the tool name and parameters.\n");
+            }
+
+            if (agent_prompt.items.len > 0) {
+                try blocks.append(self.allocator, .{
+                    .text = try agent_prompt.toOwnedSlice(self.allocator),
+                    .cache_control = null,
+                });
+            }
+
+            // Store blocks for use in streaming
+            self.system_blocks = try blocks.toOwnedSlice(self.allocator);
+
+            // Return null for the single system prompt since we're using blocks
+            return null;
+        }
+
         var prompt_builder = std.ArrayListUnmanaged(u8){};
         defer prompt_builder.deinit(self.allocator);
 
-        // Prepend agent-provided base system prompt if set
-        if (self.system_base) |base| {
-            try prompt_builder.appendSlice(self.allocator, base);
+        // Prepend spoof content FIRST (required for OAuth)
+        if (spoofContent) |content| {
+            try prompt_builder.appendSlice(self.allocator, content);
             try prompt_builder.appendSlice(self.allocator, "\n\n");
         }
 
-        // Prepend spoof content if available
-        if (spoofContent) |content| {
-            try prompt_builder.appendSlice(self.allocator, content);
+        // Then add agent-provided base system prompt if set
+        if (self.system_base) |base| {
+            try prompt_builder.appendSlice(self.allocator, base);
             try prompt_builder.appendSlice(self.allocator, "\n\n");
         }
 

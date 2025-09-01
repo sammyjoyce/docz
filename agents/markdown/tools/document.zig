@@ -1,5 +1,6 @@
 const std = @import("std");
 const json = std.json;
+const tools = @import("foundation").tools;
 const fs = @import("../lib/fs.zig");
 const template = @import("../lib/template.zig");
 const meta = @import("../lib/meta.zig");
@@ -32,7 +33,7 @@ pub const Command = enum {
 };
 
 /// Main entry point for document operations
-pub fn execute(allocator: std.mem.Allocator, params: json.Value) !json.Value {
+pub fn execute(allocator: std.mem.Allocator, params: json.Value) tools.ToolError!json.Value {
     return executeInternal(allocator, params) catch |err| {
         var result = json.ObjectMap.init(allocator);
         try result.put("success", json.Value{ .bool = false });

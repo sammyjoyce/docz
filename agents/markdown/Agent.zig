@@ -5,6 +5,12 @@ const std = @import("std");
 const foundation = @import("foundation");
 const Allocator = std.mem.Allocator;
 
+pub const Error = foundation.config.ConfigError || error{
+    OutOfMemory,
+    FileNotFound,
+    Unexpected,
+};
+
 // Agent-specific configuration extending foundation.config.AgentConfig
 pub const Config = struct {
     agentConfig: foundation.config.AgentConfig,
@@ -19,11 +25,11 @@ pub const Config = struct {
     tocStyle: []const u8 = "github",
     linkStyle: []const u8 = "reference",
 
-    pub fn getConfigPath(allocator: Allocator) ![]const u8 {
+    pub fn getConfigPath(allocator: Allocator) Error![]const u8 {
         return foundation.config.getAgentConfigPath(allocator, "markdown");
     }
 
-    pub fn loadFromFile(allocator: Allocator, path: []const u8) !Config {
+    pub fn loadFromFile(allocator: Allocator, path: []const u8) Error!Config {
         const defaults = Config{
             .agentConfig = foundation.config.createValidatedAgentConfig(
                 "markdown",
@@ -34,7 +40,7 @@ pub const Config = struct {
         return foundation.config.loadWithDefaults(Config, allocator, path, defaults);
     }
 
-    pub fn validate(self: *Config) !void {
+    pub fn validate(self: *Config) Error!void {
         try foundation.config.validateAgentConfig(self.agentConfig);
         if (self.textWrapWidth == 0) return error.InvalidConfigFormat;
     }
@@ -51,7 +57,7 @@ pub const Markdown = struct {
         return .{ .allocator = allocator, .config = config };
     }
 
-    pub fn initFromConfig(allocator: Allocator) !Self {
+    pub fn initFromConfig(allocator: Allocator) Error!Self {
         const path = try Config.getConfigPath(allocator);
         defer allocator.free(path);
         var cfg = try Config.loadFromFile(allocator, path);
@@ -63,15 +69,18 @@ pub const Markdown = struct {
         _ = self;
     }
 
-    pub fn loadSystemPrompt(self: *Self) ![]const u8 {
+    pub fn loadSystemPrompt(self: *Self) Error![]const u8 {
         const prompt_path = "agents/markdown/system_prompt.txt";
         const file = std.fs.cwd().openFile(prompt_path, .{}) catch |err| switch (err) {
             error.FileNotFound => return self.allocator.dupe(u8, "You are the Markdown agent. Maintain high quality."),
-            else => return err,
+            else => return error.Unexpected,
         };
         defer file.close();
 
-        const raw = try file.readToEndAlloc(self.allocator, std.math.maxInt(usize));
+        const raw = file.readToEndAlloc(self.allocator, std.math.maxInt(usize)) catch |err| switch (err) {
+            error.OutOfMemory => return error.OutOfMemory,
+            else => return error.Unexpected,
+        };
         defer self.allocator.free(raw);
         return self.processTemplateVariables(raw);
     }

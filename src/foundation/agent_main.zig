@@ -51,7 +51,7 @@ fn handleAuthCommand(allocator: std.mem.Allocator, subArgs: [][]const u8) !void 
 
     if (std.mem.eql(u8, subcommand, "login")) {
         const manual = hasFlag(subArgs, "--manual");
-        const port = getPortArg(subArgs) orelse 8080;
+        const port = getPortArg(subArgs) orelse 54545;
         const host = getStringArg(subArgs, "--host") orelse "localhost";
 
         try auth.Commands.login(allocator, .{
@@ -89,7 +89,7 @@ pub fn runAgentLoop(comptime Engine: type, allocator: std.mem.Allocator, spec: a
 /// Parse CLI options for the run command
 fn parseRunOptions(comptime Engine: type, allocator: std.mem.Allocator, args: [][]const u8) !Engine.CliOptions {
     var options = Engine.CliOptions{
-        .model = "claude-sonnet-4-20250514",
+        .model = "claude-3-5-sonnet-20241022",
         .max_tokens = 4096,
         .temperature = 0.7,
         .stream = true,
@@ -140,7 +140,7 @@ fn parseRunOptions(comptime Engine: type, allocator: std.mem.Allocator, args: []
 /// Clean up allocated strings in run options
 fn cleanupRunOptions(comptime _: type, allocator: std.mem.Allocator, options: anytype) void {
     // Check if model was allocated (not the default constant)
-    const default_model = "claude-sonnet-4-20250514";
+    const default_model = "claude-3-5-sonnet-20241022";
     if (options.model.ptr != default_model.ptr and options.model.len > 0) {
         allocator.free(options.model);
     }

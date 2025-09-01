@@ -15,7 +15,7 @@ pub const Commands = struct {
     const OAUTH_SCOPES = "org:create_api_key user:profile user:inference";
     /// Handle 'auth login' command
     pub fn login(allocator: std.mem.Allocator, args: struct {
-        port: u16 = 8080,
+        port: u16 = 54545,
         host: []const u8 = "localhost",
         manual: bool = false,
     }) !void {
@@ -287,7 +287,7 @@ pub const Commands = struct {
             defer shared_ctx.deinit();
 
             const stream_params = network.Anthropic.Client.StreamParameters{
-                .model = "claude-3-5-sonnet-20241022",
+                .model = "claude-sonnet-4-20250514",
                 .messages = &messages,
                 .maxTokens = 64,
                 .temperature = 0.7,
@@ -304,7 +304,7 @@ pub const Commands = struct {
         } else {
             // Non-streaming test
             const params = network.Anthropic.Client.MessageParameters{
-                .model = "claude-3-5-sonnet-20241022",
+                .model = "claude-sonnet-4-20250514",
                 .messages = &messages,
                 .maxTokens = 64,
                 .temperature = 0.7,

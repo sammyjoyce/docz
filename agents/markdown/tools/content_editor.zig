@@ -1,8 +1,9 @@
 const std = @import("std");
 const json = std.json;
+const tools = @import("foundation").tools;
 
 /// Content editor tool for markdown documents
-pub fn execute(allocator: std.mem.Allocator, params: json.Value) !json.Value {
+pub fn execute(allocator: std.mem.Allocator, params: json.Value) tools.ToolError!json.Value {
     var result = json.ObjectMap.init(allocator);
 
     // Extract parameters

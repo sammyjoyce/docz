@@ -75,6 +75,12 @@ pub const MessageResult = struct {
     }
 };
 
+/// System content block for multi-part system prompts
+pub const SystemBlock = struct {
+    text: []const u8,
+    cache_control: ?struct { type: []const u8 } = null,
+};
+
 /// Streaming parameters for the messages API
 pub const StreamParameters = struct {
     model: []const u8,
@@ -83,6 +89,7 @@ pub const StreamParameters = struct {
     temperature: f32 = 0.7,
     onToken: *const fn (*SharedContext, []const u8) void,
     system: ?[]const u8 = null,
+    systemBlocks: ?[]const SystemBlock = null,
     topP: ?f32 = null,
     topK: ?u32 = null,
     stopSequences: ?[]const []const u8 = null,
@@ -455,13 +462,17 @@ pub const Client = struct {
     fn streamWithRetry(self: *Self, ctx: *SharedContext, params: StreamParameters, is_retry: bool) !void {
         // Prepare request body
         const bodyJson = try self.buildBodyJson(params);
+        std.log.debug("Anthropic request body: {s}", .{bodyJson});
         defer self.allocator.free(bodyJson);
 
         // Prepare headers
         var headers = std.ArrayListUnmanaged(curl.Header){};
         defer {
+            // Free only values we know we allocated (auth headers). Case-insensitive match.
             for (headers.items) |header| {
-                if (std.mem.eql(u8, header.name, "authorization")) {
+                if (std.ascii.eqlIgnoreCase(header.name, "authorization") or
+                    std.ascii.eqlIgnoreCase(header.name, "x-api-key"))
+                {
                     self.allocator.free(header.value);
                 }
             }
@@ -486,8 +497,9 @@ pub const Client = struct {
             try headers.append(self.allocator, .{ .name = "anthropic-beta", .value = build_options.anthropic_beta_oauth });
         }
 
-        // Build URL
-        const url = try std.fmt.allocPrint(self.allocator, "{s}/v1/messages", .{self.baseUrl});
+        // Build URL (append beta=true for OAuth sessions)
+        const beta_q = if (!is_api_key_auth and build_options.oauth_beta_header) "?beta=true" else "";
+        const url = try std.fmt.allocPrint(self.allocator, "{s}/v1/messages{s}", .{ self.baseUrl, beta_q });
         defer self.allocator.free(url);
 
         // Log headers if verbose
@@ -616,11 +628,26 @@ pub const Client = struct {
         // Stream flag (always true for streaming requests)
         try writer.writeAll("\"stream\":true,");
 
-        // System prompt (optional)
-        if (params.system) |system| {
-            try writer.writeAll("\"system\":\"");
+        // System prompt(s) - prefer systemBlocks for OAuth, fallback to single system
+        if (params.systemBlocks) |blocks| {
+            try writer.writeAll("\"system\":[");
+            for (blocks, 0..) |block, i| {
+                if (i > 0) try writer.writeAll(",");
+                try writer.writeAll("{\"type\":\"text\",\"text\":\"");
+                try writeEscapedJson(writer, block.text);
+                try writer.writeAll("\"");
+                if (block.cache_control) |cc| {
+                    try writer.writeAll(",\"cache_control\":{\"type\":\"");
+                    try writeEscapedJson(writer, cc.type);
+                    try writer.writeAll("\"}");
+                }
+                try writer.writeAll("}");
+            }
+            try writer.writeAll("],");
+        } else if (params.system) |system| {
+            try writer.writeAll("\"system\":[{\"type\":\"text\",\"text\":\"");
             try writeEscapedJson(writer, system);
-            try writer.writeAll("\",");
+            try writer.writeAll("\"}],");
         }
 
         // Top-p (optional)
