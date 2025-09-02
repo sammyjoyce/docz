@@ -174,7 +174,10 @@ pub const Engine = struct {
             // Streaming mode with SSE. Loop to allow tool → continue cycles.
             var client = self.client orelse return error.NotAuthenticated;
             while (true) {
-                out.writeAll("\nClaude: ") catch {};
+                // In TUI mode with streaming hooks, suppress direct stdout banner
+                if (self.shared_ctx.ui_stream.onToken == null) {
+                    out.writeAll("\nClaude: ") catch {};
+                }
 
                 // Initialize streaming state
                 self.shared_ctx.anthropic.contentCollector.clearRetainingCapacity();
@@ -295,6 +298,9 @@ pub const Engine = struct {
                 if (msg.model) |model| {
                     ctx.anthropic.model = ctx.anthropic.allocator.dupe(u8, model) catch null;
                 }
+                if (ctx.ui_stream.onEvent) |cb| {
+                    if (ctx.ui_stream.ctx) |c| cb(c, "message_start", msg.model orelse "");
+                }
             }
         } else if (std.mem.eql(u8, event_type, "content_block_start")) {
             // Initialize tool JSON accumulation if this is a tool_use block
@@ -311,8 +317,12 @@ pub const Engine = struct {
                 if (delta.type) |delta_type| {
                     if (std.mem.eql(u8, delta_type, "text_delta")) {
                         if (delta.text) |text| {
-                            // Print text content
-                            _ = std.fs.File.stdout().deprecatedWriter().writeAll(text) catch {};
+                            // Prefer UI callback when available
+                            if (ctx.ui_stream.onToken) |cb| {
+                                if (ctx.ui_stream.ctx) |c| cb(c, text);
+                            } else {
+                                _ = std.fs.File.stdout().deprecatedWriter().writeAll(text) catch {};
+                            }
                             // Accumulate for history
                             ctx.anthropic.contentCollector.appendSlice(ctx.anthropic.allocator, text) catch {};
                         }
@@ -335,6 +345,9 @@ pub const Engine = struct {
             }
         } else if (std.mem.eql(u8, event_type, "message_stop")) {
             // Message complete
+            if (ctx.ui_stream.onEvent) |cb| {
+                if (ctx.ui_stream.ctx) |c| cb(c, "message_stop", "");
+            }
         }
     }
 
@@ -459,7 +472,6 @@ pub const Engine = struct {
         defer self.allocator.free(list);
         if (list.len == 0) return null;
 
-        // Local helper to write a JSON string with escapes
         const Writer = struct {
             fn writeJSONString(w: anytype, s: []const u8) !void {
                 try w.writeByte('"');
@@ -497,12 +509,19 @@ pub const Engine = struct {
             try w.writeAll("\"description\":");
             try Writer.writeJSONString(w, desc);
             try w.writeByte(',');
-            // generic permissive schema
-            try w.writeAll("\"input_schema\":{\"type\":\"object\"}");
+            // input_schema: prefer registry-provided raw JSON (if any)
+            try w.writeAll("\"input_schema\":");
+            if (self.tool_registry.getInputSchema(t.name)) |schema_json| {
+                try w.writeAll(schema_json);
+            } else {
+                try w.writeAll("{\"type\":\"object\"}");
+            }
             try w.writeByte('}');
         }
         try w.writeByte(']');
-        return buf.toOwnedSlice(self.allocator);
+        const owned = try buf.toOwnedSlice(self.allocator);
+        const owned_const: []const u8 = owned;
+        return owned_const;
     }
 
     /// Returns true if at least one tool call was executed.

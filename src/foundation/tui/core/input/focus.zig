@@ -1,6 +1,7 @@
 //! Focus event handling for TUI applications
 //! Provides focus tracking and management capabilities
 const std = @import("std");
+const events = @import("../events.zig");
 
 /// Focus state controller
 pub const Focus = struct {
@@ -109,6 +110,26 @@ pub const FocusAware = struct {
             }.handle(self),
         };
         try self.focus_controller.addHandler(handler);
+    }
+};
+
+/// Compatibility shim for widgets expecting a FocusManager/FocusableVTable.
+/// These are minimal no-op implementations to keep the new focus API working
+/// with older code paths that import focus.FocusManager.
+pub const FocusableVTable = struct {
+    onFocus: *const fn (*anyopaque) void,
+    onBlur: *const fn (*anyopaque) void,
+    handleKeyEvent: *const fn (*anyopaque, events.KeyEvent) bool,
+};
+
+pub const FocusManager = struct {
+    pub fn registerWidget(_: *FocusManager, _: *anyopaque, _: *const FocusableVTable) !u32 {
+        // Return a dummy id; older code uses this for unregister only.
+        return 1;
+    }
+
+    pub fn unregisterWidget(_: *FocusManager, _: u32) void {
+        // No-op
     }
 };
 

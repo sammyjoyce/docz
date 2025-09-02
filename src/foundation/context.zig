@@ -6,6 +6,8 @@ pub const SharedContext = struct {
     anthropic: Anthropic,
     notification: Notification,
     tools: Tools,
+    /// Optional UI streaming hooks so TUIs can intercept engine events
+    ui_stream: UIStream = .{},
 
     pub const Anthropic = struct {
         refreshLock: models.RefreshLock,
@@ -149,11 +151,22 @@ pub const SharedContext = struct {
         }
     };
 
+    /// Streaming sink for UI integrations
+    pub const UIStream = struct {
+        /// Opaque context for callbacks (e.g., pointer to a TUI component)
+        ctx: ?*anyopaque = null,
+        /// Token callback invoked for each streamed text token
+        onToken: ?*const fn (ctx: *anyopaque, data: []const u8) void = null,
+        /// Lifecycle events from SSE stream: "message_start", "message_stop", etc.
+        onEvent: ?*const fn (ctx: *anyopaque, event_type: []const u8, payload: []const u8) void = null,
+    };
+
     pub fn init(allocator: std.mem.Allocator) SharedContext {
         return .{
             .anthropic = Anthropic.init(allocator),
             .notification = Notification.init(),
             .tools = Tools.init(allocator),
+            .ui_stream = .{},
         };
     }
 

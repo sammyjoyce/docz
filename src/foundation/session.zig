@@ -2,6 +2,14 @@
 //! Provides session persistence, state management, security, and collaboration features.
 
 const std = @import("std");
+const root = @import("root");
+const build_options = if (@hasDecl(root, "build_options"))
+    @field(root, "build_options")
+else
+    struct {
+        pub const session_demo_crypto = true;
+        pub const security_strict = false;
+    }{};
 const Allocator = std.mem.Allocator;
 const crypto = std.crypto;
 const json = std.json;
@@ -360,7 +368,7 @@ pub const StateSnapshot = struct {
         const parsed = try json.parseFromSlice(json.Value, self.allocator, self.stateData, .{});
         defer parsed.deinit();
 
-        const root = parsed.value.object;
+        const root_obj = parsed.value.object;
 
         // Clear current state
         state.deinitHashMap(&state.global);
@@ -377,18 +385,18 @@ pub const StateSnapshot = struct {
         state.tool = std.StringHashMap(json.Value).init(state.allocator);
 
         // Restore from snapshot
-        if (root.get("version")) |version| {
+        if (root_obj.get("version")) |version| {
             state.version = @intCast(version.integer);
         }
 
-        try self.restoreHashMap(&state.global, root.get("global"));
-        try self.restoreHashMap(&state.session, root.get("session"));
-        try self.restoreHashMap(&state.context, root.get("context"));
-        try self.restoreHashMap(&state.command, root.get("command"));
-        try self.restoreHashMap(&state.tool, root.get("tool"));
+        try self.restoreHashMap(&state.global, root_obj.get("global"));
+        try self.restoreHashMap(&state.session, root_obj.get("session"));
+        try self.restoreHashMap(&state.context, root_obj.get("context"));
+        try self.restoreHashMap(&state.command, root_obj.get("command"));
+        try self.restoreHashMap(&state.tool, root_obj.get("tool"));
 
         // Restore variables
-        if (root.get("variables")) |vars| {
+        if (root_obj.get("variables")) |vars| {
             var varIt = vars.object.iterator();
             while (varIt.next()) |entry| {
                 const key = try state.allocator.dupe(u8, entry.key_ptr.*);
@@ -398,7 +406,7 @@ pub const StateSnapshot = struct {
         }
 
         // Restore metadata
-        if (root.get("metadata")) |meta| {
+        if (root_obj.get("metadata")) |meta| {
             var metaIt = meta.object.iterator();
             while (metaIt.next()) |entry| {
                 const key = try state.allocator.dupe(u8, entry.key_ptr.*);
@@ -1034,12 +1042,14 @@ pub const Sessions = struct {
             .historyDir = try fmt.allocPrint(allocator, "{s}/history", .{sessionsDir}),
             .activeSessions = std.StringHashMap(*Session).init(allocator),
             .stats = SessionStats{},
-            .compressionEnabled = true,
+            .compressionEnabled = build_options.session_demo_crypto,
         };
 
-        // Generate master key if encryption is enabled
-        if (enableEncryption) {
+        // Generate master key if encryption is enabled and demo crypto allowed
+        if (enableEncryption and build_options.session_demo_crypto) {
             crypto.random.bytes(&manager.masterKey.?);
+        } else if (enableEncryption and !build_options.session_demo_crypto) {
+            std.log.warn("Session encryption requested but disabled by build options", .{});
         }
 
         // Create directories
@@ -1109,17 +1119,23 @@ pub const Sessions = struct {
         const serialized = try json.stringifyAlloc(self.allocator, sessionJson, .{ .whitespace = true });
         defer self.allocator.free(serialized);
 
-        // Encrypt if needed
+        // Encrypt if requested and demo crypto path allowed
         var encryptedData = serialized;
         if (self.masterKey) |key| {
-            encryptedData = try self.encryptData(serialized, key);
+            if (build_options.session_demo_crypto) {
+                encryptedData = try self.encryptData(serialized, key);
+            } else {
+                std.log.warn("Skipping session encryption: demo crypto disabled", .{});
+            }
         }
         defer if (encryptedData.ptr != serialized.ptr) self.allocator.free(encryptedData);
 
-        // Compress if needed
+        // Compress if enabled and demo codec allowed
         var compressedData = encryptedData;
-        if (self.compressionEnabled) {
+        if (self.compressionEnabled and build_options.session_demo_crypto) {
             compressedData = try self.compressData(encryptedData);
+        } else if (self.compressionEnabled and !build_options.session_demo_crypto) {
+            std.log.warn("Skipping session compression: demo codec disabled", .{});
         }
         defer if (compressedData.ptr != encryptedData.ptr) self.allocator.free(compressedData);
 

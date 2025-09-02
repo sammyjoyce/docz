@@ -24,7 +24,10 @@ pub const cli = @import("foundation/cli.zig");
 pub const network = @import("foundation/network.zig");
 
 // Agent support modules
-pub const agent = @import("agent_loop.zig");
+// NOTE: The legacy `agent_loop.zig` is deprecated. Use the shared engine
+// (`src/engine.zig`) via `foundation.agent_main.runAgent(core_engine, …)` in
+// each agent entry. We intentionally do not re-export the legacy loop here to
+// avoid accidental use.
 pub const agent_base = @import("foundation/agent_base.zig");
 pub const agent_main = @import("foundation/agent_main.zig");
 pub const agent_registry = @import("foundation/agent_registry.zig");

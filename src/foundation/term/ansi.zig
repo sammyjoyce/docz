@@ -28,12 +28,16 @@ pub fn reset(writer: anytype) !void {
 }
 
 pub fn setForeground(writer: anytype, color: AnsiColor) !void {
-    try writer.print("\x1b[{d}m", .{@intFromEnum(color)});
+    var buf: [16]u8 = undefined;
+    const s = try std.fmt.bufPrint(&buf, "\x1b[{d}m", .{@intFromEnum(color)});
+    _ = try writer.write(s);
 }
 
 pub fn setBackground(writer: anytype, color: AnsiColor) !void {
     const bg_code = @intFromEnum(color) + 10; // Background colors are +10 from foreground
-    try writer.print("\x1b[{d}m", .{bg_code});
+    var buf: [16]u8 = undefined;
+    const s = try std.fmt.bufPrint(&buf, "\x1b[{d}m", .{bg_code});
+    _ = try writer.write(s);
 }
 
 pub fn setBold(writer: anytype, enabled: bool) !void {
@@ -65,7 +69,9 @@ pub fn clearScreen(writer: anytype) !void {
 }
 
 pub fn moveCursor(writer: anytype, row: u32, col: u32) !void {
-    try writer.print("\x1b[{d};{d}H", .{ row + 1, col + 1 });
+    var buf: [24]u8 = undefined;
+    const s = try std.fmt.bufPrint(&buf, "\x1b[{d};{d}H", .{ row + 1, col + 1 });
+    _ = try writer.write(s);
 }
 
 pub fn hideCursor(writer: anytype) !void {

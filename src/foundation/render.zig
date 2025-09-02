@@ -107,6 +107,8 @@ pub const TermSurface = @import("render/surface.zig").TermSurface;
 pub const Renderer = @import("render/renderer.zig").Renderer;
 pub const RenderTier = Renderer.RenderTier;
 pub const RenderContext = @import("render/RenderContext.zig");
+// Compatibility alias for UI components expecting render.Context
+pub const Context = RenderContext;
 pub const Theme = Renderer.Theme;
 pub const cacheKey = Renderer.cacheKey;
 pub const QualityTiers = @import("render/quality_tiers.zig").QualityTiers;
@@ -177,8 +179,10 @@ pub const widgets = struct {
     pub const Table = @import("render/widgets/Table.zig");
 };
 
-// Note: Markdown/syntax renderers have been moved under render/legacy
-// and are only included when built with -Dlegacy.
+// Markdown renderer barrel export
+// Expose the markdown renderer via the main render barrel so agents
+// can import `@import("foundation").render.markdown` without deep path imports.
+pub const markdown = @import("render/markdown.zig");
 
 // Demo and utilities: see `examples/cli_demo/` for runnable demos.
 

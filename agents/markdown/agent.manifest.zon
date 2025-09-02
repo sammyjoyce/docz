@@ -51,7 +51,7 @@
             .network_access = true,
 
             // Whether agent supports interactive terminal UI
-            .terminal_ui = false,
+            .terminal_ui = true,
 
             // Whether agent can process images/media
             .media_processing = false,
@@ -91,6 +91,57 @@
 
             // Network bandwidth requirements (low, medium, high)
             .network_bandwidth = "low",
+        },
+    },
+
+    // ============================================================================
+    // SHARED MODULES
+    // ============================================================================
+    // Document the shared subsystems this agent uses so downstream tooling
+    // can reason about required features and optimize builds.
+    .shared_modules = .{
+        .core = .{
+            .cli = true,
+            .tui = true,
+            .network = true,
+            .auth = true,
+            .render = true,
+            .term = true,
+            .tools = true,
+            .components = false,
+        },
+
+        .optional = .{},
+
+        .configuration = .{
+            .cli_features = .{
+                .commands = true,
+                .components = true,
+                .formatters = true,
+                .interactive = true,
+                .themes = true,
+                .utils = true,
+                .workflows = true,
+            },
+            .tui_features = .{
+                .components = true,
+                .core = true,
+                .demos = false,
+                .themes = true,
+                .utils = true,
+                .widgets = true,
+            },
+            .network_features = .{
+                .anthropic = true,
+                .curl = true,
+                .sse = true,
+            },
+            .auth_features = .{
+                .cli = true,
+                .core = true,
+                .oauth = true,
+                .tui = true,
+            },
         },
     },
 
@@ -308,13 +359,13 @@
         .template_version = "1.0",
 
         // Additional notes or comments
-        .notes = "Specialized CLI agent for comprehensive markdown document processing, editing, and management",
+        .notes = "Full CLI + TUI agent for comprehensive markdown document processing, editing, validation, and workflow management",
 
         // Changelog for this version
         .changelog = .{
             .{
                 .version = "2.0.0",
-                .changes = "Enterprise-grade markdown systems architect with comprehensive toolset for document processing, validation, and workflow management",
+                .changes = "Enterprise-grade markdown systems architect with full TUI and CLI; comprehensive toolset for document processing, validation, and workflow management",
             },
         },
     },

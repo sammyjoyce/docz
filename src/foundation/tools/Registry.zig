@@ -140,12 +140,15 @@ pub const Registry = struct {
     allocator: std.mem.Allocator,
     map: std.StringHashMap(ToolFn),
     metadata: std.StringHashMap(Tool),
+    /// Optional per-tool input schema (raw JSON string)
+    input_schemas: std.StringHashMap([]const u8),
 
     pub fn init(allocator: std.mem.Allocator) Registry {
         return .{
             .allocator = allocator,
             .map = std.StringHashMap(ToolFn).init(allocator),
             .metadata = std.StringHashMap(Tool).init(allocator),
+            .input_schemas = std.StringHashMap([]const u8).init(allocator),
         };
     }
 
@@ -170,6 +173,14 @@ pub const Registry = struct {
             self.allocator.free(entry.value_ptr.agent);
         }
         self.metadata.deinit();
+
+        // Free stored input schemas
+        var it3 = self.input_schemas.iterator();
+        while (it3.next()) |entry| {
+            self.allocator.free(entry.key_ptr.*);
+            self.allocator.free(entry.value_ptr.*);
+        }
+        self.input_schemas.deinit();
     }
 
     /// Register a tool with basic information
@@ -304,6 +315,24 @@ pub const Registry = struct {
     /// Get tool metadata
     pub fn getMeta(self: *Registry, name: []const u8) ?Tool {
         return self.metadata.get(name);
+    }
+
+    /// Store a raw JSON input schema for a tool
+    pub fn setInputSchema(self: *Registry, name: []const u8, schema_json: []const u8) !void {
+        const key = try self.allocator.dupe(u8, name);
+        errdefer self.allocator.free(key);
+        const value = try self.allocator.dupe(u8, schema_json);
+        errdefer self.allocator.free(value);
+        if (self.input_schemas.fetchRemove(name)) |old| {
+            self.allocator.free(old.key);
+            self.allocator.free(old.value);
+        }
+        try self.input_schemas.put(key, value);
+    }
+
+    /// Get raw JSON input schema if registered
+    pub fn getInputSchema(self: *Registry, name: []const u8) ?[]const u8 {
+        return self.input_schemas.get(name);
     }
 
     /// List all registered tools
@@ -581,10 +610,122 @@ pub fn registerJsonToolWithRequiredFields(
         .agent = agentName,
     };
     try registry.registerWithMeta(metadata);
+
+    // Also record a minimal input_schema JSON with required fields for engine payloads
+    var buf = std.ArrayListUnmanaged(u8){};
+    defer buf.deinit(registry.allocator);
+    var w = buf.writer(registry.allocator);
+    try w.writeAll("{\"type\":\"object\"");
+    if (requiredFields.len > 0) {
+        try w.writeAll(",\"required\":[");
+        var first = true;
+        for (requiredFields) |rf| {
+            if (!first) try w.writeByte(',');
+            first = false;
+            try w.writeByte('"');
+            for (rf) |c| switch (c) {
+                '"' => try w.writeAll("\\\""),
+                '\\' => try w.writeAll("\\\\"),
+                else => try w.writeByte(c),
+            };
+            try w.writeByte('"');
+        }
+        try w.writeByte(']');
+    }
+    try w.writeByte('}');
+    const schema = try buf.toOwnedSlice(registry.allocator);
+    try registry.setInputSchema(name, schema);
 }
 
 pub fn registerBuiltins(registry: *Registry) !void {
     try registry.register("echo", echo);
     try registry.register("fs_read", readFile);
     try registry.register("oracle", oracleTool);
+}
+
+/// Register a JSON tool and auto-generate a minimal input_schema from a request struct type.
+/// The generated schema includes type:"object", a required list for non-optional fields,
+/// and a properties map with primitive types (string, boolean, number, integer) where obvious.
+pub fn registerJsonToolWithRequestStruct(
+    registry: *Registry,
+    name: []const u8,
+    description: []const u8,
+    jsonFunc: JsonFunction,
+    agentName: []const u8,
+    comptime RequestType: type,
+) !void {
+    const wrapped = createJsonToolWrapper(jsonFunc);
+    const metadata = Tool{
+        .name = name,
+        .description = description,
+        .func = wrapped,
+        .category = "agent",
+        .version = "1.0",
+        .agent = agentName,
+    };
+    try registry.registerWithMeta(metadata);
+
+    // Build schema JSON
+    const info = @typeInfo(RequestType);
+    if (info != .@"struct") return; // only structs supported
+
+    // small writer
+    var buf = std.ArrayListUnmanaged(u8){};
+    defer buf.deinit(registry.allocator);
+    var w = buf.writer(registry.allocator);
+    try w.writeAll("{\"type\":\"object\",");
+
+    // required
+    var first_req = true;
+    inline for (info.@"struct".fields) |f| {
+        const is_optional = @typeInfo(f.type) == .optional;
+        if (!is_optional) {
+            if (first_req) {
+                try w.writeAll("\"required\":[");
+                first_req = false;
+            } else {
+                try w.writeByte(',');
+            }
+            const fname = @import("Reflection.zig").fieldNameToJson(f.name);
+            try w.writeByte('"');
+            try w.writeAll(fname);
+            try w.writeByte('"');
+        }
+    }
+    if (!first_req) try w.writeByte(']');
+
+    // properties (best-effort primitive typing)
+    try w.writeAll(",\"properties\":{");
+    var first_prop = true;
+    inline for (info.@"struct".fields) |f| {
+        if (!first_prop) try w.writeByte(',');
+        first_prop = false;
+        const fname = @import("Reflection.zig").fieldNameToJson(f.name);
+        try w.writeByte('"');
+        try w.writeAll(fname);
+        try w.writeAll("\":{");
+        const T = if (@typeInfo(f.type) == .optional) @typeInfo(f.type).optional.child else f.type;
+        const tinfo = @typeInfo(T);
+        const jtype = switch (tinfo) {
+            .pointer => |p| blk: {
+                const ps = p.size;
+                const is_slice = (@hasField(@TypeOf(ps), "slice") and ps == .slice) or (@hasField(@TypeOf(ps), "Slice") and ps == .Slice);
+                break :blk if (is_slice and p.child == u8) "string" else "array";
+            },
+            .array => |a| if (a.child == u8) "string" else "array",
+            .bool => "boolean",
+            .int => "integer",
+            .float => "number",
+            .@"struct" => "object",
+            else => "object",
+        };
+        try w.writeAll("\"type\":\"");
+        try w.writeAll(jtype);
+        try w.writeAll("\"}");
+    }
+    try w.writeByte('}'); // end properties
+    try w.writeByte('}'); // end object
+
+    const schema = try buf.toOwnedSlice(registry.allocator);
+    try registry.setInputSchema(name, schema);
 }

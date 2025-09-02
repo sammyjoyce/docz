@@ -1,5 +1,10 @@
-//! Minimal core agent loop (~300 LoC)
-//! Handles user input, Anthropic Messages API calls, tool execution, and streaming output
+//! DEPRECATED: Legacy minimal agent loop (~300 LoC)
+//!
+//! This implementation has been superseded by the shared engine in
+//! `src/engine.zig`. Agents should rely on `foundation.agent_main.runAgent`
+//! with `core_engine` to use the canonical runtime (OAuth, SSE streaming,
+//! multi-tool, and summarization support). This file remains for historical
+//! reference and should not be imported from new code.
 
 const std = @import("std");
 const foundation = @import("foundation");

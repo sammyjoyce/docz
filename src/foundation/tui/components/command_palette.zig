@@ -10,7 +10,7 @@ const Allocator = std.mem.Allocator;
 pub const CommandPalette = struct {
     allocator: Allocator,
     visible: bool = false,
-    commands: std.ArrayList(Command),
+    commands: std.ArrayListUnmanaged(Command),
     selected_index: usize = 0,
     search_query: []const u8 = "",
 
@@ -18,14 +18,15 @@ pub const CommandPalette = struct {
         name: []const u8,
         description: []const u8,
         shortcut: ?[]const u8,
-        action: *const fn () anyerror!void,
+        action: *const fn (*anyopaque) void,
+        ctx: ?*anyopaque = null,
     };
 
     pub fn init(allocator: Allocator) !*CommandPalette {
         var self = try allocator.create(CommandPalette);
         self.* = .{
             .allocator = allocator,
-            .commands = std.ArrayList(Command).init(allocator),
+            .commands = std.ArrayListUnmanaged(Command){},
         };
 
         // Register default commands
@@ -35,7 +36,7 @@ pub const CommandPalette = struct {
     }
 
     pub fn deinit(self: *CommandPalette) void {
-        self.commands.deinit();
+        self.commands.deinit(self.allocator);
         self.allocator.destroy(self);
     }
 
@@ -45,6 +46,16 @@ pub const CommandPalette = struct {
 
     pub fn isVisible(self: *CommandPalette) bool {
         return self.visible;
+    }
+
+    /// Back-compat alias: some callers expect `isActive()`
+    pub fn isActive(self: *CommandPalette) bool {
+        return self.visible;
+    }
+
+    /// Register a command at runtime
+    pub fn addCommand(self: *CommandPalette, cmd: Command) !void {
+        try self.commands.append(self.allocator, cmd);
     }
 
     pub fn render(_: *CommandPalette, _: *anyopaque) !void {
@@ -60,49 +71,49 @@ pub const CommandPalette = struct {
 
     fn registerDefaultCommands(self: *CommandPalette) !void {
         // Register common commands
-        try self.commands.append(.{
+        try self.commands.append(self.allocator, .{
             .name = "file_browser",
             .description = "Open file browser for file operations",
             .shortcut = "Ctrl+O",
             .action = undefined, // Will be set by agent
         });
 
-        try self.commands.append(.{
+        try self.commands.append(self.allocator, .{
             .name = "toggle_file_tree",
             .description = "Toggle file tree sidebar",
             .shortcut = "Ctrl+Shift+E",
             .action = undefined, // Will be set by agent
         });
 
-        try self.commands.append(.{
+        try self.commands.append(self.allocator, .{
             .name = "save_file",
             .description = "Save current file",
             .shortcut = "Ctrl+S",
             .action = undefined, // Will be set by agent
         });
 
-        try self.commands.append(.{
+        try self.commands.append(self.allocator, .{
             .name = "new_file",
             .description = "Create new file",
             .shortcut = "Ctrl+N",
             .action = undefined, // Will be set by agent
         });
 
-        try self.commands.append(.{
+        try self.commands.append(self.allocator, .{
             .name = "new_directory",
             .description = "Create new directory",
             .shortcut = "Ctrl+Shift+N",
             .action = undefined, // Will be set by agent
         });
 
-        try self.commands.append(.{
+        try self.commands.append(self.allocator, .{
             .name = "add_bookmark",
             .description = "Add current directory to bookmarks",
             .shortcut = "Ctrl+B",
             .action = undefined, // Will be set by agent
         });
 
-        try self.commands.append(.{
+        try self.commands.append(self.allocator, .{
             .name = "goto_bookmark",
             .description = "Navigate to bookmarked directory",
             .shortcut = "Ctrl+Shift+B",

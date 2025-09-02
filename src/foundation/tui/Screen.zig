@@ -6,6 +6,7 @@
 const std = @import("std");
 const ui = @import("../ui.zig");
 const render_mod = @import("../render.zig");
+const term_mod = @import("../term.zig");
 const App = @import("App.zig");
 
 const Self = @This();
@@ -55,9 +56,9 @@ pub fn init(allocator: std.mem.Allocator, config: Config) !Self {
         .allocator = allocator,
         .config = config,
         .state = .inactive,
-        .components = std.ArrayList(*ui.Component).init(allocator),
+        .components = std.ArrayList(*ui.Component).initCapacity(allocator, 0) catch unreachable,
         .layout = null,
-        .bounds = .{ .x = 0, .y = 0, .width = 80, .height = 24 },
+        .bounds = .{ .x = 0, .y = 0, .w = 80, .h = 24 },
         .dirty = true,
         .focus_index = null,
         .app = null,
@@ -66,7 +67,7 @@ pub fn init(allocator: std.mem.Allocator, config: Config) !Self {
 
 /// Deinitialize the screen
 pub fn deinit(self: *Self) void {
-    self.components.deinit();
+    self.components.deinit(self.allocator);
 }
 
 /// Add a component to the screen
@@ -331,4 +332,250 @@ pub fn needsRedraw(self: *const Self) bool {
 /// Mark the screen as needing redraw
 pub fn markDirty(self: *Self) void {
     self.dirty = true;
+}
+
+/// Write text at absolute terminal coordinates (0-based x,y)
+pub fn writeAt(self: *Self, x: u16, y: u16, text: []const u8) !void {
+    _ = self;
+    var out = std.fs.File.stdout();
+    var esc: [32]u8 = undefined;
+    const seq = try std.fmt.bufPrint(&esc, "\x1b[{};{}H", .{ @as(u32, y) + 1, @as(u32, x) + 1 });
+    try out.writeAll(seq);
+    try out.writeAll(text);
+}
+
+/// Simple box style matching common terminal borders
+pub const BoxBorderStyle = enum { single, double, rounded, thick, dotted };
+
+/// Draw a box at bounds with the given border style
+pub fn drawBox(self: *Self, bounds: anytype, style: BoxBorderStyle) !void {
+    _ = self;
+    var chars: [6]u21 = undefined;
+    switch (style) {
+        .single => {
+            chars[0] = @as(u21, '┌');
+            chars[1] = @as(u21, '─');
+            chars[2] = @as(u21, '┐');
+            chars[3] = @as(u21, '│');
+            chars[4] = @as(u21, '└');
+            chars[5] = @as(u21, '┘');
+        },
+        .double => {
+            chars[0] = @as(u21, '╔');
+            chars[1] = @as(u21, '═');
+            chars[2] = @as(u21, '╗');
+            chars[3] = @as(u21, '║');
+            chars[4] = @as(u21, '╚');
+            chars[5] = @as(u21, '╝');
+        },
+        .rounded => {
+            chars[0] = @as(u21, '╭');
+            chars[1] = @as(u21, '─');
+            chars[2] = @as(u21, '╮');
+            chars[3] = @as(u21, '│');
+            chars[4] = @as(u21, '╰');
+            chars[5] = @as(u21, '╯');
+        },
+        .thick => {
+            chars[0] = @as(u21, '┏');
+            chars[1] = @as(u21, '━');
+            chars[2] = @as(u21, '┓');
+            chars[3] = @as(u21, '┃');
+            chars[4] = @as(u21, '┗');
+            chars[5] = @as(u21, '┛');
+        },
+        .dotted => {
+            chars[0] = @as(u21, '┌');
+            chars[1] = @as(u21, '┄');
+            chars[2] = @as(u21, '┐');
+            chars[3] = @as(u21, '┊');
+            chars[4] = @as(u21, '└');
+            chars[5] = @as(u21, '┘');
+        },
+    }
+
+    comptime {
+        if (!@hasField(@TypeOf(bounds), "x") or !@hasField(@TypeOf(bounds), "y")) {
+            @compileError("drawBox requires bounds with fields x and y");
+        }
+        if (!(@hasField(@TypeOf(bounds), "width") or @hasField(@TypeOf(bounds), "w"))) {
+            @compileError("drawBox requires bounds.width or bounds.w");
+        }
+        if (!(@hasField(@TypeOf(bounds), "height") or @hasField(@TypeOf(bounds), "h"))) {
+            @compileError("drawBox requires bounds.height or bounds.h");
+        }
+    }
+    const x0: u32 = @as(u32, @intCast(bounds.x));
+    const y0: u32 = @as(u32, @intCast(bounds.y));
+    const w_src = if (@hasField(@TypeOf(bounds), "width")) bounds.width else bounds.w;
+    const h_src = if (@hasField(@TypeOf(bounds), "height")) bounds.height else bounds.h;
+    const w: u32 = @as(u32, @intCast(w_src));
+    const h: u32 = @as(u32, @intCast(h_src));
+    if (w < 2 or h < 2) return; // nothing to draw
+
+    // corners
+    try putChar(x0, y0, chars[0]);
+    try putChar(x0 + w - 1, y0, chars[2]);
+    try putChar(x0, y0 + h - 1, chars[4]);
+    try putChar(x0 + w - 1, y0 + h - 1, chars[5]);
+
+    // top/bottom
+    var i: u32 = 1;
+    while (i < w - 1) : (i += 1) {
+        try putChar(x0 + i, y0, chars[1]);
+        try putChar(x0 + i, y0 + h - 1, chars[1]);
+    }
+
+    // left/right
+    var j: u32 = 1;
+    while (j < h - 1) : (j += 1) {
+        try putChar(x0, y0 + j, chars[3]);
+        try putChar(x0 + w - 1, y0 + j, chars[3]);
+    }
+}
+
+fn putChar(x: u32, y: u32, ch: u21) !void {
+    var out = std.fs.File.stdout();
+    var esc: [32]u8 = undefined;
+    const seq = try std.fmt.bufPrint(&esc, "\x1b[{};{}H", .{ y + 1, x + 1 });
+    try out.writeAll(seq);
+    var cb: [4]u8 = undefined;
+    const n = try std.unicode.utf8Encode(ch, &cb);
+    try out.writeAll(cb[0..n]);
+}
+
+// -------- Simple styling helpers (thin wrappers over ANSI) --------
+pub const Color = enum {
+    black,
+    red,
+    green,
+    yellow,
+    blue,
+    magenta,
+    cyan,
+    white,
+    bright_black,
+    bright_red,
+    bright_green,
+    bright_yellow,
+    bright_blue,
+    bright_magenta,
+    bright_cyan,
+    bright_white,
+};
+
+fn toAnsi(c: Color) term_mod.ansi.AnsiColor {
+    return switch (c) {
+        .black => .black,
+        .red => .red,
+        .green => .green,
+        .yellow => .yellow,
+        .blue => .blue,
+        .magenta => .magenta,
+        .cyan => .cyan,
+        .white => .white,
+        .bright_black => .bright_black,
+        .bright_red => .bright_red,
+        .bright_green => .bright_green,
+        .bright_yellow => .bright_yellow,
+        .bright_blue => .bright_blue,
+        .bright_magenta => .bright_magenta,
+        .bright_cyan => .bright_cyan,
+        .bright_white => .bright_white,
+    };
+}
+
+pub fn setForeground(self: *Self, color: Color) !void {
+    _ = self;
+    var out = std.fs.File.stdout();
+    var buf: [16]u8 = undefined;
+    const code: u8 = @intFromEnum(toAnsi(color));
+    const s = try std.fmt.bufPrint(&buf, "\x1b[{d}m", .{code});
+    try out.writeAll(s);
+}
+
+pub fn setBackground(self: *Self, color: Color) !void {
+    _ = self;
+    var out = std.fs.File.stdout();
+    var buf: [16]u8 = undefined;
+    const code: u8 = @intFromEnum(toAnsi(color)) + 10;
+    const s = try std.fmt.bufPrint(&buf, "\x1b[{d}m", .{code});
+    try out.writeAll(s);
+}
+
+pub fn setBold(self: *Self, enabled: bool) !void {
+    _ = self;
+    var out = std.fs.File.stdout();
+    if (enabled) {
+        try out.writeAll("\x1b[1m");
+    } else {
+        try out.writeAll("\x1b[22m");
+    }
+}
+
+pub fn resetStyle(self: *Self) !void {
+    _ = self;
+    var out = std.fs.File.stdout();
+    try out.writeAll("\x1b[0m");
+}
+
+pub fn setCursorPosition(self: *Self, x: u16, y: u16) !void {
+    _ = self;
+    var out = std.fs.File.stdout();
+    var buf: [24]u8 = undefined;
+    const s = try std.fmt.bufPrint(&buf, "\x1b[{d};{d}H", .{ @as(u32, y) + 1, @as(u32, x) + 1 });
+    try out.writeAll(s);
+}
+
+/// Draw a horizontal line starting at (x,y) of length w using a border style
+pub fn drawHorizontalLine(self: *Self, x: u16, y: u16, w: u16, style: BoxBorderStyle) !void {
+    _ = self;
+    const ch: u21 = switch (style) {
+        .single => '─',
+        .double => '═',
+        .rounded => '─',
+        .thick => '━',
+        .dotted => '┄',
+    };
+    var out = std.fs.File.stdout();
+    var buf: [24]u8 = undefined;
+    const s = try std.fmt.bufPrint(&buf, "\x1b[{d};{d}H", .{ @as(u32, y) + 1, @as(u32, x) + 1 });
+    try out.writeAll(s);
+    var i: u16 = 0;
+    while (i < w) : (i += 1) {
+        var cb: [4]u8 = undefined;
+        const n = try std.unicode.utf8Encode(ch, &cb);
+        try out.writeAll(cb[0..n]);
+    }
+}
+
+/// Fill a rectangular area with spaces (clears area visually)
+pub fn fillRect(self: *Self, bounds: anytype) !void {
+    _ = self;
+    comptime {
+        if (!@hasField(@TypeOf(bounds), "x") or !@hasField(@TypeOf(bounds), "y")) @compileError("bounds.x/y required");
+        if (!(@hasField(@TypeOf(bounds), "width") or @hasField(@TypeOf(bounds), "w"))) @compileError("bounds.width or bounds.w required");
+        if (!(@hasField(@TypeOf(bounds), "height") or @hasField(@TypeOf(bounds), "h"))) @compileError("bounds.height or bounds.h required");
+    }
+    const x0: u32 = @as(u32, @intCast(bounds.x));
+    const y0: u32 = @as(u32, @intCast(bounds.y));
+    const w: u32 = @as(u32, @intCast(if (@hasField(@TypeOf(bounds), "width")) bounds.width else bounds.w));
+    const h: u32 = @as(u32, @intCast(if (@hasField(@TypeOf(bounds), "height")) bounds.height else bounds.h));
+    var out = std.fs.File.stdout();
+    var row: u32 = 0;
+    while (row < h) : (row += 1) {
+        var esc: [24]u8 = undefined;
+        const s = try std.fmt.bufPrint(&esc, "\x1b[{d};{d}H", .{ y0 + row + 1, x0 + 1 });
+        try out.writeAll(s);
+        var i: u32 = 0;
+        while (i < w) : (i += 1) {
+            try out.writeAll(" ");
+        }
+    }
+}
+
+/// Present the current frame (no-op for direct-write mode)
+pub fn present(self: *Self) !void {
+    _ = self;
+    // In this basic implementation, we write directly to stdout, so nothing to flush.
 }

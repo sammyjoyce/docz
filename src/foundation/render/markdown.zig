@@ -5,10 +5,9 @@ const QualityTiers = @import("quality_tiers.zig").QualityTiers;
 const render_mod = @import("../render.zig");
 const Renderer = render_mod.Renderer;
 const RenderMode = render_mod.RenderTier;
-const ColorUnion = term.ansi.color.Color;
-const Color = term.ansi.color.BasicColor;
-const RGBColor = term.ansi.color.RGBColor;
-const hyperlink = term.ansi.hyperlink;
+const ColorUnion = term.color.Color;
+const Color = term.ansi.AnsiColor;
+const hyperlink = term.ansi;
 
 /// Options for markdown rendering
 pub const MarkdownOptions = struct {
@@ -94,65 +93,65 @@ const ColorScheme = struct {
 
     pub fn getForTier(tier: RenderMode) ColorScheme {
         return switch (tier) {
+            .ultra => ColorScheme{
+                .headingColors = [_]ColorUnion{
+                    ColorUnion{ .rgb = .{ .r = 255, .g = 107, .b = 107 } },
+                    ColorUnion{ .rgb = .{ .r = 255, .g = 193, .b = 107 } },
+                    ColorUnion{ .rgb = .{ .r = 255, .g = 255, .b = 107 } },
+                    ColorUnion{ .rgb = .{ .r = 107, .g = 255, .b = 107 } },
+                    ColorUnion{ .rgb = .{ .r = 107, .g = 193, .b = 255 } },
+                    ColorUnion{ .rgb = .{ .r = 193, .g = 107, .b = 255 } },
+                },
+                .boldColor = ColorUnion{ .ansi = 15 },
+                .italicColor = ColorUnion{ .ansi = 14 },
+                .codeBg = ColorUnion{ .rgb = .{ .r = 40, .g = 40, .b = 40 } },
+                .codeFg = ColorUnion{ .rgb = .{ .r = 107, .g = 255, .b = 107 } },
+                .linkColor = ColorUnion{ .rgb = .{ .r = 107, .g = 193, .b = 255 } },
+                .blockquoteColor = ColorUnion{ .ansi = 8 },
+                .tableBorderColor = ColorUnion{ .ansi = 12 },
+            },
             .rich => ColorScheme{
                 .headingColors = [_]ColorUnion{
-                    ColorUnion{ .rgb = RGBColor{ .r = 255, .g = 107, .b = 107 } }, // H1 - bright red
-                    ColorUnion{ .rgb = RGBColor{ .r = 255, .g = 193, .b = 107 } }, // H2 - bright orange
-                    ColorUnion{ .rgb = RGBColor{ .r = 255, .g = 255, .b = 107 } }, // H3 - bright yellow
-                    ColorUnion{ .rgb = RGBColor{ .r = 107, .g = 255, .b = 107 } }, // H4 - bright green
-                    ColorUnion{ .rgb = RGBColor{ .r = 107, .g = 193, .b = 255 } }, // H5 - bright cyan
-                    ColorUnion{ .rgb = RGBColor{ .r = 193, .g = 107, .b = 255 } }, // H6 - bright purple
+                    ColorUnion{ .rgb = .{ .r = 255, .g = 107, .b = 107 } }, // H1 - bright red
+                    ColorUnion{ .rgb = .{ .r = 255, .g = 193, .b = 107 } }, // H2 - bright orange
+                    ColorUnion{ .rgb = .{ .r = 255, .g = 255, .b = 107 } }, // H3 - bright yellow
+                    ColorUnion{ .rgb = .{ .r = 107, .g = 255, .b = 107 } }, // H4 - bright green
+                    ColorUnion{ .rgb = .{ .r = 107, .g = 193, .b = 255 } }, // H5 - bright cyan
+                    ColorUnion{ .rgb = .{ .r = 193, .g = 107, .b = 255 } }, // H6 - bright purple
                 },
-                .boldColor = ColorUnion{ .basic = .bright_white },
-                .italicColor = ColorUnion{ .basic = .bright_cyan },
-                .codeBg = ColorUnion{ .rgb = RGBColor{ .r = 40, .g = 40, .b = 40 } },
-                .codeFg = ColorUnion{ .rgb = RGBColor{ .r = 107, .g = 255, .b = 107 } },
-                .linkColor = ColorUnion{ .rgb = RGBColor{ .r = 107, .g = 193, .b = 255 } },
-                .blockquoteColor = ColorUnion{ .basic = .bright_black },
-                .tableBorderColor = ColorUnion{ .basic = .bright_blue },
+                .boldColor = ColorUnion{ .ansi = 15 }, // bright_white
+                .italicColor = ColorUnion{ .ansi = 14 }, // bright_cyan
+                .codeBg = ColorUnion{ .rgb = .{ .r = 40, .g = 40, .b = 40 } },
+                .codeFg = ColorUnion{ .rgb = .{ .r = 107, .g = 255, .b = 107 } },
+                .linkColor = ColorUnion{ .rgb = .{ .r = 107, .g = 193, .b = 255 } },
+                .blockquoteColor = ColorUnion{ .ansi = 8 }, // bright_black
+                .tableBorderColor = ColorUnion{ .ansi = 12 }, // bright_blue
             },
             .standard => ColorScheme{
                 .headingColors = [_]ColorUnion{
-                    ColorUnion{ .basic = .bright_red },
-                    ColorUnion{ .basic = .bright_yellow },
-                    ColorUnion{ .basic = .bright_green },
-                    ColorUnion{ .basic = .bright_cyan },
-                    ColorUnion{ .basic = .bright_blue },
-                    ColorUnion{ .basic = .bright_magenta },
+                    ColorUnion{ .ansi = 9 }, // bright_red
+                    ColorUnion{ .ansi = 11 }, // bright_yellow
+                    ColorUnion{ .ansi = 10 }, // bright_green
+                    ColorUnion{ .ansi = 14 }, // bright_cyan
+                    ColorUnion{ .ansi = 12 }, // bright_blue
+                    ColorUnion{ .ansi = 13 }, // bright_magenta
                 },
-                .boldColor = ColorUnion{ .basic = .bright_white },
-                .italicColor = ColorUnion{ .basic = .cyan },
+                .boldColor = ColorUnion{ .ansi = 15 }, // bright_white
+                .italicColor = ColorUnion{ .ansi = 6 }, // cyan
                 .codeBg = null,
-                .codeFg = ColorUnion{ .basic = .green },
-                .linkColor = ColorUnion{ .basic = .blue },
-                .blockquoteColor = ColorUnion{ .basic = .bright_black },
-                .tableBorderColor = ColorUnion{ .basic = .blue },
-            },
-            .compatible => ColorScheme{
-                .headingColors = [_]ColorUnion{
-                    ColorUnion{ .basic = .red },
-                    ColorUnion{ .basic = .yellow },
-                    ColorUnion{ .basic = .green },
-                    ColorUnion{ .basic = .cyan },
-                    ColorUnion{ .basic = .blue },
-                    ColorUnion{ .basic = .magenta },
-                },
-                .boldColor = null,
-                .italicColor = null,
-                .codeBg = null,
-                .codeFg = null,
-                .linkColor = null,
-                .blockquoteColor = null,
-                .tableBorderColor = null,
+                .codeFg = ColorUnion{ .ansi = 2 }, // green
+                .linkColor = ColorUnion{ .ansi = 4 }, // blue
+                .blockquoteColor = ColorUnion{ .ansi = 8 }, // bright_black
+                .tableBorderColor = ColorUnion{ .ansi = 4 }, // blue
             },
             .minimal => ColorScheme{
                 .headingColors = [_]ColorUnion{
-                    ColorUnion{ .basic = .white },
-                    ColorUnion{ .basic = .white },
-                    ColorUnion{ .basic = .white },
-                    ColorUnion{ .basic = .white },
-                    ColorUnion{ .basic = .white },
-                    ColorUnion{ .basic = .white },
+                    ColorUnion{ .ansi = 7 }, // white
+                    ColorUnion{ .ansi = 7 }, // white
+                    ColorUnion{ .ansi = 7 }, // white
+                    ColorUnion{ .ansi = 7 }, // white
+                    ColorUnion{ .ansi = 7 }, // white
+                    ColorUnion{ .ansi = 7 }, // white
                 },
                 .boldColor = null,
                 .italicColor = null,
@@ -172,24 +171,24 @@ pub const Markdown = struct {
     options: MarkdownOptions,
     colorScheme: ColorScheme,
     output: std.ArrayList(u8),
-    capabilities: ?caps_mod.TermCaps,
+    capabilities: ?term.capabilities.TermCaps,
 
     pub fn init(allocator: std.mem.Allocator, options: MarkdownOptions) Markdown {
         return Markdown{
             .allocator = allocator,
             .options = options,
             .colorScheme = ColorScheme.getForTier(options.qualityTier),
-            .output = std.ArrayList(u8).init(allocator),
+            .output = std.ArrayList(u8).initCapacity(allocator, 0) catch unreachable,
             .capabilities = null, // Can be set if terminal capabilities are known
         };
     }
 
     pub fn deinit(self: *Markdown) void {
-        self.output.deinit();
+        self.output.deinit(self.allocator);
     }
 
     /// Set terminal capabilities for advanced features
-    pub fn setCapabilities(self: *Markdown, caps: caps_mod.TermCaps) void {
+    pub fn setCapabilities(self: *Markdown, caps: caps_mod.capabilities.TermCaps) void {
         self.capabilities = caps;
     }
 
@@ -197,10 +196,10 @@ pub const Markdown = struct {
     pub fn renderMarkdown(self: *Markdown, markdown: []const u8) ![]u8 {
         self.output.clearRetainingCapacity();
 
-        var lines = std.mem.tokenize(u8, markdown, "\n");
+        var lines = std.mem.splitScalar(u8, markdown, '\n');
         var in_code_block = false;
-        var code_block_content = std.ArrayList(u8).init(self.allocator);
-        defer code_block_content.deinit();
+        var code_block_content = try std.ArrayList(u8).initCapacity(self.allocator, 0);
+        defer code_block_content.deinit(self.allocator);
         var code_block_lang: ?[]const u8 = null;
 
         while (lines.next()) |line| {
@@ -224,9 +223,9 @@ pub const Markdown = struct {
 
             if (in_code_block) {
                 if (code_block_content.items.len > 0) {
-                    try code_block_content.append('\n');
+                    try code_block_content.append(self.allocator, '\n');
                 }
-                try code_block_content.appendSlice(line);
+                try code_block_content.appendSlice(self.allocator, line);
                 continue;
             }
 
@@ -239,7 +238,7 @@ pub const Markdown = struct {
             try self.renderCodeBlock(code_block_lang, code_block_content.items);
         }
 
-        return try self.output.toOwnedSlice();
+        return try self.output.toOwnedSlice(self.allocator);
     }
 
     fn renderLine(self: *Markdown, line: []const u8) !void {
@@ -316,21 +315,21 @@ pub const Markdown = struct {
         if (trimmed.len > 0) {
             try self.renderParagraph(trimmed);
         } else {
-            try self.output.append('\n');
+            try self.output.append(self.allocator, '\n');
         }
     }
 
     fn renderHeading(self: *Markdown, level: u8, text: []const u8) !void {
         const color = if (self.options.colorEnabled)
-            self.color_scheme.heading_colors[level - 1]
+            self.colorScheme.headingColors[level - 1]
         else
             null;
 
         // Render heading decoration based on quality tier
         switch (self.options.qualityTier) {
-            .rich, .standard => {
+            .ultra, .rich => {
                 // Add spacing
-                try self.output.append('\n');
+                try self.output.append(self.allocator, '\n');
 
                 // Apply color and style
                 if (color) |c| {
@@ -348,7 +347,7 @@ pub const Markdown = struct {
                     6 => "• ",
                     else => "",
                 };
-                try self.output.appendSlice(prefix);
+                try self.output.appendSlice(self.allocator, prefix);
 
                 // Render formatted text
                 try self.renderInlineFormatting(text);
@@ -359,50 +358,50 @@ pub const Markdown = struct {
                     2 => " ──────",
                     else => "",
                 };
-                try self.output.appendSlice(suffix);
+                try self.output.appendSlice(self.allocator, suffix);
 
                 // Reset styles
                 if (color != null) {
                     try self.resetStyle();
                 }
 
-                try self.output.appendSlice("\n\n");
+                try self.output.appendSlice(self.allocator, "\n\n");
             },
-            .compatible => {
+            .standard => {
                 // Simple underline style for H1 and H2
-                try self.output.append('\n');
+                try self.output.append(self.allocator, '\n');
                 try self.renderInlineFormatting(text);
-                try self.output.append('\n');
+                try self.output.append(self.allocator, '\n');
 
                 if (level == 1) {
                     for (0..text.len) |_| {
-                        try self.output.append('=');
+                        try self.output.append(self.allocator, '=');
                     }
-                    try self.output.append('\n');
+                    try self.output.append(self.allocator, '\n');
                 } else if (level == 2) {
                     for (0..text.len) |_| {
-                        try self.output.append('-');
+                        try self.output.append(self.allocator, '-');
                     }
-                    try self.output.append('\n');
+                    try self.output.append(self.allocator, '\n');
                 }
-                try self.output.append('\n');
+                try self.output.append(self.allocator, '\n');
             },
             .minimal => {
                 // Plain text with level indicator
-                try self.output.append('\n');
+                try self.output.append(self.allocator, '\n');
                 for (0..level) |_| {
-                    try self.output.append('#');
+                    try self.output.append(self.allocator, '#');
                 }
-                try self.output.append(' ');
-                try self.output.appendSlice(text);
-                try self.output.appendSlice("\n\n");
+                try self.output.append(self.allocator, ' ');
+                try self.output.appendSlice(self.allocator, text);
+                try self.output.appendSlice(self.allocator, "\n\n");
             },
         }
     }
 
     fn renderParagraph(self: *Markdown, text: []const u8) !void {
         try self.renderInlineFormatting(text);
-        try self.output.append('\n');
+        try self.output.append(self.allocator, '\n');
     }
 
     fn renderInlineFormatting(self: *Markdown, text: []const u8) !void {
@@ -464,339 +463,243 @@ pub const Markdown = struct {
             }
 
             // Regular character
-            try self.output.append(text[i]);
+            try self.output.append(self.allocator, text[i]);
             i += 1;
         }
     }
 
     fn renderBold(self: *Markdown, text: []const u8) !void {
-        if (self.options.colorEnabled and self.color_scheme.bold_color != null) {
+        if (self.options.colorEnabled and self.colorScheme.boldColor != null) {
             try self.applyStyle(.bold, true);
-            if (self.color_scheme.bold_color) |color| {
+            if (self.colorScheme.boldColor) |color| {
                 try self.applyColor(color);
             }
         }
-        try self.output.appendSlice(text);
-        if (self.options.colorEnabled and self.color_scheme.bold_color != null) {
+        try self.output.appendSlice(self.allocator, text);
+        if (self.options.colorEnabled and self.colorScheme.boldColor != null) {
             try self.resetStyle();
         }
     }
 
     fn renderItalic(self: *Markdown, text: []const u8) !void {
-        if (self.options.color_enabled and self.color_scheme.italic_color != null) {
+        if (self.options.colorEnabled and self.colorScheme.italicColor != null) {
             try self.applyStyle(.italic, true);
-            if (self.color_scheme.italic_color) |color| {
+            if (self.colorScheme.italicColor) |color| {
                 try self.applyColor(color);
             }
         }
-        try self.output.appendSlice(text);
-        if (self.options.color_enabled and self.color_scheme.italic_color != null) {
+        try self.output.appendSlice(self.allocator, text);
+        if (self.options.colorEnabled and self.colorScheme.italicColor != null) {
             try self.resetStyle();
         }
     }
 
     fn renderInlineCode(self: *Markdown, code: []const u8) !void {
         if (self.options.colorEnabled) {
-            if (self.color_scheme.code_bg) |bg| {
+            if (self.colorScheme.codeBg) |bg| {
                 try self.applyBackgroundColor(bg);
             }
-            if (self.color_scheme.code_fg) |fg| {
+            if (self.colorScheme.codeFg) |fg| {
                 try self.applyColor(fg);
             }
         }
 
-        try self.output.append(' ');
-        try self.output.appendSlice(code);
-        try self.output.append(' ');
+        try self.output.append(self.allocator, ' ');
+        try self.output.appendSlice(self.allocator, code);
+        try self.output.append(self.allocator, ' ');
 
-        if (self.options.color_enabled and
-            (self.color_scheme.code_bg != null or self.color_scheme.code_fg != null))
+        if (self.options.colorEnabled and
+            (self.colorScheme.codeBg != null or self.colorScheme.codeFg != null))
         {
             try self.resetStyle();
         }
     }
 
     fn renderCodeBlock(self: *Markdown, language: ?[]const u8, content: []const u8) !void {
-        const tier_config = switch (self.options.quality_tier) {
-            .rich, .standard => struct {
-                top: []const u8 = "┌──────────────────────────────────────┐",
-                bot: []const u8 = "└──────────────────────────────────────┘",
-                side: []const u8 = "│",
-            }{},
-            .compatible => struct {
-                top: []const u8 = "+--------------------------------------+",
-                bot: []const u8 = "+--------------------------------------+",
-                side: []const u8 = "|",
-            }{},
-            .minimal => struct {
-                top: []const u8 = "",
-                bot: []const u8 = "",
-                side: []const u8 = "",
-            }{},
+        const Border = struct { top: []const u8, bot: []const u8, side: []const u8 };
+        const tier_config: Border = switch (self.options.qualityTier) {
+            .ultra, .rich => .{
+                .top = "┌──────────────────────────────────────┐",
+                .bot = "└──────────────────────────────────────┘",
+                .side = "│",
+            },
+            .standard => .{
+                .top = "+--------------------------------------+",
+                .bot = "+--------------------------------------+",
+                .side = "|",
+            },
+            .minimal => .{ .top = "", .bot = "", .side = "" },
         };
 
         // Top border
         if (tier_config.top.len > 0) {
-            try self.output.appendSlice(tier_config.top);
-            try self.output.append('\n');
+            try self.output.appendSlice(self.allocator, tier_config.top);
+            try self.output.append(self.allocator, '\n');
         }
 
         // Language label
         if (language) |lang| {
             if (tier_config.side.len > 0) {
-                try self.output.appendSlice(tier_config.side);
-                try self.output.append(' ');
+                try self.output.appendSlice(self.allocator, tier_config.side);
+                try self.output.append(self.allocator, ' ');
             }
-            try self.output.appendSlice("Language: ");
-            try self.output.appendSlice(lang);
-            try self.output.append('\n');
+            try self.output.appendSlice(self.allocator, "Language: ");
+            try self.output.appendSlice(self.allocator, lang);
+            try self.output.append(self.allocator, '\n');
         }
 
         // Code content
-        var code_lines = std.mem.tokenize(u8, content, "\n");
+        var code_lines = std.mem.splitScalar(u8, content, '\n');
         var line_num: usize = 1;
 
         while (code_lines.next()) |line| {
             if (tier_config.side.len > 0) {
-                try self.output.appendSlice(tier_config.side);
-                try self.output.append(' ');
+                try self.output.appendSlice(self.allocator, tier_config.side);
+                try self.output.append(self.allocator, ' ');
             }
 
             if (self.options.showLineNumbers) {
-                try std.fmt.format(self.output.writer(), "{d:>4} ", .{line_num});
+                try std.fmt.format(self.output.writer(self.allocator), "{d:>4} ", .{line_num});
                 line_num += 1;
             }
 
-            if (self.options.color_enabled and self.color_scheme.code_fg != null) {
-                try self.applyColor(self.color_scheme.code_fg.?);
+            if (self.options.colorEnabled and self.colorScheme.codeFg != null) {
+                try self.applyColor(self.colorScheme.codeFg.?);
             }
 
-            try self.output.appendSlice(line);
+            try self.output.appendSlice(self.allocator, line);
 
-            if (self.options.color_enabled and self.color_scheme.code_fg != null) {
+            if (self.options.colorEnabled and self.colorScheme.codeFg != null) {
                 try self.resetStyle();
             }
 
-            try self.output.append('\n');
+            try self.output.append(self.allocator, '\n');
         }
 
         // Bottom border
         if (tier_config.bot.len > 0) {
-            try self.output.appendSlice(tier_config.bot);
-            try self.output.append('\n');
+            try self.output.appendSlice(self.allocator, tier_config.bot);
+            try self.output.append(self.allocator, '\n');
         }
 
-        try self.output.append('\n');
+        try self.output.append(self.allocator, '\n');
     }
 
     fn renderLink(self: *Markdown, text: []const u8, url: []const u8) !void {
-        if (self.options.enableHyperlinks and self.capabilities != null and
-            self.capabilities.?.supportsHyperlinkOsc8)
-        {
-            const writer = self.output.writer();
-            try hyperlink.startHyperlink(writer, self.capabilities.?, url, "");
-
-            if (self.color_scheme.link_color) |color| {
-                try self.applyColor(color);
-            }
-            try self.output.appendSlice(text);
-            if (self.color_scheme.link_color != null) {
-                try self.resetStyle();
-            }
-
-            try hyperlink.endHyperlink(writer, self.capabilities.?);
-        } else {
-            // Fallback format
-            if (self.color_scheme.link_color) |color| {
-                try self.applyColor(color);
-            }
-            try self.output.appendSlice(text);
-            if (self.color_scheme.link_color != null) {
-                try self.resetStyle();
-            }
-            try self.output.appendSlice(" (");
-            try self.output.appendSlice(url);
-            try self.output.append(')');
-        }
+        // Simple fallback: text (url)
+        try self.output.appendSlice(self.allocator, text);
+        try self.output.appendSlice(self.allocator, " (");
+        try self.output.appendSlice(self.allocator, url);
+        try self.output.append(self.allocator, ')');
     }
 
     fn renderListItem(self: *Markdown, ordered: bool, level: usize, index: ?usize, text: []const u8) !void {
         // Indentation
         for (0..level * self.options.indentSize) |_| {
-            try self.output.append(' ');
+            try self.output.append(self.allocator, ' ');
         }
 
         // List marker
         if (ordered) {
             if (index) |idx| {
-                try std.fmt.format(self.output.writer(), "{d}. ", .{idx});
+                try std.fmt.format(self.output.writer(self.allocator), "{d}. ", .{idx});
             } else {
-                try self.output.appendSlice("1. ");
+                try self.output.appendSlice(self.allocator, "1. ");
             }
         } else {
-            const bullet = switch (self.options.quality_tier) {
-                .rich, .standard => "• ",
-                .compatible => "* ",
-                .minimal => "- ",
-            };
-            try self.output.appendSlice(bullet);
+            const bullet = if (self.options.qualityTier == .minimal) "- " else "• ";
+            try self.output.appendSlice(self.allocator, bullet);
         }
 
         // List item text
         try self.renderInlineFormatting(text);
-        try self.output.append('\n');
+        try self.output.append(self.allocator, '\n');
     }
 
     fn renderBlockquote(self: *Markdown, text: []const u8) !void {
-        const prefix = switch (self.options.quality_tier) {
-            .rich, .standard => "│ ",
-            .compatible => "| ",
+        const prefix = switch (self.options.qualityTier) {
+            .ultra, .rich, .standard => "│ ",
             .minimal => "> ",
         };
 
-        if (self.color_scheme.blockquote_color) |color| {
+        if (self.colorScheme.blockquoteColor) |color| {
             try self.applyColor(color);
         }
 
-        try self.output.appendSlice(prefix);
+        try self.output.appendSlice(self.allocator, prefix);
         try self.renderInlineFormatting(text);
 
-        if (self.color_scheme.blockquote_color != null) {
+        if (self.colorScheme.blockquoteColor != null) {
             try self.resetStyle();
         }
 
-        try self.output.append('\n');
+        try self.output.append(self.allocator, '\n');
     }
 
     fn renderHorizontalRule(self: *Markdown) !void {
-        try self.output.append('\n');
+        try self.output.append(self.allocator, '\n');
 
-        const rule = switch (self.options.quality_tier) {
-            .rich => "═══════════════════════════════════════════════════════════════════════",
-            .standard => "───────────────────────────────────────────────────────────────────────",
-            .compatible => "-----------------------------------------------------------------------",
+        const rule = switch (self.options.qualityTier) {
+            .ultra, .rich => "═══════════════════════════════════════════════════════════════════════",
+            .standard => "-----------------------------------------------------------------------",
             .minimal => "---",
         };
 
         const width = @min(rule.len, self.options.maxWidth);
-        try self.output.appendSlice(rule[0..width]);
-        try self.output.appendSlice("\n\n");
+        try self.output.appendSlice(self.allocator, rule[0..width]);
+        try self.output.appendSlice(self.allocator, "\n\n");
     }
 
     fn renderTableRow(self: *Markdown, row: []const u8) !void {
         // Simple pipe-separated table rendering
-        var cells = std.mem.tokenize(u8, row, "|");
+        var cells = std.mem.splitScalar(u8, row, '|');
 
-        if (self.color_scheme.table_border_color) |color| {
+        if (self.colorScheme.tableBorderColor) |color| {
             try self.applyColor(color);
         }
 
         while (cells.next()) |cell| {
             const trimmed = std.mem.trim(u8, cell, " \t");
-            try self.output.append('|');
+            try self.output.append(self.allocator, '|');
 
             // Add padding
             for (0..self.options.tablePadding) |_| {
-                try self.output.append(' ');
+                try self.output.append(self.allocator, ' ');
             }
 
             // Cell content
-            if (self.color_scheme.table_border_color != null) {
+            if (self.colorScheme.tableBorderColor != null) {
                 try self.resetStyle();
             }
             try self.renderInlineFormatting(trimmed);
-            if (self.color_scheme.table_border_color) |color| {
+            if (self.colorScheme.tableBorderColor) |color| {
                 try self.applyColor(color);
             }
 
             // Add padding
             for (0..self.options.tablePadding) |_| {
-                try self.output.append(' ');
+                try self.output.append(self.allocator, ' ');
             }
         }
 
-        try self.output.append('|');
+        try self.output.append(self.allocator, '|');
 
-        if (self.color_scheme.table_border_color != null) {
+        if (self.colorScheme.tableBorderColor != null) {
             try self.resetStyle();
         }
 
-        try self.output.append('\n');
+        try self.output.append(self.allocator, '\n');
     }
 
     // ANSI escape sequence helpers
     fn applyColor(self: *Markdown, color: ColorUnion) !void {
-        const ansi_code = switch (color) {
-            .basic => |c| switch (c) {
-                .black => "30",
-                .red => "31",
-                .green => "32",
-                .yellow => "33",
-                .blue => "34",
-                .magenta => "35",
-                .cyan => "36",
-                .white => "37",
-                .bright_black => "90",
-                .bright_red => "91",
-                .bright_green => "92",
-                .bright_yellow => "93",
-                .bright_blue => "94",
-                .bright_magenta => "95",
-                .bright_cyan => "96",
-                .bright_white => "97",
-            },
-            .indexed => |idx| blk: {
-                var buf: [16]u8 = undefined;
-                const str = try std.fmt.bufPrint(&buf, "38;5;{d}", .{@intFromEnum(idx)});
-                break :blk str;
-            },
-            .rgb => |rgb| blk: {
-                var buf: [32]u8 = undefined;
-                const str = try std.fmt.bufPrint(&buf, "38;2;{d};{d};{d}", .{ rgb.r, rgb.g, rgb.b });
-                break :blk str;
-            },
-        };
-
-        try self.output.appendSlice("\x1b[");
-        try self.output.appendSlice(ansi_code);
-        try self.output.append('m');
+        const writer = self.output.writer(self.allocator);
+        try color.toAnsiFg(writer);
     }
 
     fn applyBackgroundColor(self: *Markdown, color: ColorUnion) !void {
-        const ansi_code = switch (color) {
-            .basic => |c| switch (c) {
-                .black => "40",
-                .red => "41",
-                .green => "42",
-                .yellow => "43",
-                .blue => "44",
-                .magenta => "45",
-                .cyan => "46",
-                .white => "47",
-                .bright_black => "100",
-                .bright_red => "101",
-                .bright_green => "102",
-                .bright_yellow => "103",
-                .bright_blue => "104",
-                .bright_magenta => "105",
-                .bright_cyan => "106",
-                .bright_white => "107",
-            },
-            .indexed => |idx| blk: {
-                var buf: [16]u8 = undefined;
-                const str = try std.fmt.bufPrint(&buf, "48;5;{d}", .{@intFromEnum(idx)});
-                break :blk str;
-            },
-            .rgb => |rgb| blk: {
-                var buf: [32]u8 = undefined;
-                const str = try std.fmt.bufPrint(&buf, "48;2;{d};{d};{d}", .{ rgb.r, rgb.g, rgb.b });
-                break :blk str;
-            },
-        };
-
-        try self.output.appendSlice("\x1b[");
-        try self.output.appendSlice(ansi_code);
-        try self.output.append('m');
+        const writer = self.output.writer(self.allocator);
+        try color.toAnsiBg(writer);
     }
 
     fn applyStyle(self: *Markdown, style: enum { bold, italic, underline }, enable: bool) !void {
@@ -805,13 +708,13 @@ pub const Markdown = struct {
             .italic => if (enable) "3" else "23",
             .underline => if (enable) "4" else "24",
         };
-        try self.output.appendSlice("\x1b[");
-        try self.output.appendSlice(code);
-        try self.output.append('m');
+        try self.output.appendSlice(self.allocator, "\x1b[");
+        try self.output.appendSlice(self.allocator, code);
+        try self.output.append(self.allocator, 'm');
     }
 
     fn resetStyle(self: *Markdown) !void {
-        try self.output.appendSlice("\x1b[0m");
+        try self.output.appendSlice(self.allocator, "\x1b[0m");
     }
 };
 
@@ -831,7 +734,7 @@ test "markdown heading rendering" {
     const allocator = std.testing.allocator;
 
     const markdown = "# Heading 1\n## Heading 2\n### Heading 3";
-    const options = MarkdownOptions{ .color_enabled = false, .quality_tier = .minimal };
+    const options = MarkdownOptions{ .colorEnabled = false, .qualityTier = .minimal };
 
     const result = try renderMarkdown(allocator, markdown, options);
     defer allocator.free(result);
@@ -843,7 +746,7 @@ test "markdown inline formatting" {
     const allocator = std.testing.allocator;
 
     const markdown = "This is **bold** and *italic* text with `code`";
-    const options = MarkdownOptions{ .color_enabled = false, .quality_tier = .minimal };
+    const options = MarkdownOptions{ .colorEnabled = false, .qualityTier = .minimal };
 
     const result = try renderMarkdown(allocator, markdown, options);
     defer allocator.free(result);
@@ -857,7 +760,7 @@ test "markdown code block rendering" {
     const allocator = std.testing.allocator;
 
     const markdown = "```zig\nconst x = 10;\n```";
-    const options = MarkdownOptions{ .color_enabled = false, .quality_tier = .minimal };
+    const options = MarkdownOptions{ .colorEnabled = false, .qualityTier = .minimal };
 
     const result = try renderMarkdown(allocator, markdown, options);
     defer allocator.free(result);
@@ -869,7 +772,7 @@ test "markdown list rendering" {
     const allocator = std.testing.allocator;
 
     const markdown = "- Item 1\n- Item 2\n1. First\n2. Second";
-    const options = MarkdownOptions{ .color_enabled = false, .quality_tier = .minimal };
+    const options = MarkdownOptions{ .colorEnabled = false, .qualityTier = .minimal };
 
     const result = try renderMarkdown(allocator, markdown, options);
     defer allocator.free(result);

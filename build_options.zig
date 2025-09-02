@@ -21,3 +21,10 @@ pub const http_verbose_default = false;
 
 /// Anthropic beta header value for OAuth
 pub const anthropic_beta_oauth = "oauth-2025-04-20";
+
+/// Demo crypto/compression for sessions (RLE/XOR). Disable in strict/security builds.
+pub const session_demo_crypto = true;
+
+/// If true, disables demo crypto/compression paths in session management and favors
+/// plain storage until a real crypto/codec is wired in.
+pub const security_strict = false;

@@ -20,6 +20,8 @@ pub const Screen = @import("tui/Screen.zig");
 
 // Base system components
 pub const base = @import("tui/core.zig");
+// Back-compat alias expected by some widgets (e.g., file_tree)
+pub const core = base;
 pub const events = base.events;
 pub const bounds = base.bounds;
 pub const renderer = base.renderer;
@@ -93,6 +95,8 @@ pub const TextInput = widgets.Core.TextInput;
 pub const TabContainer = widgets.Core.TabContainer;
 pub const Table = widgets.Core.Table;
 pub const VirtualList = widgets.Core.VirtualList;
+// Frequently used rich text editor widget
+pub const ScrollableTextArea = widgets.ScrollableTextArea;
 
 // Widget exports
 pub const ProgressBar = widgets.ProgressBar;

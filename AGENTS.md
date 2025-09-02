@@ -129,4 +129,4 @@ Canonical loop and SSE/tool handling live in `src/engine.zig`. Do not duplicate 
 - **Tools:** 6 JSON tools (io, content_editor, validate, document, workflow, file)
 - **Features:** Document processing, validation, workflow management
 - **Config:** Uses foundation.config.AgentConfig with proper field mapping
-- **TUI:** Disabled by default (terminal_ui = false in manifest)
+- **TUI:** Full-featured terminal UI enabled (terminal_ui = true in manifest). Launch with `zig build -Dagent=markdown run` (no args opens TUI) or `markdown --tui`.

@@ -80,6 +80,7 @@ pub const TagCategory = @import("widgets/core/tag_input.zig").TagCategory;
 pub const TagInputConfig = @import("widgets/core/tag_input.zig").TagInputConfig;
 pub const ProgressBar = Rich.ProgressBar;
 pub const Notification = Rich.Notification;
+pub const NotificationController = Rich.NotificationController;
 pub const Graphics = Rich.Graphics;
 
 // Dashboard exports

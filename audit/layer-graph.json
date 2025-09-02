@@ -1,0 +1,6383 @@
+{
+  "nodes": [
+    {
+      "id": "build_options.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "build.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/agent_base.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/agent_main.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/agent_registry.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/auth.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/auth/Commands.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/cli_complete.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/cli.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/commands.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/commands/auth.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/complete.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/components.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/components/base/BreadcrumbTrail.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/components/base/clipboard.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/components/base/ClipboardInput.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/components/base/HyperlinkMenu.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/components/base/panel.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/components/base/SelectMenu.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/core/app.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/core/parser.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/core/router.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/core/state.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/core/terminal_bridge.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/core/types.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/demo_main.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/demo.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/formatters.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/formatters/formatter.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/formatters/rich.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/interactive_cli.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/interactive.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/interactive/command_palette.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/interactive/completion.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/main.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/notifications.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/presenters.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/presenters/notification.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/presenters/progress.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/run/Commands.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/utils.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/utils/hyperlinks.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/workflows.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/workflows/setup_workflow.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/workflows/workflow_registry.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/workflows/workflow_runner.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/cli/workflows/workflow_step.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/config.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/context.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/interactive_session.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/internal/config.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/internal/deps.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/logger.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/network_stub.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/network.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/network/auth/authorize_url.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/network/auth/Callback.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/network/auth/Core.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/network/auth/Errors.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/network/auth/loopback_server.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/network/auth/OAuth.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/network/auth/pkce.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/network/auth/Service.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/network/auth/store.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/network/auth/token_client.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/network/curl.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/network/Http.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/network/HttpCurl.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/network/providers/anthropic/Auth.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/network/providers/anthropic/Client.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/network/providers/anthropic/Models.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/network/providers/anthropic/Retry.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/network/providers/anthropic/Stream.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/network/SSE.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/options.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/render.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/render/Adaptive.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/render/Backend.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/render/braille.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/render/canvas.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/render/Context.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/render/diff_coalesce.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/render/diff_surface.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/render/diff.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/render/markdown.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/render/memory.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/render/painter.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/render/quality_tiers.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/render/RenderContext.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/render/renderer.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/render/surface.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/render/syntax.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/render/terminal.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/render/widgets/Chart.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/render/widgets/Input.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/render/widgets/Notification.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/render/widgets/Progress.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/render/widgets/Table.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/session.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/term.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/term/ansi.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/term/buffer.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/term/buffer/Buffer.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/term/capabilities.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/term/color.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/term/control.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/term/core.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/term/graphics.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/term/input.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/term/io.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/term/query.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/term/shell.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/term/term.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/term/unicode.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/testing.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/testing/snapshot.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/theme.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tools.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tools/JSON.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tools/Reflection.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tools/Registry.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tools/Schemas.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tools/table.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tools/Validation.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/agent_interface.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/agent_ui.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/agent_ux.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/App.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/auth/AuthStatus.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/auth/CodeInput.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/auth/OAuthFlow.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/auth/OAuthWizard.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/AuthenticationManager.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/components/agent_dashboard.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/components/agent_dashboard/layout.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/components/agent_dashboard/renderers.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/components/agent_dashboard/renderers/activity_renderer.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/components/agent_dashboard/renderers/metrics_renderer.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/components/agent_dashboard/renderers/resource_renderer.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/components/agent_dashboard/renderers/status_renderer.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/components/agent_dashboard/state.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/components/auth_wizard.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/components/Authentication.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/components/command_palette.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/components/dashboard.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/components/dashboard/Dashboard.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/components/dashboard/theme.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/components/file_browser.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/components/goodbye_screen.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/components/Session.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/components/theme_selector.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/components/welcome_screen.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/core.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/core/border_merger.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/core/bounds.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/core/canvas.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/core/constraint_solver.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/core/double_buffer.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/core/easing.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/core/events.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/core/input.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/core/input/events.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/core/input/focus.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/core/input/mouse.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/core/input/paste.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/core/layout_cache.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/core/layout.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/core/renderer.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/core/renderers/fallback.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/core/renderers/rich.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/core/screen.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/core/style.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/core/stylize.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/core/terminal.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/core/typing_animation.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/core/widget_interface.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/demo.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/demos/dashboard_demo.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/demos/input_demo.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/FocusManager.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/notifications.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/presenters.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/presenters/notification.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/presenters/progress.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/Screen.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/support.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/themes/default.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/utils.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/core.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/core/block.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/core/button.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/core/calendar.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/core/clear.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/core/container.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/core/diff.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/core/file_tree.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/core/logo.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/core/menu.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/core/ScrollableTextArea.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/core/scrollbar.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/core/section.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/core/split_pane.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/core/tabs.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/core/tag_input.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/core/TextInput.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/core/VirtualList.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/dashboard.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/dashboard/bar_chart.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/dashboard/builder.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/dashboard/chart.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/dashboard/chart/bar.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/dashboard/chart/base.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/dashboard/chart/graphics.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/dashboard/chart/line.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/dashboard/chart/renderer.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/dashboard/engine.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/dashboard/gauge.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/dashboard/grid.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/dashboard/heatmap.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/dashboard/kpi_card.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/dashboard/line_chart.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/dashboard/sparkline.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/dashboard/status_bar.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/dashboard/table.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/dashboard/table/base.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/dashboard/table/clipboard.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/dashboard/table/selection.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/demo.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/modal.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/rich.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/rich/graphics.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/rich/progress.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/rich/text_input.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/tui/widgets/styled.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/types.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/ui.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/ui/Component.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/ui/Event.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/ui/Layout.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/ui/Runner.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/ui/scheduler.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/ui/theme.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/ui/widgets/Chart.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/ui/widgets/Input.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/ui/widgets/Notification.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/ui/widgets/Progress.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/ui/widgets/Status.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/foundation/ui/widgets/Table.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "test_oauth_manual.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "test_oauth_url.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "test_pkce.zig",
+      "layer": "L4"
+    },
+    {
+      "id": "src/agent_loop.zig",
+      "layer": "L3"
+    },
+    {
+      "id": "src/build_helper.zig",
+      "layer": "L3"
+    },
+    {
+      "id": "src/core.zig",
+      "layer": "L3"
+    },
+    {
+      "id": "src/engine.zig",
+      "layer": "L3"
+    },
+    {
+      "id": "src/tools/agent_scaffold.zig",
+      "layer": "L3"
+    },
+    {
+      "id": "agents/_template/Agent.zig",
+      "layer": "L2"
+    },
+    {
+      "id": "agents/_template/main.zig",
+      "layer": "L2"
+    },
+    {
+      "id": "agents/_template/spec.zig",
+      "layer": "L2"
+    },
+    {
+      "id": "agents/_template/tools.zig",
+      "layer": "L2"
+    },
+    {
+      "id": "agents/_template/tools/Tool.zig",
+      "layer": "L2"
+    },
+    {
+      "id": "agents/default/agent.zig",
+      "layer": "L2"
+    },
+    {
+      "id": "agents/default/main.zig",
+      "layer": "L2"
+    },
+    {
+      "id": "agents/default/spec.zig",
+      "layer": "L2"
+    },
+    {
+      "id": "agents/markdown/agent.zig",
+      "layer": "L2"
+    },
+    {
+      "id": "agents/markdown/cli.zig",
+      "layer": "L2"
+    },
+    {
+      "id": "agents/markdown/lib/fs.zig",
+      "layer": "L2"
+    },
+    {
+      "id": "agents/markdown/lib/link.zig",
+      "layer": "L2"
+    },
+    {
+      "id": "agents/markdown/lib/meta.zig",
+      "layer": "L2"
+    },
+    {
+      "id": "agents/markdown/lib/template.zig",
+      "layer": "L2"
+    },
+    {
+      "id": "agents/markdown/lib/text.zig",
+      "layer": "L2"
+    },
+    {
+      "id": "agents/markdown/main.zig",
+      "layer": "L2"
+    },
+    {
+      "id": "agents/markdown/spec.zig",
+      "layer": "L2"
+    },
+    {
+      "id": "agents/markdown/tools.zig",
+      "layer": "L2"
+    },
+    {
+      "id": "agents/markdown/tools/content_editor.zig",
+      "layer": "L2"
+    },
+    {
+      "id": "agents/markdown/tools/document.zig",
+      "layer": "L2"
+    },
+    {
+      "id": "agents/markdown/tools/file.zig",
+      "layer": "L2"
+    },
+    {
+      "id": "agents/markdown/tools/io.zig",
+      "layer": "L2"
+    },
+    {
+      "id": "agents/markdown/tools/validate.zig",
+      "layer": "L2"
+    },
+    {
+      "id": "agents/markdown/tools/workflow.zig",
+      "layer": "L2"
+    },
+    {
+      "id": "agents/markdown/tui.zig",
+      "layer": "L2"
+    },
+    {
+      "id": "agents/simple/agent.zig",
+      "layer": "L2"
+    },
+    {
+      "id": "agents/simple/main.zig",
+      "layer": "L2"
+    },
+    {
+      "id": "agents/simple/spec.zig",
+      "layer": "L2"
+    },
+    {
+      "id": "agents/test_agent/Agent.zig",
+      "layer": "L2"
+    },
+    {
+      "id": "agents/test_agent/main.zig",
+      "layer": "L2"
+    },
+    {
+      "id": "agents/test_agent/spec.zig",
+      "layer": "L2"
+    },
+    {
+      "id": "agents/test_agent/tools.zig",
+      "layer": "L2"
+    },
+    {
+      "id": "agents/test_agent/tools/Tool.zig",
+      "layer": "L2"
+    },
+    {
+      "id": "src/main.zig",
+      "layer": "L1"
+    }
+  ],
+  "edges": [
+    {
+      "from": "build.zig",
+      "to": "build_options.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation.zig",
+      "to": "src/foundation/config.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation.zig",
+      "to": "src/foundation/tools.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation.zig",
+      "to": "src/foundation/context.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation.zig",
+      "to": "src/foundation/logger.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation.zig",
+      "to": "src/foundation/testing.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation.zig",
+      "to": "src/foundation/render.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation.zig",
+      "to": "src/foundation/ui.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation.zig",
+      "to": "src/foundation/tui.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation.zig",
+      "to": "src/foundation/cli.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation.zig",
+      "to": "src/foundation/network.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation.zig",
+      "to": "src/foundation/agent_base.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation.zig",
+      "to": "src/foundation/agent_main.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation.zig",
+      "to": "src/foundation/agent_registry.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation.zig",
+      "to": "src/foundation/interactive_session.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation.zig",
+      "to": "src/foundation/session.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/agent_base.zig",
+      "to": "src/foundation/interactive_session.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/agent_base.zig",
+      "to": "src/foundation/network.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/agent_base.zig",
+      "to": "src/foundation/agent_main.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/agent_main.zig",
+      "to": "src/foundation/cli/auth.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli.zig",
+      "to": "src/foundation/internal/deps.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli.zig",
+      "to": "src/foundation/cli/core/app.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli.zig",
+      "to": "src/foundation/cli/auth.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli.zig",
+      "to": "src/foundation/cli/run/Commands.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli.zig",
+      "to": "src/foundation/cli/components.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/auth.zig",
+      "to": "src/foundation/network.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/auth.zig",
+      "to": "src/foundation/context.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/auth.zig",
+      "to": "src/foundation/context.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/auth/Commands.zig",
+      "to": "src/foundation/network/auth/Core.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/auth/Commands.zig",
+      "to": "src/foundation/network/auth/OAuth.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/auth/Commands.zig",
+      "to": "src/foundation/network.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/cli_complete.zig",
+      "to": "src/foundation/cli.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/cli_complete.zig",
+      "to": "src/foundation/tui.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/cli_complete.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/cli.zig",
+      "to": "build_options.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/commands/auth.zig",
+      "to": "src/foundation/cli/notifications.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/commands/auth.zig",
+      "to": "src/foundation/cli/workflows/workflow_runner.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/commands/auth.zig",
+      "to": "src/foundation/cli/workflows/workflow_step.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/commands/auth.zig",
+      "to": "src/foundation/cli/components.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/commands/auth.zig",
+      "to": "src/foundation/cli/components.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/complete.zig",
+      "to": "src/foundation/cli.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/complete.zig",
+      "to": "src/foundation/tui.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/complete.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/components.zig",
+      "to": "src/foundation/cli/components/base/SelectMenu.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/components.zig",
+      "to": "src/foundation/cli/notifications.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/components.zig",
+      "to": "src/foundation/cli/core/state.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/components.zig",
+      "to": "src/foundation/cli/notifications.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/components.zig",
+      "to": "src/foundation/cli/components/base/HyperlinkMenu.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/components.zig",
+      "to": "src/foundation/cli/components/base/ClipboardInput.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/components.zig",
+      "to": "src/foundation/cli/components/base/panel.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/components.zig",
+      "to": "src/foundation/cli/components/base/BreadcrumbTrail.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/components.zig",
+      "to": "src/foundation/cli/components/base/clipboard.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/components/base/BreadcrumbTrail.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/components/base/clipboard.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/components/base/clipboard.zig",
+      "to": "src/foundation/cli.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/components/base/ClipboardInput.zig",
+      "to": "src/foundation/cli/core/state.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/components/base/HyperlinkMenu.zig",
+      "to": "src/foundation/cli/core/state.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/components/base/panel.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/components/base/panel.zig",
+      "to": "src/foundation/cli/utils.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/core/app.zig",
+      "to": "src/foundation/cli/core/state.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/core/app.zig",
+      "to": "src/foundation/cli/core/types.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/core/app.zig",
+      "to": "src/foundation/cli/core/router.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/core/app.zig",
+      "to": "src/foundation/cli/core/parser.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/core/parser.zig",
+      "to": "src/foundation/cli/core/types.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/core/router.zig",
+      "to": "src/foundation/cli/core/state.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/core/router.zig",
+      "to": "src/foundation/cli/core/types.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/core/router.zig",
+      "to": "src/foundation/cli/workflows/workflow_registry.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/core/router.zig",
+      "to": "src/foundation/cli/auth/Commands.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/core/router.zig",
+      "to": "src/foundation/network.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/core/router.zig",
+      "to": "src/foundation/tools.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/core/state.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/core/state.zig",
+      "to": "src/foundation/cli/presenters.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/core/state.zig",
+      "to": "src/foundation/cli/core/types.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/core/terminal_bridge.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/demo_main.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/demo_main.zig",
+      "to": "src/foundation/cli/core/terminal_bridge.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/demo_main.zig",
+      "to": "src/foundation/cli/notifications.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/demo.zig",
+      "to": "src/foundation/cli.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/formatters/rich.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/formatters/rich.zig",
+      "to": "src/foundation/cli/core/types.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/interactive_cli.zig",
+      "to": "src/foundation/tui.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/interactive_cli.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/interactive_cli.zig",
+      "to": "src/foundation/network.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/interactive.zig",
+      "to": "src/foundation/cli/interactive/command_palette.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/interactive/command_palette.zig",
+      "to": "src/foundation/cli/interactive/completion.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/interactive/command_palette.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/interactive/command_palette.zig",
+      "to": "src/foundation/cli/presenters.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/interactive/completion.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/main.zig",
+      "to": "src/foundation/cli.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/notifications.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/notifications.zig",
+      "to": "src/foundation/cli/core/terminal_bridge.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/notifications.zig",
+      "to": "src/foundation/cli/presenters.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/presenters.zig",
+      "to": "src/foundation/cli/presenters/notification.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/presenters.zig",
+      "to": "src/foundation/cli/presenters/progress.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/run/Commands.zig",
+      "to": "src/foundation/network.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/run/Commands.zig",
+      "to": "src/foundation/tools.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/run/Commands.zig",
+      "to": "src/foundation/context.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/utils.zig",
+      "to": "src/foundation/cli/utils/hyperlinks.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/utils/hyperlinks.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/workflows/setup_workflow.zig",
+      "to": "src/foundation/cli/workflows/workflow_step.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/workflows/setup_workflow.zig",
+      "to": "src/foundation/cli/workflows/workflow_runner.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/workflows/setup_workflow.zig",
+      "to": "src/foundation/cli/notifications.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/workflows/workflow_registry.zig",
+      "to": "src/foundation/cli/core/state.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/workflows/workflow_registry.zig",
+      "to": "src/foundation/cli/core/types.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/workflows/workflow_registry.zig",
+      "to": "src/foundation/cli/workflows/workflow_step.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/workflows/workflow_runner.zig",
+      "to": "src/foundation/cli/notifications.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/workflows/workflow_runner.zig",
+      "to": "src/foundation/cli/components.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/cli/workflows/workflow_runner.zig",
+      "to": "src/foundation/cli/workflows/workflow_step.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/config.zig",
+      "to": "build_options.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/context.zig",
+      "to": "src/foundation/network.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/interactive_session.zig",
+      "to": "src/foundation/session.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/interactive_session.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/internal/config.zig",
+      "to": "build_options.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network.zig",
+      "to": "src/foundation/internal/deps.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network.zig",
+      "to": "src/foundation/network/Http.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network.zig",
+      "to": "src/foundation/network/HttpCurl.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network.zig",
+      "to": "src/foundation/network/SSE.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network.zig",
+      "to": "src/foundation/network/auth/Errors.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network.zig",
+      "to": "src/foundation/network/auth/Core.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network.zig",
+      "to": "src/foundation/network/auth/OAuth.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network.zig",
+      "to": "src/foundation/network/auth/Callback.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network.zig",
+      "to": "src/foundation/network/auth/Service.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network.zig",
+      "to": "src/foundation/network/auth/Errors.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network.zig",
+      "to": "src/foundation/network/auth/pkce.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network.zig",
+      "to": "src/foundation/network/auth/loopback_server.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network.zig",
+      "to": "src/foundation/network/auth/token_client.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network.zig",
+      "to": "src/foundation/network/auth/store.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network.zig",
+      "to": "src/foundation/network/auth/authorize_url.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network.zig",
+      "to": "src/foundation/network/providers/anthropic/Client.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network.zig",
+      "to": "src/foundation/network/providers/anthropic/Models.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network.zig",
+      "to": "src/foundation/network/providers/anthropic/Stream.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network.zig",
+      "to": "src/foundation/network/providers/anthropic/Retry.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network.zig",
+      "to": "src/foundation/network/providers/anthropic/Auth.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network/auth/Callback.zig",
+      "to": "src/foundation/network/auth/OAuth.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network/auth/Callback.zig",
+      "to": "build_options.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network/auth/Core.zig",
+      "to": "src/foundation/network/auth/OAuth.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network/auth/Core.zig",
+      "to": "src/foundation/network/auth/Service.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network/auth/Errors.zig",
+      "to": "src/foundation/network/Http.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network/auth/OAuth.zig",
+      "to": "src/foundation/network/auth/Callback.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network/auth/OAuth.zig",
+      "to": "src/foundation/network/auth/pkce.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network/auth/OAuth.zig",
+      "to": "src/foundation/network/auth/pkce.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network/auth/OAuth.zig",
+      "to": "src/foundation/network/auth/store.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network/auth/OAuth.zig",
+      "to": "src/foundation/network/auth/store.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network/auth/OAuth.zig",
+      "to": "src/foundation/network/auth/store.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network/auth/OAuth.zig",
+      "to": "src/foundation/network/auth/store.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network/auth/OAuth.zig",
+      "to": "src/foundation/network/auth/store.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network/auth/OAuth.zig",
+      "to": "src/foundation/network/auth/authorize_url.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network/auth/Service.zig",
+      "to": "src/foundation/network/auth/OAuth.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network/auth/Service.zig",
+      "to": "src/foundation/network/auth/Core.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network/HttpCurl.zig",
+      "to": "src/foundation/network/Http.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network/HttpCurl.zig",
+      "to": "src/foundation/network/curl.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network/providers/anthropic/Auth.zig",
+      "to": "src/foundation/network/curl.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network/providers/anthropic/Auth.zig",
+      "to": "src/foundation/network/providers/anthropic/Models.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network/providers/anthropic/Auth.zig",
+      "to": "src/foundation/network/auth/OAuth.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network/providers/anthropic/Client.zig",
+      "to": "src/foundation/network/providers/anthropic/Models.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network/providers/anthropic/Client.zig",
+      "to": "src/foundation/network/auth/OAuth.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network/providers/anthropic/Client.zig",
+      "to": "src/foundation/network/providers/anthropic/Stream.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network/providers/anthropic/Client.zig",
+      "to": "src/foundation/network/SSE.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network/providers/anthropic/Client.zig",
+      "to": "src/foundation/network/curl.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network/providers/anthropic/Client.zig",
+      "to": "build_options.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network/providers/anthropic/Client.zig",
+      "to": "src/foundation/context.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network/providers/anthropic/Stream.zig",
+      "to": "src/foundation/network/SSE.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/network/providers/anthropic/Stream.zig",
+      "to": "src/foundation/network/providers/anthropic/Client.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render.zig",
+      "to": "src/foundation/internal/deps.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render.zig",
+      "to": "src/foundation/render/painter.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render.zig",
+      "to": "src/foundation/render/surface.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render.zig",
+      "to": "src/foundation/render/surface.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render.zig",
+      "to": "src/foundation/render/surface.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render.zig",
+      "to": "src/foundation/render/renderer.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render.zig",
+      "to": "src/foundation/render/RenderContext.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render.zig",
+      "to": "src/foundation/render/quality_tiers.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render.zig",
+      "to": "src/foundation/render/quality_tiers.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render.zig",
+      "to": "src/foundation/render/quality_tiers.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render.zig",
+      "to": "src/foundation/render/quality_tiers.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render.zig",
+      "to": "src/foundation/render/diff.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render.zig",
+      "to": "src/foundation/render/diff_surface.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render.zig",
+      "to": "src/foundation/render/diff_coalesce.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render.zig",
+      "to": "src/foundation/render/memory.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render.zig",
+      "to": "src/foundation/render/terminal.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render.zig",
+      "to": "src/foundation/render/braille.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render.zig",
+      "to": "src/foundation/render/canvas.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render.zig",
+      "to": "src/foundation/render/widgets/Progress.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render.zig",
+      "to": "src/foundation/render/widgets/Input.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render.zig",
+      "to": "src/foundation/render/widgets/Notification.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render.zig",
+      "to": "src/foundation/render/widgets/Chart.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render.zig",
+      "to": "src/foundation/render/widgets/Table.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render.zig",
+      "to": "src/foundation.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render.zig",
+      "to": "src/foundation/render/markdown.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/Adaptive.zig",
+      "to": "src/foundation/render/RenderContext.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/Backend.zig",
+      "to": "src/foundation/render/RenderContext.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/Backend.zig",
+      "to": "src/foundation/render/surface.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/canvas.zig",
+      "to": "src/foundation/render/braille.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/canvas.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/Context.zig",
+      "to": "src/foundation/render/surface.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/diff_coalesce.zig",
+      "to": "src/foundation/render/diff_surface.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/diff_surface.zig",
+      "to": "src/foundation/render/surface.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/diff.zig",
+      "to": "src/foundation/render/diff.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/markdown.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/markdown.zig",
+      "to": "src/foundation/render/quality_tiers.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/markdown.zig",
+      "to": "src/foundation/render.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/memory.zig",
+      "to": "src/foundation/render/painter.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/memory.zig",
+      "to": "src/foundation/render/surface.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/memory.zig",
+      "to": "src/foundation/render/diff_surface.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/painter.zig",
+      "to": "src/foundation/render/surface.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/quality_tiers.zig",
+      "to": "src/foundation/render.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/RenderContext.zig",
+      "to": "src/foundation/render/surface.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/RenderContext.zig",
+      "to": "src/foundation/theme.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/RenderContext.zig",
+      "to": "src/foundation/render/renderer.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/renderer.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/renderer.zig",
+      "to": "src/foundation/types.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/renderer.zig",
+      "to": "src/foundation/types.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/renderer.zig",
+      "to": "src/foundation/types.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/renderer.zig",
+      "to": "src/foundation/types.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/terminal.zig",
+      "to": "src/foundation/render/painter.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/terminal.zig",
+      "to": "src/foundation/render/surface.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/terminal.zig",
+      "to": "src/foundation/render/diff_surface.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/terminal.zig",
+      "to": "src/foundation/render/diff_coalesce.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/terminal.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/terminal.zig",
+      "to": "src/foundation/render/memory.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/widgets/Chart.zig",
+      "to": "src/foundation/render/Context.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/widgets/Chart.zig",
+      "to": "src/foundation/render/surface.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/widgets/Input.zig",
+      "to": "src/foundation/render/Context.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/widgets/Input.zig",
+      "to": "src/foundation/render/surface.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/widgets/Notification.zig",
+      "to": "src/foundation/render/Context.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/widgets/Notification.zig",
+      "to": "src/foundation/render/surface.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/widgets/Progress.zig",
+      "to": "src/foundation/render/Context.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/widgets/Progress.zig",
+      "to": "src/foundation/render/surface.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/widgets/Table.zig",
+      "to": "src/foundation/render/Context.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/render/widgets/Table.zig",
+      "to": "src/foundation/render/surface.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/term.zig",
+      "to": "src/foundation/term/ansi.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/term.zig",
+      "to": "src/foundation/term/buffer.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/term.zig",
+      "to": "src/foundation/term/capabilities.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/term.zig",
+      "to": "src/foundation/term/color.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/term.zig",
+      "to": "src/foundation/term/control.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/term.zig",
+      "to": "src/foundation/term/core.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/term.zig",
+      "to": "src/foundation/term/graphics.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/term.zig",
+      "to": "src/foundation/term/input.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/term.zig",
+      "to": "src/foundation/term/io.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/term.zig",
+      "to": "src/foundation/term/query.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/term.zig",
+      "to": "src/foundation/term/shell.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/term.zig",
+      "to": "src/foundation/term/unicode.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/term.zig",
+      "to": "src/foundation/term/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/term/io.zig",
+      "to": "src/foundation/term/capabilities.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/testing.zig",
+      "to": "src/foundation/testing/snapshot.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tools.zig",
+      "to": "src/foundation/tools/Registry.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tools.zig",
+      "to": "src/foundation/tools/JSON.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tools.zig",
+      "to": "src/foundation/tools/Schemas.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tools.zig",
+      "to": "src/foundation/tools/Reflection.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tools.zig",
+      "to": "src/foundation/tools/Validation.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tools.zig",
+      "to": "src/foundation/tools/table.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tools/JSON.zig",
+      "to": "src/foundation/tools.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tools/JSON.zig",
+      "to": "src/foundation/tools/Reflection.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tools/Registry.zig",
+      "to": "src/foundation/network.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tools/Registry.zig",
+      "to": "src/foundation/context.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tools/Registry.zig",
+      "to": "src/foundation/tools/Schemas.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tools/Registry.zig",
+      "to": "src/foundation/tools/Reflection.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tools/Registry.zig",
+      "to": "src/foundation/tools/Reflection.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tools/Validation.zig",
+      "to": "src/foundation/tools.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tools/Validation.zig",
+      "to": "src/foundation/tools/JSON.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tools/Validation.zig",
+      "to": "src/foundation/tools/Reflection.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui.zig",
+      "to": "src/foundation/ui.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui.zig",
+      "to": "src/foundation/render.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui.zig",
+      "to": "src/foundation/tui/App.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui.zig",
+      "to": "src/foundation/tui/Screen.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui.zig",
+      "to": "src/foundation/tui/core.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui.zig",
+      "to": "src/foundation/tui/widgets.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui.zig",
+      "to": "src/foundation/tui/utils.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui.zig",
+      "to": "src/foundation/tui/widgets.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui.zig",
+      "to": "src/foundation/tui/notifications.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui.zig",
+      "to": "src/foundation/tui/components/command_palette.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui.zig",
+      "to": "src/foundation/tui/widgets/modal.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui.zig",
+      "to": "src/foundation/tui/widgets/core/split_pane.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui.zig",
+      "to": "src/foundation/tui/widgets/core/file_tree.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui.zig",
+      "to": "src/foundation/tui/agent_ui.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui.zig",
+      "to": "src/foundation/tui/auth/OAuthFlow.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui.zig",
+      "to": "src/foundation/tui/auth/OAuthWizard.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui.zig",
+      "to": "src/foundation/tui/agent_interface.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui.zig",
+      "to": "src/foundation/tui/presenters.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/agent_interface.zig",
+      "to": "src/foundation/tui/agent_interface.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/agent_interface.zig",
+      "to": "src/foundation/tui.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/agent_interface.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/agent_interface.zig",
+      "to": "src/foundation/theme.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/agent_interface.zig",
+      "to": "src/foundation/render.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/agent_interface.zig",
+      "to": "src/foundation/network.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/agent_interface.zig",
+      "to": "src/foundation/ui.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/agent_interface.zig",
+      "to": "src/foundation/tools.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/agent_interface.zig",
+      "to": "src/foundation/cli.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/agent_interface.zig",
+      "to": "src/foundation/tui/components/auth_wizard.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/agent_interface.zig",
+      "to": "src/foundation/tui/components/theme_selector.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/agent_interface.zig",
+      "to": "src/foundation/tui/components/Session.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/agent_interface.zig",
+      "to": "src/foundation/tui/components/welcome_screen.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/agent_interface.zig",
+      "to": "src/foundation/tui/components/goodbye_screen.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/agent_interface.zig",
+      "to": "src/foundation/tui/components/file_browser.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/agent_interface.zig",
+      "to": "src/foundation/tui/AuthenticationManager.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/agent_interface.zig",
+      "to": "src/foundation/tui/FocusManager.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/agent_interface.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/agent_ui.zig",
+      "to": "src/foundation/tui/core/renderer.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/agent_ui.zig",
+      "to": "src/foundation/tui/core/bounds.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/agent_ui.zig",
+      "to": "src/foundation/tui/notifications.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/agent_ui.zig",
+      "to": "src/foundation/tui/widgets/rich/progress.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/agent_ui.zig",
+      "to": "src/foundation/tui/widgets/rich/text_input.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/agent_ui.zig",
+      "to": "src/foundation/theme.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/agent_ui.zig",
+      "to": "src/foundation/ui.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/agent_ui.zig",
+      "to": "src/foundation/network.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/agent_ui.zig",
+      "to": "src/foundation/render.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/agent_ux.zig",
+      "to": "src/foundation/tui/agent_ux.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/agent_ux.zig",
+      "to": "src/foundation/tui.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/agent_ux.zig",
+      "to": "src/foundation/tui/core/renderer.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/agent_ux.zig",
+      "to": "src/foundation/tui/core/input.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/agent_ux.zig",
+      "to": "src/foundation/tui/core/events.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/agent_ux.zig",
+      "to": "src/foundation/tui/core/bounds.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/agent_ux.zig",
+      "to": "src/foundation/tui/notifications.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/agent_ux.zig",
+      "to": "src/foundation/tui/components/command_palette.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/agent_ux.zig",
+      "to": "src/foundation/tui/components/Session.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/agent_ux.zig",
+      "to": "src/foundation/tui/components/welcome_screen.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/App.zig",
+      "to": "src/foundation/ui.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/App.zig",
+      "to": "src/foundation/render.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/App.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/auth/OAuthFlow.zig",
+      "to": "src/foundation/network.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/auth/OAuthFlow.zig",
+      "to": "src/foundation/render.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/auth/OAuthFlow.zig",
+      "to": "src/foundation/ui.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/auth/OAuthFlow.zig",
+      "to": "src/foundation/theme.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/auth/OAuthFlow.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/auth/OAuthFlow.zig",
+      "to": "src/foundation/tui.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/auth/OAuthWizard.zig",
+      "to": "src/foundation/network.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/auth/OAuthWizard.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/auth/OAuthWizard.zig",
+      "to": "src/foundation/tui.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/AuthenticationManager.zig",
+      "to": "src/foundation/network.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/AuthenticationManager.zig",
+      "to": "src/foundation/tui.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/components/agent_dashboard.zig",
+      "to": "build_options.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/components/agent_dashboard/renderers/activity_renderer.zig",
+      "to": "src/foundation/tui/components/agent_dashboard/state.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/components/agent_dashboard/renderers/activity_renderer.zig",
+      "to": "src/foundation/tui/components/agent_dashboard/layout.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/components/agent_dashboard/renderers/activity_renderer.zig",
+      "to": "src/foundation/theme.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/components/agent_dashboard/renderers/activity_renderer.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/components/agent_dashboard/renderers/activity_renderer.zig",
+      "to": "src/foundation/render.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/components/agent_dashboard/renderers/metrics_renderer.zig",
+      "to": "src/foundation/tui/components/agent_dashboard/state.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/components/agent_dashboard/renderers/metrics_renderer.zig",
+      "to": "src/foundation/tui/components/agent_dashboard/layout.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/components/agent_dashboard/renderers/metrics_renderer.zig",
+      "to": "src/foundation/theme.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/components/agent_dashboard/renderers/metrics_renderer.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/components/agent_dashboard/renderers/metrics_renderer.zig",
+      "to": "src/foundation/render.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/components/agent_dashboard/renderers/resource_renderer.zig",
+      "to": "src/foundation/tui/components/agent_dashboard/state.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/components/agent_dashboard/renderers/resource_renderer.zig",
+      "to": "src/foundation/tui/components/agent_dashboard/layout.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/components/agent_dashboard/renderers/resource_renderer.zig",
+      "to": "src/foundation/theme.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/components/agent_dashboard/renderers/resource_renderer.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/components/agent_dashboard/renderers/resource_renderer.zig",
+      "to": "src/foundation/render.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/components/agent_dashboard/renderers/status_renderer.zig",
+      "to": "src/foundation/tui/components/agent_dashboard/state.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/components/agent_dashboard/renderers/status_renderer.zig",
+      "to": "src/foundation/tui/components/agent_dashboard/layout.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/components/agent_dashboard/renderers/status_renderer.zig",
+      "to": "src/foundation/theme.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/components/agent_dashboard/renderers/status_renderer.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/components/agent_dashboard/renderers/status_renderer.zig",
+      "to": "src/foundation/render.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/components/dashboard/Dashboard.zig",
+      "to": "src/foundation/tui/components/dashboard/theme.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/components/dashboard/theme.zig",
+      "to": "src/foundation/theme.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/components/dashboard/theme.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/components/file_browser.zig",
+      "to": "src/foundation/tui.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/components/file_browser.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/components/file_browser.zig",
+      "to": "src/foundation/ui.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core.zig",
+      "to": "src/foundation/tui/core/events.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core.zig",
+      "to": "src/foundation/tui/core/bounds.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core.zig",
+      "to": "src/foundation/tui/core/renderer.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core.zig",
+      "to": "src/foundation/tui/core/stylize.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core.zig",
+      "to": "src/foundation/tui/core/border_merger.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core.zig",
+      "to": "src/foundation/tui/core/easing.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core.zig",
+      "to": "src/foundation/tui/core/typing_animation.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core.zig",
+      "to": "src/foundation/tui/core/canvas.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/border_merger.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/canvas.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/double_buffer.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/events.zig",
+      "to": "src/foundation.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/input.zig",
+      "to": "src/foundation/tui/core/input/events.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/input.zig",
+      "to": "src/foundation/tui/core/input/focus.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/input.zig",
+      "to": "src/foundation/tui/core/input/paste.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/input.zig",
+      "to": "src/foundation/tui/core/input/mouse.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/input.zig",
+      "to": "src/foundation/ui.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/input/events.zig",
+      "to": "src/foundation/ui.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/input/events.zig",
+      "to": "src/foundation/tui/core/events.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/input/events.zig",
+      "to": "src/foundation/tui/core/events.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/input/events.zig",
+      "to": "src/foundation/tui/core/events.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/input/events.zig",
+      "to": "src/foundation/tui/core/events.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/input/focus.zig",
+      "to": "src/foundation/tui/core/events.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/input/focus.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/input/focus.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/input/mouse.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/input/mouse.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/input/mouse.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/input/paste.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/input/paste.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/layout_cache.zig",
+      "to": "src/foundation/tui/core/bounds.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/layout_cache.zig",
+      "to": "src/foundation/tui/core/layout.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/layout.zig",
+      "to": "src/foundation/tui/core/bounds.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/layout.zig",
+      "to": "src/foundation/tui/core/layout_cache.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/renderer.zig",
+      "to": "src/foundation/tui/core/bounds.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/renderer.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/renderer.zig",
+      "to": "src/foundation/types.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/renderer.zig",
+      "to": "src/foundation/tui/core/renderers/rich.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/renderer.zig",
+      "to": "src/foundation/tui/core/renderers/fallback.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/renderer.zig",
+      "to": "src/foundation/tui/core/renderers/fallback.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/renderer.zig",
+      "to": "src/foundation/types.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/renderer.zig",
+      "to": "src/foundation/types.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/renderer.zig",
+      "to": "src/foundation/types.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/renderer.zig",
+      "to": "src/foundation/types.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/renderers/fallback.zig",
+      "to": "src/foundation/tui/core/renderer.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/renderers/rich.zig",
+      "to": "src/foundation/tui/core/renderer.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/renderers/rich.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/renderers/rich.zig",
+      "to": "src/foundation/ui.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/screen.zig",
+      "to": "src/foundation/tui/Screen.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/screen.zig",
+      "to": "src/foundation/tui/core/bounds.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/style.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/stylize.zig",
+      "to": "src/foundation/tui/core/renderer.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/stylize.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/terminal.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/terminal.zig",
+      "to": "src/foundation/tui/core/double_buffer.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/terminal.zig",
+      "to": "src/foundation/term/input.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/terminal.zig",
+      "to": "src/foundation/term/capabilities.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/typing_animation.zig",
+      "to": "src/foundation/tui/core/easing.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/typing_animation.zig",
+      "to": "src/foundation/tui/core/renderer.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/typing_animation.zig",
+      "to": "src/foundation/tui/core/renderer.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/typing_animation.zig",
+      "to": "src/foundation/tui/core/bounds.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/typing_animation.zig",
+      "to": "src/foundation/tui/core/bounds.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/core/widget_interface.zig",
+      "to": "src/foundation/tui/core/renderer.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/demo.zig",
+      "to": "src/foundation/tui.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/demo.zig",
+      "to": "src/foundation/tui/core/bounds.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/demo.zig",
+      "to": "src/foundation/context.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/demo.zig",
+      "to": "src/foundation/tui/widgets/rich/progress.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/demos/dashboard_demo.zig",
+      "to": "src/foundation/tui.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/notifications.zig",
+      "to": "src/foundation/tui/core/renderer.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/notifications.zig",
+      "to": "src/foundation/tui/core/bounds.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/notifications.zig",
+      "to": "src/foundation/ui.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/notifications.zig",
+      "to": "src/foundation/context.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/presenters.zig",
+      "to": "src/foundation/tui/presenters/notification.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/presenters.zig",
+      "to": "src/foundation/tui/presenters/progress.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/presenters/notification.zig",
+      "to": "src/foundation/ui.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/presenters/notification.zig",
+      "to": "src/foundation/tui/core/renderer.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/presenters/progress.zig",
+      "to": "src/foundation/tui/core/renderer.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/presenters/progress.zig",
+      "to": "src/foundation/ui.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/Screen.zig",
+      "to": "src/foundation/ui.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/Screen.zig",
+      "to": "src/foundation/render.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/Screen.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/Screen.zig",
+      "to": "src/foundation/tui/App.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/themes/default.zig",
+      "to": "src/foundation/theme.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets.zig",
+      "to": "src/foundation/context.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets.zig",
+      "to": "src/foundation.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets.zig",
+      "to": "src/foundation/ui.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets.zig",
+      "to": "src/foundation/tui/widgets/core.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets.zig",
+      "to": "src/foundation/tui/widgets/core/menu.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets.zig",
+      "to": "src/foundation/tui/widgets/core/section.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets.zig",
+      "to": "src/foundation/tui/widgets/core/logo.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets.zig",
+      "to": "src/foundation/tui/widgets/core/logo.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets.zig",
+      "to": "src/foundation/tui/widgets/core/logo.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets.zig",
+      "to": "src/foundation/tui/widgets/core/logo.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets.zig",
+      "to": "src/foundation/tui/widgets/core/TextInput.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets.zig",
+      "to": "src/foundation/tui/widgets/core/tabs.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets.zig",
+      "to": "src/foundation/tui/widgets/core/tag_input.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets.zig",
+      "to": "src/foundation/tui/widgets/core/diff.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets.zig",
+      "to": "src/foundation/tui/widgets/core/clear.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets.zig",
+      "to": "src/foundation/tui/widgets/core/scrollbar.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets.zig",
+      "to": "src/foundation/tui/widgets/core/VirtualList.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets.zig",
+      "to": "src/foundation/tui/widgets/core/ScrollableTextArea.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets.zig",
+      "to": "src/foundation/tui/widgets/core/container.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets.zig",
+      "to": "src/foundation/tui/widgets/rich/progress.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets.zig",
+      "to": "src/foundation/tui/notifications.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets.zig",
+      "to": "src/foundation/tui/notifications.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets.zig",
+      "to": "src/foundation/tui/widgets/rich/graphics.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets.zig",
+      "to": "src/foundation/tui/widgets/dashboard.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets.zig",
+      "to": "src/foundation/tui/widgets/core/tag_input.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets.zig",
+      "to": "src/foundation/tui/widgets/core/tag_input.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets.zig",
+      "to": "src/foundation/tui/widgets/core/tag_input.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets.zig",
+      "to": "build_options.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core.zig",
+      "to": "src/foundation/tui/widgets/core/menu.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core.zig",
+      "to": "src/foundation/tui/widgets/core/section.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core.zig",
+      "to": "src/foundation/tui/widgets/core/TextInput.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core.zig",
+      "to": "src/foundation/tui/widgets/core/tabs.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core.zig",
+      "to": "src/foundation/tui/widgets/core/calendar.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core.zig",
+      "to": "src/foundation/tui/widgets/core/file_tree.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core.zig",
+      "to": "src/foundation/tui/widgets/core/logo.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core.zig",
+      "to": "src/foundation/tui/widgets/core/block.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core.zig",
+      "to": "src/foundation/tui/widgets/core/clear.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core.zig",
+      "to": "src/foundation/tui/widgets/core/scrollbar.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core.zig",
+      "to": "src/foundation/tui/widgets/core/VirtualList.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core.zig",
+      "to": "src/foundation/tui/widgets/core/ScrollableTextArea.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core.zig",
+      "to": "src/foundation/tui/widgets/core/container.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/block.zig",
+      "to": "src/foundation/tui/core/bounds.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/block.zig",
+      "to": "src/foundation/tui/themes/default.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/button.zig",
+      "to": "src/foundation/tui/core/widget_interface.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/button.zig",
+      "to": "src/foundation/tui/core/renderer.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/calendar.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/calendar.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/calendar.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/calendar.zig",
+      "to": "src/foundation/tui/core/input.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/clear.zig",
+      "to": "src/foundation/tui/core/bounds.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/clear.zig",
+      "to": "src/foundation/tui/core/bounds.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/clear.zig",
+      "to": "src/foundation/theme.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/clear.zig",
+      "to": "src/foundation/tui/core/widget_interface.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/clear.zig",
+      "to": "src/foundation/tui/core/renderer.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/container.zig",
+      "to": "src/foundation/tui/core/widget_interface.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/container.zig",
+      "to": "src/foundation/tui/core/renderer.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/diff.zig",
+      "to": "src/foundation/render.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/diff.zig",
+      "to": "src/foundation/tui/core/renderer.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/diff.zig",
+      "to": "src/foundation/tui/core/bounds.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/diff.zig",
+      "to": "src/foundation/tui/core/events.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/diff.zig",
+      "to": "src/foundation/tui.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/file_tree.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/file_tree.zig",
+      "to": "src/foundation/tui.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/logo.zig",
+      "to": "src/foundation/tui/core/bounds.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/logo.zig",
+      "to": "src/foundation/tui/themes/default.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/logo.zig",
+      "to": "src/foundation/tui/themes/default.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/menu.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/ScrollableTextArea.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/ScrollableTextArea.zig",
+      "to": "src/foundation/tui/core/style.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/ScrollableTextArea.zig",
+      "to": "src/foundation/tui/core/bounds.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/ScrollableTextArea.zig",
+      "to": "src/foundation/tui/core/widget_interface.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/ScrollableTextArea.zig",
+      "to": "src/foundation/tui/core/events.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/ScrollableTextArea.zig",
+      "to": "src/foundation/tui/core/renderer.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/ScrollableTextArea.zig",
+      "to": "src/foundation/tui/core/renderer.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/scrollbar.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/section.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/split_pane.zig",
+      "to": "src/foundation/tui/core/bounds.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/split_pane.zig",
+      "to": "src/foundation/tui/core/layout.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/split_pane.zig",
+      "to": "src/foundation/tui/core/events.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/split_pane.zig",
+      "to": "src/foundation/tui/core/input/mouse.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/split_pane.zig",
+      "to": "src/foundation/tui/core/input/focus.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/split_pane.zig",
+      "to": "src/foundation/tui/core/constraint_solver.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/split_pane.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/split_pane.zig",
+      "to": "src/foundation/ui.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/tabs.zig",
+      "to": "src/foundation/tui/core/bounds.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/tabs.zig",
+      "to": "src/foundation/tui/themes/default.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/tabs.zig",
+      "to": "src/foundation/tui/themes/default.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/tabs.zig",
+      "to": "src/foundation/tui/core/events.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/tag_input.zig",
+      "to": "src/foundation/tui/core/bounds.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/tag_input.zig",
+      "to": "src/foundation/tui/themes/default.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/tag_input.zig",
+      "to": "src/foundation/tui/themes/default.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/tag_input.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/tag_input.zig",
+      "to": "src/foundation/tui/core/events.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/tag_input.zig",
+      "to": "src/foundation/tui/core/input/focus.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/TextInput.zig",
+      "to": "src/foundation/tui/core/widget_interface.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/TextInput.zig",
+      "to": "src/foundation/tui/core/renderer.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/VirtualList.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/VirtualList.zig",
+      "to": "src/foundation/tui/core/style.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/VirtualList.zig",
+      "to": "src/foundation/tui/core/bounds.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/VirtualList.zig",
+      "to": "src/foundation/tui/core/events.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/core/VirtualList.zig",
+      "to": "src/foundation/tui/core/renderer.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard.zig",
+      "to": "src/foundation/tui/widgets/dashboard/engine.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard.zig",
+      "to": "src/foundation/tui/widgets/dashboard/builder.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard.zig",
+      "to": "src/foundation/tui/widgets/dashboard/line_chart.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard.zig",
+      "to": "src/foundation/tui/widgets/dashboard/bar_chart.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard.zig",
+      "to": "src/foundation/tui/widgets/dashboard/sparkline.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard.zig",
+      "to": "src/foundation/tui/widgets/dashboard/table.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard.zig",
+      "to": "src/foundation/tui/widgets/dashboard/gauge.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard.zig",
+      "to": "src/foundation/tui/widgets/dashboard/kpi_card.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard.zig",
+      "to": "src/foundation/tui/widgets/dashboard/heatmap.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard.zig",
+      "to": "src/foundation/tui/widgets/dashboard/grid.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard.zig",
+      "to": "src/foundation/tui/widgets/dashboard/status_bar.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/bar_chart.zig",
+      "to": "src/foundation/tui/widgets/dashboard/engine.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/bar_chart.zig",
+      "to": "src/foundation/logger.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/builder.zig",
+      "to": "src/foundation/tui/widgets/dashboard.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/builder.zig",
+      "to": "src/foundation/tui/widgets/dashboard/engine.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/builder.zig",
+      "to": "src/foundation/tui/widgets/dashboard/line_chart.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/builder.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/chart/bar.zig",
+      "to": "src/foundation/tui/widgets/dashboard/chart/base.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/chart/bar.zig",
+      "to": "src/foundation/tui/widgets/dashboard/chart/graphics.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/chart/bar.zig",
+      "to": "src/foundation/tui/core/renderer.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/chart/base.zig",
+      "to": "src/foundation/tui/core/renderer.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/chart/base.zig",
+      "to": "src/foundation/tui/core/bounds.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/chart/graphics.zig",
+      "to": "src/foundation/tui/widgets/dashboard/chart/base.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/chart/line.zig",
+      "to": "src/foundation/tui/widgets/dashboard/chart/base.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/chart/line.zig",
+      "to": "src/foundation/tui/widgets/dashboard/chart/graphics.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/chart/line.zig",
+      "to": "src/foundation/tui/core/renderer.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/chart/renderer.zig",
+      "to": "src/foundation/tui/widgets/dashboard/chart/base.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/chart/renderer.zig",
+      "to": "src/foundation/tui/widgets/dashboard/chart/graphics.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/chart/renderer.zig",
+      "to": "src/foundation/tui/widgets/dashboard/chart/line.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/chart/renderer.zig",
+      "to": "src/foundation/tui/widgets/dashboard/chart/bar.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/chart/renderer.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/chart/renderer.zig",
+      "to": "src/foundation/tui/core/renderer.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/engine.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/engine.zig",
+      "to": "src/foundation/tui/widgets/dashboard/chart/line.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/engine.zig",
+      "to": "src/foundation/tui/widgets/dashboard/chart/bar.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/engine.zig",
+      "to": "src/foundation/tui/widgets/dashboard/sparkline.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/engine.zig",
+      "to": "src/foundation/tui/widgets/dashboard/table.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/engine.zig",
+      "to": "src/foundation/tui/widgets/dashboard/heatmap.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/engine.zig",
+      "to": "src/foundation/tui/widgets/dashboard/gauge.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/engine.zig",
+      "to": "src/foundation/tui/widgets/dashboard/kpi_card.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/engine.zig",
+      "to": "src/foundation/tui/widgets/dashboard/chart/base.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/engine.zig",
+      "to": "src/foundation/tui/widgets/dashboard/chart/base.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/engine.zig",
+      "to": "src/foundation/tui/widgets/dashboard/chart/base.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/engine.zig",
+      "to": "src/foundation/tui/widgets/dashboard/chart/base.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/engine.zig",
+      "to": "src/foundation/tui/core/bounds.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/engine.zig",
+      "to": "src/foundation/tui/core/bounds.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/engine.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/gauge.zig",
+      "to": "src/foundation/tui/widgets/dashboard/engine.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/gauge.zig",
+      "to": "src/foundation/logger.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/grid.zig",
+      "to": "src/foundation/tui/widgets/dashboard/engine.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/grid.zig",
+      "to": "src/foundation.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/heatmap.zig",
+      "to": "src/foundation/tui/widgets/dashboard/engine.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/heatmap.zig",
+      "to": "src/foundation.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/kpi_card.zig",
+      "to": "src/foundation/tui/widgets/dashboard/engine.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/kpi_card.zig",
+      "to": "src/foundation/logger.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/line_chart.zig",
+      "to": "src/foundation/tui/widgets/dashboard/engine.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/line_chart.zig",
+      "to": "src/foundation/logger.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/line_chart.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/line_chart.zig",
+      "to": "src/foundation/render.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/sparkline.zig",
+      "to": "src/foundation/tui/widgets/dashboard/engine.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/sparkline.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/status_bar.zig",
+      "to": "src/foundation/tui/core/renderer.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/status_bar.zig",
+      "to": "src/foundation/tui/core/bounds.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/status_bar.zig",
+      "to": "src/foundation/tui/core/events.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/status_bar.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/table.zig",
+      "to": "src/foundation/render.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/table.zig",
+      "to": "src/foundation/tui/core/events.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/table.zig",
+      "to": "src/foundation/tui/widgets/dashboard/table/base.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/table.zig",
+      "to": "src/foundation/tui/widgets/dashboard/table/selection.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/table.zig",
+      "to": "src/foundation/tui/widgets/dashboard/table/clipboard.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/table/base.zig",
+      "to": "src/foundation/tui/core/bounds.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/table/base.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/table/clipboard.zig",
+      "to": "src/foundation/tui/widgets/dashboard/table/base.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/table/clipboard.zig",
+      "to": "src/foundation/tui/widgets/dashboard/table/selection.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/table/clipboard.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/table/clipboard.zig",
+      "to": "src/foundation/tui/core/renderer.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/table/selection.zig",
+      "to": "src/foundation/tui/widgets/dashboard/table/base.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/dashboard/table/selection.zig",
+      "to": "src/foundation/tui/core/events.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/demo.zig",
+      "to": "src/foundation/tui/core/renderer.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/modal.zig",
+      "to": "src/foundation/tui/core.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/modal.zig",
+      "to": "src/foundation/tui/core/bounds.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/modal.zig",
+      "to": "src/foundation/tui/core/renderer.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/modal.zig",
+      "to": "src/foundation/tui/core/input/mouse.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/modal.zig",
+      "to": "src/foundation/tui/core/events.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/modal.zig",
+      "to": "src/foundation/tui/core/screen.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/modal.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/rich/graphics.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/rich/graphics.zig",
+      "to": "src/foundation/tui/core/bounds.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/rich/progress.zig",
+      "to": "src/foundation/tui/core/renderer.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/rich/progress.zig",
+      "to": "src/foundation/ui.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/rich/progress.zig",
+      "to": "src/foundation/render.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/rich/text_input.zig",
+      "to": "src/foundation/tui.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/rich/text_input.zig",
+      "to": "src/foundation/tui/core/input.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/rich/text_input.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/styled.zig",
+      "to": "src/foundation/tui/core/stylize.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/styled.zig",
+      "to": "src/foundation/tui/core/renderer.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/tui/widgets/styled.zig",
+      "to": "src/foundation/tui/core/widget_interface.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/ui.zig",
+      "to": "src/foundation/internal/deps.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/ui.zig",
+      "to": "src/foundation/ui/Component.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/ui.zig",
+      "to": "src/foundation/ui/Layout.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/ui.zig",
+      "to": "src/foundation/ui/Event.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/ui.zig",
+      "to": "src/foundation/ui/Runner.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/ui.zig",
+      "to": "src/foundation/ui/scheduler.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/ui.zig",
+      "to": "src/foundation/ui/Layout.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/ui.zig",
+      "to": "src/foundation/ui/widgets/Progress.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/ui.zig",
+      "to": "src/foundation/ui/widgets/Input.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/ui.zig",
+      "to": "src/foundation/ui/widgets/Notification.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/ui.zig",
+      "to": "src/foundation/ui/widgets/Chart.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/ui.zig",
+      "to": "src/foundation/ui/widgets/Table.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/ui.zig",
+      "to": "src/foundation/ui/widgets/Status.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/ui/Component.zig",
+      "to": "src/foundation/ui/Layout.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/ui/Component.zig",
+      "to": "src/foundation/ui/Event.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/ui/Component.zig",
+      "to": "src/foundation/render.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/ui/Runner.zig",
+      "to": "src/foundation/ui/Component.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/ui/Runner.zig",
+      "to": "src/foundation/ui/Layout.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/ui/Runner.zig",
+      "to": "src/foundation/ui/Event.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/ui/Runner.zig",
+      "to": "src/foundation/render.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/ui/scheduler.zig",
+      "to": "src/foundation/ui.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/ui/scheduler.zig",
+      "to": "src/foundation/render.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/ui/widgets/Chart.zig",
+      "to": "src/foundation/ui.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/ui/widgets/Chart.zig",
+      "to": "src/foundation/render.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/ui/widgets/Input.zig",
+      "to": "src/foundation/ui/Component.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/ui/widgets/Input.zig",
+      "to": "src/foundation/ui/Layout.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/ui/widgets/Input.zig",
+      "to": "src/foundation/ui/Event.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/ui/widgets/Input.zig",
+      "to": "src/foundation/render.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/ui/widgets/Input.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/ui/widgets/Notification.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/ui/widgets/Progress.zig",
+      "to": "src/foundation/ui/Component.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/ui/widgets/Progress.zig",
+      "to": "src/foundation/ui/Layout.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/ui/widgets/Progress.zig",
+      "to": "src/foundation/ui/Event.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/ui/widgets/Progress.zig",
+      "to": "src/foundation/render.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/ui/widgets/Status.zig",
+      "to": "src/foundation/term.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/ui/widgets/Table.zig",
+      "to": "src/foundation/ui.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/foundation/ui/widgets/Table.zig",
+      "to": "src/foundation/render.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "test_pkce.zig",
+      "to": "src/foundation/network/auth/pkce.zig",
+      "from_layer": "L4",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/agent_loop.zig",
+      "to": "src/foundation.zig",
+      "from_layer": "L3",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/core.zig",
+      "to": "src/engine.zig",
+      "from_layer": "L3",
+      "to_layer": "L3",
+      "allowed": true
+    },
+    {
+      "from": "src/engine.zig",
+      "to": "src/foundation.zig",
+      "from_layer": "L3",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "agents/_template/main.zig",
+      "to": "src/foundation.zig",
+      "from_layer": "L2",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "agents/_template/main.zig",
+      "to": "agents/_template/spec.zig",
+      "from_layer": "L2",
+      "to_layer": "L2",
+      "allowed": true
+    },
+    {
+      "from": "agents/_template/spec.zig",
+      "to": "src/foundation.zig",
+      "from_layer": "L2",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "agents/_template/spec.zig",
+      "to": "agents/_template/tools.zig",
+      "from_layer": "L2",
+      "to_layer": "L2",
+      "allowed": true
+    },
+    {
+      "from": "agents/_template/tools.zig",
+      "to": "src/foundation.zig",
+      "from_layer": "L2",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "agents/_template/tools/Tool.zig",
+      "to": "src/foundation.zig",
+      "from_layer": "L2",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "agents/default/main.zig",
+      "to": "src/foundation/agent_main.zig",
+      "from_layer": "L2",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "agents/default/main.zig",
+      "to": "agents/default/spec.zig",
+      "from_layer": "L2",
+      "to_layer": "L2",
+      "allowed": true
+    },
+    {
+      "from": "agents/default/spec.zig",
+      "to": "src/engine.zig",
+      "from_layer": "L2",
+      "to_layer": "L3",
+      "allowed": true
+    },
+    {
+      "from": "agents/default/spec.zig",
+      "to": "src/foundation/tools.zig",
+      "from_layer": "L2",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "agents/markdown/agent.zig",
+      "to": "src/foundation.zig",
+      "from_layer": "L2",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "agents/markdown/main.zig",
+      "to": "src/foundation.zig",
+      "from_layer": "L2",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "agents/markdown/main.zig",
+      "to": "agents/markdown/spec.zig",
+      "from_layer": "L2",
+      "to_layer": "L2",
+      "allowed": true
+    },
+    {
+      "from": "agents/markdown/main.zig",
+      "to": "agents/markdown/tui.zig",
+      "from_layer": "L2",
+      "to_layer": "L2",
+      "allowed": true
+    },
+    {
+      "from": "agents/markdown/main.zig",
+      "to": "agents/markdown/cli.zig",
+      "from_layer": "L2",
+      "to_layer": "L2",
+      "allowed": true
+    },
+    {
+      "from": "agents/markdown/spec.zig",
+      "to": "agents/markdown/agent.zig",
+      "from_layer": "L2",
+      "to_layer": "L2",
+      "allowed": true
+    },
+    {
+      "from": "agents/markdown/spec.zig",
+      "to": "src/foundation.zig",
+      "from_layer": "L2",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "agents/markdown/spec.zig",
+      "to": "agents/markdown/tools/io.zig",
+      "from_layer": "L2",
+      "to_layer": "L2",
+      "allowed": true
+    },
+    {
+      "from": "agents/markdown/spec.zig",
+      "to": "agents/markdown/tools/content_editor.zig",
+      "from_layer": "L2",
+      "to_layer": "L2",
+      "allowed": true
+    },
+    {
+      "from": "agents/markdown/spec.zig",
+      "to": "agents/markdown/tools/validate.zig",
+      "from_layer": "L2",
+      "to_layer": "L2",
+      "allowed": true
+    },
+    {
+      "from": "agents/markdown/spec.zig",
+      "to": "agents/markdown/tools/document.zig",
+      "from_layer": "L2",
+      "to_layer": "L2",
+      "allowed": true
+    },
+    {
+      "from": "agents/markdown/spec.zig",
+      "to": "agents/markdown/tools/workflow.zig",
+      "from_layer": "L2",
+      "to_layer": "L2",
+      "allowed": true
+    },
+    {
+      "from": "agents/markdown/spec.zig",
+      "to": "agents/markdown/tools/file.zig",
+      "from_layer": "L2",
+      "to_layer": "L2",
+      "allowed": true
+    },
+    {
+      "from": "agents/markdown/tools.zig",
+      "to": "agents/markdown/tools/io.zig",
+      "from_layer": "L2",
+      "to_layer": "L2",
+      "allowed": true
+    },
+    {
+      "from": "agents/markdown/tools.zig",
+      "to": "agents/markdown/tools/content_editor.zig",
+      "from_layer": "L2",
+      "to_layer": "L2",
+      "allowed": true
+    },
+    {
+      "from": "agents/markdown/tools.zig",
+      "to": "agents/markdown/tools/validate.zig",
+      "from_layer": "L2",
+      "to_layer": "L2",
+      "allowed": true
+    },
+    {
+      "from": "agents/markdown/tools.zig",
+      "to": "agents/markdown/tools/document.zig",
+      "from_layer": "L2",
+      "to_layer": "L2",
+      "allowed": true
+    },
+    {
+      "from": "agents/markdown/tools.zig",
+      "to": "agents/markdown/tools/workflow.zig",
+      "from_layer": "L2",
+      "to_layer": "L2",
+      "allowed": true
+    },
+    {
+      "from": "agents/markdown/tools.zig",
+      "to": "agents/markdown/tools/file.zig",
+      "from_layer": "L2",
+      "to_layer": "L2",
+      "allowed": true
+    },
+    {
+      "from": "agents/markdown/tools/content_editor.zig",
+      "to": "src/foundation.zig",
+      "from_layer": "L2",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "agents/markdown/tools/document.zig",
+      "to": "src/foundation.zig",
+      "from_layer": "L2",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "agents/markdown/tools/document.zig",
+      "to": "agents/markdown/lib/fs.zig",
+      "from_layer": "L2",
+      "to_layer": "L2",
+      "allowed": true
+    },
+    {
+      "from": "agents/markdown/tools/document.zig",
+      "to": "agents/markdown/lib/template.zig",
+      "from_layer": "L2",
+      "to_layer": "L2",
+      "allowed": true
+    },
+    {
+      "from": "agents/markdown/tools/document.zig",
+      "to": "agents/markdown/lib/meta.zig",
+      "from_layer": "L2",
+      "to_layer": "L2",
+      "allowed": true
+    },
+    {
+      "from": "agents/markdown/tools/file.zig",
+      "to": "src/foundation.zig",
+      "from_layer": "L2",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "agents/markdown/tools/file.zig",
+      "to": "agents/markdown/lib/fs.zig",
+      "from_layer": "L2",
+      "to_layer": "L2",
+      "allowed": true
+    },
+    {
+      "from": "agents/markdown/tools/io.zig",
+      "to": "src/foundation.zig",
+      "from_layer": "L2",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "agents/markdown/tools/io.zig",
+      "to": "agents/markdown/lib/fs.zig",
+      "from_layer": "L2",
+      "to_layer": "L2",
+      "allowed": true
+    },
+    {
+      "from": "agents/markdown/tools/io.zig",
+      "to": "agents/markdown/lib/text.zig",
+      "from_layer": "L2",
+      "to_layer": "L2",
+      "allowed": true
+    },
+    {
+      "from": "agents/markdown/tools/io.zig",
+      "to": "agents/markdown/lib/link.zig",
+      "from_layer": "L2",
+      "to_layer": "L2",
+      "allowed": true
+    },
+    {
+      "from": "agents/markdown/tools/validate.zig",
+      "to": "src/foundation.zig",
+      "from_layer": "L2",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "agents/markdown/tools/workflow.zig",
+      "to": "src/foundation.zig",
+      "from_layer": "L2",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "agents/markdown/tools/workflow.zig",
+      "to": "agents/markdown/lib/fs.zig",
+      "from_layer": "L2",
+      "to_layer": "L2",
+      "allowed": true
+    },
+    {
+      "from": "agents/markdown/tui.zig",
+      "to": "src/foundation.zig",
+      "from_layer": "L2",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "agents/markdown/tui.zig",
+      "to": "agents/markdown/spec.zig",
+      "from_layer": "L2",
+      "to_layer": "L2",
+      "allowed": true
+    },
+    {
+      "from": "agents/markdown/tui.zig",
+      "to": "agents/markdown/lib/fs.zig",
+      "from_layer": "L2",
+      "to_layer": "L2",
+      "allowed": true
+    },
+    {
+      "from": "agents/markdown/tui.zig",
+      "to": "agents/markdown/lib/text.zig",
+      "from_layer": "L2",
+      "to_layer": "L2",
+      "allowed": true
+    },
+    {
+      "from": "agents/simple/main.zig",
+      "to": "src/foundation.zig",
+      "from_layer": "L2",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "agents/simple/main.zig",
+      "to": "agents/simple/spec.zig",
+      "from_layer": "L2",
+      "to_layer": "L2",
+      "allowed": true
+    },
+    {
+      "from": "agents/simple/spec.zig",
+      "to": "src/engine.zig",
+      "from_layer": "L2",
+      "to_layer": "L3",
+      "allowed": true
+    },
+    {
+      "from": "agents/simple/spec.zig",
+      "to": "src/foundation/tools.zig",
+      "from_layer": "L2",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "agents/test_agent/Agent.zig",
+      "to": "src/foundation.zig",
+      "from_layer": "L2",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "agents/test_agent/Agent.zig",
+      "to": "src/foundation.zig",
+      "from_layer": "L2",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "agents/test_agent/Agent.zig",
+      "to": "src/foundation.zig",
+      "from_layer": "L2",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "agents/test_agent/main.zig",
+      "to": "src/foundation.zig",
+      "from_layer": "L2",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "agents/test_agent/main.zig",
+      "to": "agents/test_agent/spec.zig",
+      "from_layer": "L2",
+      "to_layer": "L2",
+      "allowed": true
+    },
+    {
+      "from": "agents/test_agent/spec.zig",
+      "to": "src/foundation.zig",
+      "from_layer": "L2",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "agents/test_agent/spec.zig",
+      "to": "agents/test_agent/tools.zig",
+      "from_layer": "L2",
+      "to_layer": "L2",
+      "allowed": true
+    },
+    {
+      "from": "agents/test_agent/tools.zig",
+      "to": "src/foundation.zig",
+      "from_layer": "L2",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "agents/test_agent/tools.zig",
+      "to": "agents/test_agent/tools/Tool.zig",
+      "from_layer": "L2",
+      "to_layer": "L2",
+      "allowed": true
+    },
+    {
+      "from": "agents/test_agent/tools/Tool.zig",
+      "to": "src/foundation.zig",
+      "from_layer": "L2",
+      "to_layer": "L4",
+      "allowed": true
+    },
+    {
+      "from": "src/main.zig",
+      "to": "src/foundation.zig",
+      "from_layer": "L1",
+      "to_layer": "L4",
+      "allowed": true
+    }
+  ]
+}

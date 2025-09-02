@@ -108,23 +108,23 @@ pub fn replaceAll(allocator: std.mem.Allocator, text: []const u8, pattern: []con
             const after_ok = after_pos >= remaining.len or !isWordChar(remaining[after_pos]);
 
             if (!before_ok or !after_ok) {
-                try result.appendSlice(allocator, remaining[0 .. actual_pos + 1]);
+                try result.appendSlice(remaining[0 .. actual_pos + 1]);
                 remaining = remaining[actual_pos + 1 ..];
                 continue;
             }
         }
 
         // Add text before match
-        try result.appendSlice(allocator, remaining[0..actual_pos]);
+        try result.appendSlice(remaining[0..actual_pos]);
         // Add replacement
-        try result.appendSlice(allocator, replacement);
+        try result.appendSlice(replacement);
 
         remaining = remaining[actual_pos + pattern.len ..];
         replaced_count += 1;
     }
 
     // Add remaining text
-    try result.appendSlice(allocator, remaining);
+    try result.appendSlice(remaining);
 
     return result.toOwnedSlice();
 }
@@ -136,8 +136,8 @@ pub fn wrapText(allocator: std.mem.Allocator, text: []const u8, width: usize) Er
 
     while (lines.next()) |line| {
         if (line.len <= width) {
-            try result.appendSlice(allocator, line);
-            try result.append(allocator, '\n');
+            try result.appendSlice(line);
+            try result.append('\n');
             continue;
         }
 
@@ -152,8 +152,8 @@ pub fn wrapText(allocator: std.mem.Allocator, text: []const u8, width: usize) Er
             // If no space found, break at width
             if (break_pos == 0) break_pos = width;
 
-            try result.appendSlice(allocator, remaining[0..break_pos]);
-            try result.append(allocator, '\n');
+            try result.appendSlice(remaining[0..break_pos]);
+            try result.append('\n');
 
             // Skip space if that's where we broke
             if (break_pos < remaining.len and remaining[break_pos] == ' ') {
@@ -164,8 +164,8 @@ pub fn wrapText(allocator: std.mem.Allocator, text: []const u8, width: usize) Er
         }
 
         if (remaining.len > 0) {
-            try result.appendSlice(allocator, remaining);
-            try result.append(allocator, '\n');
+            try result.appendSlice(remaining);
+            try result.append('\n');
         }
     }
 
@@ -180,11 +180,11 @@ pub fn normalizeWhitespace(allocator: std.mem.Allocator, text: []const u8) Error
     for (text) |char| {
         if (std.ascii.isWhitespace(char)) {
             if (!in_whitespace) {
-                try result.append(allocator, ' ');
+                try result.append(' ');
                 in_whitespace = true;
             }
         } else {
-            try result.append(allocator, char);
+            try result.append(char);
             in_whitespace = false;
         }
     }

@@ -3,9 +3,9 @@
 
 const std = @import("std");
 const term_mod = @import("../../term.zig");
-const term_ansi = term_mod.ansi.color;
+const term_ansi = term_mod.ansi;
 const term_caps = term_mod.capabilities;
-const term_screen = term_mod.ansi.screen;
+const term_control = term_mod.control;
 
 const Allocator = std.mem.Allocator;
 
@@ -47,7 +47,7 @@ pub const Status = struct {
 
         // Clear line
         try writer.writeAll("\r");
-        try term_screen.clearLineAll(writer, self.caps);
+        try writer.writeAll(term_control.ansi.clear_line);
 
         // Icon/Spinner
         if (self.showSpinner) {
@@ -111,8 +111,8 @@ pub const Status = struct {
         }
     }
 
-    pub fn clear(self: *Self, writer: anytype) !void {
+    pub fn clear(_: *Self, writer: anytype) !void {
         try writer.writeAll("\r");
-        try term_screen.clearLineAll(writer, self.caps);
+        try writer.writeAll(term_control.ansi.clear_line);
     }
 };

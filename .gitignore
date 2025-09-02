@@ -29,3 +29,4 @@ test_ux
 
 # OAuth credentials - never commit
 claude_oauth_creds.json
+/node_modules

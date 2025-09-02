@@ -2708,29 +2708,7 @@ fn setupDemoTargets(ctx: BuildState, shared_modules: ConditionalSharedModules) v
         oauth_demo_step.dependOn(&oauth_run.step);
     }
 
-    // Markdown editor demo (if markdown agent is selected)
-    if (std.mem.eql(u8, ctx.selected_agent, "markdown")) {
-        const editor_demo_step = ctx.b.step("demo-markdown-editor", "Run enhanced markdown editor demo");
-        const editor_module = ctx.b.addModule("markdown_editor_demo", .{
-            .root_source_file = ctx.b.path("agents/markdown/markdown_editor.zig"),
-            .target = ctx.target,
-            .optimize = ctx.optimize,
-        });
-
-        // Add necessary imports
-        if (shared_modules.cli) |cli| editor_module.addImport("cli_shared", cli);
-        if (shared_modules.tui) |tui| editor_module.addImport("tui_shared", tui);
-        if (shared_modules.tools) |tools| editor_module.addImport("tools_shared", tools);
-
-        const editor_exe = ctx.b.addExecutable(.{
-            .name = "markdown-editor-demo",
-            .root_module = editor_module,
-        });
-
-        linkSystemDependencies(editor_exe);
-        const editor_run = ctx.b.addRunArtifact(editor_exe);
-        editor_demo_step.dependOn(&editor_run.step);
-    }
+    // Markdown editor demo removed; use the main agent TUI instead.
 }
 
 fn setupExampleTargets(ctx: BuildState, shared_modules: ConditionalSharedModules) void {

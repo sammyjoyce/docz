@@ -26,9 +26,24 @@ fn registerToolsImpl(registry: *tools.Registry) !void {
     try tools.registerBuiltins(registry);
 
     // Register Markdown-specific JSON tools
-    try tools.registerJsonTool(registry, "io", "Document I/O operations", @import("tools/io.zig").execute, "markdown");
+    try tools.registerJsonToolWithRequiredFields(
+        registry,
+        "io",
+        "Document I/O operations",
+        @import("tools/io.zig").execute,
+        "markdown",
+        &[_][]const u8{"command"},
+    );
     try tools.registerJsonTool(registry, "content_editor", "Content editing operations", @import("tools/content_editor.zig").execute, "markdown");
-    try tools.registerJsonTool(registry, "validate", "Validation operations", @import("tools/validate.zig").execute, "markdown");
+    const ValidateRequest = struct { content: []const u8, rules: ?std.json.Value = null };
+    try tools.registerJsonToolWithRequestStruct(
+        registry,
+        "validate",
+        "Validation operations",
+        @import("tools/validate.zig").execute,
+        "markdown",
+        ValidateRequest,
+    );
     try tools.registerJsonTool(registry, "document", "Document operations", @import("tools/document.zig").execute, "markdown");
     try tools.registerJsonTool(registry, "workflow", "Workflow engine operations", @import("tools/workflow.zig").execute, "markdown");
     try tools.registerJsonTool(registry, "file", "File system operations", @import("tools/file.zig").execute, "markdown");

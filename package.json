@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "@opencode-ai/sdk": "^0.6.1",
+    "@vscode/tree-sitter-wasm": "^0.1.4",
+    "web-tree-sitter": "^0.25.8"
+  }
+}

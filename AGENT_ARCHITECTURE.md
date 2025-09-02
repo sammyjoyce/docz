@@ -4,13 +4,14 @@
 
 Docz uses an engine‑centric design: one shared run loop powers all agents. Each agent supplies only its system prompt and tools. This keeps agent code small and focused, while networking, auth, streaming, and tool execution are standardized and reused.
 
-As of September 1, 2025, the legacy experimental loop at `src/agent.zig` has been removed. The canonical loop lives in `src/engine.zig` and is invoked via `src/foundation/agent_main.zig`.
+As of September 1, 2025, the legacy experimental loop is deprecated. The canonical loop lives in `src/engine.zig` and is invoked via `src/foundation/agent_main.zig`. The previous export `foundation.agent` (which pointed to `src/agent_loop.zig`) has been removed to prevent accidental use.
 
 ## Directory Structure
 
 - `src/engine.zig` — Single shared run loop
   - Messages API (non‑streaming and SSE streaming)
   - Tool JSON delta assembly (`input_json_delta`), execution, and result hand‑back
+  - Emits Anthropic `tools` payload; when tools register required fields, the engine includes a minimal `input_schema` with `required` for better guidance
   - Usage/cost reporting and output (stdout / optional file)
   - Auth wiring through foundation/auth
 

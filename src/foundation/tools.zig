@@ -33,6 +33,7 @@ pub const JsonFunction = registry_mod.JsonFunction;
 pub const registerBuiltins = registry_mod.registerBuiltins;
 pub const registerJsonTool = registry_mod.registerJsonTool;
 pub const registerJsonToolWithRequiredFields = registry_mod.registerJsonToolWithRequiredFields;
+pub const registerJsonToolWithRequestStruct = registry_mod.registerJsonToolWithRequestStruct;
 
 // Convenience re-exports from JSON
 pub const ToolJsonError = JSON.ToolJsonError;

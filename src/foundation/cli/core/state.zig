@@ -50,8 +50,8 @@ pub const Notification = struct {
     const Self = @This();
     allocator: std.mem.Allocator,
     capabilities: Capability,
-    termCaps: term.caps.TermCaps,
-    terminal: *term.common.Terminal,
+    termCaps: term.capabilities.TermCaps,
+    terminal: *term.Terminal,
     enabled: bool = true,
 
     pub const NotificationLevel = enum {
@@ -69,7 +69,7 @@ pub const Notification = struct {
         duration: ?u32 = null, // seconds
     };
 
-    pub fn init(allocator: std.mem.Allocator, capabilities: Capability, termCaps: term.caps.TermCaps, terminal: *term.common.Terminal) Self {
+    pub fn init(allocator: std.mem.Allocator, capabilities: Capability, termCaps: term.capabilities.TermCaps, terminal: *term.Terminal) Self {
         return Self{
             .allocator = allocator,
             .capabilities = capabilities,
@@ -121,9 +121,9 @@ pub const Graphics = struct {
     const Self = @This();
     allocator: std.mem.Allocator,
     capabilities: Capability,
-    terminal: *term.common.Terminal,
+    terminal: *term.Terminal,
 
-    pub fn init(allocator: std.mem.Allocator, capabilities: Capability, terminal: *term.common.Terminal) Self {
+    pub fn init(allocator: std.mem.Allocator, capabilities: Capability, terminal: *term.Terminal) Self {
         return Self{
             .allocator = allocator,
             .capabilities = capabilities,
@@ -149,10 +149,10 @@ pub const Clipboard = struct {
     const Self = @This();
     allocator: std.mem.Allocator,
     capabilities: Capability,
-    termCaps: term.caps.TermCaps,
-    terminal: *term.common.Terminal,
+    termCaps: term.capabilities.TermCaps,
+    terminal: *term.Terminal,
 
-    pub fn init(allocator: std.mem.Allocator, capabilities: Capability, termCaps: term.caps.TermCaps, terminal: *term.common.Terminal) Self {
+    pub fn init(allocator: std.mem.Allocator, capabilities: Capability, termCaps: term.capabilities.TermCaps, terminal: *term.Terminal) Self {
         return Self{
             .allocator = allocator,
             .capabilities = capabilities,
@@ -180,10 +180,10 @@ pub const Hyperlink = struct {
     const Self = @This();
     allocator: std.mem.Allocator,
     capabilities: Capability,
-    termCaps: term.caps.TermCaps,
-    terminal: *term.common.Terminal,
+    termCaps: term.capabilities.TermCaps,
+    terminal: *term.Terminal,
 
-    pub fn init(allocator: std.mem.Allocator, capabilities: Capability, termCaps: term.caps.TermCaps, terminal: *term.common.Terminal) Self {
+    pub fn init(allocator: std.mem.Allocator, capabilities: Capability, termCaps: term.capabilities.TermCaps, terminal: *term.Terminal) Self {
         return Self{
             .allocator = allocator,
             .capabilities = capabilities,
@@ -206,8 +206,8 @@ pub const Cli = struct {
     const Self = @This();
     allocator: std.mem.Allocator,
     capabilities: Capability,
-    termCaps: term.caps.TermCaps,
-    terminal: term.common.Terminal,
+    termCaps: term.capabilities.TermCaps,
+    terminal: term.Terminal,
     notification: Notification,
     graphics: Graphics,
     clipboard: Clipboard,
@@ -218,10 +218,10 @@ pub const Cli = struct {
     pub fn init(allocator: std.mem.Allocator) !Self {
         // Detect terminal capabilities
         const capabilities = Capability.detect(allocator);
-        const termCaps = try term.caps.detectCaps(allocator);
+        const termCaps = try term.capabilities.TermCaps.detect(allocator);
 
         // Initialize terminal
-        var terminal = try term.common.Terminal.init(allocator);
+        var terminal = try term.Terminal.init(allocator);
 
         // Load configuration
         const config = types.Config.loadDefault(allocator);

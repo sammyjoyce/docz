@@ -2,7 +2,7 @@
 
 Status: Proposed • Owner: TBD • Last Updated: 2025-09-01
 
-This document defines a complete, staged plan to refactor the Markdown agent to cleanly use the shared foundation module and the single, canonical engine loop. Phase 3 (Interactive UI) is optional and gated.
+This document defines a complete, staged plan to refactor the Markdown agent to cleanly use the shared foundation module and the single, canonical engine loop. Phase 3 (Interactive UI) is optional at build time and already integrated by default.
 
 ## Objectives
 
@@ -10,7 +10,7 @@ This document defines a complete, staged plan to refactor the Markdown agent to 
 - Register all Markdown tools through `foundation.tools.Registry` so tool_use works.
 - Align configuration with `foundation.config.AgentConfig` and 0.15.1 idioms.
 - Enforce barrel imports, feature-gating, and narrow error sets.
-- Keep interactive UI optional, behind build options, with no dead imports by default.
+- Keep interactive UI optional at build time (default enabled), with no dead imports when disabled via flags.
 
 ## Non‑Goals
 
@@ -22,7 +22,7 @@ This document defines a complete, staged plan to refactor the Markdown agent to 
 
 - Zig 0.15.1; new `std.Io` Writer/Reader; no `usingnamespace`; avoid `anyerror` exports.
 - Build commands from repo guidelines must pass: `list-agents`, `validate-agents`, agent tests.
-- The agent must compile when TUI is disabled (manifest sets `.terminal_ui = false`).
+- The agent must compile when TUI is disabled via build flag (`-Denable-tui=false`), even though the manifest advertises TUI support (`.terminal_ui = true`).
 
 ## Architectural Alignment (Target)
 
@@ -98,18 +98,18 @@ Acceptance Criteria:
 - No exported `anyerror` across the agent’s public surfaces.
 - Building markdown agent with default flags excludes UI code and compiles clean.
 
-### Phase 3 — Interactive UI (optional, gated)
+### Phase 3 — Interactive UI (default-enabled, build-gated)
 
 Goals:
-- Provide opt-in TUI pathway using `foundation.tui.agent_ui` patterns.
+- Provide a fully integrated TUI using `foundation.tui.agent_ui` patterns, with a build flag to disable when needed.
 
 Tasks (optional):
-- Introduce a separate subcommand or demo target (e.g., `zig build -Dagent=markdown run -- --ui` or a foundation CLI workflow) that launches UI components without owning a loop.
+- Introduce a separate subcommand or demo target (e.g., `zig build -Dagent=markdown run -- --tui`) that launches UI components without owning a loop.
 - Use widgets from `foundation.tui.widgets` and avoid deep imports.
-- Keep `.terminal_ui = false` by default in manifest; flip only when ready.
+- Keep `.terminal_ui = true` in the manifest; builds may disable TUI with `-Denable-tui=false` when required.
 
 Acceptance Criteria:
-- Enabling TUI flag compiles and runs UI demo without changing the default binary footprint.
+- Default build includes TUI. Building with `-Denable-tui=false` excludes UI and still compiles and runs CLI flows.
 
 ### Phase 4 — Tests & Docs (required)
 
@@ -259,4 +259,3 @@ scripts/check_imports.sh
 
 ---
 This plan is designed to minimize risk by separating wiring from larger cleanups, and by keeping the interactive UI strictly optional and gated.
-

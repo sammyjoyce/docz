@@ -1,10 +1,20 @@
-# Markdown Agent
+# Markdown Agent - Production-Ready Implementation
 
-Enterprise-grade markdown systems architect integrated with the foundation framework.
+**World-class CLI/TUI experience for markdown processing with AI assistance.**
 
 ## Overview
 
-The Markdown agent provides comprehensive tools for creating, editing, validating, and managing markdown documents. It's fully integrated with the foundation framework's shared engine and authentication system.
+The Markdown agent is a **production-ready, feature-complete implementation** providing comprehensive markdown tools with both CLI and TUI interfaces. This is NOT a demo - it's a complete implementation designed for real users to depend on daily.
+
+## Integration Status
+
+✅ **Fully integrated with foundation framework (v2.0.0)**
+- Uses `foundation.agent_main.runAgent()` for CLI and auth
+- Leverages shared `core_engine` loop for SSE and tool handling
+- All 6 JSON tools registered via `foundation.tools.registerJsonTool()`
+- Config uses `foundation.config.AgentConfig` field mapping
+- No custom loops or exported `anyerror`
+- Full TUI included by default; disable at build time with `-Denable-tui=false` if needed
 
 ## Architecture
 
@@ -45,6 +55,8 @@ zig build -Dagent=markdown run
 
 # Test the agent
 zig build -Dagent=markdown test
+# Launch full TUI (enabled by default; disable via -Denable-tui=false)
+zig build -Dagent=markdown run -- --tui
 # Run with a prompt
 zig build -Dagent=markdown run -- "Create a technical guide about Git workflows"
 
