@@ -98,17 +98,16 @@ pub fn registerAll(registry: *toolsMod.Registry) !void {
     //     "amp",
     // );
 
-    // Task tool temporarily disabled in test builds pending Zig 0.15 API adjustments
-    // try toolsMod.registerJsonTool(
-    //     registry,
-    //     "task",
-    //     "Launch a new agent to handle complex, multi-step tasks autonomously. Use for parallel work delegation and complex analysis tasks.",
-    //     @import("task.zig").execute,
-    //     "amp",
-    // );
+    // Task tool - subagent spawning for parallel work delegation
+    try toolsMod.registerJsonTool(
+        registry,
+        "task",
+        "Launch a new agent to handle complex, multi-step tasks autonomously. Use for parallel work delegation and complex analysis tasks.",
+        @import("task.zig").execute,
+        "amp",
+    );
 
-    // Note: Oracle tool is currently disabled for tests due to network surface mismatch.
-    // Re-enable after Http client error-set alignment.
+    // Note: Oracle tool disabled due to foundation HTTP layer compatibility issues
     // try toolsMod.registerJsonTool(
     //     registry,
     //     "oracle",

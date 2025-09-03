@@ -65,33 +65,34 @@ fn executeInternal(allocator: std.mem.Allocator, params: std.json.Value) !std.js
         return error.MissingParameter;
     }
 
-    var web_research_results = std.ArrayList(WebFetchResult).initCapacity(allocator, 0) catch |err| return err;
+    // Handle web research using a simpler slice-based approach
+    var web_research_results: []WebFetchResult = &[_]WebFetchResult{};
     defer {
-        for (web_research_results.items) |*result| {
+        for (web_research_results) |*result| {
             allocator.free(result.content);
             if (result.error_message) |err_msg| {
                 allocator.free(err_msg);
             }
         }
-        web_research_results.deinit(allocator);
+        allocator.free(web_research_results);
     }
 
     // Perform web research if URLs provided
     if (req.research_urls) |urls| {
-        for (urls) |url| {
-            const result = fetchWebContent(allocator, url) catch |err| WebFetchResult{
+        web_research_results = try allocator.alloc(WebFetchResult, urls.len);
+        for (urls, 0..) |url, i| {
+            web_research_results[i] = fetchWebContent(allocator, url) catch |err| WebFetchResult{
                 .url = url,
                 .content = "",
                 .success = false,
                 .error_message = try allocator.dupe(u8, @errorName(err)),
             };
-            try web_research_results.append(allocator, result);
         }
     }
 
     // Build analysis prompt
-    var analysis_prompt = std.ArrayList(u8).initCapacity(allocator, 0) catch |err| return err;
-    defer analysis_prompt.deinit(allocator);
+    var analysis_prompt = std.ArrayList(u8).init(allocator);
+    defer analysis_prompt.deinit();
 
     try analysis_prompt.appendSlice("# Oracle Analysis Request\n\n");
     try analysis_prompt.appendSlice("## Task\n");
@@ -110,9 +111,9 @@ fn executeInternal(allocator: std.mem.Allocator, params: std.json.Value) !std.js
         try analysis_prompt.appendSlice("\n\n");
     }
 
-    if (web_research_results.items.len > 0) {
+    if (web_research_results.len > 0) {
         try analysis_prompt.appendSlice("## Web Research Results\n");
-        for (web_research_results.items) |result| {
+        for (web_research_results) |result| {
             try analysis_prompt.appendSlice("### ");
             try analysis_prompt.appendSlice(result.url);
             try analysis_prompt.appendSlice("\n");
@@ -173,39 +174,40 @@ fn executeInternal(allocator: std.mem.Allocator, params: std.json.Value) !std.js
     const analysis = try performOracleAnalysis(allocator, oracle_system_prompt, analysis_prompt.items, req);
 
     // Parse recommendations from analysis
-    var recommendations = std.ArrayList([]const u8).initCapacity(allocator, 0) catch |err| return err;
+    var recommendations = std.ArrayList([]const u8).init(allocator);
     defer {
         for (recommendations.items) |rec| {
             allocator.free(rec);
         }
-        recommendations.deinit(allocator);
+        recommendations.deinit();
     }
 
     // Extract recommendations (simplified extraction for now)
     if (std.mem.indexOf(u8, analysis, "Recommendations:")) |_| {
         // For this implementation, we'll provide a single consolidated recommendation
-        try recommendations.append(allocator, try allocator.dupe(u8, "Review the complete analysis above for detailed technical guidance and actionable recommendations."));
+        try recommendations.append(try allocator.dupe(u8, "Review the complete analysis above for detailed technical guidance and actionable recommendations."));
     }
 
     // Convert web research results for response
-    var web_research_copy = std.ArrayList(WebFetchResult).initCapacity(allocator, 0) catch |err| return err;
-    defer web_research_copy.deinit(allocator);
-
-    for (web_research_results.items) |result| {
-        try web_research_copy.append(allocator, WebFetchResult{
-            .url = result.url,
-            .content = try allocator.dupe(u8, result.content),
-            .success = result.success,
-            .error_message = if (result.error_message) |err| try allocator.dupe(u8, err) else null,
-        });
-    }
+    const web_research_copy = if (web_research_results.len > 0) blk: {
+        var copy = try allocator.alloc(WebFetchResult, web_research_results.len);
+        for (web_research_results, 0..) |result, i| {
+            copy[i] = WebFetchResult{
+                .url = result.url,
+                .content = try allocator.dupe(u8, result.content),
+                .success = result.success,
+                .error_message = if (result.error_message) |err| try allocator.dupe(u8, err) else null,
+            };
+        }
+        break :blk copy;
+    } else null;
 
     const ResponseMapper = toolsMod.JsonReflector.mapper(OracleResponse);
     const response = OracleResponse{
         .success = true,
         .analysis = analysis,
         .recommendations = if (recommendations.items.len > 0) try allocator.dupe([]const u8, recommendations.items) else null,
-        .web_research = if (web_research_copy.items.len > 0) try allocator.dupe(WebFetchResult, web_research_copy.items) else null,
+        .web_research = web_research_copy,
         .reasoning = try allocator.dupe(u8, "Analysis performed using Oracle reasoning capabilities with provided context and web research data."),
     };
 
@@ -226,7 +228,7 @@ fn fetchWebContent(allocator: std.mem.Allocator, url: []const u8) !WebFetchResul
     defer http_impl.deinit();
     const http_client = http_impl.client();
 
-    // Create HTTP request
+    // Create HTTP request with timeout
     const request = network.Http.Request{
         .method = .GET,
         .url = url,
@@ -235,18 +237,30 @@ fn fetchWebContent(allocator: std.mem.Allocator, url: []const u8) !WebFetchResul
             .{ .name = "Accept", .value = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8" },
         },
         .body = null,
+        .timeout_ms = 30000, // 30 second timeout
+        .verify_ssl = true,
     };
 
-    // Execute request
-    const response = http_client.request(request) catch |err| {
-        return WebFetchResult{
-            .url = url,
-            .content = "",
-            .success = false,
-            .error_message = try allocator.dupe(u8, @errorName(err)),
-        };
+    // Execute request with proper error handling
+    var response = http_client.request(request) catch |err| switch (err) {
+        network.Http.Error.Transport,
+        network.Http.Error.Timeout,
+        network.Http.Error.Status,
+        network.Http.Error.Protocol,
+        network.Http.Error.InvalidURL,
+        network.Http.Error.Canceled,
+        network.Http.Error.TlsError,
+        => {
+            return WebFetchResult{
+                .url = url,
+                .content = "",
+                .success = false,
+                .error_message = try allocator.dupe(u8, @errorName(err)),
+            };
+        },
+        std.mem.Allocator.Error.OutOfMemory => return err,
     };
-    defer response.deinit(allocator);
+    defer response.deinit();
 
     // Check response status
     if (response.status_code != 200) {
@@ -276,8 +290,8 @@ fn convertToMarkdown(allocator: std.mem.Allocator, html: []const u8) ![]const u8
     // In a full implementation, this would parse HTML and convert to markdown
 
     // Basic HTML cleanup - remove scripts and styles
-    var cleaned = std.ArrayList(u8).initCapacity(allocator, 0) catch |err| return err;
-    defer cleaned.deinit(allocator);
+    var cleaned = std.ArrayList(u8).init(allocator);
+    defer cleaned.deinit();
 
     var in_script = false;
     var in_style = false;
@@ -306,7 +320,7 @@ fn convertToMarkdown(allocator: std.mem.Allocator, html: []const u8) ![]const u8
         }
 
         if (!in_script and !in_style) {
-            try cleaned.append(allocator, html[i]);
+            try cleaned.append(html[i]);
         }
         i += 1;
     }
@@ -325,8 +339,8 @@ fn performOracleAnalysis(allocator: std.mem.Allocator, system_prompt: []const u8
     _ = system_prompt;
     _ = user_prompt;
 
-    var analysis = std.ArrayList(u8).initCapacity(allocator, 0) catch |err| return err;
-    defer analysis.deinit(allocator);
+    var analysis = std.ArrayList(u8).init(allocator);
+    defer analysis.deinit();
 
     try analysis.appendSlice("# Oracle Technical Analysis\n\n");
 
