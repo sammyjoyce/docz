@@ -1,10 +1,11 @@
 //! Simple agent specification
 
 const std = @import("std");
-const engine = @import("../../src/engine.zig");
-const tools = @import("../../src/foundation/tools.zig");
+const engine = @import("core_engine");
+const foundation = @import("foundation");
+const tools = foundation.tools;
 
-fn buildSystemPromptImpl(allocator: std.mem.Allocator, opts: engine.CliOptions) ![]const u8 {
+fn buildSystemPromptSimple(allocator: std.mem.Allocator, opts: engine.CliOptions) ![]const u8 {
     _ = opts;
     return allocator.dupe(u8,
         \\You are a helpful AI assistant powered by Claude.
@@ -12,12 +13,12 @@ fn buildSystemPromptImpl(allocator: std.mem.Allocator, opts: engine.CliOptions) 
     );
 }
 
-fn registerToolsImpl(registry: *tools.Registry) !void {
+fn registerToolsSimple(registry: *tools.Registry) !void {
     // No custom tools for simple agent
     _ = registry;
 }
 
 pub const SPEC: engine.AgentSpec = .{
-    .buildSystemPrompt = buildSystemPromptImpl,
-    .registerTools = registerToolsImpl,
+    .buildSystemPrompt = buildSystemPromptSimple,
+    .registerTools = registerToolsSimple,
 };

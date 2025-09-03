@@ -19,7 +19,7 @@ pub const Template = struct {
     content: []const u8,
     variables: std.StringHashMap(TemplateVariable),
 
-    pub fn deinit(self: *Template, allocator: std.mem.Allocator) void {
+    pub fn deinitTemplate(self: *Template, allocator: std.mem.Allocator) void {
         allocator.free(self.name);
         allocator.free(self.content);
 

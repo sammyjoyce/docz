@@ -26,7 +26,7 @@ pub const DocumentMetadata = struct {
     format: MetadataFormat,
     raw_content: []const u8,
 
-    pub fn deinit(self: *DocumentMetadata, allocator: std.mem.Allocator) void {
+    pub fn deinitMetadata(self: *DocumentMetadata, allocator: std.mem.Allocator) void {
         // Deep free all values
         var iterator = self.content.iterator();
         while (iterator.next()) |entry| {
@@ -37,11 +37,11 @@ pub const DocumentMetadata = struct {
         allocator.free(self.raw_content);
     }
 
-    pub fn get(self: *const DocumentMetadata, key: []const u8) ?*const Metadata {
+    pub fn getMetadata(self: *const DocumentMetadata, key: []const u8) ?*const Metadata {
         return self.content.getPtr(key);
     }
 
-    pub fn set(self: *DocumentMetadata, allocator: std.mem.Allocator, key: []const u8, value: Metadata) Error!void {
+    pub fn setMetadata(self: *DocumentMetadata, allocator: std.mem.Allocator, key: []const u8, value: Metadata) Error!void {
         const owned_key = try allocator.dupe(u8, key);
         try self.content.put(owned_key, value);
     }
@@ -118,7 +118,7 @@ fn parseYamlMetadata(allocator: std.mem.Allocator, yamlContent: []const u8) Erro
 
             if (key.len > 0) {
                 const value = try parseYamlValue(allocator, valueStr);
-                try metadata.set(allocator, key, value);
+                try metadata.setMetadata(allocator, key, value);
             }
         }
     }
@@ -146,7 +146,7 @@ fn parseTomlMetadata(allocator: std.mem.Allocator, tomlContent: []const u8) Erro
 
             if (key.len > 0) {
                 const value = try parseTomlValue(allocator, valueStr);
-                try metadata.set(allocator, key, value);
+                try metadata.setMetadata(allocator, key, value);
             }
         }
     }

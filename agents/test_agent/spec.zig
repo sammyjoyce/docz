@@ -7,7 +7,7 @@ const impl = @import("agent.zig");
 const foundation = @import("foundation");
 const toolsMod = foundation.tools;
 
-fn buildSystemPromptImpl(allocator: std.mem.Allocator, options: engine.CliOptions) ![]const u8 {
+fn buildSystemPrompt(allocator: std.mem.Allocator, options: engine.CliOptions) ![]const u8 {
     _ = options; // reserved for future use (e.g., config path)
 
     var agent = try impl.Test.initFromConfig(allocator);
@@ -16,18 +16,17 @@ fn buildSystemPromptImpl(allocator: std.mem.Allocator, options: engine.CliOption
     return agent.loadSystemPrompt();
 }
 
-fn registerToolsImpl(registry: *toolsMod.Registry) !void {
+fn registerTools(registry: *toolsMod.Registry) !void {
     // Register test_agent-specific tools using the new system
     const tools = @import("tools.zig");
 
     // Register tools individually with metadata
     try toolsMod.registerJsonTool(registry, "test_tool", "Test tool that demonstrates agent functionality", tools.testTool, "test_agent");
     try toolsMod.registerJsonTool(registry, "calculator", "Calculator for arithmetic operations (add, subtract, multiply, divide)", tools.calculator, "test_agent");
-    try toolsMod.registerJsonTool(registry, "tool", "Tool that demonstrates standardized tool patterns with JSON parameters", tools.tool, "test_agent");
-    try toolsMod.registerJsonTool(registry, "complex", "Complex tool demonstrating JSON reflection patterns with nested structures", tools.tool, "test_agent");
+    try toolsMod.registerJsonTool(registry, "execute", "Tool that demonstrates standardized tool patterns with JSON parameters", tools.execute, "test_agent");
 }
 
 pub const SPEC: AgentSpec = .{
-    .buildSystemPrompt = buildSystemPromptImpl,
-    .registerTools = registerToolsImpl,
+    .buildSystemPrompt = buildSystemPrompt,
+    .registerTools = registerTools,
 };

@@ -21,7 +21,7 @@ pub const Test = struct {
         enableFeature: bool = true,
 
         /// Load configuration from file with defaults fallback
-        pub fn loadFromFile(allocator: Allocator, path: []const u8) !Config {
+        pub fn loadTestAgentFromFile(allocator: Allocator, path: []const u8) !Config {
             const config_utils = @import("foundation").config;
             const defaults = Config{
                 .agentConfig = config_utils.createValidatedAgentConfig("test_agent", "Example agent demonstrating best practices", "Developer"),
@@ -32,7 +32,7 @@ pub const Test = struct {
         }
 
         /// Get the standard agent config path for this agent
-        pub fn getConfigPath(allocator: Allocator) ![]const u8 {
+        pub fn getTestAgentConfigPath(allocator: Allocator) ![]const u8 {
             const config_utils = @import("foundation").config;
             return config_utils.getAgentConfigPath(allocator, "test_agent");
         }
@@ -49,7 +49,7 @@ pub const Test = struct {
         UnexpectedError,
     };
 
-    pub fn init(allocator: Allocator, config: Config) Self {
+    pub fn initTestAgent(allocator: Allocator, config: Config) Self {
         return Self{
             .allocator = allocator,
             .config = config,
@@ -57,21 +57,21 @@ pub const Test = struct {
     }
 
     /// Initialize agent with configuration loaded from file
-    pub fn initFromConfig(allocator: Allocator) !Self {
-        const configPath = try Config.getConfigPath(allocator);
+    pub fn initTestAgentFromConfig(allocator: Allocator) !Self {
+        const configPath = try Config.getTestAgentConfigPath(allocator);
         defer allocator.free(configPath);
 
-        const config = try Config.loadFromFile(allocator, configPath);
-        return Self.init(allocator, config);
+        const config = try Config.loadTestAgentFromFile(allocator, configPath);
+        return Self.initTestAgent(allocator, config);
     }
 
-    pub fn deinit(self: *Self) void {
+    pub fn deinitTestAgent(self: *Self) void {
         _ = self;
         // Cleanup resources if needed
     }
 
     /// Load system prompt from file or generate dynamically
-    pub fn loadSystemPrompt(self: *Self) ![]const u8 {
+    pub fn loadTestAgentSystemPrompt(self: *Self) ![]const u8 {
         const promptPath = "agents/test_agent/system_prompt.txt";
         const file = std.fs.cwd().openFile(promptPath, .{}) catch |err| {
             switch (err) {
@@ -88,11 +88,11 @@ pub const Test = struct {
         defer self.allocator.free(template);
 
         // Process template variables
-        return self.processTemplateVariables(template);
+        return self.processTestAgentTemplateVariables(template);
     }
 
     /// Process template variables in system prompt
-    fn processTemplateVariables(self: *Self, template: []const u8) ![]const u8 {
+    fn processTestAgentTemplateVariables(self: *Self, template: []const u8) ![]const u8 {
         var result = std.ArrayList(u8).initCapacity(self.allocator, template.len) catch return error.OutOfMemory;
         defer result.deinit(self.allocator);
 
@@ -105,7 +105,7 @@ pub const Test = struct {
 
                 if (std.mem.indexOf(u8, template[i..], "}")) |end| {
                     const varName = template[i + 1 .. i + end];
-                    const replacement = try self.templateVariableValue(varName);
+                    const replacement = try self.templateVariableValueTestAgent(varName);
                     defer self.allocator.free(replacement);
                     try result.appendSlice(self.allocator, replacement);
                     i += end + 1;
@@ -125,7 +125,7 @@ pub const Test = struct {
     }
 
     /// Override base agent method to provide config-aware template variable processing
-    pub fn templateVariableValue(self: *Self, varName: []const u8) ![]const u8 {
+    pub fn templateVariableValueTestAgent(self: *Self, varName: []const u8) ![]const u8 {
         const cfg = &self.config.agentConfig;
 
         if (std.mem.eql(u8, varName, "agent_name")) {
@@ -186,9 +186,5 @@ pub const Test = struct {
         };
     }
 };
-
-// Note: Tool execution functions are now handled through the shared tools registry
-// and registered in spec.zig. The actual implementations remain in the tools/ directory
-// but are called through the standardized interface.
 
 // Test is already exported as pub const above

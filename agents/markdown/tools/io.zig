@@ -84,7 +84,7 @@ pub const Command = enum {
     find_files,
     get_workspace_tree,
 
-    pub fn fromString(str: []const u8) ?Command {
+    pub fn parse(str: []const u8) ?Command {
         return std.meta.stringToEnum(Command, str);
     }
 };
@@ -371,7 +371,7 @@ fn executeInternal(allocator: std.mem.Allocator, params: json.Value) !json.Value
     const params_obj = params.object;
 
     const command_str = params_obj.get("command").?.string;
-    const command = Command.fromString(command_str) orelse return Error.UnknownCommand;
+    const command = Command.parse(command_str) orelse return Error.UnknownCommand;
 
     return switch (command) {
         .read_file => readFile(allocator, params),

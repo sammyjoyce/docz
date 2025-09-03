@@ -3,7 +3,8 @@
 //! This provides a basic REPL agent with OAuth support.
 
 const std = @import("std");
-const agentMain = @import("../../src/foundation/agent_main.zig");
+const foundation = @import("foundation");
+const agentMain = foundation.agent_main;
 const spec = @import("spec.zig");
 
 pub fn main() !void {

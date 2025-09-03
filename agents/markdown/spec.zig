@@ -9,7 +9,7 @@ const tools = foundation.tools;
 // Explicit agent metadata for discovery/logging surfaces
 pub const agentName: []const u8 = "markdown";
 
-fn buildSystemPromptImpl(allocator: std.mem.Allocator, options: engine.CliOptions) ![]const u8 {
+fn buildSystemPrompt(allocator: std.mem.Allocator, options: engine.CliOptions) ![]const u8 {
     _ = options;
     var arena = std.heap.ArenaAllocator.init(allocator);
     defer arena.deinit();
@@ -21,7 +21,7 @@ fn buildSystemPromptImpl(allocator: std.mem.Allocator, options: engine.CliOption
     return allocator.dupe(u8, tmp);
 }
 
-fn registerToolsImpl(registry: *tools.Registry) !void {
+fn registerTools(registry: *tools.Registry) !void {
     // Register built-in tools
     try tools.registerBuiltins(registry);
 
@@ -50,6 +50,6 @@ fn registerToolsImpl(registry: *tools.Registry) !void {
 }
 
 pub const SPEC: engine.AgentSpec = .{
-    .buildSystemPrompt = buildSystemPromptImpl,
-    .registerTools = registerToolsImpl,
+    .buildSystemPrompt = buildSystemPrompt,
+    .registerTools = registerTools,
 };

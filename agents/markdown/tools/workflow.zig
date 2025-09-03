@@ -17,7 +17,7 @@ pub const ExecutionMode = enum {
     batch,
     hybrid,
 
-    pub fn fromString(str: []const u8) ?ExecutionMode {
+    pub fn parse(str: []const u8) ?ExecutionMode {
         return std.meta.stringToEnum(ExecutionMode, str);
     }
 };
@@ -39,8 +39,8 @@ pub const WorkflowResult = struct {
 };
 
 /// Main entry point for workflow operations
-pub fn execute(allocator: std.mem.Allocator, params: json.Value) tools.ToolError!json.Value {
-    return executeInternal(allocator, params) catch |err| {
+pub fn executeWorkflow(allocator: std.mem.Allocator, params: json.Value) tools.ToolError!json.Value {
+    return executeInternalWorkflow(allocator, params) catch |err| {
         var result = json.ObjectMap.init(allocator);
         try result.put("success", json.Value{ .bool = false });
         try result.put("error", json.Value{ .string = @errorName(err) });
@@ -49,16 +49,16 @@ pub fn execute(allocator: std.mem.Allocator, params: json.Value) tools.ToolError
     };
 }
 
-fn executeInternal(allocator: std.mem.Allocator, params: json.Value) !json.Value {
+fn executeInternalWorkflow(allocator: std.mem.Allocator, params: json.Value) !json.Value {
     const params_obj = params.object;
 
     const mode_str = params_obj.get("mode").?.string;
-    const mode = ExecutionMode.fromString(mode_str) orelse return Error.UnknownCommand;
+    const mode = ExecutionMode.parse(mode_str) orelse return Error.UnknownCommand;
 
     const start_time = std.time.nanoTimestamp();
 
     const workflow_result = switch (mode) {
-        .pipeline => try executePipeline(allocator, params_obj),
+        .pipeline => try executePipelineWorkflow(allocator, params_obj),
         .batch => try executeBatch(allocator, params_obj),
         .hybrid => try executeHybrid(allocator, params_obj),
     };
@@ -70,7 +70,7 @@ fn executeInternal(allocator: std.mem.Allocator, params: json.Value) !json.Value
 }
 
 /// Execute sequential pipeline workflow
-fn executePipeline(allocator: std.mem.Allocator, params: json.ObjectMap) !WorkflowResult {
+fn executePipelineWorkflow(allocator: std.mem.Allocator, params: json.ObjectMap) !WorkflowResult {
     const pipeline_array = params.get("pipeline").?.array;
     const execution_opts = params.get("execution_options") orelse json.Value{ .object = json.ObjectMap.init(allocator) };
     const atomic = if (execution_opts == .object)
@@ -214,7 +214,7 @@ fn executeBatch(allocator: std.mem.Allocator, params: json.ObjectMap) !WorkflowR
 /// Execute hybrid workflow (combination of pipeline and batch)
 fn executeHybrid(allocator: std.mem.Allocator, params: json.ObjectMap) !WorkflowResult {
     // For now, execute pipeline first, then batch
-    const pipeline_result = try executePipeline(allocator, params);
+    const pipeline_result = try executePipelineWorkflow(allocator, params);
 
     if (!pipeline_result.success) {
         return pipeline_result;

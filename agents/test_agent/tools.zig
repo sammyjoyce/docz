@@ -84,7 +84,7 @@ pub fn calculator(
 }
 
 /// Tool that demonstrates the standardized tool pattern
-pub fn tool(allocator: std.mem.Allocator, params: std.json.Value) toolsMod.ToolError!std.json.Value {
+pub fn execute(allocator: std.mem.Allocator, params: std.json.Value) toolsMod.ToolError!std.json.Value {
     return Tool.execute(allocator, params);
 }
 
@@ -93,8 +93,7 @@ pub const ToolRegistry = struct {
     pub const tools = .{
         .test_tool = testTool,
         .calculator = calculator,
-        .tool = tool,
-        .complex = Tool.complexExecute,
+        .execute = execute,
     };
 };
 

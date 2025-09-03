@@ -22,7 +22,7 @@ pub const Command = enum {
     delete_file,
     delete_directory,
 
-    pub fn fromString(str: []const u8) ?Command {
+    pub fn parse(str: []const u8) ?Command {
         return std.meta.stringToEnum(Command, str);
     }
 };
@@ -44,7 +44,7 @@ fn executeInternal(allocator: std.mem.Allocator, params: json.Value) !json.Value
     const command_val = params_obj.get("command") orelse return Error.UnknownCommand;
     if (command_val != .string) return Error.InvalidParameters;
     const command_str = command_val.string;
-    const command = Command.fromString(command_str) orelse return Error.UnknownCommand;
+    const command = Command.parse(command_str) orelse return Error.UnknownCommand;
 
     return switch (command) {
         .create_file => createFile(allocator, params_obj),

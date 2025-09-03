@@ -1,6 +1,6 @@
 const std = @import("std");
 
-pub const Error = error{
+pub const LinkError = error{
     InvalidURL,
     OutOfMemory,
     NetworkError,
@@ -84,7 +84,7 @@ pub fn parseLink(text: []const u8, start_pos: usize) ?Link {
 }
 
 /// Find all links in markdown text
-pub fn findLinks(allocator: std.mem.Allocator, text: []const u8) Error![]Link {
+pub fn findLinks(allocator: std.mem.Allocator, text: []const u8) LinkError![]Link {
     var links = std.ArrayListUnmanaged(Link){};
     defer links.deinit(allocator);
     var lines = std.mem.splitSequence(u8, text, "\n");
@@ -143,7 +143,7 @@ pub fn classifyLink(url: []const u8) LinkType {
 }
 
 /// Resolve a relative path against a base path
-pub fn resolveRelativePath(allocator: std.mem.Allocator, basePath: []const u8, relativePath: []const u8) Error![]u8 {
+pub fn resolveRelativePath(allocator: std.mem.Allocator, basePath: []const u8, relativePath: []const u8) LinkError![]u8 {
     if (std.fs.path.isAbsolute(relativePath)) {
         return allocator.dupe(u8, relativePath);
     }
@@ -153,7 +153,7 @@ pub fn resolveRelativePath(allocator: std.mem.Allocator, basePath: []const u8, r
 }
 
 /// Normalize a URL (remove fragments, resolve .., etc.)
-pub fn normalizeURL(allocator: std.mem.Allocator, url: []const u8) Error![]u8 {
+pub fn normalizeURL(allocator: std.mem.Allocator, url: []const u8) LinkError![]u8 {
     var result = std.ArrayList(u8).init(allocator);
 
     // Remove fragment
@@ -215,7 +215,7 @@ pub fn validateURL(url: []const u8) bool {
 }
 
 /// Create a markdown link
-pub fn createLink(allocator: std.mem.Allocator, text: []const u8, url: []const u8, title: ?[]const u8) Error![]u8 {
+pub fn createLink(allocator: std.mem.Allocator, text: []const u8, url: []const u8, title: ?[]const u8) LinkError![]u8 {
     var result = std.ArrayList(u8).init(allocator);
 
     try result.append('[');

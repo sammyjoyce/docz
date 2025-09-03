@@ -16,7 +16,7 @@ const textlib = @import("lib/text.zig");
 
 const Allocator = std.mem.Allocator;
 
-/// Main TUI application state
+    /// Main TUI application state
 pub const MarkdownTUI = struct {
     const Self = @This();
 
@@ -42,7 +42,7 @@ pub const MarkdownTUI = struct {
     current_file: ?[]const u8,
     modified: bool,
 
-    pub fn init(allocator: Allocator) !Self {
+    pub fn initMarkdownTUI(allocator: Allocator) !Self {
         const terminal = try term.Terminal.init(allocator);
 
         const app = try allocator.create(tui.App);
@@ -69,19 +69,19 @@ pub const MarkdownTUI = struct {
 
         // Create UI components
         const editor = try allocator.create(EditorPane);
-        editor.* = try EditorPane.init(allocator);
+        editor.* = try EditorPane.initEditorPane(allocator);
 
         const preview = try allocator.create(PreviewPane);
-        preview.* = try PreviewPane.init(allocator);
+        preview.* = try PreviewPane.initPreviewPane(allocator);
 
         const file_browser = try allocator.create(FileBrowser);
-        file_browser.* = try FileBrowser.init(allocator);
+        file_browser.* = try FileBrowser.initFileBrowser(allocator);
 
         const ai_chat = try allocator.create(AIChatPane);
-        ai_chat.* = try AIChatPane.init(allocator);
+        ai_chat.* = try AIChatPane.initAIChatPane(allocator);
 
         const status_bar = try allocator.create(StatusBar);
-        status_bar.* = try StatusBar.init(allocator);
+        status_bar.* = try StatusBar.initStatusBar(allocator);
 
         const command_palette = try tui.components.CommandPalette.init(allocator);
 
@@ -761,7 +761,7 @@ const EditorPane = struct {
     scroll_offset: usize,
     dirty: bool,
 
-    pub fn init(allocator: Allocator) !Self {
+    pub fn initEditorPane(allocator: Allocator) !Self {
         return Self{
             .allocator = allocator,
             .content = std.ArrayList(u8).initCapacity(allocator, 0) catch unreachable,
@@ -1069,7 +1069,7 @@ const PreviewPane = struct {
     rendered_html: ?[]u8,
     scroll_offset: usize,
 
-    pub fn init(allocator: Allocator) !Self {
+    pub fn initPreviewPane(allocator: Allocator) !Self {
         return Self{
             .allocator = allocator,
             .content = "",
@@ -1167,7 +1167,7 @@ const FileBrowser = struct {
         size: u64,
     };
 
-    pub fn init(allocator: Allocator) !Self {
+    pub fn initFileBrowser(allocator: Allocator) !Self {
         var self = Self{
             .allocator = allocator,
             .current_dir = try std.fs.cwd().realpathAlloc(allocator, "."),
@@ -1352,7 +1352,7 @@ const AIChatPane = struct {
         const Role = enum { user, assistant, system };
     };
 
-    pub fn init(allocator: Allocator) !Self {
+    pub fn initAIChatPane(allocator: Allocator) !Self {
         return Self{
             .allocator = allocator,
             .messages = std.ArrayList(ChatMessage).initCapacity(allocator, 0) catch unreachable,
@@ -1481,7 +1481,7 @@ const StatusBar = struct {
     mode: []const u8,
     show_auth_hint: bool = false,
 
-    pub fn init(allocator: Allocator) !Self {
+    pub fn initStatusBar(allocator: Allocator) !Self {
         return Self{
             .allocator = allocator,
             .file = null,
@@ -1601,7 +1601,7 @@ fn markdownToHTML(allocator: Allocator, content: []const u8) ![]u8 {
 
 // Public interface
 pub fn launch(allocator: Allocator) !void {
-    var app = try MarkdownTUI.init(allocator);
+    var app = try MarkdownTUI.initMarkdownTUI(allocator);
     defer app.deinit();
 
     try app.run();
@@ -1609,7 +1609,7 @@ pub fn launch(allocator: Allocator) !void {
 
 // Main entry point for TUI
 pub fn runTui(allocator: Allocator, _: anytype, initial_file: ?[]const u8) !u8 {
-    var app = try MarkdownTUI.init(allocator);
+    var app = try MarkdownTUI.initMarkdownTUI(allocator);
     defer app.deinit();
     if (initial_file) |file| {
         try app.loadFile(file);

@@ -25,7 +25,7 @@ const toolsMod = foundation.tools;
 ///
 /// Returns: System prompt string with template variables processed
 /// Errors: File access, memory allocation, or template processing errors
-fn buildSystemPromptImpl(allocator: std.mem.Allocator, options: engine.CliOptions) ![]const u8 {
+fn buildSystemPrompt(allocator: std.mem.Allocator, options: engine.CliOptions) ![]const u8 {
     // The options parameter is reserved for future use (e.g., config path overrides)
     // Currently we ignore it and use the default configuration
     _ = options;
@@ -57,7 +57,7 @@ fn buildSystemPromptImpl(allocator: std.mem.Allocator, options: engine.CliOption
 ///   registry: Shared tools registry to register tools with
 ///
 /// Errors: Tool registration failures or validation errors
-fn registerToolsImpl(registry: *toolsMod.Registry) !void {
+fn registerTools(registry: *toolsMod.Registry) !void {
     // ============================================================================
     // PATTERN 1: INDIVIDUAL TOOL REGISTRATION (RECOMMENDED)
     // ============================================================================
@@ -134,6 +134,6 @@ fn registerToolsImpl(registry: *toolsMod.Registry) !void {
 /// - buildSystemPrompt: Function to generate the system prompt
 /// - registerTools: Function to register agent-specific tools
 pub const SPEC: engine.AgentSpec = .{
-    .buildSystemPrompt = buildSystemPromptImpl,
-    .registerTools = registerToolsImpl,
+    .buildSystemPrompt = buildSystemPrompt,
+    .registerTools = registerTools,
 };
