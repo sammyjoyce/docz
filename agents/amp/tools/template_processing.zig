@@ -18,19 +18,17 @@ pub const TemplateResponse = struct {
 };
 
 pub fn executeTemplateProcessing(allocator: std.mem.Allocator, json_input: std.json.Value) toolsMod.ToolError!std.json.Value {
-    const MapperReq = toolsMod.JsonReflector.mapper(TemplateRequest);
-    const reqp = MapperReq.fromJson(allocator, json_input) catch return toolsMod.ToolError.InvalidInput;
-    defer reqp.deinit();
-    const req = reqp.value;
+    const DeserializerReq = toolsMod.Reflection.Deserializer(TemplateRequest);
+    const req = DeserializerReq.deserialize(allocator, json_input) catch return toolsMod.ToolError.InvalidInput;
 
     const opts = req.options orelse toolsMod.Template.ProcessOptions{};
 
     var tr = toolsMod.Template.processWithMap(allocator, req.template, req.variables, opts) catch |err| {
         const error_msg = std.fmt.allocPrint(allocator, "Template processing failed: {}", .{err}) catch "processing error";
         defer allocator.free(error_msg);
-        return JsonBuilder.buildTemplateResponse(allocator, false, "", error_msg, &.{}, &.{});
+        return JsonBuilder.buildTemplateResponse(allocator, false, "", error_msg, &.{}, &.{}) catch toolsMod.ToolError.SerializationFailed;
     };
     defer tr.deinit();
 
-    return JsonBuilder.buildTemplateResponse(allocator, true, tr.result, null, tr.variables_used, tr.variables_missing);
+    return JsonBuilder.buildTemplateResponse(allocator, true, tr.result, null, tr.variables_used, tr.variables_missing) catch toolsMod.ToolError.SerializationFailed;
 }

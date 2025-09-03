@@ -384,7 +384,7 @@ pub const JsonReflector = struct {
             pub fn serialize(allocator: std.mem.Allocator, instance: T, options: anytype) Error![]const u8 {
                 // Build JSON manually since std.json.stringify doesn't exist in Zig 0.15.1
                 // Convert struct to json.Value first, then stringify the value
-                const json_value = try Reflection.mapper(T).serialize(allocator, instance);
+                const json_value = try Reflection.Serializer(T).serialize(allocator, instance);
                 defer {
                     switch (json_value) {
                         .object => |obj_const| {
