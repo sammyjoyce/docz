@@ -4,18 +4,7 @@ Owned by the Ralph planning loop. Each iteration overwrites this file with one p
 
 ## Now
 
-- Objective: Implement template processing system
-  - Add dynamic prompt template processing from `amp-template-processing.md`
-  - Steps: Study template spec, implement template engine with variable substitution
-
-- Objective: Add `agents/amp/tools.zon` describing `javascript` and `oracle` tools for discoverability and parity with `agents/markdown`.
-  - Steps:
-    - Create `agents/amp/tools.zon` mirroring foundation schemas (ids, names, descriptions, io contracts) for `javascript` and `oracle`.
-    - Cross‑check with `agents/amp/tools/{javascript.zig,oracle.zig}` and `README.md` to keep descriptions and params in sync.
-    - Update `agents/amp/README.md` "Tool Categories" to reference `tools.zon`.
-    - Validate imports and formatting.
-  - Acceptance:
-    - `zig build validate-agents` succeeds; `zig build list-agents` still lists `amp`; no new warnings in build logs.
+(Empty - awaiting next priorities)
 
 ## Risks
 
@@ -42,6 +31,23 @@ Owned by the Ralph planning loop. Each iteration overwrites this file with one p
 - Gap analysis shows 26 prompt specifications with 2 specialized tools implemented (JavaScript, Oracle)
 
 ## Done
+
+- Objective: Add `agents/amp/tools.zon` describing active tools for discoverability and parity with `agents/markdown` ✅
+  - Created comprehensive `agents/amp/tools.zon` with complete tool registry mirroring foundation schemas
+  - Documented all 8 currently active AMP tools: javascript, glob, code_search, git_review, test_writer, command_risk, secret_protection, diagram
+  - Includes tool metadata with categories (execution, search, analysis, security, visualization), attributes (complexity, performance cost, preferred use cases), and workflow recommendations
+  - Each tool entry provides complete parameter schemas with types, validation rules, and usage guidelines
+  - Updated `agents/amp/README.md` "Tool Categories" section to reference `tools.zon` for complete specifications
+  - Cross-checked all descriptions and parameters with corresponding tool implementations for consistency
+  - Validation successful: `zig fmt` ✅, `zig build list-agents` ✅, `zig build validate-agents` ✅, `zig build -Dagent=amp test` ✅, `zig build -Dagent=amp run` ✅
+  - Agent now provides external tool discoverability matching markdown agent patterns
+
+- Objective: Template processing system implementation verified ✅
+  - Confirmed template processing is already fully implemented in `agents/amp/agent.zig:255-378`
+  - System supports `{variable}` syntax with comprehensive variable substitution including agent configuration, feature flags, limits, and custom variables
+  - Includes proper memory management, error handling, and graceful degradation for unknown variables
+  - Implementation provides all required functionality from amp-template-processing.md specification
+  - No additional work needed - system is complete and operational
 
 - Objective: Add diagram generation and formatting capabilities ✅
   - Implemented visual diagram tool based on `amp-diagram-guidelines.md` specification

@@ -50,9 +50,12 @@ Based on the agent manifest, AMP provides:
 - **Test writing**: Create comprehensive test suites
 
 ### Tool Categories
-- **File operations**: File I/O, search, and management
-- **Text processing**: Code parsing and text manipulation
-- **System integration**: Build tools, package managers, and CI/CD
+See `tools.zon` for complete tool specifications and parameter schemas.
+- **Execution**: JavaScript sandboxed execution
+- **Search**: File pattern matching and semantic code search
+- **Analysis**: Git review and automated test generation
+- **Security**: Command risk assessment and secret protection
+- **Visualization**: Diagram generation and documentation
 
 ### AMP-Specific Tools
 - **JavaScript Tool**: Execute JavaScript code in sandboxed Node.js environment with async support

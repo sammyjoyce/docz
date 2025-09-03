@@ -1,0 +1,201 @@
+.{
+    ////////////////////////////////////////////////////////////////////////////
+    // AMP Agent Tool Registry – 2025 Edition                                //
+    // Unconstrained AI agent with specialized tools for software engineering //
+    ////////////////////////////////////////////////////////////////////////////
+    .tool_metadata = .{
+        .categories = .{
+            .execution = .{"javascript"},
+            .search = .{ "glob", "code_search" },
+            .analysis = .{ "git_review", "test_writer" },
+            .security = .{ "command_risk", "secret_protection" },
+            .visualization = .{"diagram"},
+        },
+        .tool_attributes = .{
+            .javascript = .{ .complexity = "medium", .performance_cost = "medium", .preferred_for = .{ "execute", "evaluate", "sandbox" }, .requires_backup = false },
+            .glob = .{ .complexity = "low", .performance_cost = "low", .preferred_for = .{ "pattern", "match", "discover" }, .requires_backup = false },
+            .code_search = .{ .complexity = "medium", .performance_cost = "medium", .preferred_for = .{ "semantic", "explore", "analyze" }, .requires_backup = false },
+            .git_review = .{ .complexity = "high", .performance_cost = "medium", .preferred_for = .{ "review", "diff", "quality" }, .requires_backup = false },
+            .test_writer = .{ .complexity = "high", .performance_cost = "high", .preferred_for = .{ "test", "coverage", "regression" }, .requires_backup = false },
+            .command_risk = .{ .complexity = "medium", .performance_cost = "low", .preferred_for = .{ "security", "audit", "risk" }, .requires_backup = false },
+            .secret_protection = .{ .complexity = "medium", .performance_cost = "low", .preferred_for = .{ "secrets", "privacy", "leak" }, .requires_backup = false },
+            .diagram = .{ .complexity = "medium", .performance_cost = "medium", .preferred_for = .{ "visualize", "document", "architecture" }, .requires_backup = false },
+        },
+        .workflow_recommendations = .{
+            .development = .{ "javascript", "code_search", "test_writer", "diagram" },
+            .code_review = .{ "git_review", "command_risk", "secret_protection" },
+            .exploration = .{ "glob", "code_search" },
+            .security_audit = .{ "command_risk", "secret_protection" },
+            .documentation = .{"diagram"},
+        },
+    },
+
+    ////////////////////////////////////////////////////////////////////////////
+    // 1. javascript – Sandboxed JavaScript Execution                         //
+    ////////////////////////////////////////////////////////////////////////////
+    .javascript = .{
+        .description = "Execute JavaScript code in a sandboxed Node.js environment with async support. Wraps inline code in async IIFE with proper error handling and result extraction.",
+        .usage_guidelines = "For safe code execution and evaluation. Supports both inline code and file execution.",
+        .params = .{
+            .type = "object",
+            .properties = .{
+                .code = .{ .type = "string", .description = "JavaScript code to execute inline", .minLength = 1 },
+                .codePath = .{ .type = "string", .description = "Path to JavaScript file to execute" },
+                .timeout = .{ .type = "integer", .minimum = 1000, .maximum = 30000, .default = 10000, .description = "Execution timeout in milliseconds" },
+                .workingDirectory = .{ .type = "string", .description = "Working directory for execution", .default = "." },
+            },
+            .anyOf = .{
+                .{ .required = .{"code"} },
+                .{ .required = .{"codePath"} },
+            },
+        },
+    },
+
+    ////////////////////////////////////////////////////////////////////////////
+    // 2. glob – Fast File Pattern Matching                                    //
+    ////////////////////////////////////////////////////////////////////////////
+    .glob = .{
+        .description = "Match files by glob pattern (supports **, *, ?, {a,b}, [a-z]) and return paths sorted by modification time descending. Fast pattern matching for any codebase size.",
+        .usage_guidelines = "Use for file discovery and pattern-based searches. Results are sorted by modification time.",
+        .params = .{
+            .type = "object",
+            .properties = .{
+                .pattern = .{ .type = "string", .description = "Glob pattern to match files against", .minLength = 1 },
+                .baseDir = .{ .type = "string", .description = "Base directory to search in", .default = "." },
+                .limit = .{ .type = "integer", .minimum = 1, .maximum = 1000, .default = 100, .description = "Maximum number of results to return" },
+                .offset = .{ .type = "integer", .minimum = 0, .default = 0, .description = "Number of results to skip" },
+            },
+            .required = .{"pattern"},
+        },
+    },
+
+    ////////////////////////////////////////////////////////////////////////////
+    // 3. code_search – Intelligent Codebase Exploration                       //
+    ////////////////////////////////////////////////////////////////////////////
+    .code_search = .{
+        .description = "Intelligently search codebase for code based on functionality or concepts. Uses ripgrep for fast search with fallback to manual search. Semantic search capabilities beyond basic grep.",
+        .usage_guidelines = "Use for finding code by functionality rather than exact text matches. Optimized for large codebases.",
+        .params = .{
+            .type = "object",
+            .properties = .{
+                .query = .{ .type = "string", .description = "Search query (supports regex)", .minLength = 1 },
+                .paths = .{ .type = "array", .items = .{ .type = "string" }, .description = "Specific paths to search in" },
+                .patterns = .{ .type = "array", .items = .{ .type = "string" }, .description = "File patterns to include", .default = .{ "*.zig", "*.js", "*.ts", "*.py", "*.rs", "*.go", "*.c", "*.cpp", "*.h" } },
+                .contextLines = .{ .type = "integer", .minimum = 0, .maximum = 10, .default = 2, .description = "Number of context lines around matches" },
+                .maxResults = .{ .type = "integer", .minimum = 1, .maximum = 500, .default = 50, .description = "Maximum number of results" },
+                .caseSensitive = .{ .type = "boolean", .default = false, .description = "Case-sensitive search" },
+                .regex = .{ .type = "boolean", .default = false, .description = "Treat query as regular expression" },
+            },
+            .required = .{"query"},
+        },
+    },
+
+    ////////////////////////////////////////////////////////////////////////////
+    // 4. git_review – Comprehensive Code Review Automation                    //
+    ////////////////////////////////////////////////////////////////////////////
+    .git_review = .{
+        .description = "Perform comprehensive code review analysis of git changes. Provides file-by-file analysis, security/performance concerns, and quality suggestions with diff analysis between git references.",
+        .usage_guidelines = "Use for automated code review and quality analysis. Supports staged/unstaged changes and custom git references.",
+        .params = .{
+            .type = "object",
+            .properties = .{
+                .fromRef = .{ .type = "string", .description = "Source git reference for comparison", .default = "HEAD~1" },
+                .toRef = .{ .type = "string", .description = "Target git reference for comparison", .default = "HEAD" },
+                .includeStaged = .{ .type = "boolean", .default = false, .description = "Include staged changes in analysis" },
+                .includeUnstaged = .{ .type = "boolean", .default = false, .description = "Include unstaged changes in analysis" },
+                .contextLines = .{ .type = "integer", .minimum = 0, .maximum = 10, .default = 3, .description = "Context lines around changes" },
+                .filePatterns = .{ .type = "array", .items = .{ .type = "string" }, .description = "File patterns to include in review" },
+                .skipBinaryFiles = .{ .type = "boolean", .default = true, .description = "Skip binary files in review" },
+                .maxFiles = .{ .type = "integer", .minimum = 1, .maximum = 100, .default = 50, .description = "Maximum files to review" },
+            },
+        },
+    },
+
+    ////////////////////////////////////////////////////////////////////////////
+    // 5. test_writer – Automated Test Generation                              //
+    ////////////////////////////////////////////////////////////////////////////
+    .test_writer = .{
+        .description = "Analyze code for bugs, performance, and security issues, then generate comprehensive test suites covering existing issues and regression prevention. Multi-language support with Zig focus.",
+        .usage_guidelines = "Use for automated test generation and code analysis. Provides comprehensive coverage of functionality, edge cases, and error conditions.",
+        .params = .{
+            .type = "object",
+            .properties = .{
+                .codePath = .{ .type = "string", .description = "Path to source code file to analyze", .minLength = 1 },
+                .testPath = .{ .type = "string", .description = "Output path for generated tests" },
+                .language = .{ .type = "string", .@"enum" = .{ "zig", "javascript", "typescript", "python", "rust", "go", "c", "cpp" }, .default = "zig", .description = "Programming language of the code" },
+                .testFramework = .{ .type = "string", .description = "Preferred test framework (auto-detected if not specified)" },
+                .maxTests = .{ .type = "integer", .minimum = 1, .maximum = 100, .default = 20, .description = "Maximum number of tests to generate" },
+                .includePerformance = .{ .type = "boolean", .default = true, .description = "Include performance-focused tests" },
+                .includeSecurity = .{ .type = "boolean", .default = true, .description = "Include security-focused tests" },
+                .includeEdgeCases = .{ .type = "boolean", .default = true, .description = "Include edge case tests" },
+                .analyzeOnly = .{ .type = "boolean", .default = false, .description = "Only analyze for issues, don't generate tests" },
+            },
+            .required = .{"codePath"},
+        },
+    },
+
+    ////////////////////////////////////////////////////////////////////////////
+    // 6. command_risk – Security Risk Assessment                              //
+    ////////////////////////////////////////////////////////////////////////////
+    .command_risk = .{
+        .description = "Analyze commands for security risks and determine if they require user approval. Detects destructive operations, inline code execution, and unknown commands with structured risk analysis.",
+        .usage_guidelines = "Use before executing any system commands to assess security risks. Provides detailed risk analysis and recommendations.",
+        .params = .{
+            .type = "object",
+            .properties = .{
+                .command = .{ .type = "string", .description = "Command to analyze for security risks", .minLength = 1 },
+                .context = .{ .type = "string", .description = "Context or purpose of the command execution" },
+                .workingDirectory = .{ .type = "string", .description = "Working directory where command will run", .default = "." },
+                .environment = .{ .type = "object", .description = "Environment variables that will be set" },
+                .outputFormat = .{ .type = "string", .@"enum" = .{ "json", "xml", "text" }, .default = "json", .description = "Output format for risk assessment" },
+            },
+            .required = .{"command"},
+        },
+    },
+
+    ////////////////////////////////////////////////////////////////////////////
+    // 7. secret_protection – Sensitive Information Detection                   //
+    ////////////////////////////////////////////////////////////////////////////
+    .secret_protection = .{
+        .description = "Detect and prevent access to secret files and sensitive information. Analyzes file paths and content for secret patterns and provides security recommendations with risk level assessment.",
+        .usage_guidelines = "Use to scan for secrets, API keys, passwords, and other sensitive data before file operations or commits.",
+        .params = .{
+            .type = "object",
+            .properties = .{
+                .path = .{ .type = "string", .description = "File or directory path to analyze", .minLength = 1 },
+                .content = .{ .type = "string", .description = "Content to analyze for secrets" },
+                .recursive = .{ .type = "boolean", .default = true, .description = "Recursively scan directories" },
+                .includeHidden = .{ .type = "boolean", .default = false, .description = "Include hidden files and directories" },
+                .maxFileSize = .{ .type = "integer", .minimum = 1024, .maximum = 10485760, .default = 1048576, .description = "Maximum file size to scan (bytes)" },
+                .outputFormat = .{ .type = "string", .@"enum" = .{ "json", "xml", "text" }, .default = "json", .description = "Output format for results" },
+                .strictMode = .{ .type = "boolean", .default = false, .description = "Enable strict pattern matching" },
+            },
+            .anyOf = .{
+                .{ .required = .{"path"} },
+                .{ .required = .{"content"} },
+            },
+        },
+    },
+
+    ////////////////////////////////////////////////////////////////////////////
+    // 8. diagram – Visual Diagram Generation                                  //
+    ////////////////////////////////////////////////////////////////////////////
+    .diagram = .{
+        .description = "Generate visual diagrams proactively for system architecture, workflows, data flows, algorithms, class hierarchies, and state transitions. Creates Mermaid-based diagrams with dark theme styling.",
+        .usage_guidelines = "Use proactively to create visual documentation. Supports multiple diagram types and output formats.",
+        .params = .{
+            .type = "object",
+            .properties = .{
+                .type = .{ .type = "string", .@"enum" = .{ "flowchart", "sequence", "class", "state", "er", "gantt", "architecture", "gitgraph", "mindmap", "timeline" }, .description = "Type of diagram to generate" },
+                .title = .{ .type = "string", .description = "Title for the diagram" },
+                .description = .{ .type = "string", .description = "Description or context for the diagram" },
+                .content = .{ .type = "string", .description = "Content or data to visualize", .minLength = 1 },
+                .outputFormat = .{ .type = "string", .@"enum" = .{ "mermaid", "markdown", "html" }, .default = "mermaid", .description = "Output format for diagram" },
+                .theme = .{ .type = "string", .@"enum" = .{ "default", "dark", "neutral", "forest" }, .default = "dark", .description = "Diagram theme" },
+                .direction = .{ .type = "string", .@"enum" = .{ "TB", "TD", "BT", "RL", "LR" }, .default = "TB", .description = "Diagram direction (Top-Bottom, Left-Right, etc.)" },
+                .includeMetadata = .{ .type = "boolean", .default = true, .description = "Include metadata in output" },
+            },
+            .required = .{ "type", "content" },
+        },
+    },
+}
