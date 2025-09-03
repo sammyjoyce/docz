@@ -72,6 +72,15 @@ pub fn registerAll(registry: *toolsMod.Registry) !void {
         "amp",
     );
 
+    // Diagram Generation tool - creates visual diagrams using Mermaid syntax
+    try toolsMod.registerJsonTool(
+        registry,
+        "diagram",
+        "Generate visual diagrams proactively for system architecture, workflows, data flows, algorithms, class hierarchies, and state transitions. Creates Mermaid-based diagrams with dark theme styling.",
+        @import("diagram.zig").execute,
+        "amp",
+    );
+
     // Thread management tools temporarily disabled pending Zig 0.15.1 JSON API compatibility fixes
     // try toolsMod.registerJsonTool(
     //     registry,

@@ -4,10 +4,6 @@ Owned by the Ralph planning loop. Each iteration overwrites this file with one p
 
 ## Now
 
-- Objective: Add diagram generation and formatting capabilities
-  - Implement visual documentation tools from diagram-related specs
-  - Steps: Study diagram specs, implement text-to-diagram conversion
-
 - Objective: Implement template processing system
   - Add dynamic prompt template processing from `amp-template-processing.md`
   - Steps: Study template spec, implement template engine with variable substitution
@@ -46,6 +42,18 @@ Owned by the Ralph planning loop. Each iteration overwrites this file with one p
 - Gap analysis shows 26 prompt specifications with 2 specialized tools implemented (JavaScript, Oracle)
 
 ## Done
+
+- Objective: Add diagram generation and formatting capabilities ✅
+  - Implemented visual diagram tool based on `amp-diagram-guidelines.md` specification
+  - Created `agents/amp/tools/diagram.zig` with comprehensive Mermaid diagram generation
+  - Supports all diagram types: flowchart, sequence, class, state, entity-relationship, gantt, architecture, gitgraph, mindmap, timeline
+  - Implements proactive diagram creation guidelines with dark theme styling per spec
+  - Features multiple output formats: raw Mermaid syntax, Markdown, HTML with rendering
+  - Registered diagram tool in `agents/amp/tools/mod.zig` as "diagram" tool
+  - Fixed Zig 0.15.1 compatibility issues by using std.fmt.allocPrint instead of ArrayList API
+  - Validation successful: `zig fmt` ✅, `zig build list-agents` ✅, `zig build validate-agents` ✅, `zig build -Dagent=amp test` ✅, `zig build -Dagent=amp run --help` ✅
+  - Tool provides visual documentation capabilities that agents should use proactively for system architecture, workflows, data flows, algorithms, class hierarchies, and state transitions per amp-diagram-guidelines.md
+  - Addresses specification-implementation gap where `{{diagramTool}}` was referenced in amp-task.md but not implemented
 
 - Objective: Implement thread management and summarization ✅
   - Created `agents/amp/tools/thread_delta_processor.zig` implementing full `amp-thread-delta-processor.md` specification
