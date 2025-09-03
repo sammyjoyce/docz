@@ -38,9 +38,9 @@ fn assembleFromSpecs(allocator: std.mem.Allocator) ![]const u8 {
     defer arena.deinit();
     const a = arena.allocator();
 
-    // Use initCapacity instead of init for Zig 0.15.1 compatibility
-    var prompt_parts = try std.ArrayList([]const u8).initCapacity(a, 0);
-    defer prompt_parts.deinit(a);
+    // Use managed array list for Zig 0.15.1 compatibility
+    var prompt_parts = try std.array_list.Managed([]const u8).initCapacity(a, 0);
+    defer prompt_parts.deinit();
 
     // Core system identity and behavior (essential)
     if (std.fs.cwd().openFile("specs/amp/amp.system.md", .{})) |file| {
@@ -49,9 +49,9 @@ fn assembleFromSpecs(allocator: std.mem.Allocator) ![]const u8 {
         // Extract content after frontmatter
         if (std.mem.indexOf(u8, content, "\n---\n")) |end_pos| {
             const main_content = content[end_pos + 5 ..];
-            try prompt_parts.append(a, main_content);
+            try prompt_parts.append(main_content);
         } else {
-            try prompt_parts.append(a, content);
+            try prompt_parts.append(content);
         }
     } else |_| {}
 
@@ -61,8 +61,8 @@ fn assembleFromSpecs(allocator: std.mem.Allocator) ![]const u8 {
         const content = try file.readToEndAlloc(a, 1024 * 1024);
         if (std.mem.indexOf(u8, content, "\n---\n")) |end_pos| {
             const main_content = content[end_pos + 5 ..];
-            try prompt_parts.append(a, "\n\n# Additional Communication Guidelines\n\n");
-            try prompt_parts.append(a, main_content);
+            try prompt_parts.append("\n\n# Additional Communication Guidelines\n\n");
+            try prompt_parts.append(main_content);
         }
     } else |_| {}
 
@@ -72,8 +72,8 @@ fn assembleFromSpecs(allocator: std.mem.Allocator) ![]const u8 {
         const content = try file.readToEndAlloc(a, 1024 * 1024);
         if (std.mem.indexOf(u8, content, "\n---\n")) |end_pos| {
             const main_content = content[end_pos + 5 ..];
-            try prompt_parts.append(a, "\n\n# Task Management Guidelines\n\n");
-            try prompt_parts.append(a, main_content);
+            try prompt_parts.append("\n\n# Task Management Guidelines\n\n");
+            try prompt_parts.append(main_content);
         }
     } else |_| {}
 
@@ -100,13 +100,14 @@ fn assembleFromSpecs(allocator: std.mem.Allocator) ![]const u8 {
 }
 
 /// Register all tools for the AMP agent.
-/// Follows markdown agent pattern by registering foundation built-ins.
+/// Registers foundation built-ins plus AMP-specific tools.
 fn registerTools(registry: *toolsMod.Registry) !void {
     // Register built-in foundation tools (grep, read, edit, bash, etc.)
     try toolsMod.registerBuiltins(registry);
 
-    // Future: AMP-specific tools will be registered here
-    // Based on specs/amp/amp-javascript-tool.md, amp-code-search.md, etc.
+    // Register AMP-specific tools from tools/mod.zig
+    const ampToolsMod = @import("tools/mod.zig");
+    try ampToolsMod.registerAll(registry);
 }
 
 /// ============================================================================

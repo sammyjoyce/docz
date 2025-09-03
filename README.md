@@ -20,9 +20,12 @@ A multi-agent terminal AI system with shared infrastructure for building special
 - **Enhanced UX**: Adaptive rendering, responsive design patterns, and intelligent terminal detection
 - **Visual Clarity**: Smart element spacing, dynamic layout adjustments, and distraction-free interface
 - **Modern Terminal Features**: Full support for Ghostty, Kitty, iTerm2 with graphics protocols and shell integration
+- **Fixed Tool Integration**: Recently resolved critical tool execution bugs for stable operation
 
 ### Recent Improvements
 
+- **Critical Bug Fixes**: Fixed tool execution crashes by correcting Anthropic API message formatting (tool results now properly use `user` role instead of invalid `tool` role)
+- **Zig 0.15.1 Compatibility**: Updated ArrayList usage patterns for modern Zig compatibility
 - **CLI Demo Relocation**: Moved comprehensive CLI demo from root to `examples/cli_demo/` for better organization
 - **New Core Modules**: Added `agent_base.zig` and `agent_main.zig` to provide standardized base functionality
 - **Reduced Code Duplication**: Base classes and shared patterns eliminate repetitive boilerplate code
@@ -81,95 +84,24 @@ zig build -Dagent=markdown run -- --format-tables "Process data with smart table
 zig build run-enhanced-demo
 ```
 
-### Configuration for Enhanced UX
-
-Enable enhanced features in your agent's `config.zon`:
-
-```zon
-.{
-    .ux_enhancements = .{
-        .adaptive_rendering = true,
-        .responsive_design = true,
-        .smart_spacing = true,
-        .visual_hierarchy = true,
-        .distraction_free_available = true,
-        .terminal_optimization = .auto,
-    },
-    .rendering_preferences = .{
-        .default_quality = .high,
-        .enable_animations = true,
-        .smooth_transitions = true,
-        .color_depth = .true_color,
-    },
-}
-```
-
-### Real-World UX Improvements Examples
-
-#### Before vs After: Table Rendering
-**Before**: Fixed-width tables that break on narrow terminals
-```
-| Column1 | Column2 | Column3 | Column4 |
-|---------|---------|---------|---------|
-| Data... | Data... | Data... | Data... |
-```
-
-**After**: Responsive tables that intelligently adapt
-```
-Narrow Terminal (< 80 cols):       Wide Terminal (> 120 cols):
-┌─────────────────┐                ┌──────┬──────┬──────┬──────┐
-│ Column1: Data   │                │ Col1 │ Col2 │ Col3 │ Col4 │
-│ Column2: Data   │                ├──────┼──────┼──────┼──────┤
-│ Column3: Data   │                │ Data │ Data │ Data │ Data │
-└─────────────────┘                └──────┴──────┴──────┴──────┘
-```
-
-#### Before vs After: Progress Indicators
-**Before**: Basic progress bar
-```
-Processing... [=========>         ] 50%
-```
-
-**After**: Context-aware progress with estimates
-```
-Processing document (2.3 MB)
-╔════════════════════════════════════════╗
-║ ████████████████░░░░░░░░░░░ 50% │ 2:15 ║
-╟────────────────────────────────────────╢
-║ Files: 12/24 │ Speed: 1.2 MB/s │ ETA: 2m║
-╚════════════════════════════════════════╝
-```
-
-#### Before vs After: Input Fields
-**Before**: Plain text input
-```
-Enter filename: myfile.txt_
-```
-
-**After**: Enhanced input with validation
-```
-┌─ Enter filename ─────────────────────┐
-│ 📄 myfile.txt│                       │
-├──────────────────────────────────────┤
-│ ✓ Valid filename                     │
-│ Hint: Use .md for markdown files     │
-└──────────────────────────────────────┘
-```
-
 ## Available Agents
 
-### markdown
-A comprehensive CLI agent for writing and refining markdown documents with advanced processing capabilities and enhanced user experience.
+### amp
+- **Version:** 1.0.0
+- **Description:** Powerful AI coding agent built by Sourcegraph for software engineering tasks
+- **Status:** Recently fixed and fully operational
+- **Tools:** 3 tools (echo, oracle, fs_read)
+- **Features:** File operations, oracle queries for meta-reasoning, system commands
+- **Recent Fixes:** Resolved Zig 0.15.1 compilation errors and tool execution crashes
 
-**Features:**
-- 5 specialized markdown tools (content editor, document I/O, transformer, validator, workflow processor)
-- Template system with variable substitution
-- Multi-format export (HTML, PDF, DOCX)
-- Quality validation and consistency checks
-- Large document support with streaming
-- **Enhanced UX**: Adaptive rendering with responsive tables and smart content layout
-- **Visual Feedback**: Real-time progress indicators and interactive document navigation
-- **Distraction-Free Mode**: Minimalist interface for focused writing sessions
+### markdown
+- **Version:** 2.0.0
+- **Description:** Enterprise-grade markdown systems architect & quality guardian
+- **Integration:** Fully integrated with foundation framework
+- **Tools:** 6 JSON tools (io, content_editor, validate, document, workflow, file)
+- **Features:** Document processing, validation, workflow management
+- **Config:** Uses foundation.config.AgentConfig with proper field mapping
+- **TUI:** Full-featured terminal UI enabled (terminal_ui = true in manifest). Launch with `zig build -Dagent=markdown run` (no args opens TUI) or `markdown --tui`.
 
 ### test_agent
 Example agent demonstrating enhanced tool integration and basic functionality.
@@ -189,10 +121,10 @@ Template for creating new agents with standardized structure and patterns.
 
 ```bash
 # Build a specific agent
-zig build -Dagent=markdown
+zig build -Dagent=amp
 
 # Run an agent with arguments
-zig build -Dagent=markdown run -- "Create a technical blog post about Zig"
+zig build -Dagent=amp run -- "Help me analyze this codebase"
 
 # Run with enhanced visual feedback
 zig build -Dagent=markdown run -- --enhanced-ui "Write a tutorial with visual examples"
@@ -204,13 +136,13 @@ zig build -Dagent=markdown run -- --adaptive "Process large markdown files effic
 zig build -Dagent=markdown run -- --minimal "Draft a novel chapter without distractions"
 
 # Install agent binary
-zig build -Dagent=markdown install-agent
+zig build -Dagent=amp install-agent
 
 # Run agent directly with enhanced features
-zig build -Dagent=markdown run-agent -- --help
+zig build -Dagent=amp run-agent -- --help
 
 # Test an agent
-zig build -Dagent=markdown test
+zig build -Dagent=amp test
 ```
 
 ### Authentication
@@ -219,13 +151,13 @@ Use the built-in auth subcommands to set up and manage credentials:
 
 ```bash
 # Start OAuth setup in your browser (recommended)
-zig build -Dagent=markdown run -- auth login
+zig build -Dagent=amp run -- auth login
 
 # Show current authentication status (OAuth/API key/none)
-zig build -Dagent=markdown run -- auth status
+zig build -Dagent=amp run -- auth status
 
 # Refresh OAuth tokens
-zig build -Dagent=markdown run -- auth refresh
+zig build -Dagent=amp run -- auth refresh
 ```
 
 If you prefer API key auth, set `ANTHROPIC_API_KEY` in your environment. When OAuth credentials are present, they take precedence.
@@ -273,26 +205,12 @@ zig build run-layout-demo          # Dynamic layout adjustments based on termina
 zig build run-simple-demo          # Basic terminal capabilities
 ```
 
-**UX Enhancement Highlights:**
-- **Adaptive Rendering**: Automatic quality adjustments based on terminal capabilities and content complexity
-- **Responsive Design**: Components that intelligently reflow and resize based on terminal dimensions
-- **Visual Clarity**: Smart spacing, visual hierarchy, and consistent styling across all interfaces
-- **Interactive Feedback**: Real-time visual responses to user interactions with smooth transitions
-- **Performance Optimization**: Efficient rendering that maintains responsiveness even with complex layouts
-
-**Terminal Support Highlights:**
-- **Ghostty**: Full support with automatic detection via `GHOSTTY_RESOURCES_DIR` and `xterm-ghostty`
-- **Kitty**: Complete Kitty Graphics Protocol and keyboard protocol support
-- **iTerm2**: Comprehensive shell integration and inline image support
-- **Modern Terminals**: Alacritty, WezTerm, and others with advanced feature detection
-- **Graphics Protocols**: Sixel, Kitty Graphics, and iTerm2 inline images
-- **Shell Integration**: Prompt marking, command output tracking, and navigation
-
 ## Project Structure
 
 ```
 docz/
 ├── agents/                     # Individual terminal agents
+│   ├── amp/                   # Sourcegraph AI coding agent (recently fixed)
 │   ├── markdown/              # Markdown document processor
 │   ├── test_agent/           # Example/testing agent
 │   └── _template/            # Template for new agents
@@ -306,12 +224,12 @@ docz/
 │
 ├── src/
 │   ├── core/                 # Core engine and configuration
-│   │   ├── engine.zig       # Main agent engine
+│   │   ├── engine.zig       # Main agent engine (with recent bug fixes)
 │   │   ├── config.zig       # Configuration utilities
 │   │   ├── agent_base.zig   # Base agent functionality
 │   │   └── agent_main.zig   # Standardized main entry point
 │   │
-│   └── shared/              # Shared infrastructure modules
+│   └── foundation/          # Shared infrastructure modules
 │       ├── cli/            # Command-line interface system
 │       │   ├── core/       # CLI parsing and routing
 │       │   ├── components/ # UI components (menus, progress)
@@ -326,13 +244,14 @@ docz/
 │       │   └── widgets/    # Specialized widgets
 │       │
 │       ├── network/        # Network and API clients
-│       │   ├── anthropic.zig # Claude API client
-│       │   ├── curl.zig      # HTTP utilities
-│       │   └── sse.zig       # Server-sent events
+│       │   ├── providers/  # API provider implementations
+│       │   │   └── anthropic/ # Claude API client (with fixed message formatting)
+│       │   ├── curl.zig    # HTTP utilities
+│       │   └── sse.zig     # Server-sent events
 │       │
-│       ├── tools/          # Enhanced tools registry
+│       ├── tools/          # Enhanced tools registry (recently fixed)
 │       │   ├── mod.zig     # Tool exports
-│       │   └── tools.zig   # Registry implementation
+│       │   └── Registry.zig # Registry implementation (with oracle tool fixes)
 │       │
 │       ├── auth/           # Authentication system
 │       │   ├── core/       # Auth logic
@@ -355,9 +274,33 @@ docz/
 └── build.zig             # Build configuration
 ```
 
+## Recent Bug Fixes
+
+### Critical Tool Execution Fix
+
+The framework recently resolved a critical bug that was causing agent crashes when using tools:
+
+**Problem**: Tool results were incorrectly formatted with `role: "tool"` which is not supported by Anthropic's Messages API.
+
+**Solution**: Updated `makeToolResultMessage` function in `src/foundation/network/providers/anthropic/Models.zig` to use `role: "user"` with `tool_result` content blocks, which is the correct format according to Anthropic's API specification.
+
+**Impact**: All agents can now use tools reliably, including the oracle tool for meta-reasoning tasks.
+
+### Zig 0.15.1 Compatibility
+
+Fixed ArrayList initialization patterns in agent specifications to use the modern Zig API:
+
+```zig
+// Before (broken)
+var prompt_parts = std.ArrayList([]const u8).init(a);
+
+// After (working)
+var prompt_parts = try std.array_list.Managed([]const u8).initCapacity(a, 0);
+```
+
 ## Shared Infrastructure
 
-### CLI Module (`src/shared/cli/`)
+### CLI Module (`src/foundation/cli/`)
 Comprehensive command-line interface system with enhanced UX:
 - **Core**: Argument parsing, command routing, context management
 - **Enhanced Components**: Reusable UI elements with adaptive rendering (menus, progress bars, inputs)
@@ -366,7 +309,7 @@ Comprehensive command-line interface system with enhanced UX:
 - **Intelligent Workflows**: Multi-step operations with visual feedback and progress tracking
 - **Visual Hierarchy**: Automatic spacing and emphasis for improved readability
 
-### TUI Module (`src/shared/tui/`)
+### TUI Module (`src/foundation/tui/`)
 Terminal user interface components with modern UX patterns:
 - **Adaptive Core**: Canvas engine with quality-aware rendering, unified renderer with performance optimization
 - **Responsive Components**: Dashboard with dynamic layouts, graphics with fallback modes, adaptive layouts
@@ -375,26 +318,27 @@ Terminal user interface components with modern UX patterns:
 - **Interactive Elements**: Mouse and keyboard support with smooth transitions
 - **Distraction-Free Mode**: Minimal UI options for focused work sessions
 
-### Network Module (`src/shared/network/`)
+### Network Module (`src/foundation/network/`)
 API clients and network utilities:
-- **anthropic.zig**: Claude/Anthropic API client
+- **providers/anthropic/**: Claude/Anthropic API client with correct message formatting
 - **curl.zig**: HTTP client functionality
 - **sse.zig**: Server-sent events handling
 
-### Tools Module (`src/shared/tools/`)
-Enhanced tools registry with metadata support:
-- **Registry**: Advanced tool registry with categorization
+### Tools Module (`src/foundation/tools/`)
+Enhanced tools registry with metadata support and recent fixes:
+- **Registry**: Advanced tool registry with categorization and fixed tool execution
 - **JSON Tools**: Structured JSON-based tools with serialization
 - **Metadata**: Descriptions, categories, versions, agent ownership
 - **Auto Registration**: Comptime reflection for automatic registration
+- **Oracle Tool**: Meta-reasoning tool for complex AI queries (now working correctly)
 
-### Auth Module (`src/shared/auth/`)
+### Auth Module (`src/foundation/auth/`)
 Authentication system:
 - **Core**: Authentication logic and credential management
 - **OAuth**: OAuth 2.0 implementation for Claude Pro/Max
 - **TUI/CLI**: Terminal UI and CLI commands for auth flows
 
-### Term Module (`src/shared/term/`)
+### Term Module (`src/foundation/term/`)
 Advanced terminal capabilities and detection:
 - **Terminal Detection**: Automatic detection of terminal types (Ghostty, Kitty, iTerm2, Alacritty, WezTerm, etc.)
 - **Graphics Protocols**: Full support for Kitty Graphics Protocol, Sixel, and iTerm2 inline images
@@ -432,75 +376,6 @@ The new architecture dramatically simplifies agent development with enhanced UX 
 
 This reduces agent creation from ~200 lines of boilerplate code to just the agent-specific logic, while providing professional-grade user interfaces out of the box.
 
-### Configuration Management
-
-Agents use a standardized configuration system with common settings and agent-specific customization. The new `ConfigHelpers` simplify configuration management:
-
-```zig
-// In agent.zig
-pub const Config = struct {
-    // Include standard agent configuration
-    agent_config: @import("../../src/core/config.zig").AgentConfig,
-
-    // Add agent-specific fields
-    custom_feature_enabled: bool = false,
-    max_custom_operations: u32 = 50,
-};
-
-// Use ConfigHelpers for simplified loading
-const config = @import("../../src/core/agent_base.zig").ConfigHelpers.loadConfig(
-    Config,
-    allocator,
-    "my-agent",
-    Config{
-        .agent_config = @import("../../src/core/agent_base.zig").ConfigHelpers.createAgentConfig(
-            "My Agent",
-            "Description",
-            "Author"
-        ),
-        .custom_feature_enabled = false,
-        .max_custom_operations = 50,
-    }
-);
-```
-
-Configuration supports template variables in system prompts:
-- `{agent_name}`, `{agent_version}`, `{agent_description}`
-- `{debug_enabled}`, `{verbose_enabled}`
-- `{custom_tools_enabled}`, `{file_operations_enabled}`
-- `{max_input_size}`, `{max_output_size}`
-
-### Tool Registration
-
-Three ways to register tools:
-
-**1. Automatic Module Registration (recommended)**
-```zig
-// In spec.zig
-fn registerToolsImpl(registry: *tools_mod.Registry) !void {
-    const tools = @import("tools/mod.zig");
-    try registry.registerFromModule(tools, "my-agent");
-}
-```
-
-**2. Individual Registration with Metadata**
-```zig
-try tools_mod.registerJsonTool(
-    registry,
-    "my_tool",
-    "Tool description",
-    myToolFunction,
-    "my-agent"
-);
-```
-
-**3. JSON-Based Tools**
-```zig
-pub fn myJsonTool(allocator: std.mem.Allocator, params: std.json.Value) tools_mod.ToolError![]u8 {
-    // Implementation using structured JSON
-}
-```
-
 ## Development Workflow
 
 ### Testing
@@ -533,6 +408,7 @@ zig test src/core/engine.zig --test-filter "config"
 - **Responsive Behavior**: Test your agent at different terminal sizes
 - **Accessibility**: Ensure your agent works well with both keyboard and mouse input
 - **Performance**: Use the quality-aware rendering system for optimal performance
+- **Tool Integration**: Ensure tools use proper message formatting (user role with tool_result blocks)
 
 ## Zig 0.15.1 Migration Notes
 
@@ -543,27 +419,15 @@ zig test src/core/engine.zig --test-filter "config"
 - `async`/`await` removed - use new std.Io async APIs
 - Non-exhaustive enum switch rules changed
 
-**I/O Stream Overhaul ("Writergate"):**
-- Old generic readers/writers deprecated
-- New concrete `std.Io.Reader` and `std.Io.Writer`
-- Caller-owned ring buffers in interface
-- Defined error sets instead of `anyerror`
+**ArrayList Changes:**
+- Use `std.array_list.Managed(T).initCapacity(allocator, size)` for managed arrays
+- Call `deinit()` without allocator parameter
+- Updated patterns now work correctly with Zig 0.15.1
 
-**Migration Example:**
-```zig
-// Old (deprecated)
-const stdout = std.io.getStdOut().writer();
-
-// New (Zig 0.15.1)
-var stdout_buffer: [4096]u8 = undefined;
-var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
-const stdout = &stdout_writer.interface;
-
-// Remember to flush!
-try stdout.flush();
-try stdout.print("Hello\n", .{});
-try stdout.flush(); // Don't forget to flush!
-```
+**Tool Message Formatting Fix:**
+- Tool results must use `role: "user"` with `tool_result` content blocks
+- Never use `role: "tool"` as it's not supported by Anthropic's API
+- This fix resolves previous crashes and enables reliable tool usage
 
 ## Documentation
 
@@ -578,8 +442,8 @@ try stdout.flush(); // Don't forget to flush!
 - [docs/UX_IMPROVEMENTS_SUMMARY.md](docs/UX_IMPROVEMENTS_SUMMARY.md) - Quick reference for UX improvements
 - [docs/STYLE.md](docs/STYLE.md) - Code style guide and best practices
 - [MOUSE_DETECTION_GUIDE.md](MOUSE_DETECTION_GUIDE.md) - Mouse support and terminal capabilities
-- [src/shared/term/ADVANCED_TERMINAL_ENHANCEMENTS.md](src/shared/term/ADVANCED_TERMINAL_ENHANCEMENTS.md) - Advanced terminal features
-- [src/shared/term/ansi/iterm2_shell_integration_README.md](src/shared/term/ansi/iterm2_shell_integration_README.md) - iTerm2 shell integration
+- [src/foundation/term/ADVANCED_TERMINAL_ENHANCEMENTS.md](src/foundation/term/ADVANCED_TERMINAL_ENHANCEMENTS.md) - Advanced terminal features
+- [src/foundation/term/ansi/iterm2_shell_integration_README.md](src/foundation/term/ansi/iterm2_shell_integration_README.md) - iTerm2 shell integration
 
 ### Examples and Agent Documentation
 - [examples/cli_demo/README.md](examples/cli_demo/README.md) - CLI demo documentation
@@ -598,3 +462,7 @@ try stdout.flush(); // Don't forget to flush!
 5. Submit a pull request
 
 For detailed contribution guidelines, see the documentation files listed above.
+
+---
+
+**Status**: The docz framework is now fully operational with recent critical bug fixes for tool execution and Zig 0.15.1 compatibility. All agents, including the amp agent, are working correctly.

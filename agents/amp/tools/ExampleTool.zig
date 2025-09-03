@@ -44,4 +44,3 @@ pub fn execute(allocator: std.mem.Allocator, input: []const u8) toolsMod.ToolErr
 
     return try out.toOwnedSlice();
 }
-

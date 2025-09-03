@@ -108,7 +108,6 @@
 //! ```
 //!
 
-
 const std = @import("std");
 const foundation = @import("foundation");
 const toolsMod = foundation.tools;

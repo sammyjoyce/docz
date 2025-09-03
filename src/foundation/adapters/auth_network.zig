@@ -50,7 +50,7 @@ fn start_oauth(ctx: *anyopaque, allocator: Allocator) ports.Error!ports.OAuthSes
         .authorizationUrl = OAuth.OAUTH_AUTHORIZATION_URL,
         .tokenUrl = OAuth.OAUTH_TOKEN_ENDPOINT,
         .redirectUri = OAuth.OAUTH_REDIRECT_URI,
-        .scopes = &[_][]const u8{ OAuth.OAUTH_SCOPES },
+        .scopes = &[_][]const u8{OAuth.OAUTH_SCOPES},
     };
 
     const url = try provider.buildAuthorizationUrl(allocator, params);

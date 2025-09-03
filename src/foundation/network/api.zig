@@ -48,4 +48,3 @@ pub const NetworkClient = struct {
         return self.vtable.request(self.ctx, allocator, req);
     }
 };
-

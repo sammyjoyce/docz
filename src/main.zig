@@ -15,4 +15,3 @@ pub fn main() !void {
 
     _ = try cli.main(allocator, args[1..]);
 }
-

@@ -76,6 +76,7 @@ pub const Engine = struct {
             defer self.allocator.free(api_key);
             if (api_key.len > 0) {
                 self.client = try network.Anthropic.Client.Client.init(self.allocator, api_key);
+                self.shared_ctx.anthropic.client = &self.client.?;
                 return;
             }
         } else |_| {}
@@ -141,6 +142,7 @@ pub const Engine = struct {
 
         // Initialize Anthropic client with OAuth
         self.client = try network.Anthropic.Client.Client.initWithOAuth(self.allocator, creds, creds_path);
+        self.shared_ctx.anthropic.client = &self.client.?;
         // Client duplicates the credentials internally; free our local copies to avoid leaks.
         creds.deinit(self.allocator);
     }

@@ -414,23 +414,11 @@ fn oracleTool(ctx: *SharedContext, allocator: std.mem.Allocator, input: []const 
     defer parsed.deinit();
 
     const promptText = parsed.value.prompt;
-    const apiKey = std.posix.getenv("ANTHROPIC_API_KEY") orelse "";
 
-    // Check if we have an API key - if not, return stub response
-    if (apiKey.len == 0) {
-        const response = "Oracle tool not available - no ANTHROPIC_API_KEY environment variable set";
+    // Use the authenticated client from the shared context
+    const client = ctx.anthropic.client orelse {
+        const response = "Oracle tool not available - no authenticated client available";
         return allocator.dupe(u8, response) catch ToolError.OutOfMemory;
-    }
-
-    var client = anthropic.Client.Client.init(allocator, apiKey) catch |err| switch (err) {
-        anthropic.Models.Error.MissingAPIKey => return ToolError.AuthError,
-        anthropic.Models.Error.OutOfMemory => return ToolError.OutOfMemory,
-        else => {
-            // If anthropic client initialization fails for any other reason,
-            // return a stub response indicating network access is disabled
-            const response = "Oracle tool not available - network access disabled for this agent";
-            return allocator.dupe(u8, response) catch ToolError.OutOfMemory;
-        },
     };
 
     ctx.tools.tokenBuffer.clearRetainingCapacity();
@@ -485,14 +473,23 @@ fn oracleTool(ctx: *SharedContext, allocator: std.mem.Allocator, input: []const 
         , .{currentDate}) catch return ToolError.OutOfMemory;
     defer allocator.free(systemPrompt);
 
-    client.stream(ctx, .{
-        .model = "claude-3-sonnet-20240229",
-        .messages = &[_]anthropic.Message{
-            .{ .role = .system, .content = .{ .text = systemPrompt } },
-            .{ .role = .user, .content = .{ .text = promptText } },
-        },
-        .onToken = &Callback.onToken,
-    }) catch |err| switch (err) {
+    const messages = [_]anthropic.Models.Message{
+        .{ .role = .user, .content = .{ .text = promptText } },
+    };
+
+    const streamParams = anthropic.Client.StreamParameters{
+        .model = "claude-opus-4-1-20250805",
+        .messages = &messages,
+        .maxTokens = 4096,
+        .temperature = 0.7,
+        .system = systemPrompt,
+        .systemBlocks = null,
+        .toolsJson = null,
+        .toolChoice = null,
+        .onToken = Callback.onToken,
+    };
+
+    client.createMessageStream(ctx, streamParams) catch |err| switch (err) {
         anthropic.Models.Error.NetworkError => return ToolError.NetworkError,
         anthropic.Models.Error.APIError => return ToolError.APIError,
         anthropic.Models.Error.AuthError => return ToolError.AuthError,

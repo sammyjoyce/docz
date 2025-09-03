@@ -134,4 +134,3 @@ const NULL_VTABLE = AuthPort.VTable{
 pub fn nullAuthPort() AuthPort {
     return .{ .ctx = undefined, .vtable = &NULL_VTABLE };
 }
-

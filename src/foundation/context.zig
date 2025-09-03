@@ -17,6 +17,7 @@ pub const SharedContext = struct {
         stopReason: ?[]const u8,
         model: ?[]const u8,
         allocator: std.mem.Allocator,
+        client: ?*network.Anthropic.Client.Client = null,
 
         pub fn init(allocator: std.mem.Allocator) Anthropic {
             return .{

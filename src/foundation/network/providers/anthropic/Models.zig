@@ -155,7 +155,7 @@ pub fn freeMessage(allocator: std.mem.Allocator, msg: *Message) void {
     msg.* = .{ .role = msg.role, .content = .{ .text = "" } };
 }
 
-/// Convenience: create a role=tool message with a single tool_result block
+/// Convenience: create a role=user message with a single tool_result block
 pub fn makeToolResultMessage(
     allocator: std.mem.Allocator,
     tool_use_id: ?[]const u8,
@@ -168,7 +168,7 @@ pub fn makeToolResultMessage(
         .content = try allocator.dupe(u8, content),
         .is_error = is_error,
     } };
-    return .{ .role = .tool, .content = .{ .blocks = blocks } };
+    return .{ .role = .user, .content = .{ .blocks = blocks } };
 }
 
 /// OAuth credentials stored to disk

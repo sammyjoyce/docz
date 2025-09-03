@@ -57,5 +57,44 @@ jobs:
       - name: Run `fmt` step
         run: zig build fmt
 
+  agents:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Zig
+        uses: mlugg/setup-zig@v1
+
+      - name: List agents
+        run: zig build list-agents
+
+      - name: Validate agents
+        run: zig build validate-agents
+
+      - name: Test AMP agent
+        run: zig build -Dagent=amp test
+
+      - name: Test markdown agent
+        run: zig build -Dagent=markdown test
+
+  release:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Zig
+        uses: mlugg/setup-zig@v1
+
+      - name: Build AMP agent (release-safe)
+        run: zig build -Dagent=amp --release=safe
+
+      - name: Build markdown agent (release-safe)
+        run: zig build -Dagent=markdown --release=safe
+
   # Enable strict mode by setting env CI_STRICT_IMPORTS=1 at workflow or job level
   # once violations are resolved.
