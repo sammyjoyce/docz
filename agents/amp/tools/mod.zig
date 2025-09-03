@@ -81,7 +81,17 @@ pub fn registerAll(registry: *toolsMod.Registry) !void {
         "amp",
     );
 
-    // Thread management tools temporarily disabled pending Zig 0.15.1 JSON API compatibility fixes
+    // Code Formatter tool - formats code into markdown code blocks with language detection
+    try toolsMod.registerJsonTool(
+        registry,
+        "code_formatter",
+        "Format code content into markdown code blocks with proper language detection and filename headers. Supports extensive language mapping from file extensions.",
+        @import("code_formatter.zig").execute,
+        "amp",
+    );
+
+    // Thread management tools temporarily disabled due to json.Value ArrayList compatibility issues
+    // Complex JSON manipulation with std.ArrayList(json.Value) requires different patterns in Zig 0.15.1
     // try toolsMod.registerJsonTool(
     //     registry,
     //     "thread_delta_processor",

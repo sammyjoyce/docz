@@ -18,7 +18,7 @@ const DeltaType = enum {
 const DeltaObject = struct {
     type: DeltaType,
     payload: json.Value = .null,
-    index: ?usize = null,
+    index: ?u32 = null,
     message_id: ?[]const u8 = null,
     tool_id: ?[]const u8 = null,
     summary: ?[]const u8 = null,
@@ -39,21 +39,21 @@ const ThreadState = struct {
 
     pub fn init(allocator: std.mem.Allocator) ThreadState {
         return ThreadState{
-            .messages = std.ArrayList(json.Value){},
-            .summaries = std.ArrayList(json.Value){},
-            .forks = std.ArrayList(json.Value){},
-            .tools = std.ArrayList(json.Value){},
-            .queue = std.ArrayList(json.Value){},
+            .messages = std.ArrayList(json.Value).init(allocator),
+            .summaries = std.ArrayList(json.Value).init(allocator),
+            .forks = std.ArrayList(json.Value).init(allocator),
+            .tools = std.ArrayList(json.Value).init(allocator),
+            .queue = std.ArrayList(json.Value).init(allocator),
             .allocator = allocator,
         };
     }
 
     pub fn deinit(self: *ThreadState) void {
-        self.messages.deinit(self.allocator);
-        self.summaries.deinit(self.allocator);
-        self.forks.deinit(self.allocator);
-        self.tools.deinit(self.allocator);
-        self.queue.deinit(self.allocator);
+        self.messages.deinit();
+        self.summaries.deinit();
+        self.forks.deinit();
+        self.tools.deinit();
+        self.queue.deinit();
     }
 };
 
@@ -162,7 +162,7 @@ fn parseThreadState(allocator: std.mem.Allocator, value: json.Value) !ThreadStat
     if (obj.get("messages")) |msgs| {
         if (msgs == .array) {
             for (msgs.array.items) |msg| {
-                try thread_state.messages.append(allocator, msg);
+                try thread_state.messages.append(msg);
             }
         }
     }
@@ -170,7 +170,7 @@ fn parseThreadState(allocator: std.mem.Allocator, value: json.Value) !ThreadStat
     if (obj.get("summaries")) |summs| {
         if (summs == .array) {
             for (summs.array.items) |summ| {
-                try thread_state.summaries.append(allocator, summ);
+                try thread_state.summaries.append(summ);
             }
         }
     }
@@ -178,7 +178,7 @@ fn parseThreadState(allocator: std.mem.Allocator, value: json.Value) !ThreadStat
     if (obj.get("forks")) |forks| {
         if (forks == .array) {
             for (forks.array.items) |fork| {
-                try thread_state.forks.append(allocator, fork);
+                try thread_state.forks.append(fork);
             }
         }
     }
@@ -186,7 +186,7 @@ fn parseThreadState(allocator: std.mem.Allocator, value: json.Value) !ThreadStat
     if (obj.get("tools")) |tools| {
         if (tools == .array) {
             for (tools.array.items) |tool| {
-                try thread_state.tools.append(allocator, tool);
+                try thread_state.tools.append(tool);
             }
         }
     }
@@ -194,7 +194,7 @@ fn parseThreadState(allocator: std.mem.Allocator, value: json.Value) !ThreadStat
     if (obj.get("queue")) |queue| {
         if (queue == .array) {
             for (queue.array.items) |item| {
-                try thread_state.queue.append(allocator, item);
+                try thread_state.queue.append(item);
             }
         }
     }
@@ -236,7 +236,7 @@ fn processDelta(allocator: std.mem.Allocator, thread_state: *ThreadState, delta:
                 try summary_obj.put("type", json.Value{ .string = "internal" });
             }
 
-            try thread_state.summaries.append(allocator, json.Value{ .object = summary_obj });
+            try thread_state.summaries.append(json.Value{ .object = summary_obj });
         },
 
         .@"fork:created" => {
@@ -249,7 +249,7 @@ fn processDelta(allocator: std.mem.Allocator, thread_state: *ThreadState, delta:
                 try fork_obj.put("external_thread_id", json.Value{ .string = ext_id });
             }
 
-            try thread_state.forks.append(allocator, json.Value{ .object = fork_obj });
+            try thread_state.forks.append(json.Value{ .object = fork_obj });
         },
 
         .@"thread:truncate" => {
@@ -285,10 +285,10 @@ fn processDelta(allocator: std.mem.Allocator, thread_state: *ThreadState, delta:
                 }
 
                 if (!replaced) {
-                    try thread_state.messages.append(allocator, json.Value{ .object = msg_obj });
+                    try thread_state.messages.append(json.Value{ .object = msg_obj });
                 }
             } else {
-                try thread_state.messages.append(allocator, json.Value{ .object = msg_obj });
+                try thread_state.messages.append(json.Value{ .object = msg_obj });
             }
         },
 
@@ -296,7 +296,7 @@ fn processDelta(allocator: std.mem.Allocator, thread_state: *ThreadState, delta:
             // Process queued messages - move from queue to messages
             if (thread_state.queue.items.len > 0) {
                 const queued_msg = thread_state.queue.swapRemove(0);
-                try thread_state.messages.append(allocator, queued_msg);
+                try thread_state.messages.append(queued_msg);
             }
         },
 
@@ -330,7 +330,7 @@ fn processDelta(allocator: std.mem.Allocator, thread_state: *ThreadState, delta:
                     try tool_obj.put("data", data);
                 }
 
-                try thread_state.tools.append(allocator, json.Value{ .object = tool_obj });
+                try thread_state.tools.append(json.Value{ .object = tool_obj });
             }
         },
     }

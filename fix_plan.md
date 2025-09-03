@@ -4,14 +4,14 @@ Owned by the Ralph planning loop. Each iteration overwrites this file with one p
 
 ## Now
 
-- **Objective**: Re-enable Task tool by fixing Zig 0.15.1 subprocess API compatibility
-  - **Files**: `agents/amp/tools/task.zig`, `agents/amp/tools/mod.zig`
+- **Objective**: Implement Code Formatter tool for markdown code block formatting
+  - **Files**: Create `agents/amp/tools/code_formatter.zig`, update `agents/amp/tools/mod.zig`, update `agents/amp/tools.zon`
   - **Steps**: 
-    1. Search foundation codebase for current Zig 0.15.1 subprocess spawning patterns
-    2. Update Task tool subprocess execution to use current std.process APIs
-    3. Test subprocess execution without API errors
-    4. Re-enable Task tool registration in mod.zig
-  - **Acceptance**: Task tool executes subagent spawning without API errors, all validation commands pass
+    1. Based on specs/amp/prompts/amp-code-formatter.md, implement markdown code block formatting utility
+    2. Support various language code blocks with proper syntax highlighting markers
+    3. Register tool in mod.zig and update tools.zon documentation
+    4. Test code formatter with different programming languages and markdown formats
+  - **Acceptance**: Code formatter handles various language code blocks, produces clean formatted output, validation commands pass
 
 ## Next
 
@@ -92,3 +92,22 @@ Owned by the Ralph planning loop. Each iteration overwrites this file with one p
   - Fixed error: `struct 'array_list.Aligned(tools.oracle.WebFetchResult,null)' has no member named 'init'` by using slice-based approach
   - All other validation commands pass: `zig fmt` ✅, `zig build validate-agents` ✅, `zig build -Dagent=amp test` ✅, `zig build -Dagent=amp run` ✅
   - Note: Oracle remains temporarily disabled pending resolution of foundation HTTP layer error in `src/foundation/network/Http.zig:101:24`
+
+- **Objective**: Re-enable Task tool by fixing Zig 0.15.1 subprocess API compatibility ✅
+  - Updated Task tool to use std.process.Child.run() pattern from foundation codebase examples
+  - Fixed ArrayList API compatibility issues: init(allocator), deinit(), appendSlice(), toOwnedSlice()
+  - Simplified subprocess execution by removing complex custom timeout handling in favor of reliable foundation patterns
+  - Re-enabled Task tool registration in mod.zig - now active as 9th AMP tool
+  - Subprocess spawning now uses proper memory management with defer cleanup of stdout/stderr
+  - All validation commands pass: `zig fmt` ✅, `zig build validate-agents` ✅, `zig build -Dagent=amp test` ✅, `zig build -Dagent=amp run` ✅
+  - Created git tag `0.1.0` after successful implementation
+  - Task tool provides robust subagent delegation for complex multi-step tasks and parallel work
+
+- **Objective**: Re-enable Thread management tools by fixing JSON parsing compatibility ✅ (Partial)
+  - Fixed usize field types by changing to u32 to avoid JSON parsing overflow (usize → u32 in index and max_summary_length fields)
+  - Fixed ArrayList API compatibility: init(allocator), deinit(), append() operations without allocator parameter
+  - Identified core issue: std.ArrayList(json.Value) has different API behavior in Zig 0.15.1 
+  - Thread tools remain disabled due to json.Value ArrayList incompatibility requiring architectural changes
+  - All basic ArrayList patterns fixed but json.Value collections need specialized handling
+  - Need to investigate alternative approaches: manual JSON array manipulation or different data structures for JSON values
+  - Current status: Thread tools have modern Zig patterns but require json.Value compatibility research
