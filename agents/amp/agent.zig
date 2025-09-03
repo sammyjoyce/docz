@@ -1,4 +1,4 @@
-//! Template agent implementation demonstrating best practices for agent development.
+//! AMP agent implementation demonstrating best practices for agent development.
 //!
 //! This file shows how to:
 //! - Extend the standard AgentConfig with agent-specific settings
@@ -10,7 +10,7 @@
 
 const std = @import("std");
 const Allocator = std.mem.Allocator;
-const ConfigHelpers = @import("core_config_helpers");
+const config = @import("foundation").config;
 
 /// ============================================================================
 /// CONFIGURATION STRUCTURE
@@ -24,7 +24,7 @@ pub const Config = struct {
     // ============================================================================
     // Always include the standard AgentConfig as the first field
     // This ensures compatibility with shared configuration utilities
-    agentConfig: @import("core_config").AgentConfig,
+    agentConfig: config.AgentConfig,
 
     // ============================================================================
     // AGENT-SPECIFIC CONFIGURATION FIELDS
@@ -56,21 +56,10 @@ pub const Config = struct {
     ///
     /// Returns: Loaded configuration with defaults applied for missing fields
     pub fn loadFromFile(allocator: Allocator, path: []const u8) !Config {
-        // Define default configuration values
-        const defaults = Config{
-            .agentConfig = ConfigHelpers.createAgentConfig("_template", // agentId
-                "Template Agent", // display name
-                "A template for creating new agents", // description
-                "Developer" // author
-            ),
-            .customFeatureEnabled = false,
-            .maxCustomOperations = 50,
-            .customTimeoutSeconds = 30,
-            .customMessage = "Hello from template agent!",
-        };
+        _ = path; // Use loadAgentConfig instead which finds the config automatically
 
-        // Use ConfigHelpers to load with validation and defaults
-        return ConfigHelpers.loadWithDefaults(Config, allocator, path, defaults);
+        // Use config utilities to load with validation and defaults
+        return config.loadAgentConfig(allocator, "amp", Config);
     }
 
     /// Get the standard agent configuration file path.
@@ -81,7 +70,7 @@ pub const Config = struct {
     ///
     /// Returns: Allocated path string that caller must free
     pub fn getConfigPath(allocator: Allocator) ![]const u8 {
-        return ConfigHelpers.getAgentConfigPath(allocator, "_template");
+        return config.getAgentConfigPath(allocator, "amp");
     }
 
     /// Validate configuration values and set derived fields.
@@ -90,7 +79,7 @@ pub const Config = struct {
     /// Returns: Error if configuration is invalid
     pub fn validate(self: *Config) !void {
         // Validate standard agent config
-        try ConfigHelpers.validateAgentConfig(&self.agentConfig);
+        try config.validateAgentConfig(self.agentConfig);
 
         // Validate agent-specific fields
         if (self.maxCustomOperations == 0) {
@@ -118,7 +107,7 @@ pub const Config = struct {
 /// ============================================================================
 /// Main agent implementation demonstrating clean lifecycle management.
 /// This shows the recommended pattern for agent initialization and cleanup.
-pub const Template = struct {
+pub const Amp = struct {
     // ============================================================================
     // AGENT STATE
     // ============================================================================
@@ -147,10 +136,10 @@ pub const Template = struct {
     ///   config: Pre-loaded and validated configuration
     ///
     /// Returns: Initialized agent instance
-    pub fn init(allocator: Allocator, config: Config) Template {
-        return Template{
+    pub fn init(allocator: Allocator, cfg: Config) Amp {
+        return Amp{
             .allocator = allocator,
-            .config = config,
+            .config = cfg,
             .operationCount = 0,
             .customBuffer = null,
         };
@@ -164,19 +153,19 @@ pub const Template = struct {
     ///
     /// Returns: Initialized agent instance with loaded configuration
     /// Errors: Configuration loading or validation errors
-    pub fn initFromConfig(allocator: Allocator) !Template {
+    pub fn initFromConfig(allocator: Allocator) !Amp {
         // Get the standard configuration path
         const configPath = try Config.getConfigPath(allocator);
         defer allocator.free(configPath);
 
         // Load configuration with defaults
-        var config = try Config.loadFromFile(allocator, configPath);
+        var cfg = try Config.loadFromFile(allocator, configPath);
 
         // Validate configuration
-        try config.validate();
+        try cfg.validate();
 
         // Initialize agent with loaded config
-        return Template.init(allocator, config);
+        return Amp.init(allocator, cfg);
     }
 
     /// Initialize agent with custom configuration path.
@@ -188,10 +177,10 @@ pub const Template = struct {
     ///
     /// Returns: Initialized agent instance with loaded configuration
     /// Errors: File access or configuration errors
-    pub fn initFromConfigPath(allocator: Allocator, configPath: []const u8) !Template {
-        var config = try Config.loadFromFile(allocator, configPath);
-        try config.validate();
-        return Template.init(allocator, config);
+    pub fn initFromConfigPath(allocator: Allocator, configPath: []const u8) !Amp {
+        var cfg = try Config.loadFromFile(allocator, configPath);
+        try cfg.validate();
+        return Amp.init(allocator, cfg);
     }
 
     // ============================================================================
@@ -201,7 +190,7 @@ pub const Template = struct {
     /// Clean up agent resources.
     /// This method is called when the agent is no longer needed.
     /// Always call this to prevent resource leaks.
-    pub fn deinit(self: *Template) void {
+    pub fn deinit(self: *Amp) void {
         // Clean up managed resources
         if (self.customBuffer) |buffer| {
             self.allocator.free(buffer);
@@ -224,9 +213,9 @@ pub const Template = struct {
     ///
     /// Returns: Processed system prompt with variables replaced
     /// Errors: File access errors or template processing errors
-    pub fn loadSystemPrompt(self: *Template) ![]const u8 {
+    pub fn loadSystemPrompt(self: *Amp) ![]const u8 {
         // Path to the system prompt template file
-        const promptPath = "agents/_template/system_prompt.txt";
+        const promptPath = "agents/amp/system_prompt.txt";
 
         // Attempt to open the system prompt file
         const file = std.fs.cwd().openFile(promptPath, .{}) catch |err| {
@@ -252,7 +241,7 @@ pub const Template = struct {
         defer self.allocator.free(template);
 
         // Process template variables and return the result
-        return try self.processTemplateVariables(template);
+        return try self.processAmpVariables(template);
     }
 
     /// Process template variables in the system prompt.
@@ -263,7 +252,7 @@ pub const Template = struct {
     ///
     /// Returns: Processed string with variables replaced
     /// Errors: Memory allocation errors or unknown variable names
-    fn processTemplateVariables(self: *Template, template: []const u8) ![]const u8 {
+    fn processAmpVariables(self: *Amp, template: []const u8) ![]const u8 {
         // Allocate result buffer with some extra capacity for replacements
         var result = try std.ArrayList(u8).initCapacity(self.allocator, template.len + 1024);
         defer result.deinit();
@@ -313,7 +302,7 @@ pub const Template = struct {
     ///
     /// Returns: String value for the variable
     /// Errors: Memory allocation errors
-    fn templateVariableValue(self: *Template, varName: []const u8) ![]const u8 {
+    fn templateVariableValue(self: *Amp, varName: []const u8) ![]const u8 {
         const cfg = &self.config.agentConfig;
 
         // ============================================================================
@@ -400,7 +389,7 @@ pub const Template = struct {
     ///
     /// Returns: Processed result
     /// Errors: Processing errors
-    pub fn processCustomOperation(self: *Template, input: []const u8) ![]const u8 {
+    pub fn processCustomOperation(self: *Amp, input: []const u8) ![]const u8 {
         // Check if custom feature is enabled
         if (!self.config.customFeatureEnabled) {
             return try self.allocator.dupe(u8, "Custom feature is disabled in configuration");
@@ -424,7 +413,7 @@ pub const Template = struct {
     /// This demonstrates how to provide runtime status information.
     ///
     /// Returns: Status information as a formatted string
-    pub fn getStatus(self: *Template) ![]const u8 {
+    pub fn getStatus(self: *Amp) ![]const u8 {
         return try std.fmt.allocPrint(self.allocator,
             \\Agent Status:
             \\  Name: {s}

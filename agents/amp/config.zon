@@ -83,7 +83,7 @@
     .custom_timeout_seconds = 30,
 
     // Example of a custom message that can be templated
-    .custom_message = "Hello from template agent!",
+    .custom_message = "Hello from AMP agent!",
 
     // ============================================================================
     // CONFIGURATION DOCUMENTATION
@@ -100,7 +100,7 @@
     // - Add custom variables in agent.zig getTemplateVariableValue()
     //
     // CONFIGURATION FILE LOCATION:
-    // - Default: agents/_template/config.zon (this file)
+    // - Default: agents/amp/config.zon (this file)
     // - Can be overridden with --config command line option
     //
     // HOT RELOADING:

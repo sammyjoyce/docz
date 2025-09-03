@@ -1347,6 +1347,11 @@ const ModuleBuilder = struct {
         amp_spec_mod.addImport("core_engine", engine_mod);
         test_module.addImport("amp_spec", amp_spec_mod);
 
+        // Expose amp agent implementation as a named module for tests
+        var amp_agent_mod = self.createModule("agents/amp/agent.zig");
+        amp_agent_mod.addImport("foundation", foundation_mod); // Foundation dependency
+        test_module.addImport("amp_agent", amp_agent_mod);
+
         return test_module;
     }
 

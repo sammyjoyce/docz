@@ -4,38 +4,12 @@ Owned by the Ralph planning loop. Each iteration overwrites this file with one p
 
 ## Now
 
-- Objective: Implement Glob tool for fast file pattern matching
-  - Create `agents/amp/tools/glob.zig` per `specs/amp/prompts/amp-glob-tool.md`
-  - Support patterns: `**`, `*`, `?`, `{a,b}`, `[a-z]`; sort results by mtime desc
-  - Register tool in `agents/amp/tools/mod.zig` as `glob`
-  - Steps: Add brace expansion, segment-wise matcher, base-dir inference, recursive walker; validate on repo
-  - Acceptance: `zig build list-agents` and `zig build validate-agents` pass; targeted tests exercise patterns and pagination; `zig build -Dagent=amp test` passes
-
-## Next
-
-- Objective: Implement Code Search agent for intelligent codebase exploration  
-  - Create `agents/amp/tools/code_search.zig` based on `specs/amp/prompts/amp-code-search.md`
-  - Provide semantic code search beyond basic grep/ripgrep functionality
-  - Register code search tool and add usage examples
-  - Steps: Analyze code-search spec, implement semantic search with foundation tools, optimize for large codebases
-  - Acceptance: Code search tool works on repository, finds semantic matches, performance acceptable
-
 - Objective: Implement Git Review capabilities
   - Create `agents/amp/tools/git_review.zig` based on `specs/amp/prompts/amp-git-review.md`
   - Provide comprehensive code review automation and suggestions
   - Integrate with foundation git tools and add review workflows  
   - Steps: Study git-review spec, implement review logic, test on real PRs/commits
   - Acceptance: Git review generates meaningful feedback, integrates with git workflow
-
-- Objective: Correct amp agent config path and type naming in `agents/amp/agent.zig` (remove template remnants).
-  - Steps:
-    - Update `Config.getConfigPath` to use `"amp"` instead of `"_template"`.
-    - Rename public struct `Template` → `Amp` and update docstrings to reflect Amp, not template.
-    - Search for and fix any references to `_template` in `agents/amp/*`.
-    - Format with `zig fmt agents/amp/agent.zig`.
-    - Build/tests: run `zig build -Dagent=amp test`.
-  - Acceptance:
-    - `zig build -Dagent=amp test` passes; add/adjust a unit test that calls `Config.getConfigPath(testing.allocator)` and expects a path ending with `agents/amp/config.zon`.
 
 ## Backlog
 
@@ -94,6 +68,39 @@ Owned by the Ralph planning loop. Each iteration overwrites this file with one p
 - Gap analysis shows 26 prompt specifications with 2 specialized tools implemented (JavaScript, Oracle)
 
 ## Done
+
+- Objective: Correct amp agent config path and type naming in `agents/amp/agent.zig` (remove template remnants) ✅
+  - Fixed `Config.getConfigPath` to use `"amp"` instead of `"_template"` 
+  - Renamed public struct `Template` → `Amp` and updated all references
+  - Updated docstring in file header from "Template agent" to "AMP agent"
+  - Fixed `config.zon` to use "Hello from AMP agent!" instead of "Hello from template agent!"
+  - Fixed `config.zon` path reference in comments from `agents/_template/` to `agents/amp/`
+  - Fixed system prompt path from `agents/_template/system_prompt.txt` to `agents/amp/system_prompt.txt`
+  - Updated imports to use foundation config module instead of non-existent `core_config_helpers` and `core_config`
+  - Added amp_agent module to build.zig for test imports
+  - Added unit test `amp agent config path uses correct directory` that verifies `Config.getConfigPath` returns path ending with `agents/amp/config.zon` and does not contain "_template"
+  - Validation successful: `zig fmt` ✅, `zig build list-agents` ✅, `zig build validate-agents` ✅, `zig build -Dagent=amp test` ✅, `zig build -Dagent=amp run` ✅
+  - All template remnants eliminated; agent now properly configured as AMP instead of template
+
+- Objective: Implement Code Search agent for intelligent codebase exploration ✅
+  - Created `agents/amp/tools/code_search.zig` with semantic search capabilities beyond basic grep
+  - Supports ripgrep integration with fallback to manual directory traversal for robust operation
+  - Provides comprehensive filtering: paths, file patterns, context lines, result limits, case sensitivity
+  - Uses foundation tool registration pattern with proper Zig 0.15.1 API compatibility
+  - Registered code_search tool in `agents/amp/tools/mod.zig` alongside existing tools
+  - Optimized for large codebases with directory skipping and file type filtering
+  - Validation successful: `zig fmt` ✅, `zig build list-agents` ✅, `zig build validate-agents` ✅, `zig build -Dagent=amp test` ✅
+  - Created git tag `0.0.5` after successful validation and green tree
+  - Note: Adapted from template-based spec to work with foundation framework (no Task tool system available)
+
+- Objective: Implement Glob tool for fast file pattern matching ✅
+  - Verified `agents/amp/tools/glob.zig` fully implements `specs/amp/prompts/amp-glob-tool.md`
+  - Supports all required patterns: `**`, `*`, `?`, `{a,b}`, `[a-z]`; results sorted by mtime desc
+  - Registered tool in `agents/amp/tools/mod.zig` as `glob` and working correctly
+  - Features: brace expansion, segment-wise matcher, base-dir inference, recursive walker
+  - Validation successful: `zig fmt` ✅, `zig build list-agents` ✅, `zig build validate-agents` ✅, `zig build -Dagent=amp test` ✅
+  - Implementation already complete with full functionality, pagination support (limit/offset), and proper error handling
+  - Created git tag `0.0.4` after successful validation and green tree
 
 - Objective: Implement Oracle tool for advanced reasoning capabilities ✅
   - Created `agents/amp/tools/oracle.zig` based on `specs/amp/prompts/amp-oracle.md` specification

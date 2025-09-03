@@ -110,3 +110,20 @@ test "amp agent manifest structure" {
     // Should have code_generation enabled
     try testing.expect(std.mem.indexOf(u8, manifest_src, ".code_generation = true") != null);
 }
+
+test "amp agent config path uses correct directory" {
+    const allocator = testing.allocator;
+
+    // Import the amp agent module
+    const agent_module = @import("amp_agent");
+
+    // Call Config.getConfigPath
+    const config_path = try agent_module.Config.getConfigPath(allocator);
+    defer allocator.free(config_path);
+
+    // Verify path ends with agents/amp/config.zon
+    try testing.expect(std.mem.endsWith(u8, config_path, "agents/amp/config.zon"));
+
+    // Verify path does NOT contain "_template"
+    try testing.expect(std.mem.indexOf(u8, config_path, "_template") == null);
+}
