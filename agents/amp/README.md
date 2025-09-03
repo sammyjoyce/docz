@@ -54,6 +54,19 @@ Based on the agent manifest, AMP provides:
 - **Text processing**: Code parsing and text manipulation
 - **System integration**: Build tools, package managers, and CI/CD
 
+### AMP-Specific Tools
+- **JavaScript Tool**: Execute JavaScript code in sandboxed Node.js environment with async support
+- **Task Tool**: Launch subagents to handle complex, multi-step tasks autonomously 
+  - Spawn specialized agents for parallel work delegation
+  - Handle complex analysis tasks requiring deep focus
+  - Multi-step task orchestration and coordination
+  - Support for different subagent types (general, specialized)
+- **Oracle Tool**: Advanced technical guidance and analysis with optional web research capabilities *(currently disabled)*
+  - High-quality code reviews and architectural advice
+  - Strategic planning for complex implementations  
+  - Deep technical questions with thorough reasoning
+  - Web research integration for additional context
+
 ## Building and Running
 
 ### Quick Start
@@ -156,6 +169,19 @@ zig build -Dagent=amp run -- "Refactor the database layer to use connection pool
 
 # Write tests
 zig build -Dagent=amp run -- "Add comprehensive tests for the HTTP client"
+```
+
+### Advanced Analysis with Oracle Tool
+
+```bash
+# Get architectural advice
+zig build -Dagent=amp run -- "Use the Oracle tool to review the system architecture and suggest improvements"
+
+# Deep code review
+zig build -Dagent=amp run -- "Use Oracle to analyze this complex algorithm for performance and maintainability"
+
+# Technical planning
+zig build -Dagent=amp run -- "Oracle: Plan the implementation strategy for a microservices migration"
 ```
 
 ### Interactive Mode

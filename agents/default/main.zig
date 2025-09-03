@@ -15,5 +15,6 @@ pub fn main() !void {
 
     // Use the simplified agentMain.runAgent() function
     // This handles all CLI parsing, built-in commands, and engine delegation
-    return agentMain.runAgent(allocator, spec.SPEC);
+    const engine = @import("core_engine");
+    return agentMain.runAgent(engine, allocator, spec.SPEC);
 }

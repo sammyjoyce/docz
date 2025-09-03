@@ -3,7 +3,7 @@
 Run Ralph like this:
 
 ```
-while :; do cat PROMPT.md | npx --yes @sourcegraph/amp ; done
+while :; do cat PROMPT.md ; done
 ```
 
 Deterministically allocate the same stack every loop: include `PLAN.md`, the current `fix_plan.md`, all of `specs/amp/*` (including `specs/amp/manual.md` and all files in `specs/amp/prompts/`), and any existing `agents/amp/*` files.

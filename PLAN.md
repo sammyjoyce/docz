@@ -5,7 +5,7 @@ Run this file with AMP to produce or update `fix_plan.md`. This prompt is planni
 How to run:
 
 ```
-cat PLAN.md | npx --yes @sourcegraph/amp > fix_plan.md
+cat PLAN.md  > fix_plan.md
 ```
 
 Deterministically allocate the same stack every loop: include this `PLAN.md`, the current `fix_plan.md` (if any), the entirety of `specs/amp/*`, and any existing `agents/amp/*`.

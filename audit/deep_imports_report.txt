@@ -1,5 +1,5 @@
 Deep Import Audit Report
-Generated: 2025-09-03T18:28:35Z
+Generated: 2025-09-03T19:14:49Z
 
 Criteria: @import paths under src/shared that traverse parent directories and import a .zig file other than mod.zig.
 

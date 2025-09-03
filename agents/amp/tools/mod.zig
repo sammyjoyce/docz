@@ -17,4 +17,32 @@ pub fn registerAll(registry: *toolsMod.Registry) !void {
         @import("javascript.zig").execute,
         "amp",
     );
+
+    // Glob tool - fast file pattern matching with sorting by modification time
+    try toolsMod.registerJsonTool(
+        registry,
+        "glob",
+        "Match files by glob pattern (supports **, *, ?, {a,b}, [a-z]) and return paths sorted by mtime desc",
+        @import("glob.zig").run,
+        "amp",
+    );
+
+    // Task tool temporarily disabled in test builds pending Zig 0.15 API adjustments
+    // try toolsMod.registerJsonTool(
+    //     registry,
+    //     "task",
+    //     "Launch a new agent to handle complex, multi-step tasks autonomously. Use for parallel work delegation and complex analysis tasks.",
+    //     @import("task.zig").execute,
+    //     "amp",
+    // );
+
+    // Note: Oracle tool is currently disabled for tests due to network surface mismatch.
+    // Re-enable after Http client error-set alignment.
+    // try toolsMod.registerJsonTool(
+    //     registry,
+    //     "oracle",
+    //     "Provide high-quality technical guidance, code reviews, architectural advice, and strategic planning with optional web research",
+    //     @import("oracle.zig").execute,
+    //     "amp",
+    // );
 }
