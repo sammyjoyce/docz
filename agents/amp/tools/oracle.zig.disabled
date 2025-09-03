@@ -1,0 +1,123 @@
+//! Oracle tool: central LLM analyzer
+//!
+//! Purpose: Accept a formatted prompt (and optional system prompt) and return
+//! the model's response. Intelligence lives in prompt specs, not Zig code.
+//!
+//! This implementation uses foundation.network Anthropic client with API key
+//! or OAuth credentials discovered by Auth.Core.
+
+const std = @import("std");
+const foundation = @import("foundation");
+const toolsMod = foundation.tools;
+const network = foundation.network;
+
+const OracleRequest = struct {
+    /// Final user prompt to send to the model (required)
+    prompt: []const u8,
+    /// Optional system prompt to steer behavior
+    system: ?[]const u8 = null,
+    /// Model id (defaults to a capable Anthropic model)
+    model: ?[]const u8 = null,
+    /// Max tokens for response (default 1024)
+    max_tokens: ?u32 = null,
+    /// Temperature (default 0.2 for determinism)
+    temperature: ?f32 = null,
+};
+
+const OracleResponse = struct {
+    success: bool,
+    tool: []const u8 = "oracle",
+    content: ?[]const u8 = null,
+    model: ?[]const u8 = null,
+    stop_reason: ?[]const u8 = null,
+    usage_input_tokens: ?u64 = null,
+    usage_output_tokens: ?u64 = null,
+    error_message: ?[]const u8 = null,
+};
+
+/// Public JSON entrypoint used by tools registry
+pub fn execute(allocator: std.mem.Allocator, params: std.json.Value) toolsMod.ToolError!std.json.Value {
+    return executeInternal(allocator, params) catch |err| {
+        const ResponseMapper = toolsMod.JsonReflector.mapper(OracleResponse);
+        const response = OracleResponse{
+            .success = false,
+            .error_message = @errorName(err),
+        };
+        return ResponseMapper.toJsonValue(allocator, response);
+    };
+}
+
+/// Thin helper that other tools can call directly
+pub fn analyzePrompt(
+    allocator: std.mem.Allocator,
+    prompt: []const u8,
+    system: ?[]const u8,
+    model: ?[]const u8,
+    max_tokens: u32,
+    temperature: f32,
+) !OracleResponse {
+    var ctx = foundation.context.SharedContext.init(allocator);
+    defer ctx.deinit();
+
+    // Discover auth (API key or OAuth file)
+    var auth_client = try network.Auth.Core.createClient(allocator);
+    defer auth_client.deinit(allocator);
+
+    // Create Anthropic client
+    var client = switch (auth_client.credentials) {
+        .api_key => |key| try network.Anthropic.Client.init(allocator, key),
+        .oauth => |creds| try network.Anthropic.Client.initWithOAuth(allocator, .{
+            .type = creds.type,
+            .accessToken = creds.accessToken,
+            .refreshToken = creds.refreshToken,
+            .expiresAt = creds.expiresAt,
+        }, "claude_oauth_creds.json"),
+        .none => return error.MissingAPIKey,
+    };
+    defer client.deinit();
+
+    const chosen_model = model orelse "claude-3-5-sonnet-20241022";
+    const req = network.Anthropic.Client.MessageParameters{
+        .model = chosen_model,
+        .messages = &[_]network.Anthropic.Message{
+            .{ .role = .user, .content = .{ .text = prompt } },
+        },
+        .maxTokens = max_tokens,
+        .temperature = temperature,
+        .system = system,
+    };
+
+    var result = try client.complete(&ctx, req);
+    defer result.deinit();
+
+    return OracleResponse{
+        .success = true,
+        .content = try allocator.dupe(u8, result.content),
+        .model = try allocator.dupe(u8, result.model),
+        .stop_reason = try allocator.dupe(u8, result.stopReason),
+        .usage_input_tokens = result.usage.input_tokens,
+        .usage_output_tokens = result.usage.output_tokens,
+        .error_message = null,
+    };
+}
+
+fn executeInternal(allocator: std.mem.Allocator, params: std.json.Value) !std.json.Value {
+    const RequestMapper = toolsMod.JsonReflector.mapper(OracleRequest);
+    const reqp = try RequestMapper.fromJson(allocator, params);
+    defer reqp.deinit();
+    const req = reqp.value;
+
+    if (req.prompt.len == 0) return toolsMod.ToolError.InvalidInput;
+
+    const resp = try analyzePrompt(
+        allocator,
+        req.prompt,
+        req.system,
+        req.model,
+        req.max_tokens orelse 1024,
+        req.temperature orelse 0.2,
+    );
+
+    const ResponseMapper = toolsMod.JsonReflector.mapper(OracleResponse);
+    return try ResponseMapper.toJsonValue(allocator, resp);
+}

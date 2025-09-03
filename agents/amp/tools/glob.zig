@@ -96,7 +96,7 @@ fn runWithoutPerformanceTracking(allocator: Allocator, params: std.json.Value) t
     const req = Request{ .filePattern = file_pattern, .limit = limit_opt, .offset = offset_opt };
 
     // Expand braces in the pattern (e.g., "*.{js,ts}")
-    var patterns = std.ArrayList([]const u8){};
+    var patterns = try std.ArrayList([]const u8).initCapacity(allocator, 0);
     defer {
         for (patterns.items) |p| allocator.free(p);
         patterns.deinit(allocator);
@@ -113,7 +113,7 @@ fn runWithoutPerformanceTracking(allocator: Allocator, params: std.json.Value) t
     defer allocator.free(base_dir);
 
     // Collect candidate files under base_dir
-    var matches = std.ArrayList(Match){};
+    var matches = try std.ArrayList(Match).initCapacity(allocator, 0);
     defer {
         for (matches.items) |m| allocator.free(m.path);
         matches.deinit(allocator);
@@ -175,7 +175,7 @@ fn computeBaseDir(allocator: Allocator, pattern: []const u8) ![]const u8 {
 }
 
 fn walkAndMatch(allocator: Allocator, base_dir: []const u8, patterns: [][]const u8, out: *std.ArrayList(Match)) !void {
-    var stack = std.ArrayList([]u8){};
+    var stack = try std.ArrayList([]u8).initCapacity(allocator, 0);
     defer {
         for (stack.items) |p| allocator.free(p);
         stack.deinit(allocator);
@@ -252,9 +252,9 @@ fn pathGlobMatch(allocator: Allocator, path: []const u8, pattern: []const u8) bo
     var path_it = std.mem.splitScalar(u8, path, '/');
     var pat_it = std.mem.splitScalar(u8, pattern, '/');
 
-    var pathSegs = std.ArrayList([]const u8){};
+    var pathSegs = std.ArrayList([]const u8).initCapacity(allocator, 0) catch return false;
     defer pathSegs.deinit(allocator);
-    var patSegs = std.ArrayList([]const u8){};
+    var patSegs = std.ArrayList([]const u8).initCapacity(allocator, 0) catch return false;
     defer patSegs.deinit(allocator);
 
     while (path_it.next()) |seg| {

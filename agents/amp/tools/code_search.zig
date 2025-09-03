@@ -207,7 +207,7 @@ fn performSearch(allocator: Allocator, req: SearchRequest) !SearchResponse {
 
 fn tryRipgrepSearch(allocator: Allocator, req: SearchRequest) !SearchResponse {
     // Build ripgrep command
-    var cmd_args = std.ArrayList([]const u8){};
+    var cmd_args = try std.ArrayList([]const u8).initCapacity(allocator, 0);
     defer cmd_args.deinit(allocator);
 
     try cmd_args.append(allocator, "rg");
@@ -267,7 +267,7 @@ fn tryRipgrepSearch(allocator: Allocator, req: SearchRequest) !SearchResponse {
 }
 
 fn parseRipgrepJson(allocator: Allocator, json_output: []const u8, req: SearchRequest) !SearchResponse {
-    var results = std.ArrayList(SearchResult){};
+    var results = try std.ArrayList(SearchResult).initCapacity(allocator, 0);
     defer results.deinit(allocator);
 
     var file_count: u32 = 0;
@@ -343,13 +343,13 @@ fn parseRipgrepJson(allocator: Allocator, json_output: []const u8, req: SearchRe
 
 fn manualSearch(allocator: Allocator, req: SearchRequest) !SearchResponse {
     // Simple fallback manual search implementation using directory iteration pattern from glob.zig
-    var results = std.ArrayList(SearchResult){};
+    var results = try std.ArrayList(SearchResult).initCapacity(allocator, 0);
     defer results.deinit(allocator);
 
     var file_count: u32 = 0;
 
     // Use stack-based directory iteration like glob tool
-    var stack = std.ArrayList([]u8){};
+    var stack = try std.ArrayList([]u8).initCapacity(allocator, 0);
     defer {
         for (stack.items) |p| allocator.free(p);
         stack.deinit(allocator);

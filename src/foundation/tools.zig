@@ -62,5 +62,8 @@ pub const Constraint = Validation.Constraint;
 pub const validateToolInput = Validation.validateToolInput;
 pub const createToolParamValidator = Validation.createToolParamValidator;
 
+// Template processing engine (shared)
+pub const Template = @import("tools/Template.zig");
+
 // Note: Example usage has moved to docs/examples. Legacy examples are available
 // only when building with `-Dlegacy` via `tools/legacy/*`.

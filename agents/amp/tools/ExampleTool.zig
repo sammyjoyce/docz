@@ -34,13 +34,13 @@ pub fn execute(allocator: std.mem.Allocator, input: []const u8) toolsMod.ToolErr
 
     var i: u32 = 0;
     while (i < repeat) : (i += 1) {
-        if (i > 0) try out.append(' ');
+        if (i > 0) try out.append(allocator, ' ');
         if (uppercase) {
-            for (message) |c| try out.append(std.ascii.toUpper(c));
+            for (message) |c| try out.append(allocator, std.ascii.toUpper(c));
         } else {
-            try out.appendSlice(message);
+            try out.appendSlice(allocator, message);
         }
     }
 
-    return try out.toOwnedSlice();
+    return try out.toOwnedSlice(allocator);
 }

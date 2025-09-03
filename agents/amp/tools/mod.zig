@@ -46,13 +46,15 @@ pub fn registerAll(registry: *toolsMod.Registry) !void {
     );
 
     // Test Writer tool - automated test generation for code analysis
-    try toolsMod.registerJsonTool(
-        registry,
-        "test_writer",
-        "Analyze code for bugs, performance, and security issues, then generate comprehensive test suites covering existing issues and regression prevention.",
-        @import("test_writer.zig").execute,
-        "amp",
-    );
+    // Temporarily disabled due to foundation API compatibility issues
+    // TODO: Re-enable when foundation writer API is fixed
+    // try toolsMod.registerJsonTool(
+    //     registry,
+    //     "test_writer",
+    //     "Analyze code for bugs, performance, and security issues, then generate comprehensive test suites covering existing issues and regression prevention.",
+    //     @import("test_writer.zig").execute,
+    //     "amp",
+    // );
 
     // Command Risk Assessment tool - analyzes commands for security risks
     try toolsMod.registerJsonTool(
@@ -108,13 +110,15 @@ pub fn registerAll(registry: *toolsMod.Registry) !void {
         "amp",
     );
 
-    try toolsMod.registerJsonTool(
-        registry,
-        "thread_summarization",
-        "Generate detailed conversation summaries with technical context for handoff to another person. Extracts key files, functions, commands, and next steps.",
-        @import("thread_summarization.zig").execute,
-        "amp",
-    );
+    // Thread Summarization tool - temporarily disabled due to Oracle dependency
+    // TODO: Re-enable when Oracle tool is fixed or provide non-Oracle fallback
+    // try toolsMod.registerJsonTool(
+    //     registry,
+    //     "thread_summarization",
+    //     "Generate detailed conversation summaries with technical context for handoff to another person. Extracts key files, functions, commands, and next steps.",
+    //     @import("thread_summarization.zig").execute,
+    //     "amp",
+    // );
 
     // Task tool - subagent spawning for parallel work delegation
     try toolsMod.registerJsonTool(
@@ -125,12 +129,63 @@ pub fn registerAll(registry: *toolsMod.Registry) !void {
         "amp",
     );
 
-    // Note: Oracle tool disabled due to foundation HTTP layer compatibility issues
+    // Data Schema Analysis tool - comprehensive database/API schema analysis and documentation
+    try toolsMod.registerJsonTool(
+        registry,
+        "data_schema",
+        "Analyze and document data schemas from SQL, GraphQL, JSON Schema, or model definitions. Extracts entities, fields, relationships, and provides structured analysis.",
+        @import("data_schema.zig").execute,
+        "amp",
+    );
+
+    // Senior Engineer Analysis tool - detailed problem analysis and solution architecture
+    // TODO: Re-enable when senior_engineer.zig is implemented
+    // try toolsMod.registerJsonTool(
+    //     registry,
+    //     "senior_engineer",
+    //     "Provide detail-oriented senior engineer analysis for complex problems. Generates comprehensive solutions, implementation plans, risk assessment, and effort estimates.",
+    //     @import("senior_engineer.zig").execute,
+    //     "amp",
+    // );
+
+    // Direct LLM Models tool - template processing and model recommendations
+    try toolsMod.registerJsonTool(
+        registry,
+        "direct_llm_models",
+        "Process templates with variable interpolation and provide model recommendations. Shows available models from major providers with capability information.",
+        @import("direct_llm_models.zig").execute,
+        "amp",
+    );
+
+    // Agent Creation tool - generates comprehensive agent documentation from codebase analysis
+    // Temporarily disabled due to Oracle dependency
+    // TODO: Re-enable when Oracle tool is fixed or provide non-Oracle fallback
+    // try toolsMod.registerJsonTool(
+    //     registry,
+    //     "agent_creation",
+    //     "Analyze codebase to generate comprehensive agent documentation including build commands, architecture overview, and coding style guidelines.",
+    //     @import("agent_creation.zig").execute,
+    //     "amp",
+    // );
+
+    // Template Processing tool - ${variable} interpolation with escape sequences and whitespace handling
+    try toolsMod.registerJsonTool(
+        registry,
+        "template_processing",
+        "Process templates with ${variable} interpolation, escape sequences (\\n, \\t, \\$, \\{, \\}), and configurable whitespace trimming for dynamic prompt generation.",
+        @import("template_processing.zig").executeTemplateProcessing,
+        "amp",
+    );
+
+    // Oracle / LLM analyzer - central entry to powerful model for prompt-driven analysis
+    // Temporarily disabled due to foundation API compatibility issues
+    // TODO: Re-enable when foundation network API is fixed
+    // Commented out entirely to avoid import issues during compilation
     // try toolsMod.registerJsonTool(
     //     registry,
     //     "oracle",
-    //     "Provide high-quality technical guidance, code reviews, architectural advice, and strategic planning with optional web research",
-    //     @import("oracle.zig").execute,
+    //     "Central LLM analyzer: send a formatted prompt (and optional system prompt) and get the model's response.",
+    //     oracleExecuteStub, // @import("oracle.zig").execute,
     //     "amp",
     // );
 }
