@@ -54,6 +54,41 @@ pub fn registerAll(registry: *toolsMod.Registry) !void {
         "amp",
     );
 
+    // Command Risk Assessment tool - analyzes commands for security risks
+    try toolsMod.registerJsonTool(
+        registry,
+        "command_risk",
+        "Analyze commands for security risks and determine if they require user approval. Detects destructive operations, inline code execution, and unknown commands.",
+        @import("command_risk.zig").execute,
+        "amp",
+    );
+
+    // Secret File Protection tool - detects and prevents access to secret files
+    try toolsMod.registerJsonTool(
+        registry,
+        "secret_protection",
+        "Detect and prevent access to secret files and sensitive information. Analyzes file paths and content for secret patterns and provides security recommendations.",
+        @import("secret_protection.zig").execute,
+        "amp",
+    );
+
+    // Thread management tools temporarily disabled pending Zig 0.15.1 JSON API compatibility fixes
+    // try toolsMod.registerJsonTool(
+    //     registry,
+    //     "thread_delta_processor",
+    //     "Process thread state changes including messages, cancellations, summaries, forks, and tool interactions. Modifies thread state objects based on delta operations.",
+    //     @import("thread_delta_processor.zig").execute,
+    //     "amp",
+    // );
+
+    // try toolsMod.registerJsonTool(
+    //     registry,
+    //     "thread_summarization",
+    //     "Generate detailed conversation summaries with technical context for handoff to another person. Extracts key files, functions, commands, and next steps.",
+    //     @import("thread_summarization.zig").execute,
+    //     "amp",
+    // );
+
     // Task tool temporarily disabled in test builds pending Zig 0.15 API adjustments
     // try toolsMod.registerJsonTool(
     //     registry,
