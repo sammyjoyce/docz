@@ -7,7 +7,7 @@
         .categories = .{
             .execution = .{"javascript"},
             .search = .{ "glob", "code_search" },
-            .analysis = .{ "git_review", "test_writer", "request_intent_analysis" },
+            .analysis = .{ "git_review", "test_writer", "request_intent_analysis", "product_summary" },
             .security = .{ "command_risk", "secret_protection" },
             .visualization = .{"diagram"},
         },
@@ -21,13 +21,14 @@
             .secret_protection = .{ .complexity = "medium", .performance_cost = "low", .preferred_for = .{ "secrets", "privacy", "leak" }, .requires_backup = false },
             .diagram = .{ .complexity = "medium", .performance_cost = "medium", .preferred_for = .{ "visualize", "document", "architecture" }, .requires_backup = false },
             .request_intent_analysis = .{ .complexity = "low", .performance_cost = "low", .preferred_for = .{ "intent", "classify", "route" }, .requires_backup = false },
+            .product_summary = .{ .complexity = "medium", .performance_cost = "low", .preferred_for = .{ "summary", "product", "analysis" }, .requires_backup = false },
         },
         .workflow_recommendations = .{
             .development = .{ "javascript", "code_search", "test_writer", "diagram" },
             .code_review = .{ "git_review", "command_risk", "secret_protection" },
             .exploration = .{ "glob", "code_search" },
             .security_audit = .{ "command_risk", "secret_protection" },
-            .documentation = .{"diagram"},
+            .documentation = .{ "diagram", "product_summary" },
             .request_routing = .{"request_intent_analysis"},
         },
     },
@@ -214,6 +215,24 @@
                 .context = .{ .type = "string", .description = "Optional context about the current session or workspace" },
             },
             .required = .{"user_request"},
+        },
+    },
+
+    ////////////////////////////////////////////////////////////////////////////
+    // 10. product_summary – Structured Product Analysis                      //
+    ////////////////////////////////////////////////////////////////////////////
+    .product_summary = .{
+        .description = "Generate structured product summaries with 10 key sections: Product Name, Primary Purpose, Key Features, Target Audience, Main Benefits, Technology Stack, Integration Capabilities, Pricing Model, Unique Selling Points, and Current Status.",
+        .usage_guidelines = "Use to create comprehensive product analysis documents. Follows standardized template format for consistent product documentation.",
+        .params = .{
+            .type = "object",
+            .properties = .{
+                .product_name = .{ .type = "string", .description = "Product name or description to analyze", .minLength = 1 },
+                .product_info = .{ .type = "string", .description = "Product information, documentation, or context", .minLength = 1 },
+                .context = .{ .type = "string", .description = "Optional additional context or specific focus areas" },
+                .include_all_sections = .{ .type = "boolean", .default = true, .description = "Include template sections even if information is missing" },
+            },
+            .required = .{ "product_name", "product_info" },
         },
     },
 }

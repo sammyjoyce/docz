@@ -181,4 +181,13 @@ pub fn registerAll(registry: *toolsMod.Registry) !void {
         @import("oracle.zig").execute,
         "amp",
     );
+
+    // Product Summary tool - structured product analysis with 10 key sections
+    try toolsMod.registerJsonTool(
+        registry,
+        "product_summary",
+        "Generate structured product summaries with 10 key sections: Product Name, Primary Purpose, Key Features, Target Audience, Main Benefits, Technology Stack, Integration Capabilities, Pricing Model, Unique Selling Points, and Current Status.",
+        @import("product_summary.zig").execute,
+        "amp",
+    );
 }
