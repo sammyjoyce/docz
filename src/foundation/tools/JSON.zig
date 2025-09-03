@@ -115,10 +115,16 @@ pub fn createErrorResponse(
 
     const response = std.json.Value{ .object = responseObj };
 
-    // TODO: Fix for Zig 0.15.1 - JSON serialization API has changed
-    // For now, return a minimal JSON response
-    _ = response;
-    return allocator.dupe(u8, "{\"success\":true}") catch ToolJsonError.OutOfMemory;
+    // Use modern Zig 0.15.1 JSON serialization
+    var buffer = std.ArrayList(u8).init(allocator);
+    defer buffer.deinit();
+    response.jsonStringify(.{}, buffer.writer()) catch |stringify_err| {
+        return switch (stringify_err) {
+            error.OutOfMemory => ToolJsonError.OutOfMemory,
+            else => ToolJsonError.SerializationFailed,
+        };
+    };
+    return buffer.toOwnedSlice(allocator) catch ToolJsonError.OutOfMemory;
 }
 
 /// Validate that all required fields are present in the JSON value.
@@ -376,11 +382,31 @@ pub const JsonReflector = struct {
 
             /// Serializes a struct instance to a JSON string.
             pub fn serialize(allocator: std.mem.Allocator, instance: T, options: anytype) Error![]const u8 {
-                _ = options;
-                _ = instance;
-                // TODO: Fix for Zig 0.15.1 - JSON serialization API has changed
-                // This is a stub implementation
-                return allocator.dupe(u8, "{}") catch Error.SerializationFailed;
+                // Build JSON manually since std.json.stringify doesn't exist in Zig 0.15.1
+                // Convert struct to json.Value first, then stringify the value
+                const json_value = try Reflection.mapper(T).serialize(allocator, instance);
+                defer {
+                    switch (json_value) {
+                        .object => |obj_const| {
+                            var obj = obj_const;
+                            obj.deinit();
+                        },
+                        else => {},
+                    }
+                }
+
+                // Use ArrayList writer with Stringify.value
+                var buffer = std.ArrayList(u8){};
+                defer buffer.deinit(allocator);
+                var aw: std.Io.Writer.Allocating = .fromArrayList(allocator, &buffer);
+                std.json.Stringify.value(json_value, options, &aw.writer) catch |stringify_err| {
+                    return switch (stringify_err) {
+                        error.OutOfMemory => Error.SerializationFailed,
+                        else => Error.SerializationFailed,
+                    };
+                };
+                buffer = aw.toArrayList();
+                return buffer.toOwnedSlice(allocator) catch Error.SerializationFailed;
             }
 
             /// Serializes a struct instance to a JSON value.

@@ -1,6 +1,7 @@
 const std = @import("std");
 const foundation = @import("foundation");
 const toolsMod = foundation.tools;
+const JsonBuilder = @import("json_builder.zig").JsonBuilder;
 
 pub const TemplateRequest = struct {
     template: []const u8,
@@ -24,24 +25,12 @@ pub fn executeTemplateProcessing(allocator: std.mem.Allocator, json_input: std.j
 
     const opts = req.options orelse toolsMod.Template.ProcessOptions{};
 
-    const tr = toolsMod.Template.processWithMap(allocator, req.template, req.variables, opts) catch |err| {
-        const MapperRes = toolsMod.JsonReflector.mapper(TemplateResponse);
-        return MapperRes.toJsonValue(allocator, TemplateResponse{
-            .success = false,
-            .result = "",
-            .error_message = std.fmt.allocPrint(allocator, "Template processing failed: {}", .{err}) catch "processing error",
-            .variables_used = &.{},
-            .variables_missing = &.{},
-        });
+    var tr = toolsMod.Template.processWithMap(allocator, req.template, req.variables, opts) catch |err| {
+        const error_msg = std.fmt.allocPrint(allocator, "Template processing failed: {}", .{err}) catch "processing error";
+        defer allocator.free(error_msg);
+        return JsonBuilder.buildTemplateResponse(allocator, false, "", error_msg, &.{}, &.{});
     };
     defer tr.deinit();
 
-    const MapperRes = toolsMod.JsonReflector.mapper(TemplateResponse);
-    return MapperRes.toJsonValue(allocator, TemplateResponse{
-        .success = true,
-        .result = tr.result,
-        .error_message = null,
-        .variables_used = tr.variables_used,
-        .variables_missing = tr.variables_missing,
-    });
+    return JsonBuilder.buildTemplateResponse(allocator, true, tr.result, null, tr.variables_used, tr.variables_missing);
 }
