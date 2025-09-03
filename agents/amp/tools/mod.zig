@@ -27,6 +27,15 @@ pub fn registerAll(registry: *toolsMod.Registry) !void {
         "amp",
     );
 
+    // Code Search tool - intelligent codebase exploration with semantic search capabilities
+    try toolsMod.registerJsonTool(
+        registry,
+        "code_search",
+        "Intelligently search codebase for code based on functionality or concepts. Uses ripgrep for fast search with fallback to manual search.",
+        @import("code_search.zig").run,
+        "amp",
+    );
+
     // Task tool temporarily disabled in test builds pending Zig 0.15 API adjustments
     // try toolsMod.registerJsonTool(
     //     registry,
