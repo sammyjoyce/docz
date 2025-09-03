@@ -4,17 +4,78 @@ Owned by the Ralph planning loop. Each iteration overwrites this file with one p
 
 ## Now
 
+- Objective: Implement Oracle tool for advanced reasoning capabilities
+  - Create `agents/amp/tools/oracle.zig` based on `specs/amp/prompts/amp-oracle.md` specification
+  - Oracle tool provides access to advanced reasoning models for complex analysis, code reviews, and architectural guidance
+  - Register Oracle tool in `agents/amp/tools/mod.zig` alongside existing JavaScript tool
+  - Update README.md to document Oracle tool capabilities and usage examples
+  - Steps: Read amp-oracle.md spec, implement tool following foundation framework patterns, register in mod.zig, update docs
+  - Acceptance: `zig fmt` passes, `zig build validate-agents` shows oracle tool registered, `zig build -Dagent=amp test` passes, `zig build -Dagent=amp run` starts without errors
+
 ## Next
+
+- Objective: Implement Task/Subagent tool for parallel work delegation
+  - Create `agents/amp/tools/task.zig` based on `specs/amp/prompts/amp-task.md` specification  
+  - Enable spawning subagents for parallel analysis, search, and execution tasks
+  - Register task tool and update documentation
+  - Steps: Study amp-task.md spec, implement subagent spawning with foundation framework, test parallel execution
+  - Acceptance: Task tool registered, subagent spawn/collect works, integration tests pass
+
+- Objective: Implement Code Search agent for intelligent codebase exploration  
+  - Create `agents/amp/tools/code_search.zig` based on `specs/amp/prompts/amp-code-search.md`
+  - Provide semantic code search beyond basic grep/ripgrep functionality
+  - Register code search tool and add usage examples
+  - Steps: Analyze code-search spec, implement semantic search with foundation tools, optimize for large codebases
+  - Acceptance: Code search tool works on repository, finds semantic matches, performance acceptable
+
+- Objective: Implement Git Review capabilities
+  - Create `agents/amp/tools/git_review.zig` based on `specs/amp/prompts/amp-git-review.md`
+  - Provide comprehensive code review automation and suggestions
+  - Integrate with foundation git tools and add review workflows  
+  - Steps: Study git-review spec, implement review logic, test on real PRs/commits
+  - Acceptance: Git review generates meaningful feedback, integrates with git workflow
 
 ## Backlog
 
+- Objective: Implement Test Writer tool for automated test generation
+  - Create `agents/amp/tools/test_writer.zig` from `specs/amp/prompts/amp-test-writer.md`
+  - Generate comprehensive test suites for code changes
+  - Steps: Analyze test-writer spec, implement test generation patterns, validate against existing test frameworks
+
+- Objective: Add security tools (Command Risk Assessment, Secret File Protection)
+  - Implement `agents/amp/tools/command_risk.zig` from `amp-command-risk.md`
+  - Implement `agents/amp/tools/secret_protection.zig` from `amp-secret-file-protection.md`  
+  - Steps: Study security specs, implement risk assessment and secret detection
+
+- Objective: Implement thread management and summarization
+  - Add conversation tracking and summarization tools from thread-related specs
+  - Steps: Study thread management specs, implement conversation state tracking
+
+- Objective: Add diagram generation and formatting capabilities
+  - Implement visual documentation tools from diagram-related specs
+  - Steps: Study diagram specs, implement text-to-diagram conversion
+
+- Objective: Implement template processing system
+  - Add dynamic prompt template processing from `amp-template-processing.md`
+  - Steps: Study template spec, implement template engine with variable substitution
+
 ## Risks
+
 - Template drift: `agents/_template/main.zig` currently calls a 2‑arg `runAgent`; repository `agent_main.runAgent` requires the `Engine` type. We will fix `agents/amp/main.zig` to the 3‑arg form.
 - Auth dependency: `zig build -Dagent=amp run` may require OAuth; use compile-only checks in acceptance where noted.
 - Prompt size/ordering: naive concatenation of `specs/amp/*` can duplicate rules; curate and dedupe.
 - Tool surface: Prefer programmatic registration; add `tools.zon` only if external consumers need it.
+- Complex tool dependencies: Oracle and Task tools may require foundation framework extensions not yet available
+- Performance concerns: Advanced tools like Oracle may have significant token/latency costs
 
 ## Notes
+
+- Deterministic stack per loop: include `PLAN.md`, current `fix_plan.md`, all of `specs/amp/*`, and any existing `agents/amp/*`.
+- Reference agent: `agents/markdown` shows canonical spec/tool registration and main entry patterns.
+- Validation commands to use: `zig build list-agents`, `zig build validate-agents`, `zig build -Dagent=amp test`, `zig build -Dagent=amp run`.
+- Current implementation status: ~15% of full Amp specification complete, with basic JavaScript tool and foundation framework integration working
+- Gap analysis shows 26 prompt specifications with only 1 specialized tool implemented (JavaScript)
+
 ## Done
 
 - Objective: Prompt curation and deduplication ✅
@@ -81,8 +142,3 @@ Owned by the Ralph planning loop. Each iteration overwrites this file with one p
   - Created `agents/amp/system_prompt.txt` synthesized from `specs/amp/*` and wired fallback properly in spec.zig.
   - Updated `agents/amp/config.zon` and `agents/amp/agent.manifest.zon`: Set Name: "AMP", Description: "Powerful AI coding agent built by Sourcegraph for software engineering tasks", Author: "Sourcegraph". Enabled system_commands and code_generation features. Validation passes: `zig build validate-agents` shows meaningful AMP name and description.
 - Follow-up: Scaffolder/template drift — build.zig expects `tools/mod.zig` and `tools/ExampleTool.zig`, while `_template` provides `tools.zig` and `tools/Tool.zig`. Plan a reconciliation task.
-
-## Notes
-- Deterministic stack per loop: include `PLAN.md`, current `fix_plan.md`, all of `specs/amp/*`, and any existing `agents/amp/*`.
-- Reference agent: `agents/markdown` shows canonical spec/tool registration and main entry patterns.
-- Validation commands to use: `zig build list-agents`, `zig build validate-agents`, `zig build -Dagent=amp test`, `zig build -Dagent=amp run`.
