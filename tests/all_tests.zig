@@ -50,6 +50,7 @@ comptime {
     // _ = @import("json_reflection_integration.zig");
     _ = @import("tools_registry.zig");
     _ = @import("term_reflection.zig");
+    _ = @import("tui_auth_port.zig");
 
     // Format and documentation tests
     // legacy markdown/snapshot tests depend on removed shared modules; excluded post-consolidation

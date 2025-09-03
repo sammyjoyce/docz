@@ -1,0 +1,5 @@
+| file | prompt_id | source_path | source_lines | source_sha256 | handlebars | status | timestamp |
+|------|-----------|-------------|--------------|---------------|------------|--------|-----------|
+| agency_workflow_prompt.hbs | agency_workflow_prompt | ./lib/node_modules/@sourcegraph/amp/dist/main.js | 1255-1520 | b21d4ca60d3a96383a6ec30f73cefd62d38db03def02b3d214f624ee60738ad6 | true | valid | 2025-08-15 12:00:00 Z |
+| amp_system_prompt.txt | main_system_identity_prompt | ./lib/node_modules/@sourcegraph/amp/dist/main.js | 1040-1244 | 5ae0372e11e5042c9a7768b727bc3c1d263080e6736cc48999f7a1a2573038ba | false | valid | 2025-08-15 14:05:30 Z || ai_prompt.txt | ai_prompt_constant | ./lib/node_modules/@sourcegraph/amp/dist/main.js | 26-28 | 3bc7dfaea62061bdf34f347c95e6b7ad00f80b2a2df47792447b38de0249d263 | false | valid | 2025-08-15 16:53:27 Z |
+| main_system_identity_prompt.txt | main_system_identity_prompt | ./lib/node_modules/@sourcegraph/amp/dist/main.js | 1041-1243 | 071f10379f80c6df03d813e031a2c44be9b3afa6a57230f00ea1781070f822b9 | false | valid | 2025-08-16 12:00:00 Z |

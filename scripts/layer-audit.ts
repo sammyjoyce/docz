@@ -46,6 +46,8 @@ interface Options {
   useTreeSitter: boolean;
   zigWasmPath?: string;
   emitGraph?: string;
+  // CI mode for strict enforcement
+  ci: boolean;
   // Fix flow
   fix: boolean;
   includeWarn: boolean;
@@ -80,6 +82,7 @@ if (argv.has("help") || argv.has("h")) {
       "  --zig-wasm <path>      Path to tree-sitter Zig grammar wasm (default: env ZIG_TS_WASM)\n" +
       "  --emit-graph <path>    Emit a repo-wide graph JSON (nodes, edges, legality)\n" +
       "  --pattern <glob>       Hint include pattern (default: **/*.zig, simplified)\n" +
+      "  --ci <bool>            CI mode: strict layering enforcement, exit 2 on any violations (default: false)\n" +
       "  --fix <bool>           Post patch tasks to Opencode to fix violations (default: false)\n" +
       "  --include-warn <bool>  Include WARN-level reimplementation smells in fixes (default: false)\n" +
       "  --approve <mode>       Auto-approve permissions: once | always | reject (default: env OPENCODE_APPROVE or reject)\n" +
@@ -104,6 +107,7 @@ const options: Options = {
   useTreeSitter: (argv.get("treesitter") ?? "true").toLowerCase() !== "false",
   zigWasmPath: argv.get("zig-wasm") || process.env.ZIG_TS_WASM,
   emitGraph: argv.get("emit-graph") || undefined,
+  ci: (argv.get("ci") ?? "false").toLowerCase() === "true",
   fix: (argv.get("fix") ?? "false").toLowerCase() === "true",
   includeWarn: (argv.get("include-warn") ?? "false").toLowerCase() === "true",
   approve: ((argv.get("approve") || process.env.OPENCODE_APPROVE || process.env.OPENCODE_AUTO_APPROVE || "reject").toLowerCase() as any),
@@ -125,6 +129,15 @@ const allowed: Record<LayerName, Set<LayerName>> = {
   L3: new Set<LayerName>(["L4"]),
   L4: new Set<LayerName>([]),
 };
+
+// Machine-checkable layering rule: allowed directions are same-layer or **downward**.
+// With ranks L4:1 < L3:2 < L2:3 < L1:4, an upward import (e.g. L4→L3: 1→2) is a violation.
+function isLayeringViolation(fromLayer: LayerName, toLayer: LayerName): boolean {
+  const fromNum = layerRank[fromLayer];
+  const toNum = layerRank[toLayer];
+  // Violation if importing upward (toward a higher-numbered, higher-level layer).
+  return fromNum < toNum;
+}
 
 const FOUNDATION_ORDER = ["term", "render", "ui", "tui", "cli"] as const;
 const FOUNDATION_EXEMPT = new Set(["network", "session", "tools"]);
@@ -415,13 +428,16 @@ function foundationOrderIndex(dom: string | null): number | null {
 }
 
 // ---------------- Parsing Zig ----------------
-const IMPORT_RX = /@import\("([^"]+)"\)/g;
+// Allow optional whitespace around @import and inside the parens.
+const IMPORT_RX = /@import\s*\(\s*"([^"]+)"\s*\)/g;
 const FN_RX = /\b(?:pub\s+)?fn\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)/g;
 
 function getImports(src: string): string[] {
   const out: string[] = [];
   let m: RegExpExecArray | null;
   while ((m = IMPORT_RX.exec(src))) out.push(m[1]);
+  // Reset lastIndex for safety if IMPORT_RX is reused.
+  IMPORT_RX.lastIndex = 0;
   return out;
 }
 
@@ -585,10 +601,15 @@ function getImportsTS(src: string, parser: WTS.Parser): string[] {
     function visit() {
       const type = cursor.nodeType;
       const n = cursor.currentNode as any;
-      if (type === 'import_call') {
+      // Some Zig grammars won't expose a dedicated "import_call".
+      // Be permissive: scan any node text that contains '@import'.
+      if (type && (type.includes("call") || type.includes("expr") || type.includes("import"))) {
         const text = src.slice(n.startIndex, n.endIndex);
-        const m = text.match(/@import\(\s*"([^"]+)"\s*\)/);
-        if (m) out.push(m[1]);
+        if (text.includes("@import")) {
+          let m: RegExpExecArray | null;
+          IMPORT_RX.lastIndex = 0;
+          while ((m = IMPORT_RX.exec(text))) out.push(m[1]);
+        }
       }
       if (cursor.gotoFirstChild()) {
         do { visit(); } while (cursor.gotoNextSibling());
@@ -596,7 +617,9 @@ function getImportsTS(src: string, parser: WTS.Parser): string[] {
       }
     }
     visit();
-    return out.length ? out : getImports(src);
+    // Union with the plain-regex fallback to avoid under-detection.
+    const merged = new Set<string>([...out, ...getImports(src)]);
+    return Array.from(merged);
   } catch {
     return getImports(src);
   }
@@ -606,26 +629,69 @@ function getImportsTS(src: string, parser: WTS.Parser): string[] {
 type GraphNode = { id: string; layer: LayerName };
 type GraphEdge = { from: string; to: string; from_layer: LayerName; to_layer: LayerName; allowed: boolean; reason?: string };
 
-function isAllowedEdge(from: LayerName, to: LayerName, fromRel: string, toRel: string): { ok: boolean; reason?: string } {
-  if (from === to) return { ok: true };
-  if (from === "L1" && to === "L3") return { ok: false, reason: `Application should use Foundation, not Engine (${toRel})` };
-  const ok = allowed[from].has(to);
-  return ok ? { ok } : { ok: false, reason: `Illegal import: ${layerHuman[from]} → ${layerHuman[to]} (${toRel})` };
+// Single source of truth for edge policy:
+function policyCheck(from: LayerName, to: LayerName, fromRel: string, toRel: string): { ok: boolean; reason?: string } {
+  // Same-layer is OK, but if both are L4 enforce foundation sub-order.
+  if (from === to) {
+    if (from === "L4") {
+      const fromDom = foundationSubdomain(fromRel);
+      const toDom   = foundationSubdomain(toRel);
+      if (fromDom && toDom && !FOUNDATION_EXEMPT.has(fromDom) && !FOUNDATION_EXEMPT.has(toDom)) {
+        const fi = foundationOrderIndex(fromDom);
+        const ti = foundationOrderIndex(toDom);
+        if (fi != null && ti != null && ti > fi) {
+          return { ok: false, reason: `Foundation sub-order violation: ${fromDom} cannot import ${toDom} (${toRel})` };
+        }
+      }
+    }
+    return { ok: true };
+  }
+
+  // Upward dependency?
+  if (isLayeringViolation(from, to)) {
+    return { ok: false, reason: `Layer violation: ${layerHuman[from]} → ${layerHuman[to]} - must be same-layer or downward (${toRel})` };
+  }
+
+  // Whitelist by policy map.
+  if (!allowed[from].has(to)) {
+    // Keep a clearer message for the common L1→L3 case.
+    if (from === "L1" && to === "L3") {
+      return { ok: false, reason: `Application should delegate via Foundation, not import Engine directly (${toRel})` };
+    }
+    return { ok: false, reason: `Illegal import: ${layerHuman[from]} → ${layerHuman[to]} (${toRel})` };
+  }
+  return { ok: true };
 }
 
 async function emitGraphJSON(outPath: string, reports: FileReport[]) {
   const nodes: GraphNode[] = reports.map(r => ({ id: r.rel, layer: r.layer }));
   const edges: GraphEdge[] = [];
   const idset = new Set(nodes.map(n => n.id));
+  const edgeSet = new Set<string>(); // Track unique edges to prevent duplicates
+  
   for (const r of reports) {
     for (const im of r.imports) {
       if (im.layer === "external" || im.layer === "unknown") continue;
       if (!idset.has(im.target)) continue; // skip unresolved
-      const check = isAllowedEdge(r.layer, im.layer as LayerName, r.rel, im.target);
+      
+      // Skip self-loops
+      if (r.rel === im.target) continue;
+      
+      // Create unique edge key to prevent duplicates
+      const edgeKey = `${r.rel}→${im.target}`;
+      if (edgeSet.has(edgeKey)) continue;
+      edgeSet.add(edgeKey);
+      
+      const check = policyCheck(r.layer, im.layer as LayerName, r.rel, im.target);
       edges.push({ from: r.rel, to: im.target, from_layer: r.layer, to_layer: im.layer as LayerName, allowed: check.ok, reason: check.reason });
     }
   }
   const out = { nodes, edges };
+  if (edges.length === 0) {
+    console.warn(`[layer-audit] emitGraph: 0 internal edges found. \
+Check that @import calls resolve to files inside ${options.root} \
+and that module names map to files via build.zig (addModule/addImport).`);
+  }
   await fs.mkdir(path.dirname(outPath), { recursive: true }).catch(() => {});
   await fs.writeFile(outPath, JSON.stringify(out, null, 2));
 }
@@ -716,16 +782,13 @@ async function analyze(root: string, files: string[], client: OpencodeClient | n
     const violations: string[] = [];
     for (const r of importsResolved) {
       if (r.layer === "external" || r.layer === "unknown") continue;
-      if (!allowed[f.layer].has(r.layer) && f.layer !== r.layer) {
-        violations.push(`Illegal import: ${layerHuman[f.layer]} → ${layerHuman[r.layer]} (${r.target})`);
-      }
-      if (f.layer === "L1" && r.layer === "L3") {
-        violations.push(
-          `Application should delegate via Foundation (agent_main/auth), not import Engine directly: ${r.target}`
-        );
+      const check = policyCheck(f.layer, r.layer as LayerName, f.rel, r.target);
+      if (!check.ok && check.reason) {
+        violations.push(check.reason);
       }
     }
 
+    // Cross-agent import checks (L2 specific)
     if (f.layer === "L2") {
       const selfAgent = /^agents\/([^\/]+)/.exec(f.rel)?.[1];
       for (const r of importsResolved) {
@@ -733,22 +796,6 @@ async function analyze(root: string, files: string[], client: OpencodeClient | n
         const other = /^agents\/([^\/]+)/.exec(r.target)?.[1];
         if (selfAgent && other && other !== selfAgent) {
           violations.push(`Cross-agent import not allowed: ${selfAgent} → ${other} (${r.target})`);
-        }
-      }
-    }
-
-    if (f.layer === "L4") {
-      const fromDom = foundationSubdomain(f.rel);
-      const fromIdx = foundationOrderIndex(fromDom);
-      if (fromIdx != null) {
-        for (const r of importsResolved) {
-          if (r.layer !== "L4") continue;
-          const toDom = foundationSubdomain(r.target);
-          if (!toDom || FOUNDATION_EXEMPT.has(toDom)) continue;
-          const toIdx = foundationOrderIndex(toDom);
-          if (toIdx != null && toIdx > fromIdx) {
-            violations.push(`Foundation sub-order violation: ${fromDom} cannot import ${toDom} (${r.target})`);
-          }
         }
       }
     }
@@ -816,25 +863,19 @@ async function analyze(root: string, files: string[], client: OpencodeClient | n
     }
   }
 
-  // Fill graph field per file
-  function isAllowedEdge(from: LayerName, to: LayerName, fromRel: string, toRel: string): { ok: boolean; reason?: string } {
-    if (from === to) return { ok: true };
-    if (from === "L1" && to === "L3") return { ok: false, reason: `Application should use Foundation, not Engine (${toRel})` };
-    const ok = allowed[from].has(to);
-    return ok ? { ok } : { ok: false, reason: `Illegal import: ${layerHuman[from]} → ${layerHuman[to]} (${toRel})` };
-  }
+  // Fill graph field per file using the same policy as emitGraphJSON
 
   for (const r of reports) {
     const importsG: { target: string; layer: LayerName; allowed: boolean; reason?: string }[] = [];
     for (const im of r.imports) {
       if (im.layer === "external" || im.layer === "unknown") continue;
-      const check = isAllowedEdge(r.layer, im.layer, r.rel, im.target);
+      const check = policyCheck(r.layer, im.layer, r.rel, im.target);
       importsG.push({ target: im.target, layer: im.layer, allowed: check.ok, reason: check.reason });
     }
     const importers = importedBy.get(r.rel) ?? [];
     const importedByG: { source: string; layer: LayerName; allowed: boolean; reason?: string }[] = [];
     for (const s of importers) {
-      const check = isAllowedEdge(s.layer, r.layer, s.source, r.rel);
+      const check = policyCheck(s.layer, r.layer, s.source, r.rel);
       importedByG.push({ source: s.source, layer: s.layer, allowed: check.ok, reason: check.reason });
     }
     const upstreamIllegal = importsG.filter(x => !x.allowed).length;
@@ -1109,6 +1150,23 @@ async function main() {
       // Do not fail hard when fix mode is enabled
       process.exitCode = 0;
       return;
+    }
+
+    // CI mode: strict enforcement - any violations are fatal
+    if (options.ci) {
+      const violations = reports.filter(r => r.violations.length > 0);
+      if (violations.length > 0) {
+        console.error(`[CI] Found ${violations.length} files with layering violations - failing build`);
+        for (const v of violations.slice(0, 10)) {
+          console.error(`[CI] ${v.rel}: ${v.violations.join('; ')}`);
+        }
+        if (violations.length > 10) {
+          console.error(`[CI] ...and ${violations.length - 10} more violations`);
+        }
+        process.exit(2);
+      }
+      console.log(`[CI] Layer audit passed: ${reports.length} files checked, no violations`);
+      process.exit(0);
     }
 
     if (summary.totals.FAIL > 0) process.exit(2);

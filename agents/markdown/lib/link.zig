@@ -1,11 +1,13 @@
 const std = @import("std");
 
-pub const LinkError = error{
+pub const Error = error{
     InvalidURL,
     OutOfMemory,
     NetworkError,
     Timeout,
 };
+
+pub const LinkError = Error;
 
 pub const LinkType = enum {
     internal,

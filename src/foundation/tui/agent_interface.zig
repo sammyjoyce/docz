@@ -40,7 +40,7 @@ const tui = @import("../tui.zig");
 const term = @import("../term.zig");
 const theme = @import("../theme.zig");
 const render = @import("../render.zig");
-const network = @import("../network.zig");
+const auth_port = @import("../ports/auth.zig");
 const ui = @import("../ui.zig");
 const tools = @import("../tools.zig");
 const cli = @import("../cli.zig");
@@ -391,6 +391,7 @@ pub const Agent = struct {
 
     /// Authentication manager
     auth_mgr: *AuthenticationManager,
+    auth_port: auth_port.AuthPort,
 
     /// Notification system
     notifier: *tui.widgets.Rich.NotificationController,
@@ -477,8 +478,9 @@ pub const Agent = struct {
         // Initialize session manager
         self.session_mgr = try SessionManager_Impl.init(allocator);
 
-        // Initialize authentication manager
-        self.auth_mgr = try AuthenticationManager.init(allocator);
+        // Initialize authentication manager with default engine-backed auth port
+        self.auth_port = engine.defaultAuthPort();
+        self.auth_mgr = try AuthenticationManager.init(allocator, self.auth_port);
         errdefer self.auth_mgr.deinit();
 
         // Initialize notification system
@@ -1264,6 +1266,14 @@ pub fn createAgent(
     return try Agent.init(allocator, base_agent, agent_config);
 }
 
+// === Injection Hooks ===
+/// Set authentication port after initialization (e.g., tests or custom engines)
+pub fn setAuthPort(agent: *Agent, port: auth_port.AuthPort) !void {
+    agent.auth_port = port;
+    if (agent.auth_mgr) |mgr| mgr.deinit();
+    agent.auth_mgr = try AuthenticationManager.init(agent.allocator, port);
+}
+
 /// Get selected files from file browser for agent tools
 pub fn getSelectedFilesForTools(agent: *Agent) !?[][]const u8 {
     if (agent.file_browser) |browser| {
@@ -1290,6 +1300,18 @@ pub fn runInteractive(
     const agent = try createAgent(allocator, base_agent, .{});
     defer agent.deinit();
 
+    try agent.runInteractive();
+}
+
+/// Run interactive session with a provided AuthPort (convenience)
+pub fn runInteractiveWithAuthPort(
+    allocator: Allocator,
+    base_agent: *anyopaque,
+    port: auth_port.AuthPort,
+) !void {
+    const agent = try createAgent(allocator, base_agent, .{});
+    defer agent.deinit();
+    try setAuthPort(agent, port);
     try agent.runInteractive();
 }
 

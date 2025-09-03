@@ -213,7 +213,7 @@ fn convertToHtml(allocator: std.mem.Allocator, params: json.ObjectMap) !json.Val
 
     // Add title from metadata if available
     if (metadata_opt) |metadata| {
-        if (metadata.get("title")) |title_value| {
+        if (metadata.getMetadata("title")) |title_value| {
             if (title_value.* == .string) {
                 try html_content.appendSlice(allocator, "<title>");
                 try html_content.appendSlice(allocator, title_value.string);

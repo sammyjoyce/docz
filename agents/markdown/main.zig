@@ -76,5 +76,5 @@ pub fn main() !void {
     }
 
     // Foundation commands (auth, run, etc.) - delegate to agent_main
-    try foundation.agent_main.runAgent(alloc, spec.SPEC);
+    try foundation.agent_main.runAgent(engine, alloc, spec.SPEC);
 }

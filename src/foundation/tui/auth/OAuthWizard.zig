@@ -12,9 +12,7 @@
 //! - Keyboard shortcuts for common actions
 
 const std = @import("std");
-const network = @import("../../network.zig");
-const auth_service = network.Auth.Service;
-const oauth = network.Auth.OAuth;
+const auth_port = @import("../../ports/auth.zig");
 const print = std.debug.print;
 
 // Import terminal capabilities
@@ -182,8 +180,7 @@ pub const OAuthWizard = struct {
     progressBar: ProgressBar,
     statusBar: StatusBar,
     textInput: ?TextInput = null,
-    authService: auth_service.Service,
-    networkClient: *network.Http,
+    port: auth_port.AuthPort,
 
     // Terminal capabilities
     caps: ?term.caps.TermCaps = null,
@@ -197,9 +194,9 @@ pub const OAuthWizard = struct {
     manualCodeInput: std.ArrayList(u8),
 
     // OAuth state
-    pkceParams: ?oauth.Pkce = null,
+    session: ?auth_port.OAuthSession = null,
     authUrl: ?[]const u8 = null,
-    credentials: ?oauth.Credentials = null,
+    credentials: ?auth_port.Credentials = null,
 
     // State management
     currentState: WizardState,
@@ -216,7 +213,7 @@ pub const OAuthWizard = struct {
     networkActive: bool = false,
     lastNetworkActivity: i64 = 0,
 
-    pub fn init(allocator: std.mem.Allocator, renderer: *Renderer) !Self {
+    pub fn init(allocator: std.mem.Allocator, renderer: *Renderer, port: auth_port.AuthPort) !Self {
         const startTime = std.time.timestamp();
 
         // Initialize components
@@ -244,14 +241,10 @@ pub const OAuthWizard = struct {
         const pasteController = input_system.Paste.init(allocator);
         const mouseController = input_system.Mouse.init(allocator);
 
-        // Initialize services
-        const auth_svc = auth_service.Service.init(allocator);
-        const http_client = try network.HttpCurl.init(allocator);
-        const net_svc = auth_service.Service.init(allocator, http_client, .{});
-
         return Self{
             .allocator = allocator,
             .renderer = renderer,
+            .port = port,
             .notificationController = notification_controller,
             .progressBar = progress_bar,
             .statusBar = status_bar_instance,
@@ -259,8 +252,6 @@ pub const OAuthWizard = struct {
             .focusController = focusController,
             .pasteController = pasteController,
             .mouseController = mouseController,
-            .authService = auth_svc,
-            .networkClient = net_svc,
             .manualCodeInput = std.ArrayList(u8).init(allocator),
             .currentState = .initializing,
             .startTime = startTime,
@@ -279,15 +270,12 @@ pub const OAuthWizard = struct {
         self.focusController.deinit();
         self.pasteController.deinit();
         self.mouseController.deinit();
-        self.networkClient.deinit();
         self.manualCodeInput.deinit();
         if (self.errorMessage) |msg| {
             self.allocator.free(msg);
         }
 
-        if (self.pkceParams) |*pkce| {
-            pkce.deinit(self.allocator);
-        }
+        if (self.session) |sess| sess.deinit(self.allocator);
 
         if (self.authUrl) |url| {
             self.allocator.free(url);
@@ -299,7 +287,7 @@ pub const OAuthWizard = struct {
     }
 
     /// Run the OAuth wizard
-    pub fn run(self: *Self) !oauth.Credentials {
+    pub fn run(self: *Self) !auth_port.Credentials {
         // Clear screen and show initial setup
         try self.renderer.beginFrame();
         try self.clearScreen();
@@ -803,49 +791,29 @@ pub const OAuthWizard = struct {
 
     /// Check network connection
     fn checkNetworkConnection(self: *Self) !void {
-        self.network_active = true;
-        self.last_network_activity = std.time.timestamp();
-
-        // Use network service to check connectivity
-        const test_request = network.Http.Request{
-            .url = "https://www.google.com",
-            .timeout_ms = 5000,
-        };
-
-        const resp = self.networkClient.request(test_request) catch |err| {
-            // Network check failed
-            self.network_active = false;
-            const error_msg = try std.fmt.allocPrint(self.allocator, "Network check failed: {s}", .{@errorName(err)});
-            defer self.allocator.free(error_msg);
-            try self.setError(error_msg);
-            try self.transitionTo(.error_state);
-            return;
-        };
-        defer self.allocator.free(resp.body);
-
+        // Assume connectivity or defer to later operations; no direct network import
         self.network_active = false;
         try self.transitionTo(.generating_pkce);
     }
 
     /// Generate PKCE parameters
     fn generatePkceParameters(self: *Self) !void {
-        // Generate PKCE parameters using oauth module
-        const pkce = try oauth.generatePkceParams(self.allocator);
-        self.pkceParams = pkce;
+        // Start OAuth session via port (includes PKCE verifier)
+        if (self.session) |sess| sess.deinit(self.allocator);
+        self.session = try self.port.startOAuth(self.allocator);
         try self.transitionTo(.buildingAuthUrl);
     }
 
     /// Build authorization URL
     fn buildAuthorizationUrl(self: *Self) !void {
-        if (self.pkceParams == null) {
-            try self.setError("PKCE parameters not generated");
+        if (self.session == null) {
+            try self.setError("OAuth session not started");
             try self.transitionTo(.error_state);
             return;
         }
-
-        // Build authorization URL using oauth module
-        const url = try oauth.buildAuthorizationUrl(self.allocator, self.pkceParams.?);
-        self.authUrl = url;
+        // Take URL from session
+        if (self.authUrl) |u| self.allocator.free(u);
+        self.authUrl = try self.allocator.dupe(u8, self.session.?.url);
         try self.transitionTo(.opening_browser);
     }
 
@@ -872,8 +840,8 @@ pub const OAuthWizard = struct {
             try self.notificationController.info("Browser Launch", try std.fmt.allocPrint(self.allocator, "Please open your browser and navigate to: {s}", .{authUrl}));
         }
 
-        // Launch browser using oauth module
-        try oauth.launchBrowser(authUrl);
+        // Do not launch browser directly here to avoid platform coupling
+        // Just present the link via OSC 8 or notification
 
         // Clear hyperlink if it was set
         if (self.caps) |caps| {
@@ -897,8 +865,8 @@ pub const OAuthWizard = struct {
 
     /// Exchange code for tokens
     fn exchangeCodeForTokens(self: *Self, code: []const u8) !void {
-        if (self.pkceParams == null) {
-            try self.setError("PKCE parameters not available for token exchange");
+        if (self.session == null) {
+            try self.setError("OAuth session missing for token exchange");
             try self.transitionTo(.error_state);
             return;
         }
@@ -908,8 +876,8 @@ pub const OAuthWizard = struct {
 
         try self.transitionTo(.exchanging_token);
 
-        // Exchange code for tokens using auth service
-        const creds = self.authService.exchangeCode(code, self.pkceParams.?.verifier) catch |err| {
+        // Exchange code for tokens using auth port
+        const creds = self.port.completeOAuth(self.allocator, code, self.session.?.pkce_verifier) catch |err| {
             self.network_active = false;
             const error_msg = try std.fmt.allocPrint(self.allocator, "Token exchange failed: {s}", .{@errorName(err)});
             defer self.allocator.free(error_msg);
@@ -919,7 +887,7 @@ pub const OAuthWizard = struct {
         };
 
         self.network_active = false;
-        self.credentials = creds.oauth;
+        self.credentials = creds;
         try self.transitionTo(.saving_credentials);
     }
 
@@ -931,9 +899,8 @@ pub const OAuthWizard = struct {
             return;
         }
 
-        // Save credentials using auth service
-        const creds_union = auth_service.Credentials{ .oauth = self.credentials.? };
-        _ = self.authService.saveCredentials(creds_union) catch |err| {
+        // Save credentials via auth port (implementation may persist accordingly)
+        self.port.save(self.allocator, self.credentials.?) catch |err| {
             const error_msg = try std.fmt.allocPrint(self.allocator, "Failed to save credentials: {s}", .{@errorName(err)});
             defer self.allocator.free(error_msg);
             try self.setError(error_msg);
@@ -1110,19 +1077,19 @@ pub const OAuthWizard = struct {
 };
 
 /// Convenience function to run the OAuth wizard
-pub fn runOAuthWizard(allocator: std.mem.Allocator) !oauth.Credentials {
+pub fn runOAuthWizard(allocator: std.mem.Allocator, port: auth_port.AuthPort) !auth_port.Credentials {
     // Create renderer
     const renderer = try renderer_mod.createRenderEngine(allocator);
     defer renderer.deinit();
 
     // Create and run wizard
-    var wizard = try OAuthWizard.init(allocator, renderer);
+    var wizard = try OAuthWizard.init(allocator, renderer, port);
     defer wizard.deinit();
 
     return try wizard.run();
 }
 
-/// Setup OAuth with TUI experience
-pub fn setupOAuthWithTUI(allocator: std.mem.Allocator) !oauth.Credentials {
-    return try runOAuthWizard(allocator);
+/// Setup OAuth with TUI experience (requires injected port)
+pub fn setupOAuthWithTUI(allocator: std.mem.Allocator, port: auth_port.AuthPort) !auth_port.Credentials {
+    return try runOAuthWizard(allocator, port);
 }

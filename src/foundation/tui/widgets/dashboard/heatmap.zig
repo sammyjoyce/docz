@@ -2,7 +2,7 @@
 
 const std = @import("std");
 const engine_mod = @import("engine.zig");
-const logging = @import("foundation").logger;
+const logging = @import("../../../logger.zig");
 
 pub const Heatmap = struct {
     allocator: std.mem.Allocator,

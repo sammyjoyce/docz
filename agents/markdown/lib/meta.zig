@@ -26,6 +26,10 @@ pub const DocumentMetadata = struct {
     format: MetadataFormat,
     raw_content: []const u8,
 
+    pub fn deinit(self: *DocumentMetadata, allocator: std.mem.Allocator) void {
+        self.deinitMetadata(allocator);
+    }
+
     pub fn deinitMetadata(self: *DocumentMetadata, allocator: std.mem.Allocator) void {
         // Deep free all values
         var iterator = self.content.iterator();

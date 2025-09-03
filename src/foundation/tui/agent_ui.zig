@@ -12,9 +12,8 @@ const progress_mod = @import("widgets/rich/progress.zig");
 const text_input_mod = @import("widgets/rich/text_input.zig");
 const theme = @import("../theme.zig");
 const ui = @import("../ui.zig");
-const network = @import("../network.zig");
 const render = @import("../render.zig");
-const oauth_mod = network; // OAuth is in network module
+const auth_port = @import("../ports/auth.zig");
 
 const Renderer = renderer_mod.Renderer;
 const Render = renderer_mod.Render;
@@ -250,32 +249,36 @@ pub const ProgressDialog = struct {
 /// OAuth flow integration helpers
 pub const OAuthIntegration = struct {
     allocator: std.mem.Allocator,
-    oauth_manager: oauth_mod.OAuthManager,
+    port: auth_port.AuthPort,
 
-    pub fn init(allocator: std.mem.Allocator, config: oauth_mod.OAuthConfig) !OAuthIntegration {
-        const oauth_manager = try oauth_mod.OAuthManager.init(allocator, config);
+    pub const Listener = struct {
+        onUrl: ?*const fn (url: []const u8, ctx: *anyopaque) void = null,
+        onProgress: ?*const fn (stage: []const u8, ratio: f32, ctx: *anyopaque) void = null,
+        onComplete: ?*const fn (ctx: *anyopaque) void = null,
+        onError: ?*const fn (err: auth_port.Error, ctx: *anyopaque) void = null,
+        ctx: *anyopaque = undefined,
+    };
 
-        return OAuthIntegration{
-            .allocator = allocator,
-            .oauth_manager = oauth_manager,
-        };
+    pub fn init(allocator: std.mem.Allocator, port: auth_port.AuthPort) OAuthIntegration {
+        return .{ .allocator = allocator, .port = port };
     }
 
     pub fn deinit(self: *OAuthIntegration) void {
-        self.oauth_manager.deinit();
+        _ = self; // no-op
     }
 
     /// Run complete OAuth flow with UI integration
-    pub fn runOauthFlow(self: *OAuthIntegration, ui_patterns: *StandardUIPatterns) !oauth_mod.Credentials {
+    pub fn runOauthFlow(self: *OAuthIntegration, ui_patterns: *StandardUIPatterns, listener: ?Listener) !auth_port.Credentials {
         // Show initial setup notification
         try ui_patterns.showNotification(.info, "OAuth Setup", "Starting authentication flow...");
 
         // Generate authorization URL
-        const auth_url = try self.oauth_manager.generateAuthUrl();
-        defer self.allocator.free(auth_url);
+        const session = try self.port.startOAuth(self.allocator);
+        defer session.deinit(self.allocator);
 
         // Show URL to user
-        const url_message = try std.fmt.allocPrint(self.allocator, "Please visit: {s}", .{auth_url});
+        if (listener) |l| if (l.onUrl) |f| f(session.url, l.ctx);
+        const url_message = try std.fmt.allocPrint(self.allocator, "Please visit: {s}", .{session.url});
         defer self.allocator.free(url_message);
 
         try ui_patterns.showNotification(.info, "Authorization URL", url_message);
@@ -292,13 +295,16 @@ pub const OAuthIntegration = struct {
         }
 
         try progress_dialog.updateProgress(0.5);
+        if (listener) |l| if (l.onProgress) |f| f("exchange", 0.5, l.ctx);
 
         // Exchange code for tokens
-        const credentials = try self.oauth_manager.exchangeCode(code);
+        const credentials = try self.port.completeOAuth(self.allocator, code, session.pkce_verifier);
         try progress_dialog.updateProgress(1.0);
+        if (listener) |l| if (l.onProgress) |f| f("exchange", 1.0, l.ctx);
 
         // Show success notification
         try ui_patterns.showNotification(.success, "OAuth Complete", "Authentication successful!");
+        if (listener) |l| if (l.onComplete) |f| f(l.ctx);
 
         return credentials;
     }

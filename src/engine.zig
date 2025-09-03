@@ -911,3 +911,7 @@ pub fn runWithOptions(
 
     out.writeAll("\nGoodbye!\n") catch {};
 }
+/// Provide a default AuthPort backed by the network layer.
+pub fn defaultAuthPort() foundation.ports.auth.AuthPort {
+    return foundation.adapters.auth_network.make();
+}

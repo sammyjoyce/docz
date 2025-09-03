@@ -4,15 +4,13 @@
 //! integrating with the network authentication services.
 
 const std = @import("std");
-const network = @import("../network.zig");
-const oauth_mod = network.Auth;
+const auth_port = @import("../ports/auth.zig");
 const tui = @import("../tui.zig");
 
 const Allocator = std.mem.Allocator;
-const AuthService = oauth_mod.Service.Service;
-const Credentials = oauth_mod.Service.Credentials;
-const AuthError = oauth_mod.Service.AuthError;
-const AuthMethod = oauth_mod.Core.AuthMethod;
+const AuthPort = auth_port.AuthPort;
+const Credentials = auth_port.Credentials;
+const AuthError = auth_port.Error;
 
 /// Authentication state
 pub const AuthState = enum {
@@ -35,29 +33,35 @@ pub const AuthEvent = union(enum) {
 /// Callback function type for authentication events
 pub const AuthCallback = *const fn (event: AuthEvent, ctx: *anyopaque) void;
 
+/// Authentication method summary for UI logic
+pub const AuthMethod = enum { api_key, oauth, none };
+
+const CallbackEntry = struct { callback: AuthCallback, ctx: *anyopaque };
+const CallbackList = std.ArrayListUnmanaged(CallbackEntry);
+
 /// Authentication Manager
 pub const AuthenticationManager = struct {
     allocator: Allocator,
-    service: AuthService,
+    port: AuthPort,
     state: AuthState,
     current_credentials: ?Credentials,
-    callbacks: std.ArrayList(struct { callback: AuthCallback, ctx: *anyopaque }),
+    callbacks: CallbackList,
     mutex: std.Thread.Mutex,
     refresh_task: ?std.Thread = null,
 
     const Self = @This();
 
     /// Initialize the authentication manager
-    pub fn init(allocator: Allocator) !*Self {
+    pub fn init(allocator: Allocator, maybe_port: ?AuthPort) !*Self {
         const self = try allocator.create(Self);
         errdefer allocator.destroy(self);
 
         self.* = Self{
             .allocator = allocator,
-            .service = AuthService.init(allocator),
+            .port = if (maybe_port) |p| p else auth_port.nullAuthPort(),
             .state = .unauthenticated,
             .current_credentials = null,
-            .callbacks = std.ArrayList(struct { callback: AuthCallback, ctx: *anyopaque }).init(allocator),
+            .callbacks = .{},
             .mutex = std.Thread.Mutex{},
             .refresh_task = null,
         };
@@ -80,7 +84,7 @@ pub const AuthenticationManager = struct {
             self.current_credentials = null;
         }
 
-        self.callbacks.deinit();
+        self.callbacks.deinit(self.allocator);
         self.allocator.destroy(self);
     }
 
@@ -89,7 +93,7 @@ pub const AuthenticationManager = struct {
         self.mutex.lock();
         defer self.mutex.unlock();
 
-        try self.callbacks.append(.{ .callback = callback, .ctx = ctx });
+        try self.callbacks.append(self.allocator, .{ .callback = callback, .ctx = ctx });
     }
 
     /// Notify all registered callbacks of an event
@@ -133,7 +137,11 @@ pub const AuthenticationManager = struct {
         defer self.mutex.unlock();
 
         if (self.current_credentials) |creds| {
-            return creds.getMethod();
+            return switch (creds) {
+                .api_key => .api_key,
+                .oauth => .oauth,
+                .none => .none,
+            };
         }
         return .none;
     }
@@ -142,13 +150,12 @@ pub const AuthenticationManager = struct {
     pub fn loadCredentials(self: *Self) !void {
         self.setState(.authenticating);
 
-        self.service.loadCredentials() catch |err| {
+        _ = self.port.load(self.allocator) catch |err| {
             self.setState(.auth_error);
             self.notifyCallbacks(.{ .auth_failed = err });
             return err;
         };
-
-        const creds = try self.service.loadCredentials();
+        const creds = try self.port.load(self.allocator);
 
         self.mutex.lock();
         if (self.current_credentials) |old_creds| {
@@ -175,7 +182,9 @@ pub const AuthenticationManager = struct {
             .none => return AuthError.InvalidCredentials,
         };
 
-        try self.service.saveCredentialsToFile(credentials, path);
+        // Delegate to port; a default adapter may persist based on type
+        _ = path;
+        try self.port.save(self.allocator, credentials);
 
         self.mutex.lock();
         if (self.current_credentials) |old_creds| {
@@ -211,27 +220,16 @@ pub const AuthenticationManager = struct {
     pub fn startOAuthFlow(self: *Self) ![]const u8 {
         self.setState(.authenticating);
 
-        const pkce_params = try oauth_mod.pkce.generatePkceParams(self.allocator);
-        defer pkce_params.deinit(self.allocator);
-
-        const provider = oauth_mod.OAuth.Provider{
-            .clientId = oauth_mod.OAuth.OAUTH_CLIENT_ID,
-            .authorizationUrl = oauth_mod.OAuth.OAUTH_AUTHORIZATION_URL,
-            .tokenUrl = oauth_mod.OAuth.OAUTH_TOKEN_ENDPOINT,
-            .redirectUri = oauth_mod.OAuth.OAUTH_REDIRECT_URI,
-            .scopes = &[_][]const u8{oauth_mod.OAuth.OAUTH_SCOPES},
-        };
-
-        return try provider.buildAuthorizationUrl(self.allocator, pkce_params);
+        const session = try self.port.startOAuth(self.allocator);
+        // The caller (wizard) is responsible for capturing/storing pkce_verifier
+        const url = try self.allocator.dupe(u8, session.url);
+        session.deinit(self.allocator);
+        return url;
     }
 
     /// Complete OAuth flow with authorization code
     pub fn completeOAuthFlow(self: *Self, auth_code: []const u8, pkce_verifier: []const u8) !void {
-        const creds = try oauth_mod.OAuth.exchangeCodeForTokens(
-            self.allocator,
-            auth_code,
-            pkce_verifier,
-        );
+        const creds = try self.port.completeOAuth(self.allocator, auth_code, pkce_verifier);
 
         try self.saveCredentials(.{ .oauth = creds });
         self.notifyCallbacks(.{ .auth_success = {} });
@@ -252,12 +250,8 @@ pub const AuthenticationManager = struct {
                 if (oauth_creds.willExpireSoon(300)) { // 5 minutes leeway
                     self.setState(.refreshing);
 
-                    const new_creds = try oauth_mod.OAuth.refreshTokens(
-                        self.allocator,
-                        oauth_creds.refreshToken,
-                    );
-
-                    try self.saveCredentials(.{ .oauth = new_creds });
+                    const updated = try self.port.refreshIfNeeded(self.allocator, .{ .oauth = oauth_creds });
+                    try self.saveCredentials(updated);
                 }
             },
             else => {},
@@ -280,8 +274,8 @@ pub const AuthenticationManager = struct {
                         break;
                     };
 
-                    // Check every minute
-                    std.time.sleep(60 * std.time.ns_per_s);
+                    // Check every minute (if sleep available)
+                    sleepNs(60 * std.time.ns_per_s);
                 }
             }
         };
@@ -290,6 +284,15 @@ pub const AuthenticationManager = struct {
         ctx.* = .{ .manager = self };
 
         self.refresh_task = try std.Thread.spawn(.{}, RefreshContext.refreshLoop, .{ctx});
+    }
+
+    fn sleepNs(ns: u64) void {
+        if (comptime @hasDecl(std.time, "sleep")) {
+            std.time.sleep(ns);
+        } else {
+            // no-op if unavailable
+            {}
+        }
     }
 
     /// Clear current credentials and logout
@@ -317,19 +320,8 @@ pub const AuthenticationManager = struct {
         defer self.mutex.unlock();
 
         if (self.current_credentials) |creds| {
-            switch (creds) {
-                .api_key => |key| {
-                    return try std.fmt.allocPrint(self.allocator, "x-api-key: {s}", .{key});
-                },
-                .oauth => |oauth_creds| {
-                    if (!oauth_creds.isExpired()) {
-                        return try std.fmt.allocPrint(self.allocator, "Bearer {s}", .{oauth_creds.accessToken});
-                    }
-                },
-                .none => {},
-            }
+            return try self.port.authHeader(self.allocator, creds);
         }
-
         return null;
     }
 };

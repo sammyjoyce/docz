@@ -39,6 +39,10 @@ pub const WorkflowResult = struct {
 };
 
 /// Main entry point for workflow operations
+pub fn execute(allocator: std.mem.Allocator, params: json.Value) tools.ToolError!json.Value {
+    return executeWorkflow(allocator, params);
+}
+
 pub fn executeWorkflow(allocator: std.mem.Allocator, params: json.Value) tools.ToolError!json.Value {
     return executeInternalWorkflow(allocator, params) catch |err| {
         var result = json.ObjectMap.init(allocator);

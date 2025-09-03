@@ -2,7 +2,7 @@
 //! Handles OAuth authentication and agent REPL functionality
 
 const std = @import("std");
-const foundation = @import("foundation.zig");
+const foundation = @import("foundation");
 const cli = foundation.cli;
 
 pub fn main() !void {
@@ -15,5 +15,4 @@ pub fn main() !void {
 
     _ = try cli.main(allocator, args[1..]);
 }
-
 

@@ -1255,8 +1255,8 @@ const ModuleBuilder = struct {
             .oauth_callback_server = null,
         };
 
-        // Create foundation module once for reuse
-        const foundation_mod = self.createModule("src/foundation.zig");
+        // Create foundation facade (prelude) once for reuse
+        const foundation_mod = self.createModule("src/foundation/prelude.zig");
 
         // When using foundation barrel, only create engine module (not in foundation)
         // All other modules are available through the foundation barrel
@@ -1327,8 +1327,8 @@ const ModuleBuilder = struct {
             .optimize = self.ctx.optimize,
         });
 
-        // Add foundation and engine modules so tests can import them
-        const foundation_mod = self.createModule("src/foundation.zig");
+        // Add foundation (prelude) and engine modules so tests can import them
+        const foundation_mod = self.createModule("src/foundation/prelude.zig");
         test_module.addImport("foundation", foundation_mod);
         const engine_mod = self.createModule("src/engine.zig");
         engine_mod.addImport("foundation", foundation_mod);
@@ -2046,6 +2046,7 @@ pub fn build(b: *std.Build) !void {
     setupAgentTests(ctx, agent_modules.entry, agent_modules.spec, shared_modules);
     setupFormatting(ctx);
     setupImportBoundaryChecks(ctx);
+    setupGraphLint(ctx);
     setupFeatureCombinationTests(ctx);
     setupAgentCommands(ctx, builder);
     try setupReleaseBuilds(ctx, manifest);
@@ -2870,6 +2871,13 @@ fn setupImportBoundaryChecks(ctx: BuildState) void {
     const cmd = ctx.b.addSystemCommand(&.{ "bash", "scripts/check_imports.sh" });
     check_step.dependOn(&cmd.step);
     ctx.b.getInstallStep().dependOn(check_step);
+}
+
+fn setupGraphLint(ctx: BuildState) void {
+    const gl_step = ctx.b.step("lint-graph", "Check module graph guardrails");
+    const cmd = ctx.b.addSystemCommand(&.{ "bash", "scripts/graph_lint.sh" });
+    gl_step.dependOn(&cmd.step);
+    ctx.b.getInstallStep().dependOn(gl_step);
 }
 
 /// Adds a build step to run the feature matrix script that exercises

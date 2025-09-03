@@ -61,7 +61,7 @@ pub const Modal = @import("tui/widgets/modal.zig");
 pub const split_pane = @import("tui/widgets/core/split_pane.zig");
 pub const file_tree = @import("tui/widgets/core/file_tree.zig");
 
-// Agent UI helper surface (used by markdown agent)
+// Agent UI helper surface (re-enabled; now decoupled from network via ports)
 pub const agent_ui = @import("tui/agent_ui.zig");
 
 // Auth UI components namespace (TitleCase)
@@ -70,14 +70,16 @@ pub const Auth = struct {
     pub const OAuthWizard = @import("tui/auth/OAuthWizard.zig");
 
     // Convenience function to run OAuth wizard
-    pub fn runOAuthWizard(allocator: std.mem.Allocator) !void {
-        _ = try OAuthWizard.runOAuthWizard(allocator);
+    pub fn runOAuthWizard(allocator: std.mem.Allocator, port: @import("ports/auth.zig").AuthPort) !void {
+        _ = try OAuthWizard.runOAuthWizard(allocator, port);
     }
 };
 
 // Agent interface system is available as a separate module
 // Re-export agent_interface so agents do not deep-import files.
 pub const agent_interface = @import("tui/agent_interface.zig");
+// Expose auth manager for tests and controlled consumers
+pub const AuthenticationManager = @import("tui/AuthenticationManager.zig").AuthenticationManager;
 
 // Convenience re-exports for backward compatibility
 pub const Bounds = bounds.Bounds;
@@ -153,7 +155,7 @@ pub const presenters = @import("tui/presenters.zig");
 // Note: legacy module removed during consolidation
 
 // Factory functions
-pub const createRenderer = renderer.createRenderer;
+pub const createRenderEngine = renderer.createRenderEngine;
 pub const createDashboard = dashboard.createDashboard;
 // Agent interface functions are available in the separate agent_interface module
 
