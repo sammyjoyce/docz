@@ -1,5 +1,6 @@
 const std = @import("std");
 const foundation = @import("foundation");
+const toolsMod = foundation.tools;
 const json = std.json;
 
 const ThreadSummarization = @This();
@@ -110,8 +111,8 @@ pub fn execute(
     const max_summary_length = if (obj.get("max_summary_length")) |l| @as(u32, @intCast(l.integer)) else null;
 
     // Parse messages
-    var messages = std.ArrayList(ConversationMessage).init(allocator);
-    defer messages.deinit();
+    var messages = std.ArrayList(ConversationMessage){};
+    defer messages.deinit(allocator);
 
     if (messages_value != .array) {
         return std.json.Value{ .string = "Messages parameter must be an array" };
@@ -122,23 +123,15 @@ pub fn execute(
             const error_msg = try std.fmt.allocPrint(allocator, "Failed to parse message: {}", .{err});
             return std.json.Value{ .string = error_msg };
         };
-        try messages.append(msg);
+        try messages.append(allocator, msg);
     }
 
     // Generate summary
     const summary_response = try generateSummary(allocator, messages.items, current_task, context, include_technical_details, max_summary_length);
 
-    // Serialize response and return as JSON
-    const result_str = try serializeSummaryResponse(allocator, summary_response);
-    defer allocator.free(result_str);
-
-    var parsed_result = std.json.parseFromSlice(std.json.Value, allocator, result_str, .{}) catch |err| {
-        const error_msg = try std.fmt.allocPrint(allocator, "Failed to parse result JSON: {}", .{err});
-        return std.json.Value{ .string = error_msg };
-    };
-    defer parsed_result.deinit();
-
-    return parsed_result.value;
+    // Use JsonReflector to serialize response
+    const ResponseMapper = toolsMod.JsonReflector.mapper(SummaryResponse);
+    return try ResponseMapper.toJsonValue(allocator, summary_response);
 }
 
 fn parseConversationMessage(allocator: std.mem.Allocator, value: json.Value) !ConversationMessage {
@@ -155,8 +148,8 @@ fn parseConversationMessage(allocator: std.mem.Allocator, value: json.Value) !Co
     var tool_calls: ?[]ToolCall = null;
     if (obj.get("tool_calls")) |tc| {
         if (tc == .array) {
-            var calls = std.ArrayList(ToolCall).init(allocator);
-            defer calls.deinit();
+            var calls = std.ArrayList(ToolCall){};
+            defer calls.deinit(allocator);
 
             for (tc.array.items) |call_value| {
                 if (call_value == .object) {
@@ -167,7 +160,7 @@ fn parseConversationMessage(allocator: std.mem.Allocator, value: json.Value) !Co
                         .arguments = if (call_obj.get("arguments")) |args| args.string else "",
                         .result = if (call_obj.get("result")) |res| res.string else null,
                     };
-                    try calls.append(call);
+                    try calls.append(allocator, call);
                 }
             }
 
@@ -195,30 +188,30 @@ fn generateSummary(
 ) !SummaryResponse {
     _ = context; // Context parameter for future use
     // Analyze conversation to extract key information
-    var user_goals = std.ArrayList([]const u8).init(allocator);
-    defer user_goals.deinit();
+    var user_goals = std.ArrayList([]const u8){};
+    defer user_goals.deinit(allocator);
 
-    var accomplishments = std.ArrayList([]const u8).init(allocator);
-    defer accomplishments.deinit();
+    var accomplishments = std.ArrayList([]const u8){};
+    defer accomplishments.deinit(allocator);
 
-    var key_files = std.ArrayList([]const u8).init(allocator);
-    defer key_files.deinit();
+    var key_files = std.ArrayList([]const u8){};
+    defer key_files.deinit(allocator);
 
-    var key_functions = std.ArrayList([]const u8).init(allocator);
-    defer key_functions.deinit();
+    var key_functions = std.ArrayList([]const u8){};
+    defer key_functions.deinit(allocator);
 
-    var key_commands = std.ArrayList([]const u8).init(allocator);
-    defer key_commands.deinit();
+    var key_commands = std.ArrayList([]const u8){};
+    defer key_commands.deinit(allocator);
 
-    var technical_context = std.ArrayList([]const u8).init(allocator);
-    defer technical_context.deinit();
+    var technical_context = std.ArrayList([]const u8){};
+    defer technical_context.deinit(allocator);
 
     // Extract information from messages
     for (messages) |msg| {
         if (std.mem.eql(u8, msg.role, "user")) {
             // Extract user requests and goals
             if (containsRequestKeywords(msg.content)) {
-                try user_goals.append(try allocator.dupe(u8, msg.content));
+                try user_goals.append(allocator, try allocator.dupe(u8, msg.content));
             }
         }
 
@@ -237,67 +230,67 @@ fn generateSummary(
         if (msg.tool_calls) |calls| {
             for (calls) |call| {
                 const tech_info = try std.fmt.allocPrint(allocator, "Tool: {s} - {s}", .{ call.name, call.arguments });
-                try technical_context.append(tech_info);
+                try technical_context.append(allocator, tech_info);
             }
         }
     }
 
     // Generate summary text
-    var summary_parts = std.ArrayList([]const u8).init(allocator);
-    defer summary_parts.deinit();
+    var summary_parts = std.ArrayList([]const u8){};
+    defer summary_parts.deinit(allocator);
 
     // What the user wanted
     if (user_goals.items.len > 0) {
-        try summary_parts.append("What you wanted:");
+        try summary_parts.append(allocator, "What you wanted:");
         for (user_goals.items, 0..) |goal, i| {
             const numbered_goal = try std.fmt.allocPrint(allocator, "{}. {s}", .{ i + 1, goal });
-            try summary_parts.append(numbered_goal);
+            try summary_parts.append(allocator, numbered_goal);
         }
-        try summary_parts.append("");
+        try summary_parts.append(allocator, "");
     }
 
     // What was accomplished
     if (accomplishments.items.len > 0) {
-        try summary_parts.append("What we accomplished:");
+        try summary_parts.append(allocator, "What we accomplished:");
         for (accomplishments.items, 0..) |acc, i| {
             const numbered_acc = try std.fmt.allocPrint(allocator, "{}. {s}", .{ i + 1, acc });
-            try summary_parts.append(numbered_acc);
+            try summary_parts.append(allocator, numbered_acc);
         }
-        try summary_parts.append("");
+        try summary_parts.append(allocator, "");
     }
 
     // Current task
     if (current_task) |task| {
         const current_text = try std.fmt.allocPrint(allocator, "Current task: {s}", .{task});
-        try summary_parts.append(current_text);
-        try summary_parts.append("");
+        try summary_parts.append(allocator, current_text);
+        try summary_parts.append(allocator, "");
     }
 
     // Technical details
     if (include_technical_details and (key_files.items.len > 0 or key_functions.items.len > 0 or key_commands.items.len > 0)) {
-        try summary_parts.append("Important technical details:");
+        try summary_parts.append(allocator, "Important technical details:");
 
         if (key_files.items.len > 0) {
-            try summary_parts.append("Key files:");
+            try summary_parts.append(allocator, "Key files:");
             for (key_files.items) |file| {
                 const file_entry = try std.fmt.allocPrint(allocator, "- {s}", .{file});
-                try summary_parts.append(file_entry);
+                try summary_parts.append(allocator, file_entry);
             }
         }
 
         if (key_functions.items.len > 0) {
-            try summary_parts.append("Key functions:");
+            try summary_parts.append(allocator, "Key functions:");
             for (key_functions.items) |func| {
                 const func_entry = try std.fmt.allocPrint(allocator, "- {s}", .{func});
-                try summary_parts.append(func_entry);
+                try summary_parts.append(allocator, func_entry);
             }
         }
 
         if (key_commands.items.len > 0) {
-            try summary_parts.append("Key commands:");
+            try summary_parts.append(allocator, "Key commands:");
             for (key_commands.items) |cmd| {
                 const cmd_entry = try std.fmt.allocPrint(allocator, "- {s}", .{cmd});
-                try summary_parts.append(cmd_entry);
+                try summary_parts.append(allocator, cmd_entry);
             }
         }
     }
@@ -315,12 +308,12 @@ fn generateSummary(
     const title = try generateTitle(allocator, user_goals.items, current_task);
 
     // Prepare next steps
-    var next_steps = std.ArrayList([]const u8).init(allocator);
-    defer next_steps.deinit();
+    var next_steps = std.ArrayList([]const u8){};
+    defer next_steps.deinit(allocator);
 
     if (current_task) |task| {
         const continue_task = try std.fmt.allocPrint(allocator, "Continue working on: {s}", .{task});
-        try next_steps.append(continue_task);
+        try next_steps.append(allocator, continue_task);
     }
 
     return SummaryResponse{
@@ -355,7 +348,7 @@ fn extractFilePaths(allocator: std.mem.Allocator, content: []const u8, files: *s
             if (i + ext.len < content.len and std.mem.eql(u8, content[i .. i + ext.len], ext)) {
                 // Find the start of the path
                 var start = i;
-                while (start > 0 and (std.ascii.isAlphaNumeric(content[start - 1]) or
+                while (start > 0 and (std.ascii.isAlphanumeric(content[start - 1]) or
                     content[start - 1] == '/' or content[start - 1] == '.' or
                     content[start - 1] == '_' or content[start - 1] == '-'))
                 {
@@ -365,7 +358,7 @@ fn extractFilePaths(allocator: std.mem.Allocator, content: []const u8, files: *s
                 // Extract the file path
                 const path = content[start .. i + ext.len];
                 if (path.len > ext.len and path.len < 200) { // Reasonable path length
-                    try files.append(try allocator.dupe(u8, path));
+                    try files.append(allocator, try allocator.dupe(u8, path));
                 }
                 break;
             }
@@ -382,26 +375,26 @@ fn extractFunctionNames(allocator: std.mem.Allocator, content: []const u8, funct
         if (i + 3 < content.len and std.mem.eql(u8, content[i .. i + 3], "fn ")) {
             i += 3;
             const start = i;
-            while (i < content.len and (std.ascii.isAlphaNumeric(content[i]) or content[i] == '_')) {
+            while (i < content.len and (std.ascii.isAlphanumeric(content[i]) or content[i] == '_')) {
                 i += 1;
             }
             if (i > start) {
                 const func_name = content[start..i];
                 if (func_name.len > 0 and func_name.len < 50) {
-                    try functions.append(try allocator.dupe(u8, func_name));
+                    try functions.append(allocator, try allocator.dupe(u8, func_name));
                 }
             }
         } else if (i + 1 < content.len and content[i] == '(' and i > 0) {
             // Look backwards for function name before '('
             var start = i - 1;
-            while (start > 0 and (std.ascii.isAlphaNumeric(content[start]) or content[start] == '_')) {
+            while (start > 0 and (std.ascii.isAlphanumeric(content[start]) or content[start] == '_')) {
                 start -= 1;
             }
             start += 1;
             if (start < i) {
                 const func_name = content[start..i];
-                if (func_name.len > 0 and func_name.len < 50 and std.ascii.isAlpha(func_name[0])) {
-                    try functions.append(try allocator.dupe(u8, func_name));
+                if (func_name.len > 0 and func_name.len < 50 and std.ascii.isAlphabetic(func_name[0])) {
+                    try functions.append(allocator, try allocator.dupe(u8, func_name));
                 }
             }
         }
@@ -423,7 +416,7 @@ fn extractCommands(allocator: std.mem.Allocator, content: []const u8, commands: 
 
             const full_cmd = std.mem.trim(u8, content[pos..end], " \t");
             if (full_cmd.len > 0 and full_cmd.len < 200) {
-                try commands.append(try allocator.dupe(u8, full_cmd));
+                try commands.append(allocator, try allocator.dupe(u8, full_cmd));
             }
         }
     }
@@ -435,7 +428,7 @@ fn truncateToWordLimit(allocator: std.mem.Allocator, text: []const u8, word_limi
     var in_word = false;
 
     while (i < text.len and words < word_limit) {
-        const is_word_char = std.ascii.isAlphaNumeric(text[i]);
+        const is_word_char = std.ascii.isAlphanumeric(text[i]);
         if (is_word_char and !in_word) {
             words += 1;
             in_word = true;
@@ -454,15 +447,15 @@ fn truncateToWordLimit(allocator: std.mem.Allocator, text: []const u8, word_limi
 fn generateTitle(allocator: std.mem.Allocator, goals: [][]const u8, current_task: ?[]const u8) ![]const u8 {
     if (current_task) |task| {
         // Use current task for title, limit to 7 words
-        const words = std.mem.split(u8, task, " ");
+        const words = std.mem.splitSequence(u8, task, " ");
         var word_count: usize = 0;
-        var title_words = std.ArrayList([]const u8).init(allocator);
-        defer title_words.deinit();
+        var title_words = std.ArrayList([]const u8){};
+        defer title_words.deinit(allocator);
 
         var iter = words;
         while (iter.next()) |word| {
             if (word_count >= 7) break;
-            try title_words.append(word);
+            try title_words.append(allocator, word);
             word_count += 1;
         }
 
@@ -472,15 +465,15 @@ fn generateTitle(allocator: std.mem.Allocator, goals: [][]const u8, current_task
     if (goals.len > 0) {
         // Use first goal for title
         const first_goal = goals[0];
-        const words = std.mem.split(u8, first_goal, " ");
+        const words = std.mem.splitSequence(u8, first_goal, " ");
         var word_count: usize = 0;
-        var title_words = std.ArrayList([]const u8).init(allocator);
-        defer title_words.deinit();
+        var title_words = std.ArrayList([]const u8){};
+        defer title_words.deinit(allocator);
 
         var iter = words;
         while (iter.next()) |word| {
             if (word_count >= 7) break;
-            try title_words.append(word);
+            try title_words.append(allocator, word);
             word_count += 1;
         }
 
@@ -488,51 +481,4 @@ fn generateTitle(allocator: std.mem.Allocator, goals: [][]const u8, current_task
     }
 
     return try allocator.dupe(u8, "Conversation summary");
-}
-
-fn serializeSummaryResponse(allocator: std.mem.Allocator, response: SummaryResponse) ![]const u8 {
-    var result_obj = json.ObjectMap.init(allocator);
-
-    try result_obj.put("summary", json.Value{ .string = response.summary });
-    try result_obj.put("title", json.Value{ .string = response.title });
-
-    // Convert string arrays to JSON arrays
-    var key_files_array = json.Array.init(allocator);
-    for (response.key_files) |file| {
-        try key_files_array.append(json.Value{ .string = file });
-    }
-    try result_obj.put("key_files", json.Value{ .array = key_files_array });
-
-    var key_functions_array = json.Array.init(allocator);
-    for (response.key_functions) |func| {
-        try key_functions_array.append(json.Value{ .string = func });
-    }
-    try result_obj.put("key_functions", json.Value{ .array = key_functions_array });
-
-    var key_commands_array = json.Array.init(allocator);
-    for (response.key_commands) |cmd| {
-        try key_commands_array.append(json.Value{ .string = cmd });
-    }
-    try result_obj.put("key_commands", json.Value{ .array = key_commands_array });
-
-    var next_steps_array = json.Array.init(allocator);
-    for (response.next_steps) |step| {
-        try next_steps_array.append(json.Value{ .string = step });
-    }
-    try result_obj.put("next_steps", json.Value{ .array = next_steps_array });
-
-    var technical_context_array = json.Array.init(allocator);
-    for (response.technical_context) |context| {
-        try technical_context_array.append(json.Value{ .string = context });
-    }
-    try result_obj.put("technical_context", json.Value{ .array = technical_context_array });
-
-    const result_value = json.Value{ .object = result_obj };
-
-    // Stringify the result
-    var string_buffer = std.ArrayList(u8).init(allocator);
-    defer string_buffer.deinit();
-
-    try json.stringify(result_value, .{}, string_buffer.writer());
-    return try allocator.dupe(u8, string_buffer.items);
 }

@@ -1,5 +1,6 @@
 const std = @import("std");
 const foundation = @import("foundation");
+const toolsMod = foundation.tools;
 const json = std.json;
 
 const ThreadDeltaProcessor = @This();
@@ -28,6 +29,15 @@ const DeltaObject = struct {
     data: ?json.Value = null,
 };
 
+const ThreadStateResponse = struct {
+    version: u32,
+    messages: []json.Value,
+    summaries: []json.Value,
+    forks: []json.Value,
+    tools: []json.Value,
+    queue: []json.Value,
+};
+
 const ThreadState = struct {
     version: u32 = 0,
     messages: std.ArrayList(json.Value),
@@ -39,21 +49,21 @@ const ThreadState = struct {
 
     pub fn init(allocator: std.mem.Allocator) ThreadState {
         return ThreadState{
-            .messages = std.ArrayList(json.Value).init(allocator),
-            .summaries = std.ArrayList(json.Value).init(allocator),
-            .forks = std.ArrayList(json.Value).init(allocator),
-            .tools = std.ArrayList(json.Value).init(allocator),
-            .queue = std.ArrayList(json.Value).init(allocator),
+            .messages = std.ArrayList(json.Value){},
+            .summaries = std.ArrayList(json.Value){},
+            .forks = std.ArrayList(json.Value){},
+            .tools = std.ArrayList(json.Value){},
+            .queue = std.ArrayList(json.Value){},
             .allocator = allocator,
         };
     }
 
     pub fn deinit(self: *ThreadState) void {
-        self.messages.deinit();
-        self.summaries.deinit();
-        self.forks.deinit();
-        self.tools.deinit();
-        self.queue.deinit();
+        self.messages.deinit(self.allocator);
+        self.summaries.deinit(self.allocator);
+        self.forks.deinit(self.allocator);
+        self.tools.deinit(self.allocator);
+        self.queue.deinit(self.allocator);
     }
 };
 
@@ -131,17 +141,19 @@ pub fn execute(
     // Process delta based on type
     try processDelta(allocator, &thread_state, delta_obj.value);
 
-    // Serialize updated thread state and return as JSON
-    const result_str = try serializeThreadState(allocator, &thread_state);
-    defer allocator.free(result_str);
-
-    var parsed_result = std.json.parseFromSlice(std.json.Value, allocator, result_str, .{}) catch |err| {
-        const error_msg = try std.fmt.allocPrint(allocator, "Failed to parse result JSON: {}", .{err});
-        return std.json.Value{ .string = error_msg };
+    // Create response structure
+    const response = ThreadStateResponse{
+        .version = thread_state.version,
+        .messages = try allocator.dupe(json.Value, thread_state.messages.items),
+        .summaries = try allocator.dupe(json.Value, thread_state.summaries.items),
+        .forks = try allocator.dupe(json.Value, thread_state.forks.items),
+        .tools = try allocator.dupe(json.Value, thread_state.tools.items),
+        .queue = try allocator.dupe(json.Value, thread_state.queue.items),
     };
-    defer parsed_result.deinit();
 
-    return parsed_result.value;
+    // Use JsonReflector to serialize response
+    const ResponseMapper = toolsMod.JsonReflector.mapper(ThreadStateResponse);
+    return try ResponseMapper.toJsonValue(allocator, response);
 }
 
 fn parseThreadState(allocator: std.mem.Allocator, value: json.Value) !ThreadState {
@@ -162,7 +174,7 @@ fn parseThreadState(allocator: std.mem.Allocator, value: json.Value) !ThreadStat
     if (obj.get("messages")) |msgs| {
         if (msgs == .array) {
             for (msgs.array.items) |msg| {
-                try thread_state.messages.append(msg);
+                try thread_state.messages.append(allocator, msg);
             }
         }
     }
@@ -170,7 +182,7 @@ fn parseThreadState(allocator: std.mem.Allocator, value: json.Value) !ThreadStat
     if (obj.get("summaries")) |summs| {
         if (summs == .array) {
             for (summs.array.items) |summ| {
-                try thread_state.summaries.append(summ);
+                try thread_state.summaries.append(allocator, summ);
             }
         }
     }
@@ -178,7 +190,7 @@ fn parseThreadState(allocator: std.mem.Allocator, value: json.Value) !ThreadStat
     if (obj.get("forks")) |forks| {
         if (forks == .array) {
             for (forks.array.items) |fork| {
-                try thread_state.forks.append(fork);
+                try thread_state.forks.append(allocator, fork);
             }
         }
     }
@@ -186,7 +198,7 @@ fn parseThreadState(allocator: std.mem.Allocator, value: json.Value) !ThreadStat
     if (obj.get("tools")) |tools| {
         if (tools == .array) {
             for (tools.array.items) |tool| {
-                try thread_state.tools.append(tool);
+                try thread_state.tools.append(allocator, tool);
             }
         }
     }
@@ -194,7 +206,7 @@ fn parseThreadState(allocator: std.mem.Allocator, value: json.Value) !ThreadStat
     if (obj.get("queue")) |queue| {
         if (queue == .array) {
             for (queue.array.items) |item| {
-                try thread_state.queue.append(item);
+                try thread_state.queue.append(allocator, item);
             }
         }
     }
@@ -236,7 +248,7 @@ fn processDelta(allocator: std.mem.Allocator, thread_state: *ThreadState, delta:
                 try summary_obj.put("type", json.Value{ .string = "internal" });
             }
 
-            try thread_state.summaries.append(json.Value{ .object = summary_obj });
+            try thread_state.summaries.append(allocator, json.Value{ .object = summary_obj });
         },
 
         .@"fork:created" => {
@@ -249,7 +261,7 @@ fn processDelta(allocator: std.mem.Allocator, thread_state: *ThreadState, delta:
                 try fork_obj.put("external_thread_id", json.Value{ .string = ext_id });
             }
 
-            try thread_state.forks.append(json.Value{ .object = fork_obj });
+            try thread_state.forks.append(allocator, json.Value{ .object = fork_obj });
         },
 
         .@"thread:truncate" => {
@@ -285,10 +297,10 @@ fn processDelta(allocator: std.mem.Allocator, thread_state: *ThreadState, delta:
                 }
 
                 if (!replaced) {
-                    try thread_state.messages.append(json.Value{ .object = msg_obj });
+                    try thread_state.messages.append(allocator, json.Value{ .object = msg_obj });
                 }
             } else {
-                try thread_state.messages.append(json.Value{ .object = msg_obj });
+                try thread_state.messages.append(allocator, json.Value{ .object = msg_obj });
             }
         },
 
@@ -296,7 +308,7 @@ fn processDelta(allocator: std.mem.Allocator, thread_state: *ThreadState, delta:
             // Process queued messages - move from queue to messages
             if (thread_state.queue.items.len > 0) {
                 const queued_msg = thread_state.queue.swapRemove(0);
-                try thread_state.messages.append(queued_msg);
+                try thread_state.messages.append(allocator, queued_msg);
             }
         },
 
@@ -330,54 +342,8 @@ fn processDelta(allocator: std.mem.Allocator, thread_state: *ThreadState, delta:
                     try tool_obj.put("data", data);
                 }
 
-                try thread_state.tools.append(json.Value{ .object = tool_obj });
+                try thread_state.tools.append(allocator, json.Value{ .object = tool_obj });
             }
         },
     }
-}
-
-fn serializeThreadState(allocator: std.mem.Allocator, thread_state: *ThreadState) ![]const u8 {
-    var result_obj = json.ObjectMap.init(allocator);
-
-    try result_obj.put("version", json.Value{ .integer = @intCast(thread_state.version) });
-
-    // Convert ArrayLists to JSON arrays
-    var messages_array = json.Array.init(allocator);
-    for (thread_state.messages.items) |msg| {
-        try messages_array.append(msg);
-    }
-    try result_obj.put("messages", json.Value{ .array = messages_array });
-
-    var summaries_array = json.Array.init(allocator);
-    for (thread_state.summaries.items) |summary| {
-        try summaries_array.append(summary);
-    }
-    try result_obj.put("summaries", json.Value{ .array = summaries_array });
-
-    var forks_array = json.Array.init(allocator);
-    for (thread_state.forks.items) |fork| {
-        try forks_array.append(fork);
-    }
-    try result_obj.put("forks", json.Value{ .array = forks_array });
-
-    var tools_array = json.Array.init(allocator);
-    for (thread_state.tools.items) |tool| {
-        try tools_array.append(tool);
-    }
-    try result_obj.put("tools", json.Value{ .array = tools_array });
-
-    var queue_array = json.Array.init(allocator);
-    for (thread_state.queue.items) |item| {
-        try queue_array.append(item);
-    }
-    try result_obj.put("queue", json.Value{ .array = queue_array });
-
-    const result_value = json.Value{ .object = result_obj };
-
-    // Stringify the result
-    var string_buffer = std.ArrayList(u8){};
-    defer string_buffer.deinit(allocator);
-
-    try json.stringify(result_value, .{}, string_buffer.writer());
-    return try allocator.dupe(u8, string_buffer.items);
 }

@@ -99,23 +99,22 @@ pub fn registerAll(registry: *toolsMod.Registry) !void {
         "amp",
     );
 
-    // Thread management tools temporarily disabled due to json.Value ArrayList compatibility issues
-    // Complex JSON manipulation with std.ArrayList(json.Value) requires different patterns in Zig 0.15.1
-    // try toolsMod.registerJsonTool(
-    //     registry,
-    //     "thread_delta_processor",
-    //     "Process thread state changes including messages, cancellations, summaries, forks, and tool interactions. Modifies thread state objects based on delta operations.",
-    //     @import("thread_delta_processor.zig").execute,
-    //     "amp",
-    // );
+    // Thread management tools - re-enabled with JsonReflector pattern for Zig 0.15.1 compatibility
+    try toolsMod.registerJsonTool(
+        registry,
+        "thread_delta_processor",
+        "Process thread state changes including messages, cancellations, summaries, forks, and tool interactions. Modifies thread state objects based on delta operations.",
+        @import("thread_delta_processor.zig").execute,
+        "amp",
+    );
 
-    // try toolsMod.registerJsonTool(
-    //     registry,
-    //     "thread_summarization",
-    //     "Generate detailed conversation summaries with technical context for handoff to another person. Extracts key files, functions, commands, and next steps.",
-    //     @import("thread_summarization.zig").execute,
-    //     "amp",
-    // );
+    try toolsMod.registerJsonTool(
+        registry,
+        "thread_summarization",
+        "Generate detailed conversation summaries with technical context for handoff to another person. Extracts key files, functions, commands, and next steps.",
+        @import("thread_summarization.zig").execute,
+        "amp",
+    );
 
     // Task tool - subagent spawning for parallel work delegation
     try toolsMod.registerJsonTool(

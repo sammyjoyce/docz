@@ -4,25 +4,6 @@ Owned by the Ralph planning loop. Each iteration overwrites this file with one p
 
 ## Now
 
-- **Objective**: Re-enable Task tool by fixing Zig 0.15.1 subprocess API compatibility
-  - **Files**: `agents/amp/tools/task.zig`, `agents/amp/tools/mod.zig`
-  - **Steps**: Update Task tool subprocess spawning to use current Zig 0.15.1 std.process APIs, test subprocess execution, re-enable registration
-  - **Acceptance**: Task tool executes subagent spawning without API errors, all validation commands pass
-
-## Next
-
-- **Objective**: Re-enable Thread management tools by fixing JSON parsing compatibility
-  - **Files**: `agents/amp/tools/thread_delta_processor.zig`, `agents/amp/tools/thread_summarization.zig`, `agents/amp/tools/mod.zig`
-  - **Steps**: Fix usize field JSON parsing overflow, update to compatible JSON parsing patterns, re-enable both tool registrations
-  - **Acceptance**: Thread tools handle JSON parsing without overflow, validation commands pass
-
-- **Objective**: Implement Code Formatter tool for markdown code block formatting
-  - **Files**: Create `agents/amp/tools/code_formatter.zig`, update `agents/amp/tools/mod.zig`, update `agents/amp/tools.zon`
-  - **Steps**: Based on specs/amp/prompts/amp-code-formatter.md, implement markdown code block formatting utility, register tool
-  - **Acceptance**: Code formatter handles various language code blocks, produces clean formatted output
-
-## Backlog
-
 - **Objective**: Add comprehensive runtime integration tests
   - **Files**: Create `tests/amp_integration.zig`
   - **Steps**: Test each AMP tool with real inputs, verify tool execution timing, add runtime validation suite
@@ -49,18 +30,28 @@ Owned by the Ralph planning loop. Each iteration overwrites this file with one p
 
 ## Notes
 
-- **AMP agent status**: Now has **11 active tools** out of 26+ AMP specifications (~42% coverage), significant progress with latest Request Intent Analysis tool
-- **Active tools**: JavaScript, Glob, Code Search, Git Review, Test Writer, Command Risk, Secret Protection, Diagram, Task, Code Formatter, Request Intent Analysis
-- **Disabled tools**: Oracle (HTTP layer issue), Thread Delta Processor & Summarization (json.Value ArrayList compatibility)
+- **AMP agent status**: Now has **13 active tools** out of 26+ AMP specifications (~50% coverage), Thread management tools successfully restored
+- **Active tools**: JavaScript, Glob, Code Search, Git Review, Test Writer, Command Risk, Secret Protection, Diagram, Task, Code Formatter, Request Intent Analysis, Thread Delta Processor, Thread Summarization  
+- **Disabled tools**: Oracle (HTTP layer issue) - only 1 tool remaining disabled
 - All core infrastructure (main.zig, spec.zig, agent.zig, system_prompt.txt) is complete and production-ready
 - Foundation framework integration is fully compliant with proper error handling and allocator injection
 - All validation commands pass: `zig fmt` ✅, `zig build list-agents` ✅, `zig build validate-agents` ✅, `zig build -Dagent=amp test` ✅
 - Agent starts successfully with TUI support: `zig build -Dagent=amp run` ✅
 - Current tools provide comprehensive software engineering capabilities: JavaScript execution, code search, git review, test generation, security analysis, visual diagrams, request routing
 - Reference implementation patterns available in `agents/markdown` for advanced tool registration
-- **Latest achievement**: Successfully implemented Request Intent Analysis tool with modern Zig 0.15.1 ArrayList patterns
+- **Latest achievement**: Successfully re-enabled Thread management tools by fixing Zig 0.15.1 API compatibility issues
 
 ## Done
+
+- **Objective**: Re-enable Thread management tools by fixing JSON parsing compatibility ✅
+  - Updated both Thread Delta Processor and Thread Summarization tools to use modern Zig 0.15.1 APIs
+  - Fixed ArrayList API: `ArrayList.init(allocator)` → `ArrayList{}`, `append(item)` → `append(allocator, item)`, `deinit()` → `deinit(allocator)`
+  - Fixed JSON serialization: Replaced manual `json.stringify` with `toolsMod.JsonReflector.mapper(Type).toJsonValue()` pattern
+  - Fixed std.ascii API changes: `isAlphaNumeric` → `isAlphanumeric`, `isAlpha` → `isAlphabetic`
+  - Fixed std.mem API changes: `split` → `splitSequence`  
+  - Re-enabled both tool registrations in mod.zig - now active as 12th and 13th AMP tools
+  - All validation commands pass: `zig fmt` ✅, `zig build validate-agents` ✅, `zig build -Dagent=amp test` ✅, `zig build -Dagent=amp run` ✅
+  - AMP agent now has 13 active tools with 50% specification coverage, major milestone achieved
 
 - Scaffolded complete AMP agent with foundation framework integration
 - Implemented core specification files (main.zig, spec.zig, agent.zig, system_prompt.txt, config.zon, tools.zon)  
