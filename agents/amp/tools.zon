@@ -7,7 +7,7 @@
         .categories = .{
             .execution = .{"javascript"},
             .search = .{ "glob", "code_search" },
-            .analysis = .{ "git_review", "test_writer" },
+            .analysis = .{ "git_review", "test_writer", "request_intent_analysis" },
             .security = .{ "command_risk", "secret_protection" },
             .visualization = .{"diagram"},
         },
@@ -20,6 +20,7 @@
             .command_risk = .{ .complexity = "medium", .performance_cost = "low", .preferred_for = .{ "security", "audit", "risk" }, .requires_backup = false },
             .secret_protection = .{ .complexity = "medium", .performance_cost = "low", .preferred_for = .{ "secrets", "privacy", "leak" }, .requires_backup = false },
             .diagram = .{ .complexity = "medium", .performance_cost = "medium", .preferred_for = .{ "visualize", "document", "architecture" }, .requires_backup = false },
+            .request_intent_analysis = .{ .complexity = "low", .performance_cost = "low", .preferred_for = .{ "intent", "classify", "route" }, .requires_backup = false },
         },
         .workflow_recommendations = .{
             .development = .{ "javascript", "code_search", "test_writer", "diagram" },
@@ -27,6 +28,7 @@
             .exploration = .{ "glob", "code_search" },
             .security_audit = .{ "command_risk", "secret_protection" },
             .documentation = .{"diagram"},
+            .request_routing = .{"request_intent_analysis"},
         },
     },
 
@@ -196,6 +198,22 @@
                 .includeMetadata = .{ .type = "boolean", .default = true, .description = "Include metadata in output" },
             },
             .required = .{ "type", "content" },
+        },
+    },
+
+    ////////////////////////////////////////////////////////////////////////////
+    // 9. request_intent_analysis – User Request Classification                //
+    ////////////////////////////////////////////////////////////////////////////
+    .request_intent_analysis = .{
+        .description = "Analyze user requests to determine intent and classification. Identifies primary purpose, extracts key entities, suggests tools, and provides confidence scoring for intelligent request routing.",
+        .usage_guidelines = "Use as preprocessing step to understand user requests and route them to appropriate tools. Provides structured analysis for decision making.",
+        .params = .{
+            .type = "object",
+            .properties = .{
+                .user_request = .{ .type = "string", .description = "The user's request to analyze", .minLength = 1 },
+                .context = .{ .type = "string", .description = "Optional context about the current session or workspace" },
+            },
+            .required = .{"user_request"},
         },
     },
 }

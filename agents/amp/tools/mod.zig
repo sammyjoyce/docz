@@ -90,6 +90,15 @@ pub fn registerAll(registry: *toolsMod.Registry) !void {
         "amp",
     );
 
+    // Request Intent Analysis tool - analyzes user requests to classify intent and suggest appropriate tools
+    try toolsMod.registerJsonTool(
+        registry,
+        "request_intent_analysis",
+        "Analyze user requests to determine intent and classification. Identifies primary purpose, extracts key entities, suggests tools, and provides confidence scoring.",
+        @import("request_intent.zig").execute,
+        "amp",
+    );
+
     // Thread management tools temporarily disabled due to json.Value ArrayList compatibility issues
     // Complex JSON manipulation with std.ArrayList(json.Value) requires different patterns in Zig 0.15.1
     // try toolsMod.registerJsonTool(
