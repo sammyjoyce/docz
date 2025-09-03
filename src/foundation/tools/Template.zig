@@ -92,7 +92,10 @@ fn processInternal(
 
         // Escapes
         if (c == '\\' and options.process_escapes) {
-            if (i + 1 >= template.len) { try out.append('\\'); break; }
+            if (i + 1 >= template.len) {
+                try out.append('\\');
+                break;
+            }
             const n = template[i + 1];
             switch (n) {
                 'n' => try out.append('\n'),
@@ -221,4 +224,3 @@ fn appendJsonValue(allocator: std.mem.Allocator, out: *std.ArrayList(u8), v: std
         else => try out.appendSlice("[object]"),
     }
 }
-

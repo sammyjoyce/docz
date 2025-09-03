@@ -136,14 +136,13 @@ pub fn registerAll(registry: *toolsMod.Registry) !void {
     );
 
     // Senior Engineer Analysis tool - detailed problem analysis and solution architecture
-    // TODO: Re-enable when senior_engineer.zig is implemented
-    // try toolsMod.registerJsonTool(
-    //     registry,
-    //     "senior_engineer",
-    //     "Provide detail-oriented senior engineer analysis for complex problems. Generates comprehensive solutions, implementation plans, risk assessment, and effort estimates.",
-    //     @import("senior_engineer.zig").execute,
-    //     "amp",
-    // );
+    try toolsMod.registerJsonTool(
+        registry,
+        "senior_engineer",
+        "Provide detail-oriented senior engineer analysis for complex problems. Generates comprehensive solutions, implementation plans, risk assessment, and effort estimates.",
+        @import("senior_engineer.zig").execute,
+        "amp",
+    );
 
     // Direct LLM Models tool - template processing and model recommendations
     try toolsMod.registerJsonTool(

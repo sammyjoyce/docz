@@ -127,21 +127,21 @@ const SummaryResult = struct {
 /// Generate structured product summary based on the 10-section template
 fn generateProductSummary(allocator: std.mem.Allocator, req: ProductSummaryRequest) !SummaryResult {
     // Build content using string concatenation approach
-    var content_parts = std.ArrayList([]const u8).init(allocator);
+    var content_parts: std.ArrayList([]const u8) = .{};
     defer {
         for (content_parts.items) |part| {
             allocator.free(part);
         }
-        content_parts.deinit();
+        content_parts.deinit(allocator);
     }
 
     // Header
     const header = try std.fmt.allocPrint(allocator, "# Product Summary: {s}\n\n", .{req.product_name});
-    try content_parts.append(header);
+    try content_parts.append(allocator, header);
 
     if (req.context) |context| {
         const context_section = try std.fmt.allocPrint(allocator, "**Analysis Context:** {s}\n\n", .{context});
-        try content_parts.append(context_section);
+        try content_parts.append(allocator, context_section);
     }
 
     // Generate all 10 sections as defined in amp-product-summary.md
@@ -204,23 +204,23 @@ fn generateProductSummary(allocator: std.mem.Allocator, req: ProductSummaryReque
 
     for (sections) |section| {
         const section_header = try std.fmt.allocPrint(allocator, "## {s}\n\n", .{section.title});
-        try content_parts.append(section_header);
+        try content_parts.append(allocator, section_header);
 
         // Extract relevant information for this section
         const section_info = extractSectionInfo(req.product_info, section.keywords);
 
         if (section_info.len > 0) {
             const section_content = try std.fmt.allocPrint(allocator, "{s}\n\n", .{section_info});
-            try content_parts.append(section_content);
+            try content_parts.append(allocator, section_content);
         } else if (req.include_all_sections) {
             const missing_info = try std.fmt.allocPrint(allocator, "*Information about {s} not available in provided context.*\n\n", .{section.description});
-            try content_parts.append(missing_info);
+            try content_parts.append(allocator, missing_info);
         }
     }
 
     // Additional analysis notes
     const footer = try allocator.dupe(u8, "---\n\n**Note:** This summary was generated based on the provided product information. Sections marked with 'not available' indicate where additional information would be needed for a complete product analysis.\n");
-    try content_parts.append(footer);
+    try content_parts.append(allocator, footer);
 
     // Calculate total length and concatenate all parts
     var total_len: usize = 0;

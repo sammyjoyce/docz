@@ -28,23 +28,23 @@ pub fn execute(allocator: std.mem.Allocator, params: std.json.Value) toolsMod.To
     defer if (system) |s| allocator.free(s);
 
     // Build user prompt
-    var prompt = std.ArrayList(u8).init(allocator);
-    defer prompt.deinit();
-    try prompt.appendSlice("# Problem\n");
-    try prompt.appendSlice(req.problem);
-    try prompt.appendSlice("\n\n# Context\n");
-    try prompt.appendSlice(req.context);
+    var prompt: std.ArrayList(u8) = .{};
+    defer prompt.deinit(allocator);
+    try prompt.appendSlice(allocator, "# Problem\n");
+    try prompt.appendSlice(allocator, req.problem);
+    try prompt.appendSlice(allocator, "\n\n# Context\n");
+    try prompt.appendSlice(allocator, req.context);
     if (req.constraints) |c| {
-        try prompt.appendSlice("\n\n# Constraints\n");
-        try prompt.appendSlice(c);
+        try prompt.appendSlice(allocator, "\n\n# Constraints\n");
+        try prompt.appendSlice(allocator, c);
     }
     if (req.requirements) |reqs| {
-        try prompt.appendSlice("\n\n# Requirements\n");
+        try prompt.appendSlice(allocator, "\n\n# Requirements\n");
         for (reqs) |r| {
             try prompt.writer().print("- {s}\n", .{r});
         }
     }
-    const final_prompt = try prompt.toOwnedSlice();
+    const final_prompt = try prompt.toOwnedSlice(allocator);
     defer allocator.free(final_prompt);
 
     const oracle = @import("oracle.zig");
