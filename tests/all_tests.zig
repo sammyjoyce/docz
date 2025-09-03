@@ -62,6 +62,9 @@ comptime {
     _ = @import("markdown_spec.zig");
     _ = @import("markdown_tools.zig");
 
+    // AMP agent tests
+    _ = @import("amp_spec.zig");
+
     // Smoke test (basic sanity check)
     _ = @import("smoke.zig");
 }

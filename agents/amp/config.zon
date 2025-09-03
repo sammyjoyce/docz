@@ -12,10 +12,10 @@
         // Basic information about your agent - customize these fields
 
         .agent_info = .{
-            .name = "Template Agent", // Display name
+            .name = "AMP", // Display name
             .version = "1.0.0", // Semantic version
-            .description = "A template for creating new agents with best practices",
-            .author = "Your Name", // Your name or organization
+            .description = "Powerful AI coding agent built by Sourcegraph for software engineering tasks",
+            .author = "Sourcegraph", // Your name or organization
         },
 
         // ========================================================================
@@ -40,7 +40,7 @@
             .enable_custom_tools = true, // Allow custom tool registration
             .enable_file_operations = true, // Allow file system operations
             .enable_network_access = true, // Allow network requests
-            .enable_system_commands = false, // Allow system command execution
+            .enable_system_commands = true, // Allow system command execution
         },
 
         // ========================================================================

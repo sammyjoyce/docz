@@ -163,7 +163,7 @@ pub fn normalizeURL(allocator: std.mem.Allocator, url: []const u8) LinkError![]u
     const cleanUrl = if (fragmentPos) |pos| url[0..pos] else url;
 
     // Basic path resolution for relative paths
-    var parts = std.mem.split(u8, cleanUrl, "/");
+    var parts = std.mem.splitScalar(u8, cleanUrl, '/');
     var resolvedParts = std.ArrayList([]const u8).init(allocator);
     defer resolvedParts.deinit();
 

@@ -50,3 +50,15 @@ Common targets (examples; use what the item specifies):
 6. Consistency rules:
    - Global agent rules live in `system_prompt.txt`; modules and code should reference it rather than duplicating.
    - Follow project structure and naming conventions; only the selected agent should compile (`-Dagent=amp`).
+
+7. fix_plan.md and AGENT.md maintenance (Ralph rules):
+   - fix_plan.md updates are mandatory every loop. Always end your turn by:
+     - Moving the completed item from Now → Done (or marking complete inline) and promoting the next highest‑priority item into Now.
+     - Recording discoveries, risks, and follow‑ups under clearly labeled sections (e.g., Risks, Notes, Follow‑ups). Keep these concise and actionable.
+     - Cleaning out stale/completed bullets when the file grows large to keep the plan readable and deterministic.
+   - Plan regeneration: If Now/Next are empty or the plan feels off‑track, switch to planning mode (see PLAN.md) to rebuild `fix_plan.md` using search‑first subagents. Do not proceed with implementation in that loop.
+   - AGENT.md learning log (no status dumps): When you learn a better build/test/run incantation, add a brief, factual note to `AGENT.md` (e.g., flags, env vars, one‑line commands). Do not include status reports or streaming logs.
+   - Tests as backpressure: After implementing functionality or fixing a defect, run only the most relevant tests for that unit first. When adding tests, include a short doc comment that explains why the test exists and what failure it guards against.
+   - Subagents policy: Use many subagents for search/analysis/file I/O; use exactly one subagent for build/test to avoid back‑pressure storms. Always search first—never assume code is missing.
+   - Tagging and git hygiene: When the tree builds and tests are green, `git add -A && git commit -m "<concise message>" && git push` (if configured). Create a tag each time the tree is green: start at `0.0.0` if none exist, otherwise bump patch.
+   - No placeholders: Full implementations only; replace stubs and TODOs rather than papering over them. If unrelated tests fail, fix them as part of the increment.

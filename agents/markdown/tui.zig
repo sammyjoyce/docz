@@ -138,9 +138,41 @@ pub const MarkdownTUI = struct {
         try self.terminal.enableMouse();
         defer self.terminal.disableMouse() catch {};
 
-        // Set up proper terminal raw mode
-        try self.setTerminalRawMode();
-        defer self.restoreTerminalMode() catch {};
+        // Use system command to set terminal to raw mode (with proper cleanup)
+        if (@import("builtin").os.tag != .windows) {
+            // Use stty to disable echo and enable raw mode
+            if (std.process.Child.run(.{
+                .allocator = self.allocator,
+                .argv = &[_][]const u8{ "stty", "-echo", "raw" },
+            })) |result| {
+                // Clean up the result
+                self.allocator.free(result.stdout);
+                self.allocator.free(result.stderr);
+            } else |err| {
+                // If stty fails, continue anyway - TUI might still work
+                std.log.debug("Failed to set raw mode: {}", .{err});
+            }
+
+            // Ensure we restore on exit
+            defer {
+                if (std.process.Child.run(.{
+                    .allocator = self.allocator,
+                    .argv = &[_][]const u8{ "stty", "echo", "cooked" },
+                })) |result| {
+                    self.allocator.free(result.stdout);
+                    self.allocator.free(result.stderr);
+                } else |_| {
+                    // Ignore cleanup errors
+                }
+            }
+        }
+
+        // Additional terminal setup
+        const stdout = std.fs.File.stdout();
+        try stdout.writeAll("\x1b[?7l"); // Disable line wrapping
+        try stdout.writeAll("\x1b[?25l"); // Hide cursor initially
+        defer stdout.writeAll("\x1b[?25h") catch {}; // Show cursor on exit
+        defer stdout.writeAll("\x1b[?7h") catch {}; // Re-enable line wrapping
 
         // Set app as running
         self.app.running = true;
@@ -246,46 +278,12 @@ pub const MarkdownTUI = struct {
         try self.renderExitMessage();
     }
 
-    // Terminal raw mode setup
-    var original_termios: ?std.posix.termios = null;
+    // Terminal mode handling using system stty command (simpler approach)
 
-    fn setTerminalRawMode(self: *Self) !void {
+    fn disableRawMode(self: *Self, original: std.posix.termios) !void {
         _ = self;
-        if (@import("builtin").os.tag == .windows) return;
-
-        // Get current terminal settings
-        original_termios = try std.posix.tcgetattr(std.posix.STDIN_FILENO);
-
-        // Create raw mode settings
-        var raw = original_termios.?;
-
-        // Input modes: no break, no CR to NL, no parity check, no strip char, no start/stop output control
-        raw.iflag &= ~(std.posix.IGNBRK | std.posix.BRKINT | std.posix.PARMRK | std.posix.ISTRIP | std.posix.INLCR | std.posix.IGNCR | std.posix.ICRNL | std.posix.IXON);
-
-        // Output modes: disable post processing
-        raw.oflag &= ~(std.posix.OPOST);
-
-        // Control modes: set 8 bit chars
-        raw.cflag |= (std.posix.CS8);
-
-        // Local modes: echo off, canonical off, no extended functions, no signal chars (^Z,^C)
-        raw.lflag &= ~(std.posix.ECHO | std.posix.ECHONL | std.posix.ICANON | std.posix.ISIG | std.posix.IEXTEN);
-
-        // Control chars: set return condition: min number of bytes and timer
-        raw.cc[std.posix.VMIN] = 1; // Return each byte, one by one
-        raw.cc[std.posix.VTIME] = 0; // No timer
-
-        // Put terminal in raw mode
-        try std.posix.tcsetattr(std.posix.STDIN_FILENO, std.posix.TCSA.FLUSH, raw);
-    }
-
-    fn restoreTerminalMode(self: *Self) !void {
-        _ = self;
-        if (@import("builtin").os.tag == .windows) return;
-
-        if (original_termios) |termios| {
-            try std.posix.tcsetattr(std.posix.STDIN_FILENO, std.posix.TCSA.FLUSH, termios);
-        }
+        const stdin_fd = std.posix.STDIN_FILENO;
+        try std.posix.tcsetattr(stdin_fd, .NOW, original);
     }
 
     fn registerKeybindings(_: *Self) !void {
@@ -380,8 +378,6 @@ pub const MarkdownTUI = struct {
 
         // Hide cursor by default - editor will show it if needed
         try term.ansi.hideCursor(stdout);
-
-        try stdout.flush();
     }
 
     fn renderWelcomeScreen(_: *Self) !void {
@@ -502,7 +498,7 @@ pub const MarkdownTUI = struct {
 
         // Render editor content with line numbers
         const content = self.editor.getContent();
-        var lines = std.mem.split(u8, content, "\n");
+        var lines = std.mem.splitScalar(u8, content, '\n');
         var line_num: usize = 1;
         var current_line: usize = 0;
         var cursor_line: usize = 0;
@@ -968,7 +964,7 @@ pub const MarkdownTUI = struct {
 
         try toc.appendSlice("## Table of Contents\n\n");
 
-        var lines = std.mem.split(u8, content, "\n");
+        var lines = std.mem.splitScalar(u8, content, '\n');
         while (lines.next()) |line| {
             const trimmed = std.mem.trim(u8, line, " \t");
             if (trimmed.len > 0 and trimmed[0] == '#') {
@@ -1965,8 +1961,25 @@ pub fn runTui(allocator: Allocator, _: anytype, initial_file: ?[]const u8) !u8 {
     var app = try MarkdownTUI.initMarkdownTUI(allocator);
     defer app.deinit();
     if (initial_file) |file| {
-        try app.loadFile(file);
+        app.loadFile(file) catch {
+            // If file loading fails, continue with empty editor
+            app.editor.setContent("# Failed to load file\n\nThe file could not be loaded. You can start typing here.") catch {};
+        };
     }
+    try app.run();
+    return 0;
+}
+
+// Entry point for TUI with direct content
+pub fn runTuiWithContent(allocator: Allocator, _: anytype, content: []const u8) !u8 {
+    var app = try MarkdownTUI.initMarkdownTUI(allocator);
+    defer app.deinit();
+
+    // Load content directly into editor
+    app.editor.setContent(content) catch {
+        app.editor.setContent("# Error loading content\n\nYou can start typing here.") catch {};
+    };
+
     try app.run();
     return 0;
 }

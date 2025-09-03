@@ -18,8 +18,44 @@ pub fn main() !void {
     defer std.process.argsFree(alloc, argv);
     const args = if (argv.len > 1) argv[1..] else argv[0..0];
 
-    // DEFAULT: no args -> launch the Markdown TUI
-    if (args.len == 0) {
+    // Check for --tui flag first (before other argument processing)
+    const force_tui = for (args) |arg| {
+        if (std.mem.eql(u8, arg, "--tui") or std.mem.eql(u8, arg, "-t")) break true;
+    } else false;
+
+    // DEFAULT: no args OR --tui flag -> check if stdin has data
+    if (args.len == 0 or force_tui) {
+        // Check if stdin is being piped to us
+        const stdin = std.fs.File.stdin();
+        const stat = stdin.stat() catch {
+            // Can't stat stdin, assume interactive - launch TUI
+            const rc = try tui_app.runTui(alloc, .{}, null);
+            if (rc != 0) std.process.exit(@intCast(rc));
+            return;
+        };
+
+        // If stdin is a pipe/file, read from it and process with CLI
+        if (stat.kind != .character_device) {
+            // Read all stdin content
+            const content = stdin.readToEndAlloc(alloc, 1024 * 1024) catch {
+                // Handle read errors by launching TUI instead
+                const rc = try tui_app.runTui(alloc, .{}, null);
+                if (rc != 0) std.process.exit(@intCast(rc));
+                return;
+            };
+            defer alloc.free(content);
+
+            if (content.len > 0) {
+                if (force_tui) {
+                    // --tui flag with piped content: launch TUI with the content pre-loaded
+                    const rc = try tui_app.runTuiWithContent(alloc, .{}, content);
+                    if (rc != 0) std.process.exit(@intCast(rc));
+                    return;
+                }
+            }
+        }
+
+        // No piped content - launch TUI
         const rc = try tui_app.runTui(alloc, .{}, null);
         if (rc != 0) std.process.exit(@intCast(rc));
         return;
@@ -39,26 +75,7 @@ pub fn main() !void {
         return;
     }
 
-    // Fast-path: allow explicit --tui anywhere to launch the TUI immediately
-    for (args) |a| {
-        if (std.mem.eql(u8, a, "--tui") or std.mem.eql(u8, a, "-t")) {
-            // If in edit subcommand, pass file if provided
-            var initial: ?[]const u8 = null;
-            if (args.len >= 2 and std.mem.eql(u8, args[0], "edit")) {
-                // Find first non-flag positional after "edit"
-                var j: usize = 1;
-                while (j < args.len) : (j += 1) {
-                    if (args[j].len > 0 and args[j][0] != '-') {
-                        initial = args[j];
-                        break;
-                    }
-                }
-            }
-            const rc = try tui_app.runTui(alloc, .{}, initial);
-            if (rc != 0) std.process.exit(@intCast(rc));
-            return;
-        }
-    }
+    // Skip --tui handling here since we handle it at the top
     const markdown_commands = [_][]const u8{
         "edit",   "preview", "validate", "convert", "serve", "stats",
         "format", "toc",     "link",     "help",    "chat",

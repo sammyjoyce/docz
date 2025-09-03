@@ -23,4 +23,41 @@ pub const MarkdownCLI = struct {
         }
         return 0;
     }
+
+    pub fn processStdin(self: *Self, content: []const u8) !u8 {
+        _ = self;
+        const out = std.fs.File.stdout().deprecatedWriter();
+
+        // Simple processing: echo the content with markdown analysis
+        try out.writeAll("📝 Markdown Content Received:\n\n");
+        try out.writeAll(content);
+        try out.writeAll("\n\n");
+
+        // Basic analysis
+        const lines = std.mem.count(u8, content, "\n") + 1;
+        const words = std.mem.count(u8, content, " ") + 1;
+        const chars = content.len;
+
+        try out.writeAll("📊 Statistics:\n");
+        try out.print("  - Lines: {d}\n", .{lines});
+        try out.print("  - Words: {d}\n", .{words});
+        try out.print("  - Characters: {d}\n", .{chars});
+
+        // Check for markdown elements
+        if (std.mem.indexOf(u8, content, "# ") != null) {
+            try out.writeAll("  - Contains headers ✓\n");
+        }
+        if (std.mem.indexOf(u8, content, "**") != null or std.mem.indexOf(u8, content, "__") != null) {
+            try out.writeAll("  - Contains bold text ✓\n");
+        }
+        if (std.mem.indexOf(u8, content, "*") != null or std.mem.indexOf(u8, content, "_") != null) {
+            try out.writeAll("  - Contains italic text ✓\n");
+        }
+        if (std.mem.indexOf(u8, content, "[") != null and std.mem.indexOf(u8, content, "]") != null) {
+            try out.writeAll("  - Contains links ✓\n");
+        }
+
+        try out.writeAll("\n💡 Use 'markdown --tui' for interactive editing.\n");
+        return 0;
+    }
 };

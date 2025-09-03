@@ -1,24 +1,15 @@
-//! Template agent entry point using the simplified agent_main.runAgent() pattern.
-//!
-//! This demonstrates the recommended approach for new agents:
-//! - Uses agent_main.runAgent() for standardized CLI handling
-//! - Eliminates boilerplate CLI parsing code
-//! - Provides consistent behavior across all agents
-//! - Automatically handles built-in commands (help, version, auth, etc.)
+//! AMP agent entry point using the shared foundation runner.
+//! Aligns with repository standard: delegate to `foundation.agent_main.runAgent(core_engine, …)`.
 
 const std = @import("std");
-const agentMain = @import("foundation").agent_main;
+const engine = @import("core_engine");
 const spec = @import("spec.zig");
 
 pub fn main() !void {
-    // Create a general-purpose allocator for the agent
-    // In production, you might want to use a more sophisticated allocator
-    var gpaState = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpaState.deinit();
-    const allocator = gpaState.allocator();
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const alloc = gpa.allocator();
 
-    // Use the simplified agentMain.runAgent() function
-    // This handles all CLI parsing, built-in commands, and engine delegation
-    // The agent specification (spec.SPEC) defines how this agent works
-    return agentMain.runAgent(allocator, spec.SPEC);
+    // Delegate CLI handling and engine orchestration to the shared entry.
+    return @import("foundation").agent_main.runAgent(engine, alloc, spec.SPEC);
 }
