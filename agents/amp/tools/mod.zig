@@ -46,15 +46,13 @@ pub fn registerAll(registry: *toolsMod.Registry) !void {
     );
 
     // Test Writer tool - automated test generation for code analysis
-    // Temporarily disabled due to foundation API compatibility issues
-    // TODO: Re-enable when foundation writer API is fixed
-    // try toolsMod.registerJsonTool(
-    //     registry,
-    //     "test_writer",
-    //     "Analyze code for bugs, performance, and security issues, then generate comprehensive test suites covering existing issues and regression prevention.",
-    //     @import("test_writer.zig").execute,
-    //     "amp",
-    // );
+    try toolsMod.registerJsonTool(
+        registry,
+        "test_writer",
+        "Analyze code for bugs, performance, and security issues, then generate comprehensive test suites covering existing issues and regression prevention.",
+        @import("test_writer.zig").execute,
+        "amp",
+    );
 
     // Command Risk Assessment tool - analyzes commands for security risks
     try toolsMod.registerJsonTool(
@@ -110,15 +108,14 @@ pub fn registerAll(registry: *toolsMod.Registry) !void {
         "amp",
     );
 
-    // Thread Summarization tool - temporarily disabled due to Oracle dependency
-    // TODO: Re-enable when Oracle tool is fixed or provide non-Oracle fallback
-    // try toolsMod.registerJsonTool(
-    //     registry,
-    //     "thread_summarization",
-    //     "Generate detailed conversation summaries with technical context for handoff to another person. Extracts key files, functions, commands, and next steps.",
-    //     @import("thread_summarization.zig").execute,
-    //     "amp",
-    // );
+    // Thread Summarization tool - generate detailed conversation summaries
+    try toolsMod.registerJsonTool(
+        registry,
+        "thread_summarization",
+        "Generate detailed conversation summaries with technical context for handoff to another person. Extracts key files, functions, commands, and next steps.",
+        @import("thread_summarization.zig").execute,
+        "amp",
+    );
 
     // Task tool - subagent spawning for parallel work delegation
     try toolsMod.registerJsonTool(
@@ -158,15 +155,13 @@ pub fn registerAll(registry: *toolsMod.Registry) !void {
     );
 
     // Agent Creation tool - generates comprehensive agent documentation from codebase analysis
-    // Temporarily disabled due to Oracle dependency
-    // TODO: Re-enable when Oracle tool is fixed or provide non-Oracle fallback
-    // try toolsMod.registerJsonTool(
-    //     registry,
-    //     "agent_creation",
-    //     "Analyze codebase to generate comprehensive agent documentation including build commands, architecture overview, and coding style guidelines.",
-    //     @import("agent_creation.zig").execute,
-    //     "amp",
-    // );
+    try toolsMod.registerJsonTool(
+        registry,
+        "agent_creation",
+        "Analyze codebase to generate comprehensive agent documentation including build commands, architecture overview, and coding style guidelines.",
+        @import("agent_creation.zig").execute,
+        "amp",
+    );
 
     // Template Processing tool - ${variable} interpolation with escape sequences and whitespace handling
     try toolsMod.registerJsonTool(
@@ -178,14 +173,12 @@ pub fn registerAll(registry: *toolsMod.Registry) !void {
     );
 
     // Oracle / LLM analyzer - central entry to powerful model for prompt-driven analysis
-    // Temporarily disabled due to foundation API compatibility issues
-    // TODO: Re-enable when foundation network API is fixed
-    // Commented out entirely to avoid import issues during compilation
-    // try toolsMod.registerJsonTool(
-    //     registry,
-    //     "oracle",
-    //     "Central LLM analyzer: send a formatted prompt (and optional system prompt) and get the model's response.",
-    //     oracleExecuteStub, // @import("oracle.zig").execute,
-    //     "amp",
-    // );
+    // Oracle tool: central LLM analyzer with foundation network API
+    try toolsMod.registerJsonTool(
+        registry,
+        "oracle",
+        "Central LLM analyzer: send a formatted prompt (and optional system prompt) and get the model's response.",
+        @import("oracle.zig").execute,
+        "amp",
+    );
 }

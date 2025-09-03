@@ -61,17 +61,12 @@ pub fn analyzePrompt(
 
     // Discover auth (API key or OAuth file)
     var auth_client = try network.Auth.Core.createClient(allocator);
-    defer auth_client.deinit(allocator);
+    defer auth_client.deinit();
 
-    // Create Anthropic client
+    // Create Anthropic client with proper credentials
     var client = switch (auth_client.credentials) {
-        .api_key => |key| try network.Anthropic.Client.init(allocator, key),
-        .oauth => |creds| try network.Anthropic.Client.initWithOAuth(allocator, .{
-            .type = creds.type,
-            .accessToken = creds.accessToken,
-            .refreshToken = creds.refreshToken,
-            .expiresAt = creds.expiresAt,
-        }, "claude_oauth_creds.json"),
+        .api_key => |key| try network.Anthropic.Client.Client.init(allocator, key),
+        .oauth => |creds| try network.Anthropic.Client.Client.initWithOAuth(allocator, creds, null),
         .none => return error.MissingAPIKey,
     };
     defer client.deinit();
@@ -95,8 +90,8 @@ pub fn analyzePrompt(
         .content = try allocator.dupe(u8, result.content),
         .model = try allocator.dupe(u8, result.model),
         .stop_reason = try allocator.dupe(u8, result.stopReason),
-        .usage_input_tokens = result.usage.input_tokens,
-        .usage_output_tokens = result.usage.output_tokens,
+        .usage_input_tokens = result.usage.inputTokens,
+        .usage_output_tokens = result.usage.outputTokens,
         .error_message = null,
     };
 }

@@ -8,7 +8,6 @@
 const std = @import("std");
 const foundation = @import("foundation");
 const toolsMod = foundation.tools;
-const performance = @import("performance.zig");
 
 const Allocator = std.mem.Allocator;
 
@@ -25,36 +24,7 @@ const Match = struct {
 
 /// Public JSON tool entrypoint
 pub fn run(allocator: Allocator, params: std.json.Value) toolsMod.ToolError!std.json.Value {
-    // Initialize performance tracking
-    var perf = performance.ToolPerformance.init(allocator, "glob") catch {
-        return runWithoutPerformanceTracking(allocator, params);
-    };
-
-    // Record input size
-    // Record approximate input size (simplified for now)
-    perf.recordInputSize(256);
-
-    perf.startExecution();
-    defer {
-        perf.endExecution();
-
-        if (performance.getGlobalRegistry()) |registry| {
-            registry.recordToolExecution(&perf) catch {};
-        }
-
-        if (perf.generateReport()) |report| {
-            allocator.free(report);
-        } else |_| {}
-    }
-
-    const result = runWithoutPerformanceTracking(allocator, params);
-
-    if (result) |_| {
-        // Record approximate output size (simplified for now)
-        perf.recordOutputSize(1024);
-    } else |_| {}
-
-    return result;
+    return runWithoutPerformanceTracking(allocator, params);
 }
 
 fn runWithoutPerformanceTracking(allocator: Allocator, params: std.json.Value) toolsMod.ToolError!std.json.Value {

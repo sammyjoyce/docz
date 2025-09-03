@@ -10,7 +10,9 @@
 
 const std = @import("std");
 const Allocator = std.mem.Allocator;
-const config = @import("foundation").config;
+const foundation = @import("foundation");
+const config = foundation.config;
+const tools = foundation.tools;
 
 /// ============================================================================
 /// CONFIGURATION STRUCTURE
@@ -240,57 +242,30 @@ pub const Amp = struct {
         const template = try file.readToEndAlloc(self.allocator, std.math.maxInt(usize));
         defer self.allocator.free(template);
 
-        // Process template variables and return the result
-        return try self.processAmpVariables(template);
+        // Process template using shared Template engine (supports {var} and ${var})
+        const opts = tools.Template.ProcessOptions{
+            .allow_single_curly = true,
+            .allow_dollar_curly = true,
+        };
+        const resolver = tools.Template.VarResolver{ .ctx = self, .get = Amp.resolveVarCallback };
+        const tr = try tools.Template.processWithResolver(self.allocator, template, resolver, opts);
+        // Take ownership of the result string; manually free metadata
+        const out = tr.result;
+        // free variable name arrays
+        for (tr.variables_used) |v| self.allocator.free(v);
+        for (tr.variables_missing) |v| self.allocator.free(v);
+        self.allocator.free(tr.variables_used);
+        self.allocator.free(tr.variables_missing);
+        return out;
     }
 
-    /// Process template variables in the system prompt.
-    /// This method replaces {variable_name} placeholders with actual values.
-    ///
-    /// Parameters:
-    ///   template: Raw template string with {variable} placeholders
-    ///
-    /// Returns: Processed string with variables replaced
-    /// Errors: Memory allocation errors or unknown variable names
-    fn processAmpVariables(self: *Amp, template: []const u8) ![]const u8 {
-        // Allocate result buffer with some extra capacity for replacements
-        var result = try std.ArrayList(u8).initCapacity(self.allocator, template.len + 1024);
-        defer result.deinit();
-
-        var i: usize = 0;
-        while (i < template.len) {
-            // Look for the next variable placeholder
-            if (std.mem.indexOf(u8, template[i..], "{")) |start| {
-                // Copy everything before the variable
-                try result.appendSlice(template[i .. i + start]);
-                i += start;
-
-                // Find the closing brace
-                if (std.mem.indexOf(u8, template[i..], "}")) |end| {
-                    // Extract variable name
-                    const varName = template[i + 1 .. i + end];
-
-                    // Get the replacement value
-                    const replacement = try self.templateVariableValue(varName);
-                    defer self.allocator.free(replacement);
-
-                    // Append the replacement
-                    try result.appendSlice(replacement);
-                    i += end + 1;
-                } else {
-                    // No closing brace found, copy the { as-is
-                    try result.append(template[i]);
-                    i += 1;
-                }
-            } else {
-                // No more variables, copy the rest
-                try result.appendSlice(template[i..]);
-                break;
-            }
-        }
-
-        // Return the processed template as an owned string
-        return try result.toOwnedSlice();
+    /// Template resolver callback used by the shared Template engine
+    fn resolveVarCallback(ctx: ?*anyopaque, name: []const u8, allocator: std.mem.Allocator) ?[]u8 {
+        const self: *Amp = @ptrCast(@alignCast(ctx.?));
+        const s = self.templateVariableValue(name) catch return null;
+        // Engine takes ownership and frees with the provided allocator
+        _ = allocator; // same as self.allocator
+        return @constCast(s);
     }
 
     /// Get the value for a template variable.

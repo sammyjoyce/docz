@@ -43,9 +43,9 @@ pub fn execute(allocator: std.mem.Allocator, input_json: std.json.Value) toolsMo
     defer prompt.deinit(allocator);
     try prompt.appendSlice(allocator, spec);
     try prompt.appendSlice(allocator, "\n\n# Inputs\n");
-    if (req.language) |lang| try prompt.writer().print("Language: {s}\n", .{lang});
-    if (req.test_framework) |fw| try prompt.writer().print("Test framework: {s}\n", .{fw});
-    if (req.file_path) |p| try prompt.writer().print("File: {s}\n", .{p});
+    if (req.language) |lang| try prompt.writer(allocator).print("Language: {s}\n", .{lang});
+    if (req.test_framework) |fw| try prompt.writer(allocator).print("Test framework: {s}\n", .{fw});
+    if (req.file_path) |p| try prompt.writer(allocator).print("File: {s}\n", .{p});
     if (req.context) |c| {
         try prompt.appendSlice(allocator, "Context:\n");
         try prompt.appendSlice(allocator, c);
