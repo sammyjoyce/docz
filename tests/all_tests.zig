@@ -65,6 +65,7 @@ comptime {
     // AMP agent tests
     _ = @import("amp_spec.zig");
     _ = @import("amp_glob_tool.zig");
+    _ = @import("amp_integration.zig");
 
     // Smoke test (basic sanity check)
     _ = @import("smoke.zig");

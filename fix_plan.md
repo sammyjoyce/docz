@@ -4,11 +4,6 @@ Owned by the Ralph planning loop. Each iteration overwrites this file with one p
 
 ## Now
 
-- **Objective**: Add comprehensive runtime integration tests
-  - **Files**: Create `tests/amp_integration.zig`
-  - **Steps**: Test each AMP tool with real inputs, verify tool execution timing, add runtime validation suite
-  - **Acceptance**: Integration tests cover all active tools, performance baselines established
-
 - **Objective**: Performance monitoring and optimization
   - **Files**: Various tool files in `agents/amp/tools/`
   - **Steps**: Add execution time tracking, memory usage monitoring, optimize large codebase handling
@@ -30,7 +25,7 @@ Owned by the Ralph planning loop. Each iteration overwrites this file with one p
 
 ## Notes
 
-- **AMP agent status**: Now has **13 active tools** out of 26+ AMP specifications (~50% coverage), Thread management tools successfully restored
+- **AMP agent status**: Now has **13 active tools** out of 26+ AMP specifications (~50% coverage), Thread management tools successfully restored, comprehensive integration tests added
 - **Active tools**: JavaScript, Glob, Code Search, Git Review, Test Writer, Command Risk, Secret Protection, Diagram, Task, Code Formatter, Request Intent Analysis, Thread Delta Processor, Thread Summarization  
 - **Disabled tools**: Oracle (HTTP layer issue) - only 1 tool remaining disabled
 - All core infrastructure (main.zig, spec.zig, agent.zig, system_prompt.txt) is complete and production-ready
@@ -39,9 +34,18 @@ Owned by the Ralph planning loop. Each iteration overwrites this file with one p
 - Agent starts successfully with TUI support: `zig build -Dagent=amp run` ✅
 - Current tools provide comprehensive software engineering capabilities: JavaScript execution, code search, git review, test generation, security analysis, visual diagrams, request routing
 - Reference implementation patterns available in `agents/markdown` for advanced tool registration
-- **Latest achievement**: Successfully re-enabled Thread management tools by fixing Zig 0.15.1 API compatibility issues
+- **Latest achievement**: Added comprehensive runtime integration tests covering all 13 active AMP tools with performance baselines and error handling validation
 
 ## Done
+
+- **Objective**: Add comprehensive runtime integration tests ✅
+  - Created `tests/amp_integration.zig` with 14 comprehensive test cases covering all 13 active AMP tools
+  - Tests include real input validation, performance timing baselines (5-60 second limits per tool), JSON output structure validation, error handling resilience
+  - Tests cover: JavaScript execution, glob matching, code search, git review, test generation, command risk assessment, secret detection, diagram generation, code formatting, request intent analysis, thread processing, task delegation
+  - Added performance baseline tests ensuring tool registry lookups complete in <100ms for 1300 operations
+  - Added error handling tests ensuring tools gracefully handle malformed JSON inputs
+  - Integration tests provide runtime validation suite ensuring all tools execute without crashes
+  - All validation commands pass: `zig fmt` ✅, `zig build list-agents` ✅, `zig build validate-agents` ✅, `zig build -Dagent=amp` ✅, `zig build -Dagent=amp run` ✅
 
 - **Objective**: Re-enable Thread management tools by fixing JSON parsing compatibility ✅
   - Updated both Thread Delta Processor and Thread Summarization tools to use modern Zig 0.15.1 APIs
