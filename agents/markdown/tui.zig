@@ -138,37 +138,154 @@ pub const MarkdownTUI = struct {
         try self.terminal.enableMouse();
         defer self.terminal.disableMouse() catch {};
 
-        // Register keybindings
-        try self.registerKeybindings();
+        // Set up proper terminal raw mode
+        try self.setTerminalRawMode();
+        defer self.restoreTerminalMode() catch {};
 
         // Set app as running
         self.app.running = true;
 
-        // Main event loop
+        // Main event loop with real input
         var current_screen: ScreenType = .welcome;
-        var frame_count: u32 = 0;
         var help_visible = false;
 
+        // Initial render
+        try self.renderScreen(current_screen, help_visible);
+
         while (self.app.running) {
-            // Handle input (simulated for now - in real implementation would read from terminal)
-            if (frame_count == 180) { // After 3 seconds, show help
-                help_visible = true;
-            } else if (frame_count == 600) { // After 10 seconds, switch to editor
-                current_screen = .editor;
-                help_visible = false;
-            } else if (frame_count > 1200) { // Auto-exit after 20 seconds
-                self.app.running = false;
+            // Read input - blocks until input is available
+            const stdin = std.fs.File.stdin();
+            var buffer: [1]u8 = undefined;
+            const byte_read = stdin.read(buffer[0..]) catch |err| {
+                // Handle read errors
+                return err;
+            };
+            if (byte_read == 0) break; // End of input
+            const byte = buffer[0];
+
+            // Process the input byte
+            switch (byte) {
+                3 => { // Ctrl+C
+                    self.app.running = false;
+                    break;
+                },
+                27 => { // Escape key
+                    if (current_screen == .editor and help_visible) {
+                        help_visible = false;
+                    } else if (current_screen == .editor) {
+                        current_screen = .welcome;
+                    }
+                },
+                13, 10 => { // Enter/Return key
+                    if (current_screen == .welcome) {
+                        current_screen = .editor;
+                        help_visible = false;
+                    } else if (current_screen == .editor and !help_visible) {
+                        try self.editor.insertChar('\n');
+                        try self.updatePreview();
+                    }
+                },
+                '/' => {
+                    if (current_screen == .welcome) {
+                        current_screen = .editor;
+                        help_visible = false;
+                        try self.editor.insertChar('/');
+                        try self.updatePreview();
+                    } else if (current_screen == .editor and !help_visible) {
+                        try self.editor.insertChar('/');
+                        try self.updatePreview();
+                    }
+                },
+                '@' => {
+                    if (current_screen == .welcome) {
+                        current_screen = .editor;
+                        help_visible = false;
+                        try self.editor.insertChar('@');
+                        try self.updatePreview();
+                    } else if (current_screen == .editor and !help_visible) {
+                        try self.editor.insertChar('@');
+                        try self.updatePreview();
+                    }
+                },
+                'h', '?' => {
+                    if (current_screen == .welcome or current_screen == .editor) {
+                        help_visible = !help_visible;
+                    }
+                },
+                'q' => {
+                    if (current_screen == .welcome) {
+                        self.app.running = false;
+                        break;
+                    } else if (current_screen == .editor and !help_visible) {
+                        try self.editor.insertChar('q');
+                        try self.updatePreview();
+                    }
+                },
+                127, 8 => { // Backspace/Delete
+                    if (current_screen == .editor and !help_visible) {
+                        self.editor.deleteChar();
+                        try self.updatePreview();
+                    }
+                },
+                else => {
+                    // For editor mode, pass printable characters to editor
+                    if (current_screen == .editor and !help_visible) {
+                        if (byte >= 32 and byte < 127) { // printable ASCII
+                            try self.editor.insertChar(byte);
+                            try self.updatePreview();
+                        }
+                    }
+                },
             }
 
-            // Render current screen
+            // Re-render after handling input
             try self.renderScreen(current_screen, help_visible);
-
-            frame_count += 1;
-            std.Thread.sleep(16_666_667); // ~60 FPS
         }
 
         // Show exit message
         try self.renderExitMessage();
+    }
+
+    // Terminal raw mode setup
+    var original_termios: ?std.posix.termios = null;
+
+    fn setTerminalRawMode(self: *Self) !void {
+        _ = self;
+        if (@import("builtin").os.tag == .windows) return;
+
+        // Get current terminal settings
+        original_termios = try std.posix.tcgetattr(std.posix.STDIN_FILENO);
+
+        // Create raw mode settings
+        var raw = original_termios.?;
+
+        // Input modes: no break, no CR to NL, no parity check, no strip char, no start/stop output control
+        raw.iflag &= ~(std.posix.IGNBRK | std.posix.BRKINT | std.posix.PARMRK | std.posix.ISTRIP | std.posix.INLCR | std.posix.IGNCR | std.posix.ICRNL | std.posix.IXON);
+
+        // Output modes: disable post processing
+        raw.oflag &= ~(std.posix.OPOST);
+
+        // Control modes: set 8 bit chars
+        raw.cflag |= (std.posix.CS8);
+
+        // Local modes: echo off, canonical off, no extended functions, no signal chars (^Z,^C)
+        raw.lflag &= ~(std.posix.ECHO | std.posix.ECHONL | std.posix.ICANON | std.posix.ISIG | std.posix.IEXTEN);
+
+        // Control chars: set return condition: min number of bytes and timer
+        raw.cc[std.posix.VMIN] = 1; // Return each byte, one by one
+        raw.cc[std.posix.VTIME] = 0; // No timer
+
+        // Put terminal in raw mode
+        try std.posix.tcsetattr(std.posix.STDIN_FILENO, std.posix.TCSA.FLUSH, raw);
+    }
+
+    fn restoreTerminalMode(self: *Self) !void {
+        _ = self;
+        if (@import("builtin").os.tag == .windows) return;
+
+        if (original_termios) |termios| {
+            try std.posix.tcsetattr(std.posix.STDIN_FILENO, std.posix.TCSA.FLUSH, termios);
+        }
     }
 
     fn registerKeybindings(_: *Self) !void {
@@ -250,13 +367,10 @@ pub const MarkdownTUI = struct {
     }
 
     fn renderScreen(self: *Self, screen_type: ScreenType, help_visible: bool) !void {
-        // Clear terminal and move cursor
-        try self.terminal.clear();
-        const stdout = std.fs.File.stdout();
-        var buf: [64]u8 = undefined;
-        var writer = stdout.writer(&buf);
-        try term.ansi.clearScreen(&writer.interface);
-        try term.ansi.moveCursor(&writer.interface, 0, 0);
+        // Clear terminal and move cursor to home
+        const stdout = std.fs.File.stdout().deprecatedWriter();
+        try term.ansi.clearScreen(stdout);
+        try term.ansi.moveCursor(stdout, 0, 0);
 
         switch (screen_type) {
             .welcome => try self.renderWelcomeScreen(),
@@ -264,7 +378,10 @@ pub const MarkdownTUI = struct {
             .help => try self.renderHelpScreen(),
         }
 
-        try self.terminal.flush();
+        // Hide cursor by default - editor will show it if needed
+        try term.ansi.hideCursor(stdout);
+
+        try stdout.flush();
     }
 
     fn renderWelcomeScreen(_: *Self) !void {
@@ -373,44 +490,112 @@ pub const MarkdownTUI = struct {
         try term.ansi.reset(&writer.interface);
     }
 
-    fn renderEditorInterface(_: *Self) !void {
-        const stdout = std.fs.File.stdout();
-        var buf: [1024]u8 = undefined;
-        var writer = stdout.writer(&buf);
+    fn renderEditorInterface(self: *Self) !void {
+        const stdout = std.fs.File.stdout().deprecatedWriter();
 
         // Main editor layout
-        try term.ansi.setForeground(&writer.interface, .bright_white);
-        try term.ansi.setBackground(&writer.interface, .black);
+        try term.ansi.setForeground(stdout, .bright_white);
+        try term.ansi.setBackground(stdout, .black);
 
         // Top title bar
-        try writer.interface.writeAll("╭─ Markdown Editor ─────────────────────────────────╮╭─ Preview ─────────────────╮\n");
-        try writer.interface.writeAll("│                                                   ││                           │\n");
-        try writer.interface.writeAll("│  # Welcome to Markdown Agent                     ││                           │\n");
-        try writer.interface.writeAll("│                                                   ││                           │\n");
-        try writer.interface.writeAll("│  Start typing your markdown here...              ││                           │\n");
-        try writer.interface.writeAll("│                                                   ││                           │\n");
-        try writer.interface.writeAll("│                                                   ││                           │\n");
-        try writer.interface.writeAll("│                                                   ││                           │\n");
-        try writer.interface.writeAll("│                                                   ││                           │\n");
-        try writer.interface.writeAll("│                                                   ││                           │\n");
-        try writer.interface.writeAll("│                                                   ││                           │\n");
-        try writer.interface.writeAll("│                                                   ││                           │\n");
-        try writer.interface.writeAll("│                                                   ││                           │\n");
-        try writer.interface.writeAll("│                                                   ││                           │\n");
-        try writer.interface.writeAll("│                                                   ││                           │\n");
-        try writer.interface.writeAll("│                                                   ││                           │\n");
-        try writer.interface.writeAll("│                                                   ││                           │\n");
-        try writer.interface.writeAll("│                                                   ││                           │\n");
-        try writer.interface.writeAll("│                                                   ││                           │\n");
-        try writer.interface.writeAll("│                                                   ││                           │\n");
-        try writer.interface.writeAll("╰───────────────────────────────────────────────────╯╰───────────────────────────╯\n");
+        try stdout.writeAll("╭─ Markdown Editor ─────────────────────────────────╮╭─ Preview ─────────────────╮\n");
+
+        // Render editor content with line numbers
+        const content = self.editor.getContent();
+        var lines = std.mem.split(u8, content, "\n");
+        var line_num: usize = 1;
+        var current_line: usize = 0;
+        var cursor_line: usize = 0;
+        var cursor_col: usize = 0;
+
+        // Calculate cursor position in content
+        var pos: usize = 0;
+        for (content) |c| {
+            if (pos == self.editor.cursor_pos) {
+                cursor_line = current_line;
+                cursor_col = pos - self.getLineStartPos(content, current_line);
+                break;
+            }
+            if (c == '\n') {
+                current_line += 1;
+            }
+            pos += 1;
+        }
+        if (pos == self.editor.cursor_pos) {
+            cursor_line = current_line;
+            cursor_col = pos - self.getLineStartPos(content, current_line);
+        }
+
+        // Render up to 18 lines of content
+        var y: u8 = 2;
+        while (y <= 19) : (y += 1) {
+            const line = lines.next() orelse "";
+
+            // Line number
+            var line_num_buf: [16]u8 = undefined;
+            const line_num_str = std.fmt.bufPrint(&line_num_buf, "{d:4} ", .{line_num}) catch "   ? ";
+            try stdout.writeAll("│");
+            try stdout.writeAll(line_num_str);
+
+            // Line content (truncate if too long)
+            const max_content_len = 45;
+            const display_line = if (line.len > max_content_len) line[0..max_content_len] else line;
+            try stdout.writeAll(display_line);
+
+            // Pad with spaces to fill editor width
+            var spaces_needed = max_content_len - display_line.len;
+            while (spaces_needed > 0) : (spaces_needed -= 1) {
+                try stdout.writeAll(" ");
+            }
+
+            try stdout.writeAll("││                           │\n");
+            line_num += 1;
+        }
+
+        // Fill remaining editor lines
+        while (y <= 19) : (y += 1) {
+            try stdout.writeAll("│     ");
+            var i: usize = 0;
+            while (i < 45) : (i += 1) {
+                try stdout.writeAll(" ");
+            }
+            try stdout.writeAll("││                           │\n");
+        }
+
+        try stdout.writeAll("╰───────────────────────────────────────────────────╯╰───────────────────────────╯\n");
 
         // Status bar
-        try term.ansi.setForeground(&writer.interface, .black);
-        try term.ansi.setBackground(&writer.interface, .bright_blue);
-        try writer.interface.writeAll(" Untitled.md                                                    EDIT    Ln 1, Col 1 ");
-        try term.ansi.reset(&writer.interface);
-        try writer.interface.writeAll("\n");
+        try term.ansi.setForeground(stdout, .black);
+        try term.ansi.setBackground(stdout, .bright_blue);
+        try stdout.print(" Untitled.md                                                    EDIT    Ln {d}, Col {d} ", .{ cursor_line + 1, cursor_col + 1 });
+        try term.ansi.reset(stdout);
+        try stdout.writeAll("\n");
+
+        // Position cursor in editor area (row 2 + cursor_line, col 6 + cursor_col)
+        const cursor_y = @min(2 + cursor_line, 19);
+        const cursor_x = @min(6 + cursor_col, 50);
+        try term.ansi.moveCursor(stdout, cursor_x, cursor_y);
+        try term.ansi.showCursor(stdout);
+    }
+
+    // Helper function to get line start position
+    fn getLineStartPos(self: *Self, content: []const u8, target_line: usize) usize {
+        _ = self;
+        var line: usize = 0;
+        var pos: usize = 0;
+
+        if (target_line == 0) return 0;
+
+        for (content) |c| {
+            if (c == '\n') {
+                line += 1;
+                if (line == target_line) {
+                    return pos + 1;
+                }
+            }
+            pos += 1;
+        }
+        return pos;
     }
 
     fn renderHelpScreen(self: *Self) !void {

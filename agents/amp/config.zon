@@ -1,0 +1,116 @@
+.{
+    // ============================================================================
+    // STANDARD AGENT CONFIGURATION
+    // ============================================================================
+    // This section contains the standard configuration that all agents share.
+    // These settings are used by the core engine and shared infrastructure.
+
+    .agent_config = .{
+        // ========================================================================
+        // AGENT INFORMATION
+        // ========================================================================
+        // Basic information about your agent - customize these fields
+
+        .agent_info = .{
+            .name = "Template Agent", // Display name
+            .version = "1.0.0", // Semantic version
+            .description = "A template for creating new agents with best practices",
+            .author = "Your Name", // Your name or organization
+        },
+
+        // ========================================================================
+        // DEFAULT BEHAVIOR SETTINGS
+        // ========================================================================
+        // These control the default behavior of the agent
+
+        .defaults = .{
+            .max_concurrent_operations = 10, // Max parallel operations
+            .default_timeout_ms = 30000, // Default operation timeout (30s)
+            .enable_debug_logging = false, // Enable detailed debug logs
+            .enable_verbose_output = false, // Enable verbose console output
+        },
+
+        // ========================================================================
+        // FEATURE FLAGS
+        // ========================================================================
+        // Enable or disable specific agent capabilities
+        // These affect which shared modules are included at compile time
+
+        .features = .{
+            .enable_custom_tools = true, // Allow custom tool registration
+            .enable_file_operations = true, // Allow file system operations
+            .enable_network_access = true, // Allow network requests
+            .enable_system_commands = false, // Allow system command execution
+        },
+
+        // ========================================================================
+        // RESOURCE LIMITS
+        // ========================================================================
+        // Safety limits to prevent resource exhaustion
+
+        .limits = .{
+            .max_input_size = 1048576, // Max input size (1MB)
+            .max_output_size = 1048576, // Max output size (1MB)
+            .max_processing_time_ms = 60000, // Max processing time (60s)
+        },
+
+        // ========================================================================
+        // AI MODEL SETTINGS
+        // ========================================================================
+        // Configuration for the underlying AI model
+
+        .model = .{
+            .default_model = "claude-3-sonnet-20240229", // Default model to use
+            .max_tokens = 4096, // Max tokens in response
+            .temperature = 0.7, // Response creativity (0.0-1.0)
+            .stream_responses = true, // Stream responses in real-time
+        },
+    },
+
+    // ============================================================================
+    // AGENT-SPECIFIC CONFIGURATION
+    // ============================================================================
+    // Add your custom configuration fields here.
+    // These are specific to your agent and extend the standard config.
+
+    // Whether to enable the custom demonstration feature
+    .custom_feature_enabled = false,
+
+    // Maximum number of custom operations to perform
+    .max_custom_operations = 50,
+
+    // Custom processing timeout in seconds
+    .custom_timeout_seconds = 30,
+
+    // Example of a custom message that can be templated
+    .custom_message = "Hello from template agent!",
+
+    // ============================================================================
+    // CONFIGURATION DOCUMENTATION
+    // ============================================================================
+    //
+    // CONFIGURATION LOADING:
+    // - Configuration is loaded at startup using ConfigHelpers
+    // - Missing fields fall back to the defaults shown above
+    // - Configuration is validated before the agent starts
+    //
+    // TEMPLATE VARIABLES:
+    // - Use {variable_name} in system_prompt.txt to substitute values
+    // - All fields above are available as template variables
+    // - Add custom variables in agent.zig getTemplateVariableValue()
+    //
+    // CONFIGURATION FILE LOCATION:
+    // - Default: agents/_template/config.zon (this file)
+    // - Can be overridden with --config command line option
+    //
+    // HOT RELOADING:
+    // - Configuration changes require agent restart
+    // - Use ConfigHelpers for runtime config validation
+    //
+    // BEST PRACTICES:
+    // - Keep agent_config first for consistency
+    // - Add comments explaining each custom field
+    // - Use descriptive names for boolean flags
+    // - Group related settings together
+    // - Validate all values in Config.validate()
+}
