@@ -6,6 +6,7 @@
 const std = @import("std");
 const foundation = @import("foundation");
 const toolsMod = foundation.tools;
+const performance = @import("performance.zig");
 
 /// Input parameters for git review
 const GitReviewInput = struct {
@@ -102,6 +103,38 @@ const ReviewStats = struct {
     /// Overall complexity rating (1-10)
     complexity_rating: u32,
 };
+
+/// Execute git review analysis with performance tracking
+pub fn run(allocator: std.mem.Allocator, params: std.json.Value) toolsMod.ToolError!std.json.Value {
+    var perf = performance.ToolPerformance.init(allocator, "git_review") catch {
+        return execute(allocator, params);
+    };
+
+    // Record approximate input size (simplified for now)
+    perf.recordInputSize(512);
+
+    perf.startExecution();
+    defer {
+        perf.endExecution();
+
+        if (performance.getGlobalRegistry()) |registry| {
+            registry.recordToolExecution(&perf) catch {};
+        }
+
+        if (perf.generateReport()) |report| {
+            allocator.free(report);
+        } else |_| {}
+    }
+
+    const result = execute(allocator, params);
+
+    if (result) |_| {
+        // Record approximate output size (simplified for now)
+        perf.recordOutputSize(2048);
+    } else |_| {}
+
+    return result;
+}
 
 /// Execute git review analysis
 pub fn execute(allocator: std.mem.Allocator, input_json: std.json.Value) toolsMod.ToolError!std.json.Value {

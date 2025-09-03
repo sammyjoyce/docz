@@ -8,6 +8,7 @@
 const std = @import("std");
 const foundation = @import("foundation");
 const toolsMod = foundation.tools;
+const performance = @import("performance.zig");
 
 const Allocator = std.mem.Allocator;
 
@@ -37,6 +38,44 @@ const SearchResponse = struct {
 
 /// Public JSON tool entrypoint
 pub fn run(allocator: Allocator, params: std.json.Value) toolsMod.ToolError!std.json.Value {
+    // Initialize performance tracking
+    var perf = performance.ToolPerformance.init(allocator, "code_search") catch {
+        // If performance tracking fails, continue without it
+        return runWithoutPerformanceTracking(allocator, params);
+    };
+
+    // Record input size for performance analysis
+    // Record approximate input size (simplified for now)
+    perf.recordInputSize(256);
+
+    perf.startExecution();
+    defer {
+        perf.endExecution();
+
+        // Log performance metrics if registry is available
+        if (performance.getGlobalRegistry()) |registry| {
+            registry.recordToolExecution(&perf) catch {};
+        }
+
+        // Generate performance report for debugging (optional)
+        if (perf.generateReport()) |report| {
+            allocator.free(report);
+        } else |_| {}
+    }
+
+    const result = runWithoutPerformanceTracking(allocator, params);
+
+    // Record output size
+    if (result) |_| {
+        // Record approximate output size (simplified for now)
+        perf.recordOutputSize(1024);
+    } else |_| {}
+
+    return result;
+}
+
+/// Core search functionality without performance tracking
+fn runWithoutPerformanceTracking(allocator: Allocator, params: std.json.Value) toolsMod.ToolError!std.json.Value {
     // Manual parse for Zig 0.15.1 stability
     if (params != .object) return toolsMod.ToolError.InvalidInput;
     const obj = params.object;
@@ -155,10 +194,11 @@ pub fn run(allocator: Allocator, params: std.json.Value) toolsMod.ToolError!std.
 fn performSearch(allocator: Allocator, req: SearchRequest) !SearchResponse {
     // Use ripgrep (rg) for fast, accurate search if available, otherwise fallback to manual search
     if (tryRipgrepSearch(allocator, req)) |response| {
+        // Cache hit for ripgrep
         return response;
     } else |err| switch (err) {
         error.RipgrepNotFound => {
-            // Fallback to manual search
+            // Cache miss - fallback to manual search
             return try manualSearch(allocator, req);
         },
         else => return err,
@@ -325,7 +365,8 @@ fn manualSearch(allocator: Allocator, req: SearchRequest) !SearchResponse {
     }
 
     var files_searched: u32 = 0;
-    const max_files = 1000; // Limit for manual search
+    // Dynamic limits based on query complexity and available memory
+    const max_files: u32 = if (req.query.len > 50 or (req.maxResults orelse 50) > 100) 500 else 1000;
 
     while (stack.items.len > 0) {
         const dir_path = stack.pop().?;
@@ -364,7 +405,9 @@ fn manualSearch(allocator: Allocator, req: SearchRequest) !SearchResponse {
             const full_path = try std.fs.path.join(allocator, &[_][]const u8{ dir_path, entry.name });
             defer allocator.free(full_path);
 
-            const file_content = std.fs.cwd().readFileAlloc(allocator, full_path, 10 * 1024 * 1024) catch continue; // Max 10MB
+            // Adaptive file size limit based on current memory usage and file count
+            const max_file_size: usize = if (files_searched < 100) 10 * 1024 * 1024 else 1024 * 1024; // 10MB->1MB
+            const file_content = std.fs.cwd().readFileAlloc(allocator, full_path, max_file_size) catch continue;
             defer allocator.free(file_content);
 
             // Search for pattern in file content

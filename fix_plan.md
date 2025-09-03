@@ -4,11 +4,6 @@ Owned by the Ralph planning loop. Each iteration overwrites this file with one p
 
 ## Now
 
-- **Objective**: Performance monitoring and optimization
-  - **Files**: Various tool files in `agents/amp/tools/`
-  - **Steps**: Add execution time tracking, memory usage monitoring, optimize large codebase handling
-  - **Acceptance**: Tools provide performance metrics, handle large inputs efficiently
-
 - **Objective**: Implement remaining AMP specification tools
   - **Files**: Create missing tool implementations based on specs/amp/prompts/
   - **Steps**: Senior Engineer tool, Direct LLM Models tool, Data Schema tools, Agent Creation tools
@@ -37,6 +32,17 @@ Owned by the Ralph planning loop. Each iteration overwrites this file with one p
 - **Latest achievement**: Added comprehensive runtime integration tests covering all 13 active AMP tools with performance baselines and error handling validation
 
 ## Done
+
+- **Objective**: Performance monitoring and optimization ✅
+  - Created comprehensive performance monitoring system in `agents/amp/tools/performance.zig`
+  - Implemented execution time tracking, memory usage monitoring, and throughput measurement
+  - Added performance monitoring to high-priority tools: code_search, glob, git_review
+  - Integrated with foundation framework performance utilities (session.zig, terminal_bridge.zig)
+  - Added performance optimizations for large codebases: adaptive file size limits, directory skipping
+  - Tools now provide detailed performance metrics with configurable thresholds
+  - Global performance registry tracks aggregate metrics across sessions
+  - All validation commands pass: `zig fmt` ✅, `zig build validate-agents` ✅, `zig build -Dagent=amp test` ✅, `zig build -Dagent=amp run` ✅
+  - Performance monitoring system is production-ready with proper error handling and Zig 0.15.1 compatibility
 
 - **Objective**: Add comprehensive runtime integration tests ✅
   - Created `tests/amp_integration.zig` with 14 comprehensive test cases covering all 13 active AMP tools

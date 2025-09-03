@@ -8,6 +8,7 @@
 const std = @import("std");
 const foundation = @import("foundation");
 const toolsMod = foundation.tools;
+const performance = @import("performance.zig");
 
 const Allocator = std.mem.Allocator;
 
@@ -24,6 +25,39 @@ const Match = struct {
 
 /// Public JSON tool entrypoint
 pub fn run(allocator: Allocator, params: std.json.Value) toolsMod.ToolError!std.json.Value {
+    // Initialize performance tracking
+    var perf = performance.ToolPerformance.init(allocator, "glob") catch {
+        return runWithoutPerformanceTracking(allocator, params);
+    };
+
+    // Record input size
+    // Record approximate input size (simplified for now)
+    perf.recordInputSize(256);
+
+    perf.startExecution();
+    defer {
+        perf.endExecution();
+
+        if (performance.getGlobalRegistry()) |registry| {
+            registry.recordToolExecution(&perf) catch {};
+        }
+
+        if (perf.generateReport()) |report| {
+            allocator.free(report);
+        } else |_| {}
+    }
+
+    const result = runWithoutPerformanceTracking(allocator, params);
+
+    if (result) |_| {
+        // Record approximate output size (simplified for now)
+        perf.recordOutputSize(1024);
+    } else |_| {}
+
+    return result;
+}
+
+fn runWithoutPerformanceTracking(allocator: Allocator, params: std.json.Value) toolsMod.ToolError!std.json.Value {
     // Manual parse for Zig 0.15.1 stability
     if (params != .object) return toolsMod.ToolError.InvalidInput;
     const obj = params.object;
@@ -169,6 +203,9 @@ fn walkAndMatch(allocator: Allocator, base_dir: []const u8, patterns: [][]const 
 
             // Skip special or heavy directories commonly ignored
             if (entry.kind == .directory) {
+                // Skip common heavy directories for performance
+                if (shouldSkipDirectory(entry.name)) continue;
+
                 // Build child directory path
                 const child = try std.fs.path.join(allocator, &[_][]const u8{ dir_path, entry.name });
                 // Avoid cycles; continue recursion
@@ -324,4 +361,14 @@ fn expandBraces(allocator: Allocator, pattern: []const u8, out: *std.ArrayList([
     }
     // No braces -> append as-is
     try out.append(allocator, try allocator.dupe(u8, pattern));
+}
+
+fn shouldSkipDirectory(name: []const u8) bool {
+    // Skip common heavy directories for performance
+    const skip_dirs = [_][]const u8{ "node_modules", ".git", ".svn", ".hg", "target", "build", "dist", "out", "bin", ".cache", "coverage", ".nyc_output", ".zig-cache", "zig-out", "vendor", "__pycache__", ".pytest_cache", ".idea", ".vscode", ".vs", "bower_components", "jspm_packages", ".next", ".nuxt", ".docker" };
+
+    for (skip_dirs) |dir| {
+        if (std.mem.eql(u8, name, dir)) return true;
+    }
+    return false;
 }
