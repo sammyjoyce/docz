@@ -70,9 +70,9 @@ fn executeInternal(allocator: std.mem.Allocator, params: std.json.Value) !std.js
     defer allocator.free(summary.content);
 
     // Prepare response
-    var sections_list = std.ArrayList([]const u8).initCapacity(allocator, 0);
+    var sections_list: std.ArrayList([]const u8) = .{};
     defer sections_list.deinit(allocator);
-    var missing_list = std.ArrayList([]const u8).initCapacity(allocator, 0);
+    var missing_list: std.ArrayList([]const u8) = .{};
     defer missing_list.deinit(allocator);
 
     // Track which sections have information and which are missing
@@ -279,10 +279,10 @@ fn extractSectionInfo(product_info: []const u8, keywords: []const []const u8) []
 /// Check if the text contains keywords relevant to a section
 fn containsKeywords(text: []const u8, section_lower: []const u8) bool {
     // Convert to lowercase for comparison
-    var text_lower = std.ArrayList(u8).init(std.heap.page_allocator);
-    defer text_lower.deinit();
+    var text_lower: std.ArrayList(u8) = .{};
+    defer text_lower.deinit(std.heap.page_allocator);
 
-    text_lower.resize(text.len) catch return false;
+    text_lower.resize(std.heap.page_allocator, text.len) catch return false;
     for (text, 0..) |c, i| {
         text_lower.items[i] = std.ascii.toLower(c);
     }

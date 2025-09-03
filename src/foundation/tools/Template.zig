@@ -47,6 +47,8 @@ pub fn processWithMap(
         .get = struct {
             fn f(ctx: ?*anyopaque, name: []const u8, a: std.mem.Allocator) ?[]u8 {
                 _ = ctx;
+                _ = name;
+                _ = a;
                 // When no variables provided, return null
                 const vars = @as(?*std.json.ObjectMap, @ptrFromInt(0));
                 _ = vars;
@@ -75,15 +77,15 @@ fn processInternal(
     resolver: VarResolver,
     options: ProcessOptions,
 ) !TemplateResult {
-    var out = std.ArrayList(u8).init(allocator);
-    var used = std.ArrayList([]const u8).init(allocator);
-    var missing = std.ArrayList([]const u8).init(allocator);
+    var out: std.ArrayList(u8) = .{};
+    defer out.deinit(allocator);
+    var used: std.ArrayList([]const u8) = .{};
+    defer used.deinit(allocator);
+    var missing: std.ArrayList([]const u8) = .{};
+    defer missing.deinit(allocator);
     errdefer {
         for (used.items) |v| allocator.free(v);
         for (missing.items) |v| allocator.free(v);
-        used.deinit();
-        missing.deinit();
-        out.deinit();
     }
 
     var i: usize = 0;
@@ -93,23 +95,23 @@ fn processInternal(
         // Escapes
         if (c == '\\' and options.process_escapes) {
             if (i + 1 >= template.len) {
-                try out.append('\\');
+                try out.append(allocator, '\\');
                 break;
             }
             const n = template[i + 1];
             switch (n) {
-                'n' => try out.append('\n'),
-                't' => try out.append('\t'),
-                'r' => try out.append('\r'),
-                '\\' => try out.append('\\'),
-                '$' => try out.append('$'),
-                '{' => try out.append('{'),
-                '}' => try out.append('}'),
-                '`' => try out.append('`'),
+                'n' => try out.append(allocator, '\n'),
+                't' => try out.append(allocator, '\t'),
+                'r' => try out.append(allocator, '\r'),
+                '\\' => try out.append(allocator, '\\'),
+                '$' => try out.append(allocator, '$'),
+                '{' => try out.append(allocator, '{'),
+                '}' => try out.append(allocator, '}'),
+                '`' => try out.append(allocator, '`'),
                 else => {
                     // Keep sequence as-is if unknown
-                    try out.append('\\');
-                    try out.append(n);
+                    try out.append(allocator, '\\');
+                    try out.append(allocator, n);
                 },
             }
             i += 2;
@@ -134,11 +136,11 @@ fn processInternal(
             continue;
         }
 
-        try out.append(c);
+        try out.append(allocator, c);
         i += 1;
     }
 
-    var result = try out.toOwnedSlice();
+    var result = try out.toOwnedSlice(allocator);
     if (options.trim_result) {
         const t = std.mem.trim(u8, result, " \t\n\r");
         if (t.len != result.len) {
@@ -150,8 +152,8 @@ fn processInternal(
 
     return TemplateResult{
         .result = result,
-        .variables_used = try used.toOwnedSlice(),
-        .variables_missing = try missing.toOwnedSlice(),
+        .variables_used = try used.toOwnedSlice(allocator),
+        .variables_missing = try missing.toOwnedSlice(allocator),
         .allocator = allocator,
     };
 }
@@ -180,47 +182,45 @@ fn handleVar(
     // Map-based resolution first when provided
     if (variables) |vars| {
         if (vars.get(name)) |val| {
-            try used.append(try allocator.dupe(u8, name));
+            try used.append(allocator, try allocator.dupe(u8, name));
             try appendJsonValue(allocator, out, val);
             return;
         }
     }
 
     // Fallback to resolver
-    if (resolver.get != undefined) {
-        if (resolver.get(resolver.ctx, name, allocator)) |owned| {
-            defer allocator.free(owned);
-            try used.append(try allocator.dupe(u8, name));
-            try out.appendSlice(owned);
-            return;
-        }
+    if (resolver.get(resolver.ctx, name, allocator)) |owned| {
+        defer allocator.free(owned);
+        try used.append(allocator, try allocator.dupe(u8, name));
+        try out.appendSlice(allocator, owned);
+        return;
     }
 
     // Missing
-    try missing.append(try allocator.dupe(u8, name));
+    try missing.append(allocator, try allocator.dupe(u8, name));
     if (options.preserve_missing) {
-        try out.appendSlice("${");
-        try out.appendSlice(name);
-        try out.append('}');
+        try out.appendSlice(allocator, "${");
+        try out.appendSlice(allocator, name);
+        try out.append(allocator, '}');
     }
 }
 
 fn appendJsonValue(allocator: std.mem.Allocator, out: *std.ArrayList(u8), v: std.json.Value) !void {
     switch (v) {
-        .string => |s| try out.appendSlice(s),
+        .string => |s| try out.appendSlice(allocator, s),
         .integer => |n| {
             var buf: [64]u8 = undefined;
             const s = try std.fmt.bufPrint(&buf, "{d}", .{n});
-            try out.appendSlice(s);
+            try out.appendSlice(allocator, s);
         },
         .float => |n| {
             var buf: [64]u8 = undefined;
             const s = try std.fmt.bufPrint(&buf, "{d}", .{n});
-            try out.appendSlice(s);
+            try out.appendSlice(allocator, s);
         },
-        .number_string => |s| try out.appendSlice(s),
-        .bool => |b| try out.appendSlice(if (b) "true" else "false"),
+        .number_string => |s| try out.appendSlice(allocator, s),
+        .bool => |b| try out.appendSlice(allocator, if (b) "true" else "false"),
         .null => {},
-        else => try out.appendSlice("[object]"),
+        else => try out.appendSlice(allocator, "[object]"),
     }
 }

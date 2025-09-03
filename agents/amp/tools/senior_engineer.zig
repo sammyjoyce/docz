@@ -41,7 +41,7 @@ pub fn execute(allocator: std.mem.Allocator, params: std.json.Value) toolsMod.To
     if (req.requirements) |reqs| {
         try prompt.appendSlice(allocator, "\n\n# Requirements\n");
         for (reqs) |r| {
-            try prompt.writer().print("- {s}\n", .{r});
+            try prompt.writer(allocator).print("- {s}\n", .{r});
         }
     }
     const final_prompt = try prompt.toOwnedSlice(allocator);

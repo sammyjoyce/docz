@@ -4,10 +4,10 @@ Owned by the Ralph planning loop. Each iteration overwrites this file with one p
 
 ## Now
 
-- **Objective**: Resolve foundation layer compilation issues to achieve runtime functionality
-  - **Files**: src/foundation/tools/Template.zig, src/foundation/network/auth/OAuth.zig, JSON parsing compatibility
-  - **Steps**: Fix ArrayList.init() API, OAuth.parseCredentials method, JSON static parsing compatibility 
-  - **Acceptance**: Full AMP agent runtime functionality with `zig build -Dagent=amp run` working without foundation errors
+- **Objective**: Address remaining JSON parsing compatibility issues in standard library
+  - **Files**: Deep JSON parsing structures causing Zig 0.15.1 incompatibility 
+  - **Steps**: Investigate anyopaque, function pointer, and JSON Value parsing errors in standard library
+  - **Acceptance**: Full AMP agent runtime functionality with `zig build -Dagent=amp run` working without JSON parsing errors
 
 ## Risks
 
@@ -22,16 +22,17 @@ Owned by the Ralph planning loop. Each iteration overwrites this file with one p
 
 - **AMP agent status**: ✅ **100% TOOL COVERAGE ACHIEVED - All 20 specification tools active and operational**
 - **Tools implemented**: Complete AMP specification coverage with 20 active tools
-- **Fixed issues**: ✅ Oracle foundation network API compatibility, ✅ SharedContext usage, ✅ Response field mapping, ✅ ArrayList.writer() API 
+- **Fixed issues**: ✅ Oracle foundation network API compatibility, ✅ SharedContext usage, ✅ Response field mapping, ✅ ArrayList.writer() API, ✅ Foundation Template.zig compilation fixes, ✅ OAuth.parseCredentials method added
 - **Active tools**: JavaScript execution, Glob matching, Code search, Git review, Command risk assessment, Secret protection, Diagram generation, Code formatting, Request intent analysis, Template processing, Direct LLM models, Data schema analysis, Task delegation, Oracle, Agent Creation, Thread Summarization, Test Writer, Senior Engineer, Product Summary
 - **Product Summary tool**: ✅ Implemented structured template system with 10 key sections based on amp-product-summary.md specification
-- **Validation status**: ✅ All AMP agent specific compilation errors resolved, ✅ Agent validation passes, ✅ Agent listing passes, ✅ Agent builds and runs successfully  
-- **Foundation layer**: ❌ 19 remaining compatibility issues in Template.zig and JSON parsing (not AMP-specific)
+- **Validation status**: ✅ All AMP agent specific compilation errors resolved, ✅ Agent validation passes, ✅ Agent listing passes
+- **Foundation layer**: ✅ Template.zig compilation fixed with ArrayList.init() API and unused parameter fixes, ✅ OAuth.parseCredentials method added  
+- **Remaining issues**: ❌ Deep JSON parsing compatibility with Zig 0.15.1 standard library (anyopaque, function pointer errors)
 - All core infrastructure (main.zig, spec.zig, agent.zig, system_prompt.txt) is complete and production-ready
 - Foundation framework integration is fully compliant with proper error handling and allocator injection
-- All validation commands pass: `zig fmt` ✅, `zig build list-agents` ✅, `zig build validate-agents` ✅, `zig build -Dagent=amp run` ✅
-- **Latest achievement**: ✅ **100% TOOL COVERAGE MILESTONE** - Confirmed all 20 actionable AMP specification tools implemented (tool_explanation and human_prompt are documentation/guidelines, not tools)
-- **Git tag**: Ready for v0.2.1 for Product Summary tool addition
+- All validation commands pass: `zig fmt` ✅, `zig build list-agents` ✅, `zig build validate-agents` ✅
+- **Latest achievement**: ✅ Foundation layer Template.zig and OAuth.zig compatibility resolved
+- **Git tag**: Ready for v0.2.2 for foundation compatibility fixes
 - **Tool coverage**: ✅ **100% COMPLETE** - All 20 AMP specification tools implemented and active, comprehensive feature coverage achieved
 
 ## Next
@@ -44,6 +45,14 @@ Owned by the Ralph planning loop. Each iteration overwrites this file with one p
 
 
 ## Done
+
+- **Objective**: Resolve foundation layer Template.zig and OAuth.zig compilation issues ✅
+  - **Files**: ✅ src/foundation/tools/Template.zig, src/foundation/network/auth/OAuth.zig fixed
+  - **Steps**: ✅ Fixed ArrayList.init() API usage to Zig 0.15.1 syntax, fixed unused parameter warnings, added OAuth.parseCredentials method
+  - **Acceptance**: ✅ Foundation layer Template.zig and OAuth.zig compile successfully, agent validation passes
+  - **Impact**: Successfully resolved critical foundation compilation blockers affecting all agents
+  - **Fixed issues**: ArrayList.init() → ArrayList{}, all append/appendSlice calls updated with allocator parameter, unused function parameters marked with _, OAuth parseCredentials alias added
+  - **Validation**: ✅ All validation commands pass: `zig fmt` ✅, `zig build list-agents` ✅, `zig build validate-agents` ✅
 
 - **Objective**: Achieve 100% AMP specification tool coverage ✅
   - **Files**: ✅ Comprehensive analysis of all specs/amp/prompts/ files confirmed 100% coverage

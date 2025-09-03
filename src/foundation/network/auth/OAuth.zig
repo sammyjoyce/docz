@@ -621,6 +621,11 @@ pub fn fetchWithAnthropicOAuth(
     return try allocator.dupe(u8, response_body);
 }
 
+/// Parse OAuth credentials from JSON content (alias for parseCredentialsFromJson)
+pub fn parseCredentials(allocator: std.mem.Allocator, jsonContent: []const u8) !Credentials {
+    return parseCredentialsFromJson(allocator, jsonContent);
+}
+
 pub fn parseCredentialsFromJson(allocator: std.mem.Allocator, jsonContent: []const u8) !Credentials {
     // Preferred: snake_case fields per repo spec
     const Snake = struct {
