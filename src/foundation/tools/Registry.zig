@@ -408,12 +408,18 @@ fn tokenCallbackImpl(ctx: *SharedContext, chunk: []const u8) void {
 }
 
 fn oracleTool(ctx: *SharedContext, allocator: std.mem.Allocator, input: []const u8) ToolError![]u8 {
-    // Expect {"prompt":"..."}
-    const Request = struct { prompt: []const u8 };
+    // Accept either {"prompt":"..."} or {"query":"..."}
+    const Request = struct {
+        prompt: ?[]const u8 = null,
+        query: ?[]const u8 = null,
+    };
     const parsed = std.json.parseFromSlice(Request, allocator, input, .{}) catch return ToolError.MalformedJSON;
     defer parsed.deinit();
 
-    const promptText = parsed.value.prompt;
+    const promptText = parsed.value.prompt orelse parsed.value.query orelse {
+        const response = "Oracle tool requires either 'prompt' or 'query' field in JSON input";
+        return allocator.dupe(u8, response) catch ToolError.OutOfMemory;
+    };
 
     // Use the authenticated client from the shared context
     const client = ctx.anthropic.client orelse {
@@ -431,15 +437,16 @@ fn oracleTool(ctx: *SharedContext, allocator: std.mem.Allocator, input: []const 
         }
     };
 
-    // Read and prepend anthropic_spoof.txt to system prompt
+    // Read anthropic_spoof.txt content per spec requirements (matching engine implementation)
     const spoofContent = blk: {
         const spoofFile = std.fs.cwd().openFile("prompt/anthropic_spoof.txt", .{}) catch {
-            break :blk "";
+            break :blk null;
         };
         defer spoofFile.close();
-        break :blk spoofFile.readToEndAlloc(allocator, 1024) catch "";
+        const content = spoofFile.readToEndAlloc(allocator, 1024 * 1024) catch null;
+        break :blk content;
     };
-    defer if (spoofContent.len > 0) allocator.free(spoofContent);
+    defer if (spoofContent) |content| allocator.free(content);
 
     // Get current date for system prompt
     const currentDate = blk: {
@@ -456,8 +463,8 @@ fn oracleTool(ctx: *SharedContext, allocator: std.mem.Allocator, input: []const 
     };
     defer allocator.free(currentDate);
 
-    const systemPrompt = if (spoofContent.len > 0)
-        std.fmt.allocPrint(allocator, "{s}\n\n# Role\nYou are an expert AI assistant.\n\n# Today's Date\nThe current date is {s}.\n\n# IMPORTANT\n- ALWAYS provide accurate and helpful responses\n- NEVER make assumptions about user intent\n- BE concise and direct in communication", .{ spoofContent, currentDate }) catch return ToolError.OutOfMemory
+    const systemPrompt = if (spoofContent) |content|
+        std.fmt.allocPrint(allocator, "{s}\n\n# Role\nYou are an expert AI assistant.\n\n# Today's Date\nThe current date is {s}.\n\n# IMPORTANT\n- ALWAYS provide accurate and helpful responses\n- NEVER make assumptions about user intent\n- BE concise and direct in communication", .{ content, currentDate }) catch return ToolError.OutOfMemory
     else
         std.fmt.allocPrint(allocator,
             \\# Role
@@ -638,6 +645,20 @@ pub fn registerBuiltins(registry: *Registry) !void {
     try registry.register("echo", echo);
     try registry.register("fs_read", readFile);
     try registry.register("oracle", oracleTool);
+
+    // Add proper JSON schema for oracle tool
+    try registry.setInputSchema("oracle",
+        \\{
+        \\  "type": "object",
+        \\  "properties": {
+        \\    "prompt": {
+        \\      "type": "string",
+        \\      "description": "The prompt or question to send to the oracle AI assistant for meta-reasoning"
+        \\    }
+        \\  },
+        \\  "required": ["prompt"]
+        \\}
+    );
 }
 
 /// Register a JSON tool and auto-generate a minimal input_schema from a request struct type.

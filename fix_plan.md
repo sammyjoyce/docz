@@ -4,23 +4,9 @@ Owned by the Ralph planning loop. Each iteration overwrites this file with one p
 
 ## Now
 
-- Objective: Implement AMP-specific tools and register them
-  - Steps: derive concrete tools from `specs/amp/*`; implement in `agents/amp/tools/`; update `registerTools`.
-  - Acceptance: `zig build -Dagent=amp run` compiles and engine reports AMP tools in the registry.
-  - Built-in Tools (from specs/amp/manual.md): Amp comes with a curated set of built-in tools specifically designed for coding. You can find the list of built-in tools inside Amp's extension settings.
-  - Tool inference: Tools can be inferred from the descriptions/prompts in specs/amp/prompts/* directory.
-
 ## Next
 
 ## Backlog
-
-- Objective: CI/validation and tagging
-  - Steps: ensure CI runs `zig build list-agents`, `zig build validate-agents`, and `zig build -Dagent=amp test`; add format/import checks; consider `-Drelease-safe` builds.
-  - Acceptance: CI green on list/validate/tests and formatting checks.
-
-- Objective: Prompt curation and deduplication
-  - Steps: refine section ordering and prune overlaps with repository-wide guidance; add provenance comments.
-  - Acceptance: Stable prompt content with minimal churn between loops.
 
 ## Risks
 - Template drift: `agents/_template/main.zig` currently calls a 2‑arg `runAgent`; repository `agent_main.runAgent` requires the `Engine` type. We will fix `agents/amp/main.zig` to the 3‑arg form.
@@ -30,6 +16,26 @@ Owned by the Ralph planning loop. Each iteration overwrites this file with one p
 
 ## Notes
 ## Done
+
+- Objective: Prompt curation and deduplication ✅
+  - Refined `agents/amp/system_prompt.txt`: eliminated duplicate communication rules, reorganized into logical sections (Agency & Task Management, Communication Style, Coding Conventions, Tool Usage), reduced content from ~3,200 words to ~2,100 words (~35% reduction)
+  - Updated `agents/amp/spec.zig`: simplified prompt assembly to prefer refined system_prompt.txt with minimal fallback, removed complex concatenation logic that duplicated prompts unnecessarily
+  - Added provenance comments and section ordering for maintainability
+  - Validation successful: `zig fmt` ✅, `zig build list-agents` ✅, `zig build validate-agents` ✅, `zig build -Dagent=amp test` ✅, `zig build -Dagent=amp run --help` ✅
+  - Token savings: estimated ~1,100 tokens reduction in system prompt assembly (from 3,200 to 2,100 words)
+  - Acceptance: Stable prompt content with minimal churn, clear section structure, eliminated redundancy between amp.system.md and amp-communication-style.md
+
+- Objective: CI/validation and tagging ✅
+  - Updated `.github/workflows/ci.yaml` to include new `agents` job that runs:
+    - `zig build list-agents`
+    - `zig build validate-agents` 
+    - `zig build -Dagent=amp test`
+    - `zig build -Dagent=markdown test`
+  - Added `release` job that builds both agents with `--release=safe` flag on main branch pushes
+  - Fixed formatting issues: ran `zig fmt` on all source files to resolve non-conforming formatting
+  - All validation commands pass: list-agents ✅, validate-agents ✅, amp test ✅, release builds ✅
+  - Created git tag `0.0.2` after successful validation and green tree
+  - Note: Corrected release flag from `-Drelease-safe` to `--release=safe` for Zig 0.15.1 compatibility
 
 - Objective: Implement AMP-specific tools and register them ✅
   - Implemented JavaScript execution tool (`agents/amp/tools/javascript.zig`) based on `specs/amp/prompts/amp-javascript-tool.md`

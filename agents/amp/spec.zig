@@ -1,9 +1,14 @@
 //! Agent specification for AMP agent.
 //!
 //! This file defines the agent's interface to the core engine by:
-//! - Assembling system prompt from specs/amp/* files
+//! - Loading refined, deduplicated system prompt from system_prompt.txt
 //! - Registering foundation tools with the shared registry
 //! - Following Zig 0.15.1+ best practices
+//!
+//! Prompt Curation Strategy:
+//! - Uses curated system_prompt.txt that eliminates duplication from specs/amp/*
+//! - Provides logical section ordering and provenance tracking
+//! - Minimal token usage with clean prompt structure
 
 const std = @import("std");
 const engine = @import("core_engine");
@@ -14,89 +19,30 @@ const toolsMod = foundation.tools;
 pub const agentName: []const u8 = "amp";
 
 /// Build the system prompt for the AMP agent.
-/// Prefers file-based prompt when present; otherwise assembles from specs/amp/*
+/// Uses refined system_prompt.txt with fallback to minimal prompt
 fn buildSystemPrompt(allocator: std.mem.Allocator, options: engine.CliOptions) ![]const u8 {
     _ = options;
 
-    // First try to load from system_prompt.txt
+    // Load from refined system_prompt.txt
     const prompt_path = "agents/amp/system_prompt.txt";
     if (std.fs.cwd().openFile(prompt_path, .{})) |file| {
         defer file.close();
         return file.readToEndAlloc(allocator, std.math.maxInt(usize)) catch |err| switch (err) {
             error.OutOfMemory => return error.OutOfMemory,
-            else => return assembleFromSpecs(allocator),
+            else => return buildMinimalPrompt(allocator),
         };
     } else |_| {
-        // Fallback: assemble from specs/amp/*
-        return assembleFromSpecs(allocator);
+        // Minimal fallback if system_prompt.txt is missing
+        return buildMinimalPrompt(allocator);
     }
 }
 
-/// Fallback system prompt assembly from specs/amp/* files
-fn assembleFromSpecs(allocator: std.mem.Allocator) ![]const u8 {
-    var arena = std.heap.ArenaAllocator.init(allocator);
-    defer arena.deinit();
-    const a = arena.allocator();
-
-    // Use managed array list for Zig 0.15.1 compatibility
-    var prompt_parts = try std.array_list.Managed([]const u8).initCapacity(a, 0);
-    defer prompt_parts.deinit();
-
-    // Core system identity and behavior (essential)
-    if (std.fs.cwd().openFile("specs/amp/amp.system.md", .{})) |file| {
-        defer file.close();
-        const content = try file.readToEndAlloc(a, 1024 * 1024);
-        // Extract content after frontmatter
-        if (std.mem.indexOf(u8, content, "\n---\n")) |end_pos| {
-            const main_content = content[end_pos + 5 ..];
-            try prompt_parts.append(main_content);
-        } else {
-            try prompt_parts.append(content);
-        }
-    } else |_| {}
-
-    // Communication style guidelines (essential)
-    if (std.fs.cwd().openFile("specs/amp/amp-communication-style.md", .{})) |file| {
-        defer file.close();
-        const content = try file.readToEndAlloc(a, 1024 * 1024);
-        if (std.mem.indexOf(u8, content, "\n---\n")) |end_pos| {
-            const main_content = content[end_pos + 5 ..];
-            try prompt_parts.append("\n\n# Additional Communication Guidelines\n\n");
-            try prompt_parts.append(main_content);
-        }
-    } else |_| {}
-
-    // Task workflow conventions (essential)
-    if (std.fs.cwd().openFile("specs/amp/amp-task.md", .{})) |file| {
-        defer file.close();
-        const content = try file.readToEndAlloc(a, 1024 * 1024);
-        if (std.mem.indexOf(u8, content, "\n---\n")) |end_pos| {
-            const main_content = content[end_pos + 5 ..];
-            try prompt_parts.append("\n\n# Task Management Guidelines\n\n");
-            try prompt_parts.append(main_content);
-        }
-    } else |_| {}
-
-    // Assemble final prompt
-    const parts = prompt_parts.items;
-    if (parts.len == 0) {
-        // Fallback if no spec files found
-        return allocator.dupe(u8, "You are Amp, a powerful AI coding agent built by Sourcegraph. You help users with software engineering tasks.");
-    }
-
-    var total_len: usize = 0;
-    for (parts) |part| {
-        total_len += part.len;
-    }
-
-    var result = try allocator.alloc(u8, total_len);
-    var pos: usize = 0;
-    for (parts) |part| {
-        @memcpy(result[pos .. pos + part.len], part);
-        pos += part.len;
-    }
-
-    return result;
+/// Minimal fallback prompt if system_prompt.txt is unavailable
+fn buildMinimalPrompt(allocator: std.mem.Allocator) ![]const u8 {
+    return allocator.dupe(u8, "You are Amp, a powerful AI coding agent built by Sourcegraph. " ++
+        "You help users with software engineering tasks. " ++
+        "Use the tools available to you to assist the user. " ++
+        "Be concise and direct in your responses.");
 }
 
 /// Register all tools for the AMP agent.

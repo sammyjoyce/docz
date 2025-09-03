@@ -1,4 +1,4 @@
-# Ralph Build Loop: Implement agents/amp using fix_plan.md
+# Ralph Build Loop: Build Complete Amp Agent from specs/amp
 
 Run Ralph like this:
 
@@ -6,7 +6,16 @@ Run Ralph like this:
 while :; do cat PROMPT.md | npx --yes @sourcegraph/amp ; done
 ```
 
-Deterministically allocate the same stack every loop: include `PLAN.md`, the current `fix_plan.md`, all of `specs/amp/*`, and any existing `agents/amp/*` files.
+Deterministically allocate the same stack every loop: include `PLAN.md`, the current `fix_plan.md`, all of `specs/amp/*` (including `specs/amp/manual.md` and all files in `specs/amp/prompts/`), and any existing `agents/amp/*` files.
+
+## Context: Building Amp Agent
+
+You are building a complete Amp agent implementation based on the comprehensive specifications in `specs/amp/`:
+
+- `specs/amp/manual.md`: Complete Amp user manual with features, tools, configuration, and usage patterns
+- `specs/amp/prompts/*`: 26 detailed prompt specifications covering all Amp capabilities (amp.system.md, amp-communication-style.md, amp-task.md, amp-code-formatter.md, amp-git-review.md, amp-oracle.md, etc.) - these include both prompts and tool descriptions that should be used verbatim but reworked into the tool calling system
+
+The agent should embody Amp's principles: unconstrained token usage, always using the best models, providing raw model power, and built to evolve. Implement tools and behaviors that match Amp's built-in capabilities for coding, analysis, and collaboration.
 
 0a. Read `fix_plan.md` and select exactly one item from the Now section. If empty, promote the top item from Next, or regenerate the plan by running the planner loop (PLAN.md).
 
@@ -15,13 +24,15 @@ Deterministically allocate the same stack every loop: include `PLAN.md`, the cur
 1. Implement the selected item for `agents/amp/*`:
    - Create/modify only the files specified by the item (examples below). Keep changes cohesive.
    - Follow repo guidelines: Zig 0.15.1, barrels (no deep imports), explicit error sets, allocator injection, no globals.
+   - Draw from `specs/amp/manual.md` for Amp's feature set and `specs/amp/prompts/*` for specific behaviors and tool implementations.
+   - Extract and implement tools from `specs/amp/prompts/*` - these files contain both prompts and explicit tool descriptions that should be used verbatim but adapted into the foundation tool calling system.
    - Use parallel subagents for search/analysis/writing; use at most 1 subagent for build/test.
 
 Common targets (examples; use what the item specifies):
 - `agents/amp/main.zig`: thin entry calling `@import("foundation").agent_main.runAgent(alloc, spec.SPEC)`.
-- `agents/amp/spec.zig`: expose `pub const SPEC: core_engine.AgentSpec` with `buildSystemPrompt(alloc, options)` assembling from `specs/amp/*` and `registerTools` wiring foundation tools.
+- `agents/amp/spec.zig`: expose `pub const SPEC: core_engine.AgentSpec` with `buildSystemPrompt(alloc, options)` assembling from `specs/amp/manual.md` and `specs/amp/prompts/*` and `registerTools` wiring foundation tools plus Amp-specific tools.
 - `agents/amp/agent.zig`: single-entry struct holding config, allocator, injected services.
-- `agents/amp/system_prompt.txt`: synthesize from `specs/amp/*`; dedupe global rules; avoid placeholders.
+- `agents/amp/system_prompt.txt`: synthesize from `specs/amp/manual.md` and `specs/amp/prompts/*`; prioritize core Amp behaviors (amp.system.md, amp-communication-style.md, amp-task.md); dedupe global rules; avoid placeholders.
 - `agents/amp/config.zon`, `agents/amp/tools.zon`, optional `agents/amp/tools/`.
 - `agents/amp/README.md` with run/test instructions.
 
