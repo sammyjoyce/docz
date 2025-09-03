@@ -36,6 +36,24 @@ pub fn registerAll(registry: *toolsMod.Registry) !void {
         "amp",
     );
 
+    // Git Review tool - comprehensive code review automation and suggestions
+    try toolsMod.registerJsonTool(
+        registry,
+        "git_review",
+        "Perform comprehensive code review analysis of git changes. Provides file-by-file analysis, security/performance concerns, and quality suggestions.",
+        @import("git_review.zig").execute,
+        "amp",
+    );
+
+    // Test Writer tool - automated test generation for code analysis
+    try toolsMod.registerJsonTool(
+        registry,
+        "test_writer",
+        "Analyze code for bugs, performance, and security issues, then generate comprehensive test suites covering existing issues and regression prevention.",
+        @import("test_writer.zig").execute,
+        "amp",
+    );
+
     // Task tool temporarily disabled in test builds pending Zig 0.15 API adjustments
     // try toolsMod.registerJsonTool(
     //     registry,

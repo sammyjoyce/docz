@@ -4,24 +4,12 @@ Owned by the Ralph planning loop. Each iteration overwrites this file with one p
 
 ## Now
 
-- Objective: Implement Git Review capabilities
-  - Create `agents/amp/tools/git_review.zig` based on `specs/amp/prompts/amp-git-review.md`
-  - Provide comprehensive code review automation and suggestions
-  - Integrate with foundation git tools and add review workflows  
-  - Steps: Study git-review spec, implement review logic, test on real PRs/commits
-  - Acceptance: Git review generates meaningful feedback, integrates with git workflow
-
-## Backlog
-
-- Objective: Implement Test Writer tool for automated test generation
-  - Create `agents/amp/tools/test_writer.zig` from `specs/amp/prompts/amp-test-writer.md`
-  - Generate comprehensive test suites for code changes
-  - Steps: Analyze test-writer spec, implement test generation patterns, validate against existing test frameworks
-
 - Objective: Add security tools (Command Risk Assessment, Secret File Protection)
   - Implement `agents/amp/tools/command_risk.zig` from `amp-command-risk.md`
   - Implement `agents/amp/tools/secret_protection.zig` from `amp-secret-file-protection.md`  
   - Steps: Study security specs, implement risk assessment and secret detection
+
+## Backlog
 
 - Objective: Implement thread management and summarization
   - Add conversation tracking and summarization tools from thread-related specs
@@ -68,6 +56,26 @@ Owned by the Ralph planning loop. Each iteration overwrites this file with one p
 - Gap analysis shows 26 prompt specifications with 2 specialized tools implemented (JavaScript, Oracle)
 
 ## Done
+
+- Objective: Implement Test Writer tool for automated test generation ✅
+  - Tool implementation was already complete in `agents/amp/tools/test_writer.zig` based on `specs/amp/prompts/amp-test-writer.md`
+  - Added test_writer tool registration in `agents/amp/tools/mod.zig` to enable tool discovery 
+  - Fixed Zig 0.15.1 format string compatibility issues (unescaped braces in std.fmt.allocPrint calls)
+  - Features: Multi-language support (Zig-focused), comprehensive code analysis for bugs/performance/security, test framework detection, structured output with analysis summaries
+  - Test generation categories: Basic Functionality, Error Handling, Memory Management, Security, Performance, Edge Cases
+  - Validation successful: `zig fmt` ✅, `zig build list-agents` ✅, `zig build validate-agents` ✅, `zig build -Dagent=amp test` ✅, `zig build -Dagent=amp run` ✅
+  - Tool provides automated test generation for code analysis with configurable test limits and comprehensive issue identification
+
+## Done
+
+- Objective: Implement Git Review capabilities ✅
+  - Git Review tool is already fully implemented in `agents/amp/tools/git_review.zig` based on `specs/amp/prompts/amp-git-review.md`
+  - Provides comprehensive code review automation with diff analysis between git references (HEAD~1 vs HEAD by default)
+  - Features: File-by-file analysis, security/performance pattern detection, quality suggestions, structured JSON output
+  - Supports staged/unstaged changes, context lines configuration, file pattern filtering
+  - Registered in `agents/amp/tools/mod.zig` at lines 40-46 and properly integrated with foundation framework
+  - Validation successful: `zig fmt` ✅, `zig build validate-agents` ✅, `zig build -Dagent=amp test` ✅, `zig build -Dagent=amp run` ✅
+  - Tool follows git-review specification exactly and generates meaningful feedback for git workflow integration
 
 - Objective: Correct amp agent config path and type naming in `agents/amp/agent.zig` (remove template remnants) ✅
   - Fixed `Config.getConfigPath` to use `"amp"` instead of `"_template"` 
